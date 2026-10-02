@@ -556,168 +556,7 @@ impl PlayerModel {
     /// `PlayerModel.setupAnim` and `HumanoidModel.setupAnim` for empty hands,
     /// on foot.
     pub fn setup_anim(&mut self, state: &PlayerRenderState) {
-        use std::f64::consts::PI;
-        let pi = PI as f32;
-        self.root.reset();
-        let show_body = !state.spectator;
-        for name in ["body", "right_arm", "left_arm", "right_leg", "left_leg"] {
-            self.part(name).visible = show_body;
-        }
-
-        let degrees_to_radians = (PI / 180.0) as f32;
-        let swim_amount = state.swim_amount;
-        {
-            let head = self.part("head");
-            head.x_rot = state.x_rot * degrees_to_radians;
-            head.y_rot = state.head_y_rot * degrees_to_radians;
-            if swim_amount > 0.0 {
-                head.x_rot = rot_lerp_rad(swim_amount, head.x_rot, (-PI / 4.0) as f32);
-            }
-        }
-
-        let position = state.walk_position;
-        let speed = state.walk_speed;
-        let cos = |value: f32| mth_cos_f64(f64::from(value));
-        let sin = |value: f32| mth_sin_f64(f64::from(value));
-        // `speedValue` is one for a player.
-        self.part("right_arm").x_rot = cos(position * 0.6662 + pi) * 2.0 * speed * 0.5 / 1.0;
-        self.part("left_arm").x_rot = cos(position * 0.6662) * 2.0 * speed * 0.5 / 1.0;
-        self.part("right_leg").x_rot = cos(position * 0.6662) * 1.4 * speed / 1.0;
-        self.part("left_leg").x_rot = cos(position * 0.6662 + pi) * 1.4 * speed / 1.0;
-        self.part("right_leg").y_rot = 0.005;
-        self.part("left_leg").y_rot = -0.005;
-        self.part("right_leg").z_rot = 0.005;
-        self.part("left_leg").z_rot = -0.005;
-        // Empty hands: each arm's pose only clears its turn.
-        self.part("left_arm").y_rot = 0.0;
-        self.part("right_arm").y_rot = 0.0;
-
-        // `setupAttackAnimation`, a whack.
-        let attack_time = state.attack_time;
-        // The reference swings unless the time is at most zero, so a NaN
-        // time swings too.
-        if attack_time > 0.0 || attack_time.is_nan() {
-            let mut body_y_rot =
-                sin(f64::from(attack_time).sqrt() as f32 * (PI * 2.0) as f32) * 0.2;
-            if state.attack_arm == Arm::Left {
-                body_y_rot *= -1.0;
-            }
-            self.part("body").y_rot = body_y_rot;
-            {
-                let right = self.part("right_arm");
-                right.z = sin(body_y_rot) * 5.0 * 1.0;
-                right.x = -cos(body_y_rot) * 5.0 * 1.0;
-            }
-            {
-                let left = self.part("left_arm");
-                left.z = -sin(body_y_rot) * 5.0 * 1.0;
-                left.x = cos(body_y_rot) * 5.0 * 1.0;
-            }
-            self.part("right_arm").y_rot += body_y_rot;
-            self.part("left_arm").y_rot += body_y_rot;
-            self.part("left_arm").x_rot += body_y_rot;
-            let swing = 1.0 - square(square(1.0 - attack_time));
-            let aa = sin(swing * pi);
-            let head_x_rot = self.part("head").x_rot;
-            let bb = sin(attack_time * pi) * -(head_x_rot - 0.7) * 0.75;
-            let arm = self.part(match state.attack_arm {
-                Arm::Left => "left_arm",
-                Arm::Right => "right_arm",
-            });
-            arm.x_rot -= aa * 1.2 + bb;
-            arm.y_rot += body_y_rot * 2.0;
-            arm.z_rot += sin(attack_time * pi) * -0.4;
-        }
-
-        if state.crouching {
-            self.part("body").x_rot = 0.5;
-            self.part("right_arm").x_rot += 0.4;
-            self.part("left_arm").x_rot += 0.4;
-            self.part("right_leg").z += 4.0;
-            self.part("left_leg").z += 4.0;
-            self.part("head").y += 4.2;
-            self.part("body").y += 3.2;
-            self.part("left_arm").y += 3.2;
-            self.part("right_arm").y += 3.2;
-        }
-
-        // `AnimationUtils.bobModelPart`: the arms breathe.
-        for (name, scale) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
-            let age = state.age_in_ticks;
-            let arm = self.part(name);
-            arm.z_rot += scale * (cos(age * 0.09) * 0.05 + 0.05);
-            arm.x_rot += scale * (sin(age * 0.067) * 0.05);
-        }
-
-        if swim_amount > 0.0 {
-            self.swim(state, pi);
-        }
-    }
-
-    fn swim(&mut self, state: &PlayerRenderState, pi: f32) {
-        let swim_amount = state.swim_amount;
-        let position = state.walk_position;
-        let swim_position = position % 26.0;
-        let swinging = |arm: Arm| state.attack_arm == arm && state.attack_time > 0.0;
-        let right_amount = if swinging(Arm::Right) {
-            0.0
-        } else {
-            swim_amount
-        };
-        let left_amount = if swinging(Arm::Left) {
-            0.0
-        } else {
-            swim_amount
-        };
-        let quadratic = |x: f32| -65.0 * x + x * x;
-        let half_pi = (std::f64::consts::PI / 2.0) as f32;
-        // Targets for the left arm (turned the short way) and the right arm.
-        let (x_target, z_left, z_right) = if swim_position < 14.0 {
-            (
-                (0.0, 0.0),
-                pi + 1.870_796_4 * quadratic(swim_position) / quadratic(14.0),
-                pi - 1.870_796_4 * quadratic(swim_position) / quadratic(14.0),
-            )
-        } else if (14.0..22.0).contains(&swim_position) {
-            let inner = (swim_position - 14.0) / 8.0;
-            (
-                (half_pi * inner, half_pi * inner),
-                5.012_389 - 1.870_796_4 * inner,
-                1.270_796_3 + 1.870_796_4 * inner,
-            )
-        } else if (22.0..26.0).contains(&swim_position) {
-            let inner = (swim_position - 22.0) / 4.0;
-            (
-                (half_pi - half_pi * inner, half_pi - half_pi * inner),
-                pi,
-                pi,
-            )
-        } else {
-            ((f32::NAN, f32::NAN), f32::NAN, f32::NAN)
-        };
-        if !x_target.0.is_nan() {
-            let left = self.part("left_arm");
-            left.x_rot = rot_lerp_rad(left_amount, left.x_rot, x_target.0);
-            left.y_rot = rot_lerp_rad(left_amount, left.y_rot, pi);
-            left.z_rot = rot_lerp_rad(left_amount, left.z_rot, z_left);
-            let right = self.part("right_arm");
-            right.x_rot = lerp(right_amount, right.x_rot, x_target.1);
-            right.y_rot = lerp(right_amount, right.y_rot, pi);
-            right.z_rot = lerp(right_amount, right.z_rot, z_right);
-        }
-        let cos = |value: f32| mth_cos_f64(f64::from(value));
-        let left_leg = self.part("left_leg");
-        left_leg.x_rot = lerp(
-            swim_amount,
-            left_leg.x_rot,
-            0.3 * cos(position * 0.333_333_34 + pi),
-        );
-        let right_leg = self.part("right_leg");
-        right_leg.x_rot = lerp(
-            swim_amount,
-            right_leg.x_rot,
-            0.3 * cos(position * 0.333_333_34),
-        );
+        humanoid_anim(&mut self.root, state);
     }
 
     /// `AvatarRenderer.renderHand`: one arm alone, as the first-person view
@@ -753,6 +592,175 @@ impl PlayerModel {
     }
 }
 
+/// `HumanoidModel.setupAnim` for empty hands, on foot: the head follows the
+/// look, the limbs swing with the walk, the arms breathe, with the attack
+/// swing, the crouch and the swim. `root` holds the humanoid mesh's parts
+/// (the player's, a zombie's).
+pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
+    use std::f64::consts::PI;
+    let pi = PI as f32;
+    root.reset();
+    let show_body = !state.spectator;
+    for name in ["body", "right_arm", "left_arm", "right_leg", "left_leg"] {
+        root.child(name).visible = show_body;
+    }
+
+    let degrees_to_radians = (PI / 180.0) as f32;
+    let swim_amount = state.swim_amount;
+    {
+        let head = root.child("head");
+        head.x_rot = state.x_rot * degrees_to_radians;
+        head.y_rot = state.head_y_rot * degrees_to_radians;
+        if swim_amount > 0.0 {
+            head.x_rot = rot_lerp_rad(swim_amount, head.x_rot, (-PI / 4.0) as f32);
+        }
+    }
+
+    let position = state.walk_position;
+    let speed = state.walk_speed;
+    let cos = |value: f32| mth_cos_f64(f64::from(value));
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    // `speedValue` is one for a player.
+    root.child("right_arm").x_rot = cos(position * 0.6662 + pi) * 2.0 * speed * 0.5 / 1.0;
+    root.child("left_arm").x_rot = cos(position * 0.6662) * 2.0 * speed * 0.5 / 1.0;
+    root.child("right_leg").x_rot = cos(position * 0.6662) * 1.4 * speed / 1.0;
+    root.child("left_leg").x_rot = cos(position * 0.6662 + pi) * 1.4 * speed / 1.0;
+    root.child("right_leg").y_rot = 0.005;
+    root.child("left_leg").y_rot = -0.005;
+    root.child("right_leg").z_rot = 0.005;
+    root.child("left_leg").z_rot = -0.005;
+    // Empty hands: each arm's pose only clears its turn.
+    root.child("left_arm").y_rot = 0.0;
+    root.child("right_arm").y_rot = 0.0;
+
+    // `setupAttackAnimation`, a whack.
+    let attack_time = state.attack_time;
+    // The reference swings unless the time is at most zero, so a NaN
+    // time swings too.
+    if attack_time > 0.0 || attack_time.is_nan() {
+        let mut body_y_rot = sin(f64::from(attack_time).sqrt() as f32 * (PI * 2.0) as f32) * 0.2;
+        if state.attack_arm == Arm::Left {
+            body_y_rot *= -1.0;
+        }
+        root.child("body").y_rot = body_y_rot;
+        {
+            let right = root.child("right_arm");
+            right.z = sin(body_y_rot) * 5.0 * 1.0;
+            right.x = -cos(body_y_rot) * 5.0 * 1.0;
+        }
+        {
+            let left = root.child("left_arm");
+            left.z = -sin(body_y_rot) * 5.0 * 1.0;
+            left.x = cos(body_y_rot) * 5.0 * 1.0;
+        }
+        root.child("right_arm").y_rot += body_y_rot;
+        root.child("left_arm").y_rot += body_y_rot;
+        root.child("left_arm").x_rot += body_y_rot;
+        let swing = 1.0 - square(square(1.0 - attack_time));
+        let aa = sin(swing * pi);
+        let head_x_rot = root.child("head").x_rot;
+        let bb = sin(attack_time * pi) * -(head_x_rot - 0.7) * 0.75;
+        let arm = root.child(match state.attack_arm {
+            Arm::Left => "left_arm",
+            Arm::Right => "right_arm",
+        });
+        arm.x_rot -= aa * 1.2 + bb;
+        arm.y_rot += body_y_rot * 2.0;
+        arm.z_rot += sin(attack_time * pi) * -0.4;
+    }
+
+    if state.crouching {
+        root.child("body").x_rot = 0.5;
+        root.child("right_arm").x_rot += 0.4;
+        root.child("left_arm").x_rot += 0.4;
+        root.child("right_leg").z += 4.0;
+        root.child("left_leg").z += 4.0;
+        root.child("head").y += 4.2;
+        root.child("body").y += 3.2;
+        root.child("left_arm").y += 3.2;
+        root.child("right_arm").y += 3.2;
+    }
+
+    // `AnimationUtils.bobModelPart`: the arms breathe.
+    for (name, scale) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
+        let age = state.age_in_ticks;
+        let arm = root.child(name);
+        arm.z_rot += scale * (cos(age * 0.09) * 0.05 + 0.05);
+        arm.x_rot += scale * (sin(age * 0.067) * 0.05);
+    }
+
+    if swim_amount > 0.0 {
+        swim(root, state, pi);
+    }
+}
+
+/// `HumanoidModel.setupAnim`'s swimming arms and legs.
+fn swim(root: &mut Part, state: &PlayerRenderState, pi: f32) {
+    let swim_amount = state.swim_amount;
+    let position = state.walk_position;
+    let swim_position = position % 26.0;
+    let swinging = |arm: Arm| state.attack_arm == arm && state.attack_time > 0.0;
+    let right_amount = if swinging(Arm::Right) {
+        0.0
+    } else {
+        swim_amount
+    };
+    let left_amount = if swinging(Arm::Left) {
+        0.0
+    } else {
+        swim_amount
+    };
+    let quadratic = |x: f32| -65.0 * x + x * x;
+    let half_pi = (std::f64::consts::PI / 2.0) as f32;
+    // Targets for the left arm (turned the short way) and the right arm.
+    let (x_target, z_left, z_right) = if swim_position < 14.0 {
+        (
+            (0.0, 0.0),
+            pi + 1.870_796_4 * quadratic(swim_position) / quadratic(14.0),
+            pi - 1.870_796_4 * quadratic(swim_position) / quadratic(14.0),
+        )
+    } else if (14.0..22.0).contains(&swim_position) {
+        let inner = (swim_position - 14.0) / 8.0;
+        (
+            (half_pi * inner, half_pi * inner),
+            5.012_389 - 1.870_796_4 * inner,
+            1.270_796_3 + 1.870_796_4 * inner,
+        )
+    } else if (22.0..26.0).contains(&swim_position) {
+        let inner = (swim_position - 22.0) / 4.0;
+        (
+            (half_pi - half_pi * inner, half_pi - half_pi * inner),
+            pi,
+            pi,
+        )
+    } else {
+        ((f32::NAN, f32::NAN), f32::NAN, f32::NAN)
+    };
+    if !x_target.0.is_nan() {
+        let left = root.child("left_arm");
+        left.x_rot = rot_lerp_rad(left_amount, left.x_rot, x_target.0);
+        left.y_rot = rot_lerp_rad(left_amount, left.y_rot, pi);
+        left.z_rot = rot_lerp_rad(left_amount, left.z_rot, z_left);
+        let right = root.child("right_arm");
+        right.x_rot = lerp(right_amount, right.x_rot, x_target.1);
+        right.y_rot = lerp(right_amount, right.y_rot, pi);
+        right.z_rot = lerp(right_amount, right.z_rot, z_right);
+    }
+    let cos = |value: f32| mth_cos_f64(f64::from(value));
+    let left_leg = root.child("left_leg");
+    left_leg.x_rot = lerp(
+        swim_amount,
+        left_leg.x_rot,
+        0.3 * cos(position * 0.333_333_34 + pi),
+    );
+    let right_leg = root.child("right_leg");
+    right_leg.x_rot = lerp(
+        swim_amount,
+        right_leg.x_rot,
+        0.3 * cos(position * 0.333_333_34),
+    );
+}
+
 fn square(value: f32) -> f32 {
     value * value
 }
@@ -763,7 +771,7 @@ fn lerp(alpha: f32, from: f32, to: f32) -> f32 {
 }
 
 /// `Mth.rotLerpRad`: the short way round between two angles in radians.
-fn rot_lerp_rad(alpha: f32, from: f32, to: f32) -> f32 {
+pub(crate) fn rot_lerp_rad(alpha: f32, from: f32, to: f32) -> f32 {
     let turn = (std::f64::consts::PI * 2.0) as f32;
     let mut difference = to - from;
     while difference < (-std::f64::consts::PI) as f32 {

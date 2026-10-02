@@ -28,4 +28,7 @@ Zırh/eşya/giysi katmanları (T41), köylü zombisi meslek katmanı (T34), `die
 İlk tür (zombi) dalı açar; husk/boğulmuş/dev yalnız doku+ölçek satırı. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı: `humanoid_anim` (oyuncu ve mob ortak `HumanoidModel.setupAnim`), `MobModel::setup_zombie` (zombi kolları, saldırı sallaması, boğulmuş yüzüşü), `mobs.rs` zombi tablosu (zombi/husk/boğulmuş/dev + dış katman), bebek bayrağı zombi alt türlerinde. Kayıt: `docs/client-zombie-model-parity-conformance.md`.
+- Oracle: `entity/zombie-model` 66 satır (gerçek `ZombieModel`/`BabyZombieModel`/`DrownedModel`/`GiantZombieModel`). Canlı: beş tür çiziliyor (test için sunucu geçici `easy`, `NoAI`+`PersistenceRequired`).
+- Sapma: elde eşya yok (T41), `attackTime` sıfır (T43), mob yüzme durumu tiklenmiyor, köylü zombisi T34.
+- Açık: yok.

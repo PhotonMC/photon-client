@@ -18919,6 +18919,60 @@ fn quadruped_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `zombie_model`: a zombie family model posed and drawn.
+fn zombie_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, ZombieState};
+    use voxel_render::player_model::PlayerRenderState;
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_zombie(&ZombieState {
+            humanoid: PlayerRenderState {
+                head_y_rot: bits(row, "head_y_rot")?,
+                x_rot: bits(row, "x_rot")?,
+                walk_position: bits(row, "walk_position")?,
+                walk_speed: bits(row, "walk_speed")?,
+                age_in_ticks: bits(row, "age_in_ticks")?,
+                attack_time: bits(row, "attack_time")?,
+                swim_amount: bits(row, "swim_amount")?,
+                ..Default::default()
+            },
+            aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
+            drowned: id.starts_with("minecraft:drowned"),
+        });
+        let mut quads: Vec<String> = model
+            .render(&Default::default())
+            .into_iter()
+            .map(|(_, corners)| {
+                corners
+                    .iter()
+                    .map(|vertex| {
+                        vertex
+                            .position
+                            .iter()
+                            .chain(&vertex.uv)
+                            .chain(&vertex.normal)
+                            .map(|value| hex(*value))
+                            .collect::<String>()
+                    })
+                    .collect::<String>()
+            })
+            .collect();
+        quads.sort();
+        out.push(json!({"label": row["label"], "quads": quads}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// The model layers of the data crate, written as the reference's layers are.
 fn model_layers_result() -> Value {
     use voxel_data::entity_model::{ModelPart, layers};
@@ -19022,6 +19076,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "quadruped_model" => return quadruped_model_result(request),
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
+        "zombie_model" => return zombie_model_result(request),
         "experience_orb" => return experience_orb_result(request),
         "entity_variants" => {
             let rows: Vec<Value> = ["cow", "pig"]

@@ -1522,6 +1522,21 @@ impl ClientEntity {
         shared_flag_is_set(self.mob_flags, MOB_FLAG_LEFT_HANDED)
     }
 
+    /// Whether the type is a `Zombie` or one of its subclasses, which share
+    /// `DATA_BABY_ID`.
+    pub fn is_zombie_type(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id).is_some_and(|name| {
+            matches!(
+                name,
+                "minecraft:zombie"
+                    | "minecraft:husk"
+                    | "minecraft:drowned"
+                    | "minecraft:zombie_villager"
+                    | "minecraft:zombified_piglin"
+            )
+        })
+    }
+
     pub fn is_aggressive(&self) -> bool {
         shared_flag_is_set(self.mob_flags, MOB_FLAG_AGGRESSIVE)
     }

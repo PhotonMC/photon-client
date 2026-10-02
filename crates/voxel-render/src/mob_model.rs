@@ -2,12 +2,12 @@
 //! reference's model classes pose them, and placed where a mob stands the
 //! way `LivingEntityRenderer` places any living entity.
 
-use voxel_core::math::mth_cos_f64;
+use voxel_core::math::{mth_cos_f64, mth_sin_f64};
 use voxel_data::entity_model::ModelLayer;
 
 use crate::entity_textures::{TextureRect, uv};
 use crate::joml::{Pose, Quaternion};
-use crate::player_model::{ModelVertex, Part};
+use crate::player_model::{ModelVertex, Part, PlayerRenderState, humanoid_anim, rot_lerp_rad};
 use crate::scene::Vertex;
 
 /// What `QuadrupedModel.setupAnim` reads of a mob.
@@ -18,6 +18,19 @@ pub struct QuadrupedState {
     pub x_rot: f32,
     pub walk_position: f32,
     pub walk_speed: f32,
+}
+
+/// What a zombie's model is posed from: the humanoid state, and the flags
+/// `ZombieRenderState` adds. The held item is not read yet, so the arms are
+/// raised for the baby as for the grown (`state.getMainHandItemStack() ==
+/// ItemStack.EMPTY`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ZombieState {
+    pub humanoid: PlayerRenderState,
+    /// The mob's aggressive flag: the arms raise higher.
+    pub aggressive: bool,
+    /// `DrownedModel`: the swimming arms and legs.
+    pub drowned: bool,
 }
 
 /// A mob's model: the parts of one layer.
@@ -60,6 +73,58 @@ impl MobModel {
         for (name, x_rot) in swing {
             if let Some(leg) = self.root.child_mut(name) {
                 leg.x_rot = x_rot;
+            }
+        }
+    }
+
+    /// `ZombieModel.setupAnim` (and `DrownedModel.setupAnim`): the humanoid
+    /// pose, then the arms held out in front.
+    pub fn setup_zombie(&mut self, state: &ZombieState) {
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        humanoid_anim(&mut self.root, &state.humanoid);
+        let pi = std::f64::consts::PI as f32;
+        let humanoid = &state.humanoid;
+        // `AnimationUtils.animateZombieArms` with the arms raised and the whack
+        // swing: `animateAttackArms` over a drop that depends on the flag.
+        let arm_drop = -pi / if state.aggressive { 1.5 } else { 2.25 };
+        let attack_time = humanoid.attack_time;
+        let y_modifier = sin(attack_time * pi);
+        let x_modifier = sin((1.0 - (1.0 - attack_time) * (1.0 - attack_time)) * pi);
+        let x_rot = arm_drop + y_modifier * 1.2 - x_modifier * 0.4;
+        let y_rot = 0.1 - y_modifier * 0.6;
+        for (name, y, bob) in [("right_arm", -y_rot, 1.0_f32), ("left_arm", y_rot, -1.0)] {
+            if let Some(arm) = self.root.child_mut(name) {
+                arm.x_rot = x_rot;
+                arm.y_rot = y;
+                arm.z_rot = 0.0;
+                // `bobArms`.
+                arm.z_rot += bob * (cos(humanoid.age_in_ticks * 0.09) * 0.05 + 0.05);
+                arm.x_rot += bob * (sin(humanoid.age_in_ticks * 0.067) * 0.05);
+            }
+        }
+        let swim = humanoid.swim_amount;
+        if state.drowned && swim > 0.0 {
+            let age = humanoid.age_in_ticks;
+            let sway = swim * 0.35 * sin(0.1 * age);
+            let kick = swim * 0.55 * sin(0.1 * age);
+            let reach = (-std::f64::consts::PI * 4.0 / 5.0) as f32;
+            if let Some(arm) = self.root.child_mut("right_arm") {
+                arm.x_rot = rot_lerp_rad(swim, arm.x_rot, reach) + sway;
+                arm.z_rot = rot_lerp_rad(swim, arm.z_rot, -0.15);
+            }
+            if let Some(arm) = self.root.child_mut("left_arm") {
+                arm.x_rot = rot_lerp_rad(swim, arm.x_rot, reach) - sway;
+                arm.z_rot = rot_lerp_rad(swim, arm.z_rot, 0.15);
+            }
+            if let Some(leg) = self.root.child_mut("left_leg") {
+                leg.x_rot -= kick;
+            }
+            if let Some(leg) = self.root.child_mut("right_leg") {
+                leg.x_rot += kick;
+            }
+            if let Some(head) = self.root.child_mut("head") {
+                head.x_rot = 0.0;
             }
         }
     }

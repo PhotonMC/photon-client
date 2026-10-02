@@ -300,6 +300,63 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A zombie family model from the layer table, posed by the reference's own
+     * `setupAnim` (humanoid pose, held-out arms, the drowned's swim), drawn.
+     */
+    private static JsonObject zombieModel(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var layers = new java.util.HashMap<String, net.minecraft.client.model.geom.builders.LayerDefinition>();
+        for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
+            layers.put(entry.getKey().toString(), entry.getValue());
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = layers.get(id).bakeRoot();
+            net.minecraft.client.model.HumanoidModel<net.minecraft.client.renderer.entity.state.ZombieRenderState> model;
+            if (id.startsWith("minecraft:drowned_baby")) {
+                model = new net.minecraft.client.model.monster.zombie.BabyDrownedModel(root);
+            } else if (id.startsWith("minecraft:drowned")) {
+                model = new net.minecraft.client.model.monster.zombie.DrownedModel(root);
+            } else if (id.startsWith("minecraft:giant")) {
+                model = new net.minecraft.client.model.monster.zombie.GiantZombieModel(root);
+            } else if (id.contains("_baby")) {
+                model = new net.minecraft.client.model.monster.zombie.BabyZombieModel<>(root);
+            } else {
+                model = new net.minecraft.client.model.monster.zombie.ZombieModel<>(root);
+            }
+            var state = new net.minecraft.client.renderer.entity.state.ZombieRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.attackTime = Oracle.f32(row, "attack_time");
+            state.swimAmount = Oracle.f32(row, "swim_amount");
+            state.isAggressive = row.get("aggressive").getAsBoolean();
+            state.isBaby = id.contains("_baby");
+            model.setupAnim(state);
+            var capture = new Capture();
+            model.root().render(new com.mojang.blaze3d.vertex.PoseStack(), capture, 0, 0);
+            var quads = new java.util.ArrayList<String>();
+            for (int i = 0; i < capture.vertices.size(); i += 4) {
+                quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+            }
+            java.util.Collections.sort(quads);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var array = new JsonArray();
+            quads.forEach(array::add);
+            out.add("quads", array);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A quadruped's model from the layer table, posed by the reference's own `setupAnim`, drawn. */
     private static JsonObject quadrupedModel(final JsonObject request) throws Exception {
         Oracle.vanillaRegistries();
@@ -596,6 +653,9 @@ public final class EntityOracle {
         }
         if (operation.equals("entity_data_serializers")) {
             return entityDataSerializers();
+        }
+        if (operation.equals("zombie_model")) {
+            return zombieModel(request);
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);

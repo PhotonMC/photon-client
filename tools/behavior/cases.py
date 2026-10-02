@@ -14337,6 +14337,7 @@ def entity_cases():
     yield from entity_data_serializer_cases()
     yield from entity_variant_field_cases()
     yield from entity_variant_cases()
+    yield from entity_zombie_cases()
     yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
     yield from entity_type_cases()
@@ -14415,6 +14416,45 @@ def entity_quadruped_cases():
         "case_id": "entity/quadruped-model",
         "family": "entity",
         "operation": "quadruped_model",
+        "rows": rows,
+    }
+
+
+def entity_zombie_cases():
+    """The zombie family, grown and baby, from the layer table, posed by the
+    reference's `HumanoidModel.setupAnim` and `animateZombieArms` (and the
+    drowned's swim) and drawn by its part renderer: standing, looking about,
+    walking, swinging, aggressive or not, and swimming."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             age=0.0, attack=0.0, aggressive=False, swim=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
+                "aggressive": aggressive, "swim_amount": float_bits(swim)}
+
+    rows = []
+    for layer in ("minecraft:zombie#main", "minecraft:zombie_baby#main", "minecraft:husk#main",
+                  "minecraft:giant#main", "minecraft:drowned#main", "minecraft:drowned_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("aggressive", layer, aggressive=True, age=17.5),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("walk-early", layer, walk_position=0.9, walk_speed=0.4, age=40.0),
+            pose("walk-fast", layer, walk_position=21.6, walk_speed=1.0, age=123.456),
+            pose("swing-early", layer, attack=0.1, age=5.0),
+            pose("swing-mid", layer, attack=0.55, aggressive=True, age=9.0),
+            pose("swing-late", layer, attack=0.9, walk_position=3.4, walk_speed=0.6),
+            pose("walk-aggressive-swing", layer, head_y_rot=12.0, x_rot=-8.0, walk_position=7.3,
+                 walk_speed=0.83, attack=0.3, aggressive=True, age=64.0),
+        ]
+    for layer in ("minecraft:drowned#main", "minecraft:drowned_baby#main", "minecraft:zombie#main"):
+        rows += [pose("swimming-quarter", layer, swim=0.25, age=11.0, walk_position=2.0, walk_speed=0.5),
+                 pose("swimming-full", layer, swim=1.0, age=33.3, head_y_rot=20.0, x_rot=15.0)]
+    yield {
+        "case_id": "entity/zombie-model",
+        "family": "entity",
+        "operation": "zombie_model",
         "rows": rows,
     }
 
