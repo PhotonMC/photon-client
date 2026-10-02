@@ -134,7 +134,11 @@ bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::t
    ve tablolar, yerdeki eşya (`ItemEntity` sallanma/dönme), XP küresi,
    uzaktaki oyuncular (deri indirme: profil dokusu için HTTP, yoksa varsayılan
    deri), zırh/eşya/pelerin/elytra katmanları, yakalar, binek eşyaları.
-   Model başına oracle: eklem dönüşümleri `client-parity`.
+   Model başına oracle: eklem dönüşümleri `client-parity`. Aileler görev
+   dosyalarına bölündü (T28–T45; [pano](tasks/README.md)). Önerilen sıra: gölge
+   (T42), zombi ve iskelet aileleri (T28, T29), ekipman (T41), çiftlik
+   hayvanları (T30), `KeyframeAnimation` (T43), geri kalan aileler, araçlar ve
+   sürüş (T38, T44).
 4. **Etkileşim (M)** `Interact`, `Attack`, `SpectatorAction` ve entity hedefleme
    (T26) tamam; `PickItemFromBlock`/`PickItemFromEntity` ve bakılan varlık UUID önerisi (T26b)
    tamam; kalan: saldırı gücü/tepme, `PlayerCombat*`, ölüm/`Respawn` ekranına bağ.

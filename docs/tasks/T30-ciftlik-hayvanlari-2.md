@@ -1,0 +1,31 @@
+# T30 — Çiftlik hayvanları 2: koyun, mantar ineği, tavuk, keçi, tavşan
+
+**Amaç:** `QuadrupedModel`'in ötesinde dallar: koyunun yün katmanı ve boyası (`DyeColor` verisi, kırpılmış hâli), tavuğun kanat çırpması ve soğuk çeşidi, keçinin boynuzları, tavşanın zıplaması, mantar ineğinin mantar katmanı.
+**Bağımlılık:** T24. **Boy:** M. **Türler:** sheep, mooshroom, chicken, goat, rabbit.
+
+## Oku
+- Java: `client/model/animal/sheep/SheepModel.java`, `client/renderer/entity/SheepRenderer.java`, `client/renderer/entity/layers/SheepWoolLayer.java`, `client/model/animal/chicken/ChickenModel.java`, `client/renderer/entity/ChickenRenderer.java`, `client/model/animal/goat/GoatModel.java`, `client/renderer/entity/GoatRenderer.java`, `client/model/animal/rabbit/RabbitModel.java`, `client/renderer/entity/RabbitRenderer.java`, `client/renderer/entity/MushroomCowRenderer.java`.
+- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+
+## Yapılacaklar
+1. Koyun: `SheepWoolLayer` (renk verisinden), `sheared` bayrağı, jeb_ adı; entity verisi okuyucusu T24b'deki yürüyüşle.
+2. Tavuk: `flap`/`flapSpeed` durumu (`Chicken.tick` istemci kolu); soğuk çeşit T24b kalıbıyla.
+3. Keçi ve tavşan: ayrı `setup` kolları (zıplama `jumpCompletion`).
+
+## Oracle
+`EntityOracle.java` `quadrupedModel` kalıbı: gerçek model sınıfı `setupAnim` ile poz verilir, köşeler `model_layers` tablosuyla birlikte karşılaştırılır; `tools/behavior/cases.py` entity ailesi, `behavior_adapter/main.rs` `entity_result`.
+
+## Kabul
+`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+
+## Kapsam dışı
+Eyer/binme (T44), yün kırpma etkileşimi sunucu tarafında.
+
+## Belgeler
+`docs/remaining-work.md` M4 madde 3; yeni `docs/client-*-parity-conformance.md` kaydı ve `docs/index.md` satırı.
+
+## Not
+Aile içi çeşit/ölçek tablo satırı. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
+
+## Devir notu
+(boş)
