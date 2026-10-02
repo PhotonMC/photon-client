@@ -58,7 +58,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T24](T24-entity-cizim-iskeleti.md) | Entity çizim iskeleti + ilk mob | L | T22, T23 | bitti |
 | [T24b](T24b-mob-cesitleri.md) | Pig/cow çeşitleri ve entity metadata okuyucusu | M | T24 | bitti (8f0774ef) |
 | [T25](T25-yerdeki-esya.md) | Yerdeki eşya | M | T24 | bitti |
-| [T25b](T25b-xp-kuresi.md) | XP küresi | S | T25 | açık |
+| [T25b](T25b-xp-kuresi.md) | XP küresi | S | T25 | bitti (0a0fd994) |
 | [T25c](T25c-esya-fizigi.md) | Yerdeki eşyanın istemci fiziği (düşme, sekme) | M | T25 | bitti |
 | [T25d](T25d-esya-akiskan.md) | Yerdeki eşya akışkanda (kaldırma, akıntı) | M | T25c | açık |
 | [T26](T26-entity-hedefleme.md) | Entity hedefleme, `Attack`/`Interact` | M | T21 | bitti (e9dae9f8) |
