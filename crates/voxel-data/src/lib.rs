@@ -12,5 +12,6 @@
 
 pub mod block;
 pub mod entity_model;
+pub mod entity_type;
 mod generated;
 pub mod item;

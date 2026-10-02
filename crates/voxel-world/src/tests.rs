@@ -6888,3 +6888,57 @@ fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks()
     }
     assert!(snapshot(&world).walk_speed < 0.001);
 }
+
+#[test]
+fn a_walking_mob_eases_to_each_step_and_faces_where_it_goes() {
+    let mut world = ClientWorld::default();
+    let (blocks, biomes) = ([0_i32; 4096], [0_i32; 64]);
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    // A cow, looking west, its body and head.
+    assert!(world.apply_entity(EntityInput {
+        entity_id: 9,
+        uuid: Uuid::new(3, 4),
+        type_id: VANILLA_COW_ENTITY_TYPE_ID,
+        x: 4.5,
+        y: 0.0,
+        z: 4.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (90.0, 0.0, 90.0),
+        data: 0,
+    }));
+    assert!(world.apply_entity_move(EntityMoveInput {
+        entity_id: 9,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 4096,
+        has_position: true,
+        y_rot: None,
+        x_rot: None,
+    }));
+    // The step is not taken at once: three ticks bring the cow to it.
+    let z_after = |world: &ClientWorld| world.entity_at(9).unwrap().position().2;
+    assert_eq!(z_after(&world), 4.5);
+    let mut seen = Vec::new();
+    for _ in 0..3 {
+        world.tick_entities();
+        seen.push(z_after(&world));
+    }
+    assert!(
+        seen[0] > 4.5 && seen[0] < seen[1] && seen[1] < seen[2],
+        "{seen:?}"
+    );
+    assert!((seen[2] - 5.5).abs() < 1e-9, "{seen:?}");
+    // It moved, so its legs swing and its body turned to where it looks (west).
+    let moving = world.entity_snapshot(9, 1.0).unwrap();
+    assert!(moving.walk_speed > 0.0, "{moving:?}");
+    assert_eq!(moving.body_yaw, 90.0);
+}

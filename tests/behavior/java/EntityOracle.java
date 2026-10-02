@@ -166,6 +166,22 @@ public final class EntityOracle {
         return out;
     }
 
+    /** The entity type registry: each type's id and name, in id order. */
+    private static JsonObject entityTypes() {
+        Oracle.vanillaRegistries();
+        var registry = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
+        var rows = new JsonArray();
+        for (var type : registry) {
+            var out = new JsonObject();
+            out.addProperty("label", registry.getKey(type).toString());
+            out.addProperty("id", registry.getId(type));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Every model layer the game builds: its texture size and the tree of its parts. */
     private static JsonObject modelLayers() throws Exception {
         // The layers are made from registries (decorated pot patterns): the game's bootstrap first.
@@ -199,6 +215,9 @@ public final class EntityOracle {
         }
         if (operation.equals("model_layers")) {
             return modelLayers();
+        }
+        if (operation.equals("entity_types")) {
+            return entityTypes();
         }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);

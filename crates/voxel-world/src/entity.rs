@@ -315,6 +315,20 @@ pub(crate) fn vanilla_passenger_is_animal(passenger_type_id: i32) -> bool {
     VANILLA_ANIMAL_ENTITY_TYPE_IDS.contains(&passenger_type_id)
 }
 
+/// How a living entity's pose is ticked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LivingKind {
+    Player,
+    /// A `Mob`: its body follows the head by `BodyRotationControl`.
+    Mob,
+    /// A living entity that is neither, an armor stand.
+    Other,
+}
+
+fn armor_stand_type_id() -> i32 {
+    voxel_data::entity_type::id("minecraft:armor_stand").unwrap_or(-1)
+}
+
 pub(crate) fn vanilla_passenger_is_living(passenger_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS.contains(&passenger_type_id)
 }
@@ -455,6 +469,10 @@ pub struct ClientEntity {
     pub(crate) walk: crate::living::WalkAnimation,
     pub(crate) swim_amount_bits: u32,
     pub(crate) old_swim_amount_bits: u32,
+    /// A mob's `BodyRotationControl` state: how long its head has been still,
+    /// and where it was when it last moved far.
+    pub(crate) head_stable_time: i32,
+    pub(crate) last_stable_y_head_rot_bits: u32,
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,
@@ -750,36 +768,67 @@ impl ClientEntity {
         );
     }
 
-    /// What a player's drawn pose follows from its tick (`RemotePlayer.tick`
-    /// after `LivingEntity.tick`): the swimming pose easing in or out, the
-    /// body turning after where the player walks, and the limbs' swing.
-    pub(crate) fn tick_player_pose(&mut self) {
-        self.old_swim_amount_bits = self.swim_amount_bits;
-        self.swim_amount_bits = crate::living::ease_swim_amount(
-            f32::from_bits(self.swim_amount_bits),
-            self.pose == ClientEntityPose::Swimming,
-        )
-        .to_bits();
+    /// Which kind of living entity this is, as far as its drawn pose goes.
+    pub(crate) fn living_kind(&self) -> Option<LivingKind> {
+        if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            Some(LivingKind::Player)
+        } else if !vanilla_passenger_is_living(self.type_id) {
+            None
+        } else if self.type_id == armor_stand_type_id() {
+            Some(LivingKind::Other)
+        } else {
+            Some(LivingKind::Mob)
+        }
+    }
+
+    /// What a living entity's drawn pose follows from its tick: the limbs'
+    /// swing with the distance moved, and the body turning (a player's after
+    /// where it walks, a mob's by its body control), and for a player the
+    /// swimming pose easing in or out.
+    pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
         let moved = (
             f64::from_bits(self.x_bits) - f64::from_bits(self.old_x_bits),
             f64::from_bits(self.z_bits) - f64::from_bits(self.old_z_bits),
         );
+        if kind == LivingKind::Player {
+            self.old_swim_amount_bits = self.swim_amount_bits;
+            self.swim_amount_bits = crate::living::ease_swim_amount(
+                f32::from_bits(self.swim_amount_bits),
+                self.pose == ClientEntityPose::Swimming,
+            )
+            .to_bits();
+        }
         let mut body = f32::from_bits(self.y_body_rot_bits);
         let mut body_old = f32::from_bits(self.old_y_body_rot_bits);
+        let mut head = f32::from_bits(self.y_head_rot_bits);
         let mut head_old = f32::from_bits(self.old_y_head_rot_bits);
-        crate::living::turn_body(
-            (&mut body, &mut body_old),
-            (
+        if kind == LivingKind::Mob {
+            let mut control = crate::living::MobBodyControl {
+                head_stable_time: self.head_stable_time,
+                last_stable_y_head_rot: f32::from_bits(self.last_stable_y_head_rot_bits),
+            };
+            crate::living::tick_mob_body(
+                &mut control,
+                (&mut body, &mut head),
                 f32::from_bits(self.y_rot_bits),
-                f32::from_bits(self.y_head_rot_bits),
-                &mut head_old,
-            ),
-            moved,
-        );
+                moved,
+                !self.passenger_ids.is_empty(),
+            );
+            self.head_stable_time = control.head_stable_time;
+            self.last_stable_y_head_rot_bits = control.last_stable_y_head_rot.to_bits();
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+            self.y_head_rot_bits = head.to_bits();
+        } else {
+            crate::living::turn_body(
+                (&mut body, &mut body_old),
+                (f32::from_bits(self.y_rot_bits), head, &mut head_old),
+                moved,
+            );
+        }
         self.y_body_rot_bits = body.to_bits();
         self.old_y_body_rot_bits = body_old.to_bits();
         self.old_y_head_rot_bits = head_old.to_bits();
-        // `calculateEntityAnimation`: a rider or a dead player stands still.
+        // `calculateEntityAnimation`: a rider or a dead entity stands still.
         if self.vehicle_id.is_none() && self.alive {
             self.walk.follow(moved.0.hypot(moved.1));
         } else {

@@ -1109,7 +1109,7 @@ impl ClientWorld {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+        if entity.living_kind().is_some() {
             entity.head_rotation_target_bits = y_head_rot.to_bits();
             entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         } else {
@@ -1529,13 +1529,18 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            // `LivingEntity.aiStep`: a living entity eases to the position and
+            // turn its last packet gave, and its head to the head turn.
+            let living = entity.living_kind();
+            if living.is_some() {
                 entity.tick_position_interpolation();
             }
             entity.tick_head_rotation();
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
-                entity.tick_player_pose();
+            }
+            if let Some(kind) = living {
+                entity.tick_living_pose(kind);
             }
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
@@ -1574,6 +1579,16 @@ impl ClientWorld {
             .expect("entity remains after tick")
             .position();
         self.update_entity_section(entity_id, previous_position, position);
+        // A living entity that eased into a chunk that is not loaded stops
+        // ticking there (`ClientLevel`'s entity callbacks on a move).
+        let (chunk_x, chunk_z) = entity_chunk_key(position);
+        let in_loaded_chunk = self.contains_chunk(chunk_x, chunk_z);
+        if let Some(entity) = self.entities.get_mut(&entity_id)
+            && entity.living_kind().is_some()
+            && !entity.always_ticking
+        {
+            entity.ticking = in_loaded_chunk;
+        }
     }
 
     fn boat_is_in_air(&self, entity: &ClientEntity) -> bool {
@@ -2666,6 +2681,8 @@ impl ClientWorld {
                 walk: living::WalkAnimation::default(),
                 swim_amount_bits: 0.0_f32.to_bits(),
                 old_swim_amount_bits: 0.0_f32.to_bits(),
+                head_stable_time: 0,
+                last_stable_y_head_rot_bits: entity.rotation.2.to_bits(),
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,
@@ -3122,9 +3139,7 @@ impl ClientWorld {
             let Some(entity) = self.entities.get_mut(&input.entity_id) else {
                 return false;
             };
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
-                && (input.y_rot.is_some() || input.x_rot.is_some())
-            {
+            if entity.living_kind().is_some() && (input.y_rot.is_some() || input.x_rot.is_some()) {
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
                 let y_rot = input.y_rot.map_or(current_y_rot, |y_rot| {
                     if input.relative_y_rot {
@@ -3306,7 +3321,7 @@ impl ClientWorld {
                 .entities
                 .get_mut(&input.entity_id)
                 .expect("entity checked above");
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            if entity.living_kind().is_some() {
                 let target_position = new_position.unwrap_or(current);
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
@@ -3416,7 +3431,7 @@ impl ClientWorld {
                 .entities
                 .get_mut(&entity_id)
                 .expect("entity position was checked above");
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            if entity.living_kind().is_some() {
                 let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
                 let distance_position = match mode {
                     EntityPositionUpdateMode::PositionSync => entity.position(),

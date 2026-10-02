@@ -82,6 +82,62 @@ pub(crate) fn ease_swim_amount(swim_amount: f32, swimming: bool) -> f32 {
     }
 }
 
+/// `Mth.rotateIfNecessary`: the angle that puts `base` no more than
+/// `max_difference` from `target`, on the side `target` is.
+pub(crate) fn rotate_if_necessary(base: f32, target: f32, max_difference: f32) -> f32 {
+    let delta = wrap_degrees_f32(target - base);
+    let clamped = if delta < -max_difference {
+        -max_difference
+    } else {
+        delta.min(max_difference)
+    };
+    target - clamped
+}
+
+/// A mob's head and body, which `BodyRotationControl` keeps in step on the
+/// client.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MobBodyControl {
+    pub head_stable_time: i32,
+    pub last_stable_y_head_rot: f32,
+}
+
+/// `Mob.getMaxHeadYRot`.
+const MOB_MAX_HEAD_Y_ROT: f32 = 75.0;
+
+/// `BodyRotationControl.clientTick`: a mob that moves turns its body to
+/// where it looks and its head no further than 75 degrees from it; one that
+/// stands lets its body follow a head that turned far, then after half a
+/// second the body comes back to face the head squarely.
+pub(crate) fn tick_mob_body(
+    control: &mut MobBodyControl,
+    (y_body_rot, y_head_rot): (&mut f32, &mut f32),
+    y_rot: f32,
+    (xd, zd): (f64, f64),
+    carries_mob: bool,
+) {
+    if xd * xd + zd * zd > f64::from(2.500_000_3e-7_f32) {
+        *y_body_rot = y_rot;
+        *y_head_rot = rotate_if_necessary(*y_head_rot, *y_body_rot, MOB_MAX_HEAD_Y_ROT);
+        control.last_stable_y_head_rot = *y_head_rot;
+        control.head_stable_time = 0;
+    } else if !carries_mob {
+        if (*y_head_rot - control.last_stable_y_head_rot).abs() > 15.0 {
+            control.head_stable_time = 0;
+            control.last_stable_y_head_rot = *y_head_rot;
+            *y_body_rot = rotate_if_necessary(*y_body_rot, *y_head_rot, MOB_MAX_HEAD_Y_ROT);
+        } else {
+            control.head_stable_time += 1;
+            if control.head_stable_time > 10 {
+                let since = control.head_stable_time - 10;
+                let fraction = (since as f32 / 10.0).clamp(0.0, 1.0);
+                let remaining = MOB_MAX_HEAD_Y_ROT * (1.0 - fraction);
+                *y_body_rot = rotate_if_necessary(*y_body_rot, *y_head_rot, remaining);
+            }
+        }
+    }
+}
+
 /// The body turn of `LivingEntity.tick`: the body goes towards where the
 /// entity walks (or, when it stands, stays), then never more than 50 degrees
 /// from the head; the old angles are kept within half a turn of the new.
@@ -109,10 +165,20 @@ pub(crate) fn turn_body(
         let sign = if head_difference > 0.0 { 1.0 } else { -1.0 };
         *y_body_rot += head_difference - sign * max_head_rotation;
     }
-    while *y_body_rot - *y_body_rot_old < -180.0 {
+    keep_old_angles_near((*y_body_rot, y_body_rot_old), (y_head_rot, y_head_rot_old));
+}
+
+/// The range checks that end `LivingEntity.tick`: the angles of the tick
+/// before are moved by whole turns to within half a turn of the new ones, so
+/// that they interpolate the short way round.
+pub(crate) fn keep_old_angles_near(
+    (y_body_rot, y_body_rot_old): (f32, &mut f32),
+    (y_head_rot, y_head_rot_old): (f32, &mut f32),
+) {
+    while y_body_rot - *y_body_rot_old < -180.0 {
         *y_body_rot_old -= 360.0;
     }
-    while *y_body_rot - *y_body_rot_old >= 180.0 {
+    while y_body_rot - *y_body_rot_old >= 180.0 {
         *y_body_rot_old += 360.0;
     }
     while y_head_rot - *y_head_rot_old < -180.0 {

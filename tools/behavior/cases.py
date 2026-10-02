@@ -13956,6 +13956,17 @@ def entity_cases():
     yield from entity_player_model_cases()
     yield from entity_walk_animation_cases()
     yield from entity_model_layer_cases()
+    yield from entity_type_cases()
+
+
+def entity_type_cases():
+    """The entity type registry: every type's name and its id."""
+    yield {
+        "case_id": "entity/types",
+        "family": "entity",
+        "operation": "entity_types",
+        "rows": [{"label": "all"}],
+    }
 
 
 def entity_model_layer_cases():

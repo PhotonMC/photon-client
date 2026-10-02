@@ -51,7 +51,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T15](T15-sohbet-kalanlari.md) | Sohbet taslağı, seçici izin düzeyi | S | – | bitti |
 | [T20](T20-entity-paketleri.md) | Entity paketleri canlı oturumda | L | – | bitti |
 | [T21](T21-entity-tick.md) | Entity tick ve interpolasyon canlı döngüde | M | T20 | bitti |
-| [T21b](T21b-mob-interpolasyonu.md) | Mob'ların (`LivingEntity`) konum/dönüş interpolasyonu | M | T21 | açık |
+| [T21b](T21b-mob-interpolasyonu.md) | Mob'ların (`LivingEntity`) konum/dönüş interpolasyonu | M | T21 | bitti |
 | [T22](T22-uzak-oyuncu.md) | Uzaktaki oyuncu çizimi | L | T21 | bitti |
 | [T22b](T22b-ad-etiketi.md) | Uzaktaki oyuncunun ad etiketi | M | T22 | açık |
 | [T23](T23-model-katmani-tablosu.md) | Entity model katmanı tablosu (oracle'dan) | L | – | bitti |

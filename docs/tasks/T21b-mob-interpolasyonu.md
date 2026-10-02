@@ -22,4 +22,7 @@ AI, yerçekimi, çarpışma, çizim.
 `docs/remaining-work.md` M4 satırı.
 
 ## Devir notu
-(boş)
+- Yapıldı: `ClientEntity::living_kind` (oyuncu, mob, diğer: yaşayan tür listesi `VANILLA_LIVING_ENTITY_TYPE_IDS` + zırh askısı ayrımı), konum/dönüş/kafa interpolasyonu ve `tick_living_pose` artık bütün yaşayan entity'lerde; mob'larda `BodyRotationControl.clientTick` (`living::tick_mob_body`, `Mth.rotateIfNecessary`), yürüme animasyonu hepsinde; hareket interpolasyonu (`lerpMotion`) yalnız oyuncuda kaldı (Java'da `RemotePlayer` geçersiz kılar). Yüklü olmayan yığına süzülen yaşayan entity tiklemeyi bırakır. Entity tür tablosu (`entity_types` oracle'ı, `voxel-data::entity_type`) bu görevle geldi.
+- Tablo: yaşayan türler elle yazılmış listeden (önceki oturumlardan), oracle'dan yeniden üretilmedi; yeni bir tür çıkarsa liste güncellenir.
+- Sapma: `getMaxHeadYRot` her mob için 75 (geçersiz kılan mob'lar — örn. bazı su canlıları — işlenmedi); `omnidirectionalAirMover` (uçan mob'larda yürüme y'yi sayar) yok.
+- Açık: türe özgü mob istisnaları (T24+).

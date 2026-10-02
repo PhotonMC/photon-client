@@ -18394,6 +18394,13 @@ fn entity_result(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "walk_animation" => return walk_animation_result(request),
         "model_layers" => return Ok(model_layers_result()),
+        "entity_types" => {
+            let rows: Vec<Value> = (0..)
+                .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))
+                .map(|(id, name)| json!({"label": name, "id": id}))
+                .collect();
+            return Ok(json!({"rows": rows}));
+        }
         "player_model" => {}
         _ => return Err("unknown entity operation".into()),
     }
