@@ -358,6 +358,103 @@ public final class EntityOracle {
         return result;
     }
 
+    /** Records the corners `ExperienceOrbRenderer` writes, one vertex at a time. */
+    private static final class OrbCapture implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final JsonArray vertices = new JsonArray();
+        private JsonObject current;
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.current = new JsonObject();
+            this.current.addProperty("x", Oracle.bits(x));
+            this.current.addProperty("y", Oracle.bits(y));
+            this.current.addProperty("z", Oracle.bits(z));
+            this.vertices.add(this.current);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            this.current.addProperty("color", r + "," + g + "," + b + "," + a);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            this.current.addProperty("u", Oracle.bits(u));
+            this.current.addProperty("v", Oracle.bits(v));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            this.current.addProperty("overlay", u | v << 16);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            this.current.addProperty("light", u | v << 16);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float x, final float y, final float z) {
+            this.current.addProperty("normal", Oracle.bits(x) + Oracle.bits(y) + Oracle.bits(z));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /** `ExperienceOrbRenderer.submit`: the quad it writes, from the camera's side. */
+    private static JsonObject experienceOrb(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var renderer = (net.minecraft.client.renderer.entity.ExperienceOrbRenderer) UNSAFE.allocateInstance(
+                net.minecraft.client.renderer.entity.ExperienceOrbRenderer.class);
+            var state = new net.minecraft.client.renderer.entity.state.ExperienceOrbRenderState();
+            state.icon = row.get("icon").getAsInt();
+            state.ageInTicks = Oracle.f32(row, "age");
+            state.lightCoords = row.get("light").getAsInt();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            // `Camera.setRotation`.
+            camera.orientation = new org.joml.Quaternionf().rotationYXZ(
+                (float) Math.PI - Oracle.f32(row, "yaw") * (float) (Math.PI / 180.0),
+                -Oracle.f32(row, "pitch") * (float) (Math.PI / 180.0), 0.0F);
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "px"), Oracle.f32(row, "py"), Oracle.f32(row, "pz"));
+            var capture = new OrbCapture();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                    }
+                    return null;
+                });
+            renderer.submit(state, stack, collector, camera);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", capture.vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The pig and cow variants the game's data pack holds: their textures and model. */
     private static JsonObject entityVariants() {
         var registries = Oracle.vanillaRegistries();
@@ -402,8 +499,10 @@ public final class EntityOracle {
         Oracle.vanillaRegistries();
         var rows = new JsonArray();
         for (var type : new Class<?>[] {
-            net.minecraft.world.entity.animal.pig.Pig.class, net.minecraft.world.entity.animal.cow.Cow.class}) {
-            var field = type.getDeclaredField("DATA_VARIANT_ID");
+            net.minecraft.world.entity.animal.pig.Pig.class, net.minecraft.world.entity.animal.cow.Cow.class,
+            net.minecraft.world.entity.ExperienceOrb.class}) {
+            var field = type.getDeclaredField(
+                type == net.minecraft.world.entity.ExperienceOrb.class ? "DATA_VALUE" : "DATA_VARIANT_ID");
             field.setAccessible(true);
             var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) field.get(null);
             var out = new JsonObject();
@@ -485,6 +584,9 @@ public final class EntityOracle {
         }
         if (operation.equals("entity_types")) {
             return entityTypes();
+        }
+        if (operation.equals("experience_orb")) {
+            return experienceOrb(request);
         }
         if (operation.equals("entity_variants")) {
             return entityVariants();

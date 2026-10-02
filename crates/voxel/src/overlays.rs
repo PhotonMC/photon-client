@@ -408,3 +408,54 @@ pub fn name_tags(
     }
     (see_through, normal)
 }
+
+/// The path (under `textures/`) of the experience orbs' texture.
+pub const ORB_TEXTURE: &str = "entity/experience/experience_orb";
+
+/// `ExperienceOrbRenderer` for the orbs the server added: a quad each, turned
+/// to the camera, with the icon its value picks.
+pub fn experience_orbs(
+    session: &PlaySession,
+    textures: &voxel_render::entity_textures::EntityTextures,
+    camera: &TagCamera,
+    view: FrameView,
+) -> Vec<Vertex> {
+    let Some(rect) = textures.rect(ORB_TEXTURE) else {
+        return Vec::new();
+    };
+    let Some(orb_type) = voxel_data::entity_type::id("minecraft:experience_orb") else {
+        return Vec::new();
+    };
+    let world = session.world();
+    let partial = view.partial as f32;
+    let orientation =
+        voxel_render::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
+    let mut vertices = Vec::new();
+    for entity in world.entities().filter(|entity| entity.type_id == orb_type) {
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        let (x, y, z) = snapshot.position;
+        // `getBlockLightLevel`: seven brighter than the block it is in.
+        let light = packed_light(world, Vec3::new(x, y + 0.425, z));
+        let block = ((light >> 4 & 15) + 7).min(15);
+        let light = (light & !(15 << 4)) | block << 4;
+        let corners = voxel_render::xp_orb::corners(
+            voxel_render::xp_orb::icon(entity.orb_value().unwrap_or(0)),
+            entity.tick_count() as f32 + partial,
+            [
+                (x - camera.position.x) as f32,
+                (y - camera.position.y) as f32,
+                (z - camera.position.z) as f32,
+            ],
+            &orientation,
+        );
+        vertices.extend(voxel_render::xp_orb::vertices(
+            &corners,
+            rect,
+            camera.relative,
+            light,
+        ));
+    }
+    vertices
+}

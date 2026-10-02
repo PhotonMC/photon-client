@@ -655,6 +655,9 @@ enum PipelineKind {
     Text,
     /// Text seen through blocks (`TEXT_SEE_THROUGH`): no light, fog or depth.
     TextSeeThrough,
+    /// World text's shaders over the entity textures, blended and not written
+    /// to the depth (`ENTITY_TRANSLUCENT_CULL`): an experience orb.
+    TextTranslucent,
 }
 
 /// Instance API version the reference asks for.
@@ -780,6 +783,8 @@ struct SceneResources {
     text_pipeline: vk::Pipeline,
     text_see_through_pipeline_layout: vk::PipelineLayout,
     text_see_through_pipeline: vk::Pipeline,
+    text_translucent_pipeline_layout: vk::PipelineLayout,
+    text_translucent_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -989,6 +994,9 @@ pub struct VulkanBackend {
     /// The name tags' text: seen through blocks, then lit and depth-tested.
     name_tag_see_buffer: Option<SkyBuffer>,
     name_tag_see_count: u32,
+    /// The experience orbs' triangles, which sample the entity textures.
+    orb_buffer: Option<SkyBuffer>,
+    orb_count: u32,
     name_tag_buffer: Option<SkyBuffer>,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
@@ -1289,6 +1297,8 @@ impl VulkanBackend {
                 ground_count: 0,
                 name_tag_see_buffer: None,
                 name_tag_see_count: 0,
+                orb_buffer: None,
+                orb_count: 0,
                 name_tag_buffer: None,
                 name_tag_count: 0,
                 hand_buffer: None,
@@ -1689,6 +1699,35 @@ impl VulkanBackend {
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
                     .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
+            }
+            // Experience orbs: blended quads over the entity textures.
+            if let (Some(buffer), Some(set)) = (self.orb_buffer.as_ref(), scene.entity_set)
+                && self.orb_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.text_translucent_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.text_translucent_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.text_translucent_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.orb_count, 1, 0, 0);
             }
             // Name tags after the entities: the text seen through blocks
             // first, then the text tested against the depth.
@@ -2107,7 +2146,7 @@ impl VulkanBackend {
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
-        let text = kind == PipelineKind::Text;
+        let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent);
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
         let gui_item = kind == PipelineKind::GuiItem;
@@ -3132,6 +3171,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Text)?;
             let (text_see_through_pipeline_layout, text_see_through_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::TextSeeThrough)?;
+            let (text_translucent_pipeline_layout, text_translucent_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::TextTranslucent)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -3172,6 +3213,8 @@ impl VulkanBackend {
                 text_pipeline,
                 text_see_through_pipeline_layout,
                 text_see_through_pipeline,
+                text_translucent_pipeline_layout,
+                text_translucent_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3489,6 +3532,10 @@ impl VulkanBackend {
                         scene.text_see_through_pipeline,
                         scene.text_see_through_pipeline_layout,
                     ),
+                    (
+                        scene.text_translucent_pipeline,
+                        scene.text_translucent_pipeline_layout,
+                    ),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
                     (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
@@ -3796,6 +3843,16 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.ground_buffer = buffer;
         self.ground_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's experience orbs, as triangles that sample the
+    /// entity textures.
+    pub fn set_experience_orbs(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.orb_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.orb_buffer = buffer;
+        self.orb_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -4375,6 +4432,7 @@ impl Drop for VulkanBackend {
                 self.entity_buffer.take(),
                 self.ground_buffer.take(),
                 self.name_tag_see_buffer.take(),
+                self.orb_buffer.take(),
                 self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),

@@ -143,6 +143,8 @@ pub const PIG_VARIANT_DATA_ID: u8 = 19;
 pub const PIG_VARIANT_SERIALIZER_ID: i32 = 28;
 pub const COW_VARIANT_DATA_ID: u8 = 18;
 pub const COW_VARIANT_SERIALIZER_ID: i32 = 23;
+/// Where an experience orb's value sits among its data (an int).
+pub const EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub(crate) const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;
 pub(crate) const ENTITY_DATA_SERIALIZER_INT_ID: i32 = 1;
 pub(crate) const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;

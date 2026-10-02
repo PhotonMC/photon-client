@@ -14213,6 +14213,7 @@ def entity_cases():
     yield from entity_data_serializer_cases()
     yield from entity_variant_field_cases()
     yield from entity_variant_cases()
+    yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14332,6 +14333,30 @@ def entity_data_serializer_cases():
         "family": "entity",
         "operation": "entity_data_serializers",
         "rows": [{"label": "all"}],
+    }
+
+
+def entity_xp_orb_cases():
+    """An experience orb's quad as `ExperienceOrbRenderer.submit` writes it:
+    each icon's texels, the colour swaying with its age, and the quad turned
+    to the camera for several ways of looking, at several places."""
+    def row(label, icon=3, age=0.0, yaw=0.0, pitch=0.0, place=(0.0, 0.0, 3.0), light=15728880):
+        return {"label": label, "icon": icon, "age": float_bits(age), "yaw": float_bits(yaw),
+                "pitch": float_bits(pitch), "px": float_bits(place[0]), "py": float_bits(place[1]),
+                "pz": float_bits(place[2]), "light": light}
+
+    rows = [row(f"icon-{icon}", icon=icon, age=12.5) for icon in range(11)]
+    rows += [row(f"age-{age}", age=age) for age in (0.0, 1.5, 7.3, 18.85, 40.25, 99.9, 300.0, 5000.5)]
+    for yaw, pitch in [(0.0, 0.0), (90.0, 0.0), (-135.5, 20.0), (37.5, -60.0), (180.0, 89.0), (400.0, 12.0)]:
+        rows.append(row(f"looking-{yaw}-{pitch}", yaw=yaw, pitch=pitch, age=4.0))
+    rows += [row("left-below", place=(-2.5, -1.25, 1.75), yaw=20.0, pitch=10.0),
+             row("far", place=(30.5, 4.0, -22.25), yaw=-70.0, pitch=-5.0, age=77.7),
+             row("dark", light=0), row("sky-lit", light=15 << 20), row("torch-lit", light=15 << 4)]
+    yield {
+        "case_id": "entity/xp-orb",
+        "family": "entity",
+        "operation": "experience_orb",
+        "rows": rows,
     }
 
 

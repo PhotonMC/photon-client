@@ -150,14 +150,16 @@ impl Tracking {
     }
 }
 
-/// What a living entity's tick and look keep besides its pose:
-/// `LivingEntity.hurtTime` and `deathTime`, and the registry id of the
-/// variant a pig or a cow wears, once the server has told it.
+/// What an entity's tick and look keep besides its pose:
+/// `LivingEntity.hurtTime` and `deathTime`, the registry id of the variant a
+/// pig or a cow wears, and the value of an experience orb, once the server
+/// has told them.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct LivingState {
+pub(crate) struct EntityState {
     pub(crate) hurt_time: i32,
     pub(crate) death_time: i32,
     pub(crate) variant: Option<i32>,
+    pub(crate) orb_value: Option<i32>,
 }
 
 /// Entity dimensions used to derive Java's feet-origin bounding box.
@@ -522,7 +524,7 @@ pub struct ClientEntity {
     pub(crate) mob_flags: u8,
     pub(crate) air_supply: i32,
     pub(crate) health_bits: Option<u32>,
-    pub(crate) living: LivingState,
+    pub(crate) living: EntityState,
     pub(crate) arrow_count: i32,
     pub(crate) stinger_count: i32,
     pub(crate) effect_ambience: bool,
@@ -1549,6 +1551,11 @@ impl ClientEntity {
     /// set, or none while it wears the default.
     pub fn variant(&self) -> Option<i32> {
         self.living.variant
+    }
+
+    /// An experience orb's value (`ExperienceOrb.getValue`), once told.
+    pub fn orb_value(&self) -> Option<i32> {
+        self.living.orb_value
     }
 
     pub fn hurt_time(&self) -> i32 {

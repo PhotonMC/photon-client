@@ -202,6 +202,7 @@ impl Play {
         let entity_textures = voxel_render::entity_textures::EntityTextures::build(
             voxel_render::player_renderer::skin_textures()
                 .chain(mobs::textures())
+                .chain(std::iter::once(overlays::ORB_TEXTURE))
                 .map(|name| Ok((name.to_owned(), texture(&root, name, "entity texture")?)))
                 .collect::<Result<Vec<_>>>()?,
         )
@@ -589,6 +590,18 @@ impl Play {
             view,
         );
         self.backend.set_name_tags(&see_through, &normal)?;
+        self.backend
+            .set_experience_orbs(&overlays::experience_orbs(
+                &self.session,
+                &self.entity_textures,
+                &overlays::TagCamera {
+                    position: frame.camera,
+                    relative: frame.relative,
+                    rotation: frame.rotation,
+                    spectating: player.spectating(),
+                },
+                view,
+            ))?;
         self.backend.set_ground_items(&dropped_items(
             &self.session,
             &mut self.ground_layers,

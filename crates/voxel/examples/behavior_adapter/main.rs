@@ -18675,6 +18675,50 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `experience_orb`: the quad an orb is drawn as.
+fn experience_orb_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::name_tag::camera_orientation;
+    use voxel_render::xp_orb::corners;
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let orientation = camera_orientation(bits(row, "yaw")?, bits(row, "pitch")?);
+        let quad = corners(
+            i32_field(row, "icon")?,
+            bits(row, "age")?,
+            [bits(row, "px")?, bits(row, "py")?, bits(row, "pz")?],
+            &orientation,
+        );
+        let light = i32_field(row, "light")?;
+        let vertices: Vec<Value> = quad
+            .iter()
+            .map(|corner| {
+                json!({
+                    "x": hex(corner.position[0]),
+                    "y": hex(corner.position[1]),
+                    "z": hex(corner.position[2]),
+                    "color": corner.colour.map(|c| c.to_string()).join(","),
+                    "u": hex(corner.uv[0]),
+                    "v": hex(corner.uv[1]),
+                    // `OverlayTexture.NO_OVERLAY`, and the light as given.
+                    "overlay": 10 << 16,
+                    "light": light,
+                    "normal": corner.normal.map(hex).join(""),
+                })
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `living_pose`: the pose a mob is drawn from.
 fn living_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{FLIP_DEGREES, MobPlacement, placement_pose};
@@ -18898,6 +18942,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "quadruped_model" => return quadruped_model_result(request),
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
+        "experience_orb" => return experience_orb_result(request),
         "entity_variants" => {
             let rows: Vec<Value> = ["cow", "pig"]
                 .iter()
@@ -18917,12 +18962,13 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         }
         "entity_variant_fields" => {
             use voxel_world::{
-                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
-                PIG_VARIANT_SERIALIZER_ID,
+                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
+                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
                 {"label": "cow", "data_id": COW_VARIANT_DATA_ID, "serializer": COW_VARIANT_SERIALIZER_ID},
+                {"label": "experienceorb", "data_id": EXPERIENCE_ORB_VALUE_DATA_ID, "serializer": 1},
             ]}));
         }
         "entity_data_serializers" => {

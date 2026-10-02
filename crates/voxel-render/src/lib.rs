@@ -38,6 +38,7 @@ pub mod vulkan;
 pub mod weather;
 pub mod window;
 pub mod world_mesh;
+pub mod xp_orb;
 
 pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
 pub use blockstate::{

@@ -21,4 +21,7 @@ Toplama animasyonu, birleşme.
 `docs/remaining-work.md` M4 madde 3.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-render/xp_orb.rs` (`ExperienceOrbRenderer.submit` dörtgeni: ikon eşikleri, yaşa bağlı renk, kameraya dönük pozlama, dönmüş normal ve CPU'da yüz ışığı), `PipelineKind::TextTranslucent` (dünya yazısı gölgelendiricileri entity dokusu üstünde, yarı saydam, derinlik yazmadan), `ClientEntity.orb_value` (`DATA_VALUE`, veri indeksi 8), `overlays::experience_orbs`. Kayıt: `docs/client-xp-orb-parity-conformance.md`.
+- Oracle: `entity/xp-orb` 25 satır (gerçek çizici + sahte toplayıcı; konum/renk/uv/ışık/normal bit bit), `entity/variant-fields`'e orb alanı. Canlı: izleyici kipinde beş değerli küre görünür (oyuncu yakınındaki küreleri toplar, bu yüzden izleyici).
+- Sapma: alfa kesimi çarpımdan sonra; ışık tek örnek; yarı saydam karışım ekranla doğrulandı.
+- Açık: yok.

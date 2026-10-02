@@ -144,6 +144,14 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
     voxel_core::wire::read_varint(&mut value).ok()
 }
 
+/// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
+pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:experience_orb" {
+        return None;
+    }
+    metadata_int_value(metadata, EXPERIENCE_ORB_VALUE_DATA_ID)
+}
+
 /// Position the cursor at one entity-metadata field value.
 ///
 /// The reference writes `data_id`, serializer id and value per field and ends

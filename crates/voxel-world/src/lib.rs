@@ -2798,7 +2798,7 @@ impl ClientWorld {
                 mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
-                living: LivingState::default(),
+                living: EntityState::default(),
                 arrow_count: 0,
                 stinger_count: 0,
                 effect_ambience: false,
@@ -3164,6 +3164,9 @@ impl ClientWorld {
         entity.metadata = Some(metadata.to_vec());
         if let Some(variant) = variant_from_metadata(entity.type_id, metadata) {
             entity.living.variant = Some(variant);
+        }
+        if let Some(value) = orb_value_from_metadata(entity.type_id, metadata) {
+            entity.living.orb_value = Some(value);
         }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;

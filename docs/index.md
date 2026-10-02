@@ -277,6 +277,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.t — server-conformance ClientWorld tick sayaçları ve ticking uygunluğu](client-world-tick-conformance.md)
 - [P09.z — ClientWorld `ClientboundUpdateTagsPacket` block tag binding — client-parity birleşik kayıt](client-world-update-tags-conformance.md)
 - [P09.ad — Entity zero-Y collision state retention — client-parity birleşik kayıt](client-world-zero-y-state-conformance.md)
+- [T25b — Deneyim küresi çizimi — client-parity](client-xp-orb-parity-conformance.md)
 - [P06.d — Ortak ping/pong ve keep-alive paket sözleşmesi — client-parity birleşik kayıt](common-packet-conformance.md)
 - [P07 — ClientInformation ve configuration unit packet sözleşmesi — client-parity birleşik kayıt](configuration-client-information-conformance.md)
 - [P07.b — Configuration misc packet sözleşmesi — client-parity birleşik kayıt](configuration-misc-conformance.md)
