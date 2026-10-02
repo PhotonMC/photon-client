@@ -60,7 +60,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T25](T25-yerdeki-esya.md) | Yerdeki eşya | M | T24 | bitti |
 | [T25b](T25b-xp-kuresi.md) | XP küresi | S | T25 | bitti (0a0fd994) |
 | [T25c](T25c-esya-fizigi.md) | Yerdeki eşyanın istemci fiziği (düşme, sekme) | M | T25 | bitti |
-| [T25d](T25d-esya-akiskan.md) | Yerdeki eşya akışkanda (kaldırma, akıntı) | M | T25c | açık |
+| [T25d](T25d-esya-akiskan.md) | Yerdeki eşya akışkanda (kaldırma, akıntı) | M | T25c | bitti (ae397885) |
 | [T26](T26-entity-hedefleme.md) | Entity hedefleme, `Attack`/`Interact` | M | T21 | bitti (e9dae9f8) |
 | [T26b](T26b-secici-ve-pick-esya.md) | Bakılan varlık UUID önerisi + `PickItemFromEntity` | S | T26 | bitti (932f7c82) |
 | [T27](T27-hasar-olum-geri-bildirimi.md) | Mob hasar kırmızısı ve ölüm yatışı (`EntityEvent`/`HurtAnimation`/`DamageEvent`, `hurtTime`/`deathTime`); kaçış süresi gözlemi | M | T26, T24 | bitti (1985d1ae) |
