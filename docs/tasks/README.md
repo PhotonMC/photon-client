@@ -70,7 +70,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T30b](T30b-keci-tavsan-mantar-inegi.md) | Keçi, tavşan, mantar ineği | M | T30 | açık |
 | [T31](T31-at-deve-ailesi.md) | At, eşek, katır, deve ve lama aileleri | L | T24 | açık |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
-| [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | açık |
+| [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü |
+| [T33b](T33b-goz-sarj-bocek-ari.md) | Örümcek gözleri, şarjlı creeper, gümüş balığı, endermite, arı | M | T33 | açık |
 | [T34](T34-koylu-illager-golem.md) | Köylü, tüccar, illager, cadı, golemler ve enderman | L | T24 | açık |
 | [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |

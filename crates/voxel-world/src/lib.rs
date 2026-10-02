@@ -3236,6 +3236,13 @@ impl ClientWorld {
         if let Some(wool) = sheep_wool_from_metadata(entity.type_id, metadata) {
             entity.living.animal.wool = wool;
         }
+        let (swell_dir, ignited) = creeper_fuse_from_metadata(entity.type_id, metadata);
+        if let Some(direction) = swell_dir {
+            entity.living.animal.set_swell_dir(direction);
+        }
+        if let Some(ignited) = ignited {
+            entity.living.animal.set_ignited(ignited);
+        }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;
         }

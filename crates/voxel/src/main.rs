@@ -8,6 +8,7 @@ mod held_items;
 mod hud_input;
 mod item_layers;
 mod mobs;
+mod monsters;
 mod overlays;
 mod play;
 mod ppm;

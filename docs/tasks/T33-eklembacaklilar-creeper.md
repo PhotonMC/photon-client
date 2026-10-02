@@ -28,4 +28,7 @@ Creeper patlama parçacığı (PLAN-M8), arı sesi (PLAN-M7).
 Her biri küçük dal; `getFlipDegrees` 180 olan türler burada tabloya eklenir. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı (bölündü): örümcek, mağara örümceği (`setup_spider`, ölürken 180° yatma), creeper (`setup_creeper`, `creeper_scale` kancası `MobPlacement.hook_scale` ile, `creeper_white_overlay` ve shader'da overlay kodu, `Creeper.tick` fitili istemcide, `DATA_SWELL_DIR`/`DATA_IS_IGNITED` 16/18); `voxel/monsters.rs`. Kayıt: `docs/client-spider-creeper-parity-conformance.md`.
+- Oracle: `entity/spider-model` 10, `creeper-model` 5, `creeper-render` 12, `living-pose` flip 180 satırı, `living-entity-animations`'a creeper fitil satırları (gerçek `Creeper.tick` ve paket).
+- Sapma: gözler/şarj girdabı yok (yeni render türleri), `DATA_IS_POWERED` okunmuyor.
+- Açık: gümüş balığı, endermite, arı, gözler ve şarj katmanı (T33b).

@@ -440,6 +440,75 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A spider's models from the layer table (the spider and the cave spider), posed by the
+     * reference's own `SpiderModel.setupAnim`, drawn; and a creeper's by `CreeperModel`.
+     */
+    private static JsonObject spiderModel(final JsonObject request, final boolean creeper) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var root = bakedLayer(row.get("layer").getAsString());
+            net.minecraft.client.renderer.entity.state.LivingEntityRenderState state = creeper
+                ? new net.minecraft.client.renderer.entity.state.CreeperRenderState()
+                : new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            if (creeper) {
+                var model = new net.minecraft.client.model.monster.creeper.CreeperModel(root);
+                model.setupAnim((net.minecraft.client.renderer.entity.state.CreeperRenderState) state);
+                rows.add(posedQuads(row.get("label").getAsString(), model));
+            } else {
+                var model = new net.minecraft.client.model.monster.spider.SpiderModel(root);
+                model.setupAnim(state);
+                rows.add(posedQuads(row.get("label").getAsString(), model));
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What a creeper's renderer does to a swelling creeper: the scale its `scale` hook applies to
+     * the pose, and how far it flashes white, from the reference's own `CreeperRenderer`.
+     */
+    private static JsonObject creeperRender(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var renderer = (net.minecraft.client.renderer.entity.CreeperRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.entity.CreeperRenderer.class);
+        var scale = net.minecraft.client.renderer.entity.CreeperRenderer.class.getDeclaredMethod("scale",
+            net.minecraft.client.renderer.entity.state.CreeperRenderState.class,
+            com.mojang.blaze3d.vertex.PoseStack.class);
+        scale.setAccessible(true);
+        var overlay = net.minecraft.client.renderer.entity.CreeperRenderer.class.getDeclaredMethod(
+            "getWhiteOverlayProgress", net.minecraft.client.renderer.entity.state.CreeperRenderState.class);
+        overlay.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.CreeperRenderState();
+            state.swelling = Oracle.f32(row, "swelling");
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            scale.invoke(renderer, state, stack);
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("scale", described);
+            out.addProperty("overlay", Oracle.bits((float) overlay.invoke(renderer, state)));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -457,6 +526,7 @@ public final class EntityOracle {
         net.minecraft.client.renderer.entity.state.LivingEntityRenderState,
         net.minecraft.client.model.EntityModel<net.minecraft.client.renderer.entity.state.LivingEntityRenderState>> {
         static final float[] CAPTURED = new float[16];
+        static float flip = 90.0F;
 
         private PoseProbe() {
             super(null, null, 0.0F);
@@ -471,6 +541,11 @@ public final class EntityOracle {
         @Override
         public net.minecraft.client.renderer.entity.state.LivingEntityRenderState createRenderState() {
             return new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+        }
+
+        @Override
+        protected float getFlipDegrees() {
+            return flip;
         }
 
         @Override
@@ -494,6 +569,7 @@ public final class EntityOracle {
             state.scale = Oracle.f32(row, "scale");
             state.bodyRot = Oracle.f32(row, "body_rot");
             state.deathTime = Oracle.f32(row, "death_time");
+            PoseProbe.flip = row.has("flip_degrees") ? Oracle.f32(row, "flip_degrees") : 90.0F;
             try {
                 renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), null, null);
             } catch (PoseCaptured expected) {
@@ -882,6 +958,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MAIN_HAND", "avatar-main-hand"},
             {net.minecraft.world.entity.animal.sheep.Sheep.class, "DATA_WOOL_ID", "sheep-wool"},
             {net.minecraft.world.entity.animal.chicken.Chicken.class, "DATA_VARIANT_ID", "chicken"},
+            {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
+            {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
         };
         for (var described : fields) {
             var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
@@ -990,6 +1068,15 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("spider_model")) {
+            return spiderModel(request, false);
+        }
+        if (operation.equals("creeper_model")) {
+            return spiderModel(request, true);
+        }
+        if (operation.equals("creeper_render")) {
+            return creeperRender(request);
         }
         if (operation.equals("sheep_model")) {
             return sheepModel(request);

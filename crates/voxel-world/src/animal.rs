@@ -1,5 +1,5 @@
-//! What a sheep and a chicken keep for their drawing: the sheep's wool byte
-//! and its eating timer, the chicken's flap.
+//! What a sheep, a chicken and a creeper keep for their drawing: the sheep's
+//! wool byte and its eating timer, the chicken's flap, the creeper's swell.
 
 use voxel_core::math::mth_sin_f64;
 
@@ -22,7 +22,16 @@ pub(crate) struct AnimalState {
     flap_speed_bits: u32,
     old_flap_speed_bits: u32,
     flapping_bits: u32,
+    /// `Creeper`: how far its fuse has burned and the last tick's, the
+    /// direction it burns (`DATA_SWELL_DIR`) and whether it was ignited.
+    swell: i32,
+    old_swell: i32,
+    swell_dir: i32,
+    ignited: bool,
 }
+
+/// How many ticks a creeper's fuse is (`Creeper.maxSwell`).
+const CREEPER_MAX_SWELL: i32 = 30;
 
 /// `Sheep.getHeadEatPositionScale`: how far the head is down, with the eating
 /// timer at `tick`.
@@ -62,6 +71,10 @@ impl Default for AnimalState {
             flap_speed_bits: 0,
             old_flap_speed_bits: 0,
             flapping_bits: 1.0_f32.to_bits(),
+            swell: 0,
+            old_swell: 0,
+            swell_dir: 0,
+            ignited: false,
         }
     }
 }
@@ -91,6 +104,33 @@ impl AnimalState {
         self.flap_bits = (flap + flapping * 2.0).to_bits();
         self.flap_speed_bits = flap_speed.to_bits();
         self.flapping_bits = flapping.to_bits();
+    }
+
+    pub(crate) fn set_swell_dir(&mut self, direction: i32) {
+        self.swell_dir = direction;
+    }
+
+    pub(crate) fn set_ignited(&mut self, ignited: bool) {
+        self.ignited = ignited;
+    }
+
+    /// `Creeper.tick` while it lives: the fuse burns in its direction (an
+    /// ignited creeper sets it burning), no further than it goes.
+    pub(crate) fn tick_creeper(&mut self, alive: bool) {
+        if !alive {
+            return;
+        }
+        self.old_swell = self.swell;
+        if self.ignited {
+            self.swell_dir = 1;
+        }
+        self.swell = (self.swell + self.swell_dir).clamp(0, CREEPER_MAX_SWELL);
+    }
+
+    /// `Creeper.getSwelling`: how far the fuse has burned, between two ticks.
+    pub(crate) fn creeper_swelling(&self, partial: f32) -> f32 {
+        let old = self.old_swell as f32;
+        (old + partial * (self.swell as f32 - old)) / (CREEPER_MAX_SWELL - 2) as f32
     }
 
     /// `Mth.lerp` of the flap between two ticks.

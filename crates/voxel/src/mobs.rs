@@ -271,7 +271,10 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
                 .flat_map(|outer| [outer[2], outer[3]]),
         )
     });
-    variants.chain(zombies).chain(crate::sheep::textures())
+    variants
+        .chain(zombies)
+        .chain(crate::sheep::textures())
+        .chain(crate::monsters::textures())
 }
 
 /// The baked models of the mobs, which are posed anew for each one drawn.
@@ -331,6 +334,7 @@ pub(crate) fn placement(
         death_time: snapshot.death_time,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
         red_overlay: snapshot.red_overlay,
+        ..MobPlacement::default()
     }
 }
 
@@ -406,6 +410,9 @@ pub fn remote_mobs(
     }
     vertices.extend(remote_humanoids(session, models, textures, (view, held)));
     vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
+    vertices.extend(crate::monsters::remote_monsters(
+        session, models, textures, view,
+    ));
     vertices
 }
 

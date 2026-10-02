@@ -122,6 +122,71 @@ impl MobModel {
         }
     }
 
+    /// `SpiderModel.setupAnim`: the head follows the look; each leg is
+    /// swung about y and lifted about z in turn, the pairs a quarter of a
+    /// stride apart.
+    pub fn setup_spider(&mut self, state: &QuadrupedState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        if let Some(head) = self.root.child_mut("head") {
+            head.x_rot = state.x_rot * degrees;
+            head.y_rot = state.head_y_rot * degrees;
+        }
+        let position = state.walk_position * 0.6662;
+        let speed = state.walk_speed;
+        let quarter = (std::f64::consts::PI / 2.0) as f32;
+        let three_quarters = (std::f64::consts::PI * 3.0 / 2.0) as f32;
+        let swing = |phase: f32| -(cos(position * 2.0 + phase) * 0.4) * speed;
+        let step = |phase: f32| (sin(position + phase) * 0.4).abs() * speed;
+        // The pairs, back to front: each leg on the right moves one way and
+        // its opposite the other.
+        for (right, left, phase) in [
+            ("right_hind_leg", "left_hind_leg", 0.0),
+            ("right_middle_hind_leg", "left_middle_hind_leg", pi),
+            ("right_middle_front_leg", "left_middle_front_leg", quarter),
+            ("right_front_leg", "left_front_leg", three_quarters),
+        ] {
+            let (turn, lift) = (swing(phase), step(phase));
+            if let Some(leg) = self.root.child_mut(right) {
+                leg.y_rot += turn;
+                leg.z_rot += lift;
+            }
+            if let Some(leg) = self.root.child_mut(left) {
+                leg.y_rot -= turn;
+                leg.z_rot -= lift;
+            }
+        }
+    }
+
+    /// `CreeperModel.setupAnim`: the head follows the look, and the legs
+    /// swing in diagonal pairs (the model names its sides the other way
+    /// about, which the swing follows).
+    pub fn setup_creeper(&mut self, state: &QuadrupedState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = state.head_y_rot * degrees;
+            head.x_rot = state.x_rot * degrees;
+        }
+        let (position, speed) = (state.walk_position, state.walk_speed);
+        let swing = [
+            ("left_hind_leg", cos(position * 0.6662) * 1.4 * speed),
+            ("right_hind_leg", cos(position * 0.6662 + pi) * 1.4 * speed),
+            ("left_front_leg", cos(position * 0.6662 + pi) * 1.4 * speed),
+            ("right_front_leg", cos(position * 0.6662) * 1.4 * speed),
+        ];
+        for (name, x_rot) in swing {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.x_rot = x_rot;
+            }
+        }
+    }
+
     /// `SheepModel.setupAnim` (and the wool's): the quadruped's pose, with
     /// the head lowered and tipped to eat.
     pub fn setup_sheep(&mut self, state: &SheepState) {
@@ -335,6 +400,62 @@ pub struct MobPlacement {
     pub flip_degrees: f32,
     /// Drawn with the hurt overlay (`hasRedOverlay`).
     pub red_overlay: bool,
+    /// `getWhiteOverlayProgress`: how far the mob is flashed white.
+    pub white_overlay: f32,
+    /// What the renderer's own `scale` hook scales the pose by, after the
+    /// flip (a creeper's swelling), or none.
+    pub hook_scale: Option<[f32; 3]>,
+}
+
+impl Default for MobPlacement {
+    /// A mob of the ordinary size, upright where the mesh starts, unlit.
+    fn default() -> Self {
+        Self {
+            feet: [0.0; 3],
+            body_rot: 0.0,
+            scale: 1.0,
+            light: 0,
+            death_time: 0.0,
+            flip_degrees: FLIP_DEGREES,
+            red_overlay: false,
+            white_overlay: 0.0,
+            hook_scale: None,
+        }
+    }
+}
+
+/// `OverlayTexture`'s row for what a vertex is drawn with over its texel,
+/// as the entity shader reads it: the hurt overlay is one, a white flash is
+/// twice its column (`OverlayTexture.u`).
+pub fn overlay_code(red: bool, white_progress: f32) -> f32 {
+    if red {
+        1.0
+    } else {
+        // `OverlayTexture.u`: truncated to a whole column.
+        (2 * (white_progress * 15.0) as i32) as f32
+    }
+}
+
+/// `CreeperRenderer.scale`: a creeper swells, wobbling as it nears its blast;
+/// the factors along x and z, and along y.
+pub fn creeper_scale(swelling: f32) -> [f32; 3] {
+    let wobble = 1.0 + mth_sin_f64(f64::from(swelling * 100.0)) * swelling * 0.01;
+    let mut swell = swelling.clamp(0.0, 1.0);
+    swell *= swell;
+    swell *= swell;
+    let wide = (1.0 + swell * 0.4) * wobble;
+    let tall = (1.0 + swell * 0.1) / wobble;
+    [wide, tall, wide]
+}
+
+/// `CreeperRenderer.getWhiteOverlayProgress`: a swelling creeper flashes
+/// white every other tenth of its swell.
+pub fn creeper_white_overlay(swelling: f32) -> f32 {
+    if (swelling * 10.0) as i32 % 2 == 0 {
+        0.0
+    } else {
+        swelling.clamp(0.5, 1.0)
+    }
 }
 
 /// `LivingEntityRenderer.getFlipDegrees` of most mobs.
@@ -366,6 +487,9 @@ pub fn placement_pose(placement: &MobPlacement) -> Pose {
         )));
     }
     pose.scale(-1.0, -1.0, 1.0);
+    if let Some([x, y, z]) = placement.hook_scale {
+        pose.scale(x, y, z);
+    }
     pose.translate(0.0, -1.501, 0.0);
     pose
 }
@@ -399,7 +523,7 @@ pub fn mob_vertices_coloured(
             vertices.push(Vertex {
                 position: corner.position,
                 uv: uv(texture, corner.uv),
-                shade: f32::from(placement.red_overlay),
+                shade: overlay_code(placement.red_overlay, placement.white_overlay),
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], colour],
                 light,
             });
@@ -421,19 +545,7 @@ mod tests {
     fn a_pig_stands_on_the_ground_and_reaches_the_height_of_its_head() {
         let mut model = pig();
         model.setup_quadruped(&QuadrupedState::default());
-        let vertices = mob_vertices(
-            &model,
-            &MobPlacement {
-                feet: [0.0; 3],
-                body_rot: 0.0,
-                scale: 1.0,
-                light: 0,
-                death_time: 0.0,
-                flip_degrees: FLIP_DEGREES,
-                red_overlay: false,
-            },
-            [0.0, 0.0, 1.0, 1.0],
-        );
+        let vertices = mob_vertices(&model, &MobPlacement::default(), [0.0, 0.0, 1.0, 1.0]);
         let lowest = vertices
             .iter()
             .map(|v| v.position[1])

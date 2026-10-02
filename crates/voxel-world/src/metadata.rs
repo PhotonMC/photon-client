@@ -182,6 +182,21 @@ pub(crate) fn sheep_wool_from_metadata(type_id: i32, metadata: &[u8]) -> Option<
     metadata_byte_value(metadata, SHEEP_WOOL_DATA_ID)
 }
 
+/// A creeper's fuse direction and ignited flag (`Creeper.DATA_SWELL_DIR`,
+/// `DATA_IS_IGNITED`), when the data holds them.
+pub(crate) fn creeper_fuse_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<i32>, Option<bool>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:creeper") {
+        return (None, None);
+    }
+    (
+        metadata_int_value(metadata, CREEPER_SWELL_DIR_DATA_ID),
+        metadata_boolean_value(metadata, CREEPER_IGNITED_DATA_ID),
+    )
+}
+
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
 pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:experience_orb" {

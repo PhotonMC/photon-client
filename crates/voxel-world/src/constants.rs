@@ -155,6 +155,10 @@ pub const HUMANOID_ARM_SERIALIZER_ID: i32 = 42;
 pub const SHEEP_WOOL_DATA_ID: u8 = 18;
 pub const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 pub const CHICKEN_VARIANT_SERIALIZER_ID: i32 = 30;
+/// Where a creeper's fuse direction (an int) and ignited flag (a boolean)
+/// sit among its data.
+pub const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+pub const CREEPER_IGNITED_DATA_ID: u8 = 18;
 /// Where an experience orb's value sits among its data (an int).
 pub const EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub(crate) const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;

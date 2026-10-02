@@ -18365,6 +18365,24 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             event["on_ground"].as_bool().unwrap_or(true),
                         );
                     }
+                    "creeper_data" => {
+                        // `SynchedEntityData` as the packet carries it: id,
+                        // serializer, value.
+                        let mut data = Vec::new();
+                        if let Some(direction) = event["swell_dir"].as_i64() {
+                            data.extend([voxel_world::CREEPER_SWELL_DIR_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(direction as i32, &mut data);
+                        }
+                        if let Some(ignited) = event["ignited"].as_bool() {
+                            data.extend([
+                                voxel_world::CREEPER_IGNITED_DATA_ID,
+                                8,
+                                u8::from(ignited),
+                            ]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "animate" => {
                         world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
                     }
@@ -18401,6 +18419,12 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
+                        }
+                    }
+                    "creeper" => {
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                            described[format!("swelling_{key}")] =
+                                json!(hex(entity.creeper_swelling(partial)));
                         }
                     }
                     "chicken" => {
@@ -18859,8 +18883,12 @@ fn living_pose_result(request: &Value) -> Result<Value, String> {
             scale: bits(row, "scale")?,
             light: 0,
             death_time: bits(row, "death_time")?,
-            flip_degrees: FLIP_DEGREES,
-            red_overlay: false,
+            flip_degrees: if row.get("flip_degrees").is_some() {
+                bits(row, "flip_degrees")?
+            } else {
+                FLIP_DEGREES
+            },
+            ..MobPlacement::default()
         });
         let matrix: Vec<String> = (0..4)
             .flat_map(|column| (0..4).map(move |row| (column, row)))
@@ -19009,6 +19037,65 @@ fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRende
         swim_amount: bits("swim_amount")?,
         ..Default::default()
     })
+}
+
+/// `spider_model` and `creeper_model`: a spider's or a creeper's model posed
+/// and drawn.
+fn spider_model_result(request: &Value, creeper: bool) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let state = QuadrupedState {
+            head_y_rot: bits("head_y_rot")?,
+            x_rot: bits("x_rot")?,
+            walk_position: bits("walk_position")?,
+            walk_speed: bits("walk_speed")?,
+        };
+        let mut model = MobModel::bake(layer);
+        if creeper {
+            model.setup_creeper(&state);
+        } else {
+            model.setup_spider(&state);
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `creeper_render`: the scale a swelling creeper's renderer applies, and how
+/// far it flashes white.
+fn creeper_render_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{creeper_scale, creeper_white_overlay};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let swelling = u32::from_str_radix(row["swelling"].as_str().ok_or("swelling")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let [x, y, z] = creeper_scale(swelling);
+        let mut pose = Pose::default();
+        pose.scale(x, y, z);
+        let matrix: Vec<String> = (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect();
+        out.push(json!({
+            "label": row["label"],
+            "scale": matrix,
+            "overlay": format!("{:08x}", creeper_white_overlay(swelling).to_bits()),
+        }));
+    }
+    Ok(json!({"rows": out}))
 }
 
 /// `sheep_model`: a sheep's models (the body, the undercoat, the wool) posed
@@ -19437,6 +19524,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "living_pose" => return living_pose_result(request),
         "held_item_pose" => return held_item_pose_result(request),
         "sheep_model" => return sheep_model_result(request),
+        "spider_model" => return spider_model_result(request, false),
+        "creeper_model" => return spider_model_result(request, true),
+        "creeper_render" => return creeper_render_result(request),
         "chicken_model" => return chicken_model_result(request),
         "sheep_colors" => return sheep_colors_result(request),
         "sheep_eat" => return sheep_eat_result(request),
@@ -19464,7 +19554,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_variant_fields" => {
             use voxel_world::{
                 AVATAR_MAIN_HAND_DATA_ID, CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID,
-                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
+                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID,
+                CREEPER_SWELL_DIR_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
                 HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
                 PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID, SHEEP_WOOL_DATA_ID,
             };
@@ -19477,6 +19568,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "avatar-main-hand", "data_id": AVATAR_MAIN_HAND_DATA_ID, "serializer": HUMANOID_ARM_SERIALIZER_ID},
                 {"label": "sheep-wool", "data_id": SHEEP_WOOL_DATA_ID, "serializer": 0},
                 {"label": "chicken", "data_id": CHICKEN_VARIANT_DATA_ID, "serializer": CHICKEN_VARIANT_SERIALIZER_ID},
+                {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
+                {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
             ]}));
         }
         "entity_data_serializers" => {

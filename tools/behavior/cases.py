@@ -14344,6 +14344,17 @@ def movement_item_cases():
         living("sheep-eats-twice", "sheep", 60, [{"tick": 1, "type": "entity_event", "event": 10},
                                                    {"tick": 30, "type": "entity_event", "event": 10}],
                extras=["sheep"]),
+        living("creeper-quiet", "creeper", 6, [], extras=["creeper"]),
+        living("creeper-fuse", "creeper", 40, [{"tick": 2, "type": "creeper_data", "swell_dir": 1}],
+               extras=["creeper"]),
+        living("creeper-fuse-put-out", "creeper", 40,
+               [{"tick": 2, "type": "creeper_data", "swell_dir": 1},
+                {"tick": 14, "type": "creeper_data", "swell_dir": -1}], extras=["creeper"]),
+        living("creeper-ignited", "creeper", 40, [{"tick": 3, "type": "creeper_data", "ignited": True}],
+               extras=["creeper"]),
+        living("creeper-dies-while-the-fuse-burns", "creeper", 30,
+               [{"tick": 2, "type": "creeper_data", "swell_dir": 1}, {"tick": 12, "type": "death"}],
+               extras=["creeper"]),
         living("chicken-in-the-air", "chicken", 24, [], extras=["chicken"]),
         living("chicken-lands", "chicken", 24, [on_ground(6, True)], extras=["chicken"]),
         living("chicken-lands-and-takes-off", "chicken", 40,
@@ -14383,6 +14394,8 @@ def entity_cases():
     yield from entity_chicken_cases()
     yield from entity_sheep_colour_cases()
     yield from entity_sheep_eat_cases()
+    yield from entity_spider_cases()
+    yield from entity_creeper_render_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14737,6 +14750,45 @@ def entity_sheep_eat_cases():
     }
 
 
+def entity_spider_cases():
+    """The spider and the cave spider from the layer table, posed by the
+    reference's `SpiderModel.setupAnim` (eight legs, each pair a quarter of a
+    stride apart) and the creeper by `CreeperModel.setupAnim` (the legs
+    swinging in diagonal pairs), drawn."""
+    def pose(label, layer, operation, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed)}
+
+    def rows(layers, operation):
+        out = []
+        for layer in layers:
+            out += [
+                pose("standing", layer, operation),
+                pose("looking", layer, operation, head_y_rot=-35.5, x_rot=48.0),
+                pose("walking-early", layer, operation, walk_position=0.9, walk_speed=0.4),
+                pose("walking", layer, operation, walk_position=7.3, walk_speed=0.83),
+                pose("running", layer, operation, walk_position=21.6, walk_speed=1.0,
+                     head_y_rot=12.0, x_rot=-8.0),
+            ]
+        return out
+
+    yield {"case_id": "entity/spider-model", "family": "entity", "operation": "spider_model",
+           "rows": rows(("minecraft:spider#main", "minecraft:cave_spider#main"), "spider_model")}
+    yield {"case_id": "entity/creeper-model", "family": "entity", "operation": "creeper_model",
+           "rows": rows(("minecraft:creeper#main",), "creeper_model")}
+
+
+def entity_creeper_render_cases():
+    """What the creeper's renderer does to a swelling creeper: the scale it
+    applies to the pose (wobbling as the fuse nears its end) and how far it
+    flashes white."""
+    rows = [{"label": f"swelling-{value}", "swelling": float_bits(value)}
+            for value in (0.0, 0.05, 0.1, 0.19, 0.25, 0.37, 0.5, 0.64, 0.8, 0.95, 1.0, 1.0714286)]
+    yield {"case_id": "entity/creeper-render", "family": "entity",
+           "operation": "creeper_render", "rows": rows}
+
+
 def entity_living_pose_cases():
     """A living entity's pose as `LivingEntityRenderer.submit` builds it: the
     facing, the scale and the fall of a dying one (`deathTime` with its part
@@ -14747,6 +14799,11 @@ def entity_living_pose_cases():
             rows.append({"label": f"death-{death_time}-facing-{body_rot}",
                          "scale": float_bits(1.0), "body_rot": float_bits(body_rot),
                          "death_time": float_bits(death_time)})
+    # A spider falls over by half a turn (`getFlipDegrees`).
+    for death_time in (1.0, 5.5, 15.0, 25.5):
+        rows.append({"label": f"spider-death-{death_time}", "scale": float_bits(1.0),
+                     "body_rot": float_bits(35.5), "death_time": float_bits(death_time),
+                     "flip_degrees": float_bits(180.0)})
     rows.append({"label": "scaled", "scale": float_bits(0.5), "body_rot": float_bits(-70.0),
                  "death_time": float_bits(8.5)})
     yield {

@@ -178,9 +178,9 @@ void main() {
 );
 
 /// The entities' fragment shader: the texture, cut out below a tenth of
-/// alpha, lit by whichever face shows, the hurt overlay (the reference's
-/// overlay texture row for red: red at 0xB2 of 0xFF alpha, mixed in by that
-/// alpha), the lightmap, then fog.
+/// alpha, lit by whichever face shows, the overlay (the reference's overlay
+/// texture: red at 0xB2 of 0xFF alpha when hurt, else white by column), the
+/// lightmap, then fog.
 const ENTITY_FRAGMENT_SHADER: &str = r"#version 450
 layout(set = 0, binding = 0) uniform sampler2D skin;
 layout(location = 0) in vec2 in_uv;
@@ -204,8 +204,13 @@ void main() {
     vec4 colour = texture(skin, in_uv);
     if (colour.a < 0.1) { discard; }
     colour.rgb *= in_colour * (gl_FrontFacing ? in_front : in_back);
-    if (in_hurt > 0.5) {
+    // The overlay (`OverlayTexture`): red when hurt, else a white flash by
+    // column, which fades the white by `u / 15 * 0.75`.
+    if (mod(in_hurt, 2.0) > 0.5) {
         colour.rgb = mix(vec3(1.0, 0.0, 0.0), colour.rgb, 178.0 / 255.0);
+    } else if (in_hurt > 1.5) {
+        float flash = floor((1.0 - floor(in_hurt / 2.0) / 15.0 * 0.75) * 255.0) / 255.0;
+        colour.rgb = mix(vec3(1.0), colour.rgb, flash);
     }
     colour.rgb *= in_light;
     float fog = max(

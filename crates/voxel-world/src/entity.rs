@@ -1777,6 +1777,11 @@ impl ClientEntity {
         )
     }
 
+    /// `Creeper.getSwelling`: how far the fuse has burned, between two ticks.
+    pub fn creeper_swelling(&self, partial: f32) -> f32 {
+        self.living.animal.creeper_swelling(partial)
+    }
+
     /// A chicken's `flap` and `flapSpeed` between two ticks.
     pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
         let animal = &self.living.animal;
@@ -1804,6 +1809,7 @@ impl ClientEntity {
         match voxel_data::entity_type::name(self.type_id) {
             Some("minecraft:sheep") => self.living.animal.tick_sheep(),
             Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
+            Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
             _ => {}
         }
     }

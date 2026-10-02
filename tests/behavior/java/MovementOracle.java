@@ -621,6 +621,17 @@ public final class MovementOracle {
                     case "animate" -> listener.handleAnimate(
                         new net.minecraft.network.protocol.game.ClientboundAnimatePacket(
                             entity, event.get("action").getAsInt()));
+                    case "creeper_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("swell_dir")) {
+                            data.add(creeperData("DATA_SWELL_DIR", event.get("swell_dir").getAsInt()));
+                        }
+                        if (event.has("ignited")) {
+                            data.add(creeperData("DATA_IS_IGNITED", event.get("ignited").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "entity_event" -> listener.handleEntityEvent(
                         new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(
                             entity, (byte) event.get("event").getAsInt()));
@@ -662,6 +673,12 @@ public final class MovementOracle {
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
                         }
+                        case "creeper" -> {
+                            var creeper = (net.minecraft.world.entity.monster.Creeper) entity;
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("swelling_" + partial, Oracle.bits(creeper.getSwelling(partial)));
+                            }
+                        }
                         default -> throw new IllegalArgumentException("Unknown extra " + extra);
                     }
                 }
@@ -671,6 +688,16 @@ public final class MovementOracle {
         entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    /** A creeper's data value, built from the reference's own accessor. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> creeperData(
+        final String field, final Object value) throws Exception {
+        var accessor = net.minecraft.world.entity.monster.Creeper.class.getDeclaredField(field);
+        accessor.setAccessible(true);
+        return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+            (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
     }
 
     /**
