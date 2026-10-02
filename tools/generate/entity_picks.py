@@ -4,7 +4,8 @@
 
 What the crosshair needs of each entity type, in id order, as a new entity of
 the type answers it: whether it can be aimed at, how much its box grows for
-the aim, whether the aim can start inside it, its size in the standing pose,
+the aim, whether the aim can start inside it, whether it is a `Monster` (which
+updates its swing time on its own), its size in the standing pose,
 and a baby's size for the types that have babies. The player makes no entity
 there, so it has no row of answers.
 """
@@ -33,7 +34,8 @@ def generate(capture):
         out.append(
             "    Some(EntityPick { "
             f"pickable: {rust_bool(row['pickable'])}, pick_radius: {f32(row['pick_radius'])}, "
-            f"from_inside: {rust_bool(row['from_inside'])}, size: {size(row)}, baby: {baby} }}),")
+            f"from_inside: {rust_bool(row['from_inside'])}, monster: {rust_bool(row['monster'])}, "
+            f"size: {size(row)}, baby: {baby} }}),")
     out.append("];")
     write("entity_picks.rs", out)
     print(f"entity_picks={len(types)}")

@@ -616,7 +616,14 @@ public final class MovementOracle {
                     case "move" -> listener.handleMoveEntity(
                         new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Pos(entityId,
                             (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
-                            (short) event.get("za").getAsInt(), true));
+                            (short) event.get("za").getAsInt(),
+                            !event.has("on_ground") || event.get("on_ground").getAsBoolean()));
+                    case "animate" -> listener.handleAnimate(
+                        new net.minecraft.network.protocol.game.ClientboundAnimatePacket(
+                            entity, event.get("action").getAsInt()));
+                    case "entity_event" -> listener.handleEntityEvent(
+                        new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(
+                            entity, (byte) event.get("event").getAsInt()));
                     default -> throw new IllegalArgumentException("Unknown event " + event);
                 }
             }
@@ -627,6 +634,38 @@ public final class MovementOracle {
             described.addProperty("dead", entity.isDeadOrDying());
             described.addProperty("walk_speed", Oracle.bits(entity.walkAnimation.speed()));
             described.addProperty("walk_position", Oracle.bits(entity.walkAnimation.position()));
+            if (row.has("extras")) {
+                for (var extra : row.getAsJsonArray("extras")) {
+                    switch (extra.getAsString()) {
+                        case "swing" -> {
+                            described.addProperty("swinging", entity.swinging);
+                            described.addProperty("swing_time", entity.swingTime);
+                            described.addProperty("off_hand",
+                                entity.swingingArm == net.minecraft.world.InteractionHand.OFF_HAND);
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("attack_anim_" + partial, Oracle.bits(entity.getAttackAnim(partial)));
+                            }
+                        }
+                        case "sheep" -> {
+                            var sheep = (net.minecraft.world.entity.animal.sheep.Sheep) entity;
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("eat_position_" + partial,
+                                    Oracle.bits(sheep.getHeadEatPositionScale(partial)));
+                                described.addProperty("eat_angle_" + partial,
+                                    Oracle.bits(sheep.getHeadEatAngleScale(partial)));
+                            }
+                        }
+                        case "chicken" -> {
+                            var chicken = (net.minecraft.world.entity.animal.chicken.Chicken) entity;
+                            described.addProperty("flap", Oracle.bits(chicken.flap));
+                            described.addProperty("flap_speed", Oracle.bits(chicken.flapSpeed));
+                            described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
+                            described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
+                        }
+                        default -> throw new IllegalArgumentException("Unknown extra " + extra);
+                    }
+                }
+            }
             ticks.add(described);
         }
         entry.addProperty("outcome", "ticked");
@@ -668,6 +707,7 @@ public final class MovementOracle {
                 out.addProperty("pickable", entity.isPickable());
                 out.addProperty("pick_radius", Oracle.bits(entity.getPickRadius()));
                 out.addProperty("from_inside", entity.canBePickedFromInside());
+                out.addProperty("monster", entity instanceof net.minecraft.world.entity.monster.Monster);
                 var size = entity.getDimensions(net.minecraft.world.entity.Pose.STANDING);
                 out.addProperty("width", Oracle.bits(size.width()));
                 out.addProperty("height", Oracle.bits(size.height()));

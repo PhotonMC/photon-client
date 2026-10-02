@@ -72,9 +72,9 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | açık |
 | [T34](T34-koylu-illager-golem.md) | Köylü, tüccar, illager, cadı, golemler ve enderman | L | T24 | açık |
-| [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43 | açık |
+| [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
-| [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43, T36 | açık |
+| [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
 | [T38](T38-araclar.md) | Araçlar: tekneler ve minecart ailesi | M | T24 | açık |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | açık |
@@ -83,7 +83,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41c](T41c-kafa-pelerin-elytra.md) | Kafa eşyası, pelerin, elytra, dürbün | M | T41 | açık |
 | [T41d](T41d-kullanim-pozlari.md) | Eşya kullanım pozları ve silah kol pozları | M | T41 | açık |
 | [T42](T42-entity-golgesi.md) | Entity gölgesi (`submitShadow`) | M | T24 | bitti (d2c2f477) |
-| [T43](T43-keyframe-animasyon-ve-animate.md) | `KeyframeAnimation` oynatıcısı, `Animate` paketi ve `EntityEvent` çizim durumları | L | T24 | açık |
+| [T43](T43-keyframe-animasyon-ve-animate.md) | `KeyframeAnimation` oynatıcısı, `Animate` paketi ve `EntityEvent` çizim durumları | L | T24 | bölündü |
+| [T43b](T43b-keyframe-oynatici.md) | `KeyframeAnimation` oynatıcısı ve `AnimationState` (ilk tüketiciyle) | M | T43 | açık |
 | [T44](T44-binek-surusu.md) | Binek sürüşü: `PlayerInput`, `PlayerCommand`, `MoveVehicle`, `PaddleBoat` | L | T38, T31 | açık |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | açık |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |

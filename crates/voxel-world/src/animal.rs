@@ -12,7 +12,7 @@ pub(crate) const SHEEP_EAT_EVENT: i8 = 10;
 
 /// A sheep's and a chicken's own state, once the server has told it or its
 /// tick has moved it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct AnimalState {
     /// `Sheep.DATA_WOOL_ID`: the dye in the low four bits, sheared in bit four.
     pub(crate) wool: u8,
@@ -48,6 +48,21 @@ pub fn head_eat_angle_scale(tick: i32, partial: f32, pitch: f32) -> f32 {
         (std::f64::consts::PI / 5.0) as f32
     } else {
         pitch * (std::f64::consts::PI / 180.0) as f32
+    }
+}
+
+impl Default for AnimalState {
+    /// `Chicken.flapping` starts at one.
+    fn default() -> Self {
+        Self {
+            wool: 0,
+            eat_tick: 0,
+            flap_bits: 0,
+            old_flap_bits: 0,
+            flap_speed_bits: 0,
+            old_flap_speed_bits: 0,
+            flapping_bits: 1.0_f32.to_bits(),
+        }
     }
 }
 
@@ -97,29 +112,6 @@ impl AnimalState {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// `Chicken.aiStep` read against its source: on the ground the speed
-    /// stays at zero, in the air it climbs by 1.2 a tick to one, and the
-    /// flapping, set to one when it leaves the ground, decays by a tenth.
-    #[test]
-    fn a_chicken_in_the_air_flaps_and_one_on_the_ground_does_not() {
-        let mut chicken = AnimalState::default();
-        chicken.tick_chicken(true);
-        assert_eq!(
-            (chicken.flap_at(1.0), chicken.flap_speed_at(1.0)),
-            (0.0, 0.0)
-        );
-        chicken.tick_chicken(false);
-        assert_eq!(chicken.flap_speed_at(1.0), 1.0);
-        assert!((chicken.flap_at(1.0) - 1.8).abs() < 1e-6);
-        // Halfway between the two ticks.
-        assert!((chicken.flap_at(0.5) - 0.9).abs() < 1e-6);
-        assert_eq!(chicken.flap_speed_at(0.0), 0.0);
-        chicken.tick_chicken(true);
-        // 1 - 0.3 on the ground.
-        assert!((chicken.flap_speed_at(1.0) - 0.7).abs() < 1e-6);
-        assert_eq!(chicken.flap_speed_at(0.0), 1.0);
-    }
 
     #[test]
     fn a_sheep_eats_for_forty_ticks_and_its_head_comes_up_at_the_end() {

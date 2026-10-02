@@ -2773,3 +2773,12 @@ fn set_equipment_reads_each_slot_until_the_one_without_the_continue_bit() {
     assert_eq!(packet.slots[1], (5, None));
     assert!(parse_entity_equipment_packet(&payload[..4]).is_err());
 }
+
+#[test]
+fn animate_reads_the_entity_and_the_action() {
+    let mut payload = Vec::new();
+    voxel_core::wire::write_varint(300, &mut payload);
+    payload.push(3);
+    assert_eq!(super::parse_animate_packet(&payload).unwrap(), (300, 3));
+    assert!(super::parse_animate_packet(&payload[..2]).is_err());
+}

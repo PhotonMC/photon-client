@@ -1,7 +1,7 @@
 # T35 — Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan
 
 **Amaç:** Suda yaşayan mobların modelleri ve su içi animasyonları: kalamar/ışıklı kalamar (dönüş durumu), morina/somon/tropikal balık/kirpi balığı (üç boy), iribaş, yunus, aksolotl (oyun ölü taklidi), kaplumbağa, kurbağa (`KeyframeAnimation`), nautilus ve zombi nautilus, gardiyan ve elder gardiyan (ışın).
-**Bağımlılık:** T24, T43. **Boy:** L. **Türler:** squid, glow_squid, cod, salmon, tropical_fish, pufferfish, tadpole, dolphin, axolotl, turtle, frog, nautilus, zombie_nautilus, guardian, elder_guardian.
+**Bağımlılık:** T24, T43b. **Boy:** L. **Türler:** squid, glow_squid, cod, salmon, tropical_fish, pufferfish, tadpole, dolphin, axolotl, turtle, frog, nautilus, zombie_nautilus, guardian, elder_guardian.
 
 ## Oku
 - Java: `client/model/animal/squid/SquidModel.java`, `client/model/animal/fish/CodModel.java`, `client/model/animal/dolphin/DolphinModel.java`, `client/model/animal/turtle/TurtleModel.java`, `client/model/animal/frog/FrogModel.java`, `client/model/monster/guardian/GuardianModel.java`, `client/renderer/entity/SquidRenderer.java`, `client/renderer/entity/TropicalFishRenderer.java`, `client/renderer/entity/PufferfishRenderer.java`, `client/renderer/entity/GuardianRenderer.java`.
@@ -10,7 +10,7 @@
 ## Yapılacaklar
 1. Suda dönüş/yüzme durumları (`Squid.xBodyRot` vb.) entity tikinde (yalnız oracle'lanmış kollar).
 2. Balık aileleri: aynı model, farklı desen katmanı (tropikal balık deseni/renk verisi).
-3. `KeyframeAnimation` kullananlar (kurbağa, aksolotl) T43 sonrası.
+3. `KeyframeAnimation` kullananlar (kurbağa, aksolotl) T43b sonrası.
 
 ## Oracle
 `EntityOracle.java` `quadrupedModel` kalıbı: gerçek model sınıfı `setupAnim` ile poz verilir, köşeler `model_layers` tablosuyla birlikte karşılaştırılır; `tools/behavior/cases.py` entity ailesi, `behavior_adapter/main.rs` `entity_result`.

@@ -18360,20 +18360,61 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             y_rot: None,
                             x_rot: None,
                         });
-                        world.apply_entity_ground_state(entity_id, true);
+                        world.apply_entity_ground_state(
+                            entity_id,
+                            event["on_ground"].as_bool().unwrap_or(true),
+                        );
+                    }
+                    "animate" => {
+                        world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
+                    }
+                    "entity_event" => {
+                        world.apply_entity_event(entity_id, i32_field(event, "event")? as i8);
                     }
                     other => return Err(format!("unknown event {other}")),
                 }
             }
             world.tick_entities();
             let entity = world.entity_at(entity_id).ok_or("entity vanished")?;
-            ticks.push(json!({
+            let hex = |value: f32| format!("{:08x}", value.to_bits());
+            let mut described = json!({
                 "hurt_time": entity.hurt_time(),
                 "death_time": entity.death_time(),
                 "dead": entity.is_dead_or_dying(),
-                "walk_speed": format!("{:08x}", entity.walk_animation().speed().to_bits()),
-                "walk_position": format!("{:08x}", entity.walk_animation().position().to_bits()),
-            }));
+                "walk_speed": hex(entity.walk_animation().speed()),
+                "walk_position": hex(entity.walk_animation().position()),
+            });
+            for extra in row["extras"].as_array().into_iter().flatten() {
+                match extra.as_str().ok_or("extras must be strings")? {
+                    "swing" => {
+                        let swing = entity.swing_state();
+                        described["swinging"] = json!(swing.is_swinging());
+                        described["swing_time"] = json!(swing.swing_time());
+                        described["off_hand"] = json!(swing.is_off_hand());
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                            described[format!("attack_anim_{key}")] =
+                                json!(hex(swing.attack_anim(partial)));
+                        }
+                    }
+                    "sheep" => {
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                            let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
+                            described[format!("eat_position_{key}")] = json!(hex(position));
+                            described[format!("eat_angle_{key}")] = json!(hex(angle));
+                        }
+                    }
+                    "chicken" => {
+                        let (flap, flap_speed) = entity.chicken_flap(1.0);
+                        let (old_flap, old_flap_speed) = entity.chicken_flap(0.0);
+                        described["flap"] = json!(hex(flap));
+                        described["flap_speed"] = json!(hex(flap_speed));
+                        described["old_flap"] = json!(hex(old_flap));
+                        described["old_flap_speed"] = json!(hex(old_flap_speed));
+                    }
+                    other => return Err(format!("unknown extra {other}")),
+                }
+            }
+            ticks.push(described);
         }
         out.push(json!({"label": row["label"], "outcome": "ticked", "ticks": ticks}));
     }
@@ -18401,6 +18442,7 @@ fn entity_pick_table_result(request: &Value) -> Value {
                     out["pickable"] = json!(pick.pickable);
                     out["pick_radius"] = json!(hex(pick.pick_radius));
                     out["from_inside"] = json!(pick.from_inside);
+                    out["monster"] = json!(pick.monster);
                     let (width, height, eye_height) = pick.size;
                     out["width"] = json!(hex(width));
                     out["height"] = json!(hex(height));

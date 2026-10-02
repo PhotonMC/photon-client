@@ -193,3 +193,74 @@ pub(crate) fn keep_old_angles_near(
         *y_head_rot_old += 360.0;
     }
 }
+
+/// How long a swing lasts with an empty hand (`SwingAnimation.DEFAULT`):
+/// the duration a held item's own swing component and the effects of haste
+/// or mining fatigue would change, which are not read for other entities yet.
+pub const DEFAULT_SWING_DURATION: i32 = 6;
+
+/// A living entity's arm swing (`LivingEntity.swing`, `updateSwingTime`):
+/// how far through it the swing is, as the attack animation the model reads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SwingState {
+    swinging: bool,
+    swing_time: i32,
+    off_hand: bool,
+    attack_anim_bits: u32,
+    old_attack_anim_bits: u32,
+}
+
+impl SwingState {
+    /// `LivingEntity.swing`: a swing starts when none is going or the one
+    /// going is at least half through.
+    pub fn swing(&mut self, off_hand: bool) {
+        if !self.swinging || self.swing_time >= DEFAULT_SWING_DURATION / 2 || self.swing_time < 0 {
+            self.swing_time = -1;
+            self.swinging = true;
+            self.off_hand = off_hand;
+        }
+    }
+
+    /// `LivingEntity.baseTick`: the last tick's attack animation is kept.
+    pub fn begin_tick(&mut self) {
+        self.old_attack_anim_bits = self.attack_anim_bits;
+    }
+
+    /// `LivingEntity.updateSwingTime`, which only players and monsters run.
+    pub fn update(&mut self) {
+        if self.swinging {
+            self.swing_time += 1;
+            if self.swing_time >= DEFAULT_SWING_DURATION {
+                self.swing_time = 0;
+                self.swinging = false;
+            }
+        } else {
+            self.swing_time = 0;
+        }
+        self.attack_anim_bits = (self.swing_time as f32 / DEFAULT_SWING_DURATION as f32).to_bits();
+    }
+
+    pub fn is_swinging(&self) -> bool {
+        self.swinging
+    }
+
+    pub fn swing_time(&self) -> i32 {
+        self.swing_time
+    }
+
+    /// Whether the arm that swings is the off hand's.
+    pub fn is_off_hand(&self) -> bool {
+        self.off_hand
+    }
+
+    /// `LivingEntity.getAttackAnim`: between the last two ticks, wrapping
+    /// when a new swing began.
+    pub fn attack_anim(&self, partial: f32) -> f32 {
+        let old = f32::from_bits(self.old_attack_anim_bits);
+        let mut difference = f32::from_bits(self.attack_anim_bits) - old;
+        if difference < 0.0 {
+            difference += 1.0;
+        }
+        old + difference * partial
+    }
+}

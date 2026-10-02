@@ -14286,12 +14286,14 @@ def movement_item_cases():
     }
 
     # A living entity hurt and killed by the packets that do it, ticked on.
-    def living(label, entity, ticks, events, player_x=None):
+    def living(label, entity, ticks, events, player_x=None, extras=None):
         row = {"label": label, "blocks": [], "chunk_radius": 0, "entity": f"minecraft:{entity}",
                 "entity_id": 40, "x": float_bits(0.5, "f64"), "y": float_bits(64.0, "f64"),
                 "z": float_bits(0.5, "f64"), "tick_count": ticks, "events": events}
         if player_x is not None:
             row["player_x"] = float_bits(player_x, "f64")
+        if extras:
+            row["extras"] = extras
         return row
 
     living_rows = [
@@ -14318,6 +14320,40 @@ def movement_item_cases():
         "family": "movement",
         "operation": "living_entity_ticks",
         "rows": living_rows,
+    }
+    # What the animation packets and events do to a living entity: the swing of
+    # an arm (`Animate`), a sheep told to eat, a chicken's wings.
+    animate = lambda tick, action: {"tick": tick, "type": "animate", "action": action}
+    on_ground = lambda tick, ground: {"tick": tick, "type": "move", "xa": 0, "ya": 0, "za": 0,
+                                       "on_ground": ground}
+    swing = ["swing"]
+    animation_rows = [
+        living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
+        living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
+        living("zombie-swings-again-too-early", "zombie", 14,
+               [animate(1, 0), animate(2, 3)], extras=swing),
+        living("zombie-swings-again-halfway", "zombie", 16,
+               [animate(1, 0), animate(5, 3)], extras=swing),
+        living("skeleton-swings", "skeleton", 14, [animate(2, 0)], extras=swing),
+        living("piglin-swings", "piglin", 14, [animate(2, 0)], extras=swing),
+        living("pig-is-told-to-swing", "pig", 14, [animate(1, 0)], extras=swing),
+        living("quiet-zombie", "zombie", 4, [], extras=swing),
+        living("sheep-quiet", "sheep", 6, [], extras=["sheep"]),
+        living("sheep-eats", "sheep", 46, [{"tick": 1, "type": "entity_event", "event": 10}],
+               extras=["sheep"]),
+        living("sheep-eats-twice", "sheep", 60, [{"tick": 1, "type": "entity_event", "event": 10},
+                                                   {"tick": 30, "type": "entity_event", "event": 10}],
+               extras=["sheep"]),
+        living("chicken-in-the-air", "chicken", 24, [], extras=["chicken"]),
+        living("chicken-lands", "chicken", 24, [on_ground(6, True)], extras=["chicken"]),
+        living("chicken-lands-and-takes-off", "chicken", 40,
+               [on_ground(3, True), on_ground(12, False), on_ground(20, True)], extras=["chicken"]),
+    ]
+    yield {
+        "case_id": "movement/living-entity-animations",
+        "family": "movement",
+        "operation": "living_entity_ticks",
+        "rows": animation_rows,
     }
     # What the crosshair needs of every entity type, as a new entity of it
     # answers: whether it can be aimed at, how much its box grows for the aim,

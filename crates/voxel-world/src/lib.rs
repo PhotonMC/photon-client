@@ -1570,6 +1570,7 @@ impl ClientWorld {
             if let Some(kind) = living {
                 entity.tick_hurt_and_death(tick_death);
                 entity.tick_living_pose(kind);
+                entity.tick_swing(kind);
                 entity.tick_animal();
             }
             if boat_is_non_authoritative {
@@ -1880,6 +1881,10 @@ impl ClientWorld {
             } else {
                 0.0
             },
+            attack_time: entity.living.swing.attack_anim(partial_tick),
+            // `ArmedEntityRenderState.attackArm`: the main arm, or the other
+            // while the off hand swings.
+            attack_arm_left: entity.main_arm_is_left() != entity.living.swing.is_off_hand(),
         })
     }
 
@@ -1934,6 +1939,19 @@ impl ClientWorld {
 
     /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
     /// player: it dies (health spent), the sound aside.
+    /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
+    /// from bed, the critical-hit particles) are not carried out.
+    pub fn apply_entity_animate(&mut self, entity_id: i32, action: u8) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
+            return false;
+        }
+        entity.living.swing.swing(action == 3);
+        true
+    }
+
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
     pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {

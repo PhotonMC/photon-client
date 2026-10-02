@@ -49,6 +49,7 @@ pub(crate) const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
+pub(crate) const PLAY_CLIENTBOUND_ANIMATE_PACKET_ID: i32 = 2;
 pub(crate) const PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID: i32 = 25;
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID: i32 = 34;
 pub(crate) const PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID: i32 = 42;
@@ -3452,6 +3453,17 @@ fn parse_boss_event(input: &mut &[u8]) -> Result<HudEvent, ConnectionError> {
 
 /// `ClientboundEntityEventPacket.STREAM_CODEC`: the entity's id and the
 /// event (a byte).
+/// `ClientboundAnimatePacket`: the entity and the action.
+pub(crate) fn parse_animate_packet(input: &[u8]) -> Result<(i32, u8), ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "animate entity id")?;
+    let action = read_byte(&mut input, "animate action")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("animate trailing payload"));
+    }
+    Ok((id, action))
+}
+
 pub(crate) fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), ConnectionError> {
     let mut input = input;
     let id = read_i32(&mut input, "entity event id")?;

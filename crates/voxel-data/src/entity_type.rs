@@ -76,6 +76,8 @@ pub struct EntityPick {
     pub pickable: bool,
     pub pick_radius: f32,
     pub from_inside: bool,
+    /// Whether the type is a `Monster`, which ticks its own swing.
+    pub monster: bool,
     pub size: (f32, f32, f32),
     /// Only the types a baby can be.
     pub baby: Option<(f32, f32, f32)>,

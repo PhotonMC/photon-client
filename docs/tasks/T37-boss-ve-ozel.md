@@ -1,7 +1,7 @@
 # T37 — Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer
 
 **Amaç:** Tek başına özel kolları olan büyük/karmaşık mobların çizimi: wither (üç baş, zırh kabuğu), ender ejderhası (parçalı gövde, kanat), warden (`KeyframeAnimation`), shulker (kabuk açılma), creaking, slime/magma/sulfur küpü (boyut ölçeği), armadillo (top), sniffer.
-**Bağımlılık:** T43, T36. **Boy:** L. **Türler:** wither, ender_dragon, warden, shulker, creaking, slime, magma_cube, sulfur_cube, armadillo, sniffer.
+**Bağımlılık:** T43b, T36. **Boy:** L. **Türler:** wither, ender_dragon, warden, shulker, creaking, slime, magma_cube, sulfur_cube, armadillo, sniffer.
 
 ## Oku
 - Java: `client/model/monster/wither/WitherBossModel.java`, `client/model/monster/warden/WardenModel.java`, `client/model/monster/shulker/ShulkerModel.java`, `client/model/monster/slime/SlimeModel.java`, `client/model/animal/sniffer/SnifferModel.java`, `client/renderer/entity/EnderDragonRenderer.java`, `client/renderer/entity/WitherBossRenderer.java`, `client/renderer/entity/WardenRenderer.java`.
@@ -9,7 +9,7 @@
 
 ## Yapılacaklar
 1. Her tür ayrı dal; en çok kullanılandan (slime/shulker/warden) başla, ender ejderhası en sona (parçalar `EnderDragonPart` entity'leri; T26 notu: seçilebilirlik).
-2. Hepsi `KeyframeAnimation` ve emissive katmanına dayanır (T43, T36).
+2. Hepsi `KeyframeAnimation` ve emissive katmanına dayanır (T43b, T36).
 3. Her tür için küçük görevlere böl: bu dosya yalnız sıralamadır.
 
 ## Oracle

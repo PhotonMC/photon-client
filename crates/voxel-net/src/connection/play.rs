@@ -1457,6 +1457,11 @@ impl PlaySession {
                     entities::step(&mut self.trace.world, &packet);
                 }
             }
+            PLAY_CLIENTBOUND_ANIMATE_PACKET_ID => {
+                if let Ok((id, action)) = parse_animate_packet(payload) {
+                    self.trace.world.apply_entity_animate(id, action);
+                }
+            }
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => {
                 let (id, event) = parse_entity_event_packet(payload)?;
                 // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.

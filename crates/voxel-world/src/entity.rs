@@ -166,6 +166,8 @@ pub(crate) struct EntityState {
     pub(crate) main_arm_left: bool,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
+    /// The arm's swing.
+    pub(crate) swing: crate::living::SwingState,
 }
 
 /// `EquipmentSlot`, in the order the wire counts them.
@@ -646,6 +648,10 @@ pub struct EntitySnapshot {
     /// `LivingEntityRenderState.deathTime`: the turns of falling over, with
     /// the part of a tick, or zero while it lives.
     pub death_time: f32,
+    /// `LivingEntityRenderState.attackTime`: how far through its swing.
+    pub attack_time: f32,
+    /// Whether the arm that swings is the left (`attackArm`).
+    pub attack_arm_left: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1775,6 +1781,22 @@ impl ClientEntity {
     pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
         let animal = &self.living.animal;
         (animal.flap_at(partial), animal.flap_speed_at(partial))
+    }
+
+    /// The swing of an arm (`LivingEntity.swing`).
+    pub fn swing_state(&self) -> &crate::living::SwingState {
+        &self.living.swing
+    }
+
+    /// What a living entity's swing does each tick: the last tick's attack
+    /// animation is kept, and the swing runs on for a player and a monster
+    /// (`Player.aiStep`, `Monster.aiStep`).
+    pub(crate) fn tick_swing(&mut self, kind: LivingKind) {
+        self.living.swing.begin_tick();
+        let monster = voxel_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.monster);
+        if kind == LivingKind::Player || monster {
+            self.living.swing.update();
+        }
     }
 
     /// What a sheep or a chicken does of its own each tick (`aiStep`).

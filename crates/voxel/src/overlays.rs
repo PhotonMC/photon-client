@@ -329,6 +329,12 @@ pub fn remote_players(
             age_in_ticks: entity.tick_count() as f32 + partial,
             swim_amount: snapshot.swim_amount,
             crouching,
+            attack_time: snapshot.attack_time,
+            attack_arm: if snapshot.attack_arm_left {
+                Arm::Left
+            } else {
+                Arm::Right
+            },
             ..Default::default()
         });
         let (x, y, z) = snapshot.position;

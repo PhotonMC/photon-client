@@ -495,6 +495,12 @@ fn humanoid_pose(
         walk_speed: snapshot.walk_speed,
         age_in_ticks: entity.tick_count() as f32 + partial,
         swim_amount: snapshot.swim_amount,
+        attack_time: snapshot.attack_time,
+        attack_arm: if snapshot.attack_arm_left {
+            Arm::Left
+        } else {
+            Arm::Right
+        },
         right_arm_pose: bow_arm(false),
         left_arm_pose: bow_arm(true),
         main_arm: if main_left { Arm::Left } else { Arm::Right },
