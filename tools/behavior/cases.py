@@ -14338,6 +14338,8 @@ def entity_cases():
     yield from entity_variant_field_cases()
     yield from entity_variant_cases()
     yield from entity_zombie_cases()
+    yield from entity_skeleton_cases()
+    yield from entity_piglin_cases()
     yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
     yield from entity_type_cases()
@@ -14455,6 +14457,78 @@ def entity_zombie_cases():
         "case_id": "entity/zombie-model",
         "family": "entity",
         "operation": "zombie_model",
+        "rows": rows,
+    }
+
+
+def entity_skeleton_cases():
+    """The skeleton family from the layer table, posed by `SkeletonModel.setupAnim`
+    and drawn: the humanoid pose, and the arms an aggressive skeleton with no
+    bow swings in front of it."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             age=0.0, attack=0.0, aggressive=False, bow=False, swim=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
+                "swim_amount": float_bits(swim), "aggressive": aggressive, "holding_bow": bow}
+
+    rows = []
+    for layer in ("minecraft:skeleton#main", "minecraft:stray#main", "minecraft:stray#outer",
+                  "minecraft:bogged#main", "minecraft:bogged#outer", "minecraft:parched#main",
+                  "minecraft:wither_skeleton#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0),
+            pose("aggressive-with-bow", layer, aggressive=True, bow=True, age=17.5, attack=0.4),
+            pose("aggressive-no-bow", layer, aggressive=True, age=17.5),
+            pose("aggressive-swing-early", layer, aggressive=True, attack=0.15, age=5.0),
+            pose("aggressive-swing-mid", layer, aggressive=True, attack=0.55, age=9.0,
+                 walk_position=3.4, walk_speed=0.6),
+            pose("aggressive-swing-late", layer, aggressive=True, attack=0.9, age=123.456,
+                 head_y_rot=12.0, x_rot=-8.0),
+            pose("swimming", layer, swim=0.6, age=11.0, walk_position=2.0, walk_speed=0.5),
+        ]
+    yield {
+        "case_id": "entity/skeleton-model",
+        "family": "entity",
+        "operation": "skeleton_model",
+        "rows": rows,
+    }
+
+
+def entity_piglin_cases():
+    """The piglin family from the layer table, posed by `PiglinModel` and
+    `ZombifiedPiglinModel.setupAnim` and drawn: the ears flapping with the walk,
+    the arms of a zombified piglin held out, and a piglin dancing."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             age=0.0, attack=0.0, aggressive=False, dancing=False, swim=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
+                "swim_amount": float_bits(swim), "aggressive": aggressive, "dancing": dancing}
+
+    rows = []
+    for layer in ("minecraft:piglin#main", "minecraft:piglin_baby#main", "minecraft:piglin_brute#main",
+                  "minecraft:zombified_piglin#main", "minecraft:zombified_piglin_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("ears-in-the-wind", layer, age=57.5),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("swing", layer, attack=0.5, age=9.0),
+            pose("aggressive", layer, aggressive=True, attack=0.25, age=21.0),
+            pose("swimming", layer, swim=0.5, age=4.0, walk_position=2.0, walk_speed=0.4),
+        ]
+        if "zombified" not in layer:
+            rows += [pose("dancing", layer, dancing=True, age=15.0),
+                     pose("dancing-late", layer, dancing=True, age=333.3, head_y_rot=10.0)]
+    yield {
+        "case_id": "entity/piglin-model",
+        "family": "entity",
+        "operation": "piglin_model",
         "rows": rows,
     }
 

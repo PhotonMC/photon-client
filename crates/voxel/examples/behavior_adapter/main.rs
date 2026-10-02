@@ -18919,6 +18919,89 @@ fn quadruped_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The sorted quads of a posed model, as the oracle lists them.
+fn posed_quads(model: &voxel_render::mob_model::MobModel) -> Vec<String> {
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut quads: Vec<String> = model
+        .render(&Default::default())
+        .into_iter()
+        .map(|(_, corners)| {
+            corners
+                .iter()
+                .map(|vertex| {
+                    vertex
+                        .position
+                        .iter()
+                        .chain(&vertex.uv)
+                        .chain(&vertex.normal)
+                        .map(|value| hex(*value))
+                        .collect::<String>()
+                })
+                .collect::<String>()
+        })
+        .collect();
+    quads.sort();
+    quads
+}
+
+/// The humanoid fields every humanoid operation's row names.
+fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRenderState, String> {
+    let bits = |key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    Ok(voxel_render::player_model::PlayerRenderState {
+        head_y_rot: bits("head_y_rot")?,
+        x_rot: bits("x_rot")?,
+        walk_position: bits("walk_position")?,
+        walk_speed: bits("walk_speed")?,
+        age_in_ticks: bits("age_in_ticks")?,
+        attack_time: bits("attack_time")?,
+        swim_amount: bits("swim_amount")?,
+        ..Default::default()
+    })
+}
+
+/// `skeleton_model`: a skeleton family model posed and drawn.
+fn skeleton_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, SkeletonState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_skeleton(&SkeletonState {
+            humanoid: humanoid_state(row)?,
+            aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
+            holding_bow: row["holding_bow"].as_bool().ok_or("holding_bow")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `piglin_model`: a piglin family model posed and drawn.
+fn piglin_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, PiglinState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_piglin(&PiglinState {
+            humanoid: humanoid_state(row)?,
+            aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
+            zombified: id.starts_with("minecraft:zombified_piglin"),
+            baby: id.contains("_baby"),
+            dancing: row["dancing"].as_bool().ok_or("dancing")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `zombie_model`: a zombie family model posed and drawn.
 fn zombie_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, ZombieState};
@@ -19077,6 +19160,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
         "zombie_model" => return zombie_model_result(request),
+        "skeleton_model" => return skeleton_model_result(request),
+        "piglin_model" => return piglin_model_result(request),
         "experience_orb" => return experience_orb_result(request),
         "entity_variants" => {
             let rows: Vec<Value> = ["cow", "pig"]
@@ -19098,12 +19183,15 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_variant_fields" => {
             use voxel_world::{
                 COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
+                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
+                PIGLIN_DANCING_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
                 {"label": "cow", "data_id": COW_VARIANT_DATA_ID, "serializer": COW_VARIANT_SERIALIZER_ID},
                 {"label": "experienceorb", "data_id": EXPERIENCE_ORB_VALUE_DATA_ID, "serializer": 1},
+                {"label": "piglin-baby", "data_id": PIGLIN_BABY_DATA_ID, "serializer": 8},
+                {"label": "piglin-dancing", "data_id": PIGLIN_DANCING_DATA_ID, "serializer": 8},
             ]}));
         }
         "entity_data_serializers" => {

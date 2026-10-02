@@ -300,6 +300,106 @@ public final class EntityOracle {
         return result;
     }
 
+    /** A layer of the table baked, as the game bakes it. */
+    private static net.minecraft.client.model.geom.ModelPart bakedLayer(final String id) {
+        Oracle.vanillaRegistries();
+        for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
+            if (entry.getKey().toString().equals(id)) {
+                return entry.getValue().bakeRoot();
+            }
+        }
+        throw new IllegalArgumentException("No layer " + id);
+    }
+
+    /** Every quad of a posed model, sorted, as the part renderer writes them. */
+    private static JsonObject posedQuads(final String label, final net.minecraft.client.model.Model<?> model) {
+        var capture = new Capture();
+        model.root().render(new com.mojang.blaze3d.vertex.PoseStack(), capture, 0, 0);
+        var quads = new java.util.ArrayList<String>();
+        for (int i = 0; i < capture.vertices.size(); i += 4) {
+            quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+        }
+        java.util.Collections.sort(quads);
+        var out = new JsonObject();
+        out.addProperty("label", label);
+        var array = new JsonArray();
+        quads.forEach(array::add);
+        out.add("quads", array);
+        return out;
+    }
+
+    private static void humanoidFields(final net.minecraft.client.renderer.entity.state.HumanoidRenderState state, final JsonObject row) {
+        state.yRot = Oracle.f32(row, "head_y_rot");
+        state.xRot = Oracle.f32(row, "x_rot");
+        state.walkAnimationPos = Oracle.f32(row, "walk_position");
+        state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+        state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+        state.attackTime = Oracle.f32(row, "attack_time");
+        state.swimAmount = Oracle.f32(row, "swim_amount");
+    }
+
+    /** A skeleton family model posed by `SkeletonModel.setupAnim`, drawn. */
+    private static JsonObject skeletonModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var state = new net.minecraft.client.renderer.entity.state.SkeletonRenderState();
+            humanoidFields(state, row);
+            state.isAggressive = row.get("aggressive").getAsBoolean();
+            state.isHoldingBow = row.get("holding_bow").getAsBoolean();
+            net.minecraft.client.model.monster.skeleton.SkeletonModel<
+                net.minecraft.client.renderer.entity.state.SkeletonRenderState> model =
+                new net.minecraft.client.model.monster.skeleton.SkeletonModel<>(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A piglin family model posed by `PiglinModel`/`ZombifiedPiglinModel.setupAnim`, drawn. */
+    private static JsonObject piglinModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            boolean baby = id.contains("_baby");
+            boolean dancing = row.get("dancing").getAsBoolean();
+            net.minecraft.client.model.Model<?> model;
+            if (id.startsWith("minecraft:zombified_piglin")) {
+                var state = new net.minecraft.client.renderer.entity.state.ZombifiedPiglinRenderState();
+                humanoidFields(state, row);
+                state.isAggressive = row.get("aggressive").getAsBoolean();
+                state.isBaby = baby;
+                var zombified = baby
+                    ? new net.minecraft.client.model.monster.piglin.BabyZombifiedPiglinModel(root)
+                    : new net.minecraft.client.model.monster.piglin.AdultZombifiedPiglinModel(root);
+                zombified.setupAnim(state);
+                model = zombified;
+            } else {
+                var state = new net.minecraft.client.renderer.entity.state.PiglinRenderState();
+                humanoidFields(state, row);
+                state.isBaby = baby;
+                if (dancing) {
+                    state.armPose = net.minecraft.world.entity.monster.piglin.PiglinArmPose.DANCING;
+                }
+                var piglin = baby
+                    ? new net.minecraft.client.model.monster.piglin.BabyPiglinModel(root)
+                    : new net.minecraft.client.model.monster.piglin.AdultPiglinModel(root);
+                piglin.setupAnim(state);
+                model = piglin;
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * A zombie family model from the layer table, posed by the reference's own
      * `setupAnim` (humanoid pose, held-out arms, the drowned's swim), drawn.
@@ -555,15 +655,19 @@ public final class EntityOracle {
     private static JsonObject entityVariantFields() throws Exception {
         Oracle.vanillaRegistries();
         var rows = new JsonArray();
-        for (var type : new Class<?>[] {
-            net.minecraft.world.entity.animal.pig.Pig.class, net.minecraft.world.entity.animal.cow.Cow.class,
-            net.minecraft.world.entity.ExperienceOrb.class}) {
-            var field = type.getDeclaredField(
-                type == net.minecraft.world.entity.ExperienceOrb.class ? "DATA_VALUE" : "DATA_VARIANT_ID");
+        Object[][] fields = {
+            {net.minecraft.world.entity.animal.pig.Pig.class, "DATA_VARIANT_ID", "pig"},
+            {net.minecraft.world.entity.animal.cow.Cow.class, "DATA_VARIANT_ID", "cow"},
+            {net.minecraft.world.entity.ExperienceOrb.class, "DATA_VALUE", "experienceorb"},
+            {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_BABY_ID", "piglin-baby"},
+            {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_IS_DANCING", "piglin-dancing"},
+        };
+        for (var described : fields) {
+            var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
             field.setAccessible(true);
             var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) field.get(null);
             var out = new JsonObject();
-            out.addProperty("label", type.getSimpleName().toLowerCase());
+            out.addProperty("label", (String) described[2]);
             out.addProperty("data_id", accessor.id());
             out.addProperty("serializer",
                 net.minecraft.network.syncher.EntityDataSerializers.getSerializedId(accessor.serializer()));
@@ -653,6 +757,12 @@ public final class EntityOracle {
         }
         if (operation.equals("entity_data_serializers")) {
             return entityDataSerializers();
+        }
+        if (operation.equals("skeleton_model")) {
+            return skeletonModel(request);
+        }
+        if (operation.equals("piglin_model")) {
+            return piglinModel(request);
         }
         if (operation.equals("zombie_model")) {
             return zombieModel(request);

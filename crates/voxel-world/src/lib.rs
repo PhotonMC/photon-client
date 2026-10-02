@@ -3171,6 +3171,13 @@ impl ClientWorld {
         if let Some(value) = orb_value_from_metadata(entity.type_id, metadata) {
             entity.living.orb_value = Some(value);
         }
+        let (piglin_baby, piglin_dancing) = piglin_flags_from_metadata(entity.type_id, metadata);
+        if let Some(baby) = piglin_baby {
+            entity.baby = baby;
+        }
+        if let Some(dancing) = piglin_dancing {
+            entity.living.dancing = dancing;
+        }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;
         }

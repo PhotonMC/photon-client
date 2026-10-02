@@ -160,6 +160,8 @@ pub(crate) struct EntityState {
     pub(crate) death_time: i32,
     pub(crate) variant: Option<i32>,
     pub(crate) orb_value: Option<i32>,
+    /// A piglin's dancing flag.
+    pub(crate) dancing: bool,
 }
 
 /// Entity dimensions used to derive Java's feet-origin bounding box.
@@ -1566,6 +1568,11 @@ impl ClientEntity {
     /// set, or none while it wears the default.
     pub fn variant(&self) -> Option<i32> {
         self.living.variant
+    }
+
+    /// Whether a piglin dances (`Piglin.isDancing`).
+    pub fn is_dancing(&self) -> bool {
+        self.living.dancing
     }
 
     /// An experience orb's value (`ExperienceOrb.getValue`), once told.

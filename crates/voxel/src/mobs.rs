@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{MobModel, MobPlacement, QuadrupedState, ZombieState, mob_vertices};
+use voxel_render::mob_model::{
+    MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState, mob_vertices,
+};
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::scene::Vertex;
 
@@ -34,10 +36,21 @@ const KINDS: [MobKind; 2] = [
     },
 ];
 
-/// A zombie of the family `ZombieModel` poses: its entity type, its model
-/// layers and textures (grown and baby), the layer drawn over it (the
-/// drowned's) and its scale.
-struct ZombieKind {
+/// Which model class poses a humanoid mob.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Family {
+    /// `ZombieModel` (and `DrownedModel`, which swims).
+    Zombie { drowned: bool },
+    /// `SkeletonModel`.
+    Skeleton,
+    /// `PiglinModel`, or `ZombifiedPiglinModel`.
+    Piglin { zombified: bool },
+}
+
+/// A humanoid mob of the families the humanoid models pose: its entity type,
+/// its model layers and textures (grown and baby), the layer drawn over it
+/// (the drowned's, the stray's) and its scale.
+struct HumanoidKind {
     type_name: &'static str,
     adult_layer: &'static str,
     baby_layer: &'static str,
@@ -45,33 +58,33 @@ struct ZombieKind {
     baby_texture: &'static str,
     /// The outer layer's model layers and textures, if it has one.
     outer: Option<[&'static str; 4]>,
-    drowned: bool,
+    family: Family,
     scale: f32,
 }
 
 /// The zombies drawn so far.
-const ZOMBIES: [ZombieKind; 4] = [
-    ZombieKind {
+const HUMANOIDS: [HumanoidKind; 12] = [
+    HumanoidKind {
         type_name: "minecraft:zombie",
         adult_layer: "minecraft:zombie#main",
         baby_layer: "minecraft:zombie_baby#main",
         adult_texture: "entity/zombie/zombie",
         baby_texture: "entity/zombie/zombie_baby",
         outer: None,
-        drowned: false,
+        family: Family::Zombie { drowned: false },
         scale: 1.0,
     },
-    ZombieKind {
+    HumanoidKind {
         type_name: "minecraft:husk",
         adult_layer: "minecraft:husk#main",
         baby_layer: "minecraft:husk_baby#main",
         adult_texture: "entity/zombie/husk",
         baby_texture: "entity/zombie/husk_baby",
         outer: None,
-        drowned: false,
+        family: Family::Zombie { drowned: false },
         scale: 1.0,
     },
-    ZombieKind {
+    HumanoidKind {
         type_name: "minecraft:drowned",
         adult_layer: "minecraft:drowned#main",
         baby_layer: "minecraft:drowned_baby#main",
@@ -83,19 +96,109 @@ const ZOMBIES: [ZombieKind; 4] = [
             "entity/zombie/drowned_outer_layer",
             "entity/zombie/drowned_outer_layer_baby",
         ]),
-        drowned: true,
+        family: Family::Zombie { drowned: true },
         scale: 1.0,
     },
     // `EntityRenderers`: the giant's renderer is made with scale six.
-    ZombieKind {
+    HumanoidKind {
         type_name: "minecraft:giant",
         adult_layer: "minecraft:giant#main",
         baby_layer: "minecraft:giant#main",
         adult_texture: "entity/zombie/zombie",
         baby_texture: "entity/zombie/zombie",
         outer: None,
-        drowned: false,
+        family: Family::Zombie { drowned: false },
         scale: 6.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:skeleton",
+        adult_layer: "minecraft:skeleton#main",
+        baby_layer: "minecraft:skeleton#main",
+        adult_texture: "entity/skeleton/skeleton",
+        baby_texture: "entity/skeleton/skeleton",
+        outer: None,
+        family: Family::Skeleton,
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:stray",
+        adult_layer: "minecraft:stray#main",
+        baby_layer: "minecraft:stray#main",
+        adult_texture: "entity/skeleton/stray",
+        baby_texture: "entity/skeleton/stray",
+        outer: Some([
+            "minecraft:stray#outer",
+            "minecraft:stray#outer",
+            "entity/skeleton/stray_overlay",
+            "entity/skeleton/stray_overlay",
+        ]),
+        family: Family::Skeleton,
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:bogged",
+        adult_layer: "minecraft:bogged#main",
+        baby_layer: "minecraft:bogged#main",
+        adult_texture: "entity/skeleton/bogged",
+        baby_texture: "entity/skeleton/bogged",
+        outer: Some([
+            "minecraft:bogged#outer",
+            "minecraft:bogged#outer",
+            "entity/skeleton/bogged_overlay",
+            "entity/skeleton/bogged_overlay",
+        ]),
+        family: Family::Skeleton,
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:parched",
+        adult_layer: "minecraft:parched#main",
+        baby_layer: "minecraft:parched#main",
+        adult_texture: "entity/skeleton/parched",
+        baby_texture: "entity/skeleton/parched",
+        outer: None,
+        family: Family::Skeleton,
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:wither_skeleton",
+        adult_layer: "minecraft:wither_skeleton#main",
+        baby_layer: "minecraft:wither_skeleton#main",
+        adult_texture: "entity/skeleton/wither_skeleton",
+        baby_texture: "entity/skeleton/wither_skeleton",
+        outer: None,
+        family: Family::Skeleton,
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:piglin",
+        adult_layer: "minecraft:piglin#main",
+        baby_layer: "minecraft:piglin_baby#main",
+        adult_texture: "entity/piglin/piglin",
+        baby_texture: "entity/piglin/piglin_baby",
+        outer: None,
+        family: Family::Piglin { zombified: false },
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:piglin_brute",
+        adult_layer: "minecraft:piglin_brute#main",
+        baby_layer: "minecraft:piglin_brute#main",
+        adult_texture: "entity/piglin/piglin_brute",
+        baby_texture: "entity/piglin/piglin_brute",
+        outer: None,
+        family: Family::Piglin { zombified: false },
+        scale: 1.0,
+    },
+    HumanoidKind {
+        type_name: "minecraft:zombified_piglin",
+        adult_layer: "minecraft:zombified_piglin#main",
+        baby_layer: "minecraft:zombified_piglin_baby#main",
+        adult_texture: "entity/piglin/zombified_piglin",
+        baby_texture: "entity/piglin/zombified_piglin_baby",
+        outer: None,
+        family: Family::Piglin { zombified: true },
+        scale: 1.0,
     },
 ];
 
@@ -137,7 +240,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
                 texture_path(variant.baby_asset),
             ]
         });
-    let zombies = ZOMBIES.iter().flat_map(|kind| {
+    let zombies = HUMANOIDS.iter().flat_map(|kind| {
         [kind.adult_texture, kind.baby_texture].into_iter().chain(
             kind.outer
                 .into_iter()
@@ -150,7 +253,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 /// The baked models of the mobs, which are posed anew for each one drawn.
 pub struct MobModels {
     kinds: HashMap<i32, &'static MobKind>,
-    zombies: HashMap<i32, &'static ZombieKind>,
+    humanoids: HashMap<i32, &'static HumanoidKind>,
     models: HashMap<String, MobModel>,
 }
 
@@ -161,7 +264,7 @@ impl MobModels {
                 .iter()
                 .filter_map(|kind| Some((voxel_data::entity_type::id(kind.type_name)?, kind)))
                 .collect(),
-            zombies: ZOMBIES
+            humanoids: HUMANOIDS
                 .iter()
                 .filter_map(|kind| Some((voxel_data::entity_type::id(kind.type_name)?, kind)))
                 .collect(),
@@ -253,14 +356,14 @@ pub fn remote_mobs(
             rect,
         ));
     }
-    vertices.extend(remote_zombies(session, models, textures, view));
+    vertices.extend(remote_humanoids(session, models, textures, view));
     vertices
 }
 
-/// `LivingEntityRenderer` for the zombies the server added, each posed by
-/// `ZombieModel.setupAnim` from where it is between two ticks. The held item
+/// `LivingEntityRenderer` for the humanoid mobs the server added (zombies,
+/// skeletons, piglins), each posed by its model's `setupAnim` from where it is between two ticks. The held item
 /// (and so the attack swing and the arm pose it asks for) is not read yet.
-fn remote_zombies(
+fn remote_humanoids(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
@@ -270,28 +373,23 @@ fn remote_zombies(
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
     for entity in world.entities() {
-        let Some(kind) = models.zombies.get(&entity.type_id).copied() else {
+        let Some(kind) = models.humanoids.get(&entity.type_id).copied() else {
             continue;
         };
         let baby = entity.is_baby();
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let state = ZombieState {
-            humanoid: PlayerRenderState {
-                head_y_rot: voxel_core::math::wrap_degrees_f32(
-                    snapshot.head_yaw - snapshot.body_yaw,
-                ),
-                x_rot: snapshot.pitch,
-                walk_position: snapshot.walk_position,
-                walk_speed: snapshot.walk_speed,
-                age_in_ticks: entity.tick_count() as f32 + partial,
-                swim_amount: snapshot.swim_amount,
-                ..Default::default()
-            },
-            aggressive: entity.is_aggressive(),
-            drowned: kind.drowned,
+        let humanoid = PlayerRenderState {
+            head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+            age_in_ticks: entity.tick_count() as f32 + partial,
+            swim_amount: snapshot.swim_amount,
+            ..Default::default()
         };
+        let aggressive = entity.is_aggressive();
         let (x, y, z) = snapshot.position;
         let placement = MobPlacement {
             feet: [
@@ -330,7 +428,26 @@ fn remote_zombies(
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
                 continue;
             };
-            model.setup_zombie(&state);
+            match kind.family {
+                Family::Zombie { drowned } => model.setup_zombie(&ZombieState {
+                    humanoid,
+                    aggressive,
+                    drowned,
+                }),
+                // A skeleton is taken to hold a bow until the held item is read.
+                Family::Skeleton => model.setup_skeleton(&SkeletonState {
+                    humanoid,
+                    aggressive,
+                    holding_bow: true,
+                }),
+                Family::Piglin { zombified } => model.setup_piglin(&PiglinState {
+                    humanoid,
+                    aggressive,
+                    zombified,
+                    baby,
+                    dancing: entity.is_dancing(),
+                }),
+            }
             vertices.extend(mob_vertices(model, &placement, rect));
         }
     }
