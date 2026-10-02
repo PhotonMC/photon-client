@@ -83,6 +83,25 @@ pub struct MobPlacement {
     pub scale: f32,
     /// Packed block and sky light at the mob.
     pub light: i32,
+    /// `LivingEntityRenderState.deathTime`: zero while it lives.
+    pub death_time: f32,
+    /// `LivingEntityRenderer.getFlipDegrees`: how far a dead mob falls over.
+    pub flip_degrees: f32,
+    /// Drawn with the hurt overlay (`hasRedOverlay`).
+    pub red_overlay: bool,
+}
+
+/// `LivingEntityRenderer.getFlipDegrees` of most mobs.
+pub const FLIP_DEGREES: f32 = 90.0;
+
+/// `LivingEntityRenderer.setupRotations`'s fall of a dying entity: the
+/// turn about z, in degrees, once its death has begun. It eases out as the
+/// square root of the time since the first tick, and stops at the full flip.
+pub fn death_roll(death_time: f32, flip_degrees: f32) -> Option<f32> {
+    (death_time > 0.0).then(|| {
+        let fall = ((death_time - 1.0) / 20.0 * 1.6).sqrt();
+        fall.min(1.0) * flip_degrees
+    })
 }
 
 /// `LivingEntityRenderer.submit` for a mob standing on its feet: scaled,
@@ -95,6 +114,11 @@ pub fn placement_pose(placement: &MobPlacement) -> Pose {
     pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
         180.0 - placement.body_rot,
     )));
+    if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
+        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+            roll,
+        )));
+    }
     pose.scale(-1.0, -1.0, 1.0);
     pose.translate(0.0, -1.501, 0.0);
     pose
@@ -117,7 +141,7 @@ pub fn mob_vertices(
             vertices.push(Vertex {
                 position: corner.position,
                 uv: uv(texture, corner.uv),
-                shade: 1.0,
+                shade: f32::from(placement.red_overlay),
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
                 light,
             });
@@ -146,6 +170,9 @@ mod tests {
                 body_rot: 0.0,
                 scale: 1.0,
                 light: 0,
+                death_time: 0.0,
+                flip_degrees: FLIP_DEGREES,
+                red_overlay: false,
             },
             [0.0, 0.0, 1.0, 1.0],
         );

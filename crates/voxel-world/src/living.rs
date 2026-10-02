@@ -38,6 +38,11 @@ impl WalkAnimation {
         self.position_scale = position_scale;
     }
 
+    /// `setSpeed`: what a damage event does, to show the limbs at once.
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = speed;
+    }
+
     /// `stop`.
     pub fn stop(&mut self) {
         *self = Self {

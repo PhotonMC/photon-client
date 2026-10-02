@@ -88,6 +88,10 @@ pub struct Placement {
     pub light: i32,
     /// Where the skin the model is drawn in is in the entity textures.
     pub skin: crate::entity_textures::TextureRect,
+    /// `LivingEntityRenderState.deathTime`: zero while it lives.
+    pub death_time: f32,
+    /// Drawn with the hurt overlay (`hasRedOverlay`).
+    pub red_overlay: bool,
 }
 
 /// The pose the model is drawn from: `LivingEntityRenderer.submit` for a
@@ -109,6 +113,12 @@ pub fn placement_pose(placement: &Placement) -> Pose {
     pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
         180.0 - placement.body_rot,
     )));
+    // `LivingEntityRenderer.setupRotations`: a dying player falls over.
+    if let Some(roll) = crate::mob_model::death_roll(placement.death_time, 90.0) {
+        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+            roll,
+        )));
+    }
     // `AvatarRenderer.setupRotations`: the swimmer tips forward.
     if placement.swim_amount > 0.0 {
         let target = if placement.in_water {
@@ -142,7 +152,7 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
             vertices.push(Vertex {
                 position: corner.position,
                 uv: crate::entity_textures::uv(placement.skin, corner.uv),
-                shade: 1.0,
+                shade: f32::from(placement.red_overlay),
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
                 light,
             });
@@ -187,6 +197,8 @@ pub fn gui_player_vertices(
         crouching: state.crouching,
         light: 0,
         skin,
+        death_time: 0.0,
+        red_overlay: false,
     });
     // `rotation`: a half turn about z, then the pitch about x; the model is
     // lifted so its middle sits in the box.
@@ -413,7 +425,7 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
             vertices.push(Vertex {
                 position: corner.position,
                 uv: crate::entity_textures::uv(view.skin, corner.uv),
-                shade: 1.0,
+                shade: 0.0,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
                 light,
             });
@@ -456,6 +468,8 @@ mod tests {
                 crouching: false,
                 light: 0,
                 skin: [0.0, 0.0, 1.0, 1.0],
+                death_time: 0.0,
+                red_overlay: false,
             },
         );
         let lowest = vertices

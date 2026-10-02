@@ -18219,6 +18219,96 @@ fn name_tags_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `living_entity_ticks`: a living entity through the packets that hurt or
+/// kill it, as the net layer hands them to the world, ticked on.
+fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
+    let bits64 = |row: &Value, key: &str| -> Result<f64, String> {
+        u64::from_str_radix(string(row, key)?, 16)
+            .map(f64::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut world = movement_world(row)?;
+        let entity_id = i32_field(row, "entity_id")?;
+        let name = string(row, "entity")?;
+        // The client's own player, whose chunk decides whether a death ticks
+        // (the scene's simulation distance is eight chunks).
+        world.set_local_player_id(900);
+        world.apply_local_player_position(
+            (
+                if row.get("player_x").is_some() {
+                    bits64(row, "player_x")?
+                } else {
+                    6.5
+                },
+                64.0,
+                0.5,
+            ),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0),
+        );
+        world.set_server_simulation_distance(8);
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id: voxel_data::entity_type::id(name).ok_or("unknown entity type")?,
+            x: bits64(row, "x")?,
+            y: bits64(row, "y")?,
+            z: bits64(row, "z")?,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }) {
+            return Err("entity was rejected".into());
+        }
+        let mut ticks = Vec::new();
+        for tick in 0..i32_field(row, "tick_count")? {
+            for event in row["events"].as_array().ok_or("events must be an array")? {
+                if i32_field(event, "tick")? != tick {
+                    continue;
+                }
+                match string(event, "type")? {
+                    "damage" => {
+                        world.apply_entity_damage_event(entity_id);
+                    }
+                    "hurt" => {
+                        world.apply_entity_hurt_animation(entity_id);
+                    }
+                    "death" => {
+                        world.apply_entity_death_event(entity_id);
+                    }
+                    "move" => {
+                        world.apply_entity_move(voxel_world::EntityMoveInput {
+                            entity_id,
+                            delta_x: i32_field(event, "xa")? as i16,
+                            delta_y: i32_field(event, "ya")? as i16,
+                            delta_z: i32_field(event, "za")? as i16,
+                            has_position: true,
+                            y_rot: None,
+                            x_rot: None,
+                        });
+                        world.apply_entity_ground_state(entity_id, true);
+                    }
+                    other => return Err(format!("unknown event {other}")),
+                }
+            }
+            world.tick_entities();
+            let entity = world.entity_at(entity_id).ok_or("entity vanished")?;
+            ticks.push(json!({
+                "hurt_time": entity.hurt_time(),
+                "death_time": entity.death_time(),
+                "dead": entity.is_dead_or_dying(),
+                "walk_speed": format!("{:08x}", entity.walk_animation().speed().to_bits()),
+                "walk_position": format!("{:08x}", entity.walk_animation().position().to_bits()),
+            }));
+        }
+        out.push(json!({"label": row["label"], "outcome": "ticked", "ticks": ticks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `entity_pick_table`: the generated table of what the crosshair needs of
 /// every entity type, answered as the reference's rows are.
 fn entity_pick_table_result(request: &Value) -> Value {
@@ -18288,6 +18378,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "item_entity_ticks" {
         return item_entity_ticks_result(request);
+    }
+    if string(request, "operation")? == "living_entity_ticks" {
+        return living_entity_ticks_result(request);
     }
     if string(request, "operation")? == "entity_pick_table" {
         return Ok(entity_pick_table_result(request));
@@ -18584,6 +18677,36 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `living_pose`: the pose a mob is drawn from.
+fn living_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{FLIP_DEGREES, MobPlacement, placement_pose};
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let pose = placement_pose(&MobPlacement {
+            feet: [0.0; 3],
+            body_rot: bits(row, "body_rot")?,
+            scale: bits(row, "scale")?,
+            light: 0,
+            death_time: bits(row, "death_time")?,
+            flip_degrees: FLIP_DEGREES,
+            red_overlay: false,
+        });
+        let matrix: Vec<String> = (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect();
+        out.push(json!({"label": row["label"], "pose": matrix}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// A dropped item's poses for a model of a given extent.
 fn item_entity_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::item_entity::{ModelExtent, item_entity_poses};
@@ -18776,6 +18899,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "model_layers" => return Ok(model_layers_result()),
         "quadruped_model" => return quadruped_model_result(request),
         "item_entity_pose" => return item_entity_pose_result(request),
+        "living_pose" => return living_pose_result(request),
         "entity_types" => {
             let rows: Vec<Value> = (0..)
                 .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))

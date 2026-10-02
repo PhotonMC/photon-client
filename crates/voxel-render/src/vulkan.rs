@@ -146,6 +146,7 @@ layout(location = 1) out vec3 out_front;
 layout(location = 2) out vec3 out_back;
 layout(location = 3) out vec3 out_light;
 layout(location = 4) out vec2 out_fog;
+layout(location = 5) out float out_hurt;
 // The level's two diffuse lights.
 const vec3 LIGHT0 = normalize(vec3(0.2, 1.0, -0.7));
 const vec3 LIGHT1 = normalize(vec3(-0.2, 1.0, 0.7));
@@ -160,6 +161,8 @@ void main() {
     out_front = vec3(mix_light(light));
     out_back = vec3(mix_light(-light));
     out_light = sample_lightmap(in_light);
+    // The vertex's shade says whether the hurt overlay is on.
+    out_hurt = in_shade;
     vec3 offset = in_position - push.camera.xyz;
     out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
 }
@@ -167,7 +170,9 @@ void main() {
 );
 
 /// The entities' fragment shader: the texture, cut out below a tenth of
-/// alpha, lit by whichever face shows, the lightmap, then fog.
+/// alpha, lit by whichever face shows, the hurt overlay (the reference's
+/// overlay texture row for red: red at 0xB2 of 0xFF alpha, mixed in by that
+/// alpha), the lightmap, then fog.
 const ENTITY_FRAGMENT_SHADER: &str = r"#version 450
 layout(set = 0, binding = 0) uniform sampler2D skin;
 layout(location = 0) in vec2 in_uv;
@@ -175,6 +180,7 @@ layout(location = 1) in vec3 in_front;
 layout(location = 2) in vec3 in_back;
 layout(location = 3) in vec3 in_light;
 layout(location = 4) in vec2 in_fog;
+layout(location = 5) in float in_hurt;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
@@ -189,6 +195,9 @@ void main() {
     vec4 colour = texture(skin, in_uv);
     if (colour.a < 0.1) { discard; }
     colour.rgb *= gl_FrontFacing ? in_front : in_back;
+    if (in_hurt > 0.5) {
+        colour.rgb = mix(vec3(1.0, 0.0, 0.0), colour.rgb, 178.0 / 255.0);
+    }
     colour.rgb *= in_light;
     float fog = max(
         linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),

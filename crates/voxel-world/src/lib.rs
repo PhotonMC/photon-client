@@ -91,6 +91,8 @@ pub struct ClientWorld {
     entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
     world_border: ClientWorldBorder,
+    /// `ClientLevel.serverSimulationDistance`, in chunks.
+    server_simulation_distance: i32,
     game_time: u64,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<i32, DestroyProgress>,
@@ -138,6 +140,7 @@ impl ClientWorld {
             entity_sections: BTreeMap::new(),
             local_player: None,
             world_border: ClientWorldBorder::default(),
+            server_simulation_distance: 3,
             game_time: 0,
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
@@ -1526,6 +1529,10 @@ impl ClientWorld {
         else {
             return;
         };
+        let tick_death = self
+            .entities
+            .get(&entity_id)
+            .is_some_and(|entity| self.should_tick_death(entity));
         {
             let entity = self
                 .entities
@@ -1544,6 +1551,7 @@ impl ClientWorld {
                 entity.tick_motion_interpolation();
             }
             if let Some(kind) = living {
+                entity.tick_hurt_and_death(tick_death);
                 entity.tick_living_pose(kind);
             }
             if boat_is_non_authoritative {
@@ -1834,7 +1842,70 @@ impl ClientWorld {
             walk_speed: entity.walk_animation().speed_at(partial_tick),
             swim_amount: entity.swim_amount(partial_tick),
             pose: entity.pose(),
+            red_overlay: entity.hurt.hurt_time > 0 || entity.hurt.death_time > 0,
+            death_time: if entity.hurt.death_time > 0 {
+                entity.hurt.death_time as f32 + partial_tick
+            } else {
+                0.0
+            },
         })
+    }
+
+    /// Whether the chunk a position lies in is loaded.
+    fn contains_chunk_at(&self, position: (f64, f64, f64)) -> bool {
+        let (chunk_x, chunk_z) = entity_chunk_key(position);
+        self.contains_chunk(chunk_x, chunk_z)
+    }
+
+    /// `ClientLevel.setServerSimulationDistance`.
+    pub fn set_server_simulation_distance(&mut self, chunks: i32) {
+        self.server_simulation_distance = chunks;
+    }
+
+    /// `ClientLevel.shouldTickDeath`: a dying entity falls over only within the
+    /// server's simulation distance of the local player's chunk.
+    fn should_tick_death(&self, entity: &ClientEntity) -> bool {
+        let Some(player) = self.local_player.as_ref() else {
+            return true;
+        };
+        let (px, _, pz) = player.position();
+        let (x, _, z) = entity.position();
+        let chunk = |value: f64| (value.floor() as i32) >> 4;
+        voxel_core::math::chessboard_distance(chunk(x), chunk(z), chunk(px), chunk(pz))
+            <= self.server_simulation_distance
+    }
+
+    /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
+    pub fn apply_entity_damage_event(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.walk.set_speed(1.5);
+        entity.hurt.hurt_time = 10;
+        true
+    }
+
+    /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
+    pub fn apply_entity_hurt_animation(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.hurt.hurt_time = 10;
+        true
+    }
+
+    /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
+    /// player: it dies (health spent), the sound aside.
+    pub fn apply_entity_death_event(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.is_player() {
+            return true;
+        }
+        entity.health_bits = Some(0.0_f32.to_bits());
+        entity.alive = false;
+        true
     }
 
     pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
@@ -2654,8 +2725,7 @@ impl ClientWorld {
         if self.entities.contains_key(&entity.entity_id) {
             self.remove_entity(entity.entity_id);
         }
-        let (chunk_x, chunk_z) = entity_chunk_key((entity.x, entity.y, entity.z));
-        let ticking = self.contains_chunk(chunk_x, chunk_z);
+        let ticking = self.contains_chunk_at((entity.x, entity.y, entity.z));
         let head_rotation_bits = entity.rotation.2.to_bits();
         self.entities.insert(
             entity.entity_id,
@@ -2717,6 +2787,7 @@ impl ClientWorld {
                 mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
                 health_bits: None,
+                hurt: HurtState::default(),
                 arrow_count: 0,
                 stinger_count: 0,
                 effect_ambience: false,
@@ -3094,6 +3165,8 @@ impl ClientWorld {
         }
         if let Some(health) = health {
             entity.health_bits = Some(health.to_bits());
+            // `isAlive` of a living entity: not removed, health left.
+            entity.alive = health > 0.0;
         }
         if let Some(arrow_count) = arrow_count {
             entity.arrow_count = arrow_count;

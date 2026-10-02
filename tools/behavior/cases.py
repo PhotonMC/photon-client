@@ -14148,6 +14148,40 @@ def movement_item_cases():
         "operation": "item_entity_ticks",
         "rows": rows,
     }
+    # A living entity hurt and killed by the packets that do it, ticked on.
+    def living(label, entity, ticks, events, player_x=None):
+        row = {"label": label, "blocks": [], "chunk_radius": 0, "entity": f"minecraft:{entity}",
+                "entity_id": 40, "x": float_bits(0.5, "f64"), "y": float_bits(64.0, "f64"),
+                "z": float_bits(0.5, "f64"), "tick_count": ticks, "events": events}
+        if player_x is not None:
+            row["player_x"] = float_bits(player_x, "f64")
+        return row
+
+    living_rows = [
+        living("quiet", "pig", 6, []),
+        living("damage", "pig", 16, [{"tick": 2, "type": "damage"}]),
+        living("hurt-animation", "cow", 16, [{"tick": 2, "type": "hurt"}]),
+        living("hurt-twice", "pig", 24, [{"tick": 1, "type": "damage"}, {"tick": 6, "type": "hurt"}]),
+        living("death", "pig", 30, [{"tick": 2, "type": "death"}]),
+        living("damage-then-death", "zombie", 36,
+               [{"tick": 2, "type": "damage"}, {"tick": 3, "type": "death"}]),
+        living("death-then-damage", "cow", 30,
+               [{"tick": 2, "type": "death"}, {"tick": 5, "type": "damage"}]),
+        living("damage-while-walking", "pig", 20,
+               [{"tick": 1, "type": "move", "xa": 800, "ya": 0, "za": 0},
+                {"tick": 3, "type": "damage"},
+                {"tick": 4, "type": "move", "xa": 800, "ya": 0, "za": 0}]),
+        living("spider-dies", "spider", 30, [{"tick": 1, "type": "death"}]),
+        living("death-with-the-player-far-off", "pig", 30, [{"tick": 2, "type": "death"}], player_x=200.5),
+        living("death-at-the-edge-of-simulation", "pig", 30, [{"tick": 2, "type": "death"}], player_x=136.5),
+        living("death-just-past-simulation", "pig", 30, [{"tick": 2, "type": "death"}], player_x=144.5),
+    ]
+    yield {
+        "case_id": "movement/living-entity-ticks",
+        "family": "movement",
+        "operation": "living_entity_ticks",
+        "rows": living_rows,
+    }
     # What the crosshair needs of every entity type, as a new entity of it
     # answers: whether it can be aimed at, how much its box grows for the aim,
     # and its size (a baby's too, for the types that have babies).
@@ -14163,6 +14197,7 @@ def entity_cases():
     yield from entity_player_model_cases()
     yield from entity_walk_animation_cases()
     yield from entity_model_layer_cases()
+    yield from entity_living_pose_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14239,6 +14274,26 @@ def entity_quadruped_cases():
         "case_id": "entity/quadruped-model",
         "family": "entity",
         "operation": "quadruped_model",
+        "rows": rows,
+    }
+
+
+def entity_living_pose_cases():
+    """A living entity's pose as `LivingEntityRenderer.submit` builds it: the
+    facing, the scale and the fall of a dying one (`deathTime` with its part
+    of a tick, never below one) which tips over by its sideways flip."""
+    rows = []
+    for death_time in (0.0, 1.0, 1.25, 2.0, 5.5, 10.25, 15.0, 20.0, 20.9, 25.5):
+        for body_rot in (0.0, 135.5):
+            rows.append({"label": f"death-{death_time}-facing-{body_rot}",
+                         "scale": float_bits(1.0), "body_rot": float_bits(body_rot),
+                         "death_time": float_bits(death_time)})
+    rows.append({"label": "scaled", "scale": float_bits(0.5), "body_rot": float_bits(-70.0),
+                 "death_time": float_bits(8.5)})
+    yield {
+        "case_id": "entity/living-pose",
+        "family": "entity",
+        "operation": "living_pose",
         "rows": rows,
     }
 

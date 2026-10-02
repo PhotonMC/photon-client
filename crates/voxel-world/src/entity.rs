@@ -150,6 +150,13 @@ impl Tracking {
     }
 }
 
+/// `LivingEntity.hurtTime` and `deathTime`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct HurtState {
+    pub(crate) hurt_time: i32,
+    pub(crate) death_time: i32,
+}
+
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
@@ -512,6 +519,7 @@ pub struct ClientEntity {
     pub(crate) mob_flags: u8,
     pub(crate) air_supply: i32,
     pub(crate) health_bits: Option<u32>,
+    pub(crate) hurt: HurtState,
     pub(crate) arrow_count: i32,
     pub(crate) stinger_count: i32,
     pub(crate) effect_ambience: bool,
@@ -589,6 +597,11 @@ pub struct EntitySnapshot {
     pub walk_speed: f32,
     pub swim_amount: f32,
     pub pose: ClientEntityPose,
+    /// `LivingEntityRenderState.hasRedOverlay`: hurt or dying.
+    pub red_overlay: bool,
+    /// `LivingEntityRenderState.deathTime`: the turns of falling over, with
+    /// the part of a tick, or zero while it lives.
+    pub death_time: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1522,6 +1535,31 @@ impl ClientEntity {
 
     pub fn air_supply(&self) -> i32 {
         self.air_supply
+    }
+
+    /// `LivingEntity.isDeadOrDying`: its health, as the server told, is spent.
+    pub fn is_dead_or_dying(&self) -> bool {
+        self.health().is_some_and(|health| health <= 0.0)
+    }
+
+    pub fn hurt_time(&self) -> i32 {
+        self.hurt.hurt_time
+    }
+
+    pub fn death_time(&self) -> i32 {
+        self.hurt.death_time
+    }
+
+    /// `LivingEntity.baseTick`'s share: `hurtTime` counts down, and a dying
+    /// entity's `deathTime` up (`tickDeath`; the server removes it later) while
+    /// the level says deaths tick here (`shouldTickDeath`).
+    pub(crate) fn tick_hurt_and_death(&mut self, tick_death: bool) {
+        if self.hurt.hurt_time > 0 {
+            self.hurt.hurt_time -= 1;
+        }
+        if self.is_dead_or_dying() && tick_death {
+            self.hurt.death_time += 1;
+        }
     }
 
     pub fn health(&self) -> Option<f32> {

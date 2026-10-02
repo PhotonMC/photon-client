@@ -49,7 +49,10 @@ pub(crate) const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
+pub(crate) const PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID: i32 = 25;
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID: i32 = 34;
+pub(crate) const PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID: i32 = 42;
+pub(crate) const PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID: i32 = 111;
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
@@ -3423,6 +3426,14 @@ pub(crate) fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), Conne
         .first()
         .ok_or(ConnectionError::Codec("entity event"))? as i8;
     Ok((id, event))
+}
+
+/// The entity a `ClientboundDamageEventPacket` or a
+/// `ClientboundHurtAnimationPacket` names: both begin with its id as a
+/// var int. The rest (the source, the yaw) is not read.
+pub(crate) fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionError> {
+    let mut input = input;
+    voxel_core::wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("entity id"))
 }
 
 /// `ClientboundTrackedWaypointPacket.STREAM_CODEC`: the operation, then the

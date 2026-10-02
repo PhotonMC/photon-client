@@ -125,6 +125,9 @@ pub fn remote_mobs(
                 body_rot: snapshot.body_yaw,
                 scale: 1.0,
                 light: packed_light(world, Vec3::new(x, y + 0.5, z)),
+                death_time: snapshot.death_time,
+                flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+                red_overlay: snapshot.red_overlay,
             },
             rect,
         ));

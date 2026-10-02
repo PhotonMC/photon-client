@@ -237,6 +237,8 @@ pub fn player_model(player: &LocalPlayer, model: &mut PlayerModel, view: FrameVi
             crouching: pose.crouching,
             light: view.light,
             skin: view.skin,
+            death_time: 0.0,
+            red_overlay: false,
         },
     )
 }
@@ -322,6 +324,8 @@ pub fn remote_players(
                 crouching,
                 light: packed_light(world, eye),
                 skin: rect,
+                death_time: snapshot.death_time,
+                red_overlay: snapshot.red_overlay,
             },
         ));
     }

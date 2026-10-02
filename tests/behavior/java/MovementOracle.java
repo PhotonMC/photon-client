@@ -182,6 +182,7 @@ public final class MovementOracle {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
+                case "living_entity_ticks" -> rows.add(livingEntityTicks(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
@@ -386,6 +387,75 @@ public final class MovementOracle {
      * and every packet the player asked to send are reported, the packets as
      * the bytes their own codec writes.
      */
+    /**
+     * A living entity of the reference through the packets that hurt or kill
+     * it and the client ticks after them: `hurtTime`, `deathTime`, whether
+     * its health is spent, and the limbs' walk animation.
+     */
+    private static JsonObject livingEntityTicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var listener = scene.listener();
+        setField(scene.minecraft(), "packetProcessor",
+            new net.minecraft.network.PacketProcessor(Thread.currentThread()));
+        setField(listener, "level", level);
+        setField(listener, "minecraft", scene.minecraft());
+        // The level pushes entities against the client's player, and lets a
+        // dying one fall over only near it: one a few blocks away.
+        var player = new net.minecraft.client.player.LocalPlayer(
+            scene.minecraft(), level, listener, null, null,
+            net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        player.snapTo(row.has("player_x") ? Oracle.f64(row, "player_x") : 6.5, 64.0, 0.5, 0.0F, 0.0F);
+        setField(scene.minecraft(), "player", player);
+        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+            net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
+        var entity = (net.minecraft.world.entity.LivingEntity) type.create(level,
+            new net.minecraft.world.entity.EntitySpawnRequest(
+                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+        int entityId = row.get("entity_id").getAsInt();
+        entity.setId(entityId);
+        entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), 0.0F, 0.0F);
+        entity.syncPacketPositionCodec(entity.getX(), entity.getY(), entity.getZ());
+        level.addEntity(entity);
+        var ticks = new JsonArray();
+        for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            for (var element : row.getAsJsonArray("events")) {
+                var event = element.getAsJsonObject();
+                if (event.get("tick").getAsInt() != tick) {
+                    continue;
+                }
+                switch (event.get("type").getAsString()) {
+                    case "damage" -> listener.handleDamageEvent(
+                        new net.minecraft.network.protocol.game.ClientboundDamageEventPacket(
+                            entity, level.damageSources().generic()));
+                    case "hurt" -> listener.handleHurtAnimation(
+                        new net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket(entity));
+                    case "death" -> listener.handleEntityEvent(
+                        new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(entity, (byte) 3));
+                    case "move" -> listener.handleMoveEntity(
+                        new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Pos(entityId,
+                            (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
+                            (short) event.get("za").getAsInt(), true));
+                    default -> throw new IllegalArgumentException("Unknown event " + event);
+                }
+            }
+            level.tickNonPassenger(entity);
+            var described = new JsonObject();
+            described.addProperty("hurt_time", entity.hurtTime);
+            described.addProperty("death_time", entity.deathTime);
+            described.addProperty("dead", entity.isDeadOrDying());
+            described.addProperty("walk_speed", Oracle.bits(entity.walkAnimation.speed()));
+            described.addProperty("walk_position", Oracle.bits(entity.walkAnimation.position()));
+            ticks.add(described);
+        }
+        entry.addProperty("outcome", "ticked");
+        entry.add("ticks", ticks);
+        return entry;
+    }
+
     /**
      * Every entity type as a new entity of it answers the crosshair:
      * `isPickable`, `getPickRadius`, `canBePickedFromInside`, and its size in

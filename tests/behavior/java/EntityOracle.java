@@ -227,6 +227,79 @@ public final class EntityOracle {
         return result;
     }
 
+    /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
+    private static final class PoseCaptured extends RuntimeException {
+        PoseCaptured() {
+            super(null, null, false, false);
+        }
+    }
+
+    /**
+     * A living entity's renderer as far as its own pose goes: the real
+     * `submit` runs up to the point where it hands the pose to `scale`, which
+     * this renderer's does not return from.
+     */
+    private static final class PoseProbe extends net.minecraft.client.renderer.entity.LivingEntityRenderer<
+        net.minecraft.world.entity.LivingEntity,
+        net.minecraft.client.renderer.entity.state.LivingEntityRenderState,
+        net.minecraft.client.model.EntityModel<net.minecraft.client.renderer.entity.state.LivingEntityRenderState>> {
+        static final float[] CAPTURED = new float[16];
+
+        private PoseProbe() {
+            super(null, null, 0.0F);
+        }
+
+        @Override
+        public net.minecraft.resources.Identifier getTextureLocation(
+            final net.minecraft.client.renderer.entity.state.LivingEntityRenderState state) {
+            return null;
+        }
+
+        @Override
+        public net.minecraft.client.renderer.entity.state.LivingEntityRenderState createRenderState() {
+            return new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+        }
+
+        @Override
+        protected void scale(
+            final net.minecraft.client.renderer.entity.state.LivingEntityRenderState state,
+            final com.mojang.blaze3d.vertex.PoseStack poseStack) {
+            // What `submit` does next, before it asks for the render type.
+            poseStack.translate(0.0F, -1.501F, 0.0F);
+            poseStack.last().pose().get(CAPTURED);
+            throw new PoseCaptured();
+        }
+    }
+
+    /** The pose a living entity is drawn from, by `LivingEntityRenderer.submit`. */
+    private static JsonObject livingPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var renderer = (PoseProbe) UNSAFE.allocateInstance(PoseProbe.class);
+            var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+            state.scale = Oracle.f32(row, "scale");
+            state.bodyRot = Oracle.f32(row, "body_rot");
+            state.deathTime = Oracle.f32(row, "death_time");
+            try {
+                renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), null, null);
+            } catch (PoseCaptured expected) {
+                // The pose is in hand.
+            }
+            var described = new JsonArray();
+            for (float value : PoseProbe.CAPTURED) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("pose", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A quadruped's model from the layer table, posed by the reference's own `setupAnim`, drawn. */
     private static JsonObject quadrupedModel(final JsonObject request) throws Exception {
         Oracle.vanillaRegistries();
@@ -327,6 +400,9 @@ public final class EntityOracle {
         }
         if (operation.equals("item_entity_pose")) {
             return itemEntityPose(request);
+        }
+        if (operation.equals("living_pose")) {
+            return livingPose(request);
         }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);

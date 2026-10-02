@@ -1345,6 +1345,9 @@ impl PlaySession {
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => {
                 let login = parse_login_packet(payload)?;
                 self.next_chat_index = 0;
+                self.trace
+                    .world
+                    .set_server_simulation_distance(login.simulation_distance);
                 let bounds = dimension_bounds_for_spawn_info(&self.trace, &login.spawn_info);
                 let environment =
                     dimension_environment_for_spawn_info(&self.trace, &login.spawn_info);
@@ -1430,6 +1433,25 @@ impl PlaySession {
                 // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
                 if self.player_id == Some(id) && (24..=28).contains(&event) {
                     self.permission_level = i32::from(event) - 24;
+                }
+                // `LivingEntity.handleEntityEvent`: 3 is a death.
+                if event == 3 {
+                    self.trace.world.apply_entity_death_event(id);
+                }
+            }
+            PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID => {
+                if let Ok(chunks) = parse_entity_id_prefix(payload) {
+                    self.trace.world.set_server_simulation_distance(chunks);
+                }
+            }
+            PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => {
+                if let Ok(id) = parse_entity_id_prefix(payload) {
+                    self.trace.world.apply_entity_damage_event(id);
+                }
+            }
+            PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => {
+                if let Ok(id) = parse_entity_id_prefix(payload) {
+                    self.trace.world.apply_entity_hurt_animation(id);
                 }
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
