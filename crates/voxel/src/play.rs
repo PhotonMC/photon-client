@@ -15,6 +15,7 @@ use voxel_render::world_mesh::BlockRenderer;
 use crate::animated_atlas::AnimatedAtlas;
 use crate::assets::FolderAssets;
 use crate::controls::Controls;
+use crate::dropped_items::dropped_items;
 use crate::gui::Gui;
 use crate::item_layers::ItemLayerCache;
 use crate::mobs;
@@ -103,6 +104,7 @@ struct Play {
     /// The other players' models, and which default skin the local player wears.
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
+    ground_layers: ItemLayerCache,
     entity_textures: voxel_render::entity_textures::EntityTextures,
     skin_rect: voxel_render::entity_textures::TextureRect,
     gui: Gui,
@@ -248,6 +250,7 @@ impl Play {
             player_model: voxel_render::player_model::PlayerModel::new(skin.slim),
             remote_models: overlays::RemoteModels::new(),
             mob_models: mobs::MobModels::new(),
+            ground_layers: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
             entity_textures,
             skin_rect,
             gui,
@@ -571,6 +574,12 @@ impl Play {
             models.extend(overlays::player_model(player, &mut self.player_model, view));
         }
         self.backend.set_entities(&models)?;
+        self.backend.set_ground_items(&dropped_items(
+            &self.session,
+            &mut self.ground_layers,
+            (&self.block_renderer, &self.biome_tints),
+            view,
+        ))?;
         Ok(())
     }
 

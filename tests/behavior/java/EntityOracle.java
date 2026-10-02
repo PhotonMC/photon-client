@@ -166,6 +166,67 @@ public final class EntityOracle {
         return out;
     }
 
+    private static final sun.misc.Unsafe UNSAFE = unsafe();
+
+    private static sun.misc.Unsafe unsafe() {
+        try {
+            var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (sun.misc.Unsafe) field.get(null);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
+    /**
+     * A dropped item's poses as the reference's own renderer submits them: the bob and the spin,
+     * then each copy of the stack with the offsets its seed gives, for a model of a given extent.
+     */
+    private static JsonObject itemEntityPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var renderer = (net.minecraft.client.renderer.entity.ItemEntityRenderer) UNSAFE.allocateInstance(
+                net.minecraft.client.renderer.entity.ItemEntityRenderer.class);
+            var randomField = net.minecraft.client.renderer.entity.ItemEntityRenderer.class.getDeclaredField("random");
+            randomField.setAccessible(true);
+            randomField.set(renderer, net.minecraft.util.RandomSource.create());
+            var state = new net.minecraft.client.renderer.entity.state.ItemEntityRenderState();
+            state.ageInTicks = Oracle.f32(row, "age");
+            state.bobOffset = Oracle.f32(row, "bob");
+            state.count = row.get("count").getAsInt();
+            state.seed = row.get("seed").getAsInt();
+            var min = new org.joml.Vector3f(Oracle.f32(row, "min_x"), Oracle.f32(row, "min_y"), Oracle.f32(row, "min_z"));
+            var max = new org.joml.Vector3f(Oracle.f32(row, "max_x"), Oracle.f32(row, "max_y"), Oracle.f32(row, "max_z"));
+            state.item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {min, max});
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A quadruped's model from the layer table, posed by the reference's own `setupAnim`, drawn. */
     private static JsonObject quadrupedModel(final JsonObject request) throws Exception {
         Oracle.vanillaRegistries();
@@ -263,6 +324,9 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("item_entity_pose")) {
+            return itemEntityPose(request);
         }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);

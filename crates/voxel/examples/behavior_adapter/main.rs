@@ -18294,6 +18294,51 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// A dropped item's poses for a model of a given extent.
+fn item_entity_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::item_entity::{ModelExtent, item_entity_poses};
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        // The bounding box is built of doubles from the extents' points as
+        // the layer's transform moves them (half a block back, for a model
+        // with no transform): the lowest point and the size along z.
+        let moved = |key: &str| bits(row, key).map(|value| f64::from(value + -0.5_f32));
+        let extent = ModelExtent {
+            min_y: moved("min_y")?,
+            depth: moved("max_z")? - moved("min_z")?,
+        };
+        let poses = item_entity_poses(
+            Default::default(),
+            bits(row, "age")?,
+            bits(row, "bob")?,
+            row["count"].as_i64().ok_or("count")? as i32,
+            row["seed"].as_i64().ok_or("seed")? as i32,
+            extent,
+        );
+        let described: Vec<Vec<String>> = poses
+            .into_iter()
+            .map(|mut pose| {
+                // `ItemTransform.NO_TRANSFORM.apply` of the layer.
+                pose.translate(-0.5, -0.5, -0.5);
+                // Column by column, as `Matrix4f.get` writes them.
+                (0..4)
+                    .flat_map(|column| (0..4).map(move |row| (column, row)))
+                    .map(|(column, row)| hex(pose.pose.m[column][row]))
+                    .collect()
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "poses": described}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// A quadruped's model from the layer table, posed and drawn.
 fn quadruped_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, QuadrupedState};
@@ -18440,6 +18485,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "walk_animation" => return walk_animation_result(request),
         "model_layers" => return Ok(model_layers_result()),
         "quadruped_model" => return quadruped_model_result(request),
+        "item_entity_pose" => return item_entity_pose_result(request),
         "entity_types" => {
             let rows: Vec<Value> = (0..)
                 .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))

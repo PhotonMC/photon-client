@@ -48,6 +48,7 @@ pub use constants::*;
 pub use container::*;
 pub use dimension::*;
 pub use entity::*;
+pub use metadata::find_metadata_field as entity_metadata_field;
 pub(crate) use metadata::*;
 pub use player::*;
 pub use prediction::{DestroyProgress, SyncedBlock};
@@ -1801,6 +1802,19 @@ impl ClientWorld {
         self.entity_sections.len()
     }
 
+    /// `ItemEntity.setItem` from the entity data: what a dropped item holds.
+    pub fn apply_entity_item_stack(
+        &mut self,
+        entity_id: i32,
+        stack: Option<ClientItemStackState>,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.item_stack = stack;
+        true
+    }
+
     /// Where an entity is drawn between two ticks: its position
     /// (`getPosition(partialTick)`), its turn and its head's.
     pub fn entity_snapshot(&self, entity_id: i32, partial_tick: f32) -> Option<EntitySnapshot> {
@@ -2683,6 +2697,14 @@ impl ClientWorld {
                 old_swim_amount_bits: 0.0_f32.to_bits(),
                 head_stable_time: 0,
                 last_stable_y_head_rot_bits: entity.rotation.2.to_bits(),
+                item_stack: None,
+                // `ItemEntity.bobOffs` is drawn from an unseeded random
+                // source; this one is drawn from the entity's uuid.
+                bob_offset_bits: {
+                    let folded = entity.uuid.most ^ entity.uuid.least;
+                    let mut random = voxel_core::random::RandomSource::create(folded as i64);
+                    (random.next_float() * std::f32::consts::PI * 2.0).to_bits()
+                },
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,

@@ -473,6 +473,10 @@ pub struct ClientEntity {
     /// and where it was when it last moved far.
     pub(crate) head_stable_time: i32,
     pub(crate) last_stable_y_head_rot_bits: u32,
+    /// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its
+    /// spin it started (`bobOffs`).
+    pub(crate) item_stack: Option<ClientItemStackState>,
+    pub(crate) bob_offset_bits: u32,
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,
@@ -1574,6 +1578,16 @@ impl ClientEntity {
 
     pub fn is_swimming(&self) -> bool {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
+    }
+
+    /// The stack a dropped item holds.
+    pub fn item_stack(&self) -> Option<&ClientItemStackState> {
+        self.item_stack.as_ref()
+    }
+
+    /// `ItemEntity.bobOffs`.
+    pub fn bob_offset(&self) -> f32 {
+        f32::from_bits(self.bob_offset_bits)
     }
 
     /// Whether the entity is a player.

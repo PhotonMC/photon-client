@@ -2699,6 +2699,15 @@ fn parse_optional_item_stack(
     })
 }
 
+/// An item stack as an entity's data holds it (`ItemStack.OPTIONAL_STREAM_CODEC`
+/// at the start of `value`): none when the field is empty or cannot be read.
+pub(crate) fn parse_entity_item_stack(value: &[u8]) -> Option<ClientItemStackState> {
+    let mut input = value;
+    parse_optional_item_stack(&mut input, "entity item stack")
+        .ok()?
+        .client_state()
+}
+
 pub(crate) fn parse_container_set_content_packet(
     input: &[u8],
 ) -> Result<ContainerSetContentObservation, ConnectionError> {

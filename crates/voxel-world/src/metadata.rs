@@ -60,7 +60,7 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
 /// the list with `255`. This walks that layout once and hands the caller the
 /// serializer id the reference recorded plus the bytes starting at the value,
 /// so each typed reader below keeps its own trailing-byte rule.
-pub(crate) fn find_metadata_field(metadata: &[u8], target_data_id: u8) -> Option<(i32, &[u8])> {
+pub fn find_metadata_field(metadata: &[u8], target_data_id: u8) -> Option<(i32, &[u8])> {
     if metadata.last() != Some(&255) {
         return None;
     }

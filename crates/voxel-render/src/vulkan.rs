@@ -889,6 +889,9 @@ pub struct VulkanBackend {
     /// The entities' triangles for the next frame.
     entity_buffer: Option<SkyBuffer>,
     entity_count: u32,
+    /// The dropped items' triangles, which sample the block atlas.
+    ground_buffer: Option<SkyBuffer>,
+    ground_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
     hand_buffer: Option<SkyBuffer>,
@@ -1183,6 +1186,8 @@ impl VulkanBackend {
                 weather_counts: (0, 0),
                 entity_buffer: None,
                 entity_count: 0,
+                ground_buffer: None,
+                ground_count: 0,
                 hand_buffer: None,
                 hand_count: 0,
                 held_count: 0,
@@ -1548,6 +1553,39 @@ impl VulkanBackend {
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
                     .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
+            }
+            // Dropped items with the entities: the items' quads in the block
+            // atlas, shaded as the held ones are, fully faded in.
+            if let Some(buffer) = self.ground_buffer.as_ref()
+                && self.ground_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.held_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.held_pipeline_layout,
+                    0,
+                    &[scene.descriptor_set],
+                    &[],
+                );
+                let mut ground_push = [0.0_f32; 41];
+                ground_push[..40].copy_from_slice(&terrain_push);
+                ground_push[40] = 1.0;
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.held_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(ground_push.as_ptr().cast::<u8>(), 164),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
             }
             // The aimed block's outline over the solid world.
             if let Some(buffer) = self.outline_buffer.as_ref()
@@ -3571,6 +3609,16 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the next frame's dropped items: triangles placed like the
+    /// terrain's, each with its shade and colour, sampling the block atlas.
+    pub fn set_ground_items(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.ground_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.ground_buffer = buffer;
+        self.ground_count = vertices.len() as u32;
+        Ok(())
+    }
+
     /// Hand over the next frame's GUI: triangles in GUI units, their runs by
     /// blend, and the window's size in GUI units.
     pub fn set_gui(
@@ -4126,6 +4174,7 @@ impl Drop for VulkanBackend {
             }
             for buffer in [
                 self.entity_buffer.take(),
+                self.ground_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
                 self.breaking_buffer.take(),

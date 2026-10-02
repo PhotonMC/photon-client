@@ -1,6 +1,6 @@
-# T25 — Yerdeki eşya ve XP küresi
+# T25 — Yerdeki eşya (XP küresi T25b'ye ayrıldı)
 
-**Amaç:** `ItemEntity` (eşya modelini yerde dönen/sallanan olarak çizme, yığın boyutuna göre kopya sayısı) ve `ExperienceOrb`.
+**Amaç:** `ItemEntity`: eşya modelini yerde dönen/sallanan olarak çizme, yığın boyutuna göre kopya sayısı. `ExperienceOrb` [T25b](T25b-xp-kuresi.md)'de.
 **Bağımlılık:** T24. **Boy:** M.
 
 ## Oku
@@ -9,7 +9,7 @@
 
 ## Yapılacaklar
 1. `ItemEntity` meta verisinden yığın; `ItemDisplayContext::GROUND` dönüşümü, bob/spin formülü (`partial_tick` + `age` + `bobOffs`), yığın sayısına göre kopya sayısı (`getRenderedAmount`) ve rasgele ofset (entity kimliğinden seed'li; **Java'nın `RandomSource.create(seed)` akışı** `voxel_core::random`).
-2. `ExperienceOrb`: küre sprite'ı (`textures/entity/experience_orb.png` 4×4 ızgara), renk salınımı, boyut (`value` → ikon indeksi).
+2. ~~`ExperienceOrb`~~ → T25b.
 3. Işık: entity konumu; gölge yok.
 
 ## Oracle
@@ -25,4 +25,6 @@ Toplama animasyonu (`TakeItemEntity`), birleşme.
 `docs/remaining-work.md` M4 madde 3.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-render/src/item_entity.rs` (`rendered_amount`, `item_entity_poses` bob/spin/kopya ofseti `RandomSource` akışıyla, `model_extent`, `item_entity_vertices`), `crates/voxel/src/dropped_items.rs` (`minecraft:item` entity'leri `ItemDisplayContext::GROUND` katmanlarıyla), `VulkanBackend::set_ground_items` (blok atlası, `held_pipeline`). Oracle: `item_entity_pose` (gerçek `ItemEntityRenderer` matrisleri, bit bit; 1–5 kopya, kalın/ince model, eşik, yaş/bob/seed) geçti. Canlı: elmas, kütük yığını, çubuk doğru görünür.
+- Sapma: hasar `seed_for_stack`'e 0 gidiyor (bileşenlerden okunmuyor), gölge ve toplama animasyonu yok, eşya ışığı entity'nin 0,2125 yukarısından tek örnek.
+- Açık: T25b (XP küresi). Oracle sahte `ItemEntityRenderState` ile sınırlı; model kutusu `item_model` çıktısından hesaplanır, onun Java ile karşılaştırması yalnız canlı görüntü.

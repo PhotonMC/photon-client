@@ -13958,6 +13958,52 @@ def entity_cases():
     yield from entity_model_layer_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
+    yield from entity_item_pose_cases()
+
+
+def entity_item_pose_cases():
+    """A dropped item's poses (`ItemEntityRenderer.submit`): the bob and spin
+    through the age, each copy of the stack (one to five) with the offsets its
+    seed gives, for a thick model (a block) and a flat one (a sprite), and
+    models that sit off the origin or have no thickness at all."""
+    def row(label, age, bob, count, seed, box):
+        low, high = box
+        data = {"label": label, "age": float_bits(age), "bob": float_bits(bob), "count": count, "seed": seed}
+        for axis, value in zip("xyz", low):
+            data["min_" + axis] = float_bits(value)
+        for axis, value in zip("xyz", high):
+            data["max_" + axis] = float_bits(value)
+        return data
+
+    block = ((-0.25, 0.0, -0.25), (0.25, 0.5, 0.25))
+    sprite = ((-0.25, -0.25, -0.015625), (0.25, 0.25, 0.015625))
+    thick_sprite = ((-0.25, -0.25, -0.05), (0.25, 0.25, 0.05))
+    off_centre = ((0.0, 0.125, 0.0), (0.5, 0.375, 0.2))
+    flat_plane = ((-0.25, -0.25, 0.0), (0.25, 0.25, 0.0))
+    rows = []
+    for count in (1, 2, 3, 4, 5):
+        rows.append(row(f"block-{count}", 12.5, 1.25, count, 1 + count, block))
+        rows.append(row(f"sprite-{count}", 12.5, 1.25, count, 262 + count, sprite))
+    for age in (0.0, 0.5, 7.0, 31.25, 100.75, 1200.5, 20000.0):
+        rows.append(row(f"age-{age}", age, 0.7, 1, 5, block))
+    for bob in (0.0, 1.0, 3.1415927, 6.2831855):
+        rows.append(row(f"bob-{bob}", 40.0, bob, 2, 5, sprite))
+    for seed in (0, 1, 187, 2025, -5, 2147483647):
+        rows.append(row(f"seed-{seed}", 3.0, 2.0, 5, seed, block))
+        rows.append(row(f"flat-seed-{seed}", 3.0, 2.0, 5, seed, sprite))
+    rows += [
+        row("thick-sprite", 9.0, 0.3, 3, 17, thick_sprite),
+        row("off-centre", 9.0, 0.3, 4, 17, off_centre),
+        row("flat-plane", 9.0, 0.3, 3, 17, flat_plane),
+        row("depth-at-threshold", 9.0, 0.3, 3, 17, ((-0.25, -0.25, 0.0), (0.25, 0.25, 0.0625))),
+        row("depth-over-threshold", 9.0, 0.3, 3, 17, ((-0.25, -0.25, 0.0), (0.25, 0.25, 0.0626))),
+    ]
+    yield {
+        "case_id": "entity/item-entity-pose",
+        "family": "entity",
+        "operation": "item_entity_pose",
+        "rows": rows,
+    }
 
 
 def entity_quadruped_cases():

@@ -60,9 +60,28 @@ pub(crate) fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObser
     world.apply_entity_passengers(packet.vehicle_id, &packet.passenger_ids)
 }
 
-/// `handleSetEntityData`.
+/// `ItemStack`'s id among the entity data serializers, and the place of a
+/// dropped item's stack among its data (`ItemEntity.DATA_ITEM`).
+const ITEM_STACK_SERIALIZER_ID: i32 = 7;
+const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+
+/// `handleSetEntityData`, and for a dropped item the stack it holds.
 pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
-    world.apply_entity_metadata(packet.entity_id, &packet.metadata)
+    let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
+    let is_item = world.entity_at(packet.entity_id).is_some_and(|entity| {
+        voxel_data::entity_type::id("minecraft:item") == Some(entity.type_id)
+    });
+    if applied
+        && is_item
+        && let Some((ITEM_STACK_SERIALIZER_ID, value)) =
+            voxel_world::entity_metadata_field(&packet.metadata, ITEM_ENTITY_STACK_DATA_ID)
+    {
+        world.apply_entity_item_stack(
+            packet.entity_id,
+            super::protocol::parse_entity_item_stack(value),
+        );
+    }
+    applied
 }
 
 /// `handleEntityPositionSync`: the entity is put where the server says, and

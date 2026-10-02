@@ -13,6 +13,7 @@ pub mod clouds;
 pub mod entity_textures;
 pub mod geometry;
 pub mod gui;
+pub mod item_entity;
 pub mod item_model;
 pub mod joml;
 pub mod mipmap;
