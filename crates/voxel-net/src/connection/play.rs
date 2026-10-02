@@ -117,6 +117,9 @@ pub struct PlaySession {
     hud_events: Vec<HudEvent>,
     scoreboard: voxel_game::scoreboard::Scoreboard,
     waypoints: voxel_game::waypoint::WaypointManager,
+    /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`), which
+    /// the server tells by entity events 24 to 28.
+    permission_level: i32,
     commands: Option<std::sync::Arc<voxel_game::commands::CommandTree>>,
     username: String,
     suggestions: Option<CommandSuggestions>,
@@ -196,6 +199,7 @@ impl PlaySession {
             hud_events: Vec::new(),
             scoreboard: voxel_game::scoreboard::Scoreboard::default(),
             waypoints: voxel_game::waypoint::WaypointManager::default(),
+            permission_level: 0,
             commands: None,
             username: username.to_owned(),
             suggestions: None,
@@ -686,6 +690,12 @@ impl PlaySession {
             PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
             encode_perform_respawn,
         )
+    }
+
+    /// Whether the player may use entity selectors
+    /// (`Permissions.COMMANDS_ENTITY_SELECTORS`: game master and above).
+    pub fn can_use_selectors(&self) -> bool {
+        self.permission_level >= 2
     }
 
     /// The waypoints the server has the client track.
@@ -1304,8 +1314,16 @@ impl PlaySession {
                 self.hardcore = login.hardcore;
                 self.show_death_screen = login.show_death_screen;
                 self.player_id = Some(login.player_id);
+                self.permission_level = 0;
                 self.game_mode =
                     ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
+            }
+            PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => {
+                let (id, event) = parse_entity_event_packet(payload)?;
+                // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
+                if self.player_id == Some(id) && (24..=28).contains(&event) {
+                    self.permission_level = i32::from(event) - 24;
+                }
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
                 let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
@@ -1334,6 +1352,7 @@ impl PlaySession {
                 self.hashed_seed = spawn_info.seed;
                 // A respawn makes a new player that waits for its position.
                 self.player = None;
+                self.permission_level = 0;
                 self.loaded = false;
                 self.level_reset = true;
                 self.health_received = false;

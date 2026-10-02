@@ -77,6 +77,8 @@ pub struct Options {
     pub gui_scale: i32,
     /// `invertXMouse`.
     pub invert_mouse_x: bool,
+    /// `saveChatDrafts`: a chat box closed with Escape keeps its text.
+    pub save_chat_drafts: bool,
     /// `invertYMouse`.
     pub invert_mouse_y: bool,
     /// `mouseSensitivity`, 0 to 1.
@@ -103,6 +105,7 @@ impl Default for Options {
             fov: FOV_DEFAULT,
             gui_scale: 0,
             invert_mouse_x: false,
+            save_chat_drafts: false,
             invert_mouse_y: false,
             sensitivity: 0.5,
             mouse_wheel_sensitivity: log_mouse(0),
@@ -139,9 +142,10 @@ enum Key {
     ChatScale,
     ChatWidth,
     MouseWheelSensitivity,
+    SaveChatDrafts,
 }
 
-const KEYS: [(&str, Key); 15] = [
+const KEYS: [(&str, Key); 16] = [
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
     ("invertXMouse", Key::InvertXMouse),
@@ -157,6 +161,7 @@ const KEYS: [(&str, Key); 15] = [
     ("chatScale", Key::ChatScale),
     ("chatWidth", Key::ChatWidth),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
+    ("saveChatDrafts", Key::SaveChatDrafts),
 ];
 
 /// A value as the file's JSON holds it (`LenientJsonParser`): a number, a
@@ -309,6 +314,9 @@ impl Options {
                 }
             }
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
+            Key::SaveChatDrafts => {
+                self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
+            }
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::MouseSensitivity => self.sensitivity = unit().unwrap_or(self.sensitivity),
             Key::Lang => text.clone_into(&mut self.language_code),
@@ -353,6 +361,7 @@ impl Options {
             Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
+            Key::SaveChatDrafts => self.save_chat_drafts.to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::MouseSensitivity => java_double(self.sensitivity),
             Key::Lang => self.language_code.clone(),

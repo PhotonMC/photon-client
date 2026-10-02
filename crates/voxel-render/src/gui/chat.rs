@@ -705,11 +705,89 @@ fn hover_lines(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatKey {
     None,
+    /// Escape: the box is closed on purpose.
     Close,
+    /// Enter with nothing to send: the box is done.
+    Done,
     /// The line to send, and whether the screen closes (it always does).
     Send(String),
     /// Scroll the log a page, less a line: up for 1, down for -1.
     Page(i32),
+}
+
+/// `ChatComponent.ChatMethod`: what opened the box, a message or a command
+/// (the slash key).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChatMethod {
+    Message,
+    Command,
+}
+
+impl ChatMethod {
+    /// What the box starts with when there is no draft.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Self::Message => "",
+            Self::Command => "/",
+        }
+    }
+}
+
+/// `ChatScreen.ExitReason`: why the box went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExitReason {
+    /// Escape.
+    Intentional,
+    /// Another screen took its place (a death, say).
+    Interrupted,
+    /// A line was sent, or none was to send.
+    Done,
+}
+
+/// `ChatComponent.latestDraft`: the text a closed box left, and what kind
+/// of box it was.
+#[derive(Debug, Clone, Default)]
+pub struct ChatDrafts {
+    latest: Option<(String, ChatMethod)>,
+}
+
+impl ChatDrafts {
+    /// `createScreen`: the text a box of this method opens with, and whether
+    /// it is a draft. A message box takes any draft; a command box only a
+    /// command's.
+    pub fn open(&self, method: ChatMethod) -> (String, bool) {
+        match &self.latest {
+            Some((text, kept)) if method == ChatMethod::Message || method == *kept => {
+                (text.clone(), true)
+            }
+            _ => (method.prefix().to_owned(), false),
+        }
+    }
+
+    /// `ChatScreen.removed`: what the box held, kept as the draft unless the
+    /// way it went (or a blank text) discards it. A box opened on a draft
+    /// and not edited leaves it as it was.
+    pub fn removed(&mut self, text: &str, is_draft: bool, reason: ExitReason, save: bool) {
+        let discard =
+            reason != ExitReason::Interrupted && (reason != ExitReason::Intentional || !save);
+        if discard || text.chars().all(char::is_whitespace) {
+            self.latest = None;
+        } else if !is_draft {
+            let method = if text.starts_with('/') {
+                ChatMethod::Command
+            } else {
+                ChatMethod::Message
+            };
+            self.latest = Some((text.to_owned(), method));
+        }
+    }
+
+    /// The draft kept, and the method it came from.
+    pub fn kept(&self) -> Option<(&str, ChatMethod)> {
+        self.latest
+            .as_ref()
+            .map(|(text, method)| (text.as_str(), *method))
+    }
 }
 
 /// `ChatScreen`: the box at the bottom of the screen and the history of what
@@ -738,6 +816,10 @@ pub struct ChatScreen {
     /// The names the suggestions draw on: online players, and teams.
     players: Vec<String>,
     teams: Vec<String>,
+    /// Whether the player may use entity selectors.
+    selectors: bool,
+    /// The text is a draft kept from before, not yet edited (`isDraft`).
+    draft: bool,
     /// What the tree suggested for the text, while the server's answer on
     /// its own arguments is awaited.
     local: Vec<String>,
@@ -767,6 +849,8 @@ impl ChatScreen {
             commands: None,
             players: Vec::new(),
             teams: Vec::new(),
+            selectors: true,
+            draft: false,
             local: Vec::new(),
         }
     }
@@ -781,6 +865,21 @@ impl ChatScreen {
     pub fn set_names(&mut self, players: Vec<String>, teams: Vec<String>) {
         self.players = players;
         self.teams = teams;
+    }
+
+    /// Whether the player's permissions allow entity selectors.
+    pub fn set_selectors(&mut self, allowed: bool) {
+        self.selectors = allowed;
+    }
+
+    /// The box opens on a draft kept from an earlier box.
+    pub fn as_draft(mut self) -> Self {
+        self.draft = true;
+        self
+    }
+
+    pub fn is_draft(&self) -> bool {
+        self.draft
     }
 
     /// A script's chat box: no key opened it.
@@ -802,6 +901,8 @@ impl ChatScreen {
     /// text up to the cursor asks for its matches. A match just used keeps
     /// the list and asks for nothing.
     fn edited(&mut self) {
+        // `onEdited`: whatever changes the text makes it the player's own.
+        self.draft = false;
         if std::mem::take(&mut self.applied) {
             return;
         }
@@ -821,13 +922,14 @@ impl ChatScreen {
             let mut start = 0;
             if let Some(tree) = self.commands.clone() {
                 // `getCompletionSuggestions` of the whole text at the cursor.
-                let parse = tree.parse(&text, 1);
+                let parse = tree.parse(&text, 1, self.selectors);
                 let suggested = tree.suggestions(
                     &parse,
                     cursor,
                     &SuggestContext {
                         players: &self.players,
                         teams: &self.teams,
+                        selectors: self.selectors,
                     },
                 );
                 ask_server = suggested.ask_server;
@@ -998,6 +1100,13 @@ impl ChatScreen {
         {
             return ChatKey::None;
         }
+        if self.draft && key == Key::Backspace {
+            // A draft is wiped by one Backspace.
+            let font = self.font.clone();
+            self.edit.set_value("", &font);
+            self.edited();
+            return ChatKey::None;
+        }
         match key {
             Key::Escape => return ChatKey::Close,
             Key::Enter | Key::KpEnter => {
@@ -1011,7 +1120,7 @@ impl ChatScreen {
                     }
                     return ChatKey::Send(text);
                 }
-                return ChatKey::Close;
+                return ChatKey::Done;
             }
             Key::Tab => {}
             Key::Up => self.move_in_history(-1),
@@ -1094,11 +1203,20 @@ impl ChatScreen {
         // `updateCommandInfo`: a command is read against the tree.
         let parse = commands
             .filter(|_| text.starts_with('/'))
-            .map(|(tree, lang)| (tree, lang, tree.parse(&text, 1)));
+            .map(|(tree, lang)| (tree, lang, tree.parse(&text, 1, self.selectors)));
+        // `formatChat`: a restored draft is grey and slanted until it is
+        // edited, which comes before the colours of a command.
+        let draft = self.draft;
         let format = |part: &str, offset: usize| {
-            parse
-                .as_ref()
-                .map(|(_, _, parse)| format_text(parse, part, offset))
+            if draft {
+                return Some(vec![(part.to_owned(), 0xAA_AAAA, true)]);
+            }
+            parse.as_ref().map(|(_, _, parse)| {
+                format_text(parse, part, offset)
+                    .into_iter()
+                    .map(|(part, colour)| (part, colour, false))
+                    .collect()
+            })
         };
         self.edit.draw_formatted(
             frame,

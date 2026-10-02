@@ -48,7 +48,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T12](T12-click-hover-modeli.md) | `ClickEvent`/`HoverEvent` stil modeli + sohbet ipucu | M | – | bitti |
 | [T13](T13-tiklama-eylemleri.md) | Sohbet tıklama eylemleri + `ConfirmLinkScreen` | M | T03, T12 | bitti |
 | [T14](T14-locator-bar.md) | `TrackedWaypoint` + `LocatorBar` | M | – | bitti |
-| [T15](T15-sohbet-kalanlari.md) | Sohbet taslağı, seçici izin düzeyi | S | – | açık |
+| [T15](T15-sohbet-kalanlari.md) | Sohbet taslağı, seçici izin düzeyi | S | – | bitti |
 | [T20](T20-entity-paketleri.md) | Entity paketleri canlı oturumda | L | – | açık |
 | [T21](T21-entity-tick.md) | Entity tick ve interpolasyon canlı döngüde | M | T20 | açık |
 | [T22](T22-uzak-oyuncu.md) | Uzaktaki oyuncu çizimi | L | T21 | açık |

@@ -49,6 +49,7 @@ pub(crate) const CONFIG_CODE_OF_CONDUCT_PACKET_ID: i32 = 19;
 // occupies id 0 and shifts the listed play clientbound packet ids by one.
 pub(crate) const PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID: i32 = 0;
 pub(crate) const PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID: i32 = 1;
+pub(crate) const PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID: i32 = 34;
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
@@ -3204,7 +3205,7 @@ fn read_argument_kind(
         },
         31 => {
             read_byte(input, name)?;
-            K::Balanced
+            K::ScoreHolder
         }
         12..=15 | 18 | 19 | 21..=23 | 37 | 52..=55 => K::Balanced,
         8 => K::BlockPos,
@@ -3399,6 +3400,17 @@ fn parse_boss_event(input: &mut &[u8]) -> Result<HudEvent, ConnectionError> {
         _ => return Err(ConnectionError::Codec("boss event operation")),
     };
     Ok(HudEvent::Boss { id, operation })
+}
+
+/// `ClientboundEntityEventPacket.STREAM_CODEC`: the entity's id and the
+/// event (a byte).
+pub(crate) fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), ConnectionError> {
+    let mut input = input;
+    let id = read_i32(&mut input, "entity event id")?;
+    let event = *input
+        .first()
+        .ok_or(ConnectionError::Codec("entity event"))? as i8;
+    Ok((id, event))
 }
 
 /// `ClientboundTrackedWaypointPacket.STREAM_CODEC`: the operation, then the

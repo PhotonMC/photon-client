@@ -405,6 +405,93 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": row["label"], "steps": steps}));
                 continue;
             }
+            "chat_draft" => {
+                use voxel_render::gui::chat::{ChatDrafts, ChatMethod, ChatScreen, ExitReason};
+                let (width, height) = (int("width"), int("height"));
+                let save = row["save"].as_bool().unwrap_or(false);
+                let font = std::sync::Arc::new(Font::load(&root).ok_or("font")?);
+                let mut drafts = ChatDrafts::default();
+                let mut screen: Option<ChatScreen> = None;
+                let mut events = Vec::new();
+                for event in row["events"].as_array().ok_or("events")? {
+                    let mut entry = json!({"do": event["do"]});
+                    match event["do"].as_str().unwrap_or_default() {
+                        "open" => {
+                            let method = if event["method"] == "command" {
+                                ChatMethod::Command
+                            } else {
+                                ChatMethod::Message
+                            };
+                            let (initial, draft) = drafts.open(method);
+                            let opened = ChatScreen::new(
+                                font.clone(),
+                                (width, height),
+                                &initial,
+                                Vec::new(),
+                            )
+                            .without_key();
+                            screen = Some(if draft { opened.as_draft() } else { opened });
+                        }
+                        "type" => {
+                            for character in event["text"].as_str().unwrap_or_default().chars() {
+                                screen.as_mut().ok_or("no box")?.char_typed(character);
+                            }
+                        }
+                        "key" => {
+                            let key = match event["key"].as_str().unwrap_or_default() {
+                                "backspace" => glfw::Key::Backspace,
+                                "left" => glfw::Key::Left,
+                                "right" => glfw::Key::Right,
+                                "home" => glfw::Key::Home,
+                                "end" => glfw::Key::End,
+                                "delete" => glfw::Key::Delete,
+                                "up" => glfw::Key::Up,
+                                "down" => glfw::Key::Down,
+                                other => return Err(format!("unknown key {other}")),
+                            };
+                            screen.as_mut().ok_or("no box")?.key_pressed(
+                                key,
+                                (false, false),
+                                &mut NoClipboard,
+                            );
+                        }
+                        "close" => {
+                            let closed = screen.take().ok_or("no box")?;
+                            let reason = match event["reason"].as_str().unwrap_or_default() {
+                                "intentional" => ExitReason::Intentional,
+                                "interrupted" => ExitReason::Interrupted,
+                                _ => ExitReason::Done,
+                            };
+                            drafts.removed(&closed.value(), closed.is_draft(), reason, save);
+                        }
+                        "draw" => {
+                            let mut drawn = GuiFrame {
+                                log: Some(Vec::new()),
+                                ..GuiFrame::default()
+                            };
+                            let shown = screen.as_mut().ok_or("no box")?;
+                            shown.refocus();
+                            shown.draw(&mut drawn, &atlas, (0, 0), None);
+                            entry["ops"] = json!(gui_ops(&drawn.log.take().unwrap_or_default()));
+                        }
+                        other => return Err(format!("unknown event {other}")),
+                    }
+                    if let Some(shown) = &screen {
+                        entry["value"] = json!(shown.value());
+                        entry["draft"] = json!(shown.is_draft());
+                    }
+                    // The reference leaves a null out.
+                    if let Some((text, method)) = drafts.kept() {
+                        entry["kept"] = json!({
+                            "text": text,
+                            "method": if method == ChatMethod::Command { "COMMAND" } else { "MESSAGE" },
+                        });
+                    }
+                    events.push(entry);
+                }
+                out.push(json!({"label": row["label"], "events": events}));
+                continue;
+            }
             "titles" => {
                 use voxel_render::gui::titles::Titles;
                 let mut titles = Titles::default();

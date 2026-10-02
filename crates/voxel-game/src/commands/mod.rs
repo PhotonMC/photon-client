@@ -80,6 +80,9 @@ pub enum ArgumentKind {
     Word,
     /// Up to the next space outside quotes and brackets.
     Balanced,
+    /// A score holder: a selector (when the source may use them), a name or
+    /// `*`; read by shape as `Balanced` is.
+    ScoreHolder,
     /// The rest of the text.
     Greedy,
 }
@@ -255,11 +258,15 @@ pub struct Context {
     pub child: Option<Box<Context>>,
     /// Whether the last node read ends a command (`getCommand() != null`).
     pub executable: bool,
+    /// Whether the source may use entity selectors
+    /// (`EntitySelectorParser.allowSelectors`).
+    selectors: bool,
 }
 
 impl Context {
-    fn new(root: usize, start: i32) -> Self {
+    fn new(root: usize, start: i32, selectors: bool) -> Self {
         Self {
+            selectors,
             root,
             nodes: Vec::new(),
             arguments: Vec::new(),
@@ -346,11 +353,12 @@ impl ParseResults {
 }
 
 impl CommandTree {
-    /// `CommandDispatcher.parse` of `text` from `start` (past a slash).
-    pub fn parse(&self, text: &str, start: usize) -> ParseResults {
+    /// `CommandDispatcher.parse` of `text` from `start` (past a slash), for
+    /// a source that may use entity selectors or not.
+    pub fn parse(&self, text: &str, start: usize, selectors: bool) -> ParseResults {
         let mut reader = StringReader::new(text);
         reader.set_cursor(start);
-        let context = Context::new(self.root, start as i32);
+        let context = Context::new(self.root, start as i32, selectors);
         self.parse_nodes(self.root, &reader, context)
     }
 
@@ -383,7 +391,8 @@ impl CommandTree {
             if reader.can_read_n(if redirect.is_none() { 2 } else { 1 }) {
                 reader.skip();
                 if let Some(target) = redirect {
-                    let child_context = Context::new(target, reader.cursor() as i32);
+                    let child_context =
+                        Context::new(target, reader.cursor() as i32, context.selectors);
                     let parse = self.parse_nodes(target, &reader, child_context);
                     context.child = Some(Box::new(parse.context));
                     return ParseResults {
@@ -523,7 +532,7 @@ impl Node {
                 Err(error)
             }
             NodeKind::Argument { name, kind } => {
-                kind.read(reader)?;
+                kind.read_as(reader, context.selectors)?;
                 let range = StringRange {
                     start: start as i32,
                     end: reader.cursor() as i32,

@@ -168,9 +168,16 @@ fn balanced(reader: &mut StringReader) {
 /// `EntityArgument.parse`: a selector (`@p`, `@e[...]`), a name of up to
 /// sixteen characters, or a UUID. Options are read by shape, so a `limit` or
 /// `type` they carry does not change what the selector may return.
-fn entity(reader: &mut StringReader, single: bool, players_only: bool) -> Read {
+fn entity(reader: &mut StringReader, single: bool, players_only: bool, selectors: bool) -> Read {
     let start = reader.cursor();
     let (many, entities, own) = if reader.can_read() && reader.peek() == '@' {
+        if !selectors {
+            return Err(CommandSyntaxException::at(
+                reader,
+                "argument.entity.selector.not_allowed",
+                &[],
+            ));
+        }
         reader.skip();
         if !reader.can_read() {
             return Err(CommandSyntaxException::at(
@@ -310,9 +317,16 @@ fn range_error<T: std::fmt::Display>(
 }
 
 impl ArgumentKind {
-    /// `ArgumentType.parse`: read the argument off the reader.
-    #[expect(clippy::too_many_lines, reason = "one arm for each kind of argument")]
+    /// `ArgumentType.parse`: read the argument off the reader, for a source
+    /// that may use entity selectors.
     pub fn read(&self, reader: &mut StringReader) -> Read {
+        self.read_as(reader, true)
+    }
+
+    /// `ArgumentType.parse(reader, source)`: the source's permission to use
+    /// entity selectors is the one thing a kind reads from it.
+    #[expect(clippy::too_many_lines, reason = "one arm for each kind of argument")]
+    pub fn read_as(&self, reader: &mut StringReader, selectors: bool) -> Read {
         match self {
             Self::Bool => reader.read_boolean().map(drop),
             Self::Integer { min, max } => {
@@ -586,12 +600,23 @@ impl ArgumentKind {
             Self::Entity {
                 single,
                 players_only,
-            } => entity(reader, *single, *players_only),
+            } => entity(reader, *single, *players_only, selectors),
             Self::Word => {
                 word(reader);
                 Ok(())
             }
             Self::Balanced => {
+                balanced(reader);
+                Ok(())
+            }
+            Self::ScoreHolder => {
+                if !selectors && reader.can_read() && reader.peek() == '@' {
+                    return Err(CommandSyntaxException::at(
+                        reader,
+                        "argument.entity.selector.not_allowed",
+                        &[],
+                    ));
+                }
                 balanced(reader);
                 Ok(())
             }

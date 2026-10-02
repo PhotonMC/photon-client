@@ -173,8 +173,9 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   listelediği türler (eşya, blok, parçacık, dimension, slot, ölçüt, kaynak,
   diyalog, bilinen yerel sağlayıcılar) ve seçici seçenekleri (`@a[`…) burada
   sunucuya sorulur (aynı değerler, farklı mekanizma; oracle'da
-  `registry_backed` satırları). Eksik: seçici izin düzeyi (yetkisiz oyuncuda
-  seçici önerilmemeli/yazılmamalı), bakılan varlık UUID'si.
+  `registry_backed` satırları). Seçici izni oyuncunun işlem düzeyinden gelir
+  (varlık olayları 24–28, game master ve üstü seçici kullanır). Eksik:
+  bakılan varlık UUID'si.
 - **Kısmen** Komut ağacı (`Commands` paketi, `voxel-game/commands`): düğüm
   ağacı, Brigadier ayrıştırması (yönlendirme, aday sıralaması, istisnalar),
   renkli sözdizimi (`formatText`), kullanım ve hata satırları
@@ -281,7 +282,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   oyuna bağlı; sohbet değerleri (genişlik, ölçek, opaklıklar, satır aralığı, yükseklikler) sohbet çizimine bağlı (`ChatSettings`).
 - **Kısmen** Dil seçimi (`LanguageSelectScreen`, Options → Language...): paketin dil listesi (`LanguageSource`: jar `en_us` + asset indeksindeki `lang/*.json`, `en_us` üstüne seçili dil), arama, seçim, Done/Enter/çift tık dili değiştirir (`options.txt` `lang`, `Gui::set_language`; açık pause/options ekranları yeni dille kurulur). Yapılmadı: `unifont` yedeği (Türkçe ş/ğ/İ/ı, Arapça, CJK… çizilmez), sağdan sola şekillendirme, Font düğmesi ekranı, ok tuşlarıyla liste gezinme (T11). `language_screen`/`lang_text` oracle'ları; dil değişince sohbet geçmişi yeni dille yeniden çözülür (silinmiş-mesaj işareti hariç).
 - **Kısmen** Kontroller ve fare ayarları (`ControlsScreen` → `MouseSettingsScreen`, Options → Controls...): duyarlılık, tekerlek duyarlılığı ve ters çevirmeler `Options`'a yazılır, kameraya ve tekerleğe anında yansır (`turn_by`); ayrık kaydırma, imleç değişimi, Hold/Toggle, otomatik zıplama, koşu penceresi, operatör sekmesi yalnız ekranda yaşar; Key Binds ekranı yok (düğme çizilir, basınca bir şey olmaz); ham fare girdisi satırı yok (macOS'ta desteklenmez). `mouse_settings_screen` ve `controls_screen` oracle'ları.
-- **Kısmen** Sohbet ayarları (`ChatOptionsScreen`, Options → Chat Settings): 18 satır, Java etiketleri; görünürlük, genişlik, ölçek, opaklık, arka plan opaklığı, satır aralığı ve yükseklikler `Options`'a yazılır ve sohbeti anında yeniden sarar (`rescaleChat`). Yapılmadı: renkler/bağlantılar/öneriler/gecikme/imzalı sohbet/taslak vb. değerler yalnız ekranda yaşar; anlatıcı yok (düğme uykuda); görünürlüğün sunucuya bildirilmesi ve kısıtlı sohbet istemi; Tab/ok odağı (T11). `chat_options_screen` oracle'ı gerçek ekrana karşı.
+- **Kısmen** Sohbet ayarları (`ChatOptionsScreen`, Options → Chat Settings): 18 satır, Java etiketleri; görünürlük, genişlik, ölçek, opaklık, arka plan opaklığı, satır aralığı ve yükseklikler `Options`'a yazılır ve sohbeti anında yeniden sarar (`rescaleChat`). Yapılmadı: renkler/bağlantılar/öneriler/gecikme/imzalı sohbet vb. değerler yalnız ekranda yaşar (taslak kaydı `saveChatDrafts` olarak `Options`'ta); anlatıcı yok (düğme uykuda); görünürlüğün sunucuya bildirilmesi ve kısıtlı sohbet istemi; Tab/ok odağı (T11). `chat_options_screen` oracle'ı gerçek ekrana karşı.
 - **L** Ana menü, sunucu listesi ve doğrudan bağlanma, bağlantı/yükleme
   ekranları (`LevelLoadingScreen`, `ReceivingLevelScreen`), bağlantı kopma
   ekranı, dünya seçimi (`P25`: Pumpkin ile eşleme).

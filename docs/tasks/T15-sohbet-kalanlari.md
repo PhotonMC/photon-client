@@ -25,4 +25,7 @@ Bakılan varlık UUID'si, imzalı mesaj zinciri.
 `docs/remaining-work.md` M5 ("seçici izin düzeyi", "taslak" satırları) ve `docs/gui-oracle.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: taslak (`ChatDrafts`/`ChatMethod`/`ExitReason`, `ChatScreen.as_draft`: Backspace siler, düzenleyince biter, gri italik çizim; `saveChatDrafts` seçeneği `options.txt` ve sohbet ayarları düğmesine bağlı; ölümde taslak kalır), seçici izni (entity olayı 34, işlem düzeyi 24–28, `PlaySession::can_use_selectors`, `CommandTree::parse(.., selectors)`, `ScoreHolder` argüman türü, öneri bağlamı).
+- Oracle: `chat_draft` (gerçek ChatScreen/ChatComponent) ve `command_parse/command_suggest` `selectors: false` satırları; hepsi geçti.
+- Sapma: Enter ile boş gönderim artık `Done` (Java'da DONE nedeni); bağlantı kopunca açık kutunun metni taslağa yazılmaz (Java'da ne olduğu doğrulanmadı). Komutla başlayan taslağın çizimi oracle'da yok (ağaç gerekir).
+- Açık: bakılan varlık UUID önerisi (T26).

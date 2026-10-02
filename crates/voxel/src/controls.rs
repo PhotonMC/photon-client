@@ -7,7 +7,7 @@ use voxel_game::hotbar::ScrollWheel;
 use voxel_game::options::Options;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::chat::ChatSettings;
-use voxel_render::gui::chat::{ChatKey, ChatLog, ChatScreen};
+use voxel_render::gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
 use voxel_render::gui::chat_options::ChatOptionsScreen;
 use voxel_render::gui::confirm::ConfirmAction as LinkAction;
 use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
@@ -83,6 +83,8 @@ pub struct Controls {
     /// The values of `options.txt` the client reads.
     pub options: Options,
     chat_history: Vec<String>,
+    /// `ChatComponent.latestDraft`.
+    chat_drafts: ChatDrafts,
     /// `CommandHistory`: the commands sent, kept in a file.
     command_history: Vec<String>,
     /// `Minecraft.hasControlDown`: a control key is down (the command key on
@@ -194,6 +196,7 @@ impl Controls {
             disconnected: None,
             options,
             chat_history: command_history.clone(),
+            chat_drafts: ChatDrafts::default(),
             command_history,
             shift_held: false,
             control_held: false,
@@ -554,6 +557,7 @@ impl Controls {
         let choices = screen.choices();
         let options = &mut self.options;
         options.chat_visibility = choices.visibility;
+        options.save_chat_drafts = choices.save_drafts;
         options.chat_width = choices.settings.width;
         options.chat_scale = choices.settings.scale;
         options.chat_opacity = choices.settings.opacity;
@@ -818,7 +822,10 @@ impl Controls {
                 score,
             ));
             self.confirm = None;
-            self.chat = None;
+            if let Some(chat) = self.chat.take() {
+                // A death takes the box's place: its text is kept as a draft.
+                self.leave_chat(&chat, ExitReason::Interrupted);
+            }
             self.pause = None;
             self.options_screen = None;
             self.video_screen = None;
@@ -1093,33 +1100,50 @@ impl Controls {
         }
     }
 
-    /// `Minecraft.openChatScreen`: the chat box opens holding `initial`, and
-    /// the mouse is let go. `keyed` is whether a key opened it.
+    /// `ChatComponent.openScreen`: the chat box opens on the draft a closed
+    /// one left, or empty (a slash for a command), and the mouse is let go.
+    /// `keyed` is whether a key opened it.
     fn open_chat(
         &mut self,
-        initial: &str,
+        method: ChatMethod,
         keyed: bool,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
-        let screen = ChatScreen::new(
+        let (initial, draft) = self.chat_drafts.open(method);
+        let mut screen = ChatScreen::new(
             assets.creative.font.clone(),
             size,
-            initial,
+            &initial,
             self.chat_history.clone(),
         );
+        if draft {
+            screen = screen.as_draft();
+        }
         self.chat = Some(if keyed { screen } else { screen.without_key() });
         self.captured = false;
         self.release_keys();
         surface.set_cursor_captured(false);
     }
 
+    /// `ChatScreen.removed`: the box's text is kept or dropped as a draft by
+    /// the way it went.
+    fn leave_chat(&mut self, chat: &ChatScreen, reason: ExitReason) {
+        self.chat_history = chat.history().to_vec();
+        self.chat_drafts.removed(
+            &chat.value(),
+            chat.is_draft(),
+            reason,
+            self.options.save_chat_drafts,
+        );
+    }
+
     /// The chat box closes, keeping what was sent, and the mouse is grabbed.
-    fn close_chat(&mut self, surface: &mut WindowSurface) {
+    fn close_chat(&mut self, surface: &mut WindowSurface, reason: ExitReason) {
         if let Some(chat) = self.chat.take() {
-            self.chat_history = chat.history().to_vec();
+            self.leave_chat(&chat, reason);
         }
         self.chat_log.reset_scroll();
         self.captured = true;
@@ -1165,6 +1189,7 @@ impl Controls {
     pub fn receive_suggestions(&mut self, session: &mut PlaySession) {
         if let Some(chat) = self.chat.as_mut() {
             chat.set_commands(session.commands().cloned());
+            chat.set_selectors(session.can_use_selectors());
             chat.set_names(
                 session.online_player_names(),
                 session.scoreboard().team_names(),
@@ -1187,6 +1212,7 @@ impl Controls {
             return Ok(());
         };
         chat.set_commands(session.commands().cloned());
+        chat.set_selectors(session.can_use_selectors());
         chat.set_names(
             session.online_player_names(),
             session.scoreboard().team_names(),
@@ -1209,11 +1235,12 @@ impl Controls {
                     || modifiers.contains(glfw::Modifiers::Super);
                 let shift = modifiers.contains(glfw::Modifiers::Shift);
                 match chat.key_pressed(key, (control, shift), &mut WindowClipboard(surface)) {
-                    ChatKey::Close => self.close_chat(surface),
+                    ChatKey::Close => self.close_chat(surface, ExitReason::Intentional),
+                    ChatKey::Done => self.close_chat(surface, ExitReason::Done),
                     ChatKey::Send(text) => {
                         Self::send_chat(session, &text)?;
                         self.remember_command(&text);
-                        self.close_chat(surface);
+                        self.close_chat(surface, ExitReason::Done);
                     }
                     ChatKey::Page(direction) => {
                         let page = self.chat_log.lines_per_page(true) as i32 - 1;
@@ -1460,9 +1487,9 @@ impl Controls {
         }
         if held.chat {
             if self.chat.is_some() {
-                self.close_chat(surface);
+                self.close_chat(surface, ExitReason::Intentional);
             } else {
-                self.open_chat("", false, surface, assets);
+                self.open_chat(ChatMethod::Message, false, surface, assets);
             }
         }
         if let (Some(text), Some(chat)) = (held.typed, self.chat.as_mut()) {
@@ -1487,7 +1514,7 @@ impl Controls {
             {
                 Self::send_chat(session, &text)?;
             }
-            self.close_chat(surface);
+            self.close_chat(surface, ExitReason::Done);
         }
         if held.press.is_some() {
             self.scripted_press(session, surface, assets)?;
@@ -1719,10 +1746,10 @@ impl Controls {
                 self.tab_held = action != Action::Release && self.captured;
             }
             WindowEvent::Key(Key::T, _, Action::Press, _) if self.captured => {
-                self.open_chat("", true, surface, assets);
+                self.open_chat(ChatMethod::Message, true, surface, assets);
             }
             WindowEvent::Key(Key::Slash, _, Action::Press, _) if self.captured => {
-                self.open_chat("/", true, surface, assets);
+                self.open_chat(ChatMethod::Command, true, surface, assets);
             }
             WindowEvent::Key(Key::F5, _, Action::Press, _) => {
                 self.camera_type = self.camera_type.next();

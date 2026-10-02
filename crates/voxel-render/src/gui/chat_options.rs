@@ -27,6 +27,7 @@ const WIDTH: u8 = 6;
 const HEIGHT_FOCUSED: u8 = 7;
 const HEIGHT_UNFOCUSED: u8 = 8;
 const NARRATOR: u8 = 9;
+const SAVE_DRAFTS: u8 = 10;
 
 fn percent(caption: &Component, value: &f64) -> Component {
     percent_value(caption, *value)
@@ -83,6 +84,7 @@ fn unit(key: &'static str, label: fn(&Component, &f64) -> Component, initial: f6
 pub struct ChatChoices {
     pub visibility: ChatVisibility,
     pub settings: ChatSettings,
+    pub save_drafts: bool,
 }
 
 pub struct ChatOptionsScreen {
@@ -206,8 +208,12 @@ impl ChatOptionsScreen {
                         ),
                     ),
                     (
-                        PLAIN,
-                        boolean_tip("options.chat.drafts", false, "options.chat.drafts.tooltip"),
+                        SAVE_DRAFTS,
+                        boolean_tip(
+                            "options.chat.drafts",
+                            options.save_chat_drafts,
+                            "options.chat.drafts.tooltip",
+                        ),
                     ),
                 ],
             );
@@ -236,8 +242,13 @@ impl ChatOptionsScreen {
                     .downcast_ref::<CycleButton<ChatVisibility>>()
             })
             .map_or(ChatVisibility::Full, |button| *button.value());
+        let save_drafts = list
+            .find(SAVE_DRAFTS)
+            .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+            .is_some_and(|button| *button.value());
         ChatChoices {
             visibility,
+            save_drafts,
             settings: ChatSettings {
                 width: share(WIDTH),
                 scale: share(SCALE),

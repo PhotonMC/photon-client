@@ -186,7 +186,7 @@ mod tests {
             "/zzz",
             "/give  a",
         ] {
-            let parse = tree.parse(text, 1);
+            let parse = tree.parse(text, 1, true);
             let chars: Vec<char> = text.chars().collect();
             for cursor in 0..=chars.len() {
                 for display in 0..=cursor {
@@ -209,6 +209,7 @@ mod tests {
 
     fn context() -> SuggestContext<'static> {
         SuggestContext {
+            selectors: true,
             players: &[],
             teams: &[],
         }
@@ -219,17 +220,17 @@ mod tests {
     #[test]
     fn the_tree_suggests_only_what_it_holds() {
         let tree = tree();
-        let parse = tree.parse("/G", 1);
+        let parse = tree.parse("/G", 1, true);
         let suggested = tree.suggestions(&parse, 2, &context());
         assert_eq!(suggested.matches, ["give"]);
         assert!(!suggested.ask_server);
         // After "give " the argument is an objective, which the server holds.
-        let parse = tree.parse("/give ", 1);
+        let parse = tree.parse("/give ", 1, true);
         let suggested = tree.suggestions(&parse, 6, &context());
         assert!(suggested.ask_server);
         assert!(suggested.matches.is_empty());
         assert_eq!(
-            tree.suggestions(&tree.parse("/zz", 1), 3, &context())
+            tree.suggestions(&tree.parse("/zz", 1, true), 3, &context())
                 .matches,
             Vec::<String>::new()
         );

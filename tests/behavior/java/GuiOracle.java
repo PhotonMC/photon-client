@@ -514,6 +514,7 @@ public final class GuiOracle {
                 case "titles" -> titles(request);
                 case "boss_bar" -> bossBar(request);
                 case "locator_bar" -> locatorBar(request);
+                case "chat_draft" -> chatDraft(request);
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
@@ -868,6 +869,127 @@ public final class GuiOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The chat box's draft: boxes opened, typed into, keyed and closed in turn by the game's own
+     * ChatScreen and ChatComponent. After each event, what the box holds and whether it is a
+     * draft, or what the draft kept is.
+     */
+    private static JsonObject chatDraft(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var screen = screen(width, height, 0, 0);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
+            minecraft.options.saveChatDrafts().set(row.get("save").getAsBoolean());
+            var chat = new net.minecraft.client.gui.components.ChatComponent(minecraft);
+            set(screen.hud(), "chat", chat);
+            set(minecraft, "fontFilterFishy", font);
+            var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            set(listener, "commands", new com.mojang.brigadier.CommandDispatcher<
+                net.minecraft.client.multiplayer.ClientSuggestionProvider>());
+            set(listener, "suggestionsProvider", new OracleSource(java.util.List.of(), java.util.List.of(), true));
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            set(player, "connection", listener);
+            set(player, "chatAbilities", net.minecraft.client.multiplayer.chat.ChatAbilities.NO_RESTRICTIONS);
+            set(minecraft, "player", player);
+            net.minecraft.client.gui.screens.ChatScreen current = null;
+            var events = new JsonArray();
+            for (var eventElement : row.getAsJsonArray("events")) {
+                var event = eventElement.getAsJsonObject();
+                var out = new JsonObject();
+                String action = event.get("do").getAsString();
+                out.addProperty("do", action);
+                switch (action) {
+                    case "open" -> {
+                        var method = event.get("method").getAsString().equals("command")
+                            ? net.minecraft.client.gui.components.ChatComponent.ChatMethod.COMMAND
+                            : net.minecraft.client.gui.components.ChatComponent.ChatMethod.MESSAGE;
+                        current = chat.createScreen(method, net.minecraft.client.gui.screens.ChatScreen::new);
+                        current.init(width, height);
+                    }
+                    case "type" -> {
+                        for (int cp : event.get("text").getAsString().codePoints().toArray()) {
+                            current.charTyped(new net.minecraft.client.input.CharacterEvent(cp));
+                        }
+                    }
+                    case "key" -> {
+                        int code = switch (event.get("key").getAsString()) {
+                            case "backspace" -> 259;
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "home" -> 268;
+                            case "end" -> 269;
+                            case "delete" -> 261;
+                            case "up" -> 265;
+                            case "down" -> 264;
+                            default -> throw new IllegalArgumentException(event.get("key").getAsString());
+                        };
+                        current.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                    }
+                    case "close" -> {
+                        var reason = net.minecraft.client.gui.screens.ChatScreen.class.getDeclaredClasses();
+                        Object value = null;
+                        for (var type : reason) {
+                            if (type.getSimpleName().equals("ExitReason")) {
+                                for (var constant : type.getEnumConstants()) {
+                                    if (constant.toString().equalsIgnoreCase(event.get("reason").getAsString())) {
+                                        value = constant;
+                                    }
+                                }
+                            }
+                        }
+                        set(current, "exitReason", value);
+                        current.removed();
+                        current = null;
+                    }
+                    case "draw" -> {
+                        var drawn = screen(width, height, 0, 0);
+                        var input = (net.minecraft.client.gui.components.EditBox) get(current, "input");
+                        var suggestions = (net.minecraft.client.gui.components.CommandSuggestions)
+                            get(current, "commandSuggestions");
+                        drawn.graphics().fill(2, height - 14, width - 2, height - 2,
+                            drawn.minecraft().options.getBackgroundColor(Integer.MIN_VALUE));
+                        set(input, "focusedTime", net.minecraft.util.Util.getMillis());
+                        input.extractRenderState(drawn.graphics(), 0, 0, 0.0F);
+                        suggestions.extractRenderState(drawn.graphics(), 0, 0);
+                        out.add("ops", record(drawn.state()));
+                    }
+                    default -> throw new IllegalArgumentException(action);
+                }
+                if (current != null) {
+                    var input = (net.minecraft.client.gui.components.EditBox) get(current, "input");
+                    out.addProperty("value", input.getValue());
+                    out.addProperty("draft", (boolean) get(current, "isDraft"));
+                }
+                var latest = get(chat, "latestDraft");
+                if (latest == null) {
+                    out.add("kept", com.google.gson.JsonNull.INSTANCE);
+                } else {
+                    var kept = new JsonObject();
+                    var record = latest.getClass();
+                    var text = record.getDeclaredMethod("text");
+                    text.setAccessible(true);
+                    var method = record.getDeclaredMethod("chatMethod");
+                    method.setAccessible(true);
+                    kept.addProperty("text", (String) text.invoke(latest));
+                    kept.addProperty("method", method.invoke(latest).toString());
+                    out.add("kept", kept);
+                }
+                events.add(out);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("events", events);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -1679,8 +1801,9 @@ public final class GuiOracle {
         final java.util.List<String> players;
         final java.util.List<String> teams;
 
-        OracleSource(java.util.List<String> players, java.util.List<String> teams) {
-            super(null, null, permission -> true);
+        OracleSource(java.util.List<String> players, java.util.List<String> teams, boolean selectors) {
+            super(null, null, permission -> selectors
+                || !permission.equals(net.minecraft.server.permissions.Permissions.COMMANDS_ENTITY_SELECTORS));
             this.players = players;
             this.teams = teams;
         }
@@ -1762,7 +1885,7 @@ public final class GuiOracle {
             for (var team : row.getAsJsonArray("teams")) {
                 teams.add(team.getAsString());
             }
-            var source = new OracleSource(players, teams);
+            var source = new OracleSource(players, teams, !row.has("selectors") || row.get("selectors").getAsBoolean());
             if (row.has("registry_backed")) {
                 // The game lists these from its registries; this port asks the server.
                 var out = new JsonObject();
@@ -1803,8 +1926,6 @@ public final class GuiOracle {
     @SuppressWarnings("unchecked")
     private static JsonObject commandParse(JsonObject request) throws Exception {
         var dispatcher = commandDispatcher(request.get("tree").getAsString());
-        net.minecraft.client.multiplayer.ClientSuggestionProvider source = new net.minecraft.client.multiplayer.ClientSuggestionProvider(
-            null, null, permission -> true);
         var formatText = net.minecraft.client.gui.components.CommandSuggestions.class.getDeclaredMethod("formatText",
             com.mojang.brigadier.ParseResults.class, String.class, int.class);
         formatText.setAccessible(true);
@@ -1819,6 +1940,10 @@ public final class GuiOracle {
             if (reader.canRead() && reader.peek() == '/') {
                 reader.skip();
             }
+            boolean selectors = !row.has("selectors") || row.get("selectors").getAsBoolean();
+            net.minecraft.client.multiplayer.ClientSuggestionProvider source =
+                new net.minecraft.client.multiplayer.ClientSuggestionProvider(null, null, permission -> selectors
+                    || !permission.equals(net.minecraft.server.permissions.Permissions.COMMANDS_ENTITY_SELECTORS));
             var parse = dispatcher.parse(reader, source);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

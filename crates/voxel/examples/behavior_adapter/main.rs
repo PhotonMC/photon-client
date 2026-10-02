@@ -18375,7 +18375,8 @@ fn command_parse_result(request: &Value, root: &std::path::Path) -> Result<Value
     for row in request["rows"].as_array().ok_or("rows")? {
         let text = row["text"].as_str().ok_or("text")?;
         let start = usize::from(text.starts_with('/'));
-        let parse = tree.parse(text, start);
+        let selectors = row["selectors"].as_bool().unwrap_or(true);
+        let parse = tree.parse(text, start, selectors);
         let mut nodes = Vec::new();
         let mut context = Some(&parse.context);
         while let Some(current) = context {
@@ -18454,13 +18455,15 @@ fn command_suggest_result(request: &Value) -> Result<Value, String> {
             .as_u64()
             .map_or_else(|| text.chars().count(), |cursor| cursor as usize);
         let (players, teams) = (names(&row["players"]), names(&row["teams"]));
-        let parse = tree.parse(text, usize::from(text.starts_with('/')));
+        let selectors = row["selectors"].as_bool().unwrap_or(true);
+        let parse = tree.parse(text, usize::from(text.starts_with('/')), selectors);
         let found = tree.suggestions(
             &parse,
             cursor,
             &SuggestContext {
                 players: &players,
                 teams: &teams,
+                selectors,
             },
         );
         let start = if found.matches.is_empty() {

@@ -15,6 +15,9 @@ pub struct SuggestContext<'a> {
     pub players: &'a [String],
     /// `getAllTeams`.
     pub teams: &'a [String],
+    /// Whether the source may use entity selectors
+    /// (`Permissions.COMMANDS_ENTITY_SELECTORS`).
+    pub selectors: bool,
 }
 
 /// What the tree itself suggests for text up to a cursor, and whether the
@@ -167,10 +170,13 @@ fn entities(remaining: &str, start: usize, ctx: &SuggestContext) -> Argument {
     match chars.first() {
         None => {
             let mut matches = suggest_values(ctx.players, remaining);
-            matches.extend(selectors());
+            if ctx.selectors {
+                matches.extend(selectors());
+            }
             Argument::here(matches, start)
         }
-        Some('@') => match chars.get(1) {
+        // Without the permission the text is read as a name, to the end.
+        Some('@') if ctx.selectors => match chars.get(1) {
             None => Argument::here(selectors(), start),
             Some(kind) if !"pearsn".contains(*kind) => Argument::here(selectors(), start),
             Some(_) if chars.len() == 2 => Argument::here(vec!["[".to_owned()], start + 2),

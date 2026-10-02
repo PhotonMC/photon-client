@@ -52,8 +52,8 @@ use super::{
     pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
     parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
     parse_container_close_packet, parse_container_set_content_packet,
-    parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_metadata_packet,
-    parse_entity_position_sync_packet, parse_entity_teleport_packet,
+    parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_event_packet,
+    parse_entity_metadata_packet, parse_entity_position_sync_packet, parse_entity_teleport_packet,
     parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
     parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
     parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
@@ -2723,9 +2723,9 @@ fn a_commands_packet_links_into_a_tree() {
         tree.node(root.children[0]).kind,
         NodeKind::Literal("a".to_owned())
     );
-    let parse = tree.parse("a 3", 0);
+    let parse = tree.parse("a 3", 0, true);
     assert!(!parse.can_read() && parse.exceptions.is_empty());
-    let parse = tree.parse("a 9", 0);
+    let parse = tree.parse("a 9", 0, true);
     assert_eq!(parse.exceptions.len(), 1);
     // A child past the end is refused.
     assert!(super::parse_commands_packet(&[1, 0, 1, 7, 0]).is_err());
@@ -2746,4 +2746,12 @@ fn a_disconnect_carries_its_reason() {
         super::read_disconnect_reason(&mut input).unwrap(),
         voxel_game::text::Component::literal("hi")
     );
+}
+
+#[test]
+fn an_entity_event_packet_names_the_entity_and_the_event() {
+    let mut payload = 7_i32.to_be_bytes().to_vec();
+    payload.push(26);
+    assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
+    assert!(parse_entity_event_packet(&payload[..4]).is_err());
 }

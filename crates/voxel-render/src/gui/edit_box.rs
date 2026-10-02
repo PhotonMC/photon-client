@@ -335,8 +335,9 @@ impl EditBox {
     }
 }
 
-/// A text formatter: a stretch of text and where it starts in the whole.
-pub type Formatter<'a> = dyn Fn(&str, usize) -> Option<Vec<(String, u32)>> + 'a;
+/// A text formatter: a stretch of text and where it starts in the whole,
+/// cut into parts that each have a colour and may be in italics.
+pub type Formatter<'a> = dyn Fn(&str, usize) -> Option<Vec<(String, u32, bool)>> + 'a;
 
 /// The part of the text the box shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -380,27 +381,43 @@ impl EditBox {
         formatter: Option<&Formatter<'_>>,
     ) {
         // `applyFormat`: the parts, drawn one after another; their width.
-        let draw_text = |frame: &mut GuiFrame,
-                         text: &str,
-                         offset: usize,
-                         x: i32,
-                         colour: u32|
-         -> i32 {
-            match formatter.and_then(|format| format(text, offset)) {
-                Some(parts) => {
-                    let mut at = x;
-                    for (part, rgb) in parts {
-                        frame.text_with_shadow(atlas, font, &part, at, text_y, 0xFF00_0000 | rgb);
-                        at += font.width(&part);
+        let draw_text =
+            |frame: &mut GuiFrame, text: &str, offset: usize, x: i32, colour: u32| -> i32 {
+                match formatter.and_then(|format| format(text, offset)) {
+                    Some(parts) => {
+                        let mut at = x;
+                        for (part, rgb, italic) in parts {
+                            if italic {
+                                let runs = [voxel_game::text::Run {
+                                    text: part,
+                                    style: voxel_game::text::Style {
+                                        colour: Some(rgb),
+                                        italic: Some(true),
+                                        ..voxel_game::text::Style::default()
+                                    },
+                                }];
+                                frame.styled_text(atlas, font, &runs, at, text_y, colour, true);
+                                at += font.width_of_runs(&runs);
+                            } else {
+                                frame.text_with_shadow(
+                                    atlas,
+                                    font,
+                                    &part,
+                                    at,
+                                    text_y,
+                                    0xFF00_0000 | rgb,
+                                );
+                                at += font.width(&part);
+                            }
+                        }
+                        at - x
                     }
-                    at - x
+                    None => {
+                        frame.text_with_shadow(atlas, font, text, x, text_y, colour);
+                        font.width(text)
+                    }
                 }
-                None => {
-                    frame.text_with_shadow(atlas, font, text, x, text_y, colour);
-                    font.width(text)
-                }
-            }
-        };
+            };
         let shown = self.shown(font);
         let chars: Vec<char> = shown.text.chars().collect();
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();

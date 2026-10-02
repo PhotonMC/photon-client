@@ -411,6 +411,17 @@ def gui_command_parse_cases():
     for number, text in enumerate(texts):
         for empty in (True, False):
             rows.append({"label": f"{number}-{text}-{empty}", "text": text, "suggestions_empty": empty})
+    # A player who may not use selectors: the `@` is refused where it stands,
+    # and names and coordinates read as before.
+    for number, text in enumerate([
+            "/give @p", "/give @p ", "/give @a[type=player] minecraft:stone", "/tp @p @a", "/tp @s 1 2 3",
+            "/tp Alex 1 2 3", "/tp Alex", "/give Alex minecraft:stone 3", "/execute as @a run say hi",
+            "/execute as Alex run say hi", "/scoreboard players set @a obj 5", "/scoreboard players set Alex obj 5",
+            "/scoreboard players set * obj 5", "/give @", "/give @x", "/give @e[", "/say @a hello",
+            "/give @p minecraft:stone 64 ", "/tp @p 1 2 3 4"]):
+        for empty in (True, False):
+            rows.append({"label": f"no-selectors-{number}-{text}-{empty}", "text": text,
+                         "suggestions_empty": empty, "selectors": False})
     yield {"case_id": "gui/command-parse", "family": "gui", "operation": "command_parse",
            "tree": tree, "rows": rows}
 
@@ -487,6 +498,17 @@ def gui_command_suggest_cases():
                 rows[-1]["registry_backed"] = True
     add("/single ")
     add("/single @")
+    # A player who may not use selectors is offered names only, and an `@`
+    # is a name that no player has.
+    for i, texts in ((6, ["", "@", "@a", "@a[", "@z", "Mi", "mi", "x", "@p[type=player,"]),
+                     (7, ["", "@", "Mi"]), (31, ["", "@", "Mi", "*"])):
+        for text in texts:
+            add(f"/t{i} {text}")
+            rows[-1]["selectors"] = False
+    add("/single ")
+    rows[-1]["selectors"] = False
+    add("/single @")
+    rows[-1]["selectors"] = False
     for name in ("ask", "sounds", "bogus", "mixed"):
         add(f"/{name} ")
         add(f"/{name} a")
@@ -1676,6 +1698,68 @@ def gui_locator_bar_cases():
     yield {"case_id": "gui/locator_bar", "family": "gui", "operation": "locator_bar", "rows": rows}
 
 
+def gui_chat_draft_cases():
+    """The chat box's draft: what a closed box keeps by the way it closed
+    (Escape only with the option on, an interruption always, a sent line or
+    nothing to send never), a blank text kept as nothing, which box takes
+    which draft (a message box any, a command box a command's), a draft left
+    as it was when it is not edited, one Backspace wiping it, and a draft
+    drawn grey and slanted until it is edited."""
+    op = lambda method="message": {"do": "open", "method": method}
+    typed = lambda text: {"do": "type", "text": text}
+    key = lambda name: {"do": "key", "key": name}
+    close = lambda reason: {"do": "close", "reason": reason}
+    draw = {"do": "draw"}
+
+    def row(label, events, save=False, width=427, height=240):
+        return {"label": label, "width": width, "height": height, "save": save, "events": events}
+
+    kept = [op(), typed("hello"), close("interrupted")]
+    rows = [
+        row("empty", [op()]), row("empty-command", [op("command")]),
+        row("escape-discards", [op(), typed("hello"), close("intentional"), op()]),
+        row("escape-saves", [op(), typed("hello"), close("intentional"), op()], save=True),
+        row("interrupted-saves", kept + [op()]),
+        row("interrupted-saves-with-option", kept + [op()], save=True),
+        row("done-discards", [op(), typed("hello"), close("done"), op()]),
+        row("done-discards-with-option", [op(), typed("hello"), close("done"), op()], save=True),
+        row("command-draft-to-command", [op("command"), typed("gamemode"), close("interrupted"), op("command")]),
+        row("command-draft-to-message", [op("command"), typed("gamemode"), close("interrupted"), op()]),
+        row("message-draft-to-command", kept + [op("command")]),
+        row("message-draft-to-command-then-message", kept + [op("command"), close("done"), op()]),
+        row("blank-is-nothing", [op(), typed("   "), close("interrupted"), op()]),
+        row("blank-clears-the-draft", kept + [op(), key("backspace"), close("interrupted"), op()]),
+        row("slash-only-is-kept", [op("command"), close("interrupted"), op("command")]),
+        row("slash-only-blank-is-not", [op("command"), close("interrupted"), op()]),
+        row("spaces-kept-as-typed", [op(), typed("  hi  "), close("interrupted"), op()]),
+        row("unedited-draft-stays", kept + [op(), close("interrupted"), op()]),
+        row("unedited-draft-stays-escape", kept + [op(), close("intentional"), op()], save=True),
+        row("unedited-draft-lost-escape", kept + [op(), close("intentional"), op()]),
+        row("unedited-draft-lost-done", kept + [op(), close("done"), op()]),
+        row("edited-draft-kept", kept + [op(), typed("!"), close("interrupted"), op()]),
+        row("edited-draft-lost-on-done", kept + [op(), typed("!"), close("done"), op()]),
+        row("backspace-wipes-draft", kept + [op(), key("backspace")]),
+        row("backspace-wipes-then-types", kept + [op(), key("backspace"), typed("x")]),
+        row("backspace-twice", kept + [op(), key("backspace"), key("backspace")]),
+        row("backspace-on-own-text", [op(), typed("abc"), key("backspace")]),
+        row("cursor-keys-keep-draft", kept + [op(), key("left"), key("left"), key("home"), key("end")]),
+        row("delete-edits-draft", kept + [op(), key("home"), key("delete")]),
+        row("typing-ends-draft", kept + [op(), typed("a")]),
+        row("draft-then-wiped-then-closed", kept + [op(), key("backspace"), close("intentional"), op()], save=True),
+        row("second-draft-replaces", kept + [op(), key("backspace"), typed("other"), close("interrupted"), op()]),
+        row("draw-empty", [op(), draw]), row("draw-own-text", [op(), typed("hello"), draw]),
+        row("draw-draft", kept + [op(), draw]),
+        row("draw-draft-edited", kept + [op(), typed("!"), draw]),
+        row("draw-draft-wiped", kept + [op(), key("backspace"), draw]),
+        row("draw-draft-cursor-moved", kept + [op(), key("left"), draw]),
+        row("draw-draft-small", kept + [op(), draw], width=200, height=120),
+        row("draw-long-draft", [op(), typed("a long draft that goes on " * 6), close("interrupted"), op(), draw]),
+        row("many-closes", [op(), typed("a"), close("interrupted"), op(), typed("b"), close("interrupted"),
+                            op(), typed("c"), close("done"), op()]),
+    ]
+    yield {"case_id": "gui/chat-draft", "family": "gui", "operation": "chat_draft", "rows": rows}
+
+
 def gui_settings_key_cases():
     """Tab, Shift+Tab and the arrows on the settings lists: the first and the
     last widget taken from no focus, the walk through rows (two to a row,
@@ -1793,4 +1877,4 @@ def gui_generators():
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
         gui_mouse_cases(), gui_language_cases(), gui_locator_bar_cases(),
-        gui_settings_key_generators())
+        gui_settings_key_generators(), gui_chat_draft_cases())
