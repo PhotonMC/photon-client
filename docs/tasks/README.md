@@ -78,7 +78,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | açık |
 | [T41](T41-ekipman-katmanlari.md) | Ekipman katmanları: `SetEquipment`, elde eşya, zırh, kafa eşyası, pelerin/elytra | L | T28, T22 | açık |
-| [T42](T42-entity-golgesi.md) | Entity gölgesi (`submitShadow`) | M | T24 | açık |
+| [T42](T42-entity-golgesi.md) | Entity gölgesi (`submitShadow`) | M | T24 | bitti (d2c2f477) |
 | [T43](T43-keyframe-animasyon-ve-animate.md) | `KeyframeAnimation` oynatıcısı, `Animate` paketi ve `EntityEvent` çizim durumları | L | T24 | açık |
 | [T44](T44-binek-surusu.md) | Binek sürüşü: `PlayerInput`, `PlayerCommand`, `MoveVehicle`, `PaddleBoat` | L | T38, T31 | açık |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | açık |
