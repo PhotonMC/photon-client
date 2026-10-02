@@ -43,12 +43,25 @@ duvar, tavan, basamak, iki zemin arasındaki kenar (destek bloğu), yarım blok,
 çit, halı ve boşluğa düşme. Zemin türleri aynı kodun yalnız sabit tablosunu
 değiştirdiği için satırdır, ayrı dilim değildir.
 
+## Akışkan (T25d)
+
+`Entity.baseTick`'in `updateFluidInteraction` taraması tikin başında, ItemEntity
+tikinin sonunda bir kez daha çalışır: kutunun değdiği su ve lav, akışkanın
+ayaktan yüksekliği ve akıntı. Akıntı oyuncu olmayan entity'ye **ortalaması
+değil yönü** (`normalize`) olarak uygulanır (`Tracker.applyCurrentTo`; oyuncuda
+ortalama). Yükseklik 0.1'i aşarsa eşya `0.99` (su) ya da `0.95` (lav) ile
+yavaşlar ve dikey hızı 0.06'nın altındaysa `+5e-4` ile yükselir; yoksa yerçekimi.
+Tarama oyuncuyla ortak koddadır (`voxel-world/fluid.rs`). `item_entity_ticks`'e
+19 satır eklendi: havuza düşme (düz ve yanlamasına), derin suda yükselme, sığ su,
+yukarı fırlatma, buz/slime üzerinde su, 1/9 ve 2/9 yüksekliğinde yüzey (0.1
+eşiği), akan su (dere, uç, şelale), lav (havuz, sığ, akış), su ile lav arası ve
+su altında duvar.
+
 ## Sapmalar (açık)
 
-- Akışkan: kutu akışkana değerse eşya simüle edilmez, sunucu konumunda kalır
-  (kaldırma kuvveti ve akıntı yok).
 - Blok içi etkiler (`checkInsideBlocks`: ağ, böğürtlen, toz kar, kabarcık sütunu,
   ateş) ve `stepOn`'un slime dışındaki dalları (harekete etkisiz) taşınmadı.
+- `FAST_LAVA` (Nether) ortamının lav akıntı ölçeği (0.007) yok; hep 0.0023333.
 - Çarpışmada dünya sınırı ve çarpışan entity'ler (tekne, shulker) yok;
   iskele gibi entity'ye bağlı şekiller için eşya o tikte konumunu korur.
 - `pickupDelay`, birleşme ve yaş sınırı çizimi etkilemediği için yok.

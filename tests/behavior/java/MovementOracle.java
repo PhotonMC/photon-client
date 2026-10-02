@@ -107,6 +107,13 @@ public final class MovementOracle {
 
         @Override
         public void add(net.minecraft.client.particle.Particle particle) {}
+
+        @Override
+        public net.minecraft.client.particle.Particle createParticle(
+            net.minecraft.core.particles.ParticleOptions options,
+            double x, double y, double z, double xd, double yd, double zd) {
+            return null;
+        }
     }
 
     /** The level tells the renderer which sections to rebuild; nothing draws here. */
@@ -322,6 +329,12 @@ public final class MovementOracle {
         // The handlers ask whether the player rides the entity; this one rides nothing.
         setField(scene.minecraft(), "player",
             unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
+        // A splash in the water asks the renderer's camera whether to show
+        // its particles, and the engine to make them; none are drawn here.
+        var splashRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(splashRenderer, "mainCamera", new net.minecraft.client.Camera());
+        setField(scene.minecraft(), "gameRenderer", splashRenderer);
+        setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
         var item = new net.minecraft.world.entity.item.ItemEntity(level,
             Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
             new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),

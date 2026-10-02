@@ -5,12 +5,12 @@
 use voxel_core::aabb::Aabb;
 use voxel_core::binary::BlockPos;
 use voxel_core::math::{Vec3, floor_f64};
-use voxel_data::block::definition::Fluid;
 
 use super::ClientWorld;
 use super::collision::collide_entity_movement;
 use super::constants::VANILLA_ITEM_ENTITY_TYPE_ID;
 use super::entity::{ClientEntityDimensions, Support};
+use super::fluid::{self, LAVA_FLOW_SCALE, Pushed, WATER_FLOW_SCALE};
 use super::local_player::Level;
 
 /// `ItemEntity.getDefaultGravity`.
@@ -48,36 +48,6 @@ fn item_box(position: Vec3) -> Aabb {
     ClientEntityDimensions::scalable(0.25, 0.25).make_bounding_box(position)
 }
 
-/// Whether the item's box touches any fluid (`FluidInteraction.update`'s
-/// scan of the box shrunk by a thousandth).
-fn touches_fluid(level: &Level<'_>, bounding_box: Aabb) -> bool {
-    let area = bounding_box.deflate(0.001);
-    let (x0, y0, z0) = (
-        floor_f64(area.min_x),
-        floor_f64(area.min_y),
-        floor_f64(area.min_z),
-    );
-    let (x1, y1, z1) = (
-        voxel_core::math::ceil_f64(area.max_x) - 1,
-        voxel_core::math::ceil_f64(area.max_y) - 1,
-        voxel_core::math::ceil_f64(area.max_z) - 1,
-    );
-    for x in x0..=x1 {
-        for y in y0..=y1 {
-            for z in z0..=z1 {
-                let pos = BlockPos::new(x, y, z);
-                let info = level.info(pos);
-                if info.fluid != Fluid::Empty
-                    && f64::from(y) + f64::from(level.fluid_height(pos, &info)) >= area.min_y
-                {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
 /// `Entity.applyEffectsFromBlocks`'s `stepOn` for an item on the ground: a
 /// slime block slows what slides over it. (The block effects of being inside
 /// a block, as a cobweb's, are not carried yet.)
@@ -98,18 +68,46 @@ fn step_on(
     Vec3::new(delta.x * scale, delta.y, delta.z * scale)
 }
 
-/// `ItemEntity.tick` after `baseTick`, with the branches the client runs:
-/// gravity, `Entity.move` (collision with the blocks, the flags it sets, the
-/// block's speed factor), then drag, ground friction and the bounce.
-fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
-    // Fluids (buoyancy, currents) are not carried yet: the item stays where
-    // the server's packets put it.
-    if touches_fluid(level, item_box(state.position)) {
-        return None;
+/// What the fluids around an item do to it: `Entity.updateFluidInteraction`
+/// finds the water and lava the box is in, and the currents push the item.
+fn fluid_pass(level: &Level<'_>, position: Vec3, delta: Vec3) -> Option<(fluid::Fluids, Vec3)> {
+    let eye_height = ClientEntityDimensions::scalable(0.25, 0.25).eye_height();
+    let fluids = fluid::scan(level, (item_box(position), position, eye_height), false).ok()?;
+    let mut delta = delta;
+    if fluids.water.height > 0.0 {
+        delta = fluid::apply_current(fluids.water, delta, WATER_FLOW_SCALE, Pushed::Other);
     }
+    if fluids.lava.height > 0.0 {
+        delta = fluid::apply_current(fluids.lava, delta, LAVA_FLOW_SCALE, Pushed::Other);
+    }
+    Some((fluids, delta))
+}
+
+/// `ItemEntity.setFluidMovement`: the item slows in the fluid and floats up
+/// while it sinks slower than a sixtieth of a block a tick.
+fn fluid_movement(delta: Vec3, multiplier: f32) -> Vec3 {
+    let multiplier = f64::from(multiplier);
+    let lift = if delta.y < f64::from(0.06_f32) {
+        f64::from(5.0e-4_f32)
+    } else {
+        0.0
+    };
+    Vec3::new(delta.x * multiplier, delta.y + lift, delta.z * multiplier)
+}
+
+/// `ItemEntity.tick` after `baseTick`, with the branches the client runs:
+/// the fluids' current and buoyancy, or gravity, `Entity.move` (collision
+/// with the blocks, the flags it sets, the block's speed factor), then drag,
+/// ground friction and the bounce, and the fluids' current once more.
+fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
     let mut position = state.position;
-    let mut delta = state.delta;
-    if !state.no_gravity {
+    // `baseTick`'s fluid pass, before the movement is chosen.
+    let (fluids, mut delta) = fluid_pass(level, position, state.delta)?;
+    if fluids.water.height > f64::from(0.1_f32) {
+        delta = fluid_movement(delta, 0.99);
+    } else if fluids.lava.height > f64::from(0.1_f32) {
+        delta = fluid_movement(delta, 0.95);
+    } else if !state.no_gravity {
         delta = delta.add_vec3(Vec3::new(0.0, -GRAVITY, 0.0));
     }
     let mut on_ground = state.on_ground;
@@ -170,6 +168,8 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
             delta = Vec3::new(delta.x, delta.y * -0.5, delta.z);
         }
     }
+    // The pass at the end of the tick, which the next tick's movement feels.
+    let (_, delta) = fluid_pass(level, position, delta)?;
     Some(ItemStep {
         position,
         delta,

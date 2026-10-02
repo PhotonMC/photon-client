@@ -14124,6 +14124,64 @@ def movement_item_cases():
         # A box the floor does not reach.
         row("falling-out-of-the-world", [], (0.5, 10.0, 0.5), (0.0, 0.0, 0.0), 30),
     ]
+
+    # Fluids: the item slows, floats up while it sinks slowly, and the flow of
+    # a current pushes it, whichever fluid it is in and however deep.
+    def pool(block, depth, low=-3, high=3, properties=None):
+        out = []
+        for x in range(low, high + 1):
+            for z in range(low, high + 1):
+                for y in range(64, 64 + depth):
+                    placed = {"x": x, "y": y, "z": z, "block": block}
+                    if properties:
+                        placed["properties"] = properties
+                    out.append(placed)
+        return out
+
+    def level(x, y, z, depth, block="minecraft:water"):
+        return {"x": x, "y": y, "z": z, "block": block, "properties": {"level": str(depth)}}
+
+    # A stream: a source with the water flowing away over a floor, each block
+    # one level lower than the one before.
+    stream = [level(0, 64, 0, 0)] + [level(x, 64, 0, x) for x in range(1, 8)]
+    waterfall = [level(0, 64 + y, 0, 0) for y in range(3, 4)] + [
+        level(0, 64 + y, 0, 8) for y in range(0, 3)]
+    rows += [
+        row("falling-into-water", floor() + pool("minecraft:water", 3), (0.5, 70.0, 0.5),
+            (0.0, 0.0, 0.0), 120),
+        row("falling-into-water-sideways", floor() + pool("minecraft:water", 3), (-2.5, 70.0, 0.5),
+            (0.15, 0.0, 0.05), 120),
+        row("sunk-in-deep-water", floor() + pool("minecraft:water", 5), (0.5, 64.2, 0.5),
+            (0.0, 0.0, 0.0), 100),
+        row("lying-in-shallow-water", floor() + pool("minecraft:water", 1), (0.5, 64.0, 0.5),
+            (0.0, 0.0, 0.0), 80, on_ground=True),
+        row("thrown-up-through-water", floor() + pool("minecraft:water", 3), (0.5, 64.5, 0.5),
+            (0.0, 0.5, 0.0), 100),
+        row("water-over-ice", floor("minecraft:ice") + pool("minecraft:water", 2), (0.5, 66.0, 0.5),
+            (0.1, 0.0, 0.0), 80),
+        row("water-over-slime", floor("minecraft:slime_block") + pool("minecraft:water", 2),
+            (0.5, 66.0, 0.5), (0.0, 0.0, 0.0), 80),
+        row("water-surface-eighth", floor() + pool("minecraft:water", 1, properties={"level": "7"}),
+            (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 60, on_ground=True),
+        row("water-surface-sixth", floor() + pool("minecraft:water", 1, properties={"level": "6"}),
+            (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 60, on_ground=True),
+        row("in-a-stream", floor() + stream, (1.5, 64.0, 0.5), (0.0, 0.0, 0.0), 100, on_ground=True),
+        row("dropped-into-a-stream", floor() + stream, (2.5, 67.0, 0.5), (0.0, 0.0, 0.0), 100),
+        row("at-the-stream-end", floor() + stream, (7.5, 64.0, 0.5), (0.0, 0.0, 0.0), 80,
+            on_ground=True),
+        row("in-a-waterfall", floor() + waterfall, (0.5, 66.8, 0.5), (0.0, 0.0, 0.0), 80),
+        row("falling-into-lava", floor() + pool("minecraft:lava", 3), (0.5, 70.0, 0.5),
+            (0.0, 0.0, 0.0), 120),
+        row("lying-in-shallow-lava", floor() + pool("minecraft:lava", 1), (0.5, 64.0, 0.5),
+            (0.0, 0.0, 0.0), 80, on_ground=True),
+        row("lava-flow", floor() + [level(0, 64, 0, 0, "minecraft:lava")]
+            + [level(x, 64, 0, x, "minecraft:lava") for x in range(1, 4)],
+            (1.5, 64.0, 0.5), (0.0, 0.0, 0.0), 80, on_ground=True),
+        row("between-water-and-lava", floor() + pool("minecraft:water", 3, -3, 0)
+            + pool("minecraft:lava", 3, 1, 3), (0.5, 66.0, 0.5), (0.0, 0.0, 0.0), 100),
+        row("into-a-wall-under-water", floor() + pool("minecraft:water", 3) + wall,
+            (0.5, 65.0, 0.5), (0.3, 0.0, 0.0), 60),
+    ]
     # The server's packets between ticks. A relative move counts from where
     # the last packet put the item, not from where the client has moved it to.
     def move(tick, xa, ya, za, on_ground=False):

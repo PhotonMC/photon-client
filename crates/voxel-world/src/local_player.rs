@@ -195,28 +195,7 @@ const STEP_HEIGHT: f64 = 0.6;
 const GRAVITY: f64 = 0.08;
 const SNEAKING_SPEED: f64 = 0.3;
 const SPRINT_WINDOW: i32 = 7;
-const WATER_FLOW_SCALE: f64 = 0.014;
-const LAVA_FLOW_SCALE: f64 = 0.0023333333333333335;
-
-/// One fluid's share of the player's fluid interaction.
-#[derive(Debug, Clone, Copy)]
-struct FluidTracker {
-    height: f64,
-    eyes_inside: bool,
-    accumulated_current: Vec3,
-    current_count: i32,
-}
-
-impl Default for FluidTracker {
-    fn default() -> Self {
-        Self {
-            height: 0.0,
-            eyes_inside: false,
-            accumulated_current: Vec3::ZERO,
-            current_count: 0,
-        }
-    }
-}
+use crate::fluid::{FluidTracker, LAVA_FLOW_SCALE, WATER_FLOW_SCALE};
 
 /// A stretch of movement recorded for the block-effects pass.
 #[derive(Debug, Clone, Copy)]
@@ -303,7 +282,7 @@ impl StateInfo {
         )
     }
 
-    fn is_water(&self) -> bool {
+    pub(crate) fn is_water(&self) -> bool {
         matches!(self.fluid, Fluid::Water | Fluid::FlowingWater)
     }
 
@@ -519,7 +498,7 @@ impl Level<'_> {
     }
 
     /// `FlowingFluid.getFlow`.
-    fn fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<Vec3, Unsupported> {
+    pub(crate) fn fluid_flow(&self, pos: BlockPos, info: &StateInfo) -> Result<Vec3, Unsupported> {
         let same = |other: &StateInfo| {
             other.fluid == Fluid::Empty
                 || (info.is_water() && other.is_water())
@@ -2416,62 +2395,21 @@ impl LocalPlayer {
     }
 
     fn update_fluid_interaction(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
-        self.water = FluidTracker::default();
-        self.lava = FluidTracker::default();
-        let ignore_current = self.abilities.flying;
-        let area = self.bounding_box.deflate(0.001);
-        let x0 = floor_f64(area.min_x);
-        let y0 = floor_f64(area.min_y);
-        let z0 = floor_f64(area.min_z);
-        let x1 = voxel_core::math::ceil_f64(area.max_x) - 1;
-        let y1 = voxel_core::math::ceil_f64(area.max_y) - 1;
-        let z1 = voxel_core::math::ceil_f64(area.max_z) - 1;
-        if self.has_fluid_and_loaded(level, x0 - 1, y0, z0 - 1, x1 + 1, y1, z1 + 1) {
-            let entity_y = self.bounding_box.min_y;
-            let eye_x = floor_f64(self.position.x);
-            let eye_y = self.position.y + f64::from(self.dimensions.eye_height());
-            let eye_z = floor_f64(self.position.z);
-            for x in x0..=x1 {
-                for y in y0..=y1 {
-                    for z in z0..=z1 {
-                        let pos = BlockPos::new(x, y, z);
-                        let info = level.info(pos);
-                        if info.fluid == Fluid::Empty {
-                            continue;
-                        }
-                        let bottom = f64::from(y);
-                        let top = bottom + f64::from(level.fluid_height(pos, &info));
-                        if top < area.min_y {
-                            continue;
-                        }
-                        let tracker = if info.is_water() {
-                            &mut self.water
-                        } else {
-                            &mut self.lava
-                        };
-                        if x == eye_x && z == eye_z && eye_y >= bottom && eye_y <= top {
-                            tracker.eyes_inside = true;
-                        }
-                        tracker.height = java_math::max(top - entity_y, tracker.height);
-                        if !ignore_current {
-                            let mut flow = level.fluid_flow(pos, &info)?;
-                            let tracker = if info.is_water() {
-                                &mut self.water
-                            } else {
-                                &mut self.lava
-                            };
-                            if tracker.height < 0.4 {
-                                flow = flow.scale(tracker.height);
-                            }
-                            tracker.accumulated_current =
-                                tracker.accumulated_current.add_vec3(flow);
-                            tracker.current_count += 1;
-                        }
-                    }
-                }
-            }
-        }
-
+        let found = crate::fluid::scan(
+            level,
+            (
+                self.bounding_box,
+                self.position,
+                self.dimensions.eye_height(),
+            ),
+            self.abilities.flying,
+        );
+        let fluids = found.inspect_err(|_| {
+            self.water = FluidTracker::default();
+            self.lava = FluidTracker::default();
+        })?;
+        self.water = fluids.water;
+        self.lava = fluids.lava;
         let in_water = self.water.height > 0.0;
         let in_lava = self.lava.height > 0.0;
         if in_water {
@@ -2490,52 +2428,8 @@ impl LocalPlayer {
     }
 
     fn apply_current(&mut self, tracker: FluidTracker, scale: f64) {
-        if tracker.current_count == 0
-            || tracker.accumulated_current.length_squared() < f64::from(1.0e-5_f32)
-        {
-            return;
-        }
-        let mut impulse = tracker
-            .accumulated_current
-            .scale(1.0 / f64::from(tracker.current_count))
-            .scale(scale);
-        if self.delta.x.abs() < 0.003
-            && self.delta.z.abs() < 0.003
-            && impulse.length() < 0.0045000000000000005
-        {
-            impulse = impulse.normalized().scale(0.0045000000000000005);
-        }
-        self.delta = self.delta.add_vec3(impulse);
-    }
-
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
-    fn has_fluid_and_loaded(
-        &self,
-        level: &Level<'_>,
-        x0: i32,
-        y0: i32,
-        z0: i32,
-        x1: i32,
-        y1: i32,
-        z1: i32,
-    ) -> bool {
-        let mut has_fluid = false;
-        for chunk_z in z0.div_euclid(16)..=z1.div_euclid(16) {
-            for chunk_x in x0.div_euclid(16)..=x1.div_euclid(16) {
-                let Some(chunk) = level.world.chunk_for_query(chunk_x, chunk_z) else {
-                    return false;
-                };
-                for section_y in y0.div_euclid(16)..=y1.div_euclid(16) {
-                    if let Some(section) = chunk.sections.get(&section_y) {
-                        has_fluid |= section.fluid_count > 0;
-                    }
-                }
-            }
-        }
-        has_fluid
+        self.delta =
+            crate::fluid::apply_current(tracker, self.delta, scale, crate::fluid::Pushed::Player);
     }
 
     fn update_swimming(&mut self, level: &Level<'_>) {

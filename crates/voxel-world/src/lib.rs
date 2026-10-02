@@ -29,6 +29,7 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+mod fluid;
 pub mod item_components;
 mod item_physics;
 mod java_math;
