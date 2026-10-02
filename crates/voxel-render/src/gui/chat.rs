@@ -816,6 +816,8 @@ pub struct ChatScreen {
     /// The names the suggestions draw on: online players, and teams.
     players: Vec<String>,
     teams: Vec<String>,
+    /// The aimed entity's string UUID, if any (`getSelectedEntities`).
+    selected_entities: Vec<String>,
     /// Whether the player may use entity selectors.
     selectors: bool,
     /// The text is a draft kept from before, not yet edited (`isDraft`).
@@ -849,6 +851,7 @@ impl ChatScreen {
             commands: None,
             players: Vec::new(),
             teams: Vec::new(),
+            selected_entities: Vec::new(),
             selectors: true,
             draft: false,
             local: Vec::new(),
@@ -865,6 +868,12 @@ impl ChatScreen {
     pub fn set_names(&mut self, players: Vec<String>, teams: Vec<String>) {
         self.players = players;
         self.teams = teams;
+    }
+
+    /// The string UUID of the entity in the crosshair, which entity
+    /// arguments offer as a name.
+    pub fn set_selected_entities(&mut self, selected: Vec<String>) {
+        self.selected_entities = selected;
     }
 
     /// Whether the player's permissions allow entity selectors.
@@ -929,6 +938,7 @@ impl ChatScreen {
                     &SuggestContext {
                         players: &self.players,
                         teams: &self.teams,
+                        selected_entities: &self.selected_entities,
                         selectors: self.selectors,
                     },
                 );

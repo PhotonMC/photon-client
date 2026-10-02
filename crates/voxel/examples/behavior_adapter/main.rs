@@ -18558,6 +18558,10 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     attack_held: flag(attack, "down")?,
                     use_clicks: use_.map_or(Ok(0), |use_| count(use_, "clicks"))?,
                     use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
+                    pick_clicks: attack
+                        .get("pick_item")
+                        .map_or(Ok(0), |pick| count(pick, "clicks"))?,
+                    control_down: false,
                 };
                 let miner = voxel_game::game_mode::Miner::of(&world, 0);
                 let mut ctx = voxel_game::game_mode::Context {
@@ -19060,6 +19064,7 @@ fn command_suggest_result(request: &Value) -> Result<Value, String> {
             .as_u64()
             .map_or_else(|| text.chars().count(), |cursor| cursor as usize);
         let (players, teams) = (names(&row["players"]), names(&row["teams"]));
+        let selected = names(&row["selected_entities"]);
         let selectors = row["selectors"].as_bool().unwrap_or(true);
         let parse = tree.parse(text, usize::from(text.starts_with('/')), selectors);
         let found = tree.suggestions(
@@ -19068,6 +19073,7 @@ fn command_suggest_result(request: &Value) -> Result<Value, String> {
             &SuggestContext {
                 players: &players,
                 teams: &teams,
+                selected_entities: &selected,
                 selectors,
             },
         );

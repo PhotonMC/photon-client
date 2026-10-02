@@ -17,6 +17,8 @@ pub struct HeldKeys {
     pub attack: bool,
     /// The attack key held down on this tick.
     pub mine: bool,
+    /// A scripted press of the pick item key on this tick.
+    pub pick: bool,
     /// A scripted use click on this tick.
     pub use_click: bool,
     /// The use key held down on this tick.
@@ -89,6 +91,7 @@ impl HeldKeys {
                 "attack" => keys.attack = true,
                 "mine" => keys.mine = true,
                 "use" => keys.use_click = true,
+                "pick" => keys.pick = true,
                 "hold_use" => keys.hold_use = true,
                 "inventory" => keys.inventory = true,
                 "chat" => keys.chat = true,

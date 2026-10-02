@@ -51,6 +51,18 @@ impl Uuid {
     pub const fn new(most: u64, least: u64) -> Self {
         Self { most, least }
     }
+
+    /// `UUID.toString`: eight, four, four, four and twelve lowercase hex digits.
+    pub fn to_string_java(self) -> String {
+        format!(
+            "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
+            self.most >> 32,
+            (self.most >> 16) & 0xFFFF,
+            self.most & 0xFFFF,
+            self.least >> 48,
+            self.least & 0xFFFF_FFFF_FFFF
+        )
+    }
 }
 
 fn read_u64(input: &mut &[u8]) -> Result<u64, ReadError> {
@@ -2020,4 +2032,21 @@ pub fn read_sectionpos(input: &mut &[u8]) -> Result<SectionPos, ReadError> {
 /// Append 8 bytes for a packed section position.
 pub fn write_sectionpos(value: SectionPos, output: &mut Vec<u8>) {
     output.extend_from_slice(&value.pack().to_be_bytes());
+}
+
+#[cfg(test)]
+mod uuid_tests {
+    use super::Uuid;
+
+    #[test]
+    fn a_uuid_reads_as_java_writes_it() {
+        assert_eq!(
+            Uuid::new(0x5e8c_9a1b_0000_4000, 0x8000_0000_0000_0001).to_string_java(),
+            "5e8c9a1b-0000-4000-8000-000000000001"
+        );
+        assert_eq!(
+            Uuid::new(0, 7).to_string_java(),
+            "00000000-0000-0000-0000-000000000007"
+        );
+    }
 }

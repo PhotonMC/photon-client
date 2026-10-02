@@ -418,6 +418,8 @@ impl Play {
                 attack_held: self.controls.attack_key.is_down() && grabbed,
                 use_clicks: self.controls.use_key.take_clicks(),
                 use_held: self.controls.use_key.is_down(),
+                pick_clicks: self.controls.pick_key.take_clicks(),
+                control_down: self.controls.ctrl_down,
             },
             aim,
         )?;

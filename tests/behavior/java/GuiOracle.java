@@ -1989,6 +1989,7 @@ public final class GuiOracle {
         boolean asked;
         final java.util.List<String> players;
         final java.util.List<String> teams;
+        java.util.List<String> selected = java.util.List.of();
 
         OracleSource(java.util.List<String> players, java.util.List<String> teams, boolean selectors) {
             super(null, null, permission -> selectors
@@ -2009,7 +2010,7 @@ public final class GuiOracle {
 
         @Override
         public java.util.Collection<String> getSelectedEntities() {
-            return java.util.List.of();
+            return selected;
         }
 
         @Override
@@ -2075,6 +2076,13 @@ public final class GuiOracle {
                 teams.add(team.getAsString());
             }
             var source = new OracleSource(players, teams, !row.has("selectors") || row.get("selectors").getAsBoolean());
+            if (row.has("selected_entities")) {
+                var selected = new java.util.ArrayList<String>();
+                for (var entity : row.getAsJsonArray("selected_entities")) {
+                    selected.add(entity.getAsString());
+                }
+                source.selected = selected;
+            }
             if (row.has("registry_backed")) {
                 // The game lists these from its registries; this port asks the server.
                 var out = new JsonObject();

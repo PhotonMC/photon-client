@@ -95,6 +95,8 @@ pub struct PlaySession {
     death: Option<voxel_game::text::Component>,
     /// Swing packets sent, for scripted runs to report.
     swings: u32,
+    /// The entity the crosshair last landed on (`Minecraft.hitResult`).
+    aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.
     hardcore: bool,
     /// Whether a health update has arrived since the player last respawned.
@@ -205,6 +207,7 @@ impl PlaySession {
             disconnect: None,
             death: None,
             swings: 0,
+            aimed_entity: None,
             hardcore: false,
             health_received: false,
             level_reset: false,
@@ -759,6 +762,16 @@ impl PlaySession {
         &self.username
     }
 
+    /// `ClientSuggestionProvider.getSelectedEntities`: the string UUID of the
+    /// entity the crosshair is on.
+    pub fn selected_entities(&self) -> Vec<String> {
+        self.aimed_entity
+            .and_then(|id| self.trace.world.entity_at(id))
+            .map(|entity| entity.uuid.to_string_java())
+            .into_iter()
+            .collect()
+    }
+
     /// `getOnlinePlayers`: the names of every player the server told of.
     pub fn online_player_names(&self) -> Vec<String> {
         self.player_infos
@@ -1134,6 +1147,10 @@ impl PlaySession {
         aim: voxel_game::game_mode::Aim,
     ) -> Result<(), ConnectionError> {
         use voxel_game::game_mode::{Context, Miner, Outgoing};
+        self.aimed_entity = match aim {
+            voxel_game::game_mode::Aim::Entity { id, .. } => Some(id),
+            _ => None,
+        };
         self.ensure_has_sent_carried_item()?;
         let Some(player) = self.player.as_mut() else {
             return Ok(());
@@ -1170,6 +1187,12 @@ impl PlaySession {
                 }
                 Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
                 Outgoing::Attack { .. } => PLAY_SERVERBOUND_ATTACK_PACKET_ID,
+                Outgoing::PickItemFromBlock { .. } => {
+                    PLAY_SERVERBOUND_PICK_ITEM_FROM_BLOCK_PACKET_ID
+                }
+                Outgoing::PickItemFromEntity { .. } => {
+                    PLAY_SERVERBOUND_PICK_ITEM_FROM_ENTITY_PACKET_ID
+                }
                 Outgoing::SpectatorAction { .. } => PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID,
                 Outgoing::Interact { .. } => PLAY_SERVERBOUND_INTERACT_PACKET_ID,
             };

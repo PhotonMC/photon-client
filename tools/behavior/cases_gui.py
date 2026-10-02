@@ -515,6 +515,16 @@ def gui_command_suggest_cases():
         if name == "sounds":
             # A provider the game lists locally (the sounds); the port asks.
             rows[-1]["registry_backed"] = rows[-2]["registry_backed"] = True
+    # The entity in the crosshair is offered by an entity argument that takes
+    # more than players, as its string UUID; not by the players-only ones.
+    aimed = ["5e8c9a1b-0000-4000-8000-000000000001"]
+    for text in ("/t6 ", "/t6 5", "/t6 5e8c", "/t6 Mi", "/t6 @", "/t6 x", "/single ", "/t7 ", "/t7 5",
+                 "/t31 ", "/t31 5"):
+        add(text)
+        rows[-1]["selected_entities"] = aimed
+    add("/t6 ")
+    rows[-1]["selected_entities"] = aimed
+    rows[-1]["selectors"] = False
     add("/t42 creative ")
     add("/t6 Alex ")
     add("/t42 cr", cursor=5)

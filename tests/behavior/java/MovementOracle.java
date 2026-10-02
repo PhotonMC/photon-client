@@ -259,6 +259,10 @@ public final class MovementOracle {
         options.autoJump().set(row.has("auto_jump") && row.get("auto_jump").getAsBoolean());
         setField(minecraft, "options", options);
         setField(minecraft, "gui", unsafe.allocateInstance(net.minecraft.client.gui.Gui.class));
+        // `hasControlDown` asks the window's keys: a window with no keys down.
+        var window = unsafe.allocateInstance(com.mojang.blaze3d.platform.Window.class);
+        setField(window, "handle", 1L);
+        setField(minecraft, "window", window);
         setField(minecraft, "tutorial", new net.minecraft.client.tutorial.Tutorial(minecraft, options));
         setField(minecraft, "soundManager", unsafe.allocateInstance(SilentSoundManager.class));
 
@@ -713,6 +717,14 @@ public final class MovementOracle {
             startUseItem.setAccessible(true);
             for (int click = 0; click < use.get("clicks").getAsInt(); click++) {
                 startUseItem.invoke(minecraft);
+            }
+            // The pick item key is spent after the use clicks, before a held use.
+            if (attack.has("pick_item")) {
+                var pickItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("pickBlockOrEntity");
+                pickItem.setAccessible(true);
+                for (int click = 0; click < attack.getAsJsonObject("pick_item").get("clicks").getAsInt(); click++) {
+                    pickItem.invoke(minecraft);
+                }
             }
             if (use.get("down").getAsBoolean() && (int) getField(minecraft, "rightClickDelay") == 0
                 && !minecraft.player.isUsingItem()) {

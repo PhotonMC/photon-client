@@ -53,6 +53,11 @@ pub struct Keys {
     pub attack_held: bool,
     pub use_clicks: u32,
     pub use_held: bool,
+    /// Presses of the pick item key (the middle button).
+    pub pick_clicks: u32,
+    /// `Minecraft.hasControlDown`: either control key, which asks for the
+    /// picked block's or entity's data as well.
+    pub control_down: bool,
 }
 
 pub const MAIN_HAND: u8 = 0;
@@ -92,6 +97,15 @@ pub enum Outgoing {
     },
     /// `ServerboundAttackPacket`.
     Attack { entity_id: i32 },
+    /// `ServerboundPickItemFromBlockPacket`.
+    PickItemFromBlock {
+        x: i32,
+        y: i32,
+        z: i32,
+        include_data: bool,
+    },
+    /// `ServerboundPickItemFromEntityPacket`.
+    PickItemFromEntity { entity_id: i32, include_data: bool },
     /// `ServerboundSpectatorActionPacket`.
     SpectatorAction { entity_id: Option<i32> },
     /// `ServerboundInteractPacket`: the hit relative to the entity, and
@@ -442,6 +456,9 @@ impl GameMode {
         for _ in 0..keys.use_clicks {
             self.start_use_item(ctx, aim, &mut out);
         }
+        for _ in 0..keys.pick_clicks {
+            Self::pick_block_or_entity(aim, keys.control_down, &mut out);
+        }
         if keys.use_held && self.right_click_delay == 0 {
             self.start_use_item(ctx, aim, &mut out);
         }
@@ -450,6 +467,24 @@ impl GameMode {
             self.miss_time -= 1;
         }
         out
+    }
+
+    /// `Minecraft.pickBlockOrEntity`: the server is asked for the aimed
+    /// block's or entity's item; a miss asks for nothing.
+    fn pick_block_or_entity(aim: Aim, include_data: bool, out: &mut Vec<Outgoing>) {
+        match aim {
+            Aim::Block { x, y, z, .. } => out.push(Outgoing::PickItemFromBlock {
+                x,
+                y,
+                z,
+                include_data,
+            }),
+            Aim::Entity { id, .. } => out.push(Outgoing::PickItemFromEntity {
+                entity_id: id,
+                include_data,
+            }),
+            Aim::Miss => {}
+        }
     }
 
     /// `Minecraft.startAttack`; whether the attack ended the key's hold.
@@ -1004,6 +1039,8 @@ impl Outgoing {
             Outgoing::UseItemOn { .. } => "minecraft:use_item_on",
             Outgoing::UseItem { .. } => "minecraft:use_item",
             Outgoing::Attack { .. } => "minecraft:attack",
+            Outgoing::PickItemFromBlock { .. } => "minecraft:pick_item_from_block",
+            Outgoing::PickItemFromEntity { .. } => "minecraft:pick_item_from_entity",
             Outgoing::SpectatorAction { .. } => "minecraft:spectator_action",
             Outgoing::Interact { .. } => "minecraft:interact",
         }
@@ -1068,6 +1105,26 @@ impl Outgoing {
                 out.extend_from_slice(&x_rot.to_be_bytes());
             }
             Outgoing::Attack { entity_id } => voxel_core::wire::write_varint(entity_id, &mut out),
+            Outgoing::PickItemFromBlock {
+                x,
+                y,
+                z,
+                include_data,
+            } => {
+                out.extend_from_slice(
+                    &voxel_core::binary::BlockPos::new(x, y, z)
+                        .as_long()
+                        .to_be_bytes(),
+                );
+                out.push(u8::from(include_data));
+            }
+            Outgoing::PickItemFromEntity {
+                entity_id,
+                include_data,
+            } => {
+                voxel_core::wire::write_varint(entity_id, &mut out);
+                out.push(u8::from(include_data));
+            }
             // `OptionalInt`: the value and one, or nothing as zero.
             Outgoing::SpectatorAction { entity_id } => {
                 voxel_core::wire::write_varint(entity_id.map_or(0, |id| id + 1), &mut out);
@@ -1088,5 +1145,30 @@ impl Outgoing {
             }
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// With a control key down the pick asks for the data too; the oracle
+    /// cannot hold a key in the reference's window, so the byte is read here.
+    #[test]
+    fn control_asks_the_pick_for_data() {
+        let mut out = Vec::new();
+        GameMode::pick_block_or_entity(
+            Aim::Entity {
+                id: 20,
+                location: [0.0; 3],
+                position: [0.0; 3],
+                bounds: [0.0; 6],
+            },
+            true,
+            &mut out,
+        );
+        GameMode::pick_block_or_entity(Aim::Miss, true, &mut out);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].encode_body(), vec![20, 1]);
     }
 }

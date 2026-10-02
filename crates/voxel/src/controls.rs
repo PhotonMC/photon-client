@@ -38,6 +38,10 @@ pub struct Controls {
     pub attack_key: AttackKey,
     /// The use key keeps its clicks and held state the same way.
     pub use_key: AttackKey,
+    /// The pick item key (the middle button) and whether a control key is
+    /// down (`Minecraft.hasControlDown`), which asks for the item's data too.
+    pub pick_key: AttackKey,
+    pub ctrl_down: bool,
     scroll_wheel: ScrollWheel,
     /// F5 cycles first person, third person from behind and from the front.
     pub camera_type: CameraType,
@@ -173,6 +177,8 @@ impl Controls {
             keys: HeldKeys::default(),
             attack_key: AttackKey::default(),
             use_key: AttackKey::default(),
+            pick_key: AttackKey::default(),
+            ctrl_down: false,
             scroll_wheel: ScrollWheel::default(),
             camera_type,
             captured,
@@ -1194,6 +1200,7 @@ impl Controls {
                 session.online_player_names(),
                 session.scoreboard().team_names(),
             );
+            chat.set_selected_entities(session.selected_entities());
         }
         if let (Some(chat), Some(answer)) = (self.chat.as_mut(), session.take_suggestions()) {
             chat.suggested(answer.id, answer.start, answer.length, answer.matches);
@@ -1217,6 +1224,7 @@ impl Controls {
             session.online_player_names(),
             session.scoreboard().team_names(),
         );
+        chat.set_selected_entities(session.selected_entities());
         let size = surface.scale();
         chat.resize((size.gui_scaled_width(), size.gui_scaled_height()));
         if let glfw::WindowEvent::Key(glfw::Key::LeftShift | glfw::Key::RightShift, _, action, _) =
@@ -1387,6 +1395,7 @@ impl Controls {
         self.tab_held = false;
         self.attack_key.release();
         self.use_key.release();
+        self.pick_key.release();
     }
 
     /// `containerTick`: a container the server opens or closes opens or
@@ -1546,6 +1555,7 @@ impl Controls {
         }
         script_key(&mut self.attack_key, held.attack, held.mine);
         script_key(&mut self.use_key, held.use_click, held.hold_use);
+        script_key(&mut self.pick_key, held.pick, false);
         Ok(())
     }
 
@@ -1565,6 +1575,9 @@ impl Controls {
             };
             if control_keys.contains(&key) {
                 self.control_held = action != glfw::Action::Release;
+            }
+            if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
+                self.ctrl_down = action != glfw::Action::Release;
             }
         }
         if let Some(screen) = self.screen.as_mut() {
@@ -1787,6 +1800,12 @@ impl Controls {
             }
             WindowEvent::MouseButton(MouseButton::Button2, Action::Release, _) => {
                 self.use_key.release();
+            }
+            WindowEvent::MouseButton(MouseButton::Button3, Action::Press, _) if self.captured => {
+                self.pick_key.press();
+            }
+            WindowEvent::MouseButton(MouseButton::Button3, Action::Release, _) => {
+                self.pick_key.release();
             }
             WindowEvent::MouseButton(_, Action::Press, _) if !self.captured => {
                 self.captured = true;

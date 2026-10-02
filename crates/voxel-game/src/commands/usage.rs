@@ -212,6 +212,7 @@ mod tests {
             selectors: true,
             players: &[],
             teams: &[],
+            selected_entities: &[],
         }
     }
 

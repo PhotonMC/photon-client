@@ -15,6 +15,8 @@ pub struct SuggestContext<'a> {
     pub players: &'a [String],
     /// `getAllTeams`.
     pub teams: &'a [String],
+    /// `getSelectedEntities`: the string UUID of the entity in the crosshair.
+    pub selected_entities: &'a [String],
     /// Whether the source may use entity selectors
     /// (`Permissions.COMMANDS_ENTITY_SELECTORS`).
     pub selectors: bool,
@@ -159,7 +161,14 @@ const SELECTORS: [&str; 6] = ["@p", "@a", "@r", "@s", "@e", "@n"];
 /// The parts of `EntitySelectorParser` that decide what is suggested for a
 /// selector or a name. What is typed inside `@x[...]` is the options'
 /// (their keys and values); the server is asked for it.
-fn entities(remaining: &str, start: usize, ctx: &SuggestContext) -> Argument {
+fn entities(remaining: &str, start: usize, ctx: &SuggestContext, players_only: bool) -> Argument {
+    // `EntityArgument.listSuggestions`: names, and the aimed entity's id
+    // unless only players are taken.
+    let names: Vec<String> = if players_only {
+        ctx.players.to_vec()
+    } else {
+        [ctx.players, ctx.selected_entities].concat()
+    };
     let chars: Vec<char> = remaining.chars().collect();
     let selectors = || {
         SELECTORS
@@ -169,7 +178,7 @@ fn entities(remaining: &str, start: usize, ctx: &SuggestContext) -> Argument {
     };
     match chars.first() {
         None => {
-            let mut matches = suggest_values(ctx.players, remaining);
+            let mut matches = suggest_values(&names, remaining);
             if ctx.selectors {
                 matches.extend(selectors());
             }
@@ -183,7 +192,7 @@ fn entities(remaining: &str, start: usize, ctx: &SuggestContext) -> Argument {
             Some(_) if chars[2] == '[' => Argument::asks(),
             Some(_) => Argument::here(vec!["[".to_owned()], start + 2),
         },
-        Some(_) => Argument::here(suggest_values(ctx.players, remaining), start),
+        Some(_) => Argument::here(suggest_values(&names, remaining), start),
     }
 }
 
@@ -219,7 +228,20 @@ fn argument(
                 .collect();
             Argument::here(words, start)
         }
-        6 | 7 => entities(remaining, start, ctx),
+        6 => entities(
+            remaining,
+            start,
+            ctx,
+            matches!(
+                kind,
+                ArgumentKind::Entity {
+                    players_only: true,
+                    ..
+                }
+            ),
+        ),
+        // `GameProfileArgument`: names only.
+        7 => entities(remaining, start, ctx, true),
         8 | 10 => Argument::here(coordinates(remaining, 3, kind), start),
         9 | 11 => Argument::here(coordinates(remaining, 2, kind), start),
         16 => list(&crate::scoreboard::TEAM_COLOURS),

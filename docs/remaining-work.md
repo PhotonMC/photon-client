@@ -136,8 +136,8 @@ bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::t
    deri), zırh/eşya/pelerin/elytra katmanları, yakalar, binek eşyaları.
    Model başına oracle: eklem dönüşümleri `client-parity`.
 4. **Etkileşim (M)** `Interact`, `Attack`, `SpectatorAction` ve entity hedefleme
-   (T26) tamam; kalan: `PickItemFromEntity` ve bakılan varlık UUID önerisi (T26b),
-   saldırı gücü/tepme, `PlayerCombat*`, ölüm/`Respawn` ekranına bağ.
+   (T26) tamam; `PickItemFromBlock`/`PickItemFromEntity` ve bakılan varlık UUID önerisi (T26b)
+   tamam; kalan: saldırı gücü/tepme, `PlayerCombat*`, ölüm/`Respawn` ekranına bağ.
 5. **Binekler (L)** `PlayerInput`, `PlayerCommand`, `MoveVehicle`,
    `PaddleBoat`, at/domuz/tekne/minecart kontrolü, `MountScreenOpen`;
    P08'deki tekne/yolcu dalları üzerine.

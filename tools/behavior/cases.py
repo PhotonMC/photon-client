@@ -13649,12 +13649,14 @@ def movement_cases():
     # does, among the blocks and the entities the server told of, and the
     # attack and use keys act on what it lands on. Everything the player sent
     # is compared as the bytes the packets' own codecs write.
-    def aims(count, clicks=0, use_clicks=0, down=False, use_down=False, **held):
+    def aims(count, clicks=0, use_clicks=0, down=False, use_down=False, pick_clicks=0, **held):
         ticks = keys(count, **held)
         for index, tick in enumerate(ticks):
             tick["attack"] = {"clicks": clicks if index == 0 else 0, "down": down, "pick": True,
                               "use": {"clicks": use_clicks if index == 0 else 0, "down": use_down},
                               "watch": []}
+            if pick_clicks:
+                tick["attack"]["pick_item"] = {"clicks": pick_clicks if index == 0 else 0}
         return ticks
 
     def mob(entity_id, kind, x, y, z):
@@ -13709,6 +13711,17 @@ def movement_cases():
         facing("adventure-attack", [zombie], aims(1, clicks=1) + aims(3), game_mode="adventure"),
         facing("spectator-attack", [zombie], aims(1, clicks=1) + aims(3), game_mode="spectator"),
         facing("sword-in-hand", [zombie], aims(1, clicks=1) + aims(3), main_hand="minecraft:iron_sword"),
+        # The pick item key (the middle button): the aimed entity's or block's item.
+        facing("pick-zombie", [zombie], aims(1, pick_clicks=1) + aims(3)),
+        facing("pick-zombie-twice", [zombie], aims(1, pick_clicks=2) + aims(2)),
+        facing("pick-block", [], aims(1, pick_clicks=1) + aims(3), blocks=[put(0, 65, 2, "minecraft:dirt")]),
+        facing("pick-block-behind-entity", [zombie], aims(1, pick_clicks=1) + aims(2),
+               blocks=[put(0, 65, 5, "minecraft:stone")]),
+        facing("pick-nothing", [], aims(1, pick_clicks=1) + aims(3)),
+        facing("pick-out-of-reach", [mob(20, "zombie", 0.5, 64.0, 4.0)], aims(1, pick_clicks=1) + aims(2)),
+        facing("pick-after-use-and-attack", [zombie], aims(1, clicks=1, use_clicks=1, pick_clicks=1) + aims(2)),
+        facing("pick-in-creative", [zombie], aims(1, pick_clicks=1) + aims(2), game_mode="creative"),
+        facing("pick-in-spectator", [zombie], aims(1, pick_clicks=1) + aims(2), game_mode="spectator"),
     ]
     yield {
         "case_id": "movement/entity-aim",
