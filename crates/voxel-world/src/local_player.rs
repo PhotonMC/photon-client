@@ -241,14 +241,14 @@ mod flag {
 
 /// What a block state holds for movement, looked up once.
 #[derive(Clone, Copy)]
-struct StateInfo {
-    name: &'static str,
-    friction: f32,
-    speed_factor: f32,
+pub(crate) struct StateInfo {
+    pub(crate) name: &'static str,
+    pub(crate) friction: f32,
+    pub(crate) speed_factor: f32,
     jump_factor: f32,
     bounce: f32,
     flags: u16,
-    fluid: Fluid,
+    pub(crate) fluid: Fluid,
     own_height: f32,
     falling: bool,
 }
@@ -313,8 +313,8 @@ impl StateInfo {
 }
 
 /// The level as the tick reads it.
-struct Level<'a> {
-    world: &'a ClientWorld,
+pub(crate) struct Level<'a> {
+    pub(crate) world: &'a ClientWorld,
 }
 
 impl Level<'_> {
@@ -322,8 +322,108 @@ impl Level<'_> {
         self.world.block_state_at(pos.x, pos.y, pos.z)
     }
 
-    fn info(&self, pos: BlockPos) -> StateInfo {
+    pub(crate) fn info(&self, pos: BlockPos) -> StateInfo {
         StateInfo::of(self.state_id(pos), self.world.block_state_registry.tags())
+    }
+
+    /// `Entity.checkSupportingBlock`: which block an entity on the ground
+    /// stands on, from its box, position and fall distance.
+    pub(crate) fn check_supporting_block(
+        &self,
+        (main_supporting_block, on_ground_no_blocks): (&mut Option<BlockPos>, &mut bool),
+        (bounding_box, position, fall_distance): (Aabb, Vec3, f64),
+        on_ground: bool,
+        movement: Option<Vec3>,
+    ) -> Result<(), Unsupported> {
+        if on_ground {
+            let bb = bounding_box;
+            let test_area = Aabb::new(
+                bb.min_x,
+                bb.min_y - 1.0e-6,
+                bb.min_z,
+                bb.max_x,
+                bb.min_y,
+                bb.max_z,
+            );
+            let mut supporting = self.find_supporting_block(test_area, position, fall_distance)?;
+            if supporting.is_some() || *on_ground_no_blocks {
+                *main_supporting_block = supporting;
+            } else if let Some(movement) = movement {
+                supporting = self.find_supporting_block(
+                    test_area.move_by(-movement.x, 0.0, -movement.z),
+                    position,
+                    fall_distance,
+                )?;
+                *main_supporting_block = supporting;
+            }
+            *on_ground_no_blocks = supporting.is_none();
+        } else {
+            *on_ground_no_blocks = false;
+            *main_supporting_block = None;
+        }
+        Ok(())
+    }
+
+    fn find_supporting_block(
+        &self,
+        area: Aabb,
+        position: Vec3,
+        fall_distance: f64,
+    ) -> Result<Option<BlockPos>, Unsupported> {
+        let mut main: Option<BlockPos> = None;
+        let mut main_distance = f64::MAX;
+        for (pos, _) in self.block_collisions(area, fall_distance)? {
+            let dx = f64::from(pos.x) + 0.5 - position.x;
+            let dy = f64::from(pos.y) + 0.5 - position.y;
+            let dz = f64::from(pos.z) + 0.5 - position.z;
+            let distance = dx * dx + dy * dy + dz * dz;
+            let later =
+                |current: BlockPos| (current.y, current.z, current.x) < (pos.y, pos.z, pos.x);
+            if distance < main_distance || distance == main_distance && main.is_none_or(later) {
+                main = Some(pos);
+                main_distance = distance;
+            }
+        }
+        Ok(main)
+    }
+
+    /// `Entity.getOnPos(offset)`.
+    pub(crate) fn on_pos(
+        &self,
+        main_supporting_block: Option<BlockPos>,
+        position: Vec3,
+        offset: f32,
+    ) -> BlockPos {
+        let y = floor_f64(position.y - f64::from(offset));
+        if let Some(pos) = main_supporting_block {
+            if !(offset > 1.0e-5) {
+                return pos;
+            }
+            let below = self.info(pos);
+            let keeps_support = f64::from(offset) <= 0.5 && below.flags & flag::FENCE != 0
+                || below.flags & flag::WALL != 0
+                || below.flags & flag::FENCE_GATE != 0;
+            if keeps_support {
+                pos
+            } else {
+                BlockPos::new(pos.x, y, pos.z)
+            }
+        } else {
+            BlockPos::new(floor_f64(position.x), y, floor_f64(position.z))
+        }
+    }
+
+    /// `Entity.getBlockSpeedFactor`, for the block the entity is in and the
+    /// one that affects its movement below.
+    pub(crate) fn block_speed_factor(&self, here: BlockPos, below: BlockPos) -> f32 {
+        let here = self.info(here);
+        if matches!(here.name, "minecraft:water" | "minecraft:bubble_column")
+            || here.speed_factor != 1.0
+        {
+            here.speed_factor
+        } else {
+            self.info(below).speed_factor
+        }
     }
 
     fn has_chunk_at(&self, pos: BlockPos) -> bool {
@@ -344,7 +444,7 @@ impl Level<'_> {
     /// `getBlockCollisions` for the player, who has fallen `fall_distance`:
     /// powder snow holds it only once it falls far enough. Scaffolding is
     /// refused until its shape is ported.
-    fn block_collisions(
+    pub(crate) fn block_collisions(
         &self,
         area: Aabb,
         fall_distance: f64,
@@ -368,7 +468,11 @@ impl Level<'_> {
         Ok(out)
     }
 
-    fn colliders(&self, area: Aabb, fall_distance: f64) -> Result<Vec<VoxelShape>, Unsupported> {
+    pub(crate) fn colliders(
+        &self,
+        area: Aabb,
+        fall_distance: f64,
+    ) -> Result<Vec<VoxelShape>, Unsupported> {
         Ok(self
             .block_collisions(area, fall_distance)?
             .into_iter()
@@ -393,7 +497,7 @@ impl Level<'_> {
     }
 
     /// `FluidState.getHeight`: a full block under the same fluid.
-    fn fluid_height(&self, pos: BlockPos, info: &StateInfo) -> f32 {
+    pub(crate) fn fluid_height(&self, pos: BlockPos, info: &StateInfo) -> f32 {
         let above = self.info(BlockPos::new(pos.x, pos.y + 1, pos.z));
         let same_above =
             (info.is_water() && above.is_water()) || (info.is_lava() && above.is_lava());
@@ -1907,74 +2011,19 @@ impl LocalPlayer {
         on_ground: bool,
         movement: Option<Vec3>,
     ) -> Result<(), Unsupported> {
-        if on_ground {
-            let bb = self.bounding_box;
-            let test_area = Aabb::new(
-                bb.min_x,
-                bb.min_y - 1.0e-6,
-                bb.min_z,
-                bb.max_x,
-                bb.min_y,
-                bb.max_z,
-            );
-            let mut supporting = self.find_supporting_block(level, test_area)?;
-            if supporting.is_some() || self.on_ground_no_blocks {
-                self.main_supporting_block = supporting;
-            } else if let Some(movement) = movement {
-                supporting = self.find_supporting_block(
-                    level,
-                    test_area.move_by(-movement.x, 0.0, -movement.z),
-                )?;
-                self.main_supporting_block = supporting;
-            }
-            self.on_ground_no_blocks = supporting.is_none();
-        } else {
-            self.on_ground_no_blocks = false;
-            self.main_supporting_block = None;
-        }
-        Ok(())
-    }
-
-    fn find_supporting_block(
-        &self,
-        level: &Level<'_>,
-        area: Aabb,
-    ) -> Result<Option<BlockPos>, Unsupported> {
-        let mut main: Option<BlockPos> = None;
-        let mut main_distance = f64::MAX;
-        for (pos, _) in level.block_collisions(area, self.fall_distance)? {
-            let dx = f64::from(pos.x) + 0.5 - self.position.x;
-            let dy = f64::from(pos.y) + 0.5 - self.position.y;
-            let dz = f64::from(pos.z) + 0.5 - self.position.z;
-            let distance = dx * dx + dy * dy + dz * dz;
-            let later =
-                |current: BlockPos| (current.y, current.z, current.x) < (pos.y, pos.z, pos.x);
-            if distance < main_distance || distance == main_distance && main.is_none_or(later) {
-                main = Some(pos);
-                main_distance = distance;
-            }
-        }
-        Ok(main)
+        level.check_supporting_block(
+            (
+                &mut self.main_supporting_block,
+                &mut self.on_ground_no_blocks,
+            ),
+            (self.bounding_box, self.position, self.fall_distance),
+            on_ground,
+            movement,
+        )
     }
 
     fn get_on_pos(&self, level: &Level<'_>, offset: f32) -> BlockPos {
-        let y = floor_f64(self.position.y - f64::from(offset));
-        if let Some(pos) = self.main_supporting_block {
-            if !(offset > 1.0e-5) {
-                return pos;
-            }
-            let below = level.info(pos);
-            let keeps_support = f64::from(offset) <= 0.5 && below.flags & flag::FENCE != 0
-                || below.flags & flag::WALL != 0
-                || below.flags & flag::FENCE_GATE != 0;
-            if keeps_support {
-                pos
-            } else {
-                BlockPos::new(pos.x, y, pos.z)
-            }
-        } else {
-            BlockPos::new(floor_f64(self.position.x), y, floor_f64(self.position.z))
-        }
+        level.on_pos(self.main_supporting_block, self.position, offset)
     }
 
     fn block_position(&self) -> BlockPos {
@@ -1989,14 +2038,7 @@ impl LocalPlayer {
         if self.abilities.flying {
             return 1.0;
         }
-        let here = level.info(self.block_position());
-        if matches!(here.name, "minecraft:water" | "minecraft:bubble_column")
-            || here.speed_factor != 1.0
-        {
-            here.speed_factor
-        } else {
-            level.info(self.get_on_pos(level, 0.500_001)).speed_factor
-        }
+        level.block_speed_factor(self.block_position(), self.get_on_pos(level, 0.500_001))
     }
 
     fn block_jump_factor(&self, level: &Level<'_>) -> f32 {

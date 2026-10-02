@@ -29,6 +29,7 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+mod item_physics;
 mod java_math;
 pub mod light;
 pub mod living;
@@ -1574,6 +1575,7 @@ impl ClientWorld {
                 entity.move_by_motion();
             }
         }
+        self.tick_item_entity(entity_id);
         let position = self
             .entities
             .get(&entity_id)
@@ -2690,6 +2692,7 @@ impl ClientWorld {
                 head_lerp_steps: 0,
                 interpolation: None,
                 on_ground: false,
+                support: Support::default(),
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 walk: living::WalkAnimation::default(),
@@ -3156,6 +3159,7 @@ impl ClientWorld {
             return false;
         };
         entity.on_ground = on_ground;
+        self.check_item_supporting_block(entity_id);
         true
     }
 

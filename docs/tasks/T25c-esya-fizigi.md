@@ -28,4 +28,6 @@ Toplama animasyonu (`TakeItemEntity`), birleşme (sunucu tarafı), XP küresi (T
 Kendi `client-parity` kaydı (entity hareket belgeleri gibi); `docs/index.md` girdisi.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-world/src/item_physics.rs` (`ItemEntity.tick` istemci kolu: yerçekimi, çarpışma, blok hız çarpanı, `stepOn` slime, sürtünme, sekme, destek bloğu), `Level::{check_supporting_block,on_pos,block_speed_factor}` `local_player.rs`'den paylaşıma çıkarıldı (oyuncu aynı kodu çağırır). Oracle: `MovementOracle.item_entity_ticks` gerçek `ClientLevel`+`ItemEntity`, 28 satır, bit bit geçti. Kayıt: `docs/client-world-entity-item-tick-parity-conformance.md`.
+- Sapma: akışkana değen eşya simüle edilmez (sunucu konumunda kalır), blok içi etkiler, dünya sınırı ve entity çarpışması yok. Canlı kare düşüşü yakalayamadı (`shot` zamanlaması); düşüşün kanıtı parity.
+- Açık: T25d (akışkan: kaldırma, akıntı; `Entity.updateFluidInteraction` ortak hâle getirilip oyuncuyla paylaşılabilir).

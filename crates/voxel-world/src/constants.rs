@@ -9,6 +9,7 @@ pub(crate) const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
 pub(crate) const VANILLA_PLAYER_ENTITY_TYPE_ID: i32 = 156;
+pub(crate) const VANILLA_ITEM_ENTITY_TYPE_ID: i32 = 71;
 pub(crate) const VANILLA_BREEZE_ENTITY_TYPE_ID: i32 = 17;
 pub(crate) const VANILLA_SPIDER_ENTITY_TYPE_ID: i32 = 124;
 pub(crate) const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;

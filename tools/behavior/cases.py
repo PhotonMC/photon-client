@@ -13950,6 +13950,100 @@ def movement_cases():
         "operation": "container_clicks",
         "rows": click_rows,
     }
+    yield from movement_item_cases()
+
+
+def movement_item_cases():
+    """A dropped item ticked in a scene (`ItemEntity.tick` on the client):
+    what a broken block's drop does — falls, lands, bounces and slides —
+    through floors of different friction and speed factor, walls, ceilings,
+    an edge between two floors, shaped blocks, and the rest an item on the
+    ground takes (it moves only one tick in four)."""
+
+    def floor(block="minecraft:stone", y=63, low=-8, high=8, x_low=None):
+        start = low if x_low is None else x_low
+        return [{"x": x, "y": y, "z": z, "block": block}
+                for x in range(start, high + 1) for z in range(low, high + 1)]
+
+    def row(label, blocks, position, motion, ticks=60, on_ground=False, entity_id=21):
+        return {
+            "label": label,
+            "blocks": blocks,
+            "chunk_radius": 1,
+            "entity_id": entity_id,
+            "x": float_bits(position[0], "f64"),
+            "y": float_bits(position[1], "f64"),
+            "z": float_bits(position[2], "f64"),
+            "motion_x": float_bits(motion[0], "f64"),
+            "motion_y": float_bits(motion[1], "f64"),
+            "motion_z": float_bits(motion[2], "f64"),
+            "on_ground": on_ground,
+            "tick_count": ticks,
+        }
+
+    wall = [{"x": 3, "y": y, "z": z, "block": "minecraft:stone"}
+            for y in range(64, 67) for z in range(-8, 9)]
+    ceiling = [{"x": x, "y": 66, "z": z, "block": "minecraft:stone"}
+               for x in range(-8, 9) for z in range(-8, 9)]
+    step = [{"x": x, "y": 64, "z": z, "block": "minecraft:stone"}
+            for x in range(2, 9) for z in range(-8, 9)]
+    rows = [
+        # A block broken a little above the floor: the drop's own random motion.
+        row("block-drop", floor(), (0.5, 65.2, 0.5), (0.05, 0.2, -0.03), 80),
+        row("block-drop-other-way", floor(), (0.5, 65.2, 0.5), (-0.08, 0.2, 0.09), 80),
+        row("dropped-high", floor(), (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 80),
+        row("dropped-high-sideways", floor(), (0.5, 70.0, 0.5), (0.2, 0.0, -0.15), 100),
+        # Resting on the floor, still: one tick in four moves it, by the id.
+    ] + [
+        row(f"resting-id-{entity_id}", floor(), (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 24,
+            on_ground=True, entity_id=entity_id)
+        for entity_id in (20, 21, 22, 23, -3)
+    ] + [
+        row("sliding-on-stone", floor(), (0.5, 64.0, 0.5), (0.2, 0.0, 0.0), 60, on_ground=True),
+        row("sliding-on-ice", floor("minecraft:ice"), (0.5, 64.0, 0.5), (0.2, 0.0, 0.1), 80,
+            on_ground=True),
+        row("sliding-on-packed-ice", floor("minecraft:packed_ice"), (0.5, 64.0, 0.5),
+            (0.2, 0.0, 0.0), 80, on_ground=True),
+        row("sliding-on-slime", floor("minecraft:slime_block"), (0.5, 64.0, 0.5),
+            (0.2, 0.0, 0.0), 60, on_ground=True),
+        row("falling-onto-slime", floor("minecraft:slime_block"), (0.5, 68.0, 0.5),
+            (0.0, 0.0, 0.0), 80),
+        row("sliding-on-soul-sand", floor("minecraft:soul_sand"), (0.5, 64.0, 0.5),
+            (0.2, 0.0, 0.0), 60, on_ground=True),
+        row("falling-onto-soul-sand", floor("minecraft:soul_sand"), (0.5, 66.0, 0.5),
+            (0.1, 0.0, 0.0), 60),
+        row("sliding-on-honey", floor("minecraft:honey_block"), (0.5, 64.0, 0.5),
+            (0.2, 0.0, 0.0), 60, on_ground=True),
+        # Obstacles.
+        row("into-a-wall", floor() + wall, (0.5, 64.0, 0.5), (0.4, 0.0, 0.0), 40,
+            on_ground=True),
+        row("falling-along-a-wall", floor() + wall, (2.8, 68.0, 0.5), (0.3, 0.0, 0.0), 60),
+        row("into-a-ceiling", floor() + ceiling, (0.5, 64.0, 0.5), (0.0, 0.6, 0.0), 40),
+        row("no-step-up", floor() + step, (0.5, 64.0, 0.5), (0.3, 0.0, 0.0), 40, on_ground=True),
+        # The edge between two floors, where the block below is picked by
+        # the supporting block, and not the item's own column.
+        row("edge-of-ice", floor() + floor("minecraft:ice", x_low=1), (0.9, 64.0, 0.5),
+            (0.0, 0.0, 0.0), 40, on_ground=True),
+        row("landing-on-the-edge-of-ice", floor() + floor("minecraft:ice", x_low=1),
+            (0.9, 66.0, 0.5), (0.05, 0.0, 0.0), 60),
+        row("sliding-off-ice-onto-stone", floor() + floor("minecraft:ice", x_low=-8, high=0),
+            (-0.5, 64.0, 0.5), (0.3, 0.0, 0.0), 60, on_ground=True),
+        # Shapes that are not whole blocks.
+        row("landing-on-a-slab", [{"x": 0, "y": 64, "z": 0, "block": "minecraft:stone_slab"}]
+            + floor(), (0.5, 67.0, 0.5), (0.0, 0.0, 0.0), 60),
+        row("landing-on-a-fence", [{"x": 0, "y": 64, "z": 0, "block": "minecraft:oak_fence"}]
+            + floor(), (0.5, 67.0, 0.5), (0.0, 0.0, 0.0), 60),
+        row("landing-on-a-carpet", [{"x": 0, "y": 64, "z": 0, "block": "minecraft:white_carpet"}]
+            + floor(), (0.5, 67.0, 0.5), (0.0, 0.0, 0.0), 60),
+        # A box the floor does not reach.
+        row("falling-out-of-the-world", [], (0.5, 10.0, 0.5), (0.0, 0.0, 0.0), 30),
+    ]
+    yield {
+        "case_id": "movement/item-entity-ticks",
+        "family": "movement",
+        "operation": "item_entity_ticks",
+        "rows": rows,
+    }
 
 
 def entity_cases():

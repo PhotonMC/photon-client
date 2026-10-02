@@ -18005,6 +18005,61 @@ fn hand_count(world: &ClientWorld, slot: i16) -> i32 {
         .map_or(0, |stack| stack.item_count())
 }
 
+/// `item_entity_ticks`: a dropped item put in the scene by the server's
+/// packets (place, motion, ground flag), then ticked with the level.
+fn item_entity_ticks_result(request: &Value) -> Result<Value, String> {
+    let bits64 = |row: &Value, key: &str| -> Result<f64, String> {
+        u64::from_str_radix(string(row, key)?, 16)
+            .map(f64::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let hex = |value: f64| format!("{:016x}", value.to_bits());
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut world = movement_world(row)?;
+        let entity_id = i32_field(row, "entity_id")?;
+        let item_type = voxel_data::entity_type::id("minecraft:item").ok_or("no item type")?;
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id: item_type,
+            x: bits64(row, "x")?,
+            y: bits64(row, "y")?,
+            z: bits64(row, "z")?,
+            movement: (
+                bits64(row, "motion_x")?,
+                bits64(row, "motion_y")?,
+                bits64(row, "motion_z")?,
+            ),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }) {
+            return Err("item entity was rejected".into());
+        }
+        if row["on_ground"]
+            .as_bool()
+            .ok_or("on_ground must be a bool")?
+        {
+            world.apply_entity_ground_state(entity_id, true);
+        }
+        let mut ticks = Vec::new();
+        for _ in 0..i32_field(row, "tick_count")? {
+            world.tick_entities();
+            let entity = world.entity_at(entity_id).ok_or("item entity vanished")?;
+            let (x, y, z) = entity.position();
+            let (motion_x, motion_y, motion_z) = entity.motion();
+            ticks.push(json!({
+                "x": hex(x), "y": hex(y), "z": hex(z),
+                "motion_x": hex(motion_x), "motion_y": hex(motion_y), "motion_z": hex(motion_z),
+                "on_ground": entity.on_ground(),
+            }));
+        }
+        out.push(json!({"label": row["label"], "outcome": "ticked", "ticks": ticks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn movement_result(request: &Value) -> Result<Value, String> {
     use voxel_world::ClientPlayerGameMode;
     use voxel_world::local_player::LocalPlayer;
@@ -18032,6 +18087,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "container_clicks" {
         return container_clicks_result(request);
+    }
+    if string(request, "operation")? == "item_entity_ticks" {
+        return item_entity_ticks_result(request);
     }
     if string(request, "operation")? != "local_player_ticks" {
         return Err("unknown movement operation".into());

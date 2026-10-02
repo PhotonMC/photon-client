@@ -181,6 +181,7 @@ public final class MovementOracle {
         for (var element : request.get("rows").getAsJsonArray()) {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
+                case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
@@ -294,6 +295,42 @@ public final class MovementOracle {
         }
 
         return new Scene(listener, wire, level, minecraft, options);
+    }
+
+    /**
+     * Step the reference's own dropped item through a scene, tick by tick,
+     * the way the client level ticks an entity it did not spawn itself: the
+     * server's packets set its place and motion, the level does the rest.
+     */
+    private static JsonObject itemEntityTicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var level = buildScene(row).level();
+        var item = new net.minecraft.world.entity.item.ItemEntity(level,
+            Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+            new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),
+            Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"), Oracle.f64(row, "motion_z"));
+        item.setId(row.get("entity_id").getAsInt());
+        if (row.get("on_ground").getAsBoolean()) {
+            // `handleMoveEntity` and the teleports hand the packet's flag over.
+            item.setOnGround(true);
+        }
+        var ticks = new JsonArray();
+        for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            level.tickNonPassenger(item);
+            var described = new JsonObject();
+            described.addProperty("x", Oracle.bits(item.getX()));
+            described.addProperty("y", Oracle.bits(item.getY()));
+            described.addProperty("z", Oracle.bits(item.getZ()));
+            described.addProperty("motion_x", Oracle.bits(item.getDeltaMovement().x));
+            described.addProperty("motion_y", Oracle.bits(item.getDeltaMovement().y));
+            described.addProperty("motion_z", Oracle.bits(item.getDeltaMovement().z));
+            described.addProperty("on_ground", item.onGround());
+            ticks.add(described);
+        }
+        entry.addProperty("outcome", "ticked");
+        entry.add("ticks", ticks);
+        return entry;
     }
 
     /**

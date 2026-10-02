@@ -123,6 +123,14 @@ impl ClientEntityPose {
     }
 }
 
+/// The block a grounded entity stands on, and whether the last look for one
+/// found none (`Entity.mainSupportingBlockPos`, `onGroundNoBlocks`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Support {
+    pub(crate) main_block: Option<voxel_core::binary::BlockPos>,
+    pub(crate) no_blocks: bool,
+}
+
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
@@ -463,6 +471,7 @@ pub struct ClientEntity {
     pub(crate) head_lerp_steps: u8,
     pub(crate) interpolation: Option<EntityInterpolationState>,
     pub(crate) on_ground: bool,
+    pub(crate) support: Support,
     pub(crate) always_ticking: bool,
     pub(crate) ticking: bool,
     /// The limbs' walk animation and the swimming pose's ease (a player's).
