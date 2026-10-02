@@ -520,6 +520,16 @@ pub struct ClientAttributeState {
     pub(crate) modifiers: Vec<ClientAttributeModifierState>,
 }
 
+/// An entity as it is drawn: where it is, and which way it and its head look
+/// (degrees), between two ticks.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntitySnapshot {
+    pub position: (f64, f64, f64),
+    pub yaw: f32,
+    pub pitch: f32,
+    pub head_yaw: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientMobEffectState {
     pub(crate) effect_id: i32,

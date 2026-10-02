@@ -116,14 +116,14 @@ En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
 `RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`,
 `RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers` paketlerini
 dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
-bağlantıyı kesmez). Entity'ler henüz tick'lenmiyor ve çizilmiyor.
+bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları) ve çizim için `entity_snapshot` veriyor; çizilmiyorlar.
 
 1. **Paketler (L)** Kalan: `SetEntityLink`, `SetEquipment`, `EntityEvent`
    (yalnız oyuncunun işlem düzeyi okunuyor), `Animate`, `HurtAnimation`,
    `DamageEvent`, `TakeItemEntity`, `MoveVehicle`, `MoveMinecart`,
    `PlayerLookAt/Rotation`, `SetCamera`, `PlayerInfoUpdate/Remove` eşlemesi.
    `Bundle`/`BundleDelimiter` ayrı ele alınmıyor: paketler sırayla işleniyor.
-   Oyuncu tick'ine bağlama (T21).
+
 2. **Entity render iskeleti (L)** Render durumu çıkarımı, `EntityRenderer`
    sınıfları, model katmanları (`ModelLayers`, `LayerDefinitions`), gölge,
    isim etiketi, ışık ve çizim sırası; `player_model.rs` /

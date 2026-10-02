@@ -25,4 +25,7 @@ Yerçekimi/AI/çarpışma (uzak entity'lerde Java'da da yok), çizim.
 `docs/remaining-work.md` M4.
 
 ## Devir notu
-(boş)
+- Yapıldı: `ClientWorld::tick_entities` (`tick`'ten ayrıldı, yerel oyuncu hariç), `PlaySession::tick` her tikte çağırır, `EntitySnapshot`/`entity_snapshot(id, partial)` (konum, yaw, pitch, kafa yaw'ı: `getPosition(partial)` ve `rotLerp`), `ticking_entity_count`, oturum sonu `ticking=` satırı, iki birim test (tik sayısı ve iki tik arası ara konum).
+- Canlı: `Fresh8` ile `entities=125 ticking=125` (yüklü yığındakiler tikler; yüklü olmayan yığındaki entity tiklemez, Java'daki gibi).
+- Sapma: yok; tik kolları yalnız parity'li olanlar (mermiler, tekne, oyuncu, xp küresi…); oyuncu dışındaki mob'ların konum interpolasyonu yok (konum paketle anında değişir): T21b.
+- Açık: uzak oyuncu çizimi (T22).

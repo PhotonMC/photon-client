@@ -234,6 +234,24 @@ impl PlaySession {
         &self.trace.world
     }
 
+    /// Where an entity is drawn between two ticks.
+    pub fn entity_snapshot(
+        &self,
+        entity_id: i32,
+        partial_tick: f32,
+    ) -> Option<voxel_world::EntitySnapshot> {
+        self.trace.world.entity_snapshot(entity_id, partial_tick)
+    }
+
+    /// How many of the entities tick (those in a loaded chunk).
+    pub fn ticking_entity_count(&self) -> usize {
+        self.trace
+            .world
+            .entities()
+            .filter(|entity| entity.is_ticking())
+            .count()
+    }
+
     /// How many entities the world holds besides the player.
     pub fn entity_count(&self) -> usize {
         self.trace.world.entities().count()
@@ -1185,6 +1203,8 @@ impl PlaySession {
                 }
             }
         }
+        // `ClientLevel.tickEntities`: the entities the server added move on.
+        self.trace.world.tick_entities();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
@@ -2034,18 +2054,21 @@ mod tests {
     use super::*;
     use std::net::TcpListener;
 
-    /// A session over a loopback socket, which nothing is sent on.
-    fn detached() -> PlaySession {
+    /// A session over a loopback socket, and the far end of it, which a
+    /// test keeps open so what the session sends has somewhere to go.
+    fn detached() -> (PlaySession, TcpStream) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let stream = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (far_end, _) = listener.accept().unwrap();
         let (_sender, incoming) = mpsc::channel();
-        PlaySession::assemble(
+        let session = PlaySession::assemble(
             stream,
             None,
             incoming,
             PlayConnectionTrace::default(),
             ("test", false),
-        )
+        );
+        (session, far_end)
     }
 
     fn varint(mut value: u32) -> Vec<u8> {
@@ -2062,10 +2085,14 @@ mod tests {
     }
 
     fn add_entity(id: u32, x: f64) -> Vec<u8> {
+        add_entity_of_type(id, 94, x)
+    }
+
+    fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {
         let mut body = varint(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID as u32);
         body.extend(varint(id));
         body.extend([0_u8; 16]);
-        body.extend(varint(94));
+        body.extend(varint(type_id));
         for value in [x, 64.0, 8.0] {
             body.extend(value.to_be_bytes());
         }
@@ -2077,7 +2104,7 @@ mod tests {
 
     #[test]
     fn the_session_keeps_the_entities_the_server_adds_moves_and_removes() {
-        let mut session = detached();
+        let (mut session, _far_end) = detached();
         assert_eq!(session.entity_count(), 0);
         session.handle(&add_entity(7, 8.0)).unwrap();
         session.handle(&add_entity(8, 9.0)).unwrap();
@@ -2102,5 +2129,32 @@ mod tests {
         session.handle(&remove).unwrap();
         assert_eq!(session.entity_count(), 1);
         assert!(session.world().entity_at(7).is_none());
+    }
+
+    #[test]
+    fn a_client_tick_moves_the_entities_on() {
+        let (mut session, _far_end) = detached();
+        // A player entity ticks wherever it is; others wait for their chunk.
+        session.handle(&add_entity_of_type(7, 156, 8.0)).unwrap();
+        let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        step.extend(varint(7));
+        for delta in [4096_i16, 0, 0] {
+            step.extend(delta.to_be_bytes());
+        }
+        step.push(1);
+        session.handle(&step).unwrap();
+        let before = session.world().entity_at(7).unwrap().tick_count();
+        session.tick(Input::EMPTY).unwrap();
+        session.tick(Input::EMPTY).unwrap();
+        let after = session.world().entity_at(7).unwrap().tick_count();
+        assert_eq!(after, before + 2);
+        // Between two ticks the entity is drawn between where it was and is.
+        let (old, new) = {
+            let entity = session.world().entity_at(7).unwrap();
+            (entity.previous_position(), entity.position())
+        };
+        let half = session.entity_snapshot(7, 0.5).unwrap().position;
+        assert!((half.0 - (old.0 + new.0) / 2.0).abs() < 1e-9);
+        assert!(session.entity_snapshot(99, 0.5).is_none());
     }
 }

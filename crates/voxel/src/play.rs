@@ -309,10 +309,11 @@ impl Play {
             }
         }
         println!(
-            "play_frames={} play_ticks={} entities={}",
+            "play_frames={} play_ticks={} entities={} ticking={}",
             self.frames,
             self.ticks,
-            self.session.entity_count()
+            self.session.entity_count(),
+            self.session.ticking_entity_count()
         );
         Ok(())
     }

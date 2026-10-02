@@ -1201,7 +1201,13 @@ impl ClientWorld {
         if !local_player_is_passenger {
             self.tick_local_player(None);
         }
+        self.tick_entities();
+    }
 
+    /// `ClientLevel.tickEntities`: every entity the server added that is
+    /// ticking moves on a tick, its passengers after it (the local player,
+    /// who has a tick of its own, is not among them unless it rides one).
+    pub fn tick_entities(&mut self) {
         let ticking_entity_ids: Vec<i32> = self
             .entities
             .iter()
@@ -1776,6 +1782,19 @@ impl ClientWorld {
     /// Return the number of non-empty entity sections in the client index.
     pub fn indexed_entity_section_count(&self) -> usize {
         self.entity_sections.len()
+    }
+
+    /// Where an entity is drawn between two ticks: its position
+    /// (`getPosition(partialTick)`), its turn and its head's.
+    pub fn entity_snapshot(&self, entity_id: i32, partial_tick: f32) -> Option<EntitySnapshot> {
+        let entity = self.entities.get(&entity_id)?;
+        let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
+        Some(EntitySnapshot {
+            position: entity.interpolated_position(partial_tick),
+            yaw,
+            pitch,
+            head_yaw,
+        })
     }
 
     pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
