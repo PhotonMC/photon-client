@@ -59,6 +59,7 @@ pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID: i32 = 83;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID: i32 = 101;
+pub(crate) const PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID: i32 = 102;
 pub(crate) const PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID: i32 = 107;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID: i32 = 4;
 pub(crate) const PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID: i32 = 5;
@@ -1003,6 +1004,14 @@ pub struct EntityMetadataObservation {
     pub metadata_length: usize,
     pub applied_to_world: bool,
     pub(crate) metadata: Vec<u8>,
+}
+
+/// What one clientbound set-equipment packet puts in the entity's slots, by
+/// `EquipmentSlot` ordinal; an empty stack clears its slot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityEquipmentObservation {
+    pub entity_id: i32,
+    pub slots: Vec<(usize, Option<ClientItemStackState>)>,
 }
 
 /// Wire-level fields decoded from one clientbound entity-position-sync packet.
@@ -2469,6 +2478,28 @@ pub(crate) fn parse_entity_metadata_packet(
         applied_to_world: false,
         metadata,
     })
+}
+
+/// `ClientboundSetEquipmentPacket`: the entity, then each slot's byte (the
+/// top bit says another follows) and stack.
+pub(crate) fn parse_entity_equipment_packet(
+    input: &[u8],
+) -> Result<EntityEquipmentObservation, ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "set equipment entity id")?;
+    let mut slots = Vec::new();
+    loop {
+        let slot_byte = read_byte(&mut input, "set equipment slot")?;
+        let stack = parse_optional_item_stack(&mut input, "set equipment item stack")?;
+        slots.push((usize::from(slot_byte & 127), stack.client_state()));
+        if slot_byte & 128 == 0 {
+            break;
+        }
+    }
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("set equipment trailing payload"));
+    }
+    Ok(EntityEquipmentObservation { entity_id, slots })
 }
 
 pub(crate) fn parse_entity_position_sync_packet(

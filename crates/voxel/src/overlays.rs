@@ -8,12 +8,14 @@ use voxel_game::item_in_hand::ItemInHand;
 use voxel_net::connection::PlaySession;
 use voxel_render::biome_tint::BiomeTints;
 use voxel_render::outline::LineVertex;
-use voxel_render::player_model::{PlayerModel, PlayerRenderState};
+use voxel_render::player_model::{Arm, ArmPose, PlayerModel, PlayerRenderState};
 use voxel_render::player_renderer::{HandView, Placement};
 use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
+use voxel_world::ClientItemStackState;
 use voxel_world::local_player::LocalPlayer;
 
+use crate::held_items::{Hands, HeldItem};
 use crate::hud_input::attack_speed;
 use crate::item_layers::ItemLayerCache;
 use crate::view::eye_position;
@@ -204,7 +206,12 @@ pub fn cracks(
 }
 
 /// The player's own model where it stands, posed for the frame.
-pub fn player_model(player: &LocalPlayer, model: &mut PlayerModel, view: FrameView) -> Vec<Vertex> {
+pub fn player_model(
+    player: &LocalPlayer,
+    model: &mut PlayerModel,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
+    stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+) -> Vec<Vertex> {
     let feet = player.interpolated_position(view.partial);
     let partial = view.partial as f32;
     let (_, x_rot) = player.rotation();
@@ -219,28 +226,38 @@ pub fn player_model(player: &LocalPlayer, model: &mut PlayerModel, view: FrameVi
         crouching: pose.crouching,
         spectator: player.spectating(),
         attack_time: player.attack_anim(partial),
+        right_arm_pose: held_arm_pose(stacks.0),
+        left_arm_pose: held_arm_pose(stacks.1),
         ..Default::default()
     });
-    voxel_render::player_renderer::player_vertices(
-        model,
-        &Placement {
-            feet: [
-                (feet.x - f64::from(view.origin[0])) as f32,
-                (feet.y - f64::from(view.origin[1])) as f32,
-                (feet.z - f64::from(view.origin[2])) as f32,
-            ],
-            body_rot: pose.body_rot,
-            x_rot,
-            swim_amount: pose.swim_amount,
-            in_water: player.in_water(),
-            visually_swimming: pose.pose == voxel_world::ClientEntityPose::Swimming,
-            crouching: pose.crouching,
-            light: view.light,
-            skin: view.skin,
-            death_time: 0.0,
-            red_overlay: false,
-        },
-    )
+    let placement = Placement {
+        feet: [
+            (feet.x - f64::from(view.origin[0])) as f32,
+            (feet.y - f64::from(view.origin[1])) as f32,
+            (feet.z - f64::from(view.origin[2])) as f32,
+        ],
+        body_rot: pose.body_rot,
+        x_rot,
+        swim_amount: pose.swim_amount,
+        in_water: player.in_water(),
+        visually_swimming: pose.pose == voxel_world::ClientEntityPose::Swimming,
+        crouching: pose.crouching,
+        light: view.light,
+        skin: view.skin,
+        death_time: 0.0,
+        red_overlay: false,
+    };
+    Hands {
+        base: &voxel_render::player_renderer::placement_pose(&placement),
+        root: &model.root,
+        hand_shift: if model.slim { 0.5 } else { 0.0 },
+        baby: false,
+        light: placement.light,
+        right: stacks.0,
+        left: stacks.1,
+    }
+    .collect(held);
+    voxel_render::player_renderer::player_vertices(model, &placement)
 }
 
 /// The player models the frame draws for the players the server added: one
@@ -273,7 +290,7 @@ pub fn remote_players(
     session: &PlaySession,
     models: &mut RemoteModels,
     textures: &voxel_render::entity_textures::EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let partial = view.partial as f32;
@@ -296,7 +313,15 @@ pub fn remote_players(
             &mut models.wide
         };
         let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
+        let main_left = entity.main_arm_is_left();
+        let (right, left) = (
+            entity.item_held_by_arm(false),
+            entity.item_held_by_arm(true),
+        );
         model.setup_anim(&PlayerRenderState {
+            right_arm_pose: held_arm_pose(right),
+            left_arm_pose: held_arm_pose(left),
+            main_arm: if main_left { Arm::Left } else { Arm::Right },
             head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
             x_rot: snapshot.pitch,
             walk_position: snapshot.walk_position,
@@ -308,28 +333,48 @@ pub fn remote_players(
         });
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
+        let placement = Placement {
+            feet: [
+                (x - f64::from(view.origin[0])) as f32,
+                (y - f64::from(view.origin[1])) as f32,
+                (z - f64::from(view.origin[2])) as f32,
+            ],
+            body_rot: snapshot.body_yaw,
+            x_rot: snapshot.pitch,
+            swim_amount: snapshot.swim_amount,
+            in_water: false,
+            visually_swimming: snapshot.pose == voxel_world::ClientEntityPose::Swimming,
+            crouching,
+            light: packed_light(world, eye),
+            skin: rect,
+            death_time: snapshot.death_time,
+            red_overlay: snapshot.red_overlay,
+        };
+        Hands {
+            base: &voxel_render::player_renderer::placement_pose(&placement),
+            root: &model.root,
+            hand_shift: if model.slim { 0.5 } else { 0.0 },
+            baby: false,
+            light: placement.light,
+            right,
+            left,
+        }
+        .collect(held);
         vertices.extend(voxel_render::player_renderer::player_vertices(
-            model,
-            &Placement {
-                feet: [
-                    (x - f64::from(view.origin[0])) as f32,
-                    (y - f64::from(view.origin[1])) as f32,
-                    (z - f64::from(view.origin[2])) as f32,
-                ],
-                body_rot: snapshot.body_yaw,
-                x_rot: snapshot.pitch,
-                swim_amount: snapshot.swim_amount,
-                in_water: false,
-                visually_swimming: snapshot.pose == voxel_world::ClientEntityPose::Swimming,
-                crouching,
-                light: packed_light(world, eye),
-                skin: rect,
-                death_time: snapshot.death_time,
-                red_overlay: snapshot.red_overlay,
-            },
+            model, &placement,
         ));
     }
     vertices
+}
+
+/// `AvatarRenderer.getArmPose` of an arm that is not in use: a held stack
+/// raises the arm a little.
+fn held_arm_pose(stack: Option<&voxel_world::ClientItemStackState>) -> ArmPose {
+    if stack.is_some() {
+        ArmPose::Item
+    } else {
+        ArmPose::Empty
+    }
 }
 
 /// Where the name tags are seen from.

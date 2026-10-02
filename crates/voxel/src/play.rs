@@ -17,6 +17,7 @@ use crate::assets::FolderAssets;
 use crate::controls::Controls;
 use crate::dropped_items::dropped_items;
 use crate::gui::Gui;
+use crate::held_items::held_item_vertices;
 use crate::item_layers::ItemLayerCache;
 use crate::mobs;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
@@ -106,6 +107,8 @@ struct Play {
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
     ground_layers: ItemLayerCache,
+    /// The layers of what humanoids hold, in the right and the left hand.
+    worn_layers: [ItemLayerCache; 2],
     entity_textures: voxel_render::entity_textures::EntityTextures,
     skin_rect: voxel_render::entity_textures::TextureRect,
     gui: Gui,
@@ -253,6 +256,10 @@ impl Play {
             remote_models: overlays::RemoteModels::new(),
             mob_models: mobs::MobModels::new(),
             ground_layers: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
+            worn_layers: [
+                ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonRightHand),
+                ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonLeftHand),
+            ],
             entity_textures,
             skin_rect,
             gui,
@@ -562,31 +569,45 @@ impl Play {
         ))?;
         // The other players, and the local player's own once the camera
         // leaves its eyes.
+        let mut held = Vec::new();
         let mut models = overlays::remote_players(
             &self.session,
             &mut self.remote_models,
             &self.entity_textures,
-            view,
+            (view, &mut held),
         );
         models.extend(mobs::remote_mobs(
             &self.session,
             &mut self.mob_models,
             &self.entity_textures,
-            view,
+            (view, &mut held),
         ));
         if !first_person {
-            models.extend(overlays::player_model(player, &mut self.player_model, view));
+            // What the local player holds: the selected hotbar slot and the
+            // off hand, the main arm being the right.
+            let stack = |slot: i16| {
+                self.session
+                    .world()
+                    .local_player()
+                    .and_then(|state| state.inventory_slot(slot))
+                    .filter(|stack| stack.item_count() > 0)
+            };
+            let selected = self.session.status().selected_slot as i16;
+            models.extend(overlays::player_model(
+                player,
+                &mut self.player_model,
+                (view, &mut held),
+                (stack(36 + selected), stack(45)),
+            ));
         }
         self.backend.set_entities(&models)?;
         let local = (!first_person && !player.spectating())
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;
-        self.backend.set_ground_items(&dropped_items(
-            &self.session,
-            &mut self.ground_layers,
-            (&self.block_renderer, &self.biome_tints),
-            view,
-        ))?;
+        let tints = (&*self.block_renderer, &*self.biome_tints);
+        let mut items = dropped_items(&self.session, &mut self.ground_layers, tints, view);
+        items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
+        self.backend.set_ground_items(&items)?;
         Ok(())
     }
 

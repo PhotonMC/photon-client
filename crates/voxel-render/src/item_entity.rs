@@ -158,12 +158,23 @@ fn entity_light(normal: [f32; 3]) -> f32 {
 /// A stack's dropped item, drawn: each copy (`poses`) with each layer's
 /// display transform, lit by the block and sky light at the item.
 pub fn item_entity_vertices(layers: &[ItemLayer], poses: &[Pose], light: i32) -> Vec<Vertex> {
+    item_layer_vertices(layers, poses, light, false)
+}
+
+/// The layers of a stack at each of `poses`, each with its display transform
+/// (mirrored for a left hand), lit by `light`.
+pub fn item_layer_vertices(
+    layers: &[ItemLayer],
+    poses: &[Pose],
+    light: i32,
+    left_hand: bool,
+) -> Vec<Vertex> {
     let light = light_uv(light);
     let mut vertices = Vec::new();
     for copy in poses {
         for layer in layers {
             let mut pose = *copy;
-            apply_display_transform(&mut pose, layer, false);
+            apply_display_transform(&mut pose, layer, left_hand);
             for (quad, info) in layer.mesh.quads.iter().enumerate() {
                 let (dx, dy, dz) = info.direction.step();
                 let normal = pose.transform_normal([dx as f32, dy as f32, dz as f32]);

@@ -4,13 +4,14 @@
 
 use voxel_world::{
     ClientWorld, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
-    EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
+    EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput, EquipmentSlot,
 };
 
 use super::protocol::{
-    AddEntityObservation, EntityHeadRotationObservation, EntityMetadataObservation,
-    EntityMotionObservation, EntityMoveObservation, EntityPassengersObservation,
-    EntityPositionSyncObservation, EntityTeleportObservation, RemoveEntitiesObservation,
+    AddEntityObservation, EntityEquipmentObservation, EntityHeadRotationObservation,
+    EntityMetadataObservation, EntityMotionObservation, EntityMoveObservation,
+    EntityPassengersObservation, EntityPositionSyncObservation, EntityTeleportObservation,
+    RemoveEntitiesObservation,
 };
 
 /// `ClientPacketListener.handleAddEntity`.
@@ -48,6 +49,18 @@ pub(crate) fn rotate_head(world: &mut ClientWorld, packet: &EntityHeadRotationOb
         relative_y_rot: false,
         relative_x_rot: false,
     })
+}
+
+/// `handleSetEquipment`: each slot the packet names, in order; a slot the
+/// game has no name for is left alone.
+pub(crate) fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObservation) -> bool {
+    let mut applied = false;
+    for (ordinal, stack) in &packet.slots {
+        if let Some(slot) = EquipmentSlot::from_ordinal(*ordinal) {
+            applied |= world.apply_entity_equipment(packet.entity_id, slot, stack.clone());
+        }
+    }
+    applied
 }
 
 /// `handleRemoveEntities`: how many were there to remove.

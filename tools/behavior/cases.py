@@ -14342,6 +14342,7 @@ def entity_cases():
     yield from entity_piglin_cases()
     yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
+    yield from entity_held_item_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14529,6 +14530,73 @@ def entity_piglin_cases():
         "case_id": "entity/piglin-model",
         "family": "entity",
         "operation": "piglin_model",
+        "rows": rows,
+    }
+
+
+def entity_held_item_cases():
+    """What a humanoid holds, as the reference's `ItemInHandLayer` places it
+    on the posed model: the pose each held stack is submitted with (arm,
+    root and slim offset, the half turn, the baby's closer hand) and the arms'
+    poses the held items ask for (`ITEM`, a skeleton's `BOW_AND_ARROW`),
+    posed by the reference's `HumanoidModel.setupAnim`, for the player, the
+    zombie, the skeleton and the piglin, grown and baby, either hand."""
+    def row(label, kind, baby=False, right="empty", left="empty", holds=(False, False),
+            main="right", head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+            age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False):
+        return {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
+                "right_pose": right, "left_pose": left, "main_arm": main,
+                "holds_right": holds[0], "holds_left": holds[1],
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
+                "swim_amount": float_bits(swim), "crouching": crouching,
+                "aggressive": aggressive, "holding_bow": bow}
+
+    rows = []
+    for kind in ("player", "player_slim"):
+        rows += [
+            row("empty-hands", kind),
+            row("item-right", kind, right="item", holds=(True, False), age=3.0),
+            row("item-left-hand", kind, left="item", holds=(False, True), age=3.0),
+            row("both", kind, right="item", left="item", holds=(True, True), walk_position=7.3,
+                walk_speed=0.83, age=40.0),
+            row("looking", kind, right="item", holds=(True, False), head_y_rot=-35.5, x_rot=48.0),
+            row("crouching", kind, right="item", left="item", holds=(True, True), crouching=True),
+            row("swing", kind, right="item", holds=(True, False), attack=0.4, age=9.0),
+            row("swimming", kind, right="item", holds=(True, False), swim=0.6, age=11.0,
+                walk_position=2.0, walk_speed=0.5),
+            row("left-handed", kind, right="item", left="item", holds=(True, True), main="left",
+                age=17.5, attack=0.3),
+            row("bow-drawn-left-handed", kind, right="bow_and_arrow", left="item",
+                holds=(True, True), main="left", head_y_rot=12.0, x_rot=-8.0),
+            row("offhand-two-handed", kind, right="item", left="bow_and_arrow", holds=(True, True)),
+        ]
+    for kind in ("zombie", "piglin"):
+        for baby in (False, True):
+            rows += [
+                row("standing", kind, baby, holds=(True, True)),
+                row("walking", kind, baby, holds=(True, False), walk_position=7.3,
+                    walk_speed=0.83, age=40.0),
+                row("swing", kind, baby, holds=(False, True), attack=0.5, age=9.0),
+            ]
+    for baby in (False, True):
+        rows.append(row("aggressive", "zombie", baby, holds=(True, False), aggressive=True,
+                        age=17.5))
+        rows.append(row("left-handed", "zombie", baby, holds=(True, True), main="left"))
+    rows += [
+        row("standing", "skeleton", holds=(True, False), bow=True),
+        row("bow-drawn", "skeleton", right="bow_and_arrow", holds=(True, True), aggressive=True,
+            bow=True, age=17.5, attack=0.4),
+        row("bow-drawn-left-handed", "skeleton", left="bow_and_arrow", holds=(True, True),
+            main="left", aggressive=True, bow=True, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+        row("sword-aggressive", "skeleton", holds=(True, False), aggressive=True, age=17.5,
+            attack=0.55),
+    ]
+    yield {
+        "case_id": "entity/held-item-pose",
+        "family": "entity",
+        "operation": "held_item_pose",
         "rows": rows,
     }
 

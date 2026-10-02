@@ -162,6 +162,39 @@ pub(crate) struct EntityState {
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.
     pub(crate) dancing: bool,
+    /// An avatar's main arm is the left.
+    pub(crate) main_arm_left: bool,
+}
+
+/// `EquipmentSlot`, in the order the wire counts them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EquipmentSlot {
+    MainHand,
+    OffHand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Body,
+    Saddle,
+}
+
+impl EquipmentSlot {
+    pub const COUNT: usize = 8;
+
+    pub fn from_ordinal(ordinal: usize) -> Option<Self> {
+        Some(match ordinal {
+            0 => Self::MainHand,
+            1 => Self::OffHand,
+            2 => Self::Feet,
+            3 => Self::Legs,
+            4 => Self::Chest,
+            5 => Self::Head,
+            6 => Self::Body,
+            7 => Self::Saddle,
+            _ => return None,
+        })
+    }
 }
 
 /// Entity dimensions used to derive Java's feet-origin bounding box.
@@ -519,6 +552,8 @@ pub struct ClientEntity {
     /// spin it started (`bobOffs`).
     pub(crate) item_stack: Option<ClientItemStackState>,
     pub(crate) bob_offset_bits: u32,
+    /// What it holds and wears, by `EquipmentSlot`.
+    pub(crate) equipment: [Option<ClientItemStackState>; EquipmentSlot::COUNT],
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,
@@ -1697,6 +1732,30 @@ impl ClientEntity {
     /// The stack a dropped item holds.
     pub fn item_stack(&self) -> Option<&ClientItemStackState> {
         self.item_stack.as_ref()
+    }
+
+    /// What the entity holds or wears in a slot (`getItemBySlot`); none for
+    /// an empty one.
+    pub fn equipment(&self, slot: EquipmentSlot) -> Option<&ClientItemStackState> {
+        self.equipment[slot as usize].as_ref()
+    }
+
+    /// `getMainArm`: a mob's left-handed flag, an avatar's data.
+    pub fn main_arm_is_left(&self) -> bool {
+        if self.is_player() {
+            self.living.main_arm_left
+        } else {
+            self.is_left_handed()
+        }
+    }
+
+    /// `getItemHeldByArm`.
+    pub fn item_held_by_arm(&self, left: bool) -> Option<&ClientItemStackState> {
+        self.equipment(if left == self.main_arm_is_left() {
+            EquipmentSlot::MainHand
+        } else {
+            EquipmentSlot::OffHand
+        })
     }
 
     /// `ItemEntity.bobOffs`.

@@ -121,6 +121,14 @@ pub type OpenContainerMenu = (
     i32,
 );
 
+/// `ItemEntity.bobOffs` is drawn from an unseeded random source; this one is
+/// drawn from the entity's uuid.
+fn bob_offset_bits(uuid: voxel_core::binary::Uuid) -> u32 {
+    let folded = uuid.most ^ uuid.least;
+    let mut random = voxel_core::random::RandomSource::create(folded as i64);
+    (random.next_float() * std::f32::consts::PI * 2.0).to_bits()
+}
+
 impl ClientWorld {
     pub fn new(dimension: DimensionBounds) -> Self {
         Self {
@@ -1835,6 +1843,20 @@ impl ClientWorld {
         true
     }
 
+    /// `handleSetEquipment`: what the entity holds or wears in a slot.
+    pub fn apply_entity_equipment(
+        &mut self,
+        entity_id: i32,
+        slot: EquipmentSlot,
+        stack: Option<ClientItemStackState>,
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.equipment[slot as usize] = stack;
+        true
+    }
+
     /// Where an entity is drawn between two ticks: its position
     /// (`getPosition(partialTick)`), its turn and its head's.
     pub fn entity_snapshot(&self, entity_id: i32, partial_tick: f32) -> Option<EntitySnapshot> {
@@ -2787,13 +2809,8 @@ impl ClientWorld {
                 head_stable_time: 0,
                 last_stable_y_head_rot_bits: entity.rotation.2.to_bits(),
                 item_stack: None,
-                // `ItemEntity.bobOffs` is drawn from an unseeded random
-                // source; this one is drawn from the entity's uuid.
-                bob_offset_bits: {
-                    let folded = entity.uuid.most ^ entity.uuid.least;
-                    let mut random = voxel_core::random::RandomSource::create(folded as i64);
-                    (random.next_float() * std::f32::consts::PI * 2.0).to_bits()
-                },
+                equipment: Default::default(),
+                bob_offset_bits: bob_offset_bits(entity.uuid),
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,
@@ -3177,6 +3194,9 @@ impl ClientWorld {
         }
         if let Some(dancing) = piglin_dancing {
             entity.living.dancing = dancing;
+        }
+        if let Some(left) = avatar_main_arm_is_left(metadata) {
+            entity.living.main_arm_left = left;
         }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;

@@ -1,0 +1,26 @@
+# T41c — Kafa eşyası, pelerin, elytra, dürbün
+
+**Amaç:** `CustomHeadLayer` (kafadaki blok/eşya, kafa kafatasları), `CapeLayer`, `WingsLayer` (elytra) ve oyuncunun dürbünle gözüne tuttuğu eşya (`PlayerItemInHandLayer.renderItemHeldToEye`).
+**Bağımlılık:** T41. **Boy:** M.
+
+## Oku
+- Java: `client/renderer/entity/layers/{CustomHeadLayer,CapeLayer,WingsLayer,PlayerItemInHandLayer}.java`, `client/model/object/equipment/ElytraModel.java`, `client/renderer/entity/player/AvatarRenderer.java` (`extractCapeState`).
+- Rust: `crates/voxel/src/held_items.rs` (`Hands`, `HeldItem`), `voxel-render/src/held_item.rs`, `player_model.rs`.
+
+## Yapılacaklar
+1. Baş yuvası: `Head` görüntü bağlamı ile eşya/blok, kafa dönüşümü (`translateToHead`).
+2. Elytra modeli ve `elytraAnimationState`; pelerin dokusu PlayerInfo'dan (PLAN-M9) gelmeden yalnız elytra.
+
+## Oracle
+`held_item_pose` kalıbı: gerçek katman, gerçek model; matris ve dörtgen karşılaştırma.
+
+## Kabul
+`tools/voxel.py check --capture` → `CHECK OK`.
+
+## Kapsam dışı
+Pelerin dokusu indirme (PLAN-M9), zırh (T41b).
+
+## Belgeler
+`docs/index.md` satırı, yeni kayıt.
+
+## Devir notu

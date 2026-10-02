@@ -6942,3 +6942,74 @@ fn a_walking_mob_eases_to_each_step_and_faces_where_it_goes() {
     assert!(moving.walk_speed > 0.0, "{moving:?}");
     assert_eq!(moving.body_yaw, 90.0);
 }
+
+#[test]
+fn held_items_follow_the_equipment_slots_and_the_main_arm() {
+    use crate::entity::{ClientEntity, EquipmentSlot};
+    let mut world = ClientWorld::default();
+    let player = voxel_data::entity_type::id("minecraft:player").expect("the player type");
+    let mob = voxel_data::entity_type::id("minecraft:zombie").expect("the zombie type");
+    for (entity_id, type_id) in [(5, player), (6, mob)] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(1, entity_id as u64),
+            type_id,
+            x: 0.0,
+            y: 80.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let main = ClientItemStackState::new(1, 10);
+        let off = ClientItemStackState::new(2, 11);
+        assert!(world.apply_entity_equipment(entity_id, EquipmentSlot::MainHand, Some(main)));
+        assert!(world.apply_entity_equipment(entity_id, EquipmentSlot::OffHand, Some(off)));
+    }
+    let id_of = |entity: &ClientEntity, left: bool| {
+        entity
+            .item_held_by_arm(left)
+            .map(|stack| stack.item_registry_id())
+    };
+    // Right-handed: the main hand is the right arm's.
+    let entity = world.entity_at(5).expect("the player");
+    assert_eq!(
+        (id_of(entity, false), id_of(entity, true)),
+        (Some(10), Some(11))
+    );
+    // The avatar's data names the left arm (`HumanoidArm` id zero).
+    assert!(world.apply_entity_metadata(
+        5,
+        &[
+            super::AVATAR_MAIN_HAND_DATA_ID,
+            super::HUMANOID_ARM_SERIALIZER_ID as u8,
+            0,
+            255,
+        ],
+    ));
+    let entity = world.entity_at(5).expect("the player");
+    assert!(entity.main_arm_is_left());
+    assert_eq!(
+        (id_of(entity, false), id_of(entity, true)),
+        (Some(11), Some(10))
+    );
+    // A mob is left-handed by its flag.
+    assert!(world.apply_entity_metadata(
+        6,
+        &[
+            super::ENTITY_MOB_FLAGS_DATA_ID,
+            super::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,
+            0b010,
+            255,
+        ],
+    ));
+    let entity = world.entity_at(6).expect("the mob");
+    assert_eq!(
+        (id_of(entity, false), id_of(entity, true)),
+        (Some(11), Some(10))
+    );
+    // An empty slot clears it.
+    assert!(world.apply_entity_equipment(6, EquipmentSlot::OffHand, None));
+    assert_eq!(id_of(world.entity_at(6).expect("the mob"), false), None);
+    assert!(!world.apply_entity_equipment(99, EquipmentSlot::Head, None));
+}

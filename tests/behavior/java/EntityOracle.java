@@ -227,6 +227,103 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A humanoid model posed with its arms' poses, and where the reference's own `ItemInHandLayer`
+     * puts the item each hand holds: the quads of the posed model and the pose (a matrix) each held
+     * item is submitted with, before its own display transform.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject heldItemPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String kind = row.get("kind").getAsString();
+            boolean baby = row.get("baby").getAsBoolean();
+            net.minecraft.client.model.HumanoidModel model;
+            net.minecraft.client.renderer.entity.state.HumanoidRenderState state;
+            switch (kind) {
+                case "player", "player_slim" -> {
+                    boolean slim = kind.equals("player_slim");
+                    var mesh = net.minecraft.client.model.player.PlayerModel.createMesh(
+                        net.minecraft.client.model.geom.builders.CubeDeformation.NONE, slim);
+                    var root = net.minecraft.client.model.geom.builders.LayerDefinition.create(mesh, 64, 64).bakeRoot();
+                    model = new net.minecraft.client.model.player.PlayerModel(root, slim);
+                    state = new net.minecraft.client.renderer.entity.state.AvatarRenderState();
+                }
+                case "zombie" -> {
+                    var root = bakedLayer(baby ? "minecraft:zombie_baby#main" : "minecraft:zombie#main");
+                    model = baby
+                        ? new net.minecraft.client.model.monster.zombie.BabyZombieModel<>(root)
+                        : new net.minecraft.client.model.monster.zombie.ZombieModel<>(root);
+                    var zombie = new net.minecraft.client.renderer.entity.state.ZombieRenderState();
+                    zombie.isAggressive = row.get("aggressive").getAsBoolean();
+                    state = zombie;
+                }
+                case "skeleton" -> {
+                    model = new net.minecraft.client.model.monster.skeleton.SkeletonModel<>(
+                        bakedLayer("minecraft:skeleton#main"));
+                    var skeleton = new net.minecraft.client.renderer.entity.state.SkeletonRenderState();
+                    skeleton.isAggressive = row.get("aggressive").getAsBoolean();
+                    skeleton.isHoldingBow = row.get("holding_bow").getAsBoolean();
+                    state = skeleton;
+                }
+                case "piglin" -> {
+                    var root = bakedLayer(baby ? "minecraft:piglin_baby#main" : "minecraft:piglin#main");
+                    model = baby
+                        ? new net.minecraft.client.model.monster.piglin.BabyPiglinModel(root)
+                        : new net.minecraft.client.model.monster.piglin.AdultPiglinModel(root);
+                    state = new net.minecraft.client.renderer.entity.state.PiglinRenderState();
+                }
+                default -> throw new IllegalArgumentException("Unknown humanoid " + kind);
+            }
+            humanoidFields(state, row);
+            state.isBaby = baby;
+            state.isCrouching = row.get("crouching").getAsBoolean();
+            state.mainArm = row.get("main_arm").getAsString().equals("left")
+                ? net.minecraft.world.entity.HumanoidArm.LEFT
+                : net.minecraft.world.entity.HumanoidArm.RIGHT;
+            state.rightArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.valueOf(
+                row.get("right_pose").getAsString().toUpperCase());
+            state.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.valueOf(
+                row.get("left_pose").getAsString().toUpperCase());
+            if (row.get("holds_right").getAsBoolean()) {
+                state.rightHandItemState.newLayer();
+            }
+            if (row.get("holds_left").getAsBoolean()) {
+                state.leftHandItemState.newLayer();
+            }
+            model.setupAnim(state);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+            var layer = kind.startsWith("player")
+                ? new net.minecraft.client.renderer.entity.layers.PlayerItemInHandLayer(parent)
+                : new net.minecraft.client.renderer.entity.layers.ItemInHandLayer(parent);
+            layer.submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, state, 0.0F, 0.0F);
+            var out = posedQuads(row.get("label").getAsString(), model);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -661,6 +758,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.ExperienceOrb.class, "DATA_VALUE", "experienceorb"},
             {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_BABY_ID", "piglin-baby"},
             {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_IS_DANCING", "piglin-dancing"},
+            {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MAIN_HAND", "avatar-main-hand"},
         };
         for (var described : fields) {
             var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
@@ -769,6 +867,9 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("held_item_pose")) {
+            return heldItemPose(request);
         }
         if (operation.equals("item_entity_pose")) {
             return itemEntityPose(request);

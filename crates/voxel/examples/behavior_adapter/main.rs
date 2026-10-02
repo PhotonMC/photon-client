@@ -18921,9 +18921,14 @@ fn quadruped_model_result(request: &Value) -> Result<Value, String> {
 
 /// The sorted quads of a posed model, as the oracle lists them.
 fn posed_quads(model: &voxel_render::mob_model::MobModel) -> Vec<String> {
+    sorted_quads(model.render(&Default::default()))
+}
+
+/// A model's faces as the oracle lists them: each quad's corners as bits,
+/// sorted.
+fn sorted_quads(faces: Vec<(String, [voxel_render::player_model::ModelVertex; 4])>) -> Vec<String> {
     let hex = |value: f32| format!("{:08x}", value.to_bits());
-    let mut quads: Vec<String> = model
-        .render(&Default::default())
+    let mut quads: Vec<String> = faces
         .into_iter()
         .map(|(_, corners)| {
             corners
@@ -18962,6 +18967,127 @@ fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRende
         swim_amount: bits("swim_amount")?,
         ..Default::default()
     })
+}
+
+/// `held_item_pose`: a humanoid model posed with its arms' poses, and the
+/// pose each held item is drawn from (`ItemInHandLayer`), before the item's
+/// own display transform.
+fn held_item_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::held_item::hand_pose;
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{MobModel, PiglinState, SkeletonState, ZombieState};
+    use voxel_render::player_model::{Arm, ArmPose, Part, PlayerModel};
+    let arm_pose = |text: &str| match text {
+        "item" => ArmPose::Item,
+        "bow_and_arrow" => ArmPose::BowAndArrow,
+        _ => ArmPose::Empty,
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let kind = row["kind"].as_str().ok_or("kind")?;
+        let baby = row["baby"].as_bool().ok_or("baby")?;
+        let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+        let humanoid = voxel_render::player_model::PlayerRenderState {
+            crouching: flag("crouching"),
+            main_arm: if row["main_arm"].as_str() == Some("left") {
+                Arm::Left
+            } else {
+                Arm::Right
+            },
+            right_arm_pose: arm_pose(row["right_pose"].as_str().ok_or("right_pose")?),
+            left_arm_pose: arm_pose(row["left_pose"].as_str().ok_or("left_pose")?),
+            ..humanoid_state(row)?
+        };
+        let aggressive = flag("aggressive");
+        let layer = |id: &str| {
+            voxel_data::entity_model::layer(id)
+                .map(MobModel::bake)
+                .ok_or("no such layer")
+        };
+        let slim = kind == "player_slim";
+        let (quads, poses) = if kind.starts_with("player") {
+            let mut model = PlayerModel::new(slim);
+            model.setup_anim(&humanoid);
+            let poses = held_poses(&model.root, row, if slim { 0.5 } else { 0.0 }, baby);
+            (sorted_quads(model.render(&Default::default())), poses)
+        } else {
+            let model = match kind {
+                "zombie" => {
+                    let mut model = layer(if baby {
+                        "minecraft:zombie_baby#main"
+                    } else {
+                        "minecraft:zombie#main"
+                    })?;
+                    model.setup_zombie(&ZombieState {
+                        humanoid,
+                        aggressive,
+                        drowned: false,
+                    });
+                    model
+                }
+                "skeleton" => {
+                    let mut model = layer("minecraft:skeleton#main")?;
+                    model.setup_skeleton(&SkeletonState {
+                        humanoid,
+                        aggressive,
+                        holding_bow: flag("holding_bow"),
+                    });
+                    model
+                }
+                "piglin" => {
+                    let mut model = layer(if baby {
+                        "minecraft:piglin_baby#main"
+                    } else {
+                        "minecraft:piglin#main"
+                    })?;
+                    model.setup_piglin(&PiglinState {
+                        humanoid,
+                        baby,
+                        ..Default::default()
+                    });
+                    model
+                }
+                _ => return Err(format!("unknown humanoid {kind}")),
+            };
+            let poses = held_poses(
+                model.root(),
+                row,
+                if kind == "skeleton" { 1.0 } else { 0.0 },
+                baby,
+            );
+            (posed_quads(&model), poses)
+        };
+        fn held_poses(root: &Part, row: &Value, hand_shift: f32, baby: bool) -> Vec<Vec<String>> {
+            let hex = |value: f32| format!("{:08x}", value.to_bits());
+            let mut poses = Vec::new();
+            for (key, side, name) in [
+                ("holds_right", Arm::Right, "right_arm"),
+                ("holds_left", Arm::Left, "left_arm"),
+            ] {
+                if !row[key].as_bool().unwrap_or(false) {
+                    continue;
+                }
+                let arm = root
+                    .children()
+                    .iter()
+                    .find(|part| part.name() == name)
+                    .expect("the model has its arms");
+                let mut pose = hand_pose(&Pose::default(), root, arm, side, hand_shift, baby);
+                // `ItemTransform.NO_TRANSFORM.apply` of the layer.
+                pose.translate(-0.5, -0.5, -0.5);
+                // Column by column, as `Matrix4f.get` writes them.
+                poses.push(
+                    (0..4)
+                        .flat_map(|column| (0..4).map(move |row| (column, row)))
+                        .map(|(column, row)| hex(pose.pose.m[column][row]))
+                        .collect(),
+                );
+            }
+            poses
+        }
+        out.push(json!({"label": row["label"], "quads": quads, "poses": poses}));
+    }
+    Ok(json!({"rows": out}))
 }
 
 /// `skeleton_model`: a skeleton family model posed and drawn.
@@ -19159,6 +19285,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "quadruped_model" => return quadruped_model_result(request),
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
+        "held_item_pose" => return held_item_pose_result(request),
         "zombie_model" => return zombie_model_result(request),
         "skeleton_model" => return skeleton_model_result(request),
         "piglin_model" => return piglin_model_result(request),
@@ -19182,9 +19309,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         }
         "entity_variant_fields" => {
             use voxel_world::{
-                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
-                PIGLIN_DANCING_DATA_ID,
+                AVATAR_MAIN_HAND_DATA_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
+                EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
+                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19192,6 +19319,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "experienceorb", "data_id": EXPERIENCE_ORB_VALUE_DATA_ID, "serializer": 1},
                 {"label": "piglin-baby", "data_id": PIGLIN_BABY_DATA_ID, "serializer": 8},
                 {"label": "piglin-dancing", "data_id": PIGLIN_DANCING_DATA_ID, "serializer": 8},
+                {"label": "avatar-main-hand", "data_id": AVATAR_MAIN_HAND_DATA_ID, "serializer": HUMANOID_ARM_SERIALIZER_ID},
             ]}));
         }
         "entity_data_serializers" => {
@@ -19239,6 +19367,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
             swim_amount: bits(row, "swim_amount")?,
             crouching: flag(row, "crouching"),
             spectator: flag(row, "spectator"),
+            ..Default::default()
         });
         let hex = |value: f32| format!("{:08x}", value.to_bits());
         let mut quads: Vec<String> = model

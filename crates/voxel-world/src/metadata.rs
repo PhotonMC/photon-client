@@ -159,6 +159,20 @@ pub(crate) fn piglin_flags_from_metadata(
     )
 }
 
+/// Whether an avatar's main arm is the left (`Avatar.DATA_PLAYER_MAIN_HAND`),
+/// when the data holds it.
+pub(crate) fn avatar_main_arm_is_left(metadata: &[u8]) -> Option<bool> {
+    let (serializer_id, mut value_input) = find_metadata_field(metadata, AVATAR_MAIN_HAND_DATA_ID)?;
+    if serializer_id != HUMANOID_ARM_SERIALIZER_ID {
+        return None;
+    }
+    let id = voxel_core::wire::read_varint(&mut value_input).ok()?;
+    if value_input.is_empty() {
+        return None;
+    }
+    Some(id == 0)
+}
+
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
 pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:experience_orb" {

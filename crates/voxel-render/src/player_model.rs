@@ -316,7 +316,13 @@ impl Part {
 
     /// `ModelPart.translateAndRotate`.
     pub fn translate_and_rotate(&self, pose: &mut Pose) {
-        pose.translate(self.x / 16.0, self.y / 16.0, self.z / 16.0);
+        self.translate_and_rotate_shifted(pose, 0.0);
+    }
+
+    /// `translateAndRotate` with the part's x moved by `shift` for the
+    /// duration (a slim arm's hand).
+    pub fn translate_and_rotate_shifted(&self, pose: &mut Pose, shift: f32) {
+        pose.translate((self.x + shift) / 16.0, self.y / 16.0, self.z / 16.0);
         if self.x_rot != 0.0 || self.y_rot != 0.0 || self.z_rot != 0.0 {
             pose.rotate(&Quaternion::rotation_zyx(
                 self.z_rot, self.y_rot, self.x_rot,
@@ -405,8 +411,29 @@ pub enum Arm {
     Right,
 }
 
+/// `HumanoidModel.ArmPose`, as far as a held item and a skeleton's bow ask
+/// for it. The poses a use of the item asks for (block, trident, crossbow,
+/// spyglass, horn, brush, spear) are not carried: the use is not read yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ArmPose {
+    #[default]
+    Empty,
+    Item,
+    BowAndArrow,
+}
+
+impl ArmPose {
+    pub fn is_two_handed(self) -> bool {
+        self == ArmPose::BowAndArrow
+    }
+
+    pub fn affects_offhand_pose(self) -> bool {
+        self == ArmPose::BowAndArrow
+    }
+}
+
 /// What the model is posed from: the reference's avatar render state, the
-/// fields a player with empty hands uses.
+/// fields a player uses.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerRenderState {
     /// The head's turn from the body and its pitch, in degrees.
@@ -420,6 +447,10 @@ pub struct PlayerRenderState {
     pub swim_amount: f32,
     pub crouching: bool,
     pub spectator: bool,
+    pub right_arm_pose: ArmPose,
+    pub left_arm_pose: ArmPose,
+    /// `HumanoidRenderState.mainArm`: which arm the main hand is.
+    pub main_arm: Arm,
 }
 
 impl Default for PlayerRenderState {
@@ -435,6 +466,9 @@ impl Default for PlayerRenderState {
             swim_amount: 0.0,
             crouching: false,
             spectator: false,
+            right_arm_pose: ArmPose::Empty,
+            left_arm_pose: ArmPose::Empty,
+            main_arm: Arm::Right,
         }
     }
 }
@@ -443,6 +477,8 @@ impl Default for PlayerRenderState {
 #[derive(Debug, Clone)]
 pub struct PlayerModel {
     pub root: Part,
+    /// Whether the arms are three wide.
+    pub slim: bool,
 }
 
 impl PlayerModel {
@@ -540,6 +576,7 @@ impl PlayerModel {
             )],
         );
         Self {
+            slim,
             root: Part::new(
                 "root",
                 Vec::new(),
@@ -629,9 +666,25 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     root.child("left_leg").y_rot = -0.005;
     root.child("right_leg").z_rot = 0.005;
     root.child("left_leg").z_rot = -0.005;
-    // Empty hands: each arm's pose only clears its turn.
-    root.child("left_arm").y_rot = 0.0;
-    root.child("right_arm").y_rot = 0.0;
+    // Which arm is posed first: a two-handed pose in the off hand makes the
+    // other arm the one that is posed last.
+    let right_handed = state.main_arm == Arm::Right;
+    let two_handed_offhand = if right_handed {
+        state.left_arm_pose.is_two_handed()
+    } else {
+        state.right_arm_pose.is_two_handed()
+    };
+    if right_handed != two_handed_offhand {
+        pose_arm(root, state, Arm::Left);
+        if !state.left_arm_pose.affects_offhand_pose() {
+            pose_arm(root, state, Arm::Right);
+        }
+    } else {
+        pose_arm(root, state, Arm::Right);
+        if !state.right_arm_pose.affects_offhand_pose() {
+            pose_arm(root, state, Arm::Left);
+        }
+    }
 
     // `setupAttackAnimation`, a whack.
     let attack_time = state.attack_time;
@@ -691,6 +744,37 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
 
     if swim_amount > 0.0 {
         swim(root, state, pi);
+    }
+}
+
+/// `HumanoidModel.poseRightArm` and `poseLeftArm`.
+fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
+    let (head_x, head_y) = {
+        let head = root.child("head");
+        (head.x_rot, head.y_rot)
+    };
+    let (name, pose) = match arm {
+        Arm::Right => ("right_arm", state.right_arm_pose),
+        Arm::Left => ("left_arm", state.left_arm_pose),
+    };
+    match pose {
+        ArmPose::Empty => root.child(name).y_rot = 0.0,
+        ArmPose::Item => {
+            let part = root.child(name);
+            part.x_rot = part.x_rot * 0.5 - (std::f64::consts::PI / 10.0) as f32;
+            part.y_rot = 0.0;
+        }
+        ArmPose::BowAndArrow => {
+            let (right_turn, left_turn) = match arm {
+                Arm::Right => (-0.1 + head_y, 0.1 + head_y + 0.4),
+                Arm::Left => (-0.1 + head_y - 0.4, 0.1 + head_y),
+            };
+            let raised = (-std::f64::consts::PI / 2.0) as f32 + head_x;
+            root.child("right_arm").y_rot = right_turn;
+            root.child("left_arm").y_rot = left_turn;
+            root.child("right_arm").x_rot = raised;
+            root.child("left_arm").x_rot = raised;
+        }
     }
 }
 

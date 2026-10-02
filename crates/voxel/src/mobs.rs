@@ -8,10 +8,13 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState, mob_vertices,
+    placement_pose,
 };
-use voxel_render::player_model::PlayerRenderState;
+use voxel_render::player_model::{Arm, ArmPose, PlayerRenderState};
 use voxel_render::scene::Vertex;
+use voxel_world::EquipmentSlot;
 
+use crate::held_items::{Hands, HeldItem};
 use crate::overlays::{FrameView, packed_light};
 
 /// A mob that wears a variant the server names: its entity type, the kind
@@ -293,7 +296,7 @@ pub fn remote_mobs(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let partial = view.partial as f32;
@@ -356,18 +359,20 @@ pub fn remote_mobs(
             rect,
         ));
     }
-    vertices.extend(remote_humanoids(session, models, textures, view));
+    vertices.extend(remote_humanoids(session, models, textures, (view, held)));
     vertices
 }
 
 /// `LivingEntityRenderer` for the humanoid mobs the server added (zombies,
-/// skeletons, piglins), each posed by its model's `setupAnim` from where it is between two ticks. The held item
-/// (and so the attack swing and the arm pose it asks for) is not read yet.
+/// skeletons, piglins), each posed by its model's `setupAnim` from where it is
+/// between two ticks, with what it holds in its hands. The attack swing and
+/// the arm poses the held items ask for (a piglin's weapon or crossbow, a
+/// spear) are not read yet.
 fn remote_humanoids(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let partial = view.partial as f32;
@@ -380,15 +385,7 @@ fn remote_humanoids(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let humanoid = PlayerRenderState {
-            head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
-            x_rot: snapshot.pitch,
-            walk_position: snapshot.walk_position,
-            walk_speed: snapshot.walk_speed,
-            age_in_ticks: entity.tick_count() as f32 + partial,
-            swim_amount: snapshot.swim_amount,
-            ..Default::default()
-        };
+        let (humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
         let aggressive = entity.is_aggressive();
         let (x, y, z) = snapshot.position;
         let placement = MobPlacement {
@@ -404,54 +401,126 @@ fn remote_humanoids(
             flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
             red_overlay: snapshot.red_overlay,
         };
-        let layers = [
-            Some((
-                if baby {
-                    kind.baby_layer
-                } else {
-                    kind.adult_layer
-                },
-                if baby {
-                    kind.baby_texture
-                } else {
-                    kind.adult_texture
-                },
-            )),
-            kind.outer.map(|outer| {
-                (
-                    if baby { outer[1] } else { outer[0] },
-                    if baby { outer[3] } else { outer[2] },
-                )
-            }),
-        ];
-        for (layer, texture) in layers.into_iter().flatten() {
+        let mut first = true;
+        for (layer, texture) in model_layers(kind, baby).into_iter().flatten() {
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
                 continue;
             };
-            match kind.family {
-                Family::Zombie { drowned } => model.setup_zombie(&ZombieState {
-                    humanoid,
-                    aggressive,
-                    drowned,
-                }),
-                // A skeleton is taken to hold a bow until the held item is read.
-                Family::Skeleton => model.setup_skeleton(&SkeletonState {
-                    humanoid,
-                    aggressive,
-                    holding_bow: true,
-                }),
-                Family::Piglin { zombified } => model.setup_piglin(&PiglinState {
-                    humanoid,
-                    aggressive,
-                    zombified,
+            pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity);
+            if first {
+                first = false;
+                Hands {
+                    base: &placement_pose(&placement),
+                    root: model.root(),
+                    hand_shift: if matches!(kind.family, Family::Skeleton) {
+                        1.0
+                    } else {
+                        0.0
+                    },
                     baby,
-                    dancing: entity.is_dancing(),
-                }),
+                    light: placement.light,
+                    right: entity.item_held_by_arm(false),
+                    left: entity.item_held_by_arm(true),
+                }
+                .collect(held);
             }
             vertices.extend(mob_vertices(model, &placement, rect));
         }
     }
     vertices
+}
+
+/// What a humanoid mob's model is posed from, and whether its main hand holds
+/// a bow: the humanoid pose from where it is between two ticks, and the
+/// arms' poses its held items ask for (`AbstractSkeletonRenderer.getArmPose`:
+/// a bow drawn by the main arm of an aggressive skeleton).
+fn humanoid_pose(
+    entity: &voxel_world::ClientEntity,
+    snapshot: &voxel_world::EntitySnapshot,
+    kind: &HumanoidKind,
+    partial: f32,
+) -> (PlayerRenderState, bool) {
+    let main_left = entity.main_arm_is_left();
+    let holding_bow = entity
+        .equipment(EquipmentSlot::MainHand)
+        .is_some_and(|stack| is_item(stack, "minecraft:bow"));
+    let bow_arm = |left: bool| {
+        if matches!(kind.family, Family::Skeleton)
+            && left == main_left
+            && entity.is_aggressive()
+            && holding_bow
+        {
+            ArmPose::BowAndArrow
+        } else {
+            ArmPose::Empty
+        }
+    };
+    let humanoid = PlayerRenderState {
+        head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+        x_rot: snapshot.pitch,
+        walk_position: snapshot.walk_position,
+        walk_speed: snapshot.walk_speed,
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        swim_amount: snapshot.swim_amount,
+        right_arm_pose: bow_arm(false),
+        left_arm_pose: bow_arm(true),
+        main_arm: if main_left { Arm::Left } else { Arm::Right },
+        ..Default::default()
+    };
+    (humanoid, holding_bow)
+}
+
+/// The model layers and textures a humanoid is drawn in: its own, and the
+/// outer one (a stray's clothes) when it has one.
+fn model_layers(kind: &HumanoidKind, baby: bool) -> [Option<(&'static str, &'static str)>; 2] {
+    [
+        Some(if baby {
+            (kind.baby_layer, kind.baby_texture)
+        } else {
+            (kind.adult_layer, kind.adult_texture)
+        }),
+        kind.outer.map(|outer| {
+            if baby {
+                (outer[1], outer[3])
+            } else {
+                (outer[0], outer[2])
+            }
+        }),
+    ]
+}
+
+/// The model's `setupAnim` of the family.
+fn pose_humanoid(
+    model: &mut MobModel,
+    kind: &HumanoidKind,
+    (humanoid, aggressive, holding_bow): (PlayerRenderState, bool, bool),
+    entity: &voxel_world::ClientEntity,
+) {
+    match kind.family {
+        Family::Zombie { drowned } => model.setup_zombie(&ZombieState {
+            humanoid,
+            aggressive,
+            drowned,
+        }),
+        Family::Skeleton => model.setup_skeleton(&SkeletonState {
+            humanoid,
+            aggressive,
+            holding_bow,
+        }),
+        Family::Piglin { zombified } => model.setup_piglin(&PiglinState {
+            humanoid,
+            aggressive,
+            zombified,
+            baby: entity.is_baby(),
+            dancing: entity.is_dancing(),
+        }),
+    }
+}
+
+/// Whether a stack is of the item with this name.
+fn is_item(stack: &voxel_world::ClientItemStackState, name: &str) -> bool {
+    voxel_data::item::registry::index(name)
+        .is_some_and(|index| usize::try_from(stack.item_registry_id()) == Ok(index))
 }
 
 #[cfg(test)]

@@ -52,17 +52,18 @@ use super::{
     pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
     parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
     parse_container_close_packet, parse_container_set_content_packet,
-    parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_event_packet,
-    parse_entity_metadata_packet, parse_entity_position_sync_packet, parse_entity_teleport_packet,
-    parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
-    parse_login_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
-    parse_move_entity_rot_packet, parse_open_screen_packet, parse_optional_item_stack,
-    parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
-    parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
-    parse_section_data, parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
-    parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
-    parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
-    parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+    parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_equipment_packet,
+    parse_entity_event_packet, parse_entity_metadata_packet, parse_entity_position_sync_packet,
+    parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_game_event_packet,
+    parse_light_update_packet, parse_login_packet, parse_move_entity_pos_packet,
+    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_open_screen_packet,
+    parse_optional_item_stack, parse_player_abilities_packet, parse_player_position_packet,
+    parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
+    parse_rotate_head_packet, parse_section_data, parse_set_chunk_cache_center_packet,
+    parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet, parse_set_health_packet,
+    parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
+    parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
+    support_block_position,
 };
 
 #[test]
@@ -2754,4 +2755,21 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn set_equipment_reads_each_slot_until_the_one_without_the_continue_bit() {
+    let mut payload = Vec::new();
+    voxel_core::wire::write_varint(5, &mut payload);
+    // The main hand holds two of item 10 (no component changes), the head
+    // is emptied.
+    payload.extend_from_slice(&[128, 2, 10, 0, 0, 5, 0]);
+    let packet = parse_entity_equipment_packet(&payload).expect("set equipment");
+    assert_eq!(packet.entity_id, 5);
+    assert_eq!(packet.slots.len(), 2);
+    assert_eq!(packet.slots[0].0, 0);
+    let stack = packet.slots[0].1.as_ref().expect("a stack");
+    assert_eq!((stack.item_count(), stack.item_registry_id()), (2, 10));
+    assert_eq!(packet.slots[1], (5, None));
+    assert!(parse_entity_equipment_packet(&payload[..4]).is_err());
 }

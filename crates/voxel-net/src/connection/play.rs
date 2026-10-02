@@ -1598,6 +1598,11 @@ impl PlaySession {
                     entities::metadata(&mut self.trace.world, &packet);
                 }
             }
+            PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID => {
+                if let Ok(packet) = parse_entity_equipment_packet(payload) {
+                    entities::equipment(&mut self.trace.world, &packet);
+                }
+            }
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
                 let packet = parse_update_attributes_packet(payload)?;
                 self.trace
