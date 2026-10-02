@@ -147,7 +147,7 @@ public final class MovementOracle {
         throw new NoSuchFieldException(name);
     }
 
-    private static void setField(Object target, String name, Object value) throws Exception {
+    static void setField(Object target, String name, Object value) throws Exception {
         Class<?> type = target.getClass();
         while (type != null) {
             try {
@@ -226,7 +226,7 @@ public final class MovementOracle {
         net.minecraft.client.Minecraft minecraft,
         net.minecraft.client.Options options) {}
 
-    private static Scene buildScene(JsonObject row) throws Exception {
+    static Scene buildScene(JsonObject row) throws Exception {
         var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
             unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
         setField(listener, "registryAccess", registries);

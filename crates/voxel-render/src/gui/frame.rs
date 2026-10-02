@@ -847,98 +847,21 @@ impl GuiFrame {
             shadow,
             crate::gui::text_hit::bounds(font, runs, (x, y), shadow),
         );
-        let unpack =
-            |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
-        let mut pen = x as f32;
-        for run in runs {
-            let colour = run
-                .style
-                .colour
-                .map_or(default_colour, |rgb| (default_colour & 0xFF00_0000) | rgb);
-            // `ARGB.scaleRGB(colour, 0.25)`.
-            let shadow_colour = [16, 8, 0]
-                .map(|shift| ((((colour >> shift) & 0xFF) as f32 * 0.25) as u32) << shift)
-                .into_iter()
-                .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
-            let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
-            let bold = run.style.bold == Some(true);
-            let italic = run.style.italic == Some(true);
-            for codepoint in run.text.chars() {
-                let Some(glyph) = font.glyph(codepoint) else {
-                    continue;
-                };
-                if let crate::gui::font::Glyph::Bitmap(bitmap) = glyph {
-                    let (name, image) = &font.images[bitmap.image];
-                    let [u0, v0, u1, v1] = atlas.sprite(name);
-                    let [cx, cy, cw, ch] = bitmap.cell;
-                    let su = |pixel: u32| u0 + (u1 - u0) * pixel as f32 / image.width as f32;
-                    let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
-                    // `GlyphBitmap`: the cell from its left edge, its top at
-                    // seven units less the ascent.
-                    let up = 7.0 - bitmap.ascent as f32;
-                    let down = up + ch as f32 * bitmap.scale;
-                    let (shear_top, shear_bottom) = if italic {
-                        (1.0 - 0.25 * up, 1.0 - 0.25 * down)
-                    } else {
-                        (0.0, 0.0)
-                    };
-                    let thickness = if bold { 0.1 } else { 0.0 };
-                    // `(offset, bold shift, colour)` for each pass: the
-                    // shadow's, then the glyph's; a bold glyph twice.
-                    let mut passes: Vec<(f32, f32, [f32; 4])> = Vec::new();
-                    if shadow {
-                        passes.push((1.0, 0.0, shadow_colour));
-                        if bold {
-                            passes.push((1.0, 1.0, shadow_colour));
-                        }
-                    }
-                    passes.push((0.0, 0.0, colour));
-                    if bold {
-                        passes.push((0.0, 1.0, colour));
-                    }
-                    for (offset, shift, colour) in passes {
-                        let left = pen + offset + shift;
-                        let right = left + cw as f32 * bitmap.scale;
-                        let top = y as f32 + up + offset;
-                        let bottom = y as f32 + down + offset;
-                        let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
-                            position: [px, py],
-                            uv,
-                            colour,
-                        };
-                        let corners = [
-                            corner(
-                                left + shear_top - thickness,
-                                top - thickness,
-                                [su(cx), sv(cy)],
-                            ),
-                            corner(
-                                left + shear_bottom - thickness,
-                                bottom + thickness,
-                                [su(cx), sv(cy + ch)],
-                            ),
-                            corner(
-                                right + shear_bottom + thickness,
-                                bottom + thickness,
-                                [su(cx + cw), sv(cy + ch)],
-                            ),
-                            corner(
-                                right + shear_top + thickness,
-                                top - thickness,
-                                [su(cx + cw), sv(cy)],
-                            ),
-                        ];
-                        let first = self.vertices.len() as u32;
-                        for index in [0, 1, 2, 0, 2, 3] {
-                            self.vertices.push(corners[index]);
-                        }
-                        match self.batches.last_mut() {
-                            Some((GuiBlend::Translucent, _, count)) => *count += 6,
-                            _ => self.batches.push((GuiBlend::Translucent, first, 6)),
-                        }
-                    }
-                }
-                pen += glyph.advance(bold);
+        for corners in glyph_quads(
+            atlas,
+            font,
+            runs,
+            (x as f32, y as f32),
+            default_colour,
+            shadow,
+        ) {
+            let first = self.vertices.len() as u32;
+            for index in [0, 1, 2, 0, 2, 3] {
+                self.vertices.push(corners[index]);
+            }
+            match self.batches.last_mut() {
+                Some((GuiBlend::Translucent, _, count)) => *count += 6,
+                _ => self.batches.push((GuiBlend::Translucent, first, 6)),
             }
         }
     }
@@ -1048,6 +971,108 @@ fn merged_runs(runs: &[voxel_game::text::Run]) -> Vec<(String, Option<u32>, bool
         last = Some(&run.style);
     }
     merged
+}
+
+/// Each glyph of styled text as a quad of four corners (top left, bottom
+/// left, bottom right, top right), as `BakedSheetGlyph.render` places them:
+/// the shadow's copies first when it has one, bold glyphs twice a unit apart
+/// and italic ones sheared. `x` and `y` are where the line starts.
+pub(crate) fn glyph_quads(
+    atlas: &GuiAtlas,
+    font: &crate::gui::font::Font,
+    runs: &[voxel_game::text::Run],
+    (x, y): (f32, f32),
+    default_colour: u32,
+    shadow: bool,
+) -> Vec<[GuiVertex; 4]> {
+    let unpack =
+        |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+    let mut quads = Vec::new();
+    let mut pen = x;
+    for run in runs {
+        let colour = run
+            .style
+            .colour
+            .map_or(default_colour, |rgb| (default_colour & 0xFF00_0000) | rgb);
+        // `ARGB.scaleRGB(colour, 0.25)`.
+        let shadow_colour = [16, 8, 0]
+            .map(|shift| ((((colour >> shift) & 0xFF) as f32 * 0.25) as u32) << shift)
+            .into_iter()
+            .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
+        let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
+        let bold = run.style.bold == Some(true);
+        let italic = run.style.italic == Some(true);
+        for codepoint in run.text.chars() {
+            let Some(glyph) = font.glyph(codepoint) else {
+                continue;
+            };
+            if let crate::gui::font::Glyph::Bitmap(bitmap) = glyph {
+                let (name, image) = &font.images[bitmap.image];
+                let [u0, v0, u1, v1] = atlas.sprite(name);
+                let [cx, cy, cw, ch] = bitmap.cell;
+                let su = |pixel: u32| u0 + (u1 - u0) * pixel as f32 / image.width as f32;
+                let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
+                // `GlyphBitmap`: the cell from its left edge, its top at
+                // seven units less the ascent.
+                let up = 7.0 - bitmap.ascent as f32;
+                let down = up + ch as f32 * bitmap.scale;
+                let (shear_top, shear_bottom) = if italic {
+                    (1.0 - 0.25 * up, 1.0 - 0.25 * down)
+                } else {
+                    (0.0, 0.0)
+                };
+                let thickness = if bold { 0.1 } else { 0.0 };
+                // `(offset, bold shift, colour)` for each pass: the shadow's,
+                // then the glyph's; a bold glyph twice.
+                let mut passes: Vec<(f32, f32, [f32; 4])> = Vec::new();
+                if shadow {
+                    passes.push((1.0, 0.0, shadow_colour));
+                    if bold {
+                        passes.push((1.0, 1.0, shadow_colour));
+                    }
+                }
+                passes.push((0.0, 0.0, colour));
+                if bold {
+                    passes.push((0.0, 1.0, colour));
+                }
+                for (offset, shift, colour) in passes {
+                    let left = pen + offset + shift;
+                    let right = left + cw as f32 * bitmap.scale;
+                    let top = y + up + offset;
+                    let bottom = y + down + offset;
+                    let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
+                        position: [px, py],
+                        uv,
+                        colour,
+                    };
+                    quads.push([
+                        corner(
+                            left + shear_top - thickness,
+                            top - thickness,
+                            [su(cx), sv(cy)],
+                        ),
+                        corner(
+                            left + shear_bottom - thickness,
+                            bottom + thickness,
+                            [su(cx), sv(cy + ch)],
+                        ),
+                        corner(
+                            right + shear_bottom + thickness,
+                            bottom + thickness,
+                            [su(cx + cw), sv(cy + ch)],
+                        ),
+                        corner(
+                            right + shear_top + thickness,
+                            top - thickness,
+                            [su(cx + cw), sv(cy)],
+                        ),
+                    ]);
+                }
+            }
+            pen += glyph.advance(bold);
+        }
+    }
+    quads
 }
 
 #[cfg(test)]

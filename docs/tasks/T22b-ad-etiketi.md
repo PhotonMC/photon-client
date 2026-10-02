@@ -23,4 +23,7 @@ Puan tahtası satırı, takım rengi, kafa üstü simgeler, ad etiketi kapatma s
 `docs/remaining-work.md` M4.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-render/name_tag.rs` (kural + `submitNameTag` pozu/ışığı/renkleri + üçgenler), `glyph_quads` (`frame.rs`'ten ortak yazı dörtgenleri), `PipelineKind::Text/TextSeeThrough` + `set_name_tags` (derinlik testli ve testsiz), `overlays::name_tags`, `PlaySession::player_name`, `Quaternion::rotation_yxz`. `name_tags` oracle'ı (gui ailesi) gerçek `AvatarRenderer.extractNameTags` + `SubmitNodeStorage`'a karşı; kapsam `docs/gui-oracle.md`.
+- Canlı: `Tester9` + `Viewer1` ile ad etiketi baş üstünde yarı saydam kutuyla görüldü (ekran görüntüsü okundu).
+- Sapma/açık: `backgroundForChatOnly` seçeneği istemcide yok, arka plan hep 0.25 (varsayılan); F1 ile HUD gizleme istemcide yok (`hud_hidden` hep false); `NAME_TAG_DISTANCE` özniteliği varsayılan 64; takım rengi/puan tahtası satırı yok; etiket üçgenleri ve görünür/SEE_THROUGH çizimi oracle'da yok (yalnız submit kayıtları), çizim canlı ekranla doğrulandı; yazı gölgesi/kalın/italik etiketlerde kullanılmıyor.
+- `tools/voxel.py` içindeki `SERVER_PORT` değişikliği (25565) bu görevin değil; commit'e girmedi.

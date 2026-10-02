@@ -326,3 +326,80 @@ pub fn remote_players(
     }
     vertices
 }
+
+/// Where the name tags are seen from.
+pub struct TagCamera {
+    pub position: Vec3,
+    /// The camera relative to the mesh origin.
+    pub relative: [f32; 3],
+    /// The camera's yaw and pitch.
+    pub rotation: (f32, f32),
+    /// The local player watches from the spectator's seat.
+    pub spectating: bool,
+}
+
+/// `EntityRenderer.submitNameDisplay` for the other players: the text seen
+/// through blocks, and the text tested against the depth, each as triangles
+/// from the mesh origin. The background is the options' default for chat
+/// only, as the option that changes it is not carried.
+pub fn name_tags(
+    session: &PlaySession,
+    (font, atlas): (&voxel_render::gui::font::Font, &voxel_render::gui::GuiAtlas),
+    camera: &TagCamera,
+    view: FrameView,
+) -> (Vec<Vertex>, Vec<Vertex>) {
+    use voxel_render::name_tag::{DisplayMode, Viewer, camera_orientation, name_tag, submits};
+    let world = session.world();
+    let partial = view.partial as f32;
+    let viewer = Viewer {
+        camera_position: camera.position,
+        spectator: camera.spectating,
+        hud_hidden: false,
+    };
+    let orientation = camera_orientation(camera.rotation.0, camera.rotation.1);
+    let (mut see_through, mut normal) = (Vec::new(), Vec::new());
+    for entity in world.entities() {
+        if !entity.is_player() || entity.is_spectator() {
+            continue;
+        }
+        // A player the server did not tell of has no name to show.
+        let Some(name) = session.player_name(entity.uuid) else {
+            continue;
+        };
+        let Some(tag) = name_tag(entity, name, viewer, partial) else {
+            continue;
+        };
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
+        let (x, y, z) = snapshot.position;
+        let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
+        let placement = Vec3::new(
+            x - camera.position.x,
+            y - camera.position.y,
+            z - camera.position.z,
+        );
+        for submit in submits(
+            &tag,
+            placement,
+            font.width(&tag.text),
+            packed_light(world, eye),
+            &orientation,
+            0.25,
+        ) {
+            let vertices = voxel_render::name_tag::submit_vertices(
+                &submit,
+                &tag.text,
+                font,
+                atlas,
+                camera.relative,
+            );
+            match submit.mode {
+                DisplayMode::SeeThrough => see_through.extend(vertices),
+                DisplayMode::Normal => normal.extend(vertices),
+            }
+        }
+    }
+    (see_through, normal)
+}

@@ -19,6 +19,7 @@ pub mod joml;
 pub mod mipmap;
 pub mod mob_model;
 pub mod model;
+pub mod name_tag;
 pub mod outline;
 pub mod player_model;
 pub mod player_renderer;

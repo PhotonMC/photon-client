@@ -574,6 +574,18 @@ impl Play {
             models.extend(overlays::player_model(player, &mut self.player_model, view));
         }
         self.backend.set_entities(&models)?;
+        let (see_through, normal) = overlays::name_tags(
+            &self.session,
+            self.gui.text_assets(),
+            &overlays::TagCamera {
+                position: frame.camera,
+                relative: frame.relative,
+                rotation: frame.rotation,
+                spectating: player.spectating(),
+            },
+            view,
+        );
+        self.backend.set_name_tags(&see_through, &normal)?;
         self.backend.set_ground_items(&dropped_items(
             &self.session,
             &mut self.ground_layers,

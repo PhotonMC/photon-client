@@ -197,6 +197,82 @@ void main() {
 }
 ";
 
+/// The world text's vertex shader, after the reference's text shader: the
+/// vertex colour (the tint) lit by the lightmap, and the distances fog reads.
+const TEXT_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+layout(location = 2) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_colour = vec4(in_tint.rgb * sample_lightmap(in_light), in_tint.a);
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The same text with `IS_SEE_THROUGH`: the colour as it is, no fog.
+const TEXT_SEE_THROUGH_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+layout(location = 2) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_colour = in_tint;
+    out_fog = vec2(0.0);
+}
+",
+);
+
+/// The world text's fragment shader: the glyph's texel times the colour, cut
+/// out below a tenth of alpha, then fog. A vertex with a negative texture
+/// coordinate has no texel (the name tag's background box).
+const TEXT_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D font;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 2) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec4 texel = in_uv.x < 0.0 ? vec4(1.0) : texture(font, in_uv);
+    vec4 colour = texel * in_colour;
+    if (colour.a < 0.1) { discard; }
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
+/// The see-through text's fragment shader: no fog.
+const TEXT_SEE_THROUGH_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D font;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 2) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+void main() {
+    vec4 texel = in_uv.x < 0.0 ? vec4(1.0) : texture(font, in_uv);
+    vec4 colour = texel * in_colour;
+    if (colour.a < 0.1) { discard; }
+    out_colour = colour;
+}
+";
+
 /// The block outline's shaders, after the reference's line shader: each
 /// vertex is pushed sideways on screen by half its signed width, across the
 /// edge's direction as the screen sees it, so a line keeps its width in
@@ -565,6 +641,11 @@ enum PipelineKind {
     /// The held items, which are drawn with the terrain's shaders but from
     /// the wider vertices the entities use.
     Held,
+    /// Text in the world (`TEXT`): the font's glyphs lit by the lightmap and
+    /// fogged, tested against the depth.
+    Text,
+    /// Text seen through blocks (`TEXT_SEE_THROUGH`): no light, fog or depth.
+    TextSeeThrough,
 }
 
 /// Instance API version the reference asks for.
@@ -686,6 +767,10 @@ struct SceneResources {
     crumbling_pipeline: vk::Pipeline,
     held_pipeline_layout: vk::PipelineLayout,
     held_pipeline: vk::Pipeline,
+    text_pipeline_layout: vk::PipelineLayout,
+    text_pipeline: vk::Pipeline,
+    text_see_through_pipeline_layout: vk::PipelineLayout,
+    text_see_through_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -892,6 +977,11 @@ pub struct VulkanBackend {
     /// The dropped items' triangles, which sample the block atlas.
     ground_buffer: Option<SkyBuffer>,
     ground_count: u32,
+    /// The name tags' text: seen through blocks, then lit and depth-tested.
+    name_tag_see_buffer: Option<SkyBuffer>,
+    name_tag_see_count: u32,
+    name_tag_buffer: Option<SkyBuffer>,
+    name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
     hand_buffer: Option<SkyBuffer>,
@@ -1188,6 +1278,10 @@ impl VulkanBackend {
                 entity_count: 0,
                 ground_buffer: None,
                 ground_count: 0,
+                name_tag_see_buffer: None,
+                name_tag_see_count: 0,
+                name_tag_buffer: None,
+                name_tag_count: 0,
                 hand_buffer: None,
                 hand_count: 0,
                 held_count: 0,
@@ -1587,6 +1681,55 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
             }
+            // Name tags after the entities: the text seen through blocks
+            // first, then the text tested against the depth.
+            if let Some(set) = scene.gui_set {
+                for (buffer, count, pipeline, layout) in [
+                    (
+                        self.name_tag_see_buffer.as_ref(),
+                        self.name_tag_see_count,
+                        scene.text_see_through_pipeline,
+                        scene.text_see_through_pipeline_layout,
+                    ),
+                    (
+                        self.name_tag_buffer.as_ref(),
+                        self.name_tag_count,
+                        scene.text_pipeline,
+                        scene.text_pipeline_layout,
+                    ),
+                ] {
+                    let Some(buffer) = buffer.filter(|_| count > 0) else {
+                        continue;
+                    };
+                    self.device.cmd_bind_pipeline(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline,
+                    );
+                    self.device.cmd_bind_descriptor_sets(
+                        self.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        layout,
+                        0,
+                        &[set],
+                        &[],
+                    );
+                    self.device.cmd_push_constants(
+                        self.command_buffer,
+                        layout,
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                    );
+                    self.device.cmd_bind_vertex_buffers(
+                        self.command_buffer,
+                        0,
+                        &[buffer.buffer],
+                        &[0],
+                    );
+                    self.device.cmd_draw(self.command_buffer, count, 1, 0, 0);
+                }
+            }
             // The aimed block's outline over the solid world.
             if let Some(buffer) = self.outline_buffer.as_ref()
                 && self.outline_count > 0
@@ -1955,6 +2098,8 @@ impl VulkanBackend {
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
+        let text = kind == PipelineKind::Text;
+        let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
         let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
@@ -1977,6 +2122,13 @@ impl VulkanBackend {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
+            } else if text {
+                (TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)
+            } else if text_see_through {
+                (
+                    TEXT_SEE_THROUGH_VERTEX_SHADER,
+                    TEXT_SEE_THROUGH_FRAGMENT_SHADER,
+                )
             } else if gui {
                 (GUI_VERTEX_SHADER, GUI_FRAGMENT_SHADER)
             } else if gui_item {
@@ -2201,11 +2353,21 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(if sky || weather || entity || gui || gui_item || lines {
-                    vk::CullModeFlags::NONE
-                } else {
-                    vk::CullModeFlags::BACK
-                })
+                .cull_mode(
+                    if sky
+                        || weather
+                        || entity
+                        || text
+                        || text_see_through
+                        || gui
+                        || gui_item
+                        || lines
+                    {
+                        vk::CullModeFlags::NONE
+                    } else {
+                        vk::CullModeFlags::BACK
+                    },
+                )
                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
                 .line_width(1.0)
                 // The crack is pulled towards the camera so it wins over the
@@ -2222,12 +2384,13 @@ impl VulkanBackend {
                 // reversed and equal depth passes, as in the reference, so
                 // a model's later face over an earlier one at the same place
                 // (the grass side overlay) is the one seen.
-                .depth_test_enable(!sky && !gui)
+                .depth_test_enable(!sky && !gui && !text_see_through)
                 .depth_write_enable(matches!(
                     kind,
                     PipelineKind::Terrain
                         | PipelineKind::Clouds
                         | PipelineKind::Entity
+                        | PipelineKind::Text
                         | PipelineKind::Lines
                         | PipelineKind::GuiItem
                 ))
@@ -2263,7 +2426,16 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent || sky || clouds || weather || entity || gui || gui_item || lines
+            } else if translucent
+                || sky
+                || clouds
+                || weather
+                || entity
+                || text
+                || text_see_through
+                || gui
+                || gui_item
+                || lines
             {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
@@ -2947,6 +3119,10 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Crumbling)?;
             let (held_pipeline_layout, held_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Held)?;
+            let (text_pipeline_layout, text_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Text)?;
+            let (text_see_through_pipeline_layout, text_see_through_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::TextSeeThrough)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -2983,6 +3159,10 @@ impl VulkanBackend {
                 crumbling_pipeline,
                 held_pipeline_layout,
                 held_pipeline,
+                text_pipeline_layout,
+                text_pipeline,
+                text_see_through_pipeline_layout,
+                text_see_through_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3259,19 +3439,6 @@ impl VulkanBackend {
                 self.device.destroy_pipeline(scene.pipeline, None);
                 self.device
                     .destroy_pipeline(scene.translucent_pipeline, None);
-                self.device.destroy_pipeline(scene.sky_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.sky_pipeline_layout, None);
-                self.device
-                    .destroy_pipeline(scene.sky_overlay_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.sky_overlay_pipeline_layout, None);
-                self.device.destroy_pipeline(scene.cloud_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.cloud_pipeline_layout, None);
-                self.device.destroy_pipeline(scene.weather_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.weather_pipeline_layout, None);
                 for (image, memory, view) in scene.weather_textures {
                     self.device.destroy_image_view(view, None);
                     self.device.destroy_image(image, None);
@@ -3280,18 +3447,6 @@ impl VulkanBackend {
                 if let Some(sampler) = scene.weather_sampler {
                     self.device.destroy_sampler(sampler, None);
                 }
-                self.device.destroy_pipeline(scene.entity_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.entity_pipeline_layout, None);
-                self.device.destroy_pipeline(scene.lines_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.lines_pipeline_layout, None);
-                self.device.destroy_pipeline(scene.held_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.held_pipeline_layout, None);
-                self.device.destroy_pipeline(scene.crumbling_pipeline, None);
-                self.device
-                    .destroy_pipeline_layout(scene.crumbling_pipeline_layout, None);
                 if let Some((image, memory, view)) = scene.crack_texture {
                     self.device.destroy_image_view(view, None);
                     self.device.destroy_image(image, None);
@@ -3309,6 +3464,22 @@ impl VulkanBackend {
                     self.device.destroy_sampler(sampler, None);
                 }
                 for (pipeline, layout) in [
+                    (scene.sky_pipeline, scene.sky_pipeline_layout),
+                    (
+                        scene.sky_overlay_pipeline,
+                        scene.sky_overlay_pipeline_layout,
+                    ),
+                    (scene.cloud_pipeline, scene.cloud_pipeline_layout),
+                    (scene.weather_pipeline, scene.weather_pipeline_layout),
+                    (scene.entity_pipeline, scene.entity_pipeline_layout),
+                    (scene.lines_pipeline, scene.lines_pipeline_layout),
+                    (scene.held_pipeline, scene.held_pipeline_layout),
+                    (scene.crumbling_pipeline, scene.crumbling_pipeline_layout),
+                    (scene.text_pipeline, scene.text_pipeline_layout),
+                    (
+                        scene.text_see_through_pipeline,
+                        scene.text_see_through_pipeline_layout,
+                    ),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
                     (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
@@ -3616,6 +3787,25 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.ground_buffer = buffer;
         self.ground_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's name tags: the text seen through blocks,
+    /// which is drawn first, and the text depth-tested. Both sample the GUI
+    /// atlas the font's images are in.
+    pub fn set_name_tags(
+        &mut self,
+        see_through: &[Vertex],
+        normal: &[Vertex],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.name_tag_see_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, see_through)?;
+        self.name_tag_see_buffer = buffer;
+        self.name_tag_see_count = see_through.len() as u32;
+        let mut buffer = self.name_tag_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, normal)?;
+        self.name_tag_buffer = buffer;
+        self.name_tag_count = normal.len() as u32;
         Ok(())
     }
 
@@ -4175,6 +4365,8 @@ impl Drop for VulkanBackend {
             for buffer in [
                 self.entity_buffer.take(),
                 self.ground_buffer.take(),
+                self.name_tag_see_buffer.take(),
+                self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
                 self.breaking_buffer.take(),

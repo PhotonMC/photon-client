@@ -191,6 +191,9 @@ fn scoreboard_from(row: &Value) -> Result<voxel_game::scoreboard::Scoreboard, St
 }
 
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
+    if request["operation"].as_str() == Some("name_tags") {
+        return crate::name_tags_result(request);
+    }
     use voxel_render::gui::chat::{ChatLog, ChatSettings};
     use voxel_render::gui::font::Font;
     use voxel_render::gui::{GuiAtlas, GuiFrame};

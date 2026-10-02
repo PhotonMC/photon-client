@@ -116,7 +116,7 @@ En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
 `RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`,
 `RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers` paketlerini
 dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
-bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları; yaşayan entity'ler üç tikte yumuşak ilerler, mob gövdesi `BodyRotationControl` ile döner) ve çizim için `entity_snapshot` veriyor; uzaktaki oyuncular (varsayılan deriyle, ad etiketsiz: T22b) ile domuz ve inek (yetişkin/bebek, `temperate` çeşit: T24b) ve yerdeki eşyalar (bob/spin, yığın kopyaları; XP küresi: T25b) çiziliyor; model katmanları `voxel-data` tablosunda (358), çizim `Part::baked` ve tek paketlenmiş entity dokusuyla.
+bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları; yaşayan entity'ler üç tikte yumuşak ilerler, mob gövdesi `BodyRotationControl` ile döner) ve çizim için `entity_snapshot` veriyor; uzaktaki oyuncular (varsayılan deriyle, ad etiketiyle) ile domuz ve inek (yetişkin/bebek, `temperate` çeşit: T24b) ve yerdeki eşyalar (bob/spin, yığın kopyaları; XP küresi: T25b) çiziliyor; model katmanları `voxel-data` tablosunda (358), çizim `Part::baked` ve tek paketlenmiş entity dokusuyla.
 
 1. **Paketler (L)** Kalan: `SetEntityLink`, `SetEquipment`, `EntityEvent`
    (yalnız oyuncunun işlem düzeyi okunuyor), `Animate`, `HurtAnimation`,

@@ -1877,4 +1877,69 @@ def gui_generators():
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
         gui_mouse_cases(), gui_language_cases(), gui_locator_bar_cases(),
-        gui_settings_key_generators(), gui_chat_draft_cases())
+        gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases())
+
+
+def float_bits(value, width="f32"):
+    return struct.pack(">f" if width == "f32" else ">d", value).hex()
+
+
+def gui_name_tag_cases():
+    """A remote player's name tag as the reference's own renderer shows and
+    submits it (`AvatarRenderer`, `SubmitNodeCollection.submitNameTag`): the
+    rules (distance, crouching, invisible, spectating, riding, the HUD) and
+    the pose of the text for cameras that look in different directions."""
+
+    def row(label, name="Steve", position=(10.5, 64.0, 5.5), y_rot=0.0, crouching=False,
+            shift=False, invisible=False, vehicle=False, camera=(0.5, 65.62, 0.5),
+            camera_rot=(0.0, 0.0), spectator=False, hud_hidden=False, light=15728880,
+            chat_only=True, opacity=0.25):
+        return {
+            "label": label, "blocks": [], "chunk_radius": 0, "name": name,
+            "x": float_bits(position[0], "f64"), "y": float_bits(position[1], "f64"),
+            "z": float_bits(position[2], "f64"), "y_rot": float_bits(y_rot),
+            "crouching": crouching, "shift_key_down": shift, "invisible": invisible,
+            "vehicle": vehicle, "camera_x": float_bits(camera[0], "f64"),
+            "camera_y": float_bits(camera[1], "f64"), "camera_z": float_bits(camera[2], "f64"),
+            "camera_y_rot": float_bits(camera_rot[0]), "camera_x_rot": float_bits(camera_rot[1]),
+            "local_spectator": spectator, "hud_hidden": hud_hidden, "light": light,
+            "background_for_chat_only": chat_only, "background_opacity": float_bits(opacity),
+        }
+
+    rows = [row("standing")]
+    for label, yaw, pitch in [("look-south", 0.0, 0.0), ("look-east", -90.0, 0.0),
+                              ("look-north-down", 180.0, 45.0), ("look-up-left", 37.5, -60.0),
+                              ("odd-angles", 123.456, 17.25), ("past-a-turn", 400.0, -10.0)]:
+        rows.append(row(label, camera_rot=(yaw, pitch)))
+    for distance in (1.0, 20.0, 31.9, 32.1, 40.0, 63.9, 64.1):
+        at = (0.5 + distance, 64.0, 0.5)
+        rows.append(row(f"standing-{distance}", position=at))
+        rows.append(row(f"sneaking-{distance}", position=at, shift=True))
+    rows += [
+        row("crouching-pose", crouching=True, shift=True),
+        row("crouching-pose-no-key", crouching=True),
+        row("invisible", invisible=True),
+        row("invisible-spectating", invisible=True, spectator=True),
+        row("spectating", spectator=True),
+        row("riding", vehicle=True),
+        row("hud-hidden", hud_hidden=True),
+        row("deadmau5", name="deadmau5"),
+        row("wide-name", name="WWWWWWWWWWWWWWWW"),
+        row("short-name", name="I"),
+        row("dark-cave", light=0),
+        row("lit-by-torch", light=15 << 4),
+        row("sky-lit", light=15 << 20),
+        row("opacity-from-options", chat_only=False, opacity=0.5),
+        row("opacity-zero", chat_only=False, opacity=0.0),
+        row("opacity-full", chat_only=False, opacity=1.0),
+        row("facing-away", y_rot=180.0),
+        row("turned", y_rot=-73.5),
+        row("below-the-camera", position=(10.5, 40.0, 5.5)),
+        row("far-below-spectating-sneak", position=(30.0, 50.0, 30.0), shift=True, spectator=True),
+    ]
+    yield {
+        "case_id": "gui/name-tags",
+        "family": "gui",
+        "operation": "name_tags",
+        "rows": rows,
+    }

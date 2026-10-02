@@ -767,6 +767,14 @@ impl PlaySession {
             .collect()
     }
 
+    /// `ClientPacketListener.getPlayerInfo(uuid)`'s profile name: what a
+    /// remote player is called, if the server told of them.
+    pub fn player_name(&self, uuid: voxel_core::binary::Uuid) -> Option<&str> {
+        self.player_infos
+            .get(&(uuid.most, uuid.least))
+            .map(|info| info.name.as_str())
+    }
+
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
     pub fn listed_players(&self) -> Vec<&PlayerInfo> {
         self.player_infos

@@ -103,6 +103,11 @@ impl Gui {
         self.player_skin = skin;
     }
 
+    /// The default font and the sprites it is drawn from, for text in the world.
+    pub fn text_assets(&self) -> (&Font, &GuiAtlas) {
+        (&self.font, &self.atlas)
+    }
+
     /// What the inventory screens open with: the search trees, the font and
     /// the titles in the client's language.
     pub fn screen_assets(&self) -> ScreenAssets {
