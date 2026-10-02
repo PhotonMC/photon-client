@@ -42,6 +42,7 @@ mod player;
 mod prediction;
 mod recipes;
 mod region_copy;
+mod shadow;
 
 pub use block_entity::*;
 pub use block_state::*;
@@ -62,6 +63,7 @@ pub use recipes::{
     StonecutterEntry,
 };
 pub use region_copy::RegionCopy;
+pub use shadow::{ShadowInput, ShadowPiece};
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]

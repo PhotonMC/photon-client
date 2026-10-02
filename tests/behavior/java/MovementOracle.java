@@ -190,6 +190,7 @@ public final class MovementOracle {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
                 case "living_entity_ticks" -> rows.add(livingEntityTicks(element.getAsJsonObject()));
+                case "entity_shadows" -> rows.add(entityShadows(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
@@ -404,6 +405,166 @@ public final class MovementOracle {
      * and every packet the player asked to send are reported, the packets as
      * the bytes their own codec writes.
      */
+    /** The renderer's shadow settings, with nothing else of a renderer built. */
+    static final class ShadowProbe
+        extends net.minecraft.client.renderer.entity.EntityRenderer<
+            net.minecraft.world.entity.Entity, net.minecraft.client.renderer.entity.state.EntityRenderState> {
+        private ShadowProbe() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.renderer.entity.state.EntityRenderState createRenderState() {
+            return new net.minecraft.client.renderer.entity.state.EntityRenderState();
+        }
+    }
+
+    /** What `ShadowFeatureRenderer` writes for each corner. */
+    static final class ShadowCapture implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final JsonArray vertices = new JsonArray();
+
+        @Override
+        public void addVertex(
+            final float x, final float y, final float z, final int color, final float u, final float v,
+            final int overlayCoords, final int lightCoords, final float nx, final float ny, final float nz) {
+            var out = new JsonObject();
+            out.addProperty("x", Oracle.bits(x));
+            out.addProperty("y", Oracle.bits(y));
+            out.addProperty("z", Oracle.bits(z));
+            out.addProperty("color", color);
+            out.addProperty("u", Oracle.bits(u));
+            out.addProperty("v", Oracle.bits(v));
+            this.vertices.add(out);
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float x, final float y, final float z) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * An entity's shadow over a lit scene: the pieces `extractShadow` finds
+     * under it, and the corners `ShadowFeatureRenderer` writes for them.
+     */
+    private static JsonObject entityShadows(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var minecraft = scene.minecraft();
+        setField(minecraft, "level", level);
+        // The level's own light engine, lit as the client lights loaded chunks.
+        var extractor = unsafe.allocateInstance(NoRebuilds.class);
+        setField(level, "levelExtractor", extractor);
+        setField(minecraft, "levelExtractor", extractor);
+        var engine = level.getChunkSource().getLightEngine();
+        int radius = row.get("chunk_radius").getAsInt();
+        var chunks = new java.util.ArrayList<net.minecraft.world.level.ChunkPos>();
+        for (int chunkX = -radius; chunkX <= radius; chunkX++) {
+            for (int chunkZ = -radius; chunkZ <= radius; chunkZ++) {
+                chunks.add(new net.minecraft.world.level.ChunkPos(chunkX, chunkZ));
+            }
+        }
+        for (var chunkPos : chunks) {
+            var sections = level.getChunk(chunkPos.x(), chunkPos.z()).getSections();
+            for (int index = 0; index < sections.length; index++) {
+                if (!sections[index].hasOnlyAir()) {
+                    engine.updateSectionStatus(net.minecraft.core.SectionPos.of(
+                        chunkPos, level.getSectionYFromSectionIndex(index)), false);
+                }
+            }
+        }
+        for (var chunkPos : chunks) {
+            engine.setLightEnabled(chunkPos, true);
+        }
+        for (var chunkPos : chunks) {
+            engine.propagateLightSources(chunkPos);
+        }
+        engine.runLightUpdates();
+
+        var renderer = (ShadowProbe) unsafe.allocateInstance(ShadowProbe.class);
+        setField(renderer, "shadowRadius", Oracle.f32(row, "radius"));
+        setField(renderer, "shadowStrength", Oracle.f32(row, "strength"));
+        var state = new net.minecraft.client.renderer.entity.state.EntityRenderState();
+        state.x = Oracle.f64(row, "x");
+        state.y = Oracle.f64(row, "y");
+        state.z = Oracle.f64(row, "z");
+        state.distanceToCameraSq = Oracle.f64(row, "distance_sq");
+        state.isInvisible = row.get("invisible").getAsBoolean();
+        scene.options().entityShadows().set(row.get("shadows_option").getAsBoolean());
+        var extract = net.minecraft.client.renderer.entity.EntityRenderer.class.getDeclaredMethod(
+            "extractShadow", net.minecraft.client.renderer.entity.state.EntityRenderState.class,
+            net.minecraft.client.Minecraft.class, net.minecraft.world.level.Level.class);
+        extract.setAccessible(true);
+        extract.invoke(renderer, state, minecraft, level);
+
+        var pieces = new JsonArray();
+        for (var piece : state.shadowPieces) {
+            var bounds = piece.shapeBelow().bounds();
+            var described = new JsonObject();
+            described.addProperty("rx", Oracle.bits(piece.relativeX()));
+            described.addProperty("ry", Oracle.bits(piece.relativeY()));
+            described.addProperty("rz", Oracle.bits(piece.relativeZ()));
+            described.addProperty("min", Oracle.bits((float) bounds.minX) + Oracle.bits((float) bounds.minY)
+                + Oracle.bits((float) bounds.minZ));
+            described.addProperty("max", Oracle.bits((float) bounds.maxX) + Oracle.bits((float) bounds.maxY)
+                + Oracle.bits((float) bounds.maxZ));
+            described.addProperty("alpha", Oracle.bits(piece.alpha()));
+            pieces.add(described);
+        }
+        entry.add("pieces", pieces);
+        entry.addProperty("radius", Oracle.bits(state.shadowRadius));
+
+        var capture = new ShadowCapture();
+        var feature = unsafe.allocateInstance(net.minecraft.client.renderer.feature.ShadowFeatureRenderer.class);
+        var prepare = net.minecraft.client.renderer.feature.ShadowFeatureRenderer.class.getDeclaredMethod(
+            "prepare", net.minecraft.client.renderer.feature.ShadowFeatureRenderer.Submit.class,
+            com.mojang.blaze3d.vertex.VertexConsumer.class);
+        prepare.setAccessible(true);
+        prepare.invoke(feature, new net.minecraft.client.renderer.feature.ShadowFeatureRenderer.Submit(
+            new org.joml.Matrix4f().translation(
+                Oracle.f32(row, "tx"), Oracle.f32(row, "ty"), Oracle.f32(row, "tz")),
+            state.shadowRadius, state.shadowPieces), capture);
+        entry.add("vertices", capture.vertices);
+        return entry;
+    }
+
     /**
      * A living entity of the reference through the packets that hurt or kill
      * it and the client ticks after them: `hurtTime`, `deathTime`, whether

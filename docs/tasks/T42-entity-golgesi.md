@@ -28,4 +28,7 @@ Blok gölgesi/ışık haritası (var), bulut gölgesi.
 Bağımsız ve her çizilen mobu görsel olarak iyileştirir; erken yapılabilir. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-world/shadow.rs` (`extractShadow`: parça seçimi, ışık, alfa), `voxel-render/shadow.rs` (dörtgen köşeleri ve doku sınırına kırpma), `PipelineKind::Shadow` (ışıksız, yarı saydam, derinliğe yazmayan), `overlays::entity_shadows` (domuz/inek/oyuncu/eşya/küre yarıçapları, üçüncü şahıs yerel oyuncu). Kayıt: `docs/client-entity-shadow-parity-conformance.md`.
+- Oracle: `movement/entity-shadows` 51 satır (gerçek ClientLevel + gerçek ışık motoru + gerçek `extractShadow`/`prepare`). Canlı: inek, domuz ve eşya altında gölge görüldü.
+- Sapma: `getSkyDarken` yok (gece gölgeleri koyu kalır); yalnız çizilen türlerin yarıçapı; yerel oyuncu gölgesi oracle'sız.
+- Açık: `gameplay/sky_light_level` ortam özniteliği (gece/yağmur) ayrı iş; tür başına `getShadowRadius` geçersiz kılmaları aile görevlerinde.

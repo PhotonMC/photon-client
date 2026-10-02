@@ -18219,6 +18219,83 @@ fn name_tags_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `entity_shadows`: the pieces of an entity's shadow over a lit scene and
+/// the corners drawn for them.
+fn entity_shadows_result(request: &Value) -> Result<Value, String> {
+    use voxel_world::ShadowInput;
+    let bits64 = |row: &Value, key: &str| -> Result<f64, String> {
+        u64::from_str_radix(string(row, key)?, 16)
+            .map(f64::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let bits32 = |row: &Value, key: &str| -> Result<f32, String> {
+        u32::from_str_radix(string(row, key)?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut world = movement_world(row)?;
+        world.light_from_sources();
+        world.run_light_updates();
+        let shown = row["shadows_option"].as_bool().ok_or("shadows_option")?
+            && !row["invisible"].as_bool().ok_or("invisible")?;
+        let radius = if shown {
+            bits32(row, "radius")?.min(32.0)
+        } else {
+            0.0
+        };
+        let pieces = if shown {
+            world.entity_shadow_pieces(ShadowInput {
+                position: (bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
+                radius: bits32(row, "radius")?,
+                strength: bits32(row, "strength")?,
+                distance_sq: bits64(row, "distance_sq")?,
+                sky_darken: 0,
+            })
+        } else {
+            Vec::new()
+        };
+        let translation = [bits32(row, "tx")?, bits32(row, "ty")?, bits32(row, "tz")?];
+        let described: Vec<Value> = pieces
+            .iter()
+            .map(|piece| {
+                json!({
+                    "rx": hex(piece.relative[0]),
+                    "ry": hex(piece.relative[1]),
+                    "rz": hex(piece.relative[2]),
+                    "min": piece.min.map(hex).join(""),
+                    "max": piece.max.map(hex).join(""),
+                    "alpha": hex(piece.alpha),
+                })
+            })
+            .collect();
+        let vertices: Vec<Value> = pieces
+            .iter()
+            .flat_map(|piece| voxel_render::shadow::corners(piece, radius, translation))
+            .map(|corner| {
+                json!({
+                    "x": hex(corner.position[0]),
+                    "y": hex(corner.position[1]),
+                    "z": hex(corner.position[2]),
+                    "color": (corner.alpha << 24) | 0x00FF_FFFF,
+                    "u": hex(corner.uv[0]),
+                    "v": hex(corner.uv[1]),
+                })
+            })
+            .collect();
+        out.push(json!({
+            "label": row["label"],
+            "pieces": described,
+            "radius": hex(radius),
+            "vertices": vertices,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `living_entity_ticks`: a living entity through the packets that hurt or
 /// kill it, as the net layer hands them to the world, ticked on.
 fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
@@ -18375,6 +18452,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "living_entity_ticks" {
         return living_entity_ticks_result(request);
+    }
+    if string(request, "operation")? == "entity_shadows" {
+        return entity_shadows_result(request);
     }
     if string(request, "operation")? == "entity_pick_table" {
         return Ok(entity_pick_table_result(request));

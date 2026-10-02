@@ -202,7 +202,7 @@ impl Play {
         let entity_textures = voxel_render::entity_textures::EntityTextures::build(
             voxel_render::player_renderer::skin_textures()
                 .chain(mobs::textures())
-                .chain(std::iter::once(overlays::ORB_TEXTURE))
+                .chain([overlays::ORB_TEXTURE, overlays::SHADOW_TEXTURE])
                 .map(|name| Ok((name.to_owned(), texture(&root, name, "entity texture")?)))
                 .collect::<Result<Vec<_>>>()?,
         )
@@ -578,36 +578,49 @@ impl Play {
             models.extend(overlays::player_model(player, &mut self.player_model, view));
         }
         self.backend.set_entities(&models)?;
-        let (see_through, normal) = overlays::name_tags(
-            &self.session,
-            self.gui.text_assets(),
-            &overlays::TagCamera {
-                position: frame.camera,
-                relative: frame.relative,
-                rotation: frame.rotation,
-                spectating: player.spectating(),
-            },
-            view,
-        );
-        self.backend.set_name_tags(&see_through, &normal)?;
-        self.backend
-            .set_experience_orbs(&overlays::experience_orbs(
-                &self.session,
-                &self.entity_textures,
-                &overlays::TagCamera {
-                    position: frame.camera,
-                    relative: frame.relative,
-                    rotation: frame.rotation,
-                    spectating: player.spectating(),
-                },
-                view,
-            ))?;
+        let local = (!first_person && !player.spectating())
+            .then(|| player.interpolated_position(frame.partial));
+        self.set_billboards(frame, (player.spectating(), local), view)?;
         self.backend.set_ground_items(&dropped_items(
             &self.session,
             &mut self.ground_layers,
             (&self.block_renderer, &self.biome_tints),
             view,
         ))?;
+        Ok(())
+    }
+
+    /// What the world draws as flat shapes over the entities: the shadows
+    /// under them, the name tags above players and the experience orbs.
+    fn set_billboards(
+        &mut self,
+        frame: &FrameCamera,
+        (spectating, local): (bool, Option<voxel_core::math::Vec3>),
+        view: overlays::FrameView,
+    ) -> Result<()> {
+        let camera = overlays::TagCamera {
+            position: frame.camera,
+            relative: frame.relative,
+            rotation: frame.rotation,
+            spectating,
+        };
+        let (see_through, normal) =
+            overlays::name_tags(&self.session, self.gui.text_assets(), &camera, view);
+        self.backend.set_name_tags(&see_through, &normal)?;
+        self.backend.set_shadows(&overlays::entity_shadows(
+            &self.session,
+            &self.entity_textures,
+            &camera,
+            local,
+            view,
+        ))?;
+        self.backend
+            .set_experience_orbs(&overlays::experience_orbs(
+                &self.session,
+                &self.entity_textures,
+                &camera,
+                view,
+            ))?;
         Ok(())
     }
 

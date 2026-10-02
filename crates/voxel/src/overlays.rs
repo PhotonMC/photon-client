@@ -459,3 +459,110 @@ pub fn experience_orbs(
     }
     vertices
 }
+
+/// What casts a shadow: where it is drawn and where it ticked (the camera's
+/// distance is measured to the latter), and its renderer's radius and strength.
+struct Caster {
+    drawn: (f64, f64, f64),
+    ticked: (f64, f64, f64),
+    radius: f32,
+    strength: f32,
+}
+
+/// The shadow texture's path (under `textures/`).
+pub const SHADOW_TEXTURE: &str = "misc/shadow";
+
+/// `EntityRenderer.extractShadow` and `ShadowFeatureRenderer` for the
+/// entities the frame draws: the shadow each casts on the blocks below it.
+/// `shadowRadius` and `shadowStrength` are the renderers': a mob's is its
+/// age's share of 0.7, a player's 0.5, a dropped item's and an orb's 0.15
+/// at three quarters of the strength. `local` is the player's own place, when
+/// the camera shows them.
+pub fn entity_shadows(
+    session: &PlaySession,
+    textures: &voxel_render::entity_textures::EntityTextures,
+    camera: &TagCamera,
+    local: Option<Vec3>,
+    view: FrameView,
+) -> Vec<Vertex> {
+    use voxel_world::ShadowInput;
+    let Some(rect) = textures.rect(SHADOW_TEXTURE) else {
+        return Vec::new();
+    };
+    let world = session.world();
+    let partial = view.partial as f32;
+    let id = |name: &str| voxel_data::entity_type::id(name);
+    let (pig, cow, item, orb) = (
+        id("minecraft:pig"),
+        id("minecraft:cow"),
+        id("minecraft:item"),
+        id("minecraft:experience_orb"),
+    );
+    let mut casters: Vec<Caster> = Vec::new();
+    for entity in world.entities() {
+        let type_id = Some(entity.type_id);
+        let (radius, strength) = if entity.is_player() {
+            if entity.is_spectator() || entity.is_invisible() {
+                continue;
+            }
+            (0.5, 1.0)
+        } else if type_id == pig || type_id == cow {
+            (if entity.is_baby() { 0.35 } else { 0.7 }, 1.0)
+        } else if type_id == item || type_id == orb {
+            (0.15, 0.75)
+        } else {
+            continue;
+        };
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        casters.push(Caster {
+            drawn: snapshot.position,
+            ticked: entity.position(),
+            radius,
+            strength,
+        });
+    }
+    if let Some(at) = local {
+        casters.push(Caster {
+            drawn: (at.x, at.y, at.z),
+            ticked: (at.x, at.y, at.z),
+            radius: 0.5,
+            strength: 1.0,
+        });
+    }
+    let mut vertices = Vec::new();
+    for Caster {
+        drawn,
+        ticked,
+        radius,
+        strength,
+    } in casters
+    {
+        let dx = camera.position.x - ticked.0;
+        let dy = camera.position.y - ticked.1;
+        let dz = camera.position.z - ticked.2;
+        let radius = radius.min(32.0);
+        let pieces = world.entity_shadow_pieces(ShadowInput {
+            position: drawn,
+            radius,
+            strength,
+            distance_sq: dx * dx + dy * dy + dz * dz,
+            // The sky's dimming (`gameplay/sky_light_level`) is not carried.
+            sky_darken: 0,
+        });
+        let translation = [
+            (drawn.0 - camera.position.x) as f32,
+            (drawn.1 - camera.position.y) as f32,
+            (drawn.2 - camera.position.z) as f32,
+        ];
+        vertices.extend(voxel_render::shadow::vertices(
+            &pieces,
+            radius,
+            translation,
+            rect,
+            camera.relative,
+        ));
+    }
+    vertices
+}

@@ -28,6 +28,7 @@ pub mod resolve;
 pub mod rotation;
 pub mod scene;
 pub mod section_workers;
+pub mod shadow;
 pub mod sky;
 pub mod special_models;
 pub mod texture_metadata;

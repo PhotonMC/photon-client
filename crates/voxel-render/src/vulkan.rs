@@ -223,6 +223,49 @@ void main() {
 ",
 );
 
+/// The shadow's vertex shader (`rendertype_entity_shadow`): the colour as it
+/// is, with no light, and the distances fog reads.
+const SHADOW_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out vec4 out_colour;
+layout(location = 2) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_colour = in_tint;
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The shadow's fragment shader: the texel times the colour, no cut-out,
+/// then fog.
+const SHADOW_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D skin;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec4 in_colour;
+layout(location = 2) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec4 colour = texture(skin, in_uv) * in_colour;
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
 /// The same text with `IS_SEE_THROUGH`: the colour as it is, no fog.
 const TEXT_SEE_THROUGH_VERTEX_SHADER: &str = concat!(
     vertex_prelude!(vertex_inputs!()),
@@ -658,6 +701,9 @@ enum PipelineKind {
     /// World text's shaders over the entity textures, blended and not written
     /// to the depth (`ENTITY_TRANSLUCENT_CULL`): an experience orb.
     TextTranslucent,
+    /// An entity's shadow (`ENTITY_SHADOW`): the entity textures, blended, no
+    /// light, tested but not written to the depth.
+    Shadow,
 }
 
 /// Instance API version the reference asks for.
@@ -785,6 +831,8 @@ struct SceneResources {
     text_see_through_pipeline: vk::Pipeline,
     text_translucent_pipeline_layout: vk::PipelineLayout,
     text_translucent_pipeline: vk::Pipeline,
+    shadow_pipeline_layout: vk::PipelineLayout,
+    shadow_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -997,6 +1045,9 @@ pub struct VulkanBackend {
     /// The experience orbs' triangles, which sample the entity textures.
     orb_buffer: Option<SkyBuffer>,
     orb_count: u32,
+    /// The entity shadows' triangles, which sample the entity textures.
+    shadow_buffer: Option<SkyBuffer>,
+    shadow_count: u32,
     name_tag_buffer: Option<SkyBuffer>,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
@@ -1299,6 +1350,8 @@ impl VulkanBackend {
                 name_tag_see_count: 0,
                 orb_buffer: None,
                 orb_count: 0,
+                shadow_buffer: None,
+                shadow_count: 0,
                 name_tag_buffer: None,
                 name_tag_count: 0,
                 hand_buffer: None,
@@ -1502,6 +1555,97 @@ impl VulkanBackend {
         }
     }
 
+    /// The shadows, experience orbs and name tags: flat shapes drawn after the
+    /// entities, each from its own buffer.
+    unsafe fn record_flat_shapes(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        unsafe {
+            // Shadows under the entities, before them: blended quads of the
+            // shadow texture over the blocks' tops.
+            if let (Some(buffer), Some(set)) = (self.shadow_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    set,
+                    (buffer, self.shadow_count),
+                    terrain_push,
+                );
+            }
+            // Experience orbs: blended quads over the entity textures.
+            if let (Some(buffer), Some(set)) = (self.orb_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (
+                        scene.text_translucent_pipeline,
+                        scene.text_translucent_pipeline_layout,
+                    ),
+                    set,
+                    (buffer, self.orb_count),
+                    terrain_push,
+                );
+            }
+            // Name tags after the entities: the text seen through blocks
+            // first, then the text tested against the depth.
+            if let Some(set) = scene.gui_set {
+                for (buffer, count, pipeline) in [
+                    (
+                        self.name_tag_see_buffer.as_ref(),
+                        self.name_tag_see_count,
+                        (
+                            scene.text_see_through_pipeline,
+                            scene.text_see_through_pipeline_layout,
+                        ),
+                    ),
+                    (
+                        self.name_tag_buffer.as_ref(),
+                        self.name_tag_count,
+                        (scene.text_pipeline, scene.text_pipeline_layout),
+                    ),
+                ] {
+                    if let Some(buffer) = buffer {
+                        self.draw_triangles(pipeline, set, (buffer, count), terrain_push);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Draw a buffer's triangles with a pipeline over a descriptor set and the
+    /// frame's push constants. Nothing is drawn for an empty buffer.
+    unsafe fn draw_triangles(
+        &self,
+        (pipeline, layout): (vk::Pipeline, vk::PipelineLayout),
+        set: vk::DescriptorSet,
+        (buffer, count): (&SkyBuffer, u32),
+        push: &[f32],
+    ) {
+        if count == 0 {
+            return;
+        }
+        unsafe {
+            self.device.cmd_bind_pipeline(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                pipeline,
+            );
+            self.device.cmd_bind_descriptor_sets(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                layout,
+                0,
+                &[set],
+                &[],
+            );
+            self.device.cmd_push_constants(
+                self.command_buffer,
+                layout,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 160),
+            );
+            self.device
+                .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+            self.device.cmd_draw(self.command_buffer, count, 1, 0, 0);
+        }
+    }
+
     #[expect(
         clippy::too_many_lines,
         reason = "one command buffer recorded in draw order"
@@ -1700,84 +1844,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
             }
-            // Experience orbs: blended quads over the entity textures.
-            if let (Some(buffer), Some(set)) = (self.orb_buffer.as_ref(), scene.entity_set)
-                && self.orb_count > 0
-            {
-                self.device.cmd_bind_pipeline(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.text_translucent_pipeline,
-                );
-                self.device.cmd_bind_descriptor_sets(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.text_translucent_pipeline_layout,
-                    0,
-                    &[set],
-                    &[],
-                );
-                self.device.cmd_push_constants(
-                    self.command_buffer,
-                    scene.text_translucent_pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                    0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
-                );
-                self.device
-                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
-                self.device
-                    .cmd_draw(self.command_buffer, self.orb_count, 1, 0, 0);
-            }
-            // Name tags after the entities: the text seen through blocks
-            // first, then the text tested against the depth.
-            if let Some(set) = scene.gui_set {
-                for (buffer, count, pipeline, layout) in [
-                    (
-                        self.name_tag_see_buffer.as_ref(),
-                        self.name_tag_see_count,
-                        scene.text_see_through_pipeline,
-                        scene.text_see_through_pipeline_layout,
-                    ),
-                    (
-                        self.name_tag_buffer.as_ref(),
-                        self.name_tag_count,
-                        scene.text_pipeline,
-                        scene.text_pipeline_layout,
-                    ),
-                ] {
-                    let Some(buffer) = buffer.filter(|_| count > 0) else {
-                        continue;
-                    };
-                    self.device.cmd_bind_pipeline(
-                        self.command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        pipeline,
-                    );
-                    self.device.cmd_bind_descriptor_sets(
-                        self.command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        layout,
-                        0,
-                        &[set],
-                        &[],
-                    );
-                    self.device.cmd_push_constants(
-                        self.command_buffer,
-                        layout,
-                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                        0,
-                        std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
-                    );
-                    self.device.cmd_bind_vertex_buffers(
-                        self.command_buffer,
-                        0,
-                        &[buffer.buffer],
-                        &[0],
-                    );
-                    self.device.cmd_draw(self.command_buffer, count, 1, 0, 0);
-                }
-            }
+            self.record_flat_shapes(scene, &terrain_push);
             // The aimed block's outline over the solid world.
             if let Some(buffer) = self.outline_buffer.as_ref()
                 && self.outline_count > 0
@@ -2146,7 +2213,8 @@ impl VulkanBackend {
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
-        let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent);
+        let shadow = kind == PipelineKind::Shadow;
+        let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
         let gui_item = kind == PipelineKind::GuiItem;
@@ -2170,6 +2238,8 @@ impl VulkanBackend {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
+            } else if shadow {
+                (SHADOW_VERTEX_SHADER, SHADOW_FRAGMENT_SHADER)
             } else if text {
                 (TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER)
             } else if text_see_through {
@@ -3173,6 +3243,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::TextSeeThrough)?;
             let (text_translucent_pipeline_layout, text_translucent_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::TextTranslucent)?;
+            let (shadow_pipeline_layout, shadow_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Shadow)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -3215,6 +3287,8 @@ impl VulkanBackend {
                 text_see_through_pipeline,
                 text_translucent_pipeline_layout,
                 text_translucent_pipeline,
+                shadow_pipeline_layout,
+                shadow_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3536,6 +3610,7 @@ impl VulkanBackend {
                         scene.text_translucent_pipeline,
                         scene.text_translucent_pipeline_layout,
                     ),
+                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
                     (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
@@ -3843,6 +3918,16 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.ground_buffer = buffer;
         self.ground_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's entity shadows, as triangles that sample the
+    /// entity textures.
+    pub fn set_shadows(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.shadow_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.shadow_buffer = buffer;
+        self.shadow_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -4433,6 +4518,7 @@ impl Drop for VulkanBackend {
                 self.ground_buffer.take(),
                 self.name_tag_see_buffer.take(),
                 self.orb_buffer.take(),
+                self.shadow_buffer.take(),
                 self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
