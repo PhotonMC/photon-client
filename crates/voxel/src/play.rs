@@ -308,7 +308,12 @@ impl Play {
                 break;
             }
         }
-        println!("play_frames={} play_ticks={}", self.frames, self.ticks);
+        println!(
+            "play_frames={} play_ticks={} entities={}",
+            self.frames,
+            self.ticks,
+            self.session.entity_count()
+        );
         Ok(())
     }
 

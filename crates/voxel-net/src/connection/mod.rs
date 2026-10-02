@@ -5,6 +5,7 @@
 //! [`probe`] module. The facade re-exports the stable observation and probe
 //! entry points used by the existing tools.
 
+mod entities;
 mod play;
 mod probe;
 mod protocol;

@@ -49,7 +49,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T13](T13-tiklama-eylemleri.md) | Sohbet tıklama eylemleri + `ConfirmLinkScreen` | M | T03, T12 | bitti |
 | [T14](T14-locator-bar.md) | `TrackedWaypoint` + `LocatorBar` | M | – | bitti |
 | [T15](T15-sohbet-kalanlari.md) | Sohbet taslağı, seçici izin düzeyi | S | – | bitti |
-| [T20](T20-entity-paketleri.md) | Entity paketleri canlı oturumda | L | – | açık |
+| [T20](T20-entity-paketleri.md) | Entity paketleri canlı oturumda | L | – | bitti |
 | [T21](T21-entity-tick.md) | Entity tick ve interpolasyon canlı döngüde | M | T20 | açık |
 | [T22](T22-uzak-oyuncu.md) | Uzaktaki oyuncu çizimi | L | T21 | açık |
 | [T23](T23-model-katmani-tablosu.md) | Entity model katmanı tablosu (oracle'dan) | L | – | açık |

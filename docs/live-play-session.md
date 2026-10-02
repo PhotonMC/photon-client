@@ -216,3 +216,5 @@ barışçıl ve `server-port=25600` içeriyor.
   geçiriyor; aynı yerdeki sonraki yüz (çimin yan örtüsü) görünüyor.
 - Kare zamanlaması referansın zamanlayıcısı değil; tick'ler 50 ms birikimle
   sürülüyor.
+
+Entity paketleri (`AddEntity`, `RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`, `RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers`) dünyaya uygulanır; oturum sonu satırında `entities=<sayı>` basılır. Entity'ler tick'lenmez ve çizilmez (T21+).

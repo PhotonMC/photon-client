@@ -22,6 +22,7 @@ use voxel_world::{
     LightUpdateInput, SectionInput,
 };
 
+use super::entities;
 use super::probe::{
     dimension_bounds_for_spawn_info, dimension_environment_for_spawn_info, open_play_connection,
 };
@@ -163,8 +164,25 @@ impl PlaySession {
                 }
             }
         });
-        Ok(Self {
-            writer: stream,
+        Ok(Self::assemble(
+            stream,
+            compression_threshold,
+            incoming,
+            trace,
+            (username, auto_jump),
+        ))
+    }
+
+    /// A session over a connection already made, with nothing yet known.
+    fn assemble(
+        writer: TcpStream,
+        compression_threshold: Option<usize>,
+        incoming: Receiver<Result<Incoming, ConnectionError>>,
+        trace: PlayConnectionTrace,
+        (username, auto_jump): (&str, bool),
+    ) -> Self {
+        Self {
+            writer,
             compression_threshold,
             incoming,
             trace,
@@ -209,11 +227,16 @@ impl PlaySession {
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),
             clocks: std::collections::BTreeMap::new(),
-        })
+        }
     }
 
     pub fn world(&self) -> &ClientWorld {
         &self.trace.world
+    }
+
+    /// How many entities the world holds besides the player.
+    pub fn entity_count(&self) -> usize {
+        self.trace.world.entities().count()
     }
 
     pub fn player(&self) -> Option<&LocalPlayer> {
@@ -1318,6 +1341,59 @@ impl PlaySession {
                 self.game_mode =
                     ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
             }
+            // The entity packets change the world's entities; one that does
+            // not parse is left alone, as the reference ignores what it
+            // cannot place.
+            PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
+                if let Ok(packet) = parse_add_entity_packet(payload) {
+                    entities::add(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
+                if let Ok(packet) = parse_set_entity_motion_packet(payload) {
+                    entities::motion(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
+                if let Ok(packet) = parse_rotate_head_packet(payload) {
+                    entities::rotate_head(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
+                if let Ok(packet) = parse_remove_entities_packet(payload) {
+                    entities::remove(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
+                if let Ok(packet) = parse_set_passengers_packet(payload) {
+                    entities::passengers(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
+                if let Ok(packet) = parse_entity_position_sync_packet(payload) {
+                    entities::position_sync(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
+                if let Ok(packet) = parse_entity_teleport_packet(payload) {
+                    entities::teleport(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => {
+                if let Ok(packet) = parse_move_entity_pos_packet(payload) {
+                    entities::step(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
+                if let Ok(packet) = parse_move_entity_pos_rot_packet(payload) {
+                    entities::step(&mut self.trace.world, &packet);
+                }
+            }
+            PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => {
+                if let Ok(packet) = parse_move_entity_rot_packet(payload) {
+                    entities::step(&mut self.trace.world, &packet);
+                }
+            }
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => {
                 let (id, event) = parse_entity_event_packet(payload)?;
                 // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
@@ -1435,10 +1511,10 @@ impl PlaySession {
                 })?;
             }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
-                let packet = parse_entity_metadata_packet(payload)?;
-                self.trace
-                    .world
-                    .apply_entity_metadata(packet.entity_id, &packet.metadata);
+                // Data of a kind this client cannot read leaves it as it was.
+                if let Ok(packet) = parse_entity_metadata_packet(payload) {
+                    entities::metadata(&mut self.trace.world, &packet);
+                }
             }
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
                 let packet = parse_update_attributes_packet(payload)?;
@@ -1951,4 +2027,80 @@ fn rand_salt() -> u32 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |time| time.subsec_nanos())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+
+    /// A session over a loopback socket, which nothing is sent on.
+    fn detached() -> PlaySession {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let stream = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (_sender, incoming) = mpsc::channel();
+        PlaySession::assemble(
+            stream,
+            None,
+            incoming,
+            PlayConnectionTrace::default(),
+            ("test", false),
+        )
+    }
+
+    fn varint(mut value: u32) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        loop {
+            let low = (value & 0x7F) as u8;
+            value >>= 7;
+            if value == 0 {
+                bytes.push(low);
+                return bytes;
+            }
+            bytes.push(low | 0x80);
+        }
+    }
+
+    fn add_entity(id: u32, x: f64) -> Vec<u8> {
+        let mut body = varint(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID as u32);
+        body.extend(varint(id));
+        body.extend([0_u8; 16]);
+        body.extend(varint(94));
+        for value in [x, 64.0, 8.0] {
+            body.extend(value.to_be_bytes());
+        }
+        body.push(0);
+        body.extend([0_u8; 3]);
+        body.extend(varint(0));
+        body
+    }
+
+    #[test]
+    fn the_session_keeps_the_entities_the_server_adds_moves_and_removes() {
+        let mut session = detached();
+        assert_eq!(session.entity_count(), 0);
+        session.handle(&add_entity(7, 8.0)).unwrap();
+        session.handle(&add_entity(8, 9.0)).unwrap();
+        assert_eq!(session.entity_count(), 2);
+        // A step of an entity that is there moves it; of one that is not, nothing.
+        let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        step.extend(varint(7));
+        for delta in [4096_i16, 0, 0] {
+            step.extend(delta.to_be_bytes());
+        }
+        step.push(1);
+        session.handle(&step).unwrap();
+        let moved = session.world().entity_at(7).unwrap().position();
+        assert!((moved.0 - 9.0).abs() < 1e-9, "{moved:?}");
+        // An entity packet that does not parse leaves the session alone.
+        let mut broken = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
+        broken.push(7);
+        session.handle(&broken).unwrap();
+        let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
+        remove.extend(varint(1));
+        remove.extend(varint(7));
+        session.handle(&remove).unwrap();
+        assert_eq!(session.entity_count(), 1);
+        assert!(session.world().entity_at(7).is_none());
+    }
 }

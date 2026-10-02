@@ -26,7 +26,7 @@ Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/voxel-net/src/conn
 
 | Yön | İşlenen | Toplam | Eksik olanlar |
 | --- | ---: | ---: | --- |
-| Sunucu → istemci (play) | 33 | ~115 | entity paketlerinin hepsi, chat/başlık/tablist, scoreboard/bossbar, ses, partikül, efekt olayları, blok entity verisi, harita, kap verisi, tarif kitabı, ilerlemeler |
+| Sunucu → istemci (play) | 33 | ~115 | kalan entity paketleri (`Animate`, `SetEquipment`, `EntityLink`…), chat/başlık/tablist, scoreboard/bossbar, ses, partikül, efekt olayları, blok entity verisi, harita, kap verisi, tarif kitabı, ilerlemeler |
 | İstemci → sunucu (play) | 15 | ~60 | chat/komut, `PlayerInput`/`PlayerCommand`, `Interact`/`Attack`, pick item, kap düğmesi/ad değiştirme/takas, tabela/kitap, araç ve tekne paketleri |
 
 Bugünkü kanıtın çoğu `server-conformance` (canlı sunucu paketi kabul etti) ve
@@ -112,16 +112,18 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 ## 4. M4 — Entity'ler
 
 En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
-(`ClientWorld`) `client-parity` ile ilerledi ama canlı oturum entity
-paketlerini işlemiyor.
+(`ClientWorld`) `client-parity` ile ilerledi; canlı oturum `AddEntity`,
+`RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`,
+`RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers` paketlerini
+dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
+bağlantıyı kesmez). Entity'ler henüz tick'lenmiyor ve çizilmiyor.
 
-1. **Paketler (L)** `AddEntity`, `RemoveEntities`, `MoveEntity`,
-   `TeleportEntity`, `EntityPositionSync`, `RotateHead`, `SetEntityMotion`,
-   `SetEntityData`, `SetEntityLink`, `SetPassengers`, `SetEquipment`,
-   `EntityEvent`, `Animate`, `HurtAnimation`, `DamageEvent`, `TakeItemEntity`,
-   `Bundle`/`BundleDelimiter` (spawn paketleri demet hâlinde gelir),
-   `PlayerInfoUpdate/Remove`, `MoveVehicle`, `MoveMinecart`,
-   `PlayerLookAt/Rotation`, `SetCamera`. Oyuncu tick'ine bağlama.
+1. **Paketler (L)** Kalan: `SetEntityLink`, `SetEquipment`, `EntityEvent`
+   (yalnız oyuncunun işlem düzeyi okunuyor), `Animate`, `HurtAnimation`,
+   `DamageEvent`, `TakeItemEntity`, `MoveVehicle`, `MoveMinecart`,
+   `PlayerLookAt/Rotation`, `SetCamera`, `PlayerInfoUpdate/Remove` eşlemesi.
+   `Bundle`/`BundleDelimiter` ayrı ele alınmıyor: paketler sırayla işleniyor.
+   Oyuncu tick'ine bağlama (T21).
 2. **Entity render iskeleti (L)** Render durumu çıkarımı, `EntityRenderer`
    sınıfları, model katmanları (`ModelLayers`, `LayerDefinitions`), gölge,
    isim etiketi, ışık ve çizim sırası; `player_model.rs` /

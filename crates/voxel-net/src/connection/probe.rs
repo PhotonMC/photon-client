@@ -15,15 +15,15 @@ use voxel_core::binary::Uuid;
 use voxel_core::wire;
 use voxel_world::{
     BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, DimensionBounds,
-    DimensionEnvironment, DimensionInput, EntityInput, EntityMotionInput, EntityMoveInput,
-    EntityPositionInput, EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput,
-    LightLayerInput, LightUpdateInput, PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
-    PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput, VANILLA_ARROW_ENTITY_TYPE_ID,
-    VANILLA_COW_ENTITY_TYPE_ID, VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID,
-    VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID, VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
-    VANILLA_PRIMED_TNT_ENTITY_TYPE_ID, VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+    DimensionEnvironment, DimensionInput, LightLayerInput, LightUpdateInput,
+    PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS, PLAYER_RESPAWN_KEEP_ENTITY_DATA, SectionInput,
+    VANILLA_ARROW_ENTITY_TYPE_ID, VANILLA_COW_ENTITY_TYPE_ID,
+    VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID, VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
+    VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID, VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
+    VANILLA_SNOWBALL_ENTITY_TYPE_ID,
 };
 
+use super::entities;
 use super::protocol::*;
 use super::session::*;
 
@@ -2114,17 +2114,7 @@ fn connect_and_probe_with_mode(
         match packet_id {
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
                 let mut observation = parse_add_entity_packet(payload)?;
-                observation.applied_to_world = trace.world.apply_entity(EntityInput {
-                    entity_id: observation.entity_id,
-                    uuid: observation.uuid,
-                    type_id: observation.entity_type_id,
-                    x: observation.x,
-                    y: observation.y,
-                    z: observation.z,
-                    movement: observation.movement,
-                    rotation: (observation.y_rot, observation.x_rot, observation.y_head_rot),
-                    data: observation.data,
-                });
+                observation.applied_to_world = entities::add(&mut trace.world, &observation);
                 observation.applied_rotation = trace
                     .world
                     .entity_at(observation.entity_id)
@@ -2170,12 +2160,7 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_motion(EntityMotionInput {
-                    entity_id: observation.entity_id,
-                    x: observation.x,
-                    y: observation.y,
-                    z: observation.z,
-                });
+                observation.applied_to_world = entities::motion(&mut trace.world, &observation);
                 if observation.applied_to_world {
                     observation.applied_motion = trace
                         .world
@@ -2195,14 +2180,7 @@ fn connect_and_probe_with_mode(
             PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
                 let mut observation = parse_rotate_head_packet(payload)?;
                 observation.applied_to_world =
-                    trace.world.apply_entity_rotation(EntityRotationInput {
-                        entity_id: observation.entity_id,
-                        y_rot: None,
-                        x_rot: None,
-                        y_head_rot: Some(observation.y_head_rot),
-                        relative_y_rot: false,
-                        relative_x_rot: false,
-                    });
+                    entities::rotate_head(&mut trace.world, &observation);
                 if observation.applied_to_world {
                     observation.applied_head_rotation = trace
                         .world
@@ -2213,15 +2191,12 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
                 let mut observation = parse_remove_entities_packet(payload)?;
-                observation.applied_entity_count =
-                    trace.world.remove_entities(&observation.entity_ids);
+                observation.applied_entity_count = entities::remove(&mut trace.world, &observation);
                 trace.remove_entities_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
                 let mut observation = parse_set_passengers_packet(payload)?;
-                observation.applied_to_world = trace
-                    .world
-                    .apply_entity_passengers(observation.vehicle_id, &observation.passenger_ids);
+                observation.applied_to_world = entities::passengers(&mut trace.world, &observation);
                 if observation.applied_to_world {
                     observation.applied_vehicle_passengers = trace
                         .world
@@ -2316,9 +2291,7 @@ fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
                 let mut observation = parse_entity_metadata_packet(payload)?;
-                observation.applied_to_world = trace
-                    .world
-                    .apply_entity_metadata(observation.entity_id, &observation.metadata);
+                observation.applied_to_world = entities::metadata(&mut trace.world, &observation);
                 trace.entity_metadata_observations.push(observation);
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
@@ -2337,28 +2310,9 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_position_and_rotation(
-                    EntityPositionInput {
-                        entity_id: observation.entity_id,
-                        x: observation.x,
-                        y: observation.y,
-                        z: observation.z,
-                        relative_flags: 0,
-                    },
-                    EntityRotationInput {
-                        entity_id: observation.entity_id,
-                        y_rot: Some(observation.y_rot),
-                        x_rot: Some(observation.x_rot),
-                        y_head_rot: None,
-                        relative_y_rot: false,
-                        relative_x_rot: false,
-                    },
-                    EntityPositionUpdateMode::PositionSync,
-                );
+                observation.applied_to_world =
+                    entities::position_sync(&mut trace.world, &observation);
                 if observation.applied_to_world {
-                    trace
-                        .world
-                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -2403,24 +2357,9 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world =
-                    trace.world.apply_entity_teleport(EntityTeleportInput {
-                        entity_id: observation.entity_id,
-                        x: observation.x,
-                        y: observation.y,
-                        z: observation.z,
-                        delta_x: observation.delta_x,
-                        delta_y: observation.delta_y,
-                        delta_z: observation.delta_z,
-                        y_rot: observation.y_rot,
-                        x_rot: observation.x_rot,
-                        relative_flags: observation.relative_flags,
-                    });
+                observation.applied_to_world = entities::teleport(&mut trace.world, &observation);
                 if observation.applied_to_world {
                     observation.motion_before = motion_before;
-                    trace
-                        .world
-                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -2465,19 +2404,8 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
-                    entity_id: observation.entity_id,
-                    delta_x: observation.delta_x,
-                    delta_y: observation.delta_y,
-                    delta_z: observation.delta_z,
-                    has_position: observation.has_position,
-                    y_rot: observation.y_rot,
-                    x_rot: observation.x_rot,
-                });
+                observation.applied_to_world = entities::step(&mut trace.world, &observation);
                 if observation.applied_to_world {
-                    trace
-                        .world
-                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -2519,19 +2447,8 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
-                    entity_id: observation.entity_id,
-                    delta_x: observation.delta_x,
-                    delta_y: observation.delta_y,
-                    delta_z: observation.delta_z,
-                    has_position: observation.has_position,
-                    y_rot: observation.y_rot,
-                    x_rot: observation.x_rot,
-                });
+                observation.applied_to_world = entities::step(&mut trace.world, &observation);
                 if observation.applied_to_world {
-                    trace
-                        .world
-                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_position = trace
                         .world
                         .entity_at(observation.entity_id)
@@ -2573,19 +2490,8 @@ fn connect_and_probe_with_mode(
                 } else {
                     None
                 };
-                observation.applied_to_world = trace.world.apply_entity_move(EntityMoveInput {
-                    entity_id: observation.entity_id,
-                    delta_x: observation.delta_x,
-                    delta_y: observation.delta_y,
-                    delta_z: observation.delta_z,
-                    has_position: observation.has_position,
-                    y_rot: observation.y_rot,
-                    x_rot: observation.x_rot,
-                });
+                observation.applied_to_world = entities::step(&mut trace.world, &observation);
                 if observation.applied_to_world {
-                    trace
-                        .world
-                        .apply_entity_ground_state(observation.entity_id, observation.on_ground);
                     observation.applied_rotation = trace
                         .world
                         .entity_at(observation.entity_id)

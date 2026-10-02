@@ -26,4 +26,7 @@ Yeni ailesiz: probe'lar ve `entity` ailesi zaten `ClientWorld::apply_entity*`'ı
 `docs/remaining-work.md` M4 madde 1 ve §1 paket kapsam tablosu; `docs/live-play-session.md` kısa not.
 
 ## Devir notu
-(boş)
+- Yapıldı: `connection/entities.rs` (add, motion, rotate_head, remove, passengers, metadata, position_sync, teleport, step); probe aynı yardımcıları çağırır (yinelenen 120 satır gitti), `play.rs` yeni kollar (ayrıştırılamayan entity paketi yok sayılır; `SetEntityData` da artık gevşek), `PlaySession::entity_count`, oturum sonu `entities=` satırı, birim test (sahte paketlerden sayı, ekleme/adım/bozuk paket/silme).
+- Canlı: yeni oyuncu adıyla (`--user Fresh7`) `entities=126`. Kayıtlı `Miner` oyuncusuyla sunucu hiç yığın göndermiyor (kayıtlı oyuncu verisi; istemci hatası değil, T14'ten önceki derleme de aynı); yeni ad kullan.
+- Sapma: `Bundle` ayrı ele alınmıyor (sıra korunuyor); `Animate`, `SetEquipment`, `SetEntityLink`, `TakeItemEntity` işlenmiyor.
+- Açık: entity tick/interpolasyon (T21).
