@@ -1577,12 +1577,28 @@ public final class GuiOracle {
                     }
                     case "char" -> video.charTyped(new net.minecraft.client.input.CharacterEvent(
                         step.get("char").getAsString().codePointAt(0)));
-                    case "key" -> video.keyPressed(new net.minecraft.client.input.KeyEvent(
-                        switch (step.get("key").getAsString()) {
+                    case "key" -> {
+                        String name = step.get("key").getAsString();
+                        int code = switch (name) {
                             case "backspace" -> 259;
                             case "enter" -> 257;
-                            default -> throw new IllegalArgumentException(step.get("key").getAsString());
-                        }, 0, 0));
+                            case "space" -> 32;
+                            case "tab", "shift+tab" -> 258;
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "up" -> 265;
+                            case "down" -> 264;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        // `KeyboardHandler.keyPress` notes what kind of key it was.
+                        if (code == 258) {
+                            minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                        } else if (code >= 262 && code <= 265) {
+                            minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
+                        }
+                        video.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0,
+                            name.startsWith("shift+") ? 1 : 0));
+                    }
                     case "drag" -> video.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(x, y, info),
                         x - lastX, y - lastY);
                     case "release" -> video.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x, y, info));

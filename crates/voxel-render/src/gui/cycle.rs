@@ -82,6 +82,10 @@ impl<V: Clone + PartialEq> CycleButton<V> {
         self.widget.active = active;
     }
 
+    pub fn is_active(&self) -> bool {
+        self.widget.is_active()
+    }
+
     pub fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
     }

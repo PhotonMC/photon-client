@@ -200,7 +200,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   oyuncu bildirme düğmeleri çizilir ama basınca bir şey olmaz (ekranları yok);
   arka plan bulanıklığı (`blurBeforeThisStratum`, GPU) yok; yerel sunucu
   düzeni (`hasSingleplayerServer`) yok; taslak rapor simgesi yok; ipuçları
-  (simge düğmesi üzerinde bekleyince) var: `Holder`/`Positioner` (`tooltip.rs`, `frame.rs`), simge ipuçları pause'da; ok tuşlarıyla odak (`navigation.rs`) pause ve Options ekranında; ayar listelerinde (Tab/ok) ve dil listesinde klavye gezintisi yok (T11b).
+  (simge düğmesi üzerinde bekleyince) var: `Holder`/`Positioner` (`tooltip.rs`, `frame.rs`), simge ipuçları pause'da; ok tuşlarıyla odak (`navigation.rs`) pause ve Options ekranında; ayar listelerinde ve dil listesinde Tab/Shift+Tab/ok gezintisi `OptionsList`/`language_select` içinde (T11b); Enter/Space Done ve başka ekran açan düğmelerde oracle'da basılmadı.
   Düğmeye sığmayan etiket saate göre kayar (`GuiFrame::millis`, `draw_label`);
   oracle saati sabitler (T07).
 - **Kısmen** Seçenekler ekranı (`OptionsScreen`, pause → Options...):
@@ -210,7 +210,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   karşı. Yapılmadı: alt ekranlar (Skin, Sounds, Video, Controls, Language,
   Chat, Resource Packs, Accessibility, Telemetry, Credits, Online, Difficulty)
   — düğmeler çizilir ama basınca bir şey olmaz; Telemetry çevrimdışı
-  olduğundan etkisiz çizilir; ok tuşlarıyla odak (T11); ipuçları.
+  olduğundan etkisiz çizilir; ipuçları.
 - **Kısmen** Video ayarları (`VideoSettingsScreen`, Options → Video Settings):
   kaydırmalı liste (`OptionsList`: çark, kaydırma çubuğu sürükleme, Java
   kırpması, odaktaki girdiyi görünüre kaydırma), bütün Java satırları çizilir
@@ -222,7 +222,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   ekran kapanınca unutulur; grafik ön ayarı yalnız "Custom"a döner (ön ayar
   seçince diğer değerleri ayarlamaz); `applyValueImmediately=false`
   kaydırıcılar (görüş mesafesi vb.) 600 ms gecikmeden değil bırakınca oturur;
-  Tab/ok tuşlarıyla odak (T11), ipuçları, tam ekran çözünürlüğü listesi
+  ipuçları, tam ekran çözünürlüğü listesi
   (monitör yok), sahte GPU uyarısı ekranı yok. `video_settings_screen`
   oracle'ı gerçek Java ekranına karşı (120 satır).
 - **Kısmen** Ölüm ekranı (`DeathScreen`, `PlayerCombatKill`, `deathScreen.*`):

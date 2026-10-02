@@ -135,6 +135,33 @@ fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
     )
 }
 
+/// A key a settings screen gives to its widgets: Tab and Shift+Tab, or an
+/// arrow, Enter or Space with whether Shift is held.
+enum MenuKey {
+    Tab(bool),
+    Key(SliderKey, bool),
+}
+
+fn menu_key(event: &glfw::WindowEvent) -> Option<MenuKey> {
+    use glfw::{Action, Key, Modifiers, WindowEvent};
+    let WindowEvent::Key(key, _, action, modifiers) = event else {
+        return None;
+    };
+    let shift = modifiers.contains(Modifiers::Shift);
+    let held = matches!(action, Action::Press | Action::Repeat);
+    match key {
+        Key::Tab if held => Some(MenuKey::Tab(!shift)),
+        Key::Left if held => Some(MenuKey::Key(SliderKey::Left, shift)),
+        Key::Right if held => Some(MenuKey::Key(SliderKey::Right, shift)),
+        Key::Up if held => Some(MenuKey::Key(SliderKey::Up, shift)),
+        Key::Down if held => Some(MenuKey::Key(SliderKey::Down, shift)),
+        Key::Enter | Key::KpEnter | Key::Space if *action == Action::Press => {
+            Some(MenuKey::Key(SliderKey::Select, shift))
+        }
+        _ => None,
+    }
+}
+
 impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
@@ -437,6 +464,23 @@ impl Controls {
             return;
         }
         let mouse = self.gui_mouse;
+        if let Some(key) = menu_key(&event) {
+            if let Some(screen) = self.mouse_screen.as_mut() {
+                match key {
+                    MenuKey::Tab(forward) => screen.tab(forward),
+                    MenuKey::Key(key, shift) => done = screen.key_pressed(lang, key, shift).done,
+                }
+            } else if let Some(screen) = self.controls_screen.as_mut() {
+                match key {
+                    MenuKey::Tab(forward) => screen.tab(forward),
+                    MenuKey::Key(key, shift) => {
+                        let input = screen.key_pressed(lang, key, shift);
+                        done = input.done;
+                        open_mouse = input.mouse_settings;
+                    }
+                }
+            }
+        }
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
@@ -543,6 +587,11 @@ impl Controls {
             return;
         };
         let mut done = false;
+        match menu_key(&event) {
+            Some(MenuKey::Tab(forward)) => screen.tab(forward),
+            Some(MenuKey::Key(key, shift)) => done = screen.key_pressed(lang, key, shift).done,
+            None => {}
+        }
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
@@ -594,6 +643,13 @@ impl Controls {
             (size.gui_scaled_width(), size.gui_scaled_height())
         };
         let mut done = false;
+        match menu_key(&event) {
+            Some(MenuKey::Tab(forward)) => video.tab(forward),
+            Some(MenuKey::Key(key, shift)) => {
+                done = video.key_pressed(lang, key, shift, &mut resize).done;
+            }
+            None => {}
+        }
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {

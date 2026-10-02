@@ -22,4 +22,7 @@
 `docs/remaining-work.md` (video/kontroller/dil satırları), `docs/gui-oracle.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `OptionsList` içinde `Nav`/`next_focus` (ContainerObjectSelectionList: satır içi sağ/sol, satırlar arası sütun korunumlu yukarı/aşağı, başlıklar atlanır, etkin olmayan widget geçilir), `SubScreen.tab/key_pressed/arrow` (başlık, liste, Done), listenin ekran odağı (girdisiz de olabilir: boş satıra/çubuğa tık), klavye odağı girdiyi her zaman görünüre kaydırır; `Control::key_pressed/is_active`; video/chat/mouse/controls sarmalayıcıları + `controls.rs` `menu_key`; dil ekranı `Nav/Target` (ObjectSelectionList: uçta seçimi ve odağı düşürme, Sol/Sağ listede aynı).
+- Oracle: dört ayar ekranına ve dil ekranına `key` adımları (tab, shift+tab, ok, enter, space), her satırda gerçek Java ekranı.
+- Sapma: kaydırıcı Yukarı/Aşağı tuşlarını almaz (Java gibi; önceki kod Sağ sayıyordu). Enter/Space Done/Font/ekran açan düğmelerde oracle'da basılmadı (Java `setScreen` sahte Gui'de çalışmaz).
+- Açık: Controls'un `KeyBindsScreen`i, Font ekranı.

@@ -9,10 +9,10 @@ use voxel_game::text::{Component, Lang, Run, Style};
 use crate::gui::cycle::{CycleButton, Tip};
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
-use crate::gui::navigation::Rectangle;
+use crate::gui::navigation::{Candidate, Direction, Rectangle, next_in_direction};
 use crate::gui::option_text::on_off;
 use crate::gui::scroll_area::{Place, SCROLLBAR_WIDTH};
-use crate::gui::slider::{InputType, OptionSlider, SliderTip, SliderValues};
+use crate::gui::slider::{InputType, OptionSlider, SliderKey, SliderTip, SliderValues};
 use crate::gui::tooltip::{Holder, Pending};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
@@ -45,6 +45,17 @@ pub trait Control {
     fn released(&mut self, lang: &Lang);
     fn set_focused(&mut self, focused: bool, input: InputType);
     fn set_active(&mut self, active: bool);
+    /// `active`: an inactive widget takes no focus.
+    fn is_active(&self) -> bool;
+    /// A key the focused widget is given (`keyPressed`): whether it took it,
+    /// and whether the option's value changed.
+    fn key_pressed(
+        &mut self,
+        lang: &Lang,
+        arena: &Arena,
+        key: SliderKey,
+        shift: bool,
+    ) -> (bool, bool);
     fn draw(
         &self,
         frame: &mut GuiFrame,
@@ -91,6 +102,21 @@ where
 
     fn set_active(&mut self, active: bool) {
         OptionSlider::set_active(self, active);
+    }
+
+    fn is_active(&self) -> bool {
+        OptionSlider::is_active(self)
+    }
+
+    fn key_pressed(
+        &mut self,
+        lang: &Lang,
+        arena: &Arena,
+        key: SliderKey,
+        _shift: bool,
+    ) -> (bool, bool) {
+        let (taken, value) = OptionSlider::key_pressed(self, lang, arena, key);
+        (taken, value.is_some())
     }
 
     fn draw(
@@ -141,6 +167,22 @@ impl<V: Clone + PartialEq + 'static> Control for CycleButton<V> {
         CycleButton::set_active(self, active);
     }
 
+    fn is_active(&self) -> bool {
+        CycleButton::is_active(self)
+    }
+
+    fn key_pressed(
+        &mut self,
+        lang: &Lang,
+        _arena: &Arena,
+        key: SliderKey,
+        shift: bool,
+    ) -> (bool, bool) {
+        // `AbstractButton.keyPressed`: Enter and Space press it.
+        let pressed = key == SliderKey::Select && self.selected(lang, shift).is_some();
+        (pressed, pressed)
+    }
+
     fn draw(
         &self,
         frame: &mut GuiFrame,
@@ -188,6 +230,13 @@ struct Entry {
 /// The widget that has the focus: its entry, then its place in it.
 type Focus = (usize, usize);
 
+/// `FocusNavigationEvent`: Tab (forward or back) or an arrow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Nav {
+    Tab(bool),
+    Arrow(Direction),
+}
+
 /// `OptionsList`.
 pub struct OptionsList {
     arena: Arena,
@@ -197,6 +246,9 @@ pub struct OptionsList {
     /// Whether the mouse holds the scroll bar.
     scrolling: bool,
     focus: Option<Focus>,
+    /// Whether the screen's focus is on the list, which a click on an entry
+    /// gives it without any widget of it taking the focus.
+    screen_focused: bool,
     /// Whether the mouse holds the focused widget (`isDragging`).
     dragging: bool,
     /// What the window last took in.
@@ -219,6 +271,7 @@ impl OptionsList {
             scroll: 0.0,
             scrolling: false,
             focus: None,
+            screen_focused: false,
             dragging: false,
             input: InputType::Mouse,
         }
@@ -478,9 +531,152 @@ impl OptionsList {
             let changed_entry = !matches!(old, Some((before, _)) if before == entry);
             let top = self.entries[entry].y + PADDING;
             let bottom = self.entries[entry].y + self.entries[entry].height - PADDING;
-            if changed_entry && (top < self.place.y || bottom > self.place.bottom()) {
+            let keyboard = matches!(input, InputType::KeyboardArrow | InputType::KeyboardTab);
+            if changed_entry && (keyboard || top < self.place.y || bottom > self.place.bottom()) {
                 self.scroll_to_entry(entry);
             }
+        }
+    }
+
+    /// Whether the screen's focus is on the list.
+    pub fn screen_focused(&self) -> bool {
+        self.screen_focused
+    }
+
+    /// How many widgets an entry can give the focus to (a header's one is
+    /// a text, which never takes it).
+    fn widgets_in(&self, entry: usize) -> usize {
+        match &self.entries[entry].content {
+            Content::Row(children) => children.len(),
+            Content::Header { .. } => 0,
+        }
+    }
+
+    fn is_active(&self, (entry, child): Focus) -> bool {
+        matches!(&self.entries[entry].content,
+            Content::Row(children) if children[child].control.is_active())
+    }
+
+    /// The first active widget of an entry among `order`.
+    fn first_active(&self, entry: usize, order: impl Iterator<Item = usize>) -> Option<Focus> {
+        order
+            .map(|child| (entry, child))
+            .find(|&at| self.is_active(at))
+    }
+
+    /// `ContainerObjectSelectionList.nextFocusPath`: where the focus would
+    /// go, given the widget that has it (if any).
+    pub fn next_focus(&self, nav: Nav) -> Option<Focus> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        match nav {
+            Nav::Tab(forward) => self.tab_focus(forward),
+            Nav::Arrow(direction) => self.arrow_focus(direction),
+        }
+    }
+
+    /// Tab: on along the entry's widgets, then the entries after (or
+    /// before) it, a header having none.
+    fn tab_focus(&self, forward: bool) -> Option<Focus> {
+        if let Some((entry, child)) = self.focus {
+            let count = self.widgets_in(entry);
+            let found = if forward {
+                self.first_active(entry, child + 1..count)
+            } else {
+                self.first_active(entry, (0..child).rev())
+            };
+            if found.is_some() {
+                return found;
+            }
+        }
+        let entries: Vec<usize> = match (self.focus, forward) {
+            (Some((entry, _)), true) => (entry + 1..self.entries.len()).collect(),
+            (Some((entry, _)), false) => (0..entry).rev().collect(),
+            (None, true) => (0..self.entries.len()).collect(),
+            (None, false) => (0..self.entries.len()).rev().collect(),
+        };
+        entries.into_iter().find_map(|entry| {
+            let count = self.widgets_in(entry);
+            if forward {
+                self.first_active(entry, 0..count)
+            } else {
+                self.first_active(entry, (0..count).rev())
+            }
+        })
+    }
+
+    /// An arrow: left and right along the entry; up and down to the entry
+    /// above or below, at the same place in it (or the last one it has).
+    fn arrow_focus(&self, direction: Direction) -> Option<Focus> {
+        let horizontal = matches!(direction, Direction::Left | Direction::Right);
+        if let (true, Some((entry, child))) = (horizontal, self.focus) {
+            let count = self.widgets_in(entry);
+            return if direction == Direction::Right {
+                self.first_active(entry, child + 1..count)
+            } else {
+                self.first_active(entry, (0..child).rev())
+            };
+        }
+        // With no focus left enters at the end of the first entry, right at
+        // its start.
+        let (index, direction) = match (self.focus, direction) {
+            (Some((_, child)), direction) => (child, direction),
+            (None, Direction::Left) => (usize::MAX, Direction::Down),
+            (None, Direction::Right) => (0, Direction::Down),
+            (None, direction) => (0, direction),
+        };
+        let down = direction == Direction::Down;
+        let mut entry = self.focus.map(|(entry, _)| entry);
+        loop {
+            entry = match (entry, down) {
+                (None, true) => Some(0),
+                (None, false) => self.entries.len().checked_sub(1),
+                (Some(entry), true) => Some(entry + 1),
+                (Some(entry), false) => entry.checked_sub(1),
+            }
+            .filter(|entry| *entry < self.entries.len());
+            let entry = entry?;
+            let count = self.widgets_in(entry);
+            if count > 0 {
+                let at = (entry, index.min(count - 1));
+                if self.is_active(at) {
+                    return Some(at);
+                }
+            }
+        }
+    }
+
+    /// A key for the widget that has the focus: whether it took it, and the
+    /// tag of the widget whose option changed.
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> (bool, Option<u8>) {
+        let Some((entry, child)) = self.focus else {
+            return (false, None);
+        };
+        let Content::Row(children) = &mut self.entries[entry].content else {
+            return (false, None);
+        };
+        let child = &mut children[child];
+        let (taken, changed) = child.control.key_pressed(lang, &self.arena, key, shift);
+        (taken, changed.then_some(child.tag))
+    }
+
+    /// The focus moves by a key: the widget before loses it, the new one
+    /// takes it and the list shows it.
+    pub fn move_focus(&mut self, focus: Option<Focus>, input: InputType) {
+        self.focus_on(None, input);
+        self.focus_on(focus, input);
+        self.screen_focused = focus.is_some();
+        self.input = input;
+    }
+
+    /// The list's own rectangle, which arrow navigation looks at.
+    pub fn rectangle(&self) -> Rectangle {
+        Rectangle {
+            x: 0,
+            y: self.place.y,
+            width: self.place.width,
+            height: self.place.height,
         }
     }
 
@@ -506,8 +702,13 @@ impl OptionsList {
                 .map(|child| (entry, child))
         });
         let Some((entry, child)) = hit else {
-            return (self.scrolling, None);
+            // An entry (or the bar) takes the click, so the list takes the
+            // screen's focus, though no widget of it has taken any.
+            let took = self.scrolling || self.entry_at(mouse).is_some();
+            self.screen_focused |= took;
+            return (took, None);
         };
+        self.screen_focused = true;
         let mut changed = None;
         if let Content::Row(children) = &mut self.entries[entry].content {
             let child = &mut children[child];
@@ -515,6 +716,7 @@ impl OptionsList {
                 changed = Some(child.tag);
             }
         }
+        self.input = InputType::Mouse;
         self.focus_on(Some((entry, child)), InputType::Mouse);
         self.dragging = true;
         (true, changed)
@@ -742,6 +944,21 @@ impl Control for ButtonControl {
         self.widget.active = active;
     }
 
+    fn is_active(&self) -> bool {
+        self.widget.is_active()
+    }
+
+    fn key_pressed(
+        &mut self,
+        _lang: &Lang,
+        _arena: &Arena,
+        key: SliderKey,
+        _shift: bool,
+    ) -> (bool, bool) {
+        let pressed = key == SliderKey::Select && self.widget.is_active();
+        (pressed, pressed)
+    }
+
     fn draw(
         &self,
         frame: &mut GuiFrame,
@@ -797,8 +1014,17 @@ pub struct SubScreen {
     warning: Option<(Widget, bool)>,
     done: Widget,
     pub list: OptionsList,
+    /// Whether Done has the focus (the list keeps its own).
+    done_focused: bool,
     size: (i32, i32),
     in_world: bool,
+}
+
+/// Where the focus goes on the screen: a widget of the list, or Done.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Target {
+    List(Focus),
+    Done,
 }
 
 impl SubScreen {
@@ -837,6 +1063,7 @@ impl SubScreen {
                 (HEADER_AND_FOOTER, height - 2 * HEADER_AND_FOOTER),
                 in_world,
             ),
+            done_focused: false,
             size,
             in_world,
         };
@@ -927,7 +1154,7 @@ impl SubScreen {
             warning.draw(frame, atlas, font, &self.arena, false);
         }
         let pending = self.list.draw(frame, atlas, font, mouse);
-        let highlighted = self.done.contains(&self.arena, mouse);
+        let highlighted = self.done.contains(&self.arena, mouse) || self.done_focused;
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
         if let Some(pending) = pending {
             pending.draw(frame, atlas, font, mouse, self.size);
@@ -939,20 +1166,173 @@ impl SubScreen {
     pub fn clicked(&mut self, lang: &Lang, mouse: (f64, f64), shift: bool) -> SubScreenInput {
         let (took, changed) = self.list.clicked(lang, mouse, shift);
         if took {
+            self.done_focused = false;
             return SubScreenInput {
                 done: false,
                 changed,
             };
         }
         let at = (mouse.0 as i32, mouse.1 as i32);
+        let done = self.done.is_active() && self.done.contains(&self.arena, at);
+        if done {
+            self.apply(Target::Done, InputType::Mouse);
+        }
         SubScreenInput {
-            done: self.done.is_active() && self.done.contains(&self.arena, at),
+            done,
             changed: None,
         }
     }
 
     pub fn dragged(&mut self, lang: &Lang, mouse: (f64, f64), dy: f64) -> Option<u8> {
         self.list.dragged(lang, mouse, dy)
+    }
+
+    /// The focus moves to `target`; what had it lets go.
+    fn apply(&mut self, target: Target, input: InputType) {
+        self.done_focused = false;
+        match target {
+            Target::List(focus) => self.list.move_focus(Some(focus), input),
+            Target::Done => {
+                self.list.move_focus(None, input);
+                self.done_focused = true;
+            }
+        }
+    }
+
+    fn clear_focus(&mut self) {
+        self.done_focused = false;
+        self.list.move_focus(None, InputType::None);
+    }
+
+    /// `handleTabNavigation` of the screen, whose widgets in order are the
+    /// title, the list and Done: the focused widget's own next first.
+    fn tab_target(&self, forward: bool) -> Option<Target> {
+        if self.list.screen_focused()
+            && let Some(focus) = self.list.next_focus(Nav::Tab(forward))
+        {
+            return Some(Target::List(focus));
+        }
+        let at = if self.list.screen_focused() {
+            Some(0)
+        } else {
+            self.done_focused.then_some(1)
+        };
+        let start = match (at, forward) {
+            (Some(at), true) => at + 1,
+            (Some(at), false) => at,
+            (None, true) => 0,
+            (None, false) => 2,
+        };
+        let order: Vec<usize> = if forward {
+            (start..2).collect()
+        } else {
+            (0..start).rev().collect()
+        };
+        order.into_iter().find_map(|child| match child {
+            0 => self.list.next_focus(Nav::Tab(forward)).map(Target::List),
+            _ => (self.done.is_active() && !self.done_focused).then_some(Target::Done),
+        })
+    }
+
+    /// Tab (and Shift+Tab): the focus moves on, and past the last widget
+    /// round to the first.
+    pub fn tab(&mut self, forward: bool) {
+        let mut target = self.tab_target(forward);
+        if target.is_none() {
+            self.clear_focus();
+            target = self.tab_target(forward);
+        }
+        if let Some(target) = target {
+            self.apply(target, InputType::KeyboardTab);
+        }
+    }
+
+    /// `handleArrowNavigation` of the screen: the list's own step, else the
+    /// widget that lies next to the focused one.
+    fn arrow(&mut self, direction: Direction) {
+        let list_step = self.list.next_focus(Nav::Arrow(direction));
+        if self.list.screen_focused()
+            && let Some(focus) = list_step
+        {
+            self.apply(Target::List(focus), InputType::KeyboardArrow);
+            return;
+        }
+        let rectangle = |rect: usize| {
+            let rect = self.arena.0[rect];
+            Rectangle {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            }
+        };
+        // The title and the line under it never take the focus.
+        let mut children = vec![Candidate {
+            rectangle: rectangle(self.title.rect),
+            focusable: false,
+        }];
+        if let Some((warning, _)) = &self.warning {
+            children.push(Candidate {
+                rectangle: rectangle(warning.rect),
+                focusable: false,
+            });
+        }
+        let list_at = children.len();
+        children.push(Candidate {
+            rectangle: self.list.rectangle(),
+            focusable: list_step.is_some(),
+        });
+        children.push(Candidate {
+            rectangle: rectangle(self.done.rect),
+            focusable: self.done.is_active(),
+        });
+        let focused = if self.list.screen_focused() {
+            Some(list_at)
+        } else {
+            self.done_focused.then_some(list_at + 1)
+        };
+        let container = Rectangle {
+            x: 0,
+            y: 0,
+            width: self.size.0,
+            height: self.size.1,
+        };
+        match next_in_direction(&children, focused, direction, container) {
+            Some(at) if at == list_at => {
+                if let Some(focus) = list_step {
+                    self.apply(Target::List(focus), InputType::KeyboardArrow);
+                }
+            }
+            Some(_) => self.apply(Target::Done, InputType::KeyboardArrow),
+            None => {}
+        }
+    }
+
+    /// `Screen.keyPressed` for a key other than Tab and Escape: the focused
+    /// widget takes it, or an arrow moves the focus.
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> SubScreenInput {
+        if self.list.screen_focused() {
+            let (taken, changed) = self.list.key_pressed(lang, key, shift);
+            if taken {
+                return SubScreenInput {
+                    done: false,
+                    changed,
+                };
+            }
+        } else if self.done_focused && key == SliderKey::Select && self.done.is_active() {
+            return SubScreenInput {
+                done: true,
+                changed: None,
+            };
+        }
+        match key {
+            SliderKey::Left => self.arrow(Direction::Left),
+            SliderKey::Right => self.arrow(Direction::Right),
+            SliderKey::Up => self.arrow(Direction::Up),
+            SliderKey::Down => self.arrow(Direction::Down),
+            SliderKey::Select => {}
+        }
+        SubScreenInput::default()
     }
 
     pub fn released(&mut self, lang: &Lang) {

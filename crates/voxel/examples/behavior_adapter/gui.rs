@@ -714,6 +714,12 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                                 &mut resize,
                             );
                         }
+                        "key" => match menu_key(step)? {
+                            MenuKey::Tab(forward) => screen.tab(forward),
+                            MenuKey::Key(key) => {
+                                screen.key_pressed(&lang, key, false, &mut resize);
+                            }
+                        },
                         "drag" => screen.dragged(&lang, at, at.1 - last.1),
                         "release" => screen.released(&lang),
                         "scroll" => screen.scrolled(
@@ -824,6 +830,12 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                             let shift = step["shift"].as_bool().unwrap_or(false);
                             each!(&mut screen, s => { s.clicked(&lang, at, shift); });
                         }
+                        "key" => match menu_key(step)? {
+                            MenuKey::Tab(forward) => each!(&mut screen, s => s.tab(forward)),
+                            MenuKey::Key(key) => {
+                                each!(&mut screen, s => { s.key_pressed(&lang, key, false); });
+                            }
+                        },
                         "drag" => each!(&mut screen, s => s.dragged(&lang, at, at.1 - last.1)),
                         "release" => each!(&mut screen, s => s.released(&lang)),
                         "scroll" => {
@@ -924,12 +936,20 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                             }
                         }
                         "key" => {
-                            let key = match step["key"].as_str().unwrap_or_default() {
+                            let name = step["key"].as_str().unwrap_or_default();
+                            let key = match name {
                                 "backspace" => glfw::Key::Backspace,
                                 "enter" => glfw::Key::Enter,
+                                "space" => glfw::Key::Space,
+                                "tab" | "shift+tab" => glfw::Key::Tab,
+                                "left" => glfw::Key::Left,
+                                "right" => glfw::Key::Right,
+                                "up" => glfw::Key::Up,
+                                "down" => glfw::Key::Down,
                                 other => return Err(format!("unknown key {other}")),
                             };
-                            screen.key_pressed(&font, key, (false, false), &mut NoClipboard);
+                            let shift = name.starts_with("shift+");
+                            screen.key_pressed(&font, key, (false, shift), &mut NoClipboard);
                         }
                         "drag" => screen.dragged(at, at.1 - last.1),
                         "release" => screen.released(),
@@ -1236,6 +1256,26 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
 }
 
 /// What a step does with a result it has no use for.
+/// A key step of a settings screen.
+enum MenuKey {
+    Tab(bool),
+    Key(voxel_render::gui::slider::SliderKey),
+}
+
+fn menu_key(step: &Value) -> Result<MenuKey, String> {
+    use voxel_render::gui::slider::SliderKey;
+    Ok(match step["key"].as_str().unwrap_or_default() {
+        "tab" => MenuKey::Tab(true),
+        "shift+tab" => MenuKey::Tab(false),
+        "left" => MenuKey::Key(SliderKey::Left),
+        "right" => MenuKey::Key(SliderKey::Right),
+        "up" => MenuKey::Key(SliderKey::Up),
+        "down" => MenuKey::Key(SliderKey::Down),
+        "enter" | "space" => MenuKey::Key(SliderKey::Select),
+        other => return Err(format!("unknown key {other}")),
+    })
+}
+
 fn ignore<T>(_: T) {}
 
 /// The widget an option makes, of the kinds the scenarios name.

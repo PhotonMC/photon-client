@@ -44,7 +44,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T10](T10-dil-secimi.md) | `LanguageSelectScreen` + dil yeniden yükleme | L | T06 | bitti |
 | [T10b](T10b-sohbet-dil-yenileme.md) | Dil değişince sohbet geçmişini yeniden çöz | S | T10 | bitti |
 | [T11](T11-ipucu-ok-odagi.md) | Widget ipuçları + ok tuşlarıyla odak | M | T05 | bitti |
-| [T11b](T11b-liste-klavye-odagi.md) | Ayar listelerinde klavye odağı (Tab, ok) | M | T11 | açık |
+| [T11b](T11b-liste-klavye-odagi.md) | Ayar listelerinde klavye odağı (Tab, ok) | M | T11 | bitti |
 | [T12](T12-click-hover-modeli.md) | `ClickEvent`/`HoverEvent` stil modeli + sohbet ipucu | M | – | bitti |
 | [T13](T13-tiklama-eylemleri.md) | Sohbet tıklama eylemleri + `ConfirmLinkScreen` | M | T03, T12 | bitti |
 | [T14](T14-locator-bar.md) | `TrackedWaypoint` + `LocatorBar` | M | – | bitti |

@@ -13,7 +13,7 @@ use crate::gui::option_text::{chat_opacity, chat_visibility, percent_value};
 use crate::gui::options_list::{
     Build, Named, SubScreen, SubScreenInput, boolean, boolean_tip, cycle, off_composed, slider,
 };
-use crate::gui::slider::OptionSlider;
+use crate::gui::slider::{OptionSlider, SliderKey};
 use crate::gui::{GuiAtlas, GuiFrame};
 
 /// What the screen finds its widgets by.
@@ -268,6 +268,16 @@ impl ChatOptionsScreen {
 
     pub fn dragged(&mut self, lang: &Lang, mouse: (f64, f64), dy: f64) {
         self.screen.dragged(lang, mouse, dy);
+    }
+
+    /// Tab (and Shift+Tab).
+    pub fn tab(&mut self, forward: bool) {
+        self.screen.tab(forward);
+    }
+
+    /// An arrow, Enter or Space.
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> SubScreenInput {
+        self.screen.key_pressed(lang, key, shift)
     }
 
     pub fn released(&mut self, lang: &Lang) {

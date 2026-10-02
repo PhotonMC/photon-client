@@ -198,6 +198,10 @@ impl<S: SliderValues> OptionSlider<S> {
         self.active = active;
     }
 
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
     /// The bar's place in the arena.
     pub fn rect(&self) -> usize {
         self.rect
@@ -327,7 +331,7 @@ impl<S: SliderValues> OptionSlider<S> {
             self.can_change = !self.can_change;
             return (true, None);
         }
-        if !self.can_change {
+        if !self.can_change || !matches!(key, SliderKey::Left | SliderKey::Right) {
             return (false, None);
         }
         let left = key == SliderKey::Left;

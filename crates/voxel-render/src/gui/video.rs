@@ -12,7 +12,7 @@ use crate::gui::options_list::{
     Build, Named, SubScreen, SubScreenInput, boolean, boolean_tip, constant_tip, counted, cycle,
     cycle_tip, named, named_tip, off_composed, slider, slider_tip,
 };
-use crate::gui::slider::OptionSlider;
+use crate::gui::slider::{OptionSlider, SliderKey};
 use crate::gui::{GuiAtlas, GuiFrame};
 
 /// What the screen finds its widgets by; an option with `CUSTOMISING` in its
@@ -582,6 +582,27 @@ impl VideoSettingsScreen {
         resize: &mut dyn FnMut(i32) -> (i32, i32),
     ) -> SubScreenInput {
         let input = self.screen.clicked(lang, mouse, shift);
+        self.customise(lang, input.changed);
+        self.follow_gui_scale(resize);
+        self.tick();
+        input
+    }
+
+    /// Tab (and Shift+Tab).
+    pub fn tab(&mut self, forward: bool) {
+        self.screen.tab(forward);
+        self.tick();
+    }
+
+    /// An arrow, Enter or Space: a new GUI scale is given to `resize`.
+    pub fn key_pressed(
+        &mut self,
+        lang: &Lang,
+        key: SliderKey,
+        shift: bool,
+        resize: &mut dyn FnMut(i32) -> (i32, i32),
+    ) -> SubScreenInput {
+        let input = self.screen.key_pressed(lang, key, shift);
         self.customise(lang, input.changed);
         self.follow_gui_scale(resize);
         self.tick();

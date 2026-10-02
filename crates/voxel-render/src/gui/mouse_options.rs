@@ -14,7 +14,7 @@ use crate::gui::options_list::{
     Build, OptionsList, SubScreen, SubScreenInput, boolean, boolean_tip, button, constant_tip,
     counted, cycle, slider, slider_tip,
 };
-use crate::gui::slider::OptionSlider;
+use crate::gui::slider::{OptionSlider, SliderKey};
 use crate::gui::{GuiAtlas, GuiFrame};
 
 const PLAIN: u8 = 0;
@@ -157,6 +157,16 @@ impl MouseSettingsScreen {
         self.screen.dragged(lang, mouse, dy);
     }
 
+    /// Tab (and Shift+Tab).
+    pub fn tab(&mut self, forward: bool) {
+        self.screen.tab(forward);
+    }
+
+    /// An arrow, Enter or Space.
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> SubScreenInput {
+        self.screen.key_pressed(lang, key, shift)
+    }
+
     pub fn released(&mut self, lang: &Lang) {
         self.screen.released(lang);
     }
@@ -269,6 +279,20 @@ impl ControlsScreen {
 
     pub fn dragged(&mut self, lang: &Lang, mouse: (f64, f64), dy: f64) {
         self.screen.dragged(lang, mouse, dy);
+    }
+
+    /// Tab (and Shift+Tab).
+    pub fn tab(&mut self, forward: bool) {
+        self.screen.tab(forward);
+    }
+
+    /// An arrow, Enter or Space.
+    pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> ControlsInput {
+        let input = self.screen.key_pressed(lang, key, shift);
+        ControlsInput {
+            done: input.done,
+            mouse_settings: input.changed == Some(MOUSE_SETTINGS),
+        }
     }
 
     pub fn released(&mut self, lang: &Lang) {
