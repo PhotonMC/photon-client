@@ -116,7 +116,7 @@ En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
 `RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`,
 `RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers` paketlerini
 dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
-bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları) ve çizim için `entity_snapshot` veriyor; çizilmiyorlar.
+bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları) ve çizim için `entity_snapshot` veriyor; yalnız uzaktaki oyuncular çiziliyor (varsayılan deriyle, ad etiketsiz: T22b).
 
 1. **Paketler (L)** Kalan: `SetEntityLink`, `SetEquipment`, `EntityEvent`
    (yalnız oyuncunun işlem düzeyi okunuyor), `Animate`, `HurtAnimation`,

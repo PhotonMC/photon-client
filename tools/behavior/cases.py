@@ -13953,6 +13953,11 @@ def movement_cases():
 
 
 def entity_cases():
+    yield from entity_player_model_cases()
+    yield from entity_walk_animation_cases()
+
+
+def entity_player_model_cases():
     """The player model, posed by the reference's `setupAnim` and drawn by its
     part renderer: every quad's corner positions, texture coordinates and
     normals. Both arm widths; standing, walking, crouching, looking about,
@@ -13997,6 +14002,40 @@ def entity_cases():
         "case_id": "entity/player-model",
         "family": "entity",
         "operation": "player_model",
+        "rows": rows,
+    }
+
+
+def entity_walk_animation_cases():
+    """The limb animation state: a player walking up to speed and stopping,
+    standing, the position scale a baby has, a stop in the middle of a
+    walk, and reads between two ticks."""
+    def step(target, factor=0.4, scale=1.0, stop=False):
+        return {"target": float_bits(target), "factor": float_bits(factor),
+                "scale": float_bits(scale), "stop": stop}
+
+    partials = [float_bits(value) for value in (0.0, 0.25, 0.5, 0.75, 1.0)]
+
+    def row(label, steps):
+        return {"label": label, "steps": steps, "partials": partials}
+
+    walk = lambda distance: step(min(distance * 4.0, 1.0))
+    rows = [
+        row("standing", [step(0.0)] * 5),
+        row("walk-up-to-speed", [walk(0.2158)] * 12),
+        row("walk-then-stop", [walk(0.2158)] * 6 + [walk(0.0)] * 8),
+        row("sprint", [walk(0.28)] * 10),
+        row("slow-steps", [walk(0.03), walk(0.06), walk(0.0), walk(0.09), walk(0.05)]),
+        row("baby-scale", [step(1.0, 0.4, 3.0)] * 6),
+        row("stop-midway", [walk(0.2)] * 4 + [step(0.0, stop=True)] + [walk(0.2)] * 3),
+        row("factor-one", [step(1.0, 1.0)] * 3),
+        row("factor-zero", [step(1.0, 0.0)] * 3),
+        row("long-run", [walk(0.2158)] * 200),
+    ]
+    yield {
+        "case_id": "entity/walk-animation",
+        "family": "entity",
+        "operation": "walk_animation",
         "rows": rows,
     }
 

@@ -44,6 +44,8 @@ pub struct Gui {
     /// The data-driven registries tooltips read.
     registries: Arc<Registries>,
     hud: Hud,
+    /// Which default skin the local player's model wears in the inventory.
+    player_skin: usize,
     titles: Titles,
     boss_bars: BossBars,
     tab_health: HealthStates,
@@ -79,6 +81,7 @@ impl Gui {
             languages: voxel_game::language::LanguageSource::open(root).map(Arc::new),
             registries: Arc::new(registries),
             hud: Hud::default(),
+            player_skin: 0,
             titles: Titles::default(),
             boss_bars: BossBars::default(),
             tab_health: HealthStates::default(),
@@ -93,6 +96,11 @@ impl Gui {
             .set_waypoint_styles(voxel_render::gui::locator::WaypointStyles::load(root));
         gui.set_language(language);
         Ok(gui)
+    }
+
+    /// The skin the inventory's player wears (`player_renderer::skin_index`).
+    pub fn set_player_skin(&mut self, skin: usize) {
+        self.player_skin = skin;
     }
 
     /// What the inventory screens open with: the search trees, the font and
@@ -576,6 +584,7 @@ impl Gui {
                         size,
                         offset_y,
                         mouse,
+                        self.player_skin,
                     )
                 };
             // A stack's tooltip in words.

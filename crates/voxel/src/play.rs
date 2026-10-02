@@ -99,6 +99,9 @@ struct Play {
     sections: SectionMeshes,
     sky: Sky,
     player_model: voxel_render::player_model::PlayerModel,
+    /// The other players' models, and which default skin the local player wears.
+    remote_models: overlays::RemoteModels,
+    skin_index: usize,
     gui: Gui,
     screen_assets: ScreenAssets,
     /// `ItemInHandRenderer`: the stacks the hands show and how high they are.
@@ -182,13 +185,21 @@ impl Play {
         )?;
         backend.load_crack_texture(&destroy_stages(&root)?)?;
         // The player's default skin, picked by its profile id as the
-        // reference picks one when the profile has no skin of its own.
-        let skin = voxel_render::player_renderer::default_skin(
+        // reference picks one when the profile has no skin of its own; the
+        // others the server adds draw in theirs, so the entity texture holds
+        // them all.
+        let skin_index = voxel_render::player_renderer::skin_index(
             session
                 .profile_id()
                 .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
         );
-        backend.load_entity_texture(&texture(&root, skin.texture, "skin")?)?;
+        let skin = voxel_render::player_renderer::skin_at(skin_index);
+        let skins = voxel_render::player_renderer::skin_textures()
+            .map(|name| texture(&root, name, "skin"))
+            .collect::<Result<Vec<_>>>()?;
+        backend.load_entity_texture(
+            &voxel_render::player_renderer::skin_atlas(&skins).ok_or("the skins' sizes")?,
+        )?;
         // The registries a tooltip reads, from the data pack, named as the
         // server synchronised them.
         let registries = voxel_game::registries::Registries::load(&data_root, |registry| {
@@ -202,12 +213,13 @@ impl Play {
         };
         let controls = Controls::new(camera_type, script.is_none());
         let language = &controls.options.language_code;
-        let gui = Gui::load(
+        let mut gui = Gui::load(
             std::path::Path::new(&root),
             registries,
             &mut backend,
             language,
         )?;
+        gui.set_player_skin(skin_index);
         let capture_frames = env::var("VOXEL_CAPTURE_FRAMES")
             .ok()
             .and_then(|value| value.parse().ok())
@@ -227,6 +239,8 @@ impl Play {
             sections,
             sky,
             player_model: voxel_render::player_model::PlayerModel::new(skin.slim),
+            remote_models: overlays::RemoteModels::new(),
+            skin_index,
             gui,
             item_in_hand: voxel_game::item_in_hand::ItemInHand::default(),
             held_item_layers: [
@@ -494,6 +508,7 @@ impl Play {
             partial: frame.partial,
             light: packed_light(self.session.world(), frame.eye),
             origin: self.origin,
+            skin: self.skin_index,
         };
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         if first_person && !player.spectating() {
@@ -529,12 +544,13 @@ impl Play {
             frame.camera,
             view,
         ))?;
-        if first_person {
-            self.backend.set_entities(&[])?;
-        } else {
-            let model = overlays::player_model(player, &mut self.player_model, view);
-            self.backend.set_entities(&model)?;
+        // The other players, and the local player's own once the camera
+        // leaves its eyes.
+        let mut models = overlays::remote_players(&self.session, &mut self.remote_models, view);
+        if !first_person {
+            models.extend(overlays::player_model(player, &mut self.player_model, view));
         }
+        self.backend.set_entities(&models)?;
         Ok(())
     }
 

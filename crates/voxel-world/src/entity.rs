@@ -451,6 +451,10 @@ pub struct ClientEntity {
     pub(crate) on_ground: bool,
     pub(crate) always_ticking: bool,
     pub(crate) ticking: bool,
+    /// The limbs' walk animation and the swimming pose's ease (a player's).
+    pub(crate) walk: crate::living::WalkAnimation,
+    pub(crate) swim_amount_bits: u32,
+    pub(crate) old_swim_amount_bits: u32,
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,
@@ -528,6 +532,13 @@ pub struct EntitySnapshot {
     pub yaw: f32,
     pub pitch: f32,
     pub head_yaw: f32,
+    /// Which way the body faces.
+    pub body_yaw: f32,
+    /// The limbs' walk animation, as the model reads it.
+    pub walk_position: f32,
+    pub walk_speed: f32,
+    pub swim_amount: f32,
+    pub pose: ClientEntityPose,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -737,6 +748,43 @@ impl ClientEntity {
             self.head_rotation_target_bits,
             &mut self.head_lerp_steps,
         );
+    }
+
+    /// What a player's drawn pose follows from its tick (`RemotePlayer.tick`
+    /// after `LivingEntity.tick`): the swimming pose easing in or out, the
+    /// body turning after where the player walks, and the limbs' swing.
+    pub(crate) fn tick_player_pose(&mut self) {
+        self.old_swim_amount_bits = self.swim_amount_bits;
+        self.swim_amount_bits = crate::living::ease_swim_amount(
+            f32::from_bits(self.swim_amount_bits),
+            self.pose == ClientEntityPose::Swimming,
+        )
+        .to_bits();
+        let moved = (
+            f64::from_bits(self.x_bits) - f64::from_bits(self.old_x_bits),
+            f64::from_bits(self.z_bits) - f64::from_bits(self.old_z_bits),
+        );
+        let mut body = f32::from_bits(self.y_body_rot_bits);
+        let mut body_old = f32::from_bits(self.old_y_body_rot_bits);
+        let mut head_old = f32::from_bits(self.old_y_head_rot_bits);
+        crate::living::turn_body(
+            (&mut body, &mut body_old),
+            (
+                f32::from_bits(self.y_rot_bits),
+                f32::from_bits(self.y_head_rot_bits),
+                &mut head_old,
+            ),
+            moved,
+        );
+        self.y_body_rot_bits = body.to_bits();
+        self.old_y_body_rot_bits = body_old.to_bits();
+        self.old_y_head_rot_bits = head_old.to_bits();
+        // `calculateEntityAnimation`: a rider or a dead player stands still.
+        if self.vehicle_id.is_none() && self.alive {
+            self.walk.follow(moved.0.hypot(moved.1));
+        } else {
+            self.walk.stop();
+        }
     }
 
     pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
@@ -1308,6 +1356,27 @@ impl ClientEntity {
         )
     }
 
+    /// The limbs' walk animation.
+    pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
+        &self.walk
+    }
+
+    /// `getSwimAmount(partialTick)`.
+    pub fn swim_amount(&self, partial_tick: f32) -> f32 {
+        let old = f32::from_bits(self.old_swim_amount_bits);
+        old + partial_tick * (f32::from_bits(self.swim_amount_bits) - old)
+    }
+
+    /// The body's facing between two ticks (`Mth.rotLerp` of `yBodyRotO`
+    /// and `yBodyRot`).
+    pub fn interpolated_body_y_rotation(&self, partial_tick: f32) -> f32 {
+        mth_rot_lerp_f32(
+            partial_tick,
+            self.previous_body_y_rotation(),
+            self.body_y_rotation(),
+        )
+    }
+
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
@@ -1456,6 +1525,16 @@ impl ClientEntity {
 
     pub fn is_swimming(&self) -> bool {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
+    }
+
+    /// Whether the entity is a player.
+    pub fn is_player(&self) -> bool {
+        is_vanilla_player_entity_type(self.type_id)
+    }
+
+    /// Whether the player only watches (its game mode, as the server told).
+    pub fn is_spectator(&self) -> bool {
+        self.spectator
     }
 
     pub fn is_invisible(&self) -> bool {

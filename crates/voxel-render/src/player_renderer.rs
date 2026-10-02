@@ -46,12 +46,76 @@ const DEFAULT_SKINS: [DefaultSkin; 18] = {
     ]
 };
 
-/// `DefaultPlayerSkin.get(UUID)`: picked by the id's hash.
-pub fn default_skin(id: Uuid) -> DefaultSkin {
+/// Which of the default skins a profile id wears (`DefaultPlayerSkin.get`
+/// picks by the id's hash).
+pub fn skin_index(id: Uuid) -> usize {
     // `UUID.hashCode`: the two halves folded together, then the two words.
     let folded = id.most ^ id.least;
     let hash = ((folded >> 32) as i32) ^ (folded as i32);
-    DEFAULT_SKINS[hash.rem_euclid(DEFAULT_SKINS.len() as i32) as usize]
+    hash.rem_euclid(DEFAULT_SKINS.len() as i32) as usize
+}
+
+/// `DefaultPlayerSkin.get(UUID)`: picked by the id's hash.
+pub fn default_skin(id: Uuid) -> DefaultSkin {
+    DEFAULT_SKINS[skin_index(id)]
+}
+
+/// The default skin at a place in the list.
+pub fn skin_at(index: usize) -> DefaultSkin {
+    DEFAULT_SKINS[index]
+}
+
+/// The default skins are drawn from one texture, which lays them out in
+/// this many columns and rows of 64 by 64 texels, so that every player in
+/// a frame can be drawn in one go.
+pub const SKIN_COLUMNS: usize = 6;
+pub const SKIN_ROWS: usize = 3;
+const SKIN_SIZE: u32 = 64;
+
+/// The paths of the default skins' textures, in the order the atlas holds
+/// them.
+pub fn skin_textures() -> impl Iterator<Item = &'static str> {
+    DEFAULT_SKINS.iter().map(|skin| skin.texture)
+}
+
+/// The skins' textures (in `skin_textures` order) laid out in one image.
+pub fn skin_atlas(skins: &[crate::DecodedImage]) -> Option<crate::DecodedImage> {
+    if skins.len() != DEFAULT_SKINS.len()
+        || skins
+            .iter()
+            .any(|skin| skin.width != SKIN_SIZE || skin.height != SKIN_SIZE)
+    {
+        return None;
+    }
+    let width = SKIN_COLUMNS as u32 * SKIN_SIZE;
+    let height = SKIN_ROWS as u32 * SKIN_SIZE;
+    let mut rgba = vec![0_u8; (width * height * 4) as usize];
+    for (index, skin) in skins.iter().enumerate() {
+        let (left, top) = (
+            (index % SKIN_COLUMNS) as u32 * SKIN_SIZE,
+            (index / SKIN_COLUMNS) as u32 * SKIN_SIZE,
+        );
+        for row in 0..SKIN_SIZE {
+            let from = (row * SKIN_SIZE * 4) as usize;
+            let to = (((top + row) * width + left) * 4) as usize;
+            rgba[to..to + (SKIN_SIZE * 4) as usize]
+                .copy_from_slice(&skin.rgba[from..from + (SKIN_SIZE * 4) as usize]);
+        }
+    }
+    Some(crate::DecodedImage {
+        width,
+        height,
+        rgba,
+    })
+}
+
+/// A texture coordinate of a skin's own 64 by 64 texture, moved to where
+/// the skin sits in the atlas.
+pub fn atlas_uv(skin: usize, [u, v]: [f32; 2]) -> [f32; 2] {
+    [
+        ((skin % SKIN_COLUMNS) as f32 + u) / SKIN_COLUMNS as f32,
+        ((skin / SKIN_COLUMNS) as f32 + v) / SKIN_ROWS as f32,
+    ]
 }
 
 /// Where and how a posed player model is placed.
@@ -70,6 +134,8 @@ pub struct Placement {
     pub crouching: bool,
     /// Packed block and sky light at the player.
     pub light: i32,
+    /// The skin the model is drawn in (`skin_index`).
+    pub skin: usize,
 }
 
 /// The pose the model is drawn from: `LivingEntityRenderer.submit` for a
@@ -123,7 +189,7 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
             let corner = corners[index];
             vertices.push(Vertex {
                 position: corner.position,
-                uv: corner.uv,
+                uv: atlas_uv(placement.skin, corner.uv),
                 shade: 1.0,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
                 light,
@@ -147,6 +213,7 @@ pub fn gui_player_vertices(
     size: f32,
     offset_y: f32,
     mouse: (f32, f32),
+    skin: usize,
 ) -> Vec<crate::gui::items::GuiItemVertex> {
     let centre_x = (area.0 + area.2) as f32 / 2.0;
     let centre_y = (area.1 + area.3) as f32 / 2.0;
@@ -167,6 +234,7 @@ pub fn gui_player_vertices(
         visually_swimming: false,
         crouching: state.crouching,
         light: 0,
+        skin,
     });
     // `rotation`: a half turn about z, then the pitch about x; the model is
     // lifted so its middle sits in the box.
@@ -193,7 +261,7 @@ pub fn gui_player_vertices(
             let [x, y, z] = turn(corner.position);
             vertices.push(crate::gui::items::GuiItemVertex {
                 position: [centre_x + size * x, centre_y + size * (y + lift), -size * z],
-                uv: corner.uv,
+                uv: atlas_uv(skin, corner.uv),
                 colour: [brightness, brightness, brightness, 1.0],
             });
         }
@@ -226,6 +294,8 @@ pub struct HandView {
     /// How far through a swing the hand is.
     pub attack: f32,
     pub light: i32,
+    /// The skin the arm is drawn in (`skin_index`).
+    pub skin: usize,
 }
 
 /// The pose both hands start from: `GameRenderer.bobView`, then the hands'
@@ -390,7 +460,7 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
             let corner = corners[index];
             vertices.push(Vertex {
                 position: corner.position,
-                uv: corner.uv,
+                uv: atlas_uv(view.skin, corner.uv),
                 shade: 1.0,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
                 light,
@@ -419,6 +489,29 @@ mod tests {
     }
 
     #[test]
+    fn the_skins_atlas_holds_each_skin_where_its_coordinates_point() {
+        let skins: Vec<crate::DecodedImage> = (0..DEFAULT_SKINS.len())
+            .map(|index| crate::DecodedImage {
+                width: SKIN_SIZE,
+                height: SKIN_SIZE,
+                rgba: vec![index as u8; (SKIN_SIZE * SKIN_SIZE * 4) as usize],
+            })
+            .collect();
+        let atlas = skin_atlas(&skins).unwrap();
+        assert_eq!((atlas.width, atlas.height), (384, 192));
+        // A point inside each skin's own texture lands on that skin's texels.
+        for index in 0..DEFAULT_SKINS.len() {
+            let [u, v] = atlas_uv(index, [0.5, 0.25]);
+            let (x, y) = ((u * 384.0) as usize, (v * 192.0) as usize);
+            assert_eq!(atlas.rgba[(y * 384 + x) * 4], index as u8, "skin {index}");
+        }
+        // A skin of another size is refused.
+        let mut wrong = skins;
+        wrong[3].width = 32;
+        assert!(skin_atlas(&wrong).is_none());
+    }
+
+    #[test]
     fn a_standing_player_reaches_from_the_ground_to_its_head() {
         let mut model = PlayerModel::new(false);
         model.setup_anim(&Default::default());
@@ -433,6 +526,7 @@ mod tests {
                 visually_swimming: false,
                 crouching: false,
                 light: 0,
+                skin: 0,
             },
         );
         let lowest = vertices

@@ -26,6 +26,8 @@ pub struct FrameView {
     pub partial: f64,
     pub light: i32,
     pub origin: [i32; 3],
+    /// The skin the local player wears (`player_renderer::skin_index`).
+    pub skin: usize,
 }
 
 impl FrameView {
@@ -94,6 +96,7 @@ pub fn hands(
         inverse_arm_height: main_height,
         attack: player.attack_anim(partial),
         light: view.light,
+        skin: view.skin,
     };
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);
@@ -232,6 +235,90 @@ pub fn player_model(player: &LocalPlayer, model: &mut PlayerModel, view: FrameVi
             visually_swimming: pose.pose == voxel_world::ClientEntityPose::Swimming,
             crouching: pose.crouching,
             light: view.light,
+            skin: view.skin,
         },
     )
+}
+
+/// The player models the frame draws for the players the server added: one
+/// wide-armed and one slim, which each remote player is posed in turn.
+pub struct RemoteModels {
+    wide: PlayerModel,
+    slim: PlayerModel,
+}
+
+impl RemoteModels {
+    pub fn new() -> Self {
+        Self {
+            wide: PlayerModel::new(false),
+            slim: PlayerModel::new(true),
+        }
+    }
+}
+
+impl Default for RemoteModels {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// `LivingEntityRenderer` for the other players: each in its default skin
+/// (a profile's own would be downloaded), posed from where it is between
+/// two ticks, as the first-person renderer is for the local player's own
+/// model.
+pub fn remote_players(
+    session: &PlaySession,
+    models: &mut RemoteModels,
+    view: FrameView,
+) -> Vec<Vertex> {
+    let world = session.world();
+    let partial = view.partial as f32;
+    let mut vertices = Vec::new();
+    for entity in world.entities() {
+        // A player who only watches, or who is invisible, is not drawn.
+        if !entity.is_player() || entity.is_spectator() || entity.is_invisible() {
+            continue;
+        }
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        let skin = voxel_render::player_renderer::skin_index(entity.uuid);
+        let model = if voxel_render::player_renderer::skin_at(skin).slim {
+            &mut models.slim
+        } else {
+            &mut models.wide
+        };
+        let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
+        model.setup_anim(&PlayerRenderState {
+            head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+            age_in_ticks: entity.tick_count() as f32 + partial,
+            swim_amount: snapshot.swim_amount,
+            crouching,
+            ..Default::default()
+        });
+        let (x, y, z) = snapshot.position;
+        let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
+        vertices.extend(voxel_render::player_renderer::player_vertices(
+            model,
+            &Placement {
+                feet: [
+                    (x - f64::from(view.origin[0])) as f32,
+                    (y - f64::from(view.origin[1])) as f32,
+                    (z - f64::from(view.origin[2])) as f32,
+                ],
+                body_rot: snapshot.body_yaw,
+                x_rot: snapshot.pitch,
+                swim_amount: snapshot.swim_amount,
+                in_water: false,
+                visually_swimming: snapshot.pose == voxel_world::ClientEntityPose::Swimming,
+                crouching,
+                light: packed_light(world, eye),
+                skin,
+            },
+        ));
+    }
+    vertices
 }

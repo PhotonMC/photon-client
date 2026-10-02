@@ -26,4 +26,7 @@ Zırh/eşya/pelerin katmanları, ağdan deri, sahibinin kendi gölgesi.
 `docs/remaining-work.md` M4 madde 2–3.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-world/living.rs` (`WalkAnimation` = `WalkAnimationState`, yüzme geçişi, gövde dönüşü `tickHeadTurn`; yerel oyuncu ve uzak oyuncu aynı kodu kullanır), `ClientEntity` oyuncu pozu (`tick_player_pose`), `EntitySnapshot` genişledi (gövde yaw'ı, yürüme konumu/hızı, yüzme, poz), `walk_animation` oracle'ı gerçek `WalkAnimationState`'e karşı, varsayılan derilerin tek atlası (`skin_atlas`, `atlas_uv`: 18 deri 6×3 hücre), `overlays::remote_players`, yerel oyuncu/el/envanter aynı atlastan.
+- Canlı: iki istemciyle (`Tester9` + `Fresh12`) uzak oyuncu Steve derisiyle platformda görünüyor (ekran görüntüsü okundu).
+- Sapma: ad etiketi yok (T22b); kol sallama (`Animate`) yok; suda eğilme için `in_water` hep false (yüzme pozu kuyruğa tek başına yetmez); profil derisi yok (varsayılan deri); kamera dışı/frustum ayıklama yok; ışık göz konumundan tek örnek.
+- Açık: T22b, `Animate` paketi, uzak oyuncu zırhı/eşyası.

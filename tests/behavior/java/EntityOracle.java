@@ -65,8 +65,46 @@ public final class EntityOracle {
         }
     }
 
+    /** The reference's own limb animation state, stepped and read between ticks. */
+    private static JsonObject walkAnimation(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.world.entity.WalkAnimationState();
+            var steps = new JsonArray();
+            for (var stepElement : row.get("steps").getAsJsonArray()) {
+                var step = stepElement.getAsJsonObject();
+                if (step.get("stop").getAsBoolean()) {
+                    state.stop();
+                } else {
+                    state.update(Oracle.f32(step, "target"), Oracle.f32(step, "factor"), Oracle.f32(step, "scale"));
+                }
+                var out = new JsonObject();
+                out.addProperty("speed", Oracle.bits(state.speed()));
+                out.addProperty("position", Oracle.bits(state.position()));
+                var partials = new JsonArray();
+                for (var partialElement : row.get("partials").getAsJsonArray()) {
+                    float partial = Float.intBitsToFloat(Integer.parseUnsignedInt(partialElement.getAsString(), 16));
+                    partials.add(Oracle.bits(state.position(partial)) + Oracle.bits(state.speed(partial)));
+                }
+                out.add("partials", partials);
+                steps.add(out);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("steps", steps);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     public static JsonObject run(final JsonObject request) throws Exception {
         String operation = request.get("operation").getAsString();
+        if (operation.equals("walk_animation")) {
+            return walkAnimation(request);
+        }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);
         }

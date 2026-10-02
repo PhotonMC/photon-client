@@ -31,6 +31,7 @@ mod dimension;
 mod entity;
 mod java_math;
 pub mod light;
+pub mod living;
 mod metadata;
 mod paletted;
 mod player;
@@ -1534,6 +1535,7 @@ impl ClientWorld {
             entity.tick_head_rotation();
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
+                entity.tick_player_pose();
             }
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
@@ -1794,6 +1796,11 @@ impl ClientWorld {
             yaw,
             pitch,
             head_yaw,
+            body_yaw: entity.interpolated_body_y_rotation(partial_tick),
+            walk_position: entity.walk_animation().position_at(partial_tick),
+            walk_speed: entity.walk_animation().speed_at(partial_tick),
+            swim_amount: entity.swim_amount(partial_tick),
+            pose: entity.pose(),
         })
     }
 
@@ -2656,6 +2663,9 @@ impl ClientWorld {
                 on_ground: false,
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
+                walk: living::WalkAnimation::default(),
+                swim_amount_bits: 0.0_f32.to_bits(),
+                old_swim_amount_bits: 0.0_f32.to_bits(),
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,

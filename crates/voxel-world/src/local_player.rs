@@ -621,9 +621,7 @@ pub struct LocalPlayer {
     y_head_rot: f32,
     y_head_rot_old: f32,
     /// `WalkAnimationState`: how fast and how far the limbs have swung.
-    walk_speed_old: f32,
-    walk_speed: f32,
-    walk_position: f32,
+    walk: crate::living::WalkAnimation,
     /// The first-person hand's lagging view: it chases the rotation by
     /// half the gap each tick.
     x_bob: f32,
@@ -732,9 +730,7 @@ impl LocalPlayer {
             y_body_rot_old: y_rot,
             y_head_rot: y_rot,
             y_head_rot_old: y_rot,
-            walk_speed_old: 0.0,
-            walk_speed: 0.0,
-            walk_position: 0.0,
+            walk: crate::living::WalkAnimation::default(),
             x_bob: 0.0,
             y_bob: 0.0,
             x_bob_old: 0.0,
@@ -1048,8 +1044,8 @@ impl LocalPlayer {
             body_rot: rot_lerp(partial_tick, self.y_body_rot_old, self.y_body_rot),
             head_rot: rot_lerp(partial_tick, self.y_head_rot_old, self.y_head_rot),
             x_rot: self.x_rot,
-            walk_position: self.walk_position - self.walk_speed * (1.0 - partial_tick),
-            walk_speed: lerp(self.walk_speed_old, self.walk_speed).min(1.0),
+            walk_position: self.walk.position_at(partial_tick),
+            walk_speed: self.walk.speed_at(partial_tick),
             swim_amount: lerp(self.swim_amount_old, self.swim_amount),
             crouching: self.pose == ClientEntityPose::Crouching,
             pose: self.pose,
@@ -1146,11 +1142,10 @@ impl LocalPlayer {
         }
         // LivingEntity.tick: the swimming pose eases in or out.
         self.swim_amount_old = self.swim_amount;
-        if self.pose == ClientEntityPose::Swimming {
-            self.swim_amount = (self.swim_amount + 0.09).min(1.0);
-        } else {
-            self.swim_amount = (self.swim_amount - 0.09).max(0.0);
-        }
+        self.swim_amount = crate::living::ease_swim_amount(
+            self.swim_amount,
+            self.pose == ClientEntityPose::Swimming,
+        );
         self.local_ai_step(level)?;
         self.turn_body();
         Ok(())
@@ -1160,41 +1155,14 @@ impl LocalPlayer {
     /// player walks, or where it looks, and never more than 50 degrees from
     /// the head.
     fn turn_body(&mut self) {
-        use voxel_core::math::wrap_degrees_f32;
-        let xd = self.position.x - self.old_position.x;
-        let zd = self.position.z - self.old_position.z;
-        let side_dist = (xd * xd + zd * zd) as f32;
-        let mut target = self.y_body_rot;
-        if side_dist > 0.002_500_000_2 {
-            let walk_direction =
-                voxel_core::math::mth_atan2(zd, xd) as f32 * (180.0 / std::f32::consts::PI) - 90.0;
-            let difference = (wrap_degrees_f32(self.y_rot) - walk_direction).abs();
-            target = if 95.0 < difference && difference < 265.0 {
-                walk_direction - 180.0
-            } else {
-                walk_direction
-            };
-        }
-        // `tickHeadTurn`.
-        self.y_body_rot += wrap_degrees_f32(target - self.y_body_rot) * 0.3;
-        let head_difference = wrap_degrees_f32(self.y_rot - self.y_body_rot);
-        let max_head_rotation = 50.0;
-        if head_difference.abs() > max_head_rotation {
-            let sign = if head_difference > 0.0 { 1.0 } else { -1.0 };
-            self.y_body_rot += head_difference - sign * max_head_rotation;
-        }
-        while self.y_body_rot - self.y_body_rot_old < -180.0 {
-            self.y_body_rot_old -= 360.0;
-        }
-        while self.y_body_rot - self.y_body_rot_old >= 180.0 {
-            self.y_body_rot_old += 360.0;
-        }
-        while self.y_head_rot - self.y_head_rot_old < -180.0 {
-            self.y_head_rot_old -= 360.0;
-        }
-        while self.y_head_rot - self.y_head_rot_old >= 180.0 {
-            self.y_head_rot_old += 360.0;
-        }
+        crate::living::turn_body(
+            (&mut self.y_body_rot, &mut self.y_body_rot_old),
+            (self.y_rot, self.y_head_rot, &mut self.y_head_rot_old),
+            (
+                self.position.x - self.old_position.x,
+                self.position.z - self.old_position.z,
+            ),
+        );
     }
 
     #[expect(
@@ -1411,15 +1379,9 @@ impl LocalPlayer {
         self.apply_effects_from_blocks(level)?;
         // `calculateEntityAnimation`: the limbs swing with the distance
         // moved across the ground this tick.
-        let distance = {
-            let x = self.position.x - self.old_position.x;
-            let z = self.position.z - self.old_position.z;
-            (x * x + z * z).sqrt() as f32
-        };
-        let target_speed = (distance * 4.0).min(1.0);
-        self.walk_speed_old = self.walk_speed;
-        self.walk_speed += (target_speed - self.walk_speed) * 0.4;
-        self.walk_position += self.walk_speed;
+        let x = self.position.x - self.old_position.x;
+        let z = self.position.z - self.old_position.z;
+        self.walk.follow((x * x + z * z).sqrt());
         Ok(())
     }
 

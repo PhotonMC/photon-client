@@ -6834,3 +6834,57 @@ fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
     assert_eq!(world.loaded_chunk_count(), 1);
     assert_eq!(world.loaded_entity_count(), 0);
 }
+
+#[test]
+fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks() {
+    let mut world = ClientWorld::default();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: 9,
+        uuid: Uuid::new(1, 2),
+        type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+        x: 0.5,
+        y: 0.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        // Facing west, the body and the head.
+        rotation: (90.0, 0.0, 90.0),
+        data: 0,
+    }));
+    let snapshot = |world: &ClientWorld| world.entity_snapshot(9, 1.0).unwrap();
+    assert_eq!(snapshot(&world).walk_speed, 0.0);
+    assert_eq!(snapshot(&world).body_yaw, 90.0);
+    // Standing still moves nothing.
+    world.tick_entities();
+    assert_eq!(snapshot(&world).walk_speed, 0.0);
+    // Walking south (towards +z), 0.2158 a tick, as the server steps it.
+    for _ in 0..12 {
+        assert!(world.apply_entity_move(EntityMoveInput {
+            entity_id: 9,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 884,
+            has_position: true,
+            y_rot: None,
+            x_rot: None,
+        }));
+        world.tick_entities();
+    }
+    let walking = snapshot(&world);
+    assert!(walking.walk_speed > 0.5, "{walking:?}");
+    assert!(walking.walk_position > 3.0, "{walking:?}");
+    // The body went round towards the way it walks (yaw 0), but the head
+    // (looking west) held it within fifty degrees.
+    assert!(
+        walking.body_yaw < 90.0 && walking.body_yaw >= 40.0,
+        "{walking:?}"
+    );
+    // Between two ticks the limbs are read part of the way.
+    let mid = world.entity_snapshot(9, 0.5).unwrap();
+    assert!(mid.walk_position < walking.walk_position);
+    assert!(mid.walk_position > walking.walk_position - walking.walk_speed);
+    // It stops, and the swing dies away.
+    for _ in 0..30 {
+        world.tick_entities();
+    }
+    assert!(snapshot(&world).walk_speed < 0.001);
+}
