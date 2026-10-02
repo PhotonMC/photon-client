@@ -18235,19 +18235,13 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
         let name = string(row, "entity")?;
         // The client's own player, whose chunk decides whether a death ticks
         // (the scene's simulation distance is eight chunks).
-        world.set_local_player_id(900);
-        world.apply_local_player_position(
-            (
-                if row.get("player_x").is_some() {
-                    bits64(row, "player_x")?
-                } else {
-                    6.5
-                },
-                64.0,
-                0.5,
-            ),
-            (0.0, 0.0, 0.0),
-            (0.0, 0.0),
+        world.set_local_player_chunk(
+            if row.get("player_x").is_some() {
+                bits64(row, "player_x")?
+            } else {
+                6.5
+            },
+            0.5,
         );
         world.set_server_simulation_distance(8);
         if !world.apply_entity(EntityInput {

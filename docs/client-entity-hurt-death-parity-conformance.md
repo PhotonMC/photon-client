@@ -50,5 +50,10 @@ Kırmızı örtünün rengi için oracle yok (aşağıda).
 - Oyuncu için yatış aynı işlevi kullanır; oyuncu pozu için ayrı oracle yok
   (oyuncu `Pig` gibi kurulamaz). Yerel oyuncunun kendi ölümü ekran olarak var.
 - Ölümde `die()`'ın istemci yan etkileri (duruş `DYING`, ses, parçacık) yok.
+- `shouldTickDeath` oyuncunun chunk'ına bakar; canlı oturumda dünyadaki
+  `local_player` kaydının konumu güncellenmez (yürütmeyi `PlaySession.player`
+  yapar), bu yüzden oturum her tikte `set_local_player_chunk` ile gerçek
+  konumu verir. Başlangıçta bu bilinmez ve ölüm tikler. Aynı bayat kayıt başka
+  yerlerde okunuyorsa (`entity_position` yardımcıları) aynı sorunu taşır.
 - Ölü entity'nin `alive` bayrağı sağlıktan türetilir (`isAlive`); sağlık
   `SetEntityData`'dan gelir. Sağlığı hiç gönderilmemiş entity canlı sayılır.

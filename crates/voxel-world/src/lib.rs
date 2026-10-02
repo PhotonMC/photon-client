@@ -93,6 +93,9 @@ pub struct ClientWorld {
     world_border: ClientWorldBorder,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
     server_simulation_distance: i32,
+    /// The chunk the client's own player stands in, as the session last said
+    /// (`Minecraft.player.chunkPosition()`); unknown until it does.
+    local_chunk: Option<(i32, i32)>,
     game_time: u64,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<i32, DestroyProgress>,
@@ -141,6 +144,7 @@ impl ClientWorld {
             local_player: None,
             world_border: ClientWorldBorder::default(),
             server_simulation_distance: 3,
+            local_chunk: None,
             game_time: 0,
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
@@ -1862,16 +1866,22 @@ impl ClientWorld {
         self.server_simulation_distance = chunks;
     }
 
+    /// Where the client's own player stands, for the checks that measure from
+    /// its chunk. The session moves the player, so it says where each tick.
+    pub fn set_local_player_chunk(&mut self, x: f64, z: f64) {
+        let chunk = |value: f64| (value.floor() as i32) >> 4;
+        self.local_chunk = Some((chunk(x), chunk(z)));
+    }
+
     /// `ClientLevel.shouldTickDeath`: a dying entity falls over only within the
     /// server's simulation distance of the local player's chunk.
     fn should_tick_death(&self, entity: &ClientEntity) -> bool {
-        let Some(player) = self.local_player.as_ref() else {
+        let Some((player_x, player_z)) = self.local_chunk else {
             return true;
         };
-        let (px, _, pz) = player.position();
         let (x, _, z) = entity.position();
         let chunk = |value: f64| (value.floor() as i32) >> 4;
-        voxel_core::math::chessboard_distance(chunk(x), chunk(z), chunk(px), chunk(pz))
+        voxel_core::math::chessboard_distance(chunk(x), chunk(z), player_x, player_z)
             <= self.server_simulation_distance
     }
 

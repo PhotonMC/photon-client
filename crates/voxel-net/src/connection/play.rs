@@ -1215,6 +1215,12 @@ impl PlaySession {
             }
         }
         // `ClientLevel.tickEntities`: the entities the server added move on.
+        if let Some(player) = self.player.as_ref() {
+            let position = player.position();
+            self.trace
+                .world
+                .set_local_player_chunk(position.x, position.z);
+        }
         self.trace.world.tick_entities();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.game_time + 1);
