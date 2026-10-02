@@ -59,6 +59,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T24b](T24b-mob-cesitleri.md) | Pig/cow çeşitleri ve entity metadata okuyucusu | M | T24 | açık |
 | [T25](T25-yerdeki-esya.md) | Yerdeki eşya | M | T24 | bitti |
 | [T25b](T25b-xp-kuresi.md) | XP küresi | S | T25 | açık |
+| [T25c](T25c-esya-fizigi.md) | Yerdeki eşyanın istemci fiziği (düşme, sekme) | M | T25 | açık |
 | [T26](T26-entity-hedefleme.md) | Entity hedefleme, `Attack`/`Interact` | M | T21 | açık |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm, binekler, mermiler, çerçeve/tablo) | S | T24 | açık |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl | S | T24 | açık |
