@@ -18,6 +18,7 @@ use voxel_core::{
     shape::{BooleanOp, Shapes, VoxelShape},
 };
 
+pub mod animal;
 pub mod block;
 mod block_entity;
 pub mod block_rules;
@@ -1569,6 +1570,7 @@ impl ClientWorld {
             if let Some(kind) = living {
                 entity.tick_hurt_and_death(tick_death);
                 entity.tick_living_pose(kind);
+                entity.tick_animal();
             }
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
@@ -1932,6 +1934,21 @@ impl ClientWorld {
 
     /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
     /// player: it dies (health spent), the sound aside.
+    /// `handleEntityEvent` for the events that are not a death: a sheep is
+    /// told to eat.
+    pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if event == animal::SHEEP_EAT_EVENT
+            && voxel_data::entity_type::name(entity.type_id) == Some("minecraft:sheep")
+        {
+            entity.living.animal.eat_tick = animal::SHEEP_EAT_TICKS;
+            return true;
+        }
+        false
+    }
+
     pub fn apply_entity_death_event(&mut self, entity_id: i32) -> bool {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
@@ -3197,6 +3214,9 @@ impl ClientWorld {
         }
         if let Some(left) = avatar_main_arm_is_left(metadata) {
             entity.living.main_arm_left = left;
+        }
+        if let Some(wool) = sheep_wool_from_metadata(entity.type_id, metadata) {
+            entity.living.animal.wool = wool;
         }
         if let Some(shared_flags) = shared_flags {
             entity.shared_flags = shared_flags;

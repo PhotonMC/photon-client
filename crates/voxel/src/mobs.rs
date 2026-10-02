@@ -7,8 +7,8 @@ use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState, mob_vertices,
-    placement_pose,
+    ChickenState, MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState,
+    mob_vertices, placement_pose,
 };
 use voxel_render::player_model::{Arm, ArmPose, PlayerRenderState};
 use voxel_render::scene::Vertex;
@@ -23,19 +23,37 @@ struct MobKind {
     type_name: &'static str,
     variant_kind: &'static str,
     registry: &'static str,
+    pose: Pose,
+}
+
+/// Which model class poses a mob of a variant kind.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Pose {
+    /// `QuadrupedModel`.
+    Quadruped,
+    /// `ChickenModel`.
+    Chicken,
 }
 
 /// The mobs drawn so far.
-const KINDS: [MobKind; 2] = [
+const KINDS: [MobKind; 3] = [
     MobKind {
         type_name: "minecraft:pig",
         variant_kind: "pig",
         registry: "minecraft:pig_variant",
+        pose: Pose::Quadruped,
     },
     MobKind {
         type_name: "minecraft:cow",
         variant_kind: "cow",
         registry: "minecraft:cow_variant",
+        pose: Pose::Quadruped,
+    },
+    MobKind {
+        type_name: "minecraft:chicken",
+        variant_kind: "chicken",
+        registry: "minecraft:chicken_variant",
+        pose: Pose::Chicken,
     },
 ];
 
@@ -213,6 +231,9 @@ const DEFAULT_VARIANT: &str = "minecraft:temperate";
 /// `CowRenderer.models`): a pig's baby has one model whatever the family.
 fn layer_name(kind: &MobKind, model: &str, baby: bool) -> String {
     match (kind.variant_kind, model, baby) {
+        ("chicken", _, true) => "minecraft:chicken_baby#main".to_owned(),
+        ("chicken", "cold", false) => "minecraft:cold_chicken#main".to_owned(),
+        ("chicken", _, false) => "minecraft:chicken#main".to_owned(),
         ("pig", _, true) => "minecraft:pig_baby#main".to_owned(),
         ("pig", "cold", false) => "minecraft:cold_pig#main".to_owned(),
         ("pig", _, false) => "minecraft:pig#main".to_owned(),
@@ -250,7 +271,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
                 .flat_map(|outer| [outer[2], outer[3]]),
         )
     });
-    variants.chain(zombies)
+    variants.chain(zombies).chain(crate::sheep::textures())
 }
 
 /// The baked models of the mobs, which are posed anew for each one drawn.
@@ -275,7 +296,7 @@ impl MobModels {
         }
     }
 
-    fn model(&mut self, layer: &str) -> Option<&mut MobModel> {
+    pub(crate) fn model(&mut self, layer: &str) -> Option<&mut MobModel> {
         if !self.models.contains_key(layer) {
             let baked = MobModel::bake(voxel_data::entity_model::layer(layer)?);
             self.models.insert(layer.to_owned(), baked);
@@ -287,6 +308,29 @@ impl MobModels {
 impl Default for MobModels {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Where a mob is drawn and how it is lit, from where it is between two ticks.
+pub(crate) fn placement(
+    world: &voxel_world::ClientWorld,
+    snapshot: &voxel_world::EntitySnapshot,
+    view: FrameView,
+    scale: f32,
+) -> MobPlacement {
+    let (x, y, z) = snapshot.position;
+    MobPlacement {
+        feet: [
+            (x - f64::from(view.origin[0])) as f32,
+            (y - f64::from(view.origin[1])) as f32,
+            (z - f64::from(view.origin[2])) as f32,
+        ],
+        body_rot: snapshot.body_yaw,
+        scale,
+        light: packed_light(world, Vec3::new(x, y + 0.5, z)),
+        death_time: snapshot.death_time,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+        red_overlay: snapshot.red_overlay,
     }
 }
 
@@ -334,32 +378,34 @@ pub fn remote_mobs(
         let Some(model) = models.model(&layer) else {
             continue;
         };
-        model.setup_quadruped(&QuadrupedState {
+        let look = QuadrupedState {
             head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
             x_rot: snapshot.pitch,
             walk_position: snapshot.walk_position,
             walk_speed: snapshot.walk_speed,
-        });
-        let (x, y, z) = snapshot.position;
+        };
+        match kind.pose {
+            Pose::Quadruped => model.setup_quadruped(&look),
+            Pose::Chicken => {
+                let (flap, flap_speed) = entity.chicken_flap(partial);
+                model.setup_chicken(&ChickenState {
+                    head_y_rot: look.head_y_rot,
+                    x_rot: look.x_rot,
+                    walk_position: look.walk_position,
+                    walk_speed: look.walk_speed,
+                    flap,
+                    flap_speed,
+                });
+            }
+        }
         vertices.extend(mob_vertices(
             model,
-            &MobPlacement {
-                feet: [
-                    (x - f64::from(view.origin[0])) as f32,
-                    (y - f64::from(view.origin[1])) as f32,
-                    (z - f64::from(view.origin[2])) as f32,
-                ],
-                body_rot: snapshot.body_yaw,
-                scale: 1.0,
-                light: packed_light(world, Vec3::new(x, y + 0.5, z)),
-                death_time: snapshot.death_time,
-                flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
-                red_overlay: snapshot.red_overlay,
-            },
+            &placement(world, &snapshot, view, 1.0),
             rect,
         ));
     }
     vertices.extend(remote_humanoids(session, models, textures, (view, held)));
+    vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
     vertices
 }
 
@@ -387,20 +433,7 @@ fn remote_humanoids(
         };
         let (humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
         let aggressive = entity.is_aggressive();
-        let (x, y, z) = snapshot.position;
-        let placement = MobPlacement {
-            feet: [
-                (x - f64::from(view.origin[0])) as f32,
-                (y - f64::from(view.origin[1])) as f32,
-                (z - f64::from(view.origin[2])) as f32,
-            ],
-            body_rot: snapshot.body_yaw,
-            scale: kind.scale,
-            light: packed_light(world, Vec3::new(x, y + 0.5, z)),
-            death_time: snapshot.death_time,
-            flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
-            red_overlay: snapshot.red_overlay,
-        };
+        let placement = placement(world, &snapshot, view, kind.scale);
         let mut first = true;
         for (layer, texture) in model_layers(kind, baby).into_iter().flatten() {
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {

@@ -135,6 +135,7 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
     let (data_id, serializer) = match voxel_data::entity_type::name(type_id)? {
         "minecraft:pig" => (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID),
         "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
+        "minecraft:chicken" => (CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID),
         _ => return None,
     };
     let (found, mut value) = find_metadata_field(metadata, data_id)?;
@@ -171,6 +172,14 @@ pub(crate) fn avatar_main_arm_is_left(metadata: &[u8]) -> Option<bool> {
         return None;
     }
     Some(id == 0)
+}
+
+/// A sheep's wool byte (`Sheep.DATA_WOOL_ID`), when the data holds it.
+pub(crate) fn sheep_wool_from_metadata(type_id: i32, metadata: &[u8]) -> Option<u8> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:sheep" {
+        return None;
+    }
+    metadata_byte_value(metadata, SHEEP_WOOL_DATA_ID)
 }
 
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).

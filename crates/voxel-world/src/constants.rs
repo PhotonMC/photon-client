@@ -150,6 +150,11 @@ pub const PIGLIN_DANCING_DATA_ID: u8 = 19;
 /// carries it (`HumanoidArm`, an id: left is zero).
 pub const AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const HUMANOID_ARM_SERIALIZER_ID: i32 = 42;
+/// Where a sheep's wool byte and a chicken's variant sit among their data,
+/// and the serializer that carries the chicken's.
+pub const SHEEP_WOOL_DATA_ID: u8 = 18;
+pub const CHICKEN_VARIANT_DATA_ID: u8 = 18;
+pub const CHICKEN_VARIANT_SERIALIZER_ID: i32 = 30;
 /// Where an experience orb's value sits among its data (an int).
 pub const EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub(crate) const ENTITY_DATA_SERIALIZER_BYTE_ID: i32 = 0;

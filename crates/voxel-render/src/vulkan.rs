@@ -147,6 +147,7 @@ layout(location = 2) out vec3 out_back;
 layout(location = 3) out vec3 out_light;
 layout(location = 4) out vec2 out_fog;
 layout(location = 5) out float out_hurt;
+layout(location = 6) out vec3 out_colour;
 // The level's two diffuse lights.
 const vec3 LIGHT0 = normalize(vec3(0.2, 1.0, -0.7));
 const vec3 LIGHT1 = normalize(vec3(-0.2, 1.0, 0.7));
@@ -161,8 +162,15 @@ void main() {
     out_front = vec3(mix_light(light));
     out_back = vec3(mix_light(-light));
     out_light = sample_lightmap(in_light);
-    // The vertex's shade says whether the hurt overlay is on.
+    // The vertex's shade says whether the hurt overlay is on, and the fourth
+    // component of its tint the colour its texel is multiplied by, as
+    // 0xRRGGBB (exact in a float), or zero for none.
     out_hurt = in_shade;
+    float packed_colour = in_tint.w;
+    out_colour = packed_colour == 0.0 ? vec3(1.0) : vec3(
+        mod(floor(packed_colour / 65536.0), 256.0),
+        mod(floor(packed_colour / 256.0), 256.0),
+        mod(packed_colour, 256.0)) / 255.0;
     vec3 offset = in_position - push.camera.xyz;
     out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
 }
@@ -181,6 +189,7 @@ layout(location = 2) in vec3 in_back;
 layout(location = 3) in vec3 in_light;
 layout(location = 4) in vec2 in_fog;
 layout(location = 5) in float in_hurt;
+layout(location = 6) in vec3 in_colour;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
@@ -194,7 +203,7 @@ float linear_fog(float distance, float start, float end) {
 void main() {
     vec4 colour = texture(skin, in_uv);
     if (colour.a < 0.1) { discard; }
-    colour.rgb *= gl_FrontFacing ? in_front : in_back;
+    colour.rgb *= in_colour * (gl_FrontFacing ? in_front : in_back);
     if (in_hurt > 0.5) {
         colour.rgb = mix(vec3(1.0, 0.0, 0.0), colour.rgb, 178.0 / 255.0);
     }

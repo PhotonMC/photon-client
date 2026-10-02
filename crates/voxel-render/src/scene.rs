@@ -10,6 +10,15 @@
 use crate::geometry::{Quadrant, default_face_uv, face_vertex_uv, face_vertices};
 use voxel_core::direction::Direction;
 
+/// How an entity's vertex carries the colour its texel is multiplied by
+/// (`submitModel`'s colour): in the fourth component of its tint (the first
+/// three are the face's normal), as `0xRRGGBB`, which a float holds exactly.
+/// Zero means no colour.
+pub fn entity_colour(rgb: u32) -> f32 {
+    debug_assert!(rgb <= 0x00FF_FFFF);
+    rgb as f32
+}
+
 /// One vertex as the shaders expect it.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]

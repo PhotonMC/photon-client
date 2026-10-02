@@ -9,3 +9,4 @@ pub mod entity_serializers;
 pub mod entity_types;
 pub mod entity_variants;
 pub mod item;
+pub mod sheep_colors;

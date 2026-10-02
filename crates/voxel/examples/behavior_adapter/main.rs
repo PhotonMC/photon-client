@@ -18969,6 +18969,114 @@ fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRende
     })
 }
 
+/// `sheep_model`: a sheep's models (the body, the undercoat, the wool) posed
+/// and drawn.
+fn sheep_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState, SheepState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_sheep(&SheepState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            head_eat_position_scale: bits("eat_position")?,
+            head_eat_angle_scale: bits("eat_angle")?,
+            age_scale: bits("age_scale")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `chicken_model`: a chicken's model posed with its flap and drawn.
+fn chicken_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{ChickenState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_chicken(&ChickenState {
+            head_y_rot: bits("head_y_rot")?,
+            x_rot: bits("x_rot")?,
+            walk_position: bits("walk_position")?,
+            walk_speed: bits("walk_speed")?,
+            flap: bits("flap")?,
+            flap_speed: bits("flap_speed")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `sheep_colors`: what a sheep's wool is multiplied by, for each dye and for
+/// a `jeb_` sheep at points of its cycle.
+fn sheep_colors_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::wool::{jeb_colour, wool_colour};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        // The reference answers a signed int with the alpha in its top byte.
+        let colour = if let Some(dye) = row["dye"].as_u64() {
+            wool_colour(dye as usize)
+        } else {
+            let text = row["tick"].as_str().ok_or("tick")?;
+            let tick = u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())?;
+            jeb_colour(tick)
+        };
+        out.push(json!({"label": row["label"], "color": (colour | 0xFF00_0000) as i32}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `sheep_eat`: how far a sheep's head is down and how it is tipped.
+fn sheep_eat_result(request: &Value) -> Result<Value, String> {
+    use voxel_world::animal::{head_eat_angle_scale, head_eat_position_scale};
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let tick = row["eat_tick"].as_i64().ok_or("eat_tick")? as i32;
+        let partial = bits("partial")?;
+        out.push(json!({
+            "label": row["label"],
+            "position": hex(head_eat_position_scale(tick, partial)),
+            "angle": hex(head_eat_angle_scale(tick, partial, bits("x_rot")?)),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `held_item_pose`: a humanoid model posed with its arms' poses, and the
 /// pose each held item is drawn from (`ItemInHandLayer`), before the item's
 /// own display transform.
@@ -19286,12 +19394,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
         "held_item_pose" => return held_item_pose_result(request),
+        "sheep_model" => return sheep_model_result(request),
+        "chicken_model" => return chicken_model_result(request),
+        "sheep_colors" => return sheep_colors_result(request),
+        "sheep_eat" => return sheep_eat_result(request),
         "zombie_model" => return zombie_model_result(request),
         "skeleton_model" => return skeleton_model_result(request),
         "piglin_model" => return piglin_model_result(request),
         "experience_orb" => return experience_orb_result(request),
         "entity_variants" => {
-            let rows: Vec<Value> = ["cow", "pig"]
+            let rows: Vec<Value> = ["chicken", "cow", "pig"]
                 .iter()
                 .flat_map(|kind| voxel_data::entity_type::variants(kind))
                 .map(|variant| {
@@ -19309,9 +19421,10 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         }
         "entity_variant_fields" => {
             use voxel_world::{
-                AVATAR_MAIN_HAND_DATA_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
-                EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
-                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
+                AVATAR_MAIN_HAND_DATA_ID, CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID,
+                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
+                HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
+                PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID, SHEEP_WOOL_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19320,6 +19433,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "piglin-baby", "data_id": PIGLIN_BABY_DATA_ID, "serializer": 8},
                 {"label": "piglin-dancing", "data_id": PIGLIN_DANCING_DATA_ID, "serializer": 8},
                 {"label": "avatar-main-hand", "data_id": AVATAR_MAIN_HAND_DATA_ID, "serializer": HUMANOID_ARM_SERIALIZER_ID},
+                {"label": "sheep-wool", "data_id": SHEEP_WOOL_DATA_ID, "serializer": 0},
+                {"label": "chicken", "data_id": CHICKEN_VARIANT_DATA_ID, "serializer": CHICKEN_VARIANT_SERIALIZER_ID},
             ]}));
         }
         "entity_data_serializers" => {

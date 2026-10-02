@@ -28,4 +28,7 @@ Eyer/binme (T44), yün kırpma etkileşimi sunucu tarafında.
 Aile içi çeşit/ölçek tablo satırı. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı (bölündü): koyun (gövde, alt yün, yün; boya, kırpılmış, bebek, yeme ölçekleri; `EntityEvent` 10 ve istemci tik) ve tavuk (üç model, flap tiki, çeşit verisi); entity köşe rengi (`Vertex.tint.w`, shader'da çarpım); `voxel-world/animal.rs`, `voxel-render/wool.rs`, `voxel/sheep.rs`; boya tablosu ve tavuk çeşitleri oracle'dan üretildi. Kayıt: `docs/client-sheep-chicken-parity-conformance.md`.
+- Oracle: `entity/sheep-model` 25, `chicken-model` 15, `sheep-colors` 27 (`jeb_` dahil), `sheep-eat` 31 satır (gerçek model sınıfları, `ColorLerper`, gerçek `Sheep`); veri indeksleri `variant-fields`'te.
+- Sapma: `jeb_` adı çizimde yok, tavuk flap tiki oracle'sız (kaynak + birim test), tavuk düşüş yavaşlaması yok.
+- Açık: keçi, tavşan, mantar ineği (T30b).

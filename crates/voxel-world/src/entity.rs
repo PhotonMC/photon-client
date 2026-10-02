@@ -164,6 +164,8 @@ pub(crate) struct EntityState {
     pub(crate) dancing: bool,
     /// An avatar's main arm is the left.
     pub(crate) main_arm_left: bool,
+    /// A sheep's wool and eating, a chicken's flap.
+    pub(crate) animal: crate::animal::AnimalState,
 }
 
 /// `EquipmentSlot`, in the order the wire counts them.
@@ -1746,6 +1748,41 @@ impl ClientEntity {
             self.living.main_arm_left
         } else {
             self.is_left_handed()
+        }
+    }
+
+    /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).
+    pub fn sheep_dye_id(&self) -> u8 {
+        self.living.animal.wool & 15
+    }
+
+    /// `Sheep.isSheared`.
+    pub fn is_sheared(&self) -> bool {
+        self.living.animal.wool & 16 != 0
+    }
+
+    /// `Sheep.getHeadEatPositionScale` and `getHeadEatAngleScale` at a point
+    /// between two ticks, with the pitch the sheep is drawn at, in degrees.
+    pub fn sheep_head_eat_scales(&self, partial: f32, pitch: f32) -> (f32, f32) {
+        let tick = self.living.animal.eat_tick;
+        (
+            crate::animal::head_eat_position_scale(tick, partial),
+            crate::animal::head_eat_angle_scale(tick, partial, pitch),
+        )
+    }
+
+    /// A chicken's `flap` and `flapSpeed` between two ticks.
+    pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
+        let animal = &self.living.animal;
+        (animal.flap_at(partial), animal.flap_speed_at(partial))
+    }
+
+    /// What a sheep or a chicken does of its own each tick (`aiStep`).
+    pub(crate) fn tick_animal(&mut self) {
+        match voxel_data::entity_type::name(self.type_id) {
+            Some("minecraft:sheep") => self.living.animal.tick_sheep(),
+            Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
+            _ => {}
         }
     }
 

@@ -14343,6 +14343,10 @@ def entity_cases():
     yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
     yield from entity_held_item_cases()
+    yield from entity_sheep_cases()
+    yield from entity_chicken_cases()
+    yield from entity_sheep_colour_cases()
+    yield from entity_sheep_eat_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14597,6 +14601,102 @@ def entity_held_item_cases():
         "case_id": "entity/held-item-pose",
         "family": "entity",
         "operation": "held_item_pose",
+        "rows": rows,
+    }
+
+
+def entity_sheep_cases():
+    """A sheep's models from the layer table (the body, the undercoat and the
+    wool, grown and baby), posed by the reference's `SheepModel`,
+    `BabySheepModel` and `SheepFurModel` `setupAnim`: standing, looking,
+    walking, with the head down and tipped while eating."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             eat_position=0.0, eat_angle=None, age_scale=1.0):
+        # Not eating, the angle is the pitch.
+        angle = x_rot * 0.017453292 if eat_angle is None else eat_angle
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "eat_position": float_bits(eat_position), "eat_angle": float_bits(angle),
+                "age_scale": float_bits(age_scale)}
+
+    rows = []
+    for layer, scale in (("minecraft:sheep#main", 1.0), ("minecraft:sheep#wool", 1.0),
+                         ("minecraft:sheep#wool_undercoat", 1.0), ("minecraft:sheep_baby#main", 0.5),
+                         ("minecraft:sheep_baby#wool", 0.5)):
+        rows += [
+            pose("standing", layer, age_scale=scale),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0, age_scale=scale),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age_scale=scale),
+            pose("eating-down", layer, eat_position=1.0, eat_angle=0.62831855, age_scale=scale),
+            pose("eating-rising", layer, eat_position=0.375, eat_angle=0.5, x_rot=20.0,
+                 walk_position=2.0, walk_speed=0.2, age_scale=scale),
+        ]
+    yield {
+        "case_id": "entity/sheep-model",
+        "family": "entity",
+        "operation": "sheep_model",
+        "rows": rows,
+    }
+
+
+def entity_chicken_cases():
+    """A chicken's models from the layer table (grown, cold and baby), posed by
+    the reference's `ChickenModel.setupAnim` with the wings' flap, drawn."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             flap=0.0, flap_speed=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "flap": float_bits(flap), "flap_speed": float_bits(flap_speed)}
+
+    rows = []
+    for layer in ("minecraft:chicken#main", "minecraft:cold_chicken#main",
+                  "minecraft:chicken_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("flapping", layer, flap=3.7, flap_speed=1.0),
+            pose("flapping-slowing", layer, flap=11.25, flap_speed=0.4, walk_position=2.0,
+                 walk_speed=0.2, head_y_rot=12.0, x_rot=-8.0),
+        ]
+    yield {
+        "case_id": "entity/chicken-model",
+        "family": "entity",
+        "operation": "chicken_model",
+        "rows": rows,
+    }
+
+
+def entity_sheep_colour_cases():
+    """What a sheep's wool is multiplied by: the reference's table for each of
+    the sixteen dyes, and a `jeb_` sheep's colour along its cycle."""
+    rows = [{"label": f"dye-{dye}", "dye": dye} for dye in range(16)]
+    for tick in (0.0, 0.5, 12.25, 24.9, 25.0, 31.5, 100.1, 399.0, 400.0, 401.7, 1234.567):
+        rows.append({"label": f"jeb-{tick}", "tick": float_bits(tick)})
+    yield {
+        "case_id": "entity/sheep-colors",
+        "family": "entity",
+        "operation": "sheep_colors",
+        "rows": rows,
+    }
+
+
+def entity_sheep_eat_cases():
+    """How far a sheep's head is down and how it is tipped while it eats, from
+    the reference's own `Sheep` with its timer and pitch set."""
+    rows = []
+    for tick in (0, 1, 3, 4, 5, 20, 36, 37, 39, 40):
+        for partial in (0.0, 0.25, 1.0):
+            rows.append({"label": f"eat-{tick}-{partial}", "eat_tick": tick,
+                         "partial": float_bits(partial), "x_rot": float_bits(17.5)})
+    rows.append({"label": "pitch-down", "eat_tick": 0, "partial": float_bits(0.5),
+                 "x_rot": float_bits(-45.0)})
+    yield {
+        "case_id": "entity/sheep-eat",
+        "family": "entity",
+        "operation": "sheep_eat",
         "rows": rows,
     }
 

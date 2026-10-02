@@ -1466,6 +1466,8 @@ impl PlaySession {
                 // `LivingEntity.handleEntityEvent`: 3 is a death.
                 if event == 3 {
                     self.trace.world.apply_entity_death_event(id);
+                } else {
+                    self.trace.world.apply_entity_event(id, event);
                 }
             }
             PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID => {

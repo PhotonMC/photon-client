@@ -324,6 +324,122 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A sheep's models from the layer table (the body, the undercoat and the wool, grown and
+     * baby), posed by the reference's own `setupAnim`, drawn.
+     */
+    private static JsonObject sheepModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.QuadrupedModel<net.minecraft.client.renderer.entity.state.SheepRenderState> model =
+                id.endsWith("#main")
+                    ? (id.contains("_baby")
+                        ? new net.minecraft.client.model.animal.sheep.BabySheepModel(root)
+                        : new net.minecraft.client.model.animal.sheep.SheepModel(root))
+                    : new net.minecraft.client.model.animal.sheep.SheepFurModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.SheepRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.headEatPositionScale = Oracle.f32(row, "eat_position");
+            state.headEatAngleScale = Oracle.f32(row, "eat_angle");
+            state.ageScale = Oracle.f32(row, "age_scale");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * A chicken's models from the layer table (grown, cold and baby), posed by the reference's own
+     * `setupAnim` with the flap, drawn.
+     */
+    private static JsonObject chickenModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.animal.chicken.ChickenModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.chicken.BabyChickenModel(root)
+                : id.startsWith("minecraft:cold")
+                    ? new net.minecraft.client.model.animal.chicken.ColdChickenModel(root)
+                    : new net.minecraft.client.model.animal.chicken.AdultChickenModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.ChickenRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.flap = Oracle.f32(row, "flap");
+            state.flapSpeed = Oracle.f32(row, "flap_speed");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What a sheep's wool is multiplied by: for each dye the reference's table, and the colour of a
+     * `jeb_` sheep at ticks along its cycle.
+     */
+    private static JsonObject sheepColors(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.has("dye")) {
+                out.addProperty("color", net.minecraft.client.color.ColorLerper.Type.SHEEP.getColor(
+                    net.minecraft.world.item.DyeColor.byId(row.get("dye").getAsInt())));
+            } else {
+                out.addProperty("color", net.minecraft.client.color.ColorLerper.getLerpedColor(
+                    net.minecraft.client.color.ColorLerper.Type.SHEEP, Oracle.f32(row, "tick")));
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * How far a sheep's head is down and how it is tipped while it eats, from the reference's own
+     * `Sheep` with its eating timer and its pitch set.
+     */
+    private static JsonObject sheepEat(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var sheep = (net.minecraft.world.entity.animal.sheep.Sheep) UNSAFE.allocateInstance(
+                net.minecraft.world.entity.animal.sheep.Sheep.class);
+            var timer = net.minecraft.world.entity.animal.sheep.Sheep.class.getDeclaredField("eatAnimationTick");
+            timer.setAccessible(true);
+            timer.setInt(sheep, row.get("eat_tick").getAsInt());
+            for (String name : new String[] {"xRot", "xRotO"}) {
+                var field = net.minecraft.world.entity.Entity.class.getDeclaredField(name);
+                field.setAccessible(true);
+                field.setFloat(sheep, Oracle.f32(row, "x_rot"));
+            }
+            float partial = Oracle.f32(row, "partial");
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("position", Oracle.bits(sheep.getHeadEatPositionScale(partial)));
+            out.addProperty("angle", Oracle.bits(sheep.getHeadEatAngleScale(partial)));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -723,6 +839,11 @@ public final class EntityOracle {
             variants(rows, "cow", holder.key().identifier().toString(), variant.modelAndTexture().asset().id(),
                 variant.babyTexture().id(), variant.modelAndTexture().model().name());
         });
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.CHICKEN_VARIANT).listElements().forEach(holder -> {
+            var variant = holder.value();
+            variants(rows, "chicken", holder.key().identifier().toString(), variant.modelAndTexture().asset().id(),
+                variant.babyTexture().id(), variant.modelAndTexture().model().name());
+        });
         var list = new JsonArray();
         rows.values().forEach(list::add);
         var result = new JsonObject();
@@ -759,6 +880,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_BABY_ID", "piglin-baby"},
             {net.minecraft.world.entity.monster.piglin.Piglin.class, "DATA_IS_DANCING", "piglin-dancing"},
             {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MAIN_HAND", "avatar-main-hand"},
+            {net.minecraft.world.entity.animal.sheep.Sheep.class, "DATA_WOOL_ID", "sheep-wool"},
+            {net.minecraft.world.entity.animal.chicken.Chicken.class, "DATA_VARIANT_ID", "chicken"},
         };
         for (var described : fields) {
             var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
@@ -867,6 +990,18 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("sheep_model")) {
+            return sheepModel(request);
+        }
+        if (operation.equals("chicken_model")) {
+            return chickenModel(request);
+        }
+        if (operation.equals("sheep_colors")) {
+            return sheepColors(request);
+        }
+        if (operation.equals("sheep_eat")) {
+            return sheepEat(request);
         }
         if (operation.equals("held_item_pose")) {
             return heldItemPose(request);

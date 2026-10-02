@@ -48,6 +48,17 @@ pub fn variants(kind: &str) -> impl Iterator<Item = &'static EntityVariant> {
         .filter(move |variant| variant.kind == kind)
 }
 
+/// What a sheep's wool of this dye (`DyeColor.getId`) is multiplied by, as
+/// ARGB (`ColorLerper.Type.SHEEP`).
+pub fn sheep_colour(dye: usize) -> Option<u32> {
+    crate::generated::sheep_colors::SHEEP_COLORS
+        .get(dye)
+        .copied()
+}
+
+/// How many dyes there are.
+pub const DYE_COUNT: usize = crate::generated::sheep_colors::SHEEP_COLORS.len();
+
 /// The name of the entity data serializer the wire numbers `id`
 /// (`PIG_VARIANT`).
 pub fn data_serializer(id: i32) -> Option<&'static str> {

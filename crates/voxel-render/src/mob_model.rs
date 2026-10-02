@@ -20,6 +20,29 @@ pub struct QuadrupedState {
     pub walk_speed: f32,
 }
 
+/// What a sheep's models are posed from: the quadruped's, and how far the
+/// head is down and tipped while it eats (`SheepRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct SheepState {
+    pub quadruped: QuadrupedState,
+    pub head_eat_position_scale: f32,
+    pub head_eat_angle_scale: f32,
+    /// `LivingEntityRenderState.ageScale`: a half for a baby.
+    pub age_scale: f32,
+}
+
+/// What a chicken's model is posed from: the head's turn, the walk and the
+/// flap of the wings.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ChickenState {
+    pub head_y_rot: f32,
+    pub x_rot: f32,
+    pub walk_position: f32,
+    pub walk_speed: f32,
+    pub flap: f32,
+    pub flap_speed: f32,
+}
+
 /// What a zombie's model is posed from: the humanoid state, and the flags
 /// `ZombieRenderState` adds. The held item is not read yet, so the arms are
 /// raised for the baby as for the grown (`state.getMainHandItemStack() ==
@@ -96,6 +119,56 @@ impl MobModel {
             if let Some(leg) = self.root.child_mut(name) {
                 leg.x_rot = x_rot;
             }
+        }
+    }
+
+    /// `SheepModel.setupAnim` (and the wool's): the quadruped's pose, with
+    /// the head lowered and tipped to eat.
+    pub fn setup_sheep(&mut self, state: &SheepState) {
+        self.setup_quadruped(&state.quadruped);
+        if let Some(head) = self.root.child_mut("head") {
+            head.y += state.head_eat_position_scale * 9.0 * state.age_scale;
+            head.x_rot = state.head_eat_angle_scale;
+        }
+    }
+
+    /// `ChickenModel.setupAnim`: the legs swing with the walk, the wings beat
+    /// with the flap, and a grown chicken's head follows the look.
+    pub fn setup_chicken(&mut self, state: &ChickenState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let flap_angle = (sin(state.flap) + 1.0) * state.flap_speed;
+        let (position, speed) = (state.walk_position, state.walk_speed);
+        let moves = [
+            (
+                "right_leg",
+                Some(cos(position * 0.6662) * 1.4 * speed),
+                None,
+            ),
+            (
+                "left_leg",
+                Some(cos(position * 0.6662 + pi) * 1.4 * speed),
+                None,
+            ),
+            ("right_wing", None, Some(flap_angle)),
+            ("left_wing", None, Some(-flap_angle)),
+        ];
+        for (name, x_rot, z_rot) in moves {
+            if let Some(part) = self.root.child_mut(name) {
+                if let Some(x_rot) = x_rot {
+                    part.x_rot = x_rot;
+                }
+                if let Some(z_rot) = z_rot {
+                    part.z_rot = z_rot;
+                }
+            }
+        }
+        if let Some(head) = self.root.child_mut("head") {
+            head.x_rot = state.x_rot * degrees;
+            head.y_rot = state.head_y_rot * degrees;
         }
     }
 
@@ -305,6 +378,18 @@ pub fn mob_vertices(
     placement: &MobPlacement,
     texture: TextureRect,
 ) -> Vec<Vertex> {
+    mob_vertices_coloured(model, placement, texture, None)
+}
+
+/// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a
+/// sheep's wool.
+pub fn mob_vertices_coloured(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+    colour: Option<u32>,
+) -> Vec<Vertex> {
+    let colour = colour.map_or(0.0, crate::scene::entity_colour);
     let pose = placement_pose(placement);
     let light = crate::block_light::light_uv(placement.light);
     let mut vertices = Vec::new();
@@ -315,7 +400,7 @@ pub fn mob_vertices(
                 position: corner.position,
                 uv: uv(texture, corner.uv),
                 shade: f32::from(placement.red_overlay),
-                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], colour],
                 light,
             });
         }

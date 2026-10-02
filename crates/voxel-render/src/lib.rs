@@ -39,6 +39,7 @@ pub mod visibility;
 pub mod vulkan;
 pub mod weather;
 pub mod window;
+pub mod wool;
 pub mod world_mesh;
 pub mod xp_orb;
 

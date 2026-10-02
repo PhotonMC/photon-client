@@ -153,7 +153,7 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
                 position: corner.position,
                 uv: crate::entity_textures::uv(placement.skin, corner.uv),
                 shade: f32::from(placement.red_overlay),
-                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
                 light,
             });
         }
@@ -426,7 +426,7 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
                 position: corner.position,
                 uv: crate::entity_textures::uv(view.skin, corner.uv),
                 shade: 0.0,
-                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 1.0],
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
                 light,
             });
         }
