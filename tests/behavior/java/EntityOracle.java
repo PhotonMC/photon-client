@@ -100,10 +100,105 @@ public final class EntityOracle {
         return result;
     }
 
+    private static Object field(final Object owner, final String name) throws Exception {
+        for (Class<?> type = owner.getClass(); type != null; type = type.getSuperclass()) {
+            try {
+                var field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                return field.get(owner);
+            } catch (NoSuchFieldException ignored) {
+                // look in the class above
+            }
+        }
+        throw new NoSuchFieldException(name);
+    }
+
+    private static JsonArray floats(final float... values) {
+        var array = new JsonArray();
+        for (float value : values) {
+            array.add(Oracle.bits(value));
+        }
+        return array;
+    }
+
+    /** One part of a layer's definition: its pose, its cubes and its children by name. */
+    @SuppressWarnings("unchecked")
+    private static JsonObject partDefinition(final String name, final Object part) throws Exception {
+        var out = new JsonObject();
+        out.addProperty("name", name);
+        var pose = (net.minecraft.client.model.geom.PartPose) field(part, "partPose");
+        out.add("pose", floats(pose.x(), pose.y(), pose.z(), pose.xRot(), pose.yRot(), pose.zRot(),
+            pose.xScale(), pose.yScale(), pose.zScale()));
+        var cubes = new JsonArray();
+        for (var cube : (java.util.List<Object>) field(part, "cubes")) {
+            var described = new JsonObject();
+            var origin = (org.joml.Vector3fc) field(cube, "origin");
+            var dimensions = (org.joml.Vector3fc) field(cube, "dimensions");
+            var grow = field(cube, "grow");
+            var uv = (net.minecraft.client.model.geom.builders.UVPair) field(cube, "texCoord");
+            var scale = (net.minecraft.client.model.geom.builders.UVPair) field(cube, "texScale");
+            described.add("origin", floats(origin.x(), origin.y(), origin.z()));
+            described.add("dimensions", floats(dimensions.x(), dimensions.y(), dimensions.z()));
+            described.add("grow", floats((float) field(grow, "growX"), (float) field(grow, "growY"),
+                (float) field(grow, "growZ")));
+            described.addProperty("mirror", (boolean) field(cube, "mirror"));
+            described.add("uv", floats(uv.u(), uv.v()));
+            described.add("uv_scale", floats(scale.u(), scale.v()));
+            var faces = new java.util.TreeSet<String>();
+            for (var face : (java.util.Set<net.minecraft.core.Direction>) field(cube, "visibleFaces")) {
+                faces.add(face.getName());
+            }
+            var visible = new JsonArray();
+            faces.forEach(visible::add);
+            described.add("faces", visible);
+            cubes.add(described);
+        }
+        out.add("cubes", cubes);
+        var children = new java.util.TreeMap<String, Object>();
+        for (var child : ((java.util.Map<String, Object>) field(part, "children")).entrySet()) {
+            children.put(child.getKey(), child.getValue());
+        }
+        var described = new JsonArray();
+        for (var child : children.entrySet()) {
+            described.add(partDefinition(child.getKey(), child.getValue()));
+        }
+        out.add("children", described);
+        return out;
+    }
+
+    /** Every model layer the game builds: its texture size and the tree of its parts. */
+    private static JsonObject modelLayers() throws Exception {
+        // The layers are made from registries (decorated pot patterns): the game's bootstrap first.
+        Oracle.vanillaRegistries();
+        var layers = new java.util.TreeMap<String, Object>();
+        for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
+            layers.put(entry.getKey().toString(), entry.getValue());
+        }
+        var rows = new JsonArray();
+        for (var entry : layers.entrySet()) {
+            var layer = entry.getValue();
+            var mesh = field(layer, "mesh");
+            var material = field(layer, "material");
+            var out = new JsonObject();
+            out.addProperty("label", entry.getKey());
+            out.addProperty("texture_width", (int) field(material, "xTexSize"));
+            out.addProperty("texture_height", (int) field(material, "yTexSize"));
+            var root = ((net.minecraft.client.model.geom.builders.MeshDefinition) mesh).getRoot();
+            out.add("root", partDefinition("root", root));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     public static JsonObject run(final JsonObject request) throws Exception {
         String operation = request.get("operation").getAsString();
         if (operation.equals("walk_animation")) {
             return walkAnimation(request);
+        }
+        if (operation.equals("model_layers")) {
+            return modelLayers();
         }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);

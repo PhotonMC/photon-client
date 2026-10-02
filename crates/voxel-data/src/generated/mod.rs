@@ -3,4 +3,5 @@
 //! these under their usual paths (`block::blocks`, `item::items`, ...).
 
 pub mod block;
+pub mod entity_models;
 pub mod item;

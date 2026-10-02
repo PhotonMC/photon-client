@@ -27,4 +27,7 @@ Modelleri çizmek (T24), animasyon (`KeyframeAnimation`), zırh/eşya katmanlar�
 `docs/reference-data.md` (üretim adımı), `docs/coding-standards.md` gerekmez.
 
 ## Devir notu
-(boş)
+- Yapıldı: `EntityOracle` `model_layers` (gerçek `LayerDefinitions.createRoots`, tanım düzeyinde: poz, küp başına origin/boyut/büyütme/ayna/uv/uv ölçeği/yüzler, çocuklar ada göre sıralı), 358 katman · 3359 parça · 2494 küp; `tools/generate/entity_models.py` → `voxel-data/src/generated/entity_models.rs` (484 KB, `ModelLayer::of` zinciri), tipler ve `layer(id)`/`layers()` `voxel-data/src/entity_model.rs`; adaptör aynı tabloyu JSON'a çevirip karşılaştırır (parity geçti).
+- Java'dan sapma: yok; Java bunu `HashMap` sırasıyla verir, tabloda çocuklar ada göre sıralı (sıra sözleşmenin parçası değil).
+- Üretim adımı `docs/reference-data.md` "Üretilen tablolar". `approx_constant` Clippy uyarısı dosya başında gerekçeyle kapalı (Java'nın `1.5708F` yazımı).
+- Açık: tabloyu çizim için bakılmış `ModelPart`'a çevirmek (T24); `player_model.rs`/`special_models.rs` el yazımı olarak duruyor.

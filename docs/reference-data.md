@@ -25,3 +25,9 @@ Dosyalar mevcut yapılarıyla da eklenebilir; bunları bu düzene dönüştürme
 Kaynak kodu tek başına bütün görsel, ses ve zamanlama testlerini çalıştırmaya yetmeyebilir. Çalıştırılabilir Java referansı ve gerekli runtime/assetler mevcutsa ajan bunları kullanarak otomasyonu kurar. Eksik bağımlılıklar önce envanter ve yerel ortamdan belirlenir; yalnızca çözülemeyen eksikler kullanıcıya bildirilir. Hazır olmayan testler açıkça engelli olarak raporlanır.
 
 Özgün test çalıştırıcıları ve sentetik senaryolar depoda bulunabilir. Orijinal referans çıktıları, ekran görüntüleri, PCM verileri, dünya dosyaları ve içerik barındıran paket kayıtları `.data/` altında kalır. Genel CI bunları yüklemez; yerel eşitlik testlerinin çalışmaması CI başarısıyla gizlenmez.
+
+## Üretilen tablolar
+
+`crates/voxel-data/src/generated/` altındaki tablolar bir Java yakalamasından (`outputs.jsonl`) yazılır ve her parity koşusunda Rust adaptörü üzerinden baştan sona karşılaştırılır. Hepsini yenilemek için: `python3 tools/voxel.py check --capture` ile yeni yakalama alınır, sonra `python3 tools/generate/all.py <yakalama>` ve `cargo fmt --all`.
+
+Entity model katmanları (`entity_models.rs`, `LayerDefinitions.createRoots`): `entity` ailesinin `entity/model-layers` satırı her katmanın doku boyutunu ve parça ağacını (poz, küpler, çocuklar) verir; `tools/generate/entity_models.py` bunu okunur bir `ModelLayer::of(...)` zinciri olarak yazar. Yalnız bu tabloyu yenilemek için aynı yakalamayla `python3 tools/generate/entity_models.py <yakalama>`.

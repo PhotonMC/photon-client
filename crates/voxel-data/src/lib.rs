@@ -11,5 +11,6 @@
 //! lookups on them.
 
 pub mod block;
+pub mod entity_model;
 mod generated;
 pub mod item;

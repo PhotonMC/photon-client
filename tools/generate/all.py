@@ -2,8 +2,8 @@
 
     python3 tools/generate/all.py .data/captures/behavior/<id>/outputs.jsonl
 
-The capture must hold the block and model families (a capture of all the
-families does). Afterwards run `cargo fmt --all` and the parity comparison;
+The capture must hold the block, model and entity families (a capture of all
+the families does). Afterwards run `cargo fmt --all` and the parity comparison;
 a new reference version shows up there as a difference to review.
 """
 import importlib
@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 GENERATORS = [
     "block_tints", "blocks", "creative_tabs",
     "component_types", "items", "item_components",
-    "attributes", "potions",
+    "attributes", "potions", "entity_models",
 ]
 
 

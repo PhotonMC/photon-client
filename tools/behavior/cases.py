@@ -13955,6 +13955,20 @@ def movement_cases():
 def entity_cases():
     yield from entity_player_model_cases()
     yield from entity_walk_animation_cases()
+    yield from entity_model_layer_cases()
+
+
+def entity_model_layer_cases():
+    """Every model layer the game builds (`LayerDefinitions.createRoots`):
+    its texture size and the tree of its parts, each with its pose, cubes
+    (origin, size, growth, mirroring, texture offset and scale, faces) and
+    children. The reference answers one row for each layer, by name."""
+    yield {
+        "case_id": "entity/model-layers",
+        "family": "entity",
+        "operation": "model_layers",
+        "rows": [{"label": "all"}],
+    }
 
 
 def entity_player_model_cases():

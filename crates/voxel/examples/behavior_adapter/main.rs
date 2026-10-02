@@ -18294,6 +18294,47 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The model layers of the data crate, written as the reference's layers are.
+fn model_layers_result() -> Value {
+    use voxel_data::entity_model::{ModelPart, layers};
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let all = |values: &[f32]| values.iter().map(|value| hex(*value)).collect::<Vec<_>>();
+    fn part(node: &ModelPart, all: &dyn Fn(&[f32]) -> Vec<String>) -> Value {
+        let pose = [
+            node.pose.position.as_slice(),
+            node.pose.rotation.as_slice(),
+            node.pose.scale.as_slice(),
+        ]
+        .concat();
+        json!({
+            "name": node.name,
+            "pose": all(&pose),
+            "cubes": node.cubes.iter().map(|cube| json!({
+                "origin": all(&cube.origin),
+                "dimensions": all(&cube.dimensions),
+                "grow": all(&cube.grow),
+                "mirror": cube.mirror,
+                "uv": all(&cube.uv),
+                "uv_scale": all(&cube.uv_scale),
+                "faces": cube.faces.iter().map(|face| face.name()).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
+            "children": node.children.iter().map(|child| part(child, all)).collect::<Vec<_>>(),
+        })
+    }
+    let rows: Vec<Value> = layers()
+        .iter()
+        .map(|layer| {
+            json!({
+                "label": layer.id,
+                "texture_width": layer.texture_width,
+                "texture_height": layer.texture_height,
+                "root": part(&layer.root, &all),
+            })
+        })
+        .collect();
+    json!({"rows": rows})
+}
+
 /// The limb animation state, stepped and read between ticks.
 fn walk_animation_result(request: &Value) -> Result<Value, String> {
     use voxel_world::living::WalkAnimation;
@@ -18352,6 +18393,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
     use voxel_render::player_model::{Arm, PlayerModel, PlayerRenderState};
     match string(request, "operation")? {
         "walk_animation" => return walk_animation_result(request),
+        "model_layers" => return Ok(model_layers_result()),
         "player_model" => {}
         _ => return Err("unknown entity operation".into()),
     }
