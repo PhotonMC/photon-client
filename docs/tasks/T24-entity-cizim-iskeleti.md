@@ -26,4 +26,6 @@ Diğer mob'lar (PLAN-M4), gölge, hasar kırmızısı/ölüm devrilmesi, binme.
 `docs/remaining-work.md` M4 madde 2–3.
 
 ## Devir notu
-(boş)
+- Yapıldı: `EntityTextures` (tek paketlenmiş entity dokusu: 18 deri + mob dokuları, `Stitcher`; her model kendi 0..1 uv'sini dikdörtgene taşır), `Part::baked` (tablodan ModelPart), `MobModel` + `QuadrupedModel.setupAnim` (başın dönüşü, çapraz bacak salınımı), `LivingEntityRenderer` yerleşimi (`mob_model::placement_pose`), `crates/voxel/src/mobs.rs` (tür → model katmanı/doku; domuz ve inek, yetişkin/bebek), `ClientEntity.baby` artık bütün hayvanlarda (indeks 16). Oracle: `quadruped_model` (gerçek `PigModel`/`CowModel.setupAnim` sonrası bütün dörtgenler; 5 katman × 7 poz) bit bit geçti. Canlı: domuz, bebek domuz, inek, bebek inek ekran görüntüsünde doğru doku ve yönle.
+- Sapma: çeşit hep `temperate` (T24b), eyer/yün/boynuz katmanı yok, gölge yok, ışık entity'nin 0,5 yukarısından tek örnek (Java göz konumu), `scale` 1 (öznitelik uzak entity için okunmuyor), çizim sırası: oyuncu ve mob'lar tek entity ara belleğinde, kamera dışı ayıklama yok.
+- Açık: T24b, PLAN-M4.

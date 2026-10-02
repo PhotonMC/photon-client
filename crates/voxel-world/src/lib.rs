@@ -3098,7 +3098,10 @@ impl ClientWorld {
         if let Some(pose) = pose {
             entity.pose = pose;
         }
-        if entity.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
+        // `DATA_BABY_ID` is the same field for a zombie and for every
+        // animal (`AgeableMob`).
+        if (entity.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
+            || vanilla_passenger_is_animal(entity.type_id))
             && let Some(zombie_baby) = zombie_baby
         {
             entity.baby = zombie_baby;

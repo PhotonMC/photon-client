@@ -13957,6 +13957,37 @@ def entity_cases():
     yield from entity_walk_animation_cases()
     yield from entity_model_layer_cases()
     yield from entity_type_cases()
+    yield from entity_quadruped_cases()
+
+
+def entity_quadruped_cases():
+    """The pig and the cow, grown and baby, from the layer table, posed by the
+    reference's `QuadrupedModel.setupAnim` and drawn by its part renderer:
+    standing, looking about, walking at several points of the stride and
+    speeds."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed)}
+
+    rows = []
+    for layer in ("minecraft:pig#main", "minecraft:pig_baby#main", "minecraft:cow#main",
+                  "minecraft:cow_baby#main", "minecraft:cold_pig#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("looking-up", layer, head_y_rot=70.0, x_rot=-60.0),
+            pose("walk-early", layer, walk_position=0.9, walk_speed=0.4),
+            pose("walk-mid", layer, walk_position=7.3, walk_speed=0.83),
+            pose("walk-fast", layer, walk_position=21.6, walk_speed=1.0),
+            pose("walk-and-look", layer, head_y_rot=12.0, x_rot=-8.0, walk_position=3.4, walk_speed=0.6),
+        ]
+    yield {
+        "case_id": "entity/quadruped-model",
+        "family": "entity",
+        "operation": "quadruped_model",
+        "rows": rows,
+    }
 
 
 def entity_type_cases():

@@ -44,8 +44,8 @@ pub struct Gui {
     /// The data-driven registries tooltips read.
     registries: Arc<Registries>,
     hud: Hud,
-    /// Which default skin the local player's model wears in the inventory.
-    player_skin: usize,
+    /// Where the skin the local player's model wears in the inventory is.
+    player_skin: voxel_render::entity_textures::TextureRect,
     titles: Titles,
     boss_bars: BossBars,
     tab_health: HealthStates,
@@ -81,7 +81,7 @@ impl Gui {
             languages: voxel_game::language::LanguageSource::open(root).map(Arc::new),
             registries: Arc::new(registries),
             hud: Hud::default(),
-            player_skin: 0,
+            player_skin: [0.0, 0.0, 1.0, 1.0],
             titles: Titles::default(),
             boss_bars: BossBars::default(),
             tab_health: HealthStates::default(),
@@ -98,8 +98,8 @@ impl Gui {
         Ok(gui)
     }
 
-    /// The skin the inventory's player wears (`player_renderer::skin_index`).
-    pub fn set_player_skin(&mut self, skin: usize) {
+    /// Where the skin the inventory's player wears is in the entity textures.
+    pub fn set_player_skin(&mut self, skin: voxel_render::entity_textures::TextureRect) {
         self.player_skin = skin;
     }
 

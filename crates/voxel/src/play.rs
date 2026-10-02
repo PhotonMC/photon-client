@@ -17,6 +17,7 @@ use crate::assets::FolderAssets;
 use crate::controls::Controls;
 use crate::gui::Gui;
 use crate::item_layers::ItemLayerCache;
+use crate::mobs;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::FrameProfile;
@@ -101,7 +102,9 @@ struct Play {
     player_model: voxel_render::player_model::PlayerModel,
     /// The other players' models, and which default skin the local player wears.
     remote_models: overlays::RemoteModels,
-    skin_index: usize,
+    mob_models: mobs::MobModels,
+    entity_textures: voxel_render::entity_textures::EntityTextures,
+    skin_rect: voxel_render::entity_textures::TextureRect,
     gui: Gui,
     screen_assets: ScreenAssets,
     /// `ItemInHandRenderer`: the stacks the hands show and how high they are.
@@ -186,20 +189,24 @@ impl Play {
         backend.load_crack_texture(&destroy_stages(&root)?)?;
         // The player's default skin, picked by its profile id as the
         // reference picks one when the profile has no skin of its own; the
-        // others the server adds draw in theirs, so the entity texture holds
-        // them all.
-        let skin_index = voxel_render::player_renderer::skin_index(
+        // others the server adds draw in theirs, and the mobs in their own
+        // textures, so the entity texture holds them all.
+        let skin = voxel_render::player_renderer::default_skin(
             session
                 .profile_id()
                 .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
         );
-        let skin = voxel_render::player_renderer::skin_at(skin_index);
-        let skins = voxel_render::player_renderer::skin_textures()
-            .map(|name| texture(&root, name, "skin"))
-            .collect::<Result<Vec<_>>>()?;
-        backend.load_entity_texture(
-            &voxel_render::player_renderer::skin_atlas(&skins).ok_or("the skins' sizes")?,
-        )?;
+        let entity_textures = voxel_render::entity_textures::EntityTextures::build(
+            voxel_render::player_renderer::skin_textures()
+                .chain(mobs::textures())
+                .map(|name| Ok((name.to_owned(), texture(&root, name, "entity texture")?)))
+                .collect::<Result<Vec<_>>>()?,
+        )
+        .ok_or("the entity textures did not fit")?;
+        backend.load_entity_texture(&entity_textures.image)?;
+        let skin_rect = entity_textures
+            .rect(skin.texture)
+            .ok_or("the player's skin")?;
         // The registries a tooltip reads, from the data pack, named as the
         // server synchronised them.
         let registries = voxel_game::registries::Registries::load(&data_root, |registry| {
@@ -219,7 +226,7 @@ impl Play {
             &mut backend,
             language,
         )?;
-        gui.set_player_skin(skin_index);
+        gui.set_player_skin(skin_rect);
         let capture_frames = env::var("VOXEL_CAPTURE_FRAMES")
             .ok()
             .and_then(|value| value.parse().ok())
@@ -240,7 +247,9 @@ impl Play {
             sky,
             player_model: voxel_render::player_model::PlayerModel::new(skin.slim),
             remote_models: overlays::RemoteModels::new(),
-            skin_index,
+            mob_models: mobs::MobModels::new(),
+            entity_textures,
+            skin_rect,
             gui,
             item_in_hand: voxel_game::item_in_hand::ItemInHand::default(),
             held_item_layers: [
@@ -508,7 +517,7 @@ impl Play {
             partial: frame.partial,
             light: packed_light(self.session.world(), frame.eye),
             origin: self.origin,
-            skin: self.skin_index,
+            skin: self.skin_rect,
         };
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         if first_person && !player.spectating() {
@@ -546,7 +555,18 @@ impl Play {
         ))?;
         // The other players, and the local player's own once the camera
         // leaves its eyes.
-        let mut models = overlays::remote_players(&self.session, &mut self.remote_models, view);
+        let mut models = overlays::remote_players(
+            &self.session,
+            &mut self.remote_models,
+            &self.entity_textures,
+            view,
+        );
+        models.extend(mobs::remote_mobs(
+            &self.session,
+            &mut self.mob_models,
+            &self.entity_textures,
+            view,
+        ));
         if !first_person {
             models.extend(overlays::player_model(player, &mut self.player_model, view));
         }

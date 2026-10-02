@@ -26,8 +26,8 @@ pub struct FrameView {
     pub partial: f64,
     pub light: i32,
     pub origin: [i32; 3],
-    /// The skin the local player wears (`player_renderer::skin_index`).
-    pub skin: usize,
+    /// Where the skin the local player wears is in the entity textures.
+    pub skin: voxel_render::entity_textures::TextureRect,
 }
 
 impl FrameView {
@@ -269,6 +269,7 @@ impl Default for RemoteModels {
 pub fn remote_players(
     session: &PlaySession,
     models: &mut RemoteModels,
+    textures: &voxel_render::entity_textures::EntityTextures,
     view: FrameView,
 ) -> Vec<Vertex> {
     let world = session.world();
@@ -282,8 +283,11 @@ pub fn remote_players(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let skin = voxel_render::player_renderer::skin_index(entity.uuid);
-        let model = if voxel_render::player_renderer::skin_at(skin).slim {
+        let skin = voxel_render::player_renderer::default_skin(entity.uuid);
+        let Some(rect) = textures.rect(skin.texture) else {
+            continue;
+        };
+        let model = if skin.slim {
             &mut models.slim
         } else {
             &mut models.wide
@@ -316,7 +320,7 @@ pub fn remote_players(
                 visually_swimming: snapshot.pose == voxel_world::ClientEntityPose::Swimming,
                 crouching,
                 light: packed_light(world, eye),
-                skin,
+                skin: rect,
             },
         ));
     }

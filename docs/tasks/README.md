@@ -55,7 +55,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T22](T22-uzak-oyuncu.md) | Uzaktaki oyuncu çizimi | L | T21 | bitti |
 | [T22b](T22b-ad-etiketi.md) | Uzaktaki oyuncunun ad etiketi | M | T22 | açık |
 | [T23](T23-model-katmani-tablosu.md) | Entity model katmanı tablosu (oracle'dan) | L | – | bitti |
-| [T24](T24-entity-cizim-iskeleti.md) | Entity çizim iskeleti + ilk mob | L | T22, T23 | açık |
+| [T24](T24-entity-cizim-iskeleti.md) | Entity çizim iskeleti + ilk mob | L | T22, T23 | bitti |
+| [T24b](T24b-mob-cesitleri.md) | Pig/cow çeşitleri ve entity metadata okuyucusu | M | T24 | açık |
 | [T25](T25-yerdeki-esya.md) | Yerdeki eşya ve XP küresi | M | T24 | açık |
 | [T26](T26-entity-hedefleme.md) | Entity hedefleme, `Attack`/`Interact` | M | T21 | açık |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm, binekler, mermiler, çerçeve/tablo) | S | T24 | açık |

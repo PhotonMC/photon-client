@@ -18294,6 +18294,51 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// A quadruped's model from the layer table, posed and drawn.
+fn quadruped_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState};
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_quadruped(&QuadrupedState {
+            head_y_rot: bits(row, "head_y_rot")?,
+            x_rot: bits(row, "x_rot")?,
+            walk_position: bits(row, "walk_position")?,
+            walk_speed: bits(row, "walk_speed")?,
+        });
+        let mut quads: Vec<String> = model
+            .render(&Default::default())
+            .into_iter()
+            .map(|(_, corners)| {
+                corners
+                    .iter()
+                    .map(|vertex| {
+                        vertex
+                            .position
+                            .iter()
+                            .chain(&vertex.uv)
+                            .chain(&vertex.normal)
+                            .map(|value| hex(*value))
+                            .collect::<String>()
+                    })
+                    .collect::<String>()
+            })
+            .collect();
+        quads.sort();
+        out.push(json!({"label": row["label"], "quads": quads}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// The model layers of the data crate, written as the reference's layers are.
 fn model_layers_result() -> Value {
     use voxel_data::entity_model::{ModelPart, layers};
@@ -18394,6 +18439,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "walk_animation" => return walk_animation_result(request),
         "model_layers" => return Ok(model_layers_result()),
+        "quadruped_model" => return quadruped_model_result(request),
         "entity_types" => {
             let rows: Vec<Value> = (0..)
                 .map_while(|id| voxel_data::entity_type::name(id).map(|name| (id, name)))

@@ -5,6 +5,7 @@ mod controls;
 mod gui;
 mod hud_input;
 mod item_layers;
+mod mobs;
 mod overlays;
 mod play;
 mod ppm;

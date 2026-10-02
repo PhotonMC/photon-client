@@ -166,6 +166,48 @@ public final class EntityOracle {
         return out;
     }
 
+    /** A quadruped's model from the layer table, posed by the reference's own `setupAnim`, drawn. */
+    private static JsonObject quadrupedModel(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var layers = new java.util.HashMap<String, net.minecraft.client.model.geom.builders.LayerDefinition>();
+        for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
+            layers.put(entry.getKey().toString(), entry.getValue());
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = layers.get(id).bakeRoot();
+            net.minecraft.client.model.QuadrupedModel<net.minecraft.client.renderer.entity.state.LivingEntityRenderState>
+                model = id.startsWith("minecraft:cow") || id.startsWith("minecraft:warm_cow")
+                    || id.startsWith("minecraft:cold_cow")
+                    ? new net.minecraft.client.model.animal.cow.CowModel(root)
+                    : new net.minecraft.client.model.animal.pig.PigModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            model.setupAnim(state);
+            var capture = new Capture();
+            model.root().render(new com.mojang.blaze3d.vertex.PoseStack(), capture, 0, 0);
+            var quads = new java.util.ArrayList<String>();
+            for (int i = 0; i < capture.vertices.size(); i += 4) {
+                quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+            }
+            java.util.Collections.sort(quads);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var array = new JsonArray();
+            quads.forEach(array::add);
+            out.add("quads", array);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The entity type registry: each type's id and name, in id order. */
     private static JsonObject entityTypes() {
         Oracle.vanillaRegistries();
@@ -218,6 +260,9 @@ public final class EntityOracle {
         }
         if (operation.equals("entity_types")) {
             return entityTypes();
+        }
+        if (operation.equals("quadruped_model")) {
+            return quadrupedModel(request);
         }
         if (!operation.equals("player_model")) {
             throw new IllegalArgumentException("Unknown entity operation: " + operation);

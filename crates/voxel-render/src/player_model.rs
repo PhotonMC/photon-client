@@ -59,13 +59,26 @@ impl Cube {
         texture: (f32, f32),
         visible: &[Direction],
     ) -> Self {
+        Self::grown(tex, min, size, [grow; 3], mirror, texture, visible)
+    }
+
+    /// `ModelPart.Cube` with a growth of its own along each axis.
+    pub(crate) fn grown(
+        tex: (i32, i32),
+        min: [f32; 3],
+        size: [f32; 3],
+        grow: [f32; 3],
+        mirror: bool,
+        texture: (f32, f32),
+        visible: &[Direction],
+    ) -> Self {
         let [width, height, depth] = size;
-        let mut min_x = min[0] - grow;
-        let min_y = min[1] - grow;
-        let min_z = min[2] - grow;
-        let mut max_x = min[0] + width + grow;
-        let max_y = min[1] + height + grow;
-        let max_z = min[2] + depth + grow;
+        let mut min_x = min[0] - grow[0];
+        let min_y = min[1] - grow[1];
+        let min_z = min[2] - grow[2];
+        let mut max_x = min[0] + width + grow[0];
+        let max_y = min[1] + height + grow[1];
+        let max_z = min[2] + depth + grow[2];
         if mirror {
             std::mem::swap(&mut min_x, &mut max_x);
         }
@@ -223,7 +236,69 @@ impl Part {
         }
     }
 
-    fn reset(&mut self) {
+    /// `PartDefinition.bake`: a part made from a layer's definition, in a
+    /// texture `texture` big.
+    pub fn baked(definition: &voxel_data::entity_model::ModelPart, texture: (u32, u32)) -> Self {
+        use voxel_data::entity_model::Face;
+        let cubes = definition
+            .cubes
+            .iter()
+            .map(|cube| {
+                let faces: Vec<Direction> = cube
+                    .faces
+                    .iter()
+                    .map(|face| match face {
+                        Face::Down => Direction::Down,
+                        Face::East => Direction::East,
+                        Face::North => Direction::North,
+                        Face::South => Direction::South,
+                        Face::Up => Direction::Up,
+                        Face::West => Direction::West,
+                    })
+                    .collect();
+                Cube::grown(
+                    (cube.uv[0] as i32, cube.uv[1] as i32),
+                    cube.origin,
+                    cube.dimensions,
+                    cube.grow,
+                    cube.mirror,
+                    (
+                        texture.0 as f32 * cube.uv_scale[0],
+                        texture.1 as f32 * cube.uv_scale[1],
+                    ),
+                    &faces,
+                )
+            })
+            .collect();
+        Self::posed(
+            definition.name,
+            cubes,
+            definition.pose.position,
+            definition.pose.rotation,
+            definition.pose.scale,
+            definition
+                .children
+                .iter()
+                .map(|child| Self::baked(child, texture))
+                .collect(),
+        )
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn children(&self) -> &[Part] {
+        &self.children
+    }
+
+    /// `ModelPart.getChild`, by name.
+    pub fn child_mut(&mut self, name: &str) -> Option<&mut Part> {
+        self.children.iter_mut().find(|child| child.name == name)
+    }
+
+    /// `Model.resetPose`: every part back where the mesh put it.
+    pub fn reset(&mut self) {
         [self.x, self.y, self.z] = self.initial.offset;
         [self.x_rot, self.y_rot, self.z_rot] = self.initial.rotation;
         self.scale = self.initial.scale;
