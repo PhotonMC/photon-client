@@ -1775,6 +1775,29 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The hoglin's (and zoglin's) model posed by the reference's own `setupAnim` (grown and baby), drawn. */
+    private static JsonObject hoglinModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.monster.hoglin.HoglinModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.monster.hoglin.BabyHoglinModel(root)
+                : new net.minecraft.client.model.monster.hoglin.HoglinModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.HoglinRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.attackAnimationRemainingTicks = row.get("attack_ticks").getAsInt();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2437,6 +2460,9 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("hoglin_model")) {
+            return hoglinModel(request);
         }
         if (operation.equals("polar_bear_model")) {
             return polarBearModel(request);

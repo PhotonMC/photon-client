@@ -18620,6 +18620,9 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.shake_anim(partial)));
                         }
                     }
+                    "hoglin" => {
+                        described["attack_ticks"] = json!(entity.hoglin_attack_ticks());
+                    }
                     "polar_bear" => {
                         let bear = entity.polar_bear();
                         described["standing"] = json!(bear.is_standing());
@@ -20090,6 +20093,34 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `hoglin_model`: a hoglin's or a zoglin's model posed and drawn.
+fn hoglin_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{HoglinState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_hoglin(&HoglinState {
+            head_y_rot: bits("head_y_rot")?,
+            walk_position: bits("walk_position")?,
+            walk_speed: bits("walk_speed")?,
+            attack_ticks: row["attack_ticks"].as_i64().ok_or("attack_ticks")? as i32,
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `polar_bear_model`: a polar bear's model posed and drawn.
 fn polar_bear_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, PolarBearState};
@@ -20857,6 +20888,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "wolf_model" => return wolf_model_result(request),
         "feline_model" => return feline_model_result(request),
         "polar_bear_model" => return polar_bear_model_result(request),
+        "hoglin_model" => return hoglin_model_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),

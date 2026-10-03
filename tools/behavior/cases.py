@@ -14420,6 +14420,12 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("hoglin-idle", "hoglin", 4, [], extras=["hoglin"]),
+        living("hoglin-swings", "hoglin", 20, [{"tick": 3, "type": "entity_event", "event": 4}],
+               extras=["hoglin"]),
+        living("zoglin-swings-twice", "zoglin", 30, [{"tick": 2, "type": "entity_event", "event": 4},
+                                                      {"tick": 8, "type": "entity_event", "event": 4}],
+               extras=["hoglin"]),
         living("polar-bear-idle", "polar_bear", 4, [], extras=["polar_bear"]),
         living("polar-bear-stands-and-sits", "polar_bear", 24,
                [{"tick": 2, "type": "polar_bear_data", "standing": True},
@@ -14561,6 +14567,7 @@ def entity_cases():
     yield from entity_wolf_cases()
     yield from entity_feline_cases()
     yield from entity_polar_bear_cases()
+    yield from entity_hoglin_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15473,6 +15480,30 @@ def entity_polar_bear_cases():
             pose("risen", layer, stand=1.0, head_y_rot=12.0, x_rot=-20.0),
         ]
     yield {"case_id": "entity/polar-bear-model", "family": "entity", "operation": "polar_bear_model",
+           "rows": rows}
+
+
+def entity_hoglin_cases():
+    """The hoglin and the zoglin, grown and baby, posed by the reference's own `setupAnim`: the ears
+    and legs by the walk, the head by the look and the attack swing."""
+    def pose(label, layer, head_y_rot=0.0, walk_position=0.0, walk_speed=0.0, attack=0):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "attack_ticks": attack}
+
+    rows = []
+    for layer in ("minecraft:hoglin#main", "minecraft:hoglin_baby#main",
+                  "minecraft:zoglin#main", "minecraft:zoglin_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("swing-start", layer, attack=10, head_y_rot=8.0),
+            pose("swing-mid", layer, attack=7, walk_position=2.2, walk_speed=0.4),
+            pose("swing-peak", layer, attack=5),
+            pose("swing-end", layer, attack=1),
+        ]
+    yield {"case_id": "entity/hoglin-model", "family": "entity", "operation": "hoglin_model",
            "rows": rows}
 
 

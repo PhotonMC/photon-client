@@ -110,6 +110,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T30b — Keçi ve mantar ineği — client-parity](client-goat-mooshroom-parity-conformance.md)
 - [T34c — Golemler, enderman ve zombi köylü — client-parity](client-golem-enderman-parity-conformance.md)
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](client-held-item-parity-conformance.md)
+- [T32d — Hoglin ve zoglin — client-parity](client-hoglin-parity-conformance.md)
 - [T31 — At, eşek, katır ve ölü atlar — client-parity](client-horse-parity-conformance.md)
 - [T34b — Illager ve cadı — client-parity](client-illager-witch-parity-conformance.md)
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](client-insects-parity-conformance.md)

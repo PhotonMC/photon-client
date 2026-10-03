@@ -11,6 +11,7 @@ mod felines;
 mod golems;
 mod gui;
 mod held_items;
+mod hoglins;
 mod hud_input;
 mod illagers;
 mod item_layers;

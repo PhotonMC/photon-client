@@ -2,7 +2,7 @@
 //! reference's model classes pose them, and placed where a mob stands the
 //! way `LivingEntityRenderer` places any living entity.
 
-use voxel_core::math::{mth_cos_f64, mth_sin_f64};
+use voxel_core::math::{mth_cos_f64, mth_lerp_f32 as lerp_f32, mth_sin_f64};
 use voxel_data::entity_model::ModelLayer;
 
 use crate::entity_textures::{TextureRect, uv};
@@ -242,6 +242,18 @@ impl WolfState {
         let sin = |value: f32| mth_sin_f64(f64::from(value));
         sin(progress * pi) * sin(progress * pi * 11.0) * 0.15 * pi
     }
+}
+
+/// What a hoglin's or a zoglin's models are posed from (`HoglinRenderState`):
+/// the walk, the head's turn from the body (there is no pitch) and the ticks
+/// left of its attack swing.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct HoglinState {
+    pub head_y_rot: f32,
+    pub walk_position: f32,
+    pub walk_speed: f32,
+    pub attack_ticks: i32,
+    pub baby: bool,
 }
 
 /// What a polar bear's models are posed from: the quadruped's, how far it
@@ -1544,6 +1556,45 @@ impl MobModel {
             set(self, "tail2", &|part| {
                 part.x_rot = rot_lerp(tail, part.x_rot, -0.4);
             });
+        }
+    }
+
+    /// `HoglinModel.setupAnim` (and `BabyHoglinModel`'s): the ears flap with
+    /// the walk, the head turns and butts by the attack swing (a baby's
+    /// lowers with it), and the legs swing in diagonal pairs.
+    pub fn setup_hoglin(&mut self, state: &HoglinState) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let (position, speed) = (state.walk_position, state.walk_speed);
+        let ear_swing = speed * mth_sin_f64(f64::from(position));
+        let ear_rest = (std::f64::consts::PI * 2.0 / 9.0) as f32;
+        let butt = 1.0 - ((10 - 2 * state.attack_ticks).abs() as f32) / 10.0;
+        if let Some(head) = self.root.child_mut("head") {
+            if let Some(ear) = head.child_mut("right_ear") {
+                ear.z_rot = -ear_rest - ear_swing;
+            }
+            if let Some(ear) = head.child_mut("left_ear") {
+                ear.z_rot = ear_rest + ear_swing;
+            }
+            head.y_rot = state.head_y_rot * degrees;
+            head.x_rot = lerp_f32(butt, 0.872_664_63, (-std::f64::consts::PI / 9.0) as f32);
+            if state.baby {
+                head.y += butt * 2.5;
+            }
+        }
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let right_front = cos(position) * 1.2 * speed;
+        let left_front = cos(position + pi) * 1.2 * speed;
+        for (name, x_rot) in [
+            ("right_front_leg", right_front),
+            ("left_front_leg", left_front),
+            ("right_hind_leg", left_front),
+            ("left_hind_leg", right_front),
+        ] {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.x_rot = x_rot;
+            }
         }
     }
 

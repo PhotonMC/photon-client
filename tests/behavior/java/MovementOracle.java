@@ -853,6 +853,8 @@ public final class MovementOracle {
                                 described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
                             }
                         }
+                        case "hoglin" -> described.addProperty("attack_ticks",
+                            ((net.minecraft.world.entity.monster.hoglin.HoglinBase) entity).getAttackAnimationRemainingTicks());
                         case "polar_bear" -> {
                             var bear = (net.minecraft.world.entity.animal.polarbear.PolarBear) entity;
                             described.addProperty("standing", bear.isStanding());

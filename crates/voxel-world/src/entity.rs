@@ -2066,6 +2066,11 @@ impl ClientEntity {
         self.living.creepy
     }
 
+    /// `Hoglin.getAttackAnimationRemainingTicks` (a zoglin's too).
+    pub fn hoglin_attack_ticks(&self) -> i32 {
+        self.living.animal.hoglin_attack_ticks
+    }
+
     /// An iron golem's `getAttackAnimationTick` and `getOfferFlowerTick`.
     pub fn iron_golem_ticks(&self) -> (i32, i32) {
         let animal = &self.living.animal;
@@ -2184,6 +2189,7 @@ impl ClientEntity {
             Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
+            Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
             Some("minecraft:bee") => {
                 let rolling = self.living.bee_flags & 2 != 0;
                 self.living.animal.tick_bee(rolling);

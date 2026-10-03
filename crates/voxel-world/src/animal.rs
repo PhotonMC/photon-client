@@ -26,6 +26,8 @@ pub(crate) struct AnimalState {
     /// `IronGolem.attackAnimationTick` and `offerFlowerTick`.
     pub(crate) golem_attack_tick: i32,
     pub(crate) golem_offer_flower_tick: i32,
+    /// `Hoglin.attackAnimationRemainingTicks` (a zoglin's too).
+    pub(crate) hoglin_attack_ticks: i32,
     flap_bits: u32,
     old_flap_bits: u32,
     flap_speed_bits: u32,
@@ -55,6 +57,9 @@ pub(crate) const GOLEM_ATTACK_EVENT: i8 = 4;
 pub(crate) const GOLEM_OFFER_FLOWER_EVENT: i8 = 11;
 pub(crate) const GOLEM_STOP_OFFERING_EVENT: i8 = 34;
 const GOLEM_ATTACK_TICKS: i32 = 10;
+/// A hoglin's and a zoglin's attack swing: the event that starts it, and its ticks.
+const HOGLIN_ATTACK_EVENT: i8 = 4;
+const HOGLIN_ATTACK_TICKS: i32 = 10;
 const GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
 
 pub fn head_eat_position_scale(tick: i32, partial: f32) -> f32 {
@@ -94,6 +99,7 @@ impl Default for AnimalState {
             goat_lower_head_tick: 0,
             golem_attack_tick: 0,
             golem_offer_flower_tick: 0,
+            hoglin_attack_ticks: 0,
             flap_bits: 0,
             old_flap_bits: 0,
             flap_speed_bits: 0,
@@ -161,6 +167,20 @@ impl AnimalState {
             _ => return false,
         }
         true
+    }
+
+    /// `Hoglin.handleEntityEvent` (a zoglin's): event 4 starts the attack swing.
+    pub(crate) fn hoglin_event(&mut self, event: i8) -> bool {
+        if event != HOGLIN_ATTACK_EVENT {
+            return false;
+        }
+        self.hoglin_attack_ticks = HOGLIN_ATTACK_TICKS;
+        true
+    }
+
+    /// `Hoglin.aiStep` on the client: the swing runs down.
+    pub(crate) fn tick_hoglin(&mut self) {
+        self.hoglin_attack_ticks = (self.hoglin_attack_ticks - 1).max(0);
     }
 
     /// `IronGolem.aiStep` on the client: the attack and the flower timers run

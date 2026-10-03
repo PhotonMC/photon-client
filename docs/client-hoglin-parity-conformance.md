@@ -1,0 +1,30 @@
+# T32d — Hoglin ve zoglin — [client-parity]
+
+Bu kayıt, hoglin ve zoglinin (yetişkin ve bebek) modelinin Java 26.2 ile Rust'ta aynı köşe konum, doku
+koordinatı ve normali üretmesini; saldırı sallanmasının istemci durumunun aynı ilerlemesini kapsar. Kanıt
+sınıfı `client-parity`'dir (model ve tik) ve canlı gözlemdir: gerçek `HoglinModel` ve `BabyHoglinModel`
+katman tablosundan pişirilip gerçek `setupAnim` ile pozlanır; sayaç gerçek `Hoglin` ve `Zoglin`
+varlığıyla ve gerçek varlık olayıyla karşılaştırılır.
+
+## Java kaynak incelemesi
+
+- `HoglinModel.setupAnim`: kulaklar yürüyüşle `hız·sin(konum)` kadar çırpınır (sağ ve sol zıt işaretli);
+  baş yalnız yatay döner, pitch okunmaz; baş eğimi saldırı kesriyle `0,8727` ile `-π/9` arasında
+  ara değer alır; kesir `1 - |10 - 2·kalan|/10` (tam sayı aritmetiği). Ön sağ ve arka sol bacak aynı
+  açıyı, ön sol ve arka sağ bacak karşıt açıyı alır (`1,2` çarpanı). Bebekte baş ayrıca kesir·`2,5`
+  alçalır.
+- `Hoglin` ve `Zoglin` (istemci): olay 4 saldırı sallanmasını 10 tike kurar, her `aiStep` bir azaltır.
+  `getAttackAnimationRemainingTicks` çizim durumuna gider.
+- Doku: hoglin ve zoglin için tek ve bebek dokusu; çeşit yoktur.
+
+## Kapsam
+
+`entity/hoglin-model` 28 satır (dört katman × duruş, bakış, yürüyüş, sallanmanın beş noktası);
+`living-entity-animations`'a üç satır (boşta, sallanan hoglin, iki kez sallanan zoglin).
+
+## Sapmalar (açık)
+
+- Hoglin zombileşirken titrer (`Hoglin.isConverting` → `isShaking`): bunun için boyutun
+  `gameplay/piglins_zombify` özniteliği gerekir ve istemci dünyası bu özniteliği taşımıyor; hoglin hiç
+  titremez. Donmuş mobun titremesi (`isFullyFrozen`) de hiçbir mob için çizilmiyor: T32i.
+- Sallanma sesi ve hoglin sesleri yok.

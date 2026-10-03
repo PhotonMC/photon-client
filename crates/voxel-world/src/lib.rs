@@ -2063,6 +2063,9 @@ impl ClientWorld {
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
+            Some("minecraft:hoglin" | "minecraft:zoglin") => {
+                return entity.living.animal.hoglin_event(event);
+            }
             Some("minecraft:wolf") if event == wolf::SHAKE_EVENT => {
                 entity.living.wolf.start_shake();
                 return true;
