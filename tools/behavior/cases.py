@@ -14420,6 +14420,17 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("ravager-idle", "ravager", 4, [], extras=["ravager"]),
+        # The stun's effect throws a cloud one tick in six, which a headless client cannot add (and
+        # the reference's draws for it are not repeatable): the stun and the roar after it are a
+        # unit test of the state.
+        living("ravager-swings", "ravager", 16, [{"tick": 2, "type": "entity_event", "event": 4}],
+               extras=["ravager"]),
+        living("ravager-swings-twice", "ravager", 24, [{"tick": 2, "type": "entity_event", "event": 4},
+                                                       {"tick": 8, "type": "entity_event", "event": 4}],
+               extras=["ravager"]),
+        # The stun's effect throws a cloud one tick in six, which a headless client cannot add: the
+        # seed is one whose forty draws all miss. The roar's burst (event 69) likewise.
         living("panda-idle", "panda", 4, [], extras=["panda"]),
         living("panda-unhappy-counts-down", "panda", 12,
                [{"tick": 2, "type": "panda_data", "unhappy": 6}], extras=["panda"]),
@@ -14611,6 +14622,7 @@ def entity_cases():
     yield from entity_hoglin_cases()
     yield from entity_fox_cases()
     yield from entity_panda_cases()
+    yield from entity_ravager_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15666,6 +15678,31 @@ def entity_panda_cases():
         ]
     yield {"case_id": "entity/setup-rotations", "family": "entity", "operation": "setup_rotations",
            "rows": turns}
+
+
+def entity_ravager_cases():
+    """The ravager posed by the reference's own `RavagerModel.setupAnim`: the walk and look, the
+    attack swing (the neck's thrust and the mouth's snap), the stun's sway and the roar."""
+    def pose(label, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, stunned=0.0,
+             attack=0.0, roar=0.0):
+        return {"label": label, "layer": "minecraft:ravager#main", "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "stunned": float_bits(stunned),
+                "attack": float_bits(attack), "roar": float_bits(roar)}
+
+    rows = [
+        pose("standing"),
+        pose("looking", head_y_rot=-35.5, x_rot=48.0),
+        pose("walking", walk_position=7.3, walk_speed=0.83),
+    ]
+    rows += [pose(f"attacking-{ticks}", attack=ticks, head_y_rot=6.0, walk_position=2.2,
+                  walk_speed=0.3) for ticks in (9.5, 8.0, 6.5, 5.0, 4.2, 2.5, 1.0, 0.3)]
+    rows += [pose(f"stunned-{ticks}", stunned=ticks, x_rot=-8.0) for ticks in (39.5, 30.0, 12.25, 1.5)]
+    rows += [pose(f"roaring-{amount}", roar=amount, head_y_rot=-12.0)
+             for amount in (0.05, 0.3, 0.5, 0.75, 0.95)]
+    rows.append(pose("attacking-while-stunned", attack=7.0, stunned=20.0))
+    yield {"case_id": "entity/ravager-model", "family": "entity", "operation": "ravager_model",
+           "rows": rows}
 
 
 def entity_llama_cases():

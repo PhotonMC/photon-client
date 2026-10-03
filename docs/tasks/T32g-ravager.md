@@ -24,4 +24,7 @@ Ravager davranışı (sunucu), sesler, binici illager.
 `docs/index.md` satırı, yeni `docs/client-ravager-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_ravager`, `voxel-world/src/ravager.rs` (saldırı/sersemleme/kükreme sayaçları, olay 4/39/69, çekimler), ortak `entity_random.rs` (panda da kullanır), `crates/voxel/src/ravagers.rs`. Kayıt: `docs/client-ravager-parity-conformance.md`.
+- Oracle: `ravager-model` 21, `living-entity-animations` 3 satır.
+- Sapma: sersemleme/kükreme oracle'da koşulamaz (bulut parçacığı + tekrarlanamayan çekim) — birim test; kükreme itmesi, parçacık, ses yok.
+- Açık: T32h strider, T32i titreme.

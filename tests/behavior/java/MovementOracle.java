@@ -926,6 +926,12 @@ public final class MovementOracle {
                                 described.addProperty("crouch_" + partial, Oracle.bits(fox.getCrouchAmount(partial)));
                             }
                         }
+                        case "ravager" -> {
+                            var ravager = (net.minecraft.world.entity.monster.Ravager) entity;
+                            described.addProperty("attack_tick", ravager.getAttackTick());
+                            described.addProperty("stunned_tick", ravager.getStunnedTick());
+                            described.addProperty("roar_tick", ravager.getRoarTick());
+                        }
                         case "hoglin" -> described.addProperty("attack_ticks",
                             ((net.minecraft.world.entity.monster.hoglin.HoglinBase) entity).getAttackAnimationRemainingTicks());
                         case "polar_bear" -> {

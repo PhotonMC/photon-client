@@ -3,8 +3,8 @@
 //! how far it sits, lies on its back and rolls, and the chance it starts to
 //! eat. Its flags and genes are synched data.
 
+use crate::entity_random::EntityRandom;
 use voxel_core::math::mth_lerp_f32 as lerp_f32;
-use voxel_core::random::RandomSource;
 
 /// `Panda.DATA_ID_FLAGS` bits.
 const SNEEZE: u8 = 2;
@@ -21,31 +21,6 @@ const SNEEZE_TICKS: i32 = 20;
 const BROWN: u8 = 4;
 const WEAK: u8 = 5;
 const WORRIED: u8 = 2;
-
-/// The source the chance to eat is drawn from: the entity's own, which the
-/// reference does not seed (made when first drawn from, by the clock). Two
-/// states never differ by it.
-#[derive(Debug, Clone, Default)]
-struct EntityRandom(Option<RandomSource>);
-
-impl PartialEq for EntityRandom {
-    fn eq(&self, _: &Self) -> bool {
-        true
-    }
-}
-
-impl Eq for EntityRandom {}
-
-impl EntityRandom {
-    fn source(&mut self) -> &mut RandomSource {
-        self.0.get_or_insert_with(|| {
-            let seed = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |elapsed| elapsed.as_nanos() as i64);
-            RandomSource::create(seed)
-        })
-    }
-}
 
 /// What a panda's tick reads of the world around it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,7 +106,7 @@ impl PandaState {
     /// Fixes what the reference draws from an unseeded source, so a comparison
     /// can be made.
     pub fn fix_seed(&mut self, seed: i64) {
-        self.random.0 = Some(RandomSource::create(seed));
+        self.random.fix_seed(seed);
     }
 
     fn set_flag(&mut self, flag: u8, value: bool) {

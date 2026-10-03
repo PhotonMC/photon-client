@@ -294,6 +294,17 @@ pub struct FoxState {
     pub baby: bool,
 }
 
+/// What a ravager's model is posed from (`RavagerRenderState`): the quadruped's
+/// look and walk, and how long the stun, the attack swing and the roar have
+/// to run (the ticks left less the partial tick; the roar as a fraction).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct RavagerState {
+    pub quadruped: QuadrupedState,
+    pub stunned_ticks_remaining: f32,
+    pub attack_ticks_remaining: f32,
+    pub roar_animation: f32,
+}
+
 /// What a hoglin's or a zoglin's models are posed from (`HoglinRenderState`):
 /// the walk, the head's turn from the body (there is no pitch) and the ticks
 /// left of its attack swing.
@@ -2080,6 +2091,76 @@ impl MobModel {
                     leg.y += 4.0;
                     leg.z -= 0.25;
                 }
+            }
+        }
+    }
+
+    /// `RavagerModel.setupAnim`: the neck thrusts and the mouth snaps in the
+    /// attack; otherwise the neck rests, sways while stunned, and the mouth
+    /// opens in the roar; the head follows the look and the legs swing.
+    pub fn setup_ravager(&mut self, state: &RavagerState) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let (stunned, attack) = (state.stunned_ticks_remaining, state.attack_ticks_remaining);
+        let Some(neck_x_rot) = self.root.child_mut("neck").map(|neck| neck.x_rot) else {
+            return;
+        };
+        let mut neck: (f32, f32, f32);
+        let mut neck_x = None;
+        let mouth_x_rot;
+        if attack > 0.0 {
+            // `Mth.triangleWave(attackTick, 10)`.
+            let wave = ((attack % 10.0 - 10.0 * 0.5).abs() - 10.0 * 0.25) / (10.0 * 0.25);
+            let scaled = (1.0 + wave) * 0.5;
+            let head_pos = scaled * scaled * scaled * 12.0;
+            let y_offset = head_pos * sin(neck_x_rot);
+            neck = (0.0, -7.0 - y_offset, -6.5 + head_pos);
+            mouth_x_rot = if attack > 5.0 {
+                sin((-4.0 + attack) / 4.0) * pi * 0.4
+            } else {
+                (std::f64::consts::PI / 20.0) as f32 * sin(pi * attack / 10.0)
+            };
+        } else {
+            let y_offset = -sin(neck_x_rot);
+            neck = (0.0, -7.0 - y_offset, 5.5);
+            let is_stunned = stunned > 0.0;
+            neck_x = Some(if is_stunned { 0.219_911_49 } else { 0.0 });
+            let mut mouth = pi * if is_stunned { 0.05 } else { 0.01 };
+            if is_stunned {
+                let speed = f64::from(stunned) / 40.0;
+                neck.0 = (speed * 10.0).sin() as f32 * 3.0;
+            } else if state.roar_animation > 0.0 {
+                let mouth_anim = sin(state.roar_animation * pi * 0.25);
+                mouth = (std::f64::consts::PI / 2.0) as f32 * mouth_anim;
+            }
+            mouth_x_rot = mouth;
+        }
+        if let Some(part) = self.root.child_mut("neck") {
+            (part.x, part.y, part.z) = neck;
+            if let Some(x_rot) = neck_x {
+                part.x_rot = x_rot;
+            }
+            if let Some(head) = part.child_mut("head") {
+                head.x_rot = state.quadruped.x_rot * degrees;
+                head.y_rot = state.quadruped.head_y_rot * degrees;
+                if let Some(mouth) = head.child_mut("mouth") {
+                    mouth.x_rot = mouth_x_rot;
+                }
+            }
+        }
+        let (position, speed) = (state.quadruped.walk_position, state.quadruped.walk_speed);
+        let leg_rot = 0.4 * speed;
+        for (name, offset) in [
+            ("right_hind_leg", 0.0),
+            ("left_hind_leg", pi),
+            ("right_front_leg", pi),
+            ("left_front_leg", 0.0),
+        ] {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.x_rot = cos(position * 0.6662 + offset) * leg_rot;
             }
         }
     }

@@ -2023,6 +2023,28 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The ravager's model posed by the reference's own `RavagerModel.setupAnim`, drawn. */
+    private static JsonObject ravagerModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.ravager.RavagerModel(bakedLayer(row.get("layer").getAsString()));
+            var state = new net.minecraft.client.renderer.entity.state.RavagerRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.stunnedTicksRemaining = Oracle.f32(row, "stunned");
+            state.attackTicksRemaining = Oracle.f32(row, "attack");
+            state.roarAnimation = Oracle.f32(row, "roar");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2693,6 +2715,9 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("ravager_model")) {
+            return ravagerModel(request);
         }
         if (operation.equals("panda_model")) {
             return pandaModel(request);

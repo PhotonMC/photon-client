@@ -23,6 +23,7 @@ mod pandas;
 mod play;
 mod ppm;
 mod profile;
+mod ravagers;
 mod screens;
 mod script;
 mod sections;

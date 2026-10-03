@@ -673,6 +673,8 @@ pub struct ClientEntity {
     pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
     /// A panda's data and own client state, once it has any.
     pub(crate) panda: Option<Box<crate::panda::PandaState>>,
+    /// A ravager's counters, once it has any.
+    pub(crate) ravager: Option<Box<crate::ravager::RavagerState>>,
     /// A horse's animations and tail, made when it first ticks, and the flags
     /// the server sent before that.
     pub(crate) horse: Option<Box<crate::horse::HorseState>>,
@@ -2028,6 +2030,11 @@ impl ClientEntity {
             .fix_seed(seed);
     }
 
+    /// A ravager's counters (the starting state until an event comes).
+    pub fn ravager(&self) -> crate::ravager::RavagerState {
+        self.ravager.as_deref().cloned().unwrap_or_default()
+    }
+
     /// What a cat or a panda does of its own after `super.tick`, given what
     /// the world around it holds (a sleeper near a cat, thunder).
     pub(crate) fn tick_species(&mut self, (sleeper_near_cat, thundering): (bool, bool)) {
@@ -2236,6 +2243,12 @@ impl ClientEntity {
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
             Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
+            Some("minecraft:ravager") => {
+                let alive = self.alive;
+                self.ravager
+                    .get_or_insert_with(Default::default)
+                    .tick(alive);
+            }
             Some("minecraft:bee") => {
                 let rolling = self.living.bee_flags & 2 != 0;
                 self.living.animal.tick_bee(rolling);

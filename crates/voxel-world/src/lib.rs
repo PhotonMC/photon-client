@@ -33,6 +33,7 @@ mod constants;
 mod container;
 mod dimension;
 mod entity;
+mod entity_random;
 mod fluid;
 pub mod fox;
 pub mod horse;
@@ -49,6 +50,7 @@ mod player;
 pub mod polar_bear;
 mod prediction;
 pub mod rabbit;
+pub mod ravager;
 mod recipes;
 mod region_copy;
 mod shadow;
@@ -2103,6 +2105,12 @@ impl ClientWorld {
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
+            Some("minecraft:ravager") => {
+                return entity
+                    .ravager
+                    .get_or_insert_with(Default::default)
+                    .event(event);
+            }
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
             }
@@ -3038,6 +3046,7 @@ impl ClientWorld {
                 attributes: Vec::new(),
                 rabbit: None,
                 panda: None,
+                ravager: None,
                 horse: None,
             },
         );

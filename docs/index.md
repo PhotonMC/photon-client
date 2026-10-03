@@ -140,6 +140,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P10.e.2 — LivingEntity travelInLava — client-parity birleşik kayıt](client-player-travel-in-lava-conformance.md)
 - [P10.e.1 — LivingEntity travelInWater — client-parity birleşik kayıt](client-player-travel-in-water-conformance.md)
 - [T32c — Kutup ayısı — client-parity](client-polar-bear-parity-conformance.md)
+- [T32g — Ravager — client-parity](client-ravager-parity-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
 - [T30 — Koyun ve tavuk — client-parity](client-sheep-chicken-parity-conformance.md)
 - [T29 — İskelet ve piglin aileleri modeli — client-parity](client-skeleton-piglin-parity-conformance.md)

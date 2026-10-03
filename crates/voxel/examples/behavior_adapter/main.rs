@@ -18680,6 +18680,12 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.shake_anim(partial)));
                         }
                     }
+                    "ravager" => {
+                        let ravager = entity.ravager();
+                        described["attack_tick"] = json!(ravager.attack_tick());
+                        described["stunned_tick"] = json!(ravager.stunned_tick());
+                        described["roar_tick"] = json!(ravager.roar_tick());
+                    }
                     "panda" => {
                         let panda = entity.panda();
                         let thundering = world.is_thundering();
@@ -20190,6 +20196,33 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `ravager_model`: a ravager's model posed and drawn.
+fn ravager_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, RavagerState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_ravager(&RavagerState {
+            quadruped: quadruped_state(row)?,
+            stunned_ticks_remaining: bits("stunned")?,
+            attack_ticks_remaining: bits("attack")?,
+            roar_animation: bits("roar")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `panda_textures`: the textures a panda wears by gene and age.
 fn panda_textures_result() -> Value {
     let mut rows = Vec::new();
@@ -21187,6 +21220,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "hoglin_model" => return hoglin_model_result(request),
         "fox_model" => return fox_model_result(request),
         "panda_model" => return panda_model_result(request),
+        "ravager_model" => return ravager_model_result(request),
         "panda_textures" => return Ok(panda_textures_result()),
         "setup_rotations" => return setup_rotations_result(request),
         "fox_textures" => return Ok(fox_textures_result()),
