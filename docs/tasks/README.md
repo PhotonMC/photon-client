@@ -90,7 +90,11 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T34d](T34d-varlik-ustunde-blok.md) | Varlık üstünde blok durumu çizimi (balkabağı, çiçek, taşınan blok) | M | T34c | bitti (02ea54b4) |
 | [T34e](T34e-bakir-golem.md) | Bakır golem (model, durum, doku, gözler) | M | T43b | bitti (21a9bb38) |
 | [T34f](T34f-bakir-golem-katmanlari.md) | Bakır golemin eli, anteni ve başı (`ItemInHandLayer`, `BlockDecorationLayer`, `CustomHeadLayer`) | M | T34e, T41c, T34d | bitti (907dea8a) |
-| [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | açık |
+| [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | bölündü |
+| [T35b](T35b-kalamar.md) | Kalamar ve ışıklı kalamar (mob suda olma durumu, hareket azalması) | M | T35 | bitti |
+| [T35c](T35c-baliklar.md) | Morina, somon, tropikal balık, kirpi balığı | M | T35b | açık |
+| [T35d](T35d-yunus-aksolotl-kaplumbaga-kurbaga.md) | Yunus, aksolotl, kaplumbağa, iribaş, kurbağa | L | T35b, T43b | açık |
+| [T35e](T35e-nautilus-gardiyan.md) | Nautilus, zombi nautilus, gardiyan, elder gardiyan | M | T35b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
 | [T38](T38-araclar.md) | Araçlar: tekneler ve minecart ailesi | M | T24 | açık |

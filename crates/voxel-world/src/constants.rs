@@ -218,6 +218,8 @@ pub const COPPER_GOLEM_WEATHER_DATA_ID: u8 = 16;
 pub const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
 pub(crate) const COPPER_GOLEM_WEATHER_SERIALIZER_ID: i32 = 38;
 pub(crate) const COPPER_GOLEM_STATE_SERIALIZER_ID: i32 = 37;
+/// Where a glow squid's dark ticks (an int) sit among its data.
+pub const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 /// Where a hoglin's immunity to zombification sits among its data.
 pub const HOGLIN_IMMUNE_DATA_ID: u8 = 18;
 pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;

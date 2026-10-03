@@ -472,6 +472,15 @@ pub(crate) fn copper_golem_data_from_metadata(
     ))
 }
 
+/// A glow squid's dark ticks (`GlowSquid.DATA_DARK_TICKS_REMAINING`), when the
+/// data holds them.
+pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:glow_squid" {
+        return None;
+    }
+    metadata_int_value(metadata, GLOW_SQUID_DARK_TICKS_DATA_ID)
+}
+
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
 pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {

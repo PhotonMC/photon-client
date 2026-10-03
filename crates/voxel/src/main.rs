@@ -30,6 +30,7 @@ mod script;
 mod sections;
 mod sheep;
 mod sky;
+mod squids;
 mod striders;
 mod view;
 mod villagers;

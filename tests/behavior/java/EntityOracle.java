@@ -1530,6 +1530,46 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The squid's models posed by the reference's own `SquidModel.setupAnim`, drawn. */
+    private static JsonObject squidModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.squid.BabySquidModel(root)
+                : new net.minecraft.client.model.animal.squid.SquidModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.SquidRenderState();
+            state.tentacleAngle = Oracle.f32(row, "tentacle_angle");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What `GlowSquidRenderer.getBlockLightLevel` makes of the dark ticks and the light around: the
+     * glow comes from the reference's own `Mth.clampedLerp`, cut to a whole level.
+     */
+    private static JsonObject glowSquidLight(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            int glow = (int) net.minecraft.util.Mth.clampedLerp(1.0F - row.get("dark_ticks").getAsInt() / 10.0F, 0.0F, 15.0F);
+            int light = glow == 15 ? 15 : Math.max(glow, row.get("block_light").getAsInt());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("light", light);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The copper golem's model posed by the reference's own `CopperGolemModel.setupAnim`, drawn. */
     private static JsonObject copperGolemModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -2070,6 +2110,12 @@ public final class EntityOracle {
                 panda.isSitting = row.get("sitting").getAsBoolean();
                 panda.isEating = row.get("eating").getAsBoolean();
                 state = panda;
+            } else if (kind.equals("squid")) {
+                rendererClass = net.minecraft.client.renderer.entity.SquidRenderer.class;
+                var squid = new net.minecraft.client.renderer.entity.state.SquidRenderState();
+                squid.xBodyRot = Oracle.f32(row, "x_body_rot");
+                squid.zBodyRot = Oracle.f32(row, "z_body_rot");
+                state = squid;
             } else if (kind.equals("cat")) {
                 rendererClass = net.minecraft.client.renderer.entity.CatRenderer.class;
                 var cat = new net.minecraft.client.renderer.entity.state.CatRenderState();
@@ -2983,6 +3029,12 @@ public final class EntityOracle {
         }
         if (operation.equals("bee_model")) {
             return beeModel(request);
+        }
+        if (operation.equals("squid_model")) {
+            return squidModel(request);
+        }
+        if (operation.equals("glow_squid_light")) {
+            return glowSquidLight(request);
         }
         if (operation.equals("copper_golem_layers")) {
             return copperGolemLayers(request);

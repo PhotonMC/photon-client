@@ -591,6 +591,8 @@ public final class MovementOracle {
         var soundRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
         setField(soundRenderer, "mainCamera", new net.minecraft.client.Camera());
         setField(scene.minecraft(), "gameRenderer", soundRenderer);
+        // What an entity adds to the air (a glow squid's sparks) is not drawn here.
+        setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
         setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
             net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
@@ -600,6 +602,11 @@ public final class MovementOracle {
         int entityId = row.get("entity_id").getAsInt();
         entity.setId(entityId);
         entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), 0.0F, 0.0F);
+        // The constructor turns the head at random; the add-entity packet sets it (here: facing south).
+        entity.yBodyRot = 0.0F;
+        entity.yHeadRot = 0.0F;
+        entity.yBodyRotO = 0.0F;
+        entity.yHeadRotO = 0.0F;
         entity.syncPacketPositionCodec(entity.getX(), entity.getY(), entity.getZ());
         level.addEntity(entity);
         var ticks = new JsonArray();
@@ -812,6 +819,24 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "entity_motion" -> listener.handleSetEntityMotion(
+                        new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(entityId,
+                            new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"), Oracle.f64(event, "y"),
+                                Oracle.f64(event, "z"))));
+                    case "glow_squid_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.animal.squid.GlowSquid.class,
+                            "DATA_DARK_TICKS_REMAINING", event.get("dark_ticks").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "squid_speed" -> {
+                        // What the constructor draws from an unseeded random source: fixed here.
+                        var speed = net.minecraft.world.entity.animal.squid.Squid.class
+                            .getDeclaredField("tentacleSpeed");
+                        speed.setAccessible(true);
+                        speed.setFloat(entity, Oracle.f32(event, "speed"));
+                    }
                     case "copper_golem_idle" -> {
                         // What the reference draws from an unseeded random source: fixed here.
                         var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
@@ -1001,6 +1026,28 @@ public final class MovementOracle {
                             described.addProperty("idle_millis",
                                 rabbit.idleHeadTiltAnimationState.getTimeInMillis(rabbit.tickCount));
                             described.addProperty("jump_completion", Oracle.bits(rabbit.getJumpCompletion(0.5F)));
+                        }
+                        case "squid" -> {
+                            var squid = (net.minecraft.world.entity.animal.squid.Squid) entity;
+                            described.addProperty("in_water", squid.isInWater());
+                            described.addProperty("y_rot", Oracle.bits(squid.getYRot()));
+                            described.addProperty("y_body_rot", Oracle.bits(squid.yBodyRot));
+                            described.addProperty("tentacle_angle", Oracle.bits(squid.tentacleAngle));
+                            described.addProperty("x_body_rot", Oracle.bits(squid.xBodyRot));
+                            described.addProperty("z_body_rot", Oracle.bits(squid.zBodyRot));
+                            described.addProperty("tentacle_angle_half",
+                                Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, squid.oldTentacleAngle, squid.tentacleAngle)));
+                            described.addProperty("x_body_rot_half",
+                                Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, squid.xBodyRotO, squid.xBodyRot)));
+                            described.addProperty("z_body_rot_half",
+                                Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, squid.zBodyRotO, squid.zBodyRot)));
+                            if (squid instanceof net.minecraft.world.entity.animal.squid.GlowSquid glow) {
+                                described.addProperty("dark_ticks", glow.getDarkTicksRemaining());
+                            }
+                            var motion = squid.getDeltaMovement();
+                            described.addProperty("motion_x", Oracle.bits(motion.x));
+                            described.addProperty("motion_y", Oracle.bits(motion.y));
+                            described.addProperty("motion_z", Oracle.bits(motion.z));
                         }
                         case "copper_golem" -> {
                             var golem = (net.minecraft.world.entity.animal.golem.CopperGolem) entity;

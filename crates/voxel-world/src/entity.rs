@@ -209,6 +209,10 @@ pub(crate) struct EntityState {
     pub(crate) strider_suffocating: bool,
     /// `Hoglin.isImmuneToZombification`.
     pub(crate) hoglin_immune: bool,
+    /// `Entity.isInWater` for the mobs that track it.
+    pub(crate) in_water: bool,
+    /// `GlowSquid.getDarkTicksRemaining`.
+    pub(crate) glow_dark_ticks: i32,
     /// A copper golem's `CopperGolemState` and its weathering (0 to 3).
     pub(crate) copper_golem_action: crate::copper_golem::GolemAction,
     pub(crate) copper_golem_weather: u8,
@@ -680,6 +684,8 @@ pub struct ClientEntity {
     pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
     /// A copper golem's animation states, made when it first ticks.
     pub(crate) copper_golem: Option<Box<crate::copper_golem::CopperGolemAnimations>>,
+    /// A squid's tentacles and body turns, made when it first ticks.
+    pub(crate) squid: Option<Box<crate::squid::SquidState>>,
     /// A panda's data and own client state, once it has any.
     pub(crate) panda: Option<Box<crate::panda::PandaState>>,
     /// A ravager's counters, once it has any.
@@ -1953,6 +1959,107 @@ impl ClientEntity {
         self.rabbit
             .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
             .fix_idle(timeout, seed);
+    }
+
+    /// A squid's tentacles and body turns, if it has ticked.
+    pub fn squid(&self) -> Option<&crate::squid::SquidState> {
+        self.squid.as_deref()
+    }
+
+    pub(crate) fn is_squid(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:squid" | "minecraft:glow_squid")
+        )
+    }
+
+    /// Whether the entity's water state is tracked (`Entity.isInWater`).
+    pub(crate) fn tracks_water(&self) -> bool {
+        self.is_squid()
+    }
+
+    /// `Entity.isInWater` for a mob that tracks it.
+    pub fn is_in_water(&self) -> bool {
+        self.living.in_water
+    }
+
+    /// Whether a position interpolation is still under way
+    /// (`LivingEntity.isInterpolating`).
+    pub(crate) fn is_interpolating(&self) -> bool {
+        self.interpolation
+            .as_ref()
+            .is_some_and(|interpolation| interpolation.steps > 0)
+    }
+
+    /// What `LivingEntity.aiStep` does to the motion of a mob the client does not move:
+    /// it decays by a fiftieth less while no position interpolation runs, and motion
+    /// under three thousandths a tick is dropped.
+    pub(crate) fn tick_mob_motion(&mut self, was_interpolating: bool) {
+        let (mut x, mut y, mut z) = self.motion();
+        if !was_interpolating {
+            x *= 0.98;
+            y *= 0.98;
+            z *= 0.98;
+        }
+        if x.abs() < 0.003 {
+            x = 0.0;
+        }
+        if z.abs() < 0.003 {
+            z = 0.0;
+        }
+        if y.abs() < 0.003 {
+            y = 0.0;
+        }
+        self.motion_x_bits = x.to_bits();
+        self.motion_y_bits = y.to_bits();
+        self.motion_z_bits = z.to_bits();
+    }
+
+    /// `Entity.baseTick`'s fluid pass, then `LivingEntity.aiStep`: a living entity
+    /// eases to the position and turn its last packet gave and its head to the head
+    /// turn, and a mob's motion fades; then what a species does of its own there.
+    pub(crate) fn tick_ai_step(&mut self, living: Option<LivingKind>, in_water: Option<bool>) {
+        if let Some(in_water) = in_water {
+            self.living.in_water = in_water;
+        }
+        let was_interpolating = self.is_interpolating();
+        if living.is_some() {
+            self.tick_position_interpolation();
+        }
+        self.tick_head_rotation();
+        if living == Some(LivingKind::Mob) {
+            self.tick_mob_motion(was_interpolating);
+            self.tick_squid();
+        }
+    }
+
+    /// `Squid.aiStep`, which turns the body (and with it the entity) in water.
+    pub(crate) fn tick_squid(&mut self) {
+        if !self.is_squid() {
+            return;
+        }
+        let (in_water, motion, body) = (
+            self.living.in_water,
+            self.motion(),
+            f32::from_bits(self.y_body_rot_bits),
+        );
+        let turned = self
+            .squid
+            .get_or_insert_with(|| Box::new(crate::squid::SquidState::new()))
+            .ai_step(in_water, motion, body);
+        if let Some(body) = turned {
+            self.y_body_rot_bits = body.to_bits();
+            self.y_rot_bits = body.to_bits();
+        }
+        // `GlowSquid.aiStep`: the dark ticks a hurt glow squid was given run out.
+        if self.living.glow_dark_ticks > 0 {
+            self.living.glow_dark_ticks -= 1;
+        }
+    }
+
+    /// `GlowSquid.getDarkTicksRemaining`.
+    pub fn glow_dark_ticks(&self) -> i32 {
+        self.living.glow_dark_ticks
     }
 
     /// A copper golem's animation states, if it has ticked.

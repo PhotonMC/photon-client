@@ -18585,6 +18585,26 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "entity_motion" => {
+                        world.apply_entity_motion(voxel_world::EntityMotionInput {
+                            entity_id,
+                            x: bits64(event, "x")?,
+                            y: bits64(event, "y")?,
+                            z: bits64(event, "z")?,
+                        });
+                    }
+                    "glow_squid_data" => {
+                        let mut data = vec![voxel_world::GLOW_SQUID_DARK_TICKS_DATA_ID, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "dark_ticks")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
+                    "squid_speed" => {
+                        let speed = u32::from_str_radix(string(event, "speed")?, 16)
+                            .map(f32::from_bits)
+                            .map_err(|error| error.to_string())?;
+                        world.fix_squid_tentacle_speed(entity_id, speed);
+                    }
                     "copper_golem_idle" => {
                         world.fix_copper_golem_seed(entity_id, i64_field(event, "seed")?);
                     }
@@ -18793,6 +18813,30 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described["idle_millis"] =
                                 json!(rabbit.idle_head_tilt.time_in_millis(tick));
                             described["jump_completion"] = json!(hex(rabbit.jump_completion(0.5)));
+                        }
+                    }
+                    "squid" => {
+                        if let Some(squid) = entity.squid() {
+                            let pose = squid.pose(0.5);
+                            described["in_water"] = json!(entity.is_in_water());
+                            described["y_rot"] = json!(hex(entity.rotation().0));
+                            described["y_body_rot"] = json!(hex(entity.body_y_rotation()));
+                            described["tentacle_angle"] = json!(hex(squid.tentacle_angle));
+                            described["x_body_rot"] = json!(hex(squid.x_body_rot));
+                            described["z_body_rot"] = json!(hex(squid.z_body_rot));
+                            described["tentacle_angle_half"] = json!(hex(pose.tentacle_angle));
+                            described["x_body_rot_half"] = json!(hex(pose.x_body_rot));
+                            described["z_body_rot_half"] = json!(hex(pose.z_body_rot));
+                            if voxel_data::entity_type::name(entity.type_id)
+                                == Some("minecraft:glow_squid")
+                            {
+                                described["dark_ticks"] = json!(entity.glow_dark_ticks());
+                            }
+                            let (x, y, z) = entity.motion();
+                            for (key, value) in [("motion_x", x), ("motion_y", y), ("motion_z", z)]
+                            {
+                                described[key] = json!(format!("{:016x}", value.to_bits()));
+                            }
                         }
                     }
                     "copper_golem" => {
@@ -19953,6 +19997,36 @@ fn rabbit_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `squid_model`: a squid's model posed and drawn.
+fn squid_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let angle = u32::from_str_radix(row["tentacle_angle"].as_str().ok_or("angle")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_squid(angle);
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `glow_squid_light`: the block light a glow squid is drawn with.
+fn glow_squid_light_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let light = voxel_render::mob_model::glow_squid_block_light(
+            i32_field(row, "dark_ticks")?,
+            i32_field(row, "block_light")?,
+        );
+        out.push(json!({"label": row["label"], "light": light}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `copper_golem_model`: a copper golem's model posed and drawn.
 fn copper_golem_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
@@ -20538,6 +20612,13 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     pose.translate(-0.5, -0.5, -0.5);
                     poses.push(matrix_of(&pose));
                 }
+            }
+            "squid" => {
+                placed.squid = Some(voxel_render::mob_model::SquidTurns {
+                    x_body_rot: bits("x_body_rot")?,
+                    z_body_rot: bits("z_body_rot")?,
+                    baby,
+                });
             }
             "cat" => placed.cat_lying(bits("lie_down_amount")?, flag("on_sleeping_player")?),
             "fox" => {
@@ -21534,6 +21615,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "polar_bear_model" => return polar_bear_model_result(request),
         "hoglin_model" => return hoglin_model_result(request),
         "copper_golem_model" => return copper_golem_model_result(request),
+        "squid_model" => return squid_model_result(request),
+        "glow_squid_light" => return glow_squid_light_result(request),
         "copper_golem_layers" => return copper_golem_layers_result(request),
         "fox_model" => return fox_model_result(request),
         "panda_model" => return panda_model_result(request),

@@ -55,6 +55,7 @@ pub mod ravager;
 mod recipes;
 mod region_copy;
 mod shadow;
+pub mod squid;
 pub mod wolf;
 
 pub use block_entity::*;
@@ -1153,6 +1154,19 @@ impl ClientWorld {
         true
     }
 
+    /// Fixes a squid's tentacle speed (see [`squid::SquidState::fix_tentacle_speed`]);
+    /// false for an entity that is not there.
+    pub fn fix_squid_tentacle_speed(&mut self, entity_id: i32, speed: f32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity
+            .squid
+            .get_or_insert_with(|| Box::new(squid::SquidState::new()))
+            .fix_tentacle_speed(speed);
+        true
+    }
+
     /// Fixes the source a copper golem's idle wait is drawn from (see
     /// [`copper_golem::CopperGolemAnimations::fix_seed`]); false for an entity that is not there.
     pub fn fix_copper_golem_seed(&mut self, entity_id: i32, seed: i64) -> bool {
@@ -1654,6 +1668,37 @@ impl ClientWorld {
     /// What the species that look about them read of the world: whether this
     /// is a cat that lies down with a sleeping player near, and whether it
     /// thunders.
+    /// `Entity.updateFluidInteraction`'s answer for the mobs that read it: whether
+    /// the water reaches their box (none for the others, whose state is not
+    /// tracked). A squid is not pushed by fluids, so no current is gathered.
+    fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
+        let entity = self.entities.get(&entity_id)?;
+        if !entity.tracks_water() {
+            return None;
+        }
+        let pick = voxel_data::entity_type::pick(entity.type_id)?;
+        let (width, height, eye) = match pick.baby {
+            Some(baby) if entity.is_baby() => baby,
+            _ => pick.size,
+        };
+        let dimensions = ClientEntityDimensions::scalable(width, height)
+            .with_eye_height(eye)
+            .scale(entity.scale(), entity.scale());
+        let (x, y, z) = entity.position();
+        let position = voxel_core::math::Vec3::new(x, y, z);
+        let found = fluid::scan(
+            &local_player::Level { world: self },
+            (
+                dimensions.make_bounding_box(position),
+                position,
+                dimensions.eye_height(),
+            ),
+            true,
+        )
+        .ok()?;
+        Some(found.water.height > 0.0)
+    }
+
     fn species_surroundings(&self, entity_id: i32) -> (bool, bool) {
         let sleeper_near_cat = self
             .entities
@@ -1704,6 +1749,7 @@ impl ClientWorld {
             .is_some_and(|entity| self.should_tick_death(entity));
         let game_time = self.game_time;
         let surroundings = self.species_surroundings(entity_id);
+        let in_water = self.mob_in_water(entity_id);
         {
             let entity = self
                 .entities
@@ -1711,13 +1757,8 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
-            // `LivingEntity.aiStep`: a living entity eases to the position and
-            // turn its last packet gave, and its head to the head turn.
             let living = entity.living_kind();
-            if living.is_some() {
-                entity.tick_position_interpolation();
-            }
-            entity.tick_head_rotation();
+            entity.tick_ai_step(living, in_water);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
             }
@@ -2112,6 +2153,13 @@ impl ClientWorld {
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
+        if event == 19 && entity.is_squid() {
+            entity
+                .squid
+                .get_or_insert_with(|| Box::new(squid::SquidState::new()))
+                .restart_beat();
+            return true;
+        }
         if event == animal::SHEEP_EAT_EVENT
             && voxel_data::entity_type::name(entity.type_id) == Some("minecraft:sheep")
         {
@@ -3062,6 +3110,7 @@ impl ClientWorld {
                 attributes: Vec::new(),
                 rabbit: None,
                 copper_golem: None,
+                squid: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3508,6 +3557,9 @@ impl ClientWorld {
             if let Some(weather) = weather {
                 entity.living.copper_golem_weather = weather.clamp(0, 3) as u8;
             }
+        }
+        if let Some(ticks) = glow_squid_dark_ticks_from_metadata(entity.type_id, metadata) {
+            entity.living.glow_dark_ticks = ticks;
         }
         if let Some(immune) = hoglin_immune_from_metadata(entity.type_id, metadata) {
             entity.living.hoglin_immune = immune;

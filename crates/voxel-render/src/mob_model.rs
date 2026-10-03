@@ -162,6 +162,17 @@ pub struct RabbitState {
     pub baby: bool,
 }
 
+/// `GlowSquidRenderer.getBlockLightLevel`: a glow squid lights itself, less
+/// while it is dark (after a hurt), but never below the light around it.
+pub fn glow_squid_block_light(dark_ticks: i32, block_light: i32) -> i32 {
+    let glow = voxel_core::math::clamped_lerp_f32(1.0 - dark_ticks as f32 / 10.0, 0.0, 15.0) as i32;
+    if glow == 15 {
+        15
+    } else {
+        glow.max(block_light)
+    }
+}
+
 /// What a copper golem's model is posed from (`CopperGolemRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CopperGolemModelState {
@@ -1209,6 +1220,16 @@ impl MobModel {
                 voxel_data::animation::definition(&format!("CopperGolem.{name}"))
             {
                 self.animate(definition, running.time_in_millis(state.age_in_ticks), 1.0);
+            }
+        }
+    }
+
+    /// `SquidModel.setupAnim`: every tentacle leans by the beat's angle.
+    pub fn setup_squid(&mut self, tentacle_angle: f32) {
+        self.root.reset();
+        for index in 0..8 {
+            if let Some(tentacle) = self.root.child_mut(&format!("tentacle{index}")) {
+                tentacle.x_rot = tentacle_angle;
             }
         }
     }
@@ -2686,6 +2707,17 @@ pub struct MobPlacement {
     /// `LivingEntityRenderer.isShaking`: the age in ticks of a mob whose body
     /// shudders, or none.
     pub shaking: Option<f32>,
+    /// `SquidRenderer.setupRotations`, which replaces the renderer's own turns.
+    pub squid: Option<SquidTurns>,
+}
+
+/// What a squid's renderer turns the pose by: the body's two turns, and
+/// whether it is a baby (it hangs lower).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct SquidTurns {
+    pub x_body_rot: f32,
+    pub z_body_rot: f32,
+    pub baby: bool,
 }
 
 impl Default for MobPlacement {
@@ -2707,6 +2739,7 @@ impl Default for MobPlacement {
             pitch: None,
             panda: None,
             shaking: None,
+            squid: None,
         }
     }
 }
@@ -2785,6 +2818,16 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
     let mut pose = Pose::default();
     pose.translate(placement.feet[0], placement.feet[1], placement.feet[2]);
     pose.scale(placement.scale, placement.scale, placement.scale);
+    if let Some(squid) = placement.squid {
+        // `SquidRenderer.setupRotations`: no fall of a dead one, no shudder.
+        pose.translate(0.0, if squid.baby { 0.25 } else { 0.5 }, 0.0);
+        let degrees = Quaternion::degrees_to_radians;
+        pose.rotate(&Quaternion::rotation_y(degrees(180.0 - placement.body_rot)));
+        pose.rotate(&Quaternion::rotation_x(degrees(squid.x_body_rot)));
+        pose.rotate(&Quaternion::rotation_y(degrees(squid.z_body_rot)));
+        pose.translate(0.0, if squid.baby { -0.6 } else { -1.2 }, 0.0);
+        return pose;
+    }
     pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
         180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
     )));

@@ -14327,7 +14327,40 @@ def movement_item_cases():
     on_ground = lambda tick, ground: {"tick": tick, "type": "move", "xa": 0, "ya": 0, "za": 0,
                                        "on_ground": ground}
     swing = ["swing"]
+
+    def squid(label, ticks, events, water="deep", entity="squid", speed=0.15):
+        """A squid at the middle of the scene's only loaded chunk, in a pool of water, a layer of
+        it that reaches only part of its box, or none, its tentacle speed (drawn unseeded by the
+        constructor) fixed."""
+        layers = {"deep": range(60, 70), "shallow": range(64, 65), "none": range(0)}[water]
+        row = living(label, entity, ticks,
+                     [{"tick": 0, "type": "squid_speed", "speed": float_bits(speed)}] + events,
+                     extras=["squid"])
+        row["x"] = float_bits(8.5, "f64")
+        row["z"] = float_bits(8.5, "f64")
+        row["blocks"] = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
+                         for y in layers for x in range(4, 13) for z in range(4, 13)]
+        return row
+
+    motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
+                                    "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
     animation_rows = [
+        # A squid beats its tentacles, and turns with its motion while it is in water; out of it
+        # the tentacles flap and it tips head down. Its motion fades (a fiftieth a tick, and
+        # under three thousandths is dropped) unless a position interpolation runs.
+        squid("squid-at-rest-in-water", 40, []),
+        squid("squid-glides-in-water", 70, [motion(3, 0.12, -0.04, 0.07), motion(30, -0.1, 0.06, 0.02)]),
+        squid("squid-fast-tentacles", 60, [motion(3, 0.0, 0.1, 0.0)], speed=0.28),
+        squid("squid-beat-restarts", 60, [motion(3, 0.1, 0.0, 0.1),
+                                          {"tick": 25, "type": "entity_event", "event": 19}]),
+        squid("squid-follows-its-moves-packets", 50,
+              [motion(2, 0.1, 0.0, 0.0), {"tick": 4, "type": "move", "xa": 400, "ya": 0, "za": 200},
+               {"tick": 9, "type": "move", "xa": 300, "ya": 100, "za": 0}]),
+        squid("squid-in-shallow-water", 50, [motion(3, 0.1, -0.03, 0.0)], water="shallow"),
+        squid("squid-out-of-water", 60, [motion(3, 0.1, -0.3, 0.0)], water="none"),
+        squid("glow-squid-in-water", 40, [motion(3, 0.05, 0.05, -0.1)], entity="glow_squid"),
+        squid("glow-squid-dark-ticks-run-out", 30,
+              [{"tick": 2, "type": "glow_squid_data", "dark_ticks": 12}], entity="glow_squid"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
         living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
         living("zombie-swings-again-too-early", "zombie", 14,
@@ -14664,6 +14697,7 @@ def entity_cases():
     yield from entity_ravager_cases()
     yield from entity_strider_cases()
     yield from entity_shaking_cases()
+    yield from entity_squid_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15392,6 +15426,33 @@ def entity_rabbit_cases():
             pose("both", layer, head_y_rot=12.0, x_rot=-8.0, age=50.0, hop=30, idle=20),
         ]
     yield {"case_id": "entity/rabbit-model", "family": "entity", "operation": "rabbit_model", "rows": rows}
+
+
+def entity_squid_cases():
+    """The squid, grown and baby, in both the squid's and the glow squid's layers, posed by the
+    reference's own `SquidModel.setupAnim` (every tentacle leans by the beat's angle); how its
+    renderer turns the pose (the body's two turns, lower for a baby, no fall once dead); and the
+    light a glow squid gives itself while it is dark."""
+    rows = [{"label": f"{layer}-{angle}", "layer": f"minecraft:{layer}#main",
+             "tentacle_angle": float_bits(angle)}
+            for layer in ("squid", "squid_baby", "glow_squid", "glow_squid_baby")
+            for angle in (0.0, 0.2, 0.785398, -0.4)]
+    yield {"case_id": "entity/squid-model", "family": "entity", "operation": "squid_model",
+           "rows": rows}
+    turns = [{"label": f"squid-{'baby-' if baby else ''}{label}", "kind": "squid", "baby": baby,
+              "body_rot": float_bits(body_rot), "x_rot": float_bits(0.0),
+              "age_in_ticks": float_bits(10.5), "x_body_rot": float_bits(x),
+              "z_body_rot": float_bits(z)}
+             for baby in (False, True)
+             for label, body_rot, x, z in (("still", 0.0, 0.0, 0.0), ("tipped", 37.0, -63.5, 0.0),
+                                           ("spinning", -120.0, -89.9, 417.25),
+                                           ("head-down", 12.0, -90.0, 1203.5))]
+    yield {"case_id": "entity/squid-rotations", "family": "entity",
+           "operation": "setup_rotations", "rows": turns}
+    yield {"case_id": "entity/glow-squid-light", "family": "entity",
+           "operation": "glow_squid_light",
+           "rows": [{"label": f"dark-{dark}-light-{light}", "dark_ticks": dark, "block_light": light}
+                    for dark in (0, 1, 3, 5, 9, 10, 11, 100) for light in (0, 7, 15)]}
 
 
 def entity_copper_golem_cases():
