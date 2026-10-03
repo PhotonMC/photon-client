@@ -3240,6 +3240,13 @@ impl ClientWorld {
         if let Some(counter) = unhappy_counter_from_metadata(entity.type_id, metadata) {
             entity.living.unhappy_counter = counter;
         }
+        let (celebrating, casting) = illager_flags_from_metadata(entity.type_id, metadata);
+        if let Some(celebrating) = celebrating {
+            entity.living.celebrating = celebrating;
+        }
+        if let Some(casting) = casting {
+            entity.living.casting_spell = casting;
+        }
         if let Some(wool) = sheep_wool_from_metadata(entity.type_id, metadata) {
             entity.living.animal.wool = wool;
         }

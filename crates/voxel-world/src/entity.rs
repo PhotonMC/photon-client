@@ -168,6 +168,9 @@ pub(crate) struct EntityState {
     pub(crate) villager_data: Option<[i32; 3]>,
     /// `AbstractVillager.getUnhappyCounter`.
     pub(crate) unhappy_counter: i32,
+    /// `Raider.isCelebrating`, and whether a spellcaster is casting.
+    pub(crate) celebrating: bool,
+    pub(crate) casting_spell: bool,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1774,6 +1777,16 @@ impl ClientEntity {
     /// (`getUnhappyCounter() > 0`).
     pub fn is_unhappy(&self) -> bool {
         self.living.unhappy_counter > 0
+    }
+
+    /// `Raider.isCelebrating`.
+    pub fn is_celebrating(&self) -> bool {
+        self.living.celebrating
+    }
+
+    /// `SpellcasterIllager.isCastingSpell`.
+    pub fn is_casting_spell(&self) -> bool {
+        self.living.casting_spell
     }
 
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).

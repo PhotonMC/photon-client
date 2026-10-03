@@ -276,6 +276,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(zombies)
         .chain(crate::sheep::textures())
         .chain(crate::monsters::textures())
+        .chain(crate::illagers::textures())
         .chain([crate::armor_stands::TEXTURE])
 }
 
@@ -422,6 +423,15 @@ pub fn remote_mobs(
     ));
     vertices.extend(crate::villagers::remote_villagers(
         session, models, textures, view,
+    ));
+    vertices.extend(crate::villagers::remote_witches(
+        session, models, textures, view,
+    ));
+    vertices.extend(crate::illagers::remote_illagers(
+        session,
+        models,
+        textures,
+        (view, held),
     ));
     vertices.extend(crate::armor_stands::remote_armor_stands(
         session,
@@ -607,7 +617,7 @@ fn pose_humanoid(
 }
 
 /// Whether a stack is of the item with this name.
-fn is_item(stack: &voxel_world::ClientItemStackState, name: &str) -> bool {
+pub(crate) fn is_item(stack: &voxel_world::ClientItemStackState, name: &str) -> bool {
     voxel_data::item::registry::index(name)
         .is_some_and(|index| usize::try_from(stack.item_registry_id()) == Ok(index))
 }

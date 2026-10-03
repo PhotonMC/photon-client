@@ -8,6 +8,7 @@ mod dropped_items;
 mod gui;
 mod held_items;
 mod hud_input;
+mod illagers;
 mod item_layers;
 mod mobs;
 mod monsters;

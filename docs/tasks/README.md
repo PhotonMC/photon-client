@@ -73,7 +73,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
 | [T33b](T33b-goz-sarj-bocek-ari.md) | Örümcek gözleri, şarjlı creeper, gümüş balığı, endermite, arı | M | T33 | açık |
 | [T34](T34-koylu-illager-golem.md) | Köylü, tüccar, illager, cadı, golemler ve enderman | L | T24 | bölündü (bc0ab848) |
-| [T34b](T34b-illager-cadi-golem-enderman.md) | Illager, cadı, golemler, enderman, zombi köylü | L | T34 | açık |
+| [T34b](T34b-illager-cadi-golem-enderman.md) | Illager ve cadı | M | T34 | bitti |
+| [T34c](T34c-golem-enderman-zombi-koylu.md) | Golemler, enderman, zombi köylü | L | T34b | açık |
 | [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |

@@ -166,6 +166,10 @@ pub const ROTATIONS_SERIALIZER_ID: i32 = 9;
 pub const VILLAGER_UNHAPPY_DATA_ID: u8 = 18;
 pub const VILLAGER_DATA_DATA_ID: u8 = 19;
 pub const VILLAGER_DATA_SERIALIZER_ID: i32 = 18;
+/// Where a raider's celebrating flag (a boolean) and a spellcaster's spell
+/// (a byte, above zero while casting) sit among their data.
+pub const RAIDER_CELEBRATING_DATA_ID: u8 = 16;
+pub const SPELLCASTER_CASTING_DATA_ID: u8 = 17;
 /// Where a creeper's fuse direction (an int) and ignited flag (a boolean)
 /// sit among its data.
 pub const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;

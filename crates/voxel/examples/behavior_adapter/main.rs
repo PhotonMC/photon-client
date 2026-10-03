@@ -19244,6 +19244,76 @@ fn villager_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `illager_model`: an illager's model posed for an arm pose and drawn.
+fn illager_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{IllagerArmPose, IllagerState, MobModel, QuadrupedState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_illager(&IllagerState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            riding: row["riding"].as_bool().ok_or("riding")?,
+            arm_pose: IllagerArmPose::named(row["arm_pose"].as_str().ok_or("arm_pose")?)
+                .ok_or("no such arm pose")?,
+            main_arm_left: row["main_arm"].as_str() == Some("left"),
+            attack_time: bits("attack_time")?,
+            has_item: row["has_item"].as_bool().ok_or("has_item")?,
+            max_crossbow_charge: row["max_crossbow_charge"].as_i64().ok_or("charge")? as i32,
+            ticks_using_item: bits("ticks_using_item")?,
+            hat_visible: row["hat"].as_bool().ok_or("hat")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `witch_model`: the witch's model posed and drawn.
+fn witch_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState, WitchState};
+    let layer = voxel_data::entity_model::layer("minecraft:witch#main").ok_or("no witch layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_witch(&WitchState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            entity_id: row["entity_id"].as_i64().ok_or("entity_id")? as i32,
+            holding_item: row["holding_item"].as_bool().ok_or("holding_item")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `creeper_render`: the scale a swelling creeper's renderer applies, and how
 /// far it flashes white.
 fn creeper_render_result(request: &Value) -> Result<Value, String> {
@@ -19738,6 +19808,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "sheep_model" => return sheep_model_result(request),
         "armor_stand_model" => return armor_stand_model_result(request),
         "equipment_layers" => return equipment_layers_result(),
+        "illager_model" => return illager_model_result(request),
+        "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),
         "villager_layers" => return villager_layers_result(request),
         "villager_model" => return villager_model_result(request),
@@ -19775,8 +19847,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
                 EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
                 PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
-                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID, VILLAGER_DATA_DATA_ID,
-                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
+                RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
+                SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID,
+                VILLAGER_UNHAPPY_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19796,6 +19869,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "raider-celebrating", "data_id": RAIDER_CELEBRATING_DATA_ID, "serializer": 8},
+                {"label": "spellcaster-casting", "data_id": SPELLCASTER_CASTING_DATA_ID, "serializer": 0},
                 {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
                 {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
             ]}));

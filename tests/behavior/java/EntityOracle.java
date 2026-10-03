@@ -796,6 +796,66 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * An illager's model from the layer table, posed by the reference's own
+     * `IllagerModel.setupAnim` for an arm pose, a held item and a crossbow's charge, drawn.
+     */
+    private static JsonObject illagerModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.illager.IllagerModel<
+                net.minecraft.client.renderer.entity.state.IllagerRenderState>(bakedLayer(row.get("layer").getAsString()));
+            model.getHat().visible = row.get("hat").getAsBoolean();
+            var state = new net.minecraft.client.renderer.entity.state.IllagerRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isRiding = row.get("riding").getAsBoolean();
+            state.armPose = net.minecraft.world.entity.monster.illager.AbstractIllager.IllagerArmPose.valueOf(
+                row.get("arm_pose").getAsString());
+            state.mainArm = row.get("main_arm").getAsString().equals("left")
+                ? net.minecraft.world.entity.HumanoidArm.LEFT : net.minecraft.world.entity.HumanoidArm.RIGHT;
+            state.attackTime = Oracle.f32(row, "attack_time");
+            state.attackAnim = state.attackTime;
+            state.maxCrossbowChargeDuration = row.get("max_crossbow_charge").getAsInt();
+            state.ticksUsingItem = Oracle.f32(row, "ticks_using_item");
+            if (row.get("has_item").getAsBoolean()) {
+                state.getMainHandItemState().ensureCapacity(1);
+                state.getMainHandItemState().newLayer();
+            }
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The witch's model posed by the reference's own `WitchModel.setupAnim`, drawn. */
+    private static JsonObject witchModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.witch.WitchModel(bakedLayer("minecraft:witch#main"));
+            var state = new net.minecraft.client.renderer.entity.state.WitchRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.entityId = row.get("entity_id").getAsInt();
+            state.isHoldingItem = row.get("holding_item").getAsBoolean();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1254,6 +1314,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.raid.Raider.class, "IS_CELEBRATING", "raider-celebrating"},
+            {net.minecraft.world.entity.monster.illager.SpellcasterIllager.class, "DATA_SPELL_CASTING_ID", "spellcaster-casting"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
         };
@@ -1370,6 +1432,12 @@ public final class EntityOracle {
         }
         if (operation.equals("villager_layers")) {
             return villagerLayers(request);
+        }
+        if (operation.equals("illager_model")) {
+            return illagerModel(request);
+        }
+        if (operation.equals("witch_model")) {
+            return witchModel(request);
         }
         if (operation.equals("villager_model")) {
             return villagerModel(request);

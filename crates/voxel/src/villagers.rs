@@ -1,18 +1,23 @@
 //! The villagers the frame draws: the villager with the type and profession
-//! layer over it, and the wandering trader (`VillagerRenderer`,
-//! `WanderingTraderRenderer`, `VillagerProfessionLayer`).
+//! layer over it, the wandering trader (`VillagerRenderer`,
+//! `WanderingTraderRenderer`, `VillagerProfessionLayer`) and the witch, whose
+//! model is built on the villager's (`WitchRenderer`).
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{QuadrupedState, VillagerState, mob_vertices};
+use voxel_render::mob_model::{QuadrupedState, VillagerState, WitchState, mob_vertices};
 use voxel_render::scene::Vertex;
 use voxel_render::villager::{profession_passes, profession_textures};
+
+use voxel_world::EquipmentSlot;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
 const WANDERING_TRADER_LAYER: &str = "minecraft:wandering_trader#main";
 const WANDERING_TRADER_TEXTURE: &str = "entity/wandering_trader/wandering_trader";
+const WITCH_LAYER: &str = "minecraft:witch#main";
+const WITCH_TEXTURE: &str = "entity/witch/witch";
 
 /// The texture folder the villager's layer reads (`VillagerRenderer`'s path).
 const FOLDER: &str = "villager";
@@ -23,6 +28,7 @@ pub fn textures() -> impl Iterator<Item = String> {
         "entity/villager/villager",
         "entity/villager/villager_baby",
         WANDERING_TRADER_TEXTURE,
+        WITCH_TEXTURE,
     ]
     .into_iter()
     .map(str::to_owned)
@@ -113,6 +119,51 @@ pub fn remote_villagers(
             model.setup_villager(&state);
             vertices.extend(mob_vertices(model, &placement, rect));
         }
+    }
+    vertices
+}
+
+/// `WitchRenderer` for the witches the server added. What a witch holds
+/// (`WitchItemLayer`) is not drawn yet.
+pub fn remote_witches(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+) -> Vec<Vertex> {
+    let Some(witch) = voxel_data::entity_type::id("minecraft:witch") else {
+        return Vec::new();
+    };
+    let world = session.world();
+    let partial = view.partial as f32;
+    let mut vertices = Vec::new();
+    for entity in world.entities() {
+        let (true, Some(snapshot), Some(rect), Some(model)) = (
+            entity.type_id == witch,
+            world.entity_snapshot(entity.id(), partial),
+            textures.rect(WITCH_TEXTURE),
+            models.model(WITCH_LAYER),
+        ) else {
+            continue;
+        };
+        model.setup_witch(&WitchState {
+            quadruped: QuadrupedState {
+                head_y_rot: voxel_core::math::wrap_degrees_f32(
+                    snapshot.head_yaw - snapshot.body_yaw,
+                ),
+                x_rot: snapshot.pitch,
+                walk_position: snapshot.walk_position,
+                walk_speed: snapshot.walk_speed,
+            },
+            age_in_ticks: entity.tick_count() as f32 + partial,
+            entity_id: entity.id(),
+            holding_item: entity.equipment(EquipmentSlot::MainHand).is_some(),
+        });
+        vertices.extend(mob_vertices(
+            model,
+            &placement(world, &snapshot, view, 1.0),
+            rect,
+        ));
     }
     vertices
 }

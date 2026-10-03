@@ -1,4 +1,4 @@
-# T34b — Illager, cadı, golemler, enderman ve zombi köylü
+# T34b — Illager ve cadı
 
 **Amaç:** `IllagerModel` (kol çaprazı/saldırı pozu: `ArmPose`), cadı (`WitchModel`: burun, içme), demir golem (`Crackiness` çatlak katmanı), kar golemi, bakır golem, enderman (taşınan blok, `creepy`) ve zombi köylünün çizimi (`ZombieVillagerModel` + T34'te hazır `profession_passes("zombie_villager", …)`).
 **Bağımlılık:** T34. **Boy:** L (sığmazsa böl: illager+cadı / golemler / enderman).
@@ -25,3 +25,7 @@ Ticaret ekranı, sesler, köylü kafa eşyası/çapraz kol eşyası (T41d ile).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Yapıldı (bölündü): dört illager (`setup_illager`, her kol pozu, `voxel/src/illagers.rs`: poz seçimi, eldeki eşya ve kafa katmanı) ve cadı (`setup_witch`, `villagers.rs`); `Raider.IS_CELEBRATING` 16, büyü baytı 17. Kayıt: `docs/client-illager-witch-parity-conformance.md`.
+- Oracle: `entity/illager-model` 21, `witch-model` 5 satır; `variant-fields` iki yeni satır.
+- Sapma: arbalet doldurma pozu (kullanım tiki yok), illusioner yansımaları, `WitchItemLayer` yok.
+- Açık: golemler, enderman, zombi köylü (T34c).

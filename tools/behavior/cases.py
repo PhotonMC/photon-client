@@ -14398,6 +14398,7 @@ def entity_cases():
     yield from entity_creeper_render_cases()
     yield from entity_equipment_layer_cases()
     yield from entity_villager_cases()
+    yield from entity_illager_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14848,6 +14849,68 @@ def entity_villager_cases():
                                "baby": False, "type": "plains", "profession": "farmer", "level": level})
     yield {"case_id": "entity/villager-layers", "family": "entity",
            "operation": "villager_layers", "rows": layer_rows}
+
+
+def entity_illager_cases():
+    """The illagers' and the witch's models posed by the reference's own
+    `IllagerModel.setupAnim` and `WitchModel.setupAnim`: every arm pose the
+    illager model branches on (with and without a held item, either main arm,
+    a crossbow charged from nothing to past its duration), riding, walking and
+    looking; the witch's nose by the entity's number and by what it holds."""
+    def pose(label, layer="minecraft:evoker#main", arm_pose="NEUTRAL", main_arm="right",
+             head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=0.0,
+             riding=False, attack_time=0.0, has_item=False, max_charge=0, ticks_using=0.0,
+             hat=False):
+        return {"label": f"{layer.split(':')[1].split('#')[0]}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "riding": riding, "arm_pose": arm_pose,
+                "main_arm": main_arm, "attack_time": float_bits(attack_time),
+                "has_item": has_item, "max_crossbow_charge": max_charge,
+                "ticks_using_item": float_bits(ticks_using), "hat": hat}
+
+    rows = []
+    for layer in ("minecraft:evoker#main", "minecraft:vindicator#main",
+                  "minecraft:pillager#main", "minecraft:illusioner#main"):
+        hat = layer.endswith("illusioner#main")
+        rows += [
+            pose("crossed", layer, "CROSSED", hat=hat),
+            pose("neutral-walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0,
+                 head_y_rot=-35.5, x_rot=48.0, hat=hat),
+        ]
+    layer = "minecraft:evoker#main"
+    rows += [
+        pose("riding", arm_pose="NEUTRAL", riding=True, head_y_rot=12.0, x_rot=-8.0),
+        pose("attacking-empty", arm_pose="ATTACKING", attack_time=0.35, age=21.5),
+        pose("attacking-item-right", arm_pose="ATTACKING", has_item=True, attack_time=0.35, age=21.5),
+        pose("attacking-item-left", arm_pose="ATTACKING", main_arm="left", has_item=True,
+             attack_time=0.7, age=9.25),
+        pose("spellcasting", arm_pose="SPELLCASTING", age=13.75),
+        pose("bow", arm_pose="BOW_AND_ARROW", head_y_rot=20.0, x_rot=-15.0),
+        pose("crossbow-hold", arm_pose="CROSSBOW_HOLD", head_y_rot=-20.0, x_rot=10.0),
+        pose("celebrating", arm_pose="CELEBRATING", age=33.0),
+    ]
+    for ticks in (0.0, 12.5, 40.0):
+        rows.append(pose(f"crossbow-charge-{ticks}", arm_pose="CROSSBOW_CHARGE", max_charge=25,
+                         ticks_using=ticks))
+    yield {"case_id": "entity/illager-model", "family": "entity", "operation": "illager_model",
+           "rows": rows}
+
+    def witch(label, entity_id=0, holding=False, age=0.0, head_y_rot=0.0, x_rot=0.0,
+              walk_position=0.0, walk_speed=0.0):
+        return {"label": label, "entity_id": entity_id, "holding_item": holding,
+                "age_in_ticks": float_bits(age), "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed)}
+
+    yield {"case_id": "entity/witch-model", "family": "entity", "operation": "witch_model",
+           "rows": [
+               witch("standing"),
+               witch("sniffing-id-7", entity_id=7, age=31.5, head_y_rot=-35.5, x_rot=48.0),
+               witch("sniffing-id-13", entity_id=13, age=9.0),
+               witch("walking", entity_id=3, age=40.0, walk_position=7.3, walk_speed=0.83),
+               witch("holding", entity_id=7, holding=True, age=31.5),
+           ]}
 
 
 def entity_armor_stand_cases():

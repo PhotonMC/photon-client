@@ -223,6 +223,28 @@ pub(crate) fn unhappy_counter_from_metadata(type_id: i32, metadata: &[u8]) -> Op
     .then(|| metadata_int_value(metadata, VILLAGER_UNHAPPY_DATA_ID))?
 }
 
+/// A raider's celebrating flag (`Raider.IS_CELEBRATING`) and a spellcaster's
+/// casting byte (`SpellcasterIllager.DATA_SPELL_CASTING_ID`, above zero while
+/// casting), when the data holds them.
+pub(crate) fn illager_flags_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<bool>) {
+    let Some(name) = voxel_data::entity_type::name(type_id) else {
+        return (None, None);
+    };
+    let celebrating = matches!(
+        name,
+        "minecraft:vindicator" | "minecraft:pillager" | "minecraft:evoker" | "minecraft:illusioner"
+    )
+    .then(|| metadata_boolean_value(metadata, RAIDER_CELEBRATING_DATA_ID))
+    .flatten();
+    let casting = matches!(name, "minecraft:evoker" | "minecraft:illusioner")
+        .then(|| metadata_byte_value(metadata, SPELLCASTER_CASTING_DATA_ID).map(|spell| spell > 0))
+        .flatten();
+    (celebrating, casting)
+}
+
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
 pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:experience_orb" {
@@ -467,6 +489,36 @@ mod tests {
         assert_eq!(unhappy_counter_from_metadata(villager, &metadata), Some(40));
         assert_eq!(villager_data_from_metadata(cow, &metadata), None);
         assert_eq!(unhappy_counter_from_metadata(cow, &metadata), None);
+    }
+
+    #[test]
+    fn an_illagers_celebrating_and_casting_are_read_from_their_fields() {
+        let id = |name| voxel_data::entity_type::id(name).expect("a type");
+        let metadata = data(&[
+            (
+                RAIDER_CELEBRATING_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                &[1],
+            ),
+            (
+                SPELLCASTER_CASTING_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BYTE_ID,
+                &[2],
+            ),
+        ]);
+        assert_eq!(
+            illager_flags_from_metadata(id("minecraft:evoker"), &metadata),
+            (Some(true), Some(true))
+        );
+        // A vindicator does not cast, and a cow is no raider.
+        assert_eq!(
+            illager_flags_from_metadata(id("minecraft:vindicator"), &metadata),
+            (Some(true), None)
+        );
+        assert_eq!(
+            illager_flags_from_metadata(id("minecraft:cow"), &metadata),
+            (None, None)
+        );
     }
 
     #[test]
