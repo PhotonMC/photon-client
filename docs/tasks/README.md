@@ -75,7 +75,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T32b](T32b-kedi-vasak.md) | Kedi ve ocelot | M | T32 | bitti (a39fc02d) |
 | [T32c](T32c-tilki-panda-kutup-ayisi.md) | Tilki, panda, kutup ayısı | L | T32 | bölündü (kutup ayısı: c350f431) |
 | [T32e](T32e-tilki.md) | Tilki | M | T32c | bitti (49f6fcc8) |
-| [T32f](T32f-panda.md) | Panda | M | T32c | bitti (HASH) |
+| [T32f](T32f-panda.md) | Panda | M | T32c | bitti (3725df2a) |
 | [T32d](T32d-hoglin-ravager-strider.md) | Hoglin, zoglin, ravager, strider | M | T32 | bölündü (hoglin: 1230fe92) |
 | [T32g](T32g-ravager.md) | Ravager | M | T32d | açık |
 | [T32h](T32h-strider.md) | Strider | M | T32d | açık |
