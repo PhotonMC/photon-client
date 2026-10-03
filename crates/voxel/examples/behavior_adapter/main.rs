@@ -18431,6 +18431,49 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "weather" => {
+                        let level = |key: &str| -> Result<f32, String> {
+                            u32::from_str_radix(string(event, key)?, 16)
+                                .map(f32::from_bits)
+                                .map_err(|error| format!("{key}: {error}"))
+                        };
+                        world.set_weather(level("rain")?, level("thunder")?);
+                    }
+                    "equipment" => {
+                        let stack = event["item"].as_str().map(|name| {
+                            let id = voxel_data::item::registry::index(name).unwrap_or(0);
+                            voxel_world::ClientItemStackState::new(1, id as i32)
+                        });
+                        world.apply_entity_equipment(
+                            entity_id,
+                            voxel_world::EquipmentSlot::MainHand,
+                            stack,
+                        );
+                    }
+                    "panda_data" => {
+                        let mut data = Vec::new();
+                        for (key, id) in [
+                            ("unhappy", voxel_world::PANDA_UNHAPPY_DATA_ID),
+                            ("sneeze", voxel_world::PANDA_SNEEZE_DATA_ID),
+                            ("eat", voxel_world::PANDA_EAT_DATA_ID),
+                        ] {
+                            if let Some(value) = event[key].as_i64() {
+                                data.extend([id, 1]);
+                                voxel_core::wire::write_varint(value as i32, &mut data);
+                            }
+                        }
+                        for (key, id) in [
+                            ("main_gene", voxel_world::PANDA_MAIN_GENE_DATA_ID),
+                            ("hidden_gene", voxel_world::PANDA_HIDDEN_GENE_DATA_ID),
+                            ("flags", voxel_world::PANDA_FLAGS_DATA_ID),
+                        ] {
+                            if let Some(value) = event[key].as_i64() {
+                                data.extend([id, 0, value as u8]);
+                            }
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "fox_data" => {
                         let mut data = Vec::new();
                         if let Some(variant) = event["variant"].as_i64() {
@@ -18506,7 +18549,12 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         world.apply_entity_metadata(entity_id, &data);
                     }
                     "seed" => {
-                        world.fix_horse_seed(entity_id, i64_field(event, "seed")?);
+                        let seed = i64_field(event, "seed")?;
+                        if name == "minecraft:panda" {
+                            world.fix_panda_seed(entity_id, seed);
+                        } else {
+                            world.fix_horse_seed(entity_id, seed);
+                        }
                     }
                     "rabbit_idle" => {
                         world.fix_rabbit_idle(
@@ -18630,6 +18678,28 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.head_roll_angle(partial)));
                             described[format!("shake_{key}")] =
                                 json!(hex(wolf.shake_anim(partial)));
+                        }
+                    }
+                    "panda" => {
+                        let panda = entity.panda();
+                        let thundering = world.is_thundering();
+                        described["variant"] = json!(panda.variant());
+                        described["unhappy_counter"] = json!(panda.unhappy_counter());
+                        described["sneeze_counter"] = json!(panda.sneeze_counter());
+                        described["sneezing"] = json!(panda.is_sneezing());
+                        described["eating"] = json!(panda.is_eating());
+                        described["sitting"] = json!(panda.is_sitting());
+                        described["rolling"] = json!(panda.is_rolling());
+                        described["on_back"] = json!(panda.is_on_back());
+                        described["roll_counter"] = json!(panda.roll_counter());
+                        described["scared"] = json!(panda.is_scared(thundering));
+                        described["x_rot"] = json!(hex(entity.rotation().1));
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                            described[format!("sit_{key}")] = json!(hex(panda.sit_amount(partial)));
+                            described[format!("back_{key}")] =
+                                json!(hex(panda.lie_on_back_amount(partial)));
+                            described[format!("roll_{key}")] =
+                                json!(hex(panda.roll_amount(partial)));
                         }
                     }
                     "fox" => {
@@ -20120,6 +20190,124 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `panda_textures`: the textures a panda wears by gene and age.
+fn panda_textures_result() -> Value {
+    let mut rows = Vec::new();
+    for (table, baby) in [("TEXTURES", false), ("BABY_TEXTURES", true)] {
+        for gene in 0..7_u8 {
+            rows.push(json!({
+                "label": format!("{gene}-{table}"),
+                "texture": format!(
+                    "minecraft:textures/{}.png",
+                    voxel_data::entity_type::panda_texture(gene, baby)
+                ),
+            }));
+        }
+    }
+    json!({"rows": rows})
+}
+
+/// `panda_model`: a panda's model posed and drawn.
+fn panda_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, PandaState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let mut model = MobModel::bake(layer);
+        model.setup_panda(&PandaState {
+            quadruped: quadruped_state(row)?,
+            age_in_ticks: bits("age_in_ticks")?,
+            unhappy: flag("unhappy")?,
+            sneezing: flag("sneezing")?,
+            sneeze_time: row["sneeze_time"].as_i64().ok_or("sneeze_time")? as i32,
+            eating: flag("eating")?,
+            scared: flag("scared")?,
+            sit_amount: bits("sit_amount")?,
+            lie_on_back_amount: bits("lie_on_back_amount")?,
+            roll_amount: bits("roll_amount")?,
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `setup_rotations`: what a panda's, a cat's or a fox's renderer leaves the pose at (from an
+/// identity entity pose), and what a panda's layer carries its item with.
+fn setup_rotations_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{
+        MobPlacement, PandaRotation, panda_item_pose, placement_rotations,
+    };
+    let matrix_of = |pose: &Pose| -> Vec<String> {
+        (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect()
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let (baby, x_rot, age) = (flag("baby")?, bits("x_rot")?, bits("age_in_ticks")?);
+        let mut placed = MobPlacement {
+            body_rot: bits("body_rot")?,
+            ..MobPlacement::default()
+        };
+        let mut poses = Vec::new();
+        match row["kind"].as_str().ok_or("kind")? {
+            "panda" => {
+                let (sit, scared, eating) = (bits("sit_amount")?, flag("scared")?, flag("eating")?);
+                placed.panda = Some(PandaRotation {
+                    roll_time: bits("roll_time")?,
+                    sit_amount: sit,
+                    lie_on_back_amount: bits("lie_on_back_amount")?,
+                    x_rot,
+                    age_in_ticks: age,
+                    scared,
+                    baby,
+                });
+                if flag("sitting")? && !scared {
+                    let mut pose = panda_item_pose(&Pose::default(), age, eating);
+                    // The stack's own display transform is none: the model is moved to its corner.
+                    pose.translate(-0.5, -0.5, -0.5);
+                    poses.push(matrix_of(&pose));
+                }
+            }
+            "cat" => placed.cat_lying(bits("lie_down_amount")?, flag("on_sleeping_player")?),
+            "fox" => {
+                if flag("pouncing")? || flag("faceplanted")? {
+                    placed.fox_tipping(x_rot);
+                }
+            }
+            _ => return Err("unknown kind".into()),
+        }
+        out.push(json!({
+            "label": row["label"],
+            "pose": matrix_of(&placement_rotations(&placed)),
+            "poses": poses,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `fox_textures`: the textures a fox wears by variant, state and age.
 fn fox_textures_result() -> Value {
     let mut rows = Vec::new();
@@ -20998,6 +21186,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "polar_bear_model" => return polar_bear_model_result(request),
         "hoglin_model" => return hoglin_model_result(request),
         "fox_model" => return fox_model_result(request),
+        "panda_model" => return panda_model_result(request),
+        "panda_textures" => return Ok(panda_textures_result()),
+        "setup_rotations" => return setup_rotations_result(request),
         "fox_textures" => return Ok(fox_textures_result()),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
@@ -21069,58 +21260,266 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
                 ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
-            return Ok(json!({"rows": [
-                {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
-                {"label": "cow", "data_id": COW_VARIANT_DATA_ID, "serializer": COW_VARIANT_SERIALIZER_ID},
-                {"label": "experienceorb", "data_id": EXPERIENCE_ORB_VALUE_DATA_ID, "serializer": 1},
-                {"label": "piglin-baby", "data_id": PIGLIN_BABY_DATA_ID, "serializer": 8},
-                {"label": "piglin-dancing", "data_id": PIGLIN_DANCING_DATA_ID, "serializer": 8},
-                {"label": "avatar-main-hand", "data_id": AVATAR_MAIN_HAND_DATA_ID, "serializer": HUMANOID_ARM_SERIALIZER_ID},
-                {"label": "sheep-wool", "data_id": SHEEP_WOOL_DATA_ID, "serializer": 0},
-                {"label": "chicken", "data_id": CHICKEN_VARIANT_DATA_ID, "serializer": CHICKEN_VARIANT_SERIALIZER_ID},
-                {"label": "armor-stand-flags", "data_id": ARMOR_STAND_FLAGS_DATA_ID, "serializer": 0},
-                {"label": "armor-stand-head", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "armor-stand-body", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 1, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "armor-stand-left-arm", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 2, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "armor-stand-right-arm", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 3, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "armor-stand-left-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 4, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
-                {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
-                {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
-                {"label": "horse-flags", "data_id": HORSE_FLAGS_DATA_ID, "serializer": 0},
-                {"label": "horse-variant", "data_id": HORSE_VARIANT_DATA_ID, "serializer": 1},
-                {"label": "horse-chest", "data_id": HORSE_CHEST_DATA_ID, "serializer": 8},
-                {"label": "llama-variant", "data_id": LLAMA_VARIANT_DATA_ID, "serializer": 1},
-                {"label": "camel-dash", "data_id": CAMEL_DASH_DATA_ID, "serializer": 8},
-                {"label": "camel-last-pose", "data_id": CAMEL_LAST_POSE_CHANGE_DATA_ID, "serializer": LONG_SERIALIZER_ID},
-                {"label": "tamable-flags", "data_id": voxel_world::TAMABLE_FLAGS_DATA_ID, "serializer": 0},
-                {"label": "wolf-interested", "data_id": voxel_world::WOLF_INTERESTED_DATA_ID, "serializer": 8},
-                {"label": "wolf-collar", "data_id": voxel_world::WOLF_COLLAR_DATA_ID, "serializer": 1},
-                {"label": "wolf-anger-end", "data_id": voxel_world::WOLF_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
-                {"label": "wolf-variant", "data_id": voxel_world::WOLF_VARIANT_DATA_ID, "serializer": voxel_world::WOLF_VARIANT_SERIALIZER_ID},
-                {"label": "polar-bear-standing", "data_id": voxel_world::POLAR_BEAR_STANDING_DATA_ID, "serializer": 8},
-                {"label": "fox-variant", "data_id": voxel_world::FOX_VARIANT_DATA_ID, "serializer": 1},
-                {"label": "fox-flags", "data_id": voxel_world::FOX_FLAGS_DATA_ID, "serializer": 0},
-                {"label": "cat-variant", "data_id": voxel_world::CAT_VARIANT_DATA_ID, "serializer": voxel_world::CAT_VARIANT_SERIALIZER_ID},
-                {"label": "cat-lying", "data_id": voxel_world::CAT_LYING_DATA_ID, "serializer": 8},
-                {"label": "cat-relax", "data_id": voxel_world::CAT_RELAX_DATA_ID, "serializer": 8},
-                {"label": "cat-collar", "data_id": voxel_world::CAT_COLLAR_DATA_ID, "serializer": 1},
-                {"label": "bee-flags", "data_id": BEE_FLAGS_DATA_ID, "serializer": 0},
-                {"label": "bee-anger-end", "data_id": BEE_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
-                {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},
-                {"label": "goat-left-horn", "data_id": GOAT_LEFT_HORN_DATA_ID, "serializer": 8},
-                {"label": "goat-right-horn", "data_id": GOAT_RIGHT_HORN_DATA_ID, "serializer": 8},
-                {"label": "mooshroom-type", "data_id": MOOSHROOM_TYPE_DATA_ID, "serializer": 1},
-                {"label": "snow-golem-pumpkin", "data_id": SNOW_GOLEM_PUMPKIN_DATA_ID, "serializer": 0},
-                {"label": "enderman-carry", "data_id": ENDERMAN_CARRY_DATA_ID, "serializer": OPTIONAL_BLOCK_STATE_SERIALIZER_ID},
-                {"label": "enderman-creepy", "data_id": ENDERMAN_CREEPY_DATA_ID, "serializer": 8},
-                {"label": "zombie-villager-data", "data_id": ZOMBIE_VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
-                {"label": "raider-celebrating", "data_id": RAIDER_CELEBRATING_DATA_ID, "serializer": 8},
-                {"label": "spellcaster-casting", "data_id": SPELLCASTER_CASTING_DATA_ID, "serializer": 0},
-                {"label": "creeper-powered", "data_id": CREEPER_POWERED_DATA_ID, "serializer": 8},
-                {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
-                {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
-            ]}));
+            let fields: &[(&str, i64, i64)] = &[
+                (
+                    "pig",
+                    i64::from(PIG_VARIANT_DATA_ID),
+                    i64::from(PIG_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "cow",
+                    i64::from(COW_VARIANT_DATA_ID),
+                    i64::from(COW_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "experienceorb",
+                    i64::from(EXPERIENCE_ORB_VALUE_DATA_ID),
+                    i64::from(1),
+                ),
+                ("piglin-baby", i64::from(PIGLIN_BABY_DATA_ID), i64::from(8)),
+                (
+                    "piglin-dancing",
+                    i64::from(PIGLIN_DANCING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "avatar-main-hand",
+                    i64::from(AVATAR_MAIN_HAND_DATA_ID),
+                    i64::from(HUMANOID_ARM_SERIALIZER_ID),
+                ),
+                ("sheep-wool", i64::from(SHEEP_WOOL_DATA_ID), i64::from(0)),
+                (
+                    "chicken",
+                    i64::from(CHICKEN_VARIANT_DATA_ID),
+                    i64::from(CHICKEN_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-flags",
+                    i64::from(ARMOR_STAND_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "armor-stand-head",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-body",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID + 1),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-left-arm",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID + 2),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-right-arm",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID + 3),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-left-leg",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID + 4),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "armor-stand-right-leg",
+                    i64::from(ARMOR_STAND_HEAD_POSE_DATA_ID + 5),
+                    i64::from(ROTATIONS_SERIALIZER_ID),
+                ),
+                (
+                    "villager-data",
+                    i64::from(VILLAGER_DATA_DATA_ID),
+                    i64::from(VILLAGER_DATA_SERIALIZER_ID),
+                ),
+                (
+                    "villager-unhappy",
+                    i64::from(VILLAGER_UNHAPPY_DATA_ID),
+                    i64::from(1),
+                ),
+                ("horse-flags", i64::from(HORSE_FLAGS_DATA_ID), i64::from(0)),
+                (
+                    "horse-variant",
+                    i64::from(HORSE_VARIANT_DATA_ID),
+                    i64::from(1),
+                ),
+                ("horse-chest", i64::from(HORSE_CHEST_DATA_ID), i64::from(8)),
+                (
+                    "llama-variant",
+                    i64::from(LLAMA_VARIANT_DATA_ID),
+                    i64::from(1),
+                ),
+                ("camel-dash", i64::from(CAMEL_DASH_DATA_ID), i64::from(8)),
+                (
+                    "camel-last-pose",
+                    i64::from(CAMEL_LAST_POSE_CHANGE_DATA_ID),
+                    i64::from(LONG_SERIALIZER_ID),
+                ),
+                (
+                    "tamable-flags",
+                    i64::from(voxel_world::TAMABLE_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "wolf-interested",
+                    i64::from(voxel_world::WOLF_INTERESTED_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "wolf-collar",
+                    i64::from(voxel_world::WOLF_COLLAR_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "wolf-anger-end",
+                    i64::from(voxel_world::WOLF_ANGER_END_DATA_ID),
+                    i64::from(LONG_SERIALIZER_ID),
+                ),
+                (
+                    "wolf-variant",
+                    i64::from(voxel_world::WOLF_VARIANT_DATA_ID),
+                    i64::from(voxel_world::WOLF_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "polar-bear-standing",
+                    i64::from(voxel_world::POLAR_BEAR_STANDING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "panda-unhappy",
+                    i64::from(voxel_world::PANDA_UNHAPPY_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "panda-sneeze",
+                    i64::from(voxel_world::PANDA_SNEEZE_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "panda-eat",
+                    i64::from(voxel_world::PANDA_EAT_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "panda-main-gene",
+                    i64::from(voxel_world::PANDA_MAIN_GENE_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "panda-hidden-gene",
+                    i64::from(voxel_world::PANDA_HIDDEN_GENE_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "panda-flags",
+                    i64::from(voxel_world::PANDA_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "fox-variant",
+                    i64::from(voxel_world::FOX_VARIANT_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "fox-flags",
+                    i64::from(voxel_world::FOX_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "cat-variant",
+                    i64::from(voxel_world::CAT_VARIANT_DATA_ID),
+                    i64::from(voxel_world::CAT_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "cat-lying",
+                    i64::from(voxel_world::CAT_LYING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "cat-relax",
+                    i64::from(voxel_world::CAT_RELAX_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "cat-collar",
+                    i64::from(voxel_world::CAT_COLLAR_DATA_ID),
+                    i64::from(1),
+                ),
+                ("bee-flags", i64::from(BEE_FLAGS_DATA_ID), i64::from(0)),
+                (
+                    "bee-anger-end",
+                    i64::from(BEE_ANGER_END_DATA_ID),
+                    i64::from(LONG_SERIALIZER_ID),
+                ),
+                ("rabbit-type", i64::from(RABBIT_TYPE_DATA_ID), i64::from(1)),
+                (
+                    "goat-left-horn",
+                    i64::from(GOAT_LEFT_HORN_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "goat-right-horn",
+                    i64::from(GOAT_RIGHT_HORN_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "mooshroom-type",
+                    i64::from(MOOSHROOM_TYPE_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "snow-golem-pumpkin",
+                    i64::from(SNOW_GOLEM_PUMPKIN_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "enderman-carry",
+                    i64::from(ENDERMAN_CARRY_DATA_ID),
+                    i64::from(OPTIONAL_BLOCK_STATE_SERIALIZER_ID),
+                ),
+                (
+                    "enderman-creepy",
+                    i64::from(ENDERMAN_CREEPY_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "zombie-villager-data",
+                    i64::from(ZOMBIE_VILLAGER_DATA_DATA_ID),
+                    i64::from(VILLAGER_DATA_SERIALIZER_ID),
+                ),
+                (
+                    "raider-celebrating",
+                    i64::from(RAIDER_CELEBRATING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "spellcaster-casting",
+                    i64::from(SPELLCASTER_CASTING_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "creeper-powered",
+                    i64::from(CREEPER_POWERED_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "creeper-swell-dir",
+                    i64::from(CREEPER_SWELL_DIR_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "creeper-ignited",
+                    i64::from(CREEPER_IGNITED_DATA_ID),
+                    i64::from(8),
+                ),
+            ];
+            return Ok(json!({"rows": fields
+                .iter()
+                .map(|(label, data_id, serializer)| {
+                    json!({"label": label, "data_id": data_id, "serializer": serializer})
+                })
+                .collect::<Vec<_>>()}));
         }
         "entity_data_serializers" => {
             let rows: Vec<Value> = (0..)

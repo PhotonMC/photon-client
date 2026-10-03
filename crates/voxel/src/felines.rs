@@ -4,9 +4,7 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{
-    FelineState, MobPlacement, QuadrupedState, mob_vertices, mob_vertices_coloured,
-};
+use voxel_render::mob_model::{FelineState, QuadrupedState, mob_vertices, mob_vertices_coloured};
 use voxel_render::scene::Vertex;
 use voxel_world::ClientEntity;
 
@@ -54,18 +52,6 @@ fn cat_texture(session: &PlaySession, entity: &ClientEntity) -> Option<&'static 
     } else {
         variant.asset
     }))
-}
-
-/// `CatRenderer.setupRotations`: a cat that lies down tips onto its side.
-fn lie_down_placement(placed: &mut MobPlacement, amount: f32, on_sleeping_player: bool) {
-    if amount > 0.0 {
-        placed.shift = Some([0.4 * amount, 0.15 * amount, 0.1 * amount]);
-        // `Mth.rotLerp(amount, 0, 90)`.
-        placed.roll = Some(amount * 90.0);
-        if on_sleeping_player {
-            placed.roll_shift = Some([0.15 * amount, 0.0, 0.0]);
-        }
-    }
 }
 
 /// `CatRenderer` and `OcelotRenderer` for the cats and ocelots the server added.
@@ -132,8 +118,7 @@ pub fn remote_felines(
         };
         let mut placed = placement(world, &snapshot, view, entity.scale());
         if let Some(cat) = cat_state {
-            lie_down_placement(
-                &mut placed,
+            placed.cat_lying(
                 state.lie_down_amount,
                 cat.is_lying_on_top_of_sleeping_player(),
             );

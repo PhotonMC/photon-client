@@ -77,6 +77,31 @@ pub fn fox_texture(variant: i32, sleeping: bool, baby: bool) -> &'static str {
     TEXTURES[usize::from(variant == 1)][usize::from(sleeping)][usize::from(baby)]
 }
 
+/// The texture (under `textures/`) a panda of this gene wears
+/// (`PandaRenderer.getTextureLocation`), grown or baby. Every path is compared
+/// to the reference's own tables on each parity run.
+pub fn panda_texture(gene: u8, baby: bool) -> &'static str {
+    const TEXTURES: [[&str; 2]; 7] = [
+        ["entity/panda/panda", "entity/panda/panda_baby"],
+        ["entity/panda/panda_lazy", "entity/panda/lazy_panda_baby"],
+        [
+            "entity/panda/panda_worried",
+            "entity/panda/worried_panda_baby",
+        ],
+        [
+            "entity/panda/panda_playful",
+            "entity/panda/playful_panda_baby",
+        ],
+        ["entity/panda/panda_brown", "entity/panda/brown_panda_baby"],
+        ["entity/panda/panda_weak", "entity/panda/weak_panda_baby"],
+        [
+            "entity/panda/panda_aggressive",
+            "entity/panda/aggressive_panda_baby",
+        ],
+    ];
+    TEXTURES[usize::from(gene).min(6)][usize::from(baby)]
+}
+
 /// Every wolf variant, by name.
 pub fn wolf_variants() -> impl Iterator<Item = &'static WolfVariant> {
     crate::generated::wolf_variants::WOLF_VARIANTS.iter()

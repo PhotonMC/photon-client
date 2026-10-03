@@ -14420,6 +14420,35 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("panda-idle", "panda", 4, [], extras=["panda"]),
+        living("panda-unhappy-counts-down", "panda", 12,
+               [{"tick": 2, "type": "panda_data", "unhappy": 6}], extras=["panda"]),
+        # A headless client cannot add the sneeze's, nor the eating's (from the fifth tick), particles:
+        # the end of the sneeze and a long meal are unit tests of the state.
+        living("panda-sneezes", "panda", 22,
+               [{"tick": 2, "type": "panda_data", "flags": 2}], extras=["panda"]),
+        living("panda-rolls", "panda", 40,
+               [{"tick": 1, "type": "panda_data", "flags": 4}], extras=["panda"]),
+        living("panda-sits-then-lies-on-its-back", "panda", 24,
+               [{"tick": 1, "type": "panda_data", "flags": 8},
+                {"tick": 9, "type": "panda_data", "flags": 16}], extras=["panda"]),
+        living("panda-sits-with-bamboo-and-starts-to-eat", "panda", 8,
+               [{"tick": 0, "type": "seed", "seed": 6},
+                {"tick": 0, "type": "equipment", "item": "minecraft:bamboo"},
+                {"tick": 0, "type": "panda_data", "flags": 8}], extras=["panda"]),
+        living("panda-eats-until-the-item-is-gone", "panda", 6,
+               [{"tick": 0, "type": "seed", "seed": 11},
+                {"tick": 0, "type": "equipment", "item": "minecraft:bamboo"},
+                {"tick": 0, "type": "panda_data", "flags": 8, "eat": 1},
+                {"tick": 3, "type": "equipment", "item": None}], extras=["panda"]),
+        living("worried-panda-sits-in-thunder-and-gets-up-after", "panda", 30,
+               [{"tick": 0, "type": "panda_data", "main_gene": 2},
+                {"tick": 2, "type": "weather", "rain": float_bits(1.0), "thunder": float_bits(1.0)},
+                {"tick": 16, "type": "weather", "rain": float_bits(0.0), "thunder": float_bits(0.0)}],
+               extras=["panda"]),
+        living("brown-panda-needs-both-genes", "panda", 4,
+               [{"tick": 0, "type": "panda_data", "main_gene": 4, "hidden_gene": 1}],
+               extras=["panda"]),
         living("fox-idle", "fox", 4, [], extras=["fox"]),
         living("fox-snow-sleeps", "fox", 6, [{"tick": 1, "type": "fox_data", "variant": 1, "flags": 32}],
                extras=["fox"]),
@@ -14581,6 +14610,7 @@ def entity_cases():
     yield from entity_polar_bear_cases()
     yield from entity_hoglin_cases()
     yield from entity_fox_cases()
+    yield from entity_panda_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15555,6 +15585,87 @@ def entity_fox_cases():
     yield {"case_id": "entity/fox-model", "family": "entity", "operation": "fox_model", "rows": rows}
     yield {"case_id": "entity/fox-textures", "family": "entity", "operation": "fox_textures",
            "rows": [{"label": "all"}]}
+
+
+def entity_panda_cases():
+    """The panda, grown and baby, posed by the reference's own `PandaModel.setupAnim` (the unhappy
+    shake, the sneeze, sitting with eating or fright, lying on the back, the roll), what its renderer
+    turns the pose by (and a cat's and a fox's), and the textures it wears."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=37.5,
+             unhappy=False, sneezing=False, sneeze_time=0, eating=False, scared=False, sit=0.0,
+             back=0.0, roll=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "age_in_ticks": float_bits(age),
+                "unhappy": unhappy, "sneezing": sneezing, "sneeze_time": sneeze_time,
+                "eating": eating, "scared": scared, "sit_amount": float_bits(sit),
+                "lie_on_back_amount": float_bits(back), "roll_amount": float_bits(roll)}
+
+    rows = []
+    for layer in ("minecraft:panda#main", "minecraft:panda_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("unhappy", layer, unhappy=True, walk_position=2.0, walk_speed=0.3),
+            pose("sneeze-start", layer, sneezing=True, sneeze_time=1),
+            pose("sneeze-wind-up", layer, sneezing=True, sneeze_time=14),
+            pose("sneeze-hold", layer, sneezing=True, sneeze_time=15),
+            pose("sneeze-release", layer, sneezing=True, sneeze_time=17),
+            pose("sneeze-release-late", layer, sneezing=True, sneeze_time=19),
+            pose("sneeze-done", layer, sneezing=True, sneeze_time=20),
+            pose("sitting-part", layer, sit=0.45, head_y_rot=12.0, x_rot=-9.0),
+            pose("sitting", layer, sit=1.0, walk_position=3.3, walk_speed=0.5),
+            pose("eating", layer, sit=1.0, eating=True),
+            pose("scared", layer, sit=1.0, scared=True),
+            pose("eating-and-scared", layer, sit=0.8, eating=True, scared=True),
+            pose("lying-on-back", layer, back=0.7, walk_position=1.1, walk_speed=0.4),
+            pose("lying-on-back-fully", layer, back=1.0, head_y_rot=8.0),
+            pose("rolling", layer, roll=0.6, walk_position=1.9, walk_speed=0.6),
+            pose("rolling-sitting", layer, roll=1.0, sit=0.5),
+            pose("unhappy-and-lying", layer, unhappy=True, back=0.5, sit=0.3),
+        ]
+    yield {"case_id": "entity/panda-model", "family": "entity", "operation": "panda_model",
+           "rows": rows}
+    yield {"case_id": "entity/panda-textures", "family": "entity", "operation": "panda_textures",
+           "rows": [{"label": "all"}]}
+
+    def turn(kind, label, baby=False, body_rot=37.0, x_rot=0.0, age=37.5, **fields):
+        row = {"label": f"{kind}-{'baby-' if baby else ''}{label}", "kind": kind, "baby": baby,
+               "body_rot": float_bits(body_rot), "x_rot": float_bits(x_rot),
+               "age_in_ticks": float_bits(age)}
+        row.update({"roll_time": float_bits(0.0), "sit_amount": float_bits(0.0),
+                    "lie_on_back_amount": float_bits(0.0), "scared": False, "sitting": False,
+                    "eating": False, "lie_down_amount": float_bits(0.0),
+                    "on_sleeping_player": False, "pouncing": False, "faceplanted": False})
+        for key, value in fields.items():
+            row[key] = float_bits(value) if isinstance(value, float) else value
+        return row
+
+    turns = []
+    for baby in (False, True):
+        for roll_time in (0.0, 0.4, 3.5, 7.0, 7.6, 8.0, 11.25, 15.9, 16.0, 20.5, 23.99, 24.0, 28.7,
+                          31.5, 32.0, 40.0):
+            turns.append(turn("panda", f"roll-{roll_time}", baby, roll_time=roll_time, x_rot=-12.0))
+        turns += [
+            turn("panda", "sit-part", baby, sit_amount=0.4, x_rot=18.0, sitting=True),
+            turn("panda", "sitting", baby, sit_amount=1.0, sitting=True, eating=True),
+            turn("panda", "eating-bob", baby, sit_amount=1.0, sitting=True, eating=True, age=91.7),
+            turn("panda", "scared", baby, sit_amount=1.0, scared=True, sitting=True, age=12.3),
+            turn("panda", "lying-on-back", baby, lie_on_back_amount=0.65, x_rot=-20.0),
+            turn("panda", "lying-fully", baby, lie_on_back_amount=1.0),
+            turn("panda", "rolling-while-sitting", baby, roll_time=5.5, sit_amount=0.7,
+                 lie_on_back_amount=0.2, x_rot=9.0),
+            turn("cat", "standing", baby),
+            turn("cat", "lying-part", baby, lie_down_amount=0.45),
+            turn("cat", "lying", baby, lie_down_amount=1.0),
+            turn("cat", "lying-on-a-sleeper", baby, lie_down_amount=0.8, on_sleeping_player=True),
+            turn("fox", "standing", baby, x_rot=33.0),
+            turn("fox", "pouncing", baby, x_rot=33.0, pouncing=True),
+            turn("fox", "faceplanted", baby, x_rot=-47.5, faceplanted=True),
+        ]
+    yield {"case_id": "entity/setup-rotations", "family": "entity", "operation": "setup_rotations",
+           "rows": turns}
 
 
 def entity_llama_cases():

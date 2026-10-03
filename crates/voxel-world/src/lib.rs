@@ -43,6 +43,7 @@ pub mod light;
 pub mod living;
 mod metadata;
 mod paletted;
+pub mod panda;
 mod pick;
 mod player;
 pub mod polar_bear;
@@ -110,6 +111,10 @@ pub struct ClientWorld {
     /// (`Minecraft.player.chunkPosition()`); unknown until it does.
     local_chunk: Option<(i32, i32)>,
     game_time: u64,
+    /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
+    /// the bits of the floats.
+    rain_level_bits: u32,
+    thunder_level_bits: u32,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<i32, DestroyProgress>,
 }
@@ -167,6 +172,8 @@ impl ClientWorld {
             server_simulation_distance: 3,
             local_chunk: None,
             game_time: 0,
+            rain_level_bits: 0,
+            thunder_level_bits: 0,
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
         }
@@ -1123,6 +1130,16 @@ impl ClientWorld {
         true
     }
 
+    /// Fixes the source a panda's chance to eat is drawn from; false for an
+    /// entity that is not there.
+    pub fn fix_panda_seed(&mut self, entity_id: i32, seed: i64) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.fix_panda_seed(seed);
+        true
+    }
+
     /// Fixes a rabbit's idle head tilt wait and random source (see
     /// [`rabbit::RabbitState::fix_idle`]); false for an entity that is not there.
     pub fn fix_rabbit_idle(&mut self, entity_id: i32, timeout: i32, seed: i64) -> bool {
@@ -1275,6 +1292,24 @@ impl ClientWorld {
 
     pub fn game_time(&self) -> u64 {
         self.game_time
+    }
+
+    /// `Level.setRainLevel` and `setThunderLevel`: the weather the server sent
+    /// (the level starts dry).
+    pub fn set_weather(&mut self, rain_level: f32, thunder_level: f32) {
+        self.rain_level_bits = rain_level.to_bits();
+        self.thunder_level_bits = thunder_level.to_bits();
+    }
+
+    /// `Level.isThundering`: the level can have weather and the thunder,
+    /// scaled by the rain, is above nine tenths.
+    pub fn is_thundering(&self) -> bool {
+        let environment = &self.dimension_environment;
+        let can_have_weather = environment.has_skylight
+            && !environment.has_ceiling
+            && self.dimension_key != "minecraft:the_end";
+        can_have_weather
+            && f32::from_bits(self.thunder_level_bits) * f32::from_bits(self.rain_level_bits) > 0.9
     }
 
     /// `ClientLevel.setTimeFromServer`: the game time the server sent.
@@ -1600,11 +1635,15 @@ impl ClientWorld {
             })
     }
 
-    /// Whether this entity is a cat that lies down with a sleeping player near.
-    fn sleeper_near_lying_cat(&self, entity_id: i32) -> bool {
-        self.entities
+    /// What the species that look about them read of the world: whether this
+    /// is a cat that lies down with a sleeping player near, and whether it
+    /// thunders.
+    fn species_surroundings(&self, entity_id: i32) -> (bool, bool) {
+        let sleeper_near_cat = self
+            .entities
             .get(&entity_id)
-            .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity))
+            .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity));
+        (sleeper_near_cat, self.is_thundering())
     }
 
     fn tick_entity_once(&mut self, entity_id: i32) {
@@ -1648,7 +1687,7 @@ impl ClientWorld {
             .get(&entity_id)
             .is_some_and(|entity| self.should_tick_death(entity));
         let game_time = self.game_time;
-        let sleeper_near_cat = self.sleeper_near_lying_cat(entity_id);
+        let surroundings = self.species_surroundings(entity_id);
         {
             let entity = self
                 .entities
@@ -1669,7 +1708,7 @@ impl ClientWorld {
             if let Some(kind) = living {
                 entity.tick_living(kind, tick_death, game_time);
             }
-            entity.tick_cat(sleeper_near_cat);
+            entity.tick_species(surroundings);
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
                 entity.motion_y_bits = 0.0_f64.to_bits();
@@ -2998,23 +3037,30 @@ impl ClientWorld {
                 passenger_ids: Vec::new(),
                 attributes: Vec::new(),
                 rabbit: None,
+                panda: None,
                 horse: None,
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
+        self.snap_local_player_turn(entity.entity_id, head_rotation_bits, entity.rotation.0);
+        true
+    }
+
+    /// The local player's own head and body turn, set to what an entity
+    /// packet for it says.
+    fn snap_local_player_turn(&mut self, entity_id: i32, head_rotation_bits: u32, body_yaw: f32) {
         if let Some(player) = self
             .local_player
             .as_mut()
-            .filter(|player| player.id == entity.entity_id)
+            .filter(|player| player.id == entity_id)
         {
             player.y_head_rot_bits = head_rotation_bits;
             player.old_y_head_rot_bits = head_rotation_bits;
             player.head_rotation_target_bits = head_rotation_bits;
             player.head_lerp_steps = 0;
-            player.y_body_rot_bits = entity.rotation.0.to_bits();
-            player.old_y_body_rot_bits = entity.rotation.0.to_bits();
+            player.y_body_rot_bits = body_yaw.to_bits();
+            player.old_y_body_rot_bits = body_yaw.to_bits();
         }
-        true
     }
 
     /// Apply the collision-relevant Happy Ghast state used by the client query.
@@ -3417,6 +3463,13 @@ impl ClientWorld {
         entity
             .living
             .apply_cat(cat_data_from_metadata(entity.type_id, metadata));
+        let panda_data = panda_data_from_metadata(entity.type_id, metadata);
+        if panda_data != panda::PandaData::default() {
+            entity
+                .panda
+                .get_or_insert_with(Default::default)
+                .apply(panda_data);
+        }
         let (fox_flags, fox_variant) = fox_data_from_metadata(entity.type_id, metadata);
         entity.living.fox.set_data(fox_flags, fox_variant);
         if let Some(standing) = polar_bear_standing_from_metadata(entity.type_id, metadata) {

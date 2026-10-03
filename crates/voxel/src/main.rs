@@ -19,6 +19,7 @@ mod item_layers;
 mod mobs;
 mod monsters;
 mod overlays;
+mod pandas;
 mod play;
 mod ppm;
 mod profile;

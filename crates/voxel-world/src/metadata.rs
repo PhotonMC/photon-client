@@ -437,6 +437,21 @@ pub(crate) fn fox_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u
     )
 }
 
+/// What a panda's data holds, each when it is there.
+pub(crate) fn panda_data_from_metadata(type_id: i32, metadata: &[u8]) -> crate::panda::PandaData {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:panda") {
+        return crate::panda::PandaData::default();
+    }
+    crate::panda::PandaData {
+        unhappy_counter: metadata_int_value(metadata, PANDA_UNHAPPY_DATA_ID),
+        sneeze_counter: metadata_int_value(metadata, PANDA_SNEEZE_DATA_ID),
+        eat_counter: metadata_int_value(metadata, PANDA_EAT_DATA_ID),
+        main_gene: metadata_byte_value(metadata, PANDA_MAIN_GENE_DATA_ID),
+        hidden_gene: metadata_byte_value(metadata, PANDA_HIDDEN_GENE_DATA_ID),
+        flags: metadata_byte_value(metadata, PANDA_FLAGS_DATA_ID),
+    }
+}
+
 /// A polar bear's standing flag (`PolarBear.DATA_STANDING_ID`), when the data holds it.
 pub(crate) fn polar_bear_standing_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:polar_bear" {

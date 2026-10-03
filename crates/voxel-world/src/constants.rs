@@ -207,6 +207,14 @@ pub const CAT_VARIANT_DATA_ID: u8 = 20;
 pub const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 /// Where a fox's variant (an int) and its flags sit among its data.
 pub const FOX_VARIANT_DATA_ID: u8 = 18;
+/// Where a panda's counters (unhappy, sneeze, eat: ints), genes (main, hidden)
+/// and flags (bytes) sit among its data.
+pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;
+pub const PANDA_SNEEZE_DATA_ID: u8 = 19;
+pub const PANDA_EAT_DATA_ID: u8 = 20;
+pub const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
+pub const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
+pub const PANDA_FLAGS_DATA_ID: u8 = 23;
 pub const FOX_FLAGS_DATA_ID: u8 = 19;
 pub const CAT_VARIANT_SERIALIZER_ID: i32 = 21;
 pub const CAT_LYING_DATA_ID: u8 = 21;

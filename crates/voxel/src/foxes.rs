@@ -78,7 +78,7 @@ pub fn remote_foxes(
         // `FoxRenderer.setupRotations`: a fox that pounces or has its face
         // planted tips with its pitch.
         if own.is_pouncing() || own.is_faceplanted() {
-            placed.pitch = Some(-snapshot.pitch);
+            placed.fox_tipping(snapshot.pitch);
         }
         vertices.extend(mob_vertices(model, &placed, rect));
         let head = model

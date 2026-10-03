@@ -671,6 +671,8 @@ pub struct ClientEntity {
     pub(crate) attributes: Vec<ClientAttributeState>,
     /// A rabbit's hop and animation states, made when it first ticks.
     pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
+    /// A panda's data and own client state, once it has any.
+    pub(crate) panda: Option<Box<crate::panda::PandaState>>,
     /// A horse's animations and tail, made when it first ticks, and the flags
     /// the server sent before that.
     pub(crate) horse: Option<Box<crate::horse::HorseState>>,
@@ -2009,6 +2011,43 @@ impl ClientEntity {
         if voxel_data::entity_type::name(self.type_id) == Some("minecraft:cat") {
             let (lying, relaxed) = (self.living.cat_lying, self.living.cat_relaxed);
             self.living.cat.tick(lying, relaxed, sleeper_near);
+        }
+    }
+
+    /// A panda's data and own client state (its counters and how far it sits,
+    /// lies on its back and rolls); the starting state until data comes.
+    pub fn panda(&self) -> crate::panda::PandaState {
+        self.panda.as_deref().cloned().unwrap_or_default()
+    }
+
+    /// Fixes the source a panda's chance to eat is drawn from (see
+    /// [`crate::panda::PandaState::fix_seed`]).
+    pub fn fix_panda_seed(&mut self, seed: i64) {
+        self.panda
+            .get_or_insert_with(Default::default)
+            .fix_seed(seed);
+    }
+
+    /// What a cat or a panda does of its own after `super.tick`, given what
+    /// the world around it holds (a sleeper near a cat, thunder).
+    pub(crate) fn tick_species(&mut self, (sleeper_near_cat, thundering): (bool, bool)) {
+        self.tick_cat(sleeper_near_cat);
+        self.tick_panda(thundering);
+    }
+
+    /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.
+    pub(crate) fn tick_panda(&mut self, thundering: bool) {
+        if voxel_data::entity_type::name(self.type_id) != Some("minecraft:panda") {
+            return;
+        }
+        let holds_item = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let around = crate::panda::PandaSurroundings {
+            thundering,
+            holds_item,
+        };
+        let panda = self.panda.get_or_insert_with(Default::default);
+        if panda.tick(around) {
+            self.x_rot_bits = 0.0_f32.to_bits();
         }
     }
 

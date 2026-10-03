@@ -1885,6 +1885,144 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The panda's model posed by the reference's own `PandaModel.setupAnim` (grown and baby), drawn.
+     */
+    private static JsonObject pandaModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.panda.BabyPandaModel(root)
+                : new net.minecraft.client.model.animal.panda.PandaModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.PandaRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isUnhappy = row.get("unhappy").getAsBoolean();
+            state.isSneezing = row.get("sneezing").getAsBoolean();
+            state.sneezeTime = row.get("sneeze_time").getAsInt();
+            state.isEating = row.get("eating").getAsBoolean();
+            state.isScared = row.get("scared").getAsBoolean();
+            state.sitAmount = Oracle.f32(row, "sit_amount");
+            state.lieOnBackAmount = Oracle.f32(row, "lie_on_back_amount");
+            state.rollAmount = Oracle.f32(row, "roll_amount");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The panda's textures by gene and age, from the renderer's own tables. */
+    private static JsonObject pandaTextures() throws Exception {
+        var rows = new JsonArray();
+        for (String table : new String[] {"TEXTURES", "BABY_TEXTURES"}) {
+            var field = net.minecraft.client.renderer.entity.PandaRenderer.class.getDeclaredField(table);
+            field.setAccessible(true);
+            var map = (java.util.Map<?, ?>) field.get(null);
+            for (var gene : net.minecraft.world.entity.animal.panda.Panda.Gene.values()) {
+                var out = new JsonObject();
+                out.addProperty("label", gene.getId() + "-" + table);
+                out.addProperty("texture", map.get(gene).toString());
+                rows.add(out);
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the reference's own `setupRotations` leaves the pose stack at for a panda, a cat or a fox
+     * from the state that drives it, and, for a panda, the matrix `PandaHoldsItemLayer` submits what
+     * it holds with from an identity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject setupRotations(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String kind = row.get("kind").getAsString();
+            Class<?> rendererClass;
+            net.minecraft.client.renderer.entity.state.LivingEntityRenderState state;
+            var poses = new JsonArray();
+            if (kind.equals("panda")) {
+                rendererClass = net.minecraft.client.renderer.entity.PandaRenderer.class;
+                var panda = new net.minecraft.client.renderer.entity.state.PandaRenderState();
+                panda.rollTime = Oracle.f32(row, "roll_time");
+                panda.sitAmount = Oracle.f32(row, "sit_amount");
+                panda.lieOnBackAmount = Oracle.f32(row, "lie_on_back_amount");
+                panda.isScared = row.get("scared").getAsBoolean();
+                panda.isSitting = row.get("sitting").getAsBoolean();
+                panda.isEating = row.get("eating").getAsBoolean();
+                state = panda;
+            } else if (kind.equals("cat")) {
+                rendererClass = net.minecraft.client.renderer.entity.CatRenderer.class;
+                var cat = new net.minecraft.client.renderer.entity.state.CatRenderState();
+                cat.lieDownAmount = Oracle.f32(row, "lie_down_amount");
+                cat.isLyingOnTopOfSleepingPlayer = row.get("on_sleeping_player").getAsBoolean();
+                state = cat;
+            } else {
+                rendererClass = net.minecraft.client.renderer.entity.FoxRenderer.class;
+                var fox = new net.minecraft.client.renderer.entity.state.FoxRenderState();
+                fox.isPouncing = row.get("pouncing").getAsBoolean();
+                fox.isFaceplanted = row.get("faceplanted").getAsBoolean();
+                state = fox;
+            }
+            state.isBaby = row.get("baby").getAsBoolean();
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            var renderer = UNSAFE.allocateInstance(rendererClass);
+            var method = rendererClass.getDeclaredMethod("setupRotations", state.getClass(),
+                com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
+            method.setAccessible(true);
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            method.invoke(renderer, state, stack, Oracle.f32(row, "body_rot"), 1.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            out.add("pose", described);
+            if (kind.equals("panda")) {
+                var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                    EntityOracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                    (proxy, method2, args) -> {
+                        if (method2.getName().equals("submitItem")) {
+                            var layerMatrix = new float[16];
+                            ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(layerMatrix);
+                            var item = new JsonArray();
+                            for (float value : layerMatrix) {
+                                item.add(Oracle.bits(value));
+                            }
+                            poses.add(item);
+                        }
+                        return null;
+                    });
+                var pandaState = (net.minecraft.client.renderer.entity.state.PandaRenderState) state;
+                pandaState.heldItem.newLayer();
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+                new net.minecraft.client.renderer.entity.layers.PandaHoldsItemLayer(parent)
+                    .submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, pandaState, 0.0F, 0.0F);
+            }
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2396,6 +2534,12 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
             {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "UNHAPPY_COUNTER", "panda-unhappy"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "SNEEZE_COUNTER", "panda-sneeze"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "EAT_COUNTER", "panda-eat"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "MAIN_GENE_ID", "panda-main-gene"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "HIDDEN_GENE_ID", "panda-hidden-gene"},
+            {net.minecraft.world.entity.animal.panda.Panda.class, "DATA_ID_FLAGS", "panda-flags"},
             {net.minecraft.world.entity.animal.fox.Fox.class, "DATA_TYPE_ID", "fox-variant"},
             {net.minecraft.world.entity.animal.fox.Fox.class, "DATA_FLAGS_ID", "fox-flags"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "DATA_VARIANT_ID", "cat-variant"},
@@ -2549,6 +2693,15 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("panda_model")) {
+            return pandaModel(request);
+        }
+        if (operation.equals("panda_textures")) {
+            return pandaTextures();
+        }
+        if (operation.equals("setup_rotations")) {
+            return setupRotations(request);
         }
         if (operation.equals("fox_model")) {
             return foxModel(request);

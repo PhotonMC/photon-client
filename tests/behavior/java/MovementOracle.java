@@ -706,6 +706,35 @@ public final class MovementOracle {
                             entity.setHealth(Oracle.f32(event, "health"));
                         }
                     }
+                    case "weather" -> {
+                        level.setRainLevel(Oracle.f32(event, "rain"));
+                        level.setThunderLevel(Oracle.f32(event, "thunder"));
+                    }
+                    case "equipment" -> {
+                        var stack = event.get("item").isJsonNull()
+                            ? net.minecraft.world.item.ItemStack.EMPTY
+                            : new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                                .getValue(net.minecraft.resources.Identifier.parse(event.get("item").getAsString())));
+                        listener.handleSetEquipment(new net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket(
+                            entityId, java.util.List.of(com.mojang.datafixers.util.Pair.of(
+                                net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack))));
+                    }
+                    case "panda_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var pandaClass = net.minecraft.world.entity.animal.panda.Panda.class;
+                        for (var counter : new String[][] {{"unhappy", "UNHAPPY_COUNTER"}, {"sneeze", "SNEEZE_COUNTER"}, {"eat", "EAT_COUNTER"}}) {
+                            if (event.has(counter[0])) {
+                                data.add(wolfData(pandaClass, counter[1], event.get(counter[0]).getAsInt()));
+                            }
+                        }
+                        for (var gene : new String[][] {{"main_gene", "MAIN_GENE_ID"}, {"hidden_gene", "HIDDEN_GENE_ID"}, {"flags", "DATA_ID_FLAGS"}}) {
+                            if (event.has(gene[0])) {
+                                data.add(wolfData(pandaClass, gene[1], (byte) event.get(gene[0]).getAsInt()));
+                            }
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "fox_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var foxClass = net.minecraft.world.entity.animal.fox.Fox.class;
@@ -863,6 +892,25 @@ public final class MovementOracle {
                             for (float partial : new float[] {0.0F, 0.5F}) {
                                 described.addProperty("head_roll_" + partial, Oracle.bits(wolf.getHeadRollAngle(partial)));
                                 described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
+                            }
+                        }
+                        case "panda" -> {
+                            var panda = (net.minecraft.world.entity.animal.panda.Panda) entity;
+                            described.addProperty("variant", panda.getVariant().getId());
+                            described.addProperty("unhappy_counter", panda.getUnhappyCounter());
+                            described.addProperty("sneeze_counter", panda.getSneezeCounter());
+                            described.addProperty("sneezing", panda.isSneezing());
+                            described.addProperty("eating", panda.isEating());
+                            described.addProperty("sitting", panda.isSitting());
+                            described.addProperty("rolling", panda.isRolling());
+                            described.addProperty("on_back", panda.isOnBack());
+                            described.addProperty("roll_counter", panda.rollCounter);
+                            described.addProperty("scared", panda.isScared());
+                            described.addProperty("x_rot", Oracle.bits(panda.getXRot()));
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("sit_" + partial, Oracle.bits(panda.getSitAmount(partial)));
+                                described.addProperty("back_" + partial, Oracle.bits(panda.getLieOnBackAmount(partial)));
+                                described.addProperty("roll_" + partial, Oracle.bits(panda.getRollAmount(partial)));
                             }
                         }
                         case "fox" -> {

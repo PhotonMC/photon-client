@@ -1495,6 +1495,7 @@ impl PlaySession {
                 // A new level starts dry; the server repeats its weather.
                 self.rain_level = 0.0;
                 self.thunder_level = 0.0;
+                self.trace.world.set_weather(0.0, 0.0);
                 let bounds = dimension_bounds_for_spawn_info(&self.trace, &spawn_info);
                 let environment = dimension_environment_for_spawn_info(&self.trace, &spawn_info);
                 self.trace.world.replace_dimension_with_environment(
@@ -1690,6 +1691,9 @@ impl PlaySession {
                     8 => self.thunder_level = event.param.clamp(0.0, 1.0),
                     _ => {}
                 }
+                self.trace
+                    .world
+                    .set_weather(self.rain_level, self.thunder_level);
                 if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
                     self.show_death_screen = event.param == 0.0;
                 }

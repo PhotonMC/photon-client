@@ -26,4 +26,7 @@ Panda davranışı (sunucu), sesler.
 `docs/index.md` satırı, yeni `docs/client-panda-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_panda` (yetişkin + bebek), `PandaRotation`/`panda_rotate` (takla, oturma, sırtüstü) ve `panda_item_pose`, `MobPlacement::cat_lying`/`fox_tipping` ve `placement_rotations` (kedi ve tilki dönüşleri artık oracle'da), `voxel-world/src/panda.rs` (sayaçlar, gen, miktarlar, yeme çekimi), dünyaya hava (`set_weather`, `is_thundering`), `crates/voxel/src/pandas.rs`. Kayıt: `docs/client-panda-parity-conformance.md`.
+- Oracle: `panda-model` 40, `panda-textures` 14, `setup-rotations` 84, `living-entity-animations` 9 panda, `variant-fields` +6; harness'a `weather`, `equipment`, `panda_data` olayları.
+- Sapma: hapşırık sonu ve beşinci yeme tikinden sonrası parçacık yüzünden oracle'da koşulamaz (birim test); suda olma izlenmiyor; ses/parçacık yok.
+- Açık: T32g ravager, T32h strider, T32i titreme.
