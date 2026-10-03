@@ -79,7 +79,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T32d](T32d-hoglin-ravager-strider.md) | Hoglin, zoglin, ravager, strider | M | T32 | bölündü (hoglin: 1230fe92) |
 | [T32g](T32g-ravager.md) | Ravager | M | T32d | bitti (819fac6f) |
 | [T32h](T32h-strider.md) | Strider | M | T32d | bitti (dfda3dd0) |
-| [T32i](T32i-titreme.md) | Titreme: donmuş ve zombileşen mob (`isShaking`) | S | T32d | açık |
+| [T32i](T32i-titreme.md) | Titreme: donmuş ve zombileşen mob (`isShaking`) | S | T32d | bitti |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
 | [T33b](T33b-goz-sarj-bocek-ari.md) | Gümüş balığı, endermite, arı | M | T33 | bitti (3fb0a4f9) |
 | [T33c](T33c-emissive-goz-katmani.md) | Emissive göz katmanı (örümcek, enderman) | S | T33, T34c | bitti (949699a3) |

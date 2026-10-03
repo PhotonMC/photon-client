@@ -2,8 +2,8 @@
 //! textures, grown or baby, and the pose of the swing of an attack.
 //!
 //! A hoglin that is converting to a zoglin (`Hoglin.isConverting`) shakes in
-//! the reference: that needs the dimension's `piglins_zombify` attribute,
-//! which the client world does not carry, so a hoglin never shakes here.
+//! the reference: the client world decides that (`ClientEntity::is_shaking`)
+//! and `placement` turns it into the body's shudder.
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;

@@ -22,9 +22,21 @@ varlığıyla ve gerçek varlık olayıyla karşılaştırılır.
 `entity/hoglin-model` 28 satır (dört katman × duruş, bakış, yürüyüş, sallanmanın beş noktası);
 `living-entity-animations`'a üç satır (boşta, sallanan hoglin, iki kez sallanan zoglin).
 
+## Titreme (T32i) — [client-parity]
+
+`LivingEntityRenderer.setupRotations` donmuş (`isFullyFrozen`, 140 tik) her mobun, `Hoglin.isConverting`
+olan hoglinin (bağışık değil, `NoAI` değil, boyutun `gameplay/piglins_zombify` değeri doğru) ve boğulan
+striderin gövde açısına `cos(⌊yaş⌋·3,25)·π·0,4` derece ekler. `entity/shaking-rotations` (55 satır: inek,
+hoglin ve strider × beş tik/kesir) gerçek `setupRotations`ın matrisini, gerçek `HoglinRenderer` ve
+`StriderRenderer` `isShaking` geçersiz kılmalarıyla karşılaştırır; Rust kararı istemci dünyasından
+(veri, `NoAI` bayrağı, boyut ortamı, tik sayacı) verir. Boyutun özniteliği oracle'da kayıt defterinin
+kendi boyut türünden okunur (`overworld` doğru, `the_nether` yanlış); kayıt verisindeki `attributes`
+alanı (düz değer veya `BooleanModifier`) birim testle çözülür. Hoglinin bağışıklık verisinin
+kimliği `entity/data-ids` tablosuna girer. Zoglin `ZoglinRenderer` ile titremez.
+
 ## Sapmalar (açık)
 
-- Hoglin zombileşirken titrer (`Hoglin.isConverting` → `isShaking`): bunun için boyutun
-  `gameplay/piglins_zombify` özniteliği gerekir ve istemci dünyası bu özniteliği taşımıyor; hoglin hiç
-  titremez. Donmuş mobun titremesi (`isFullyFrozen`) de hiçbir mob için çizilmiyor: T32i.
+- Dalın kaynağı boyut türünün kendi özniteliğidir; biyom ve hava katmanları `piglins_zombify`ı
+  değiştirmez (kaynakta yalnız boyut türü ayarlıyor), veri paketi biyomu ayarlarsa istemci bunu
+  okumaz.
 - Sallanma sesi ve hoglin sesleri yok.

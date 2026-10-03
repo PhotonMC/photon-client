@@ -1,8 +1,8 @@
 //! The strider (`StriderRenderer`): its texture (the cold one while it
 //! suffocates), its pose and its saddle (`SimpleEquipmentLayer`).
 //!
-//! A suffocating strider also shakes in the reference (`isShaking`): that is
-//! not drawn (see the frozen mobs' shaking in the task board).
+//! A suffocating strider also shakes in the reference (`isShaking`): the
+//! client world decides that and `placement` draws it.
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;

@@ -31,5 +31,5 @@ sınıfı `client-parity`'dir (model, tablo ve tik) ve canlı gözlemdir: gerçe
 - Yapay zekâlı strider kendi başına (`Strider.tick`, istemcide de) boğulup boğulmadığını bloklardan ve
   lavdan hesaplar; istemci bunu taşımıyor, sunucunun verisine uyar (aynı kuraldan çıktığı için kararlı
   durumda aynıdır). Oracle senaryoları bu yüzden yapay zekâsızdır (`NoAI`, Java o zaman hesaplamaz).
-- Boğulan strider Java'da titrer (`isShaking`); çizilmiyor (T32i).
+- Boğulan strider titrer: [hoglin kaydındaki titreme](client-hoglin-parity-conformance.md) (T32i).
 - Eyerin çizim sırası (`order`) ve eyer sesi yok; binici ve binme kontrolü ayrı görev (T44).

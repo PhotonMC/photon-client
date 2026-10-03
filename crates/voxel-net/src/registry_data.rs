@@ -121,6 +121,8 @@ impl PackedRegistryEntry {
             Some(_) => return Err(ReadError::DecoderError),
         };
 
+        let piglins_zombify = piglins_zombify(fields)?;
+
         DimensionEnvironment::from_wire(
             DimensionEnvironmentInput {
                 has_fixed_time,
@@ -132,11 +134,48 @@ impl PackedRegistryEntry {
                 ambient_light,
                 skybox,
                 cardinal_light_type,
+                piglins_zombify,
             },
             bounds.height,
         )
         .map(Some)
         .ok_or(ReadError::DecoderError)
+    }
+}
+
+/// The dimension type's `gameplay/piglins_zombify` attribute: the default
+/// (true) when the map leaves it out, else the value or the boolean modifier
+/// applied to that default.
+fn piglins_zombify(fields: &[voxel_core::nbt::Field]) -> Result<bool, ReadError> {
+    const DEFAULT: bool = true;
+    let Some(attributes) = find_field(fields, "attributes") else {
+        return Ok(DEFAULT);
+    };
+    let FieldValue::Compound(attributes) = attributes else {
+        return Err(ReadError::DecoderError);
+    };
+    match find_field(attributes, "minecraft:gameplay/piglins_zombify") {
+        None => Ok(DEFAULT),
+        Some(FieldValue::Compound(entry)) => {
+            let argument = find_field(entry, "argument")
+                .and_then(decode_bool)
+                .ok_or(ReadError::DecoderError)?;
+            let Some(FieldValue::Str(modifier)) = find_field(entry, "modifier") else {
+                return Err(ReadError::DecoderError);
+            };
+            // `BooleanModifier` and the override every attribute has.
+            match modifier.strip_prefix("minecraft:").unwrap_or(modifier) {
+                "override" => Ok(argument),
+                "and" => Ok(argument && DEFAULT),
+                "nand" => Ok(!argument || !DEFAULT),
+                "or" => Ok(argument || DEFAULT),
+                "nor" => Ok(!argument && !DEFAULT),
+                "xor" => Ok(argument ^ DEFAULT),
+                "xnor" => Ok(argument == DEFAULT),
+                _ => Err(ReadError::DecoderError),
+            }
+        }
+        Some(value) => decode_bool(value).ok_or(ReadError::DecoderError),
     }
 }
 
@@ -422,5 +461,63 @@ mod tests {
         assert!(!defaults.has_fixed_time());
         assert_eq!(defaults.skybox(), DimensionSkybox::Overworld);
         assert_eq!(defaults.cardinal_light_type(), CardinalLightType::Default);
+    }
+
+    #[test]
+    fn dimension_type_entry_reads_the_piglins_zombify_attribute() {
+        let with_attributes = |attributes: Option<Vec<Field>>| {
+            let FieldValue::Compound(mut fields) = dimension_type_environment_data() else {
+                unreachable!()
+            };
+            if let Some(attributes) = attributes {
+                fields.push(Field {
+                    key: "attributes".to_owned(),
+                    value: FieldValue::Compound(attributes),
+                });
+            }
+            PackedRegistryEntry::new(
+                Identifier::parse("p08:test").expect("identifier"),
+                Some(FieldValue::Compound(fields)),
+            )
+            .dimension_type_environment()
+        };
+        let attribute = |value: FieldValue| {
+            Some(vec![Field {
+                key: "minecraft:gameplay/piglins_zombify".to_owned(),
+                value,
+            }])
+        };
+        let modifier = |name: &str, argument: i8| {
+            attribute(FieldValue::Compound(vec![
+                Field {
+                    key: "argument".to_owned(),
+                    value: FieldValue::Byte(argument),
+                },
+                Field {
+                    key: "modifier".to_owned(),
+                    value: FieldValue::Str(name.to_owned()),
+                },
+            ]))
+        };
+        let zombify = |attributes| {
+            with_attributes(attributes)
+                .expect("valid environment")
+                .expect("environment data")
+                .piglins_zombify()
+        };
+        // The attribute's default while the map leaves it out.
+        assert!(zombify(None));
+        assert!(zombify(Some(Vec::new())));
+        assert!(!zombify(attribute(FieldValue::Byte(0))));
+        assert!(zombify(attribute(FieldValue::Byte(1))));
+        // A modifier applies to that default.
+        assert!(!zombify(modifier("and", 0)));
+        assert!(zombify(modifier("or", 0)));
+        assert!(!zombify(modifier("xor", 1)));
+        assert!(!zombify(modifier("minecraft:override", 0)));
+        assert_eq!(
+            with_attributes(modifier("blend", 0)),
+            Err(ReadError::DecoderError)
+        );
     }
 }

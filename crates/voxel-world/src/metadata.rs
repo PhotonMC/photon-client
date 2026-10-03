@@ -446,6 +446,15 @@ pub(crate) fn strider_suffocating_from_metadata(type_id: i32, metadata: &[u8]) -
     metadata_boolean_value(metadata, STRIDER_SUFFOCATING_DATA_ID)
 }
 
+/// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
+/// when the data holds it.
+pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:hoglin" {
+        return None;
+    }
+    metadata_boolean_value(metadata, HOGLIN_IMMUNE_DATA_ID)
+}
+
 /// What a panda's data holds, each when it is there.
 pub(crate) fn panda_data_from_metadata(type_id: i32, metadata: &[u8]) -> crate::panda::PandaData {
     if voxel_data::entity_type::name(type_id) != Some("minecraft:panda") {

@@ -388,6 +388,7 @@ pub(crate) fn placement(
         death_time: snapshot.death_time,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
         red_overlay: snapshot.red_overlay,
+        shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
         ..MobPlacement::default()
     }
 }

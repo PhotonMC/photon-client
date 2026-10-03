@@ -2023,6 +2023,8 @@ impl ClientWorld {
             // `ArmedEntityRenderState.attackArm`: the main arm, or the other
             // while the off hand swings.
             attack_arm_left: entity.main_arm_is_left() != entity.living.swing.is_off_hand(),
+            age_in_ticks: entity.tick_count as f32 + partial_tick,
+            shaking: entity.is_shaking(self.dimension_environment.piglins_zombify),
         })
     }
 
@@ -3483,6 +3485,9 @@ impl ClientWorld {
         entity.living.fox.set_data(fox_flags, fox_variant);
         if let Some(suffocating) = strider_suffocating_from_metadata(entity.type_id, metadata) {
             entity.living.strider_suffocating = suffocating;
+        }
+        if let Some(immune) = hoglin_immune_from_metadata(entity.type_id, metadata) {
+            entity.living.hoglin_immune = immune;
         }
         if let Some(standing) = polar_bear_standing_from_metadata(entity.type_id, metadata) {
             entity.living.polar_bear.set_standing(standing);

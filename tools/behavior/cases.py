@@ -14632,6 +14632,7 @@ def entity_cases():
     yield from entity_panda_cases()
     yield from entity_ravager_cases()
     yield from entity_strider_cases()
+    yield from entity_shaking_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15687,6 +15688,37 @@ def entity_panda_cases():
         ]
     yield {"case_id": "entity/setup-rotations", "family": "entity", "operation": "setup_rotations",
            "rows": turns}
+
+
+def entity_shaking_cases():
+    """What `setupRotations` leaves a mob at while it shakes: frozen through (any mob), a hoglin
+    that is converting (not immune, awake, in a dimension where piglins zombify: read from the
+    registry's own dimension types) and a strider that suffocates, over several ticks."""
+    def row(kind, label, ticks=5, partial=0.0, dimension="minecraft:overworld", ticks_frozen=0,
+            immune=False, no_ai=False, suffocating=False):
+        return {"label": f"{kind}-{label}-{ticks}", "kind": kind, "ticks": ticks,
+                "partial": float_bits(partial), "body_rot": float_bits(37.0),
+                "dimension": dimension, "ticks_frozen": ticks_frozen, "immune": immune,
+                "no_ai": no_ai, "suffocating": suffocating}
+
+    nether = "minecraft:the_nether"
+    rows = []
+    for ticks, partial in ((0, 0.0), (5, 0.0), (6, 0.75), (123, 0.4), (4001, 0.9)):
+        rows += [
+            row("cow", "warm", ticks, partial),
+            row("cow", "almost-frozen", ticks, partial, ticks_frozen=139),
+            row("cow", "frozen", ticks, partial, ticks_frozen=140),
+            row("hoglin", "overworld", ticks, partial),
+            row("hoglin", "overworld-immune", ticks, partial, immune=True),
+            row("hoglin", "overworld-no-ai", ticks, partial, no_ai=True),
+            row("hoglin", "nether", ticks, partial, dimension=nether),
+            row("hoglin", "nether-frozen", ticks, partial, dimension=nether, ticks_frozen=200),
+            row("strider", "lava", ticks, partial),
+            row("strider", "suffocating", ticks, partial, suffocating=True),
+            row("strider", "frozen", ticks, partial, ticks_frozen=140),
+        ]
+    yield {"case_id": "entity/shaking-rotations", "family": "entity",
+           "operation": "shaking_rotations", "rows": rows}
 
 
 def entity_ravager_cases():

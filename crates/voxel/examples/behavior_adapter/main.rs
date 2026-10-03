@@ -20330,6 +20330,14 @@ fn panda_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// A pose's matrix as the oracle prints it: the floats' bits, column by column.
+fn matrix_bits(pose: &voxel_render::joml::Pose) -> Vec<String> {
+    (0..4)
+        .flat_map(|column| (0..4).map(move |row| (column, row)))
+        .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+        .collect()
+}
+
 /// `setup_rotations`: what a panda's, a cat's or a fox's renderer leaves the pose at (from an
 /// identity entity pose), and what a panda's layer carries its item with.
 fn setup_rotations_result(request: &Value) -> Result<Value, String> {
@@ -20337,12 +20345,7 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{
         MobPlacement, PandaRotation, panda_item_pose, placement_rotations,
     };
-    let matrix_of = |pose: &Pose| -> Vec<String> {
-        (0..4)
-            .flat_map(|column| (0..4).map(move |row| (column, row)))
-            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
-            .collect()
-    };
+    let matrix_of = matrix_bits;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -20391,6 +20394,106 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
             "label": row["label"],
             "pose": matrix_of(&placement_rotations(&placed)),
             "poses": poses,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `shaking_rotations`: what a cow's, a hoglin's or a strider's renderer leaves the pose at, with
+/// whether it shakes decided by the client world from the entity's data and its dimension.
+fn shaking_rotations_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobPlacement, placement_rotations};
+    use voxel_world::{DimensionEnvironment, DimensionInput};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let dimension = string(row, "dimension")?;
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        world.replace_dimension_with_environment(
+            DimensionInput {
+                key: dimension,
+                dimension_type_id: 0,
+                seed: 0,
+                is_debug: false,
+                is_flat: false,
+                sea_level: 63,
+            },
+            DimensionBounds::new(0, 16),
+            DimensionEnvironment::for_builtin_dimension(dimension),
+        );
+        let blocks = vec![0; 4_096];
+        let biomes = vec![0; 64];
+        if !world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        ) {
+            return Err("shaking fixture chunk was rejected".into());
+        }
+        let type_name = match string(row, "kind")? {
+            "hoglin" => "minecraft:hoglin",
+            "strider" => "minecraft:strider",
+            "cow" => "minecraft:cow",
+            _ => return Err("unknown kind".into()),
+        };
+        let entity_id = 7;
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, 7),
+            type_id: voxel_data::entity_type::id(type_name).ok_or("no such entity type")?,
+            x: 1.25,
+            y: 8.0,
+            z: 1.25,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }) {
+            return Err("shaking fixture entity was rejected".into());
+        }
+        for _ in 0..i64_field(row, "ticks")? {
+            world.tick();
+        }
+        // The data the server sends: the frozen ticks (an int), the hoglin's
+        // immunity, the strider's suffocation and the mob's no-AI flag.
+        let mut data = vec![7, 1];
+        voxel_core::wire::write_varint(i32_field(row, "ticks_frozen")?, &mut data);
+        data.extend([15, 0, u8::from(flag("no_ai")?)]);
+        data.extend([
+            voxel_world::HOGLIN_IMMUNE_DATA_ID,
+            8,
+            u8::from(flag("immune")?),
+        ]);
+        data.extend([
+            voxel_world::STRIDER_SUFFOCATING_DATA_ID,
+            8,
+            u8::from(flag("suffocating")?),
+        ]);
+        data.push(255);
+        world.apply_entity_metadata(entity_id, &data);
+        let snapshot = world
+            .entity_snapshot(entity_id, bits("partial")?)
+            .ok_or("shaking fixture entity disappeared")?;
+        let placed = MobPlacement {
+            body_rot: bits("body_rot")?,
+            shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
+            ..MobPlacement::default()
+        };
+        out.push(json!({
+            "label": row["label"],
+            "pose": matrix_bits(&placement_rotations(&placed)),
         }));
     }
     Ok(json!({"rows": out}))
@@ -21280,6 +21383,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "strider_textures" => return Ok(strider_textures_result()),
         "panda_textures" => return Ok(panda_textures_result()),
         "setup_rotations" => return setup_rotations_result(request),
+        "shaking_rotations" => return shaking_rotations_result(request),
         "fox_textures" => return Ok(fox_textures_result()),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
@@ -21480,6 +21584,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 (
                     "strider-suffocating",
                     i64::from(voxel_world::STRIDER_SUFFOCATING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "hoglin-immune",
+                    i64::from(voxel_world::HOGLIN_IMMUNE_DATA_ID),
                     i64::from(8),
                 ),
                 (

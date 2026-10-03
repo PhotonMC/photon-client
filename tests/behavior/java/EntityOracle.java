@@ -2023,6 +2023,67 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * What the reference's own `setupRotations` leaves the pose stack at for a mob that may shake: a
+     * cow (frozen through is the only reason), a hoglin (converting too) and a strider (suffocating
+     * too), with the dimension's `piglins_zombify` read from the registry's own dimension type.
+     */
+    private static JsonObject shakingRotations(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var dimensionTypes = Oracle.vanillaRegistries()
+            .lookupOrThrow(net.minecraft.core.registries.Registries.DIMENSION_TYPE);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String kind = row.get("kind").getAsString();
+            boolean fullyFrozen = row.get("ticks_frozen").getAsInt() >= 140;
+            Class<?> rendererClass;
+            net.minecraft.client.renderer.entity.state.LivingEntityRenderState state;
+            if (kind.equals("hoglin")) {
+                rendererClass = net.minecraft.client.renderer.entity.HoglinRenderer.class;
+                var hoglin = new net.minecraft.client.renderer.entity.state.HoglinRenderState();
+                var type = dimensionTypes.getOrThrow(net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION_TYPE,
+                    net.minecraft.resources.Identifier.parse(row.get("dimension").getAsString()))).value();
+                boolean zombify = type.attributes().applyModifier(
+                    net.minecraft.world.attribute.EnvironmentAttributes.PIGLINS_ZOMBIFY, true);
+                // `Hoglin.isConverting`, from the data it reads.
+                hoglin.isConverting = !row.get("immune").getAsBoolean() && !row.get("no_ai").getAsBoolean()
+                    && zombify;
+                state = hoglin;
+            } else if (kind.equals("strider")) {
+                rendererClass = net.minecraft.client.renderer.entity.StriderRenderer.class;
+                var strider = new net.minecraft.client.renderer.entity.state.StriderRenderState();
+                strider.isSuffocating = row.get("suffocating").getAsBoolean();
+                state = strider;
+            } else {
+                rendererClass = net.minecraft.client.renderer.entity.CowRenderer.class;
+                state = new net.minecraft.client.renderer.entity.state.CowRenderState();
+            }
+            state.isFullyFrozen = fullyFrozen;
+            state.ageInTicks = (float) row.get("ticks").getAsInt() + Oracle.f32(row, "partial");
+            var renderer = UNSAFE.allocateInstance(rendererClass);
+            var method = net.minecraft.client.renderer.entity.LivingEntityRenderer.class.getDeclaredMethod(
+                "setupRotations", net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class,
+                com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
+            method.setAccessible(true);
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            method.invoke(renderer, state, stack, Oracle.f32(row, "body_rot"), 1.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            out.add("pose", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The ravager's model posed by the reference's own `RavagerModel.setupAnim`, drawn. */
     private static JsonObject ravagerModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -2598,6 +2659,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
             {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
             {net.minecraft.world.entity.monster.Strider.class, "DATA_SUFFOCATING", "strider-suffocating"},
+            {net.minecraft.world.entity.monster.hoglin.Hoglin.class, "DATA_IMMUNE_TO_ZOMBIFICATION", "hoglin-immune"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "UNHAPPY_COUNTER", "panda-unhappy"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "SNEEZE_COUNTER", "panda-sneeze"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "EAT_COUNTER", "panda-eat"},
@@ -2775,6 +2837,9 @@ public final class EntityOracle {
         }
         if (operation.equals("setup_rotations")) {
             return setupRotations(request);
+        }
+        if (operation.equals("shaking_rotations")) {
+            return shakingRotations(request);
         }
         if (operation.equals("fox_model")) {
             return foxModel(request);

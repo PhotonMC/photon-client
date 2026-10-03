@@ -88,6 +88,7 @@ pub struct DimensionEnvironment {
     pub(crate) ambient_light_bits: u32,
     pub(crate) skybox: DimensionSkybox,
     pub(crate) cardinal_light_type: CardinalLightType,
+    pub(crate) piglins_zombify: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -101,6 +102,8 @@ pub struct DimensionEnvironmentInput {
     pub ambient_light: f32,
     pub skybox: DimensionSkybox,
     pub cardinal_light_type: CardinalLightType,
+    /// `EnvironmentAttributes.PIGLINS_ZOMBIFY` of the dimension type.
+    pub piglins_zombify: bool,
 }
 
 impl DimensionEnvironment {
@@ -115,6 +118,7 @@ impl DimensionEnvironment {
             ambient_light_bits: input.ambient_light.to_bits(),
             skybox: input.skybox,
             cardinal_light_type: input.cardinal_light_type,
+            piglins_zombify: input.piglins_zombify,
         }
     }
 
@@ -141,6 +145,7 @@ impl DimensionEnvironment {
                 ambient_light: 0.1,
                 skybox: DimensionSkybox::None,
                 cardinal_light_type: CardinalLightType::Nether,
+                piglins_zombify: false,
             }),
             "minecraft:the_end" => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: true,
@@ -152,6 +157,7 @@ impl DimensionEnvironment {
                 ambient_light: 0.25,
                 skybox: DimensionSkybox::End,
                 cardinal_light_type: CardinalLightType::Default,
+                piglins_zombify: true,
             }),
             "minecraft:overworld_caves" => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: false,
@@ -163,6 +169,7 @@ impl DimensionEnvironment {
                 ambient_light: 0.0,
                 skybox: DimensionSkybox::Overworld,
                 cardinal_light_type: CardinalLightType::Default,
+                piglins_zombify: true,
             }),
             _ => Self::new(DimensionEnvironmentInput {
                 has_fixed_time: false,
@@ -174,8 +181,14 @@ impl DimensionEnvironment {
                 ambient_light: 0.0,
                 skybox: DimensionSkybox::Overworld,
                 cardinal_light_type: CardinalLightType::Default,
+                piglins_zombify: true,
             }),
         }
+    }
+
+    /// Whether piglins and hoglins turn into their zombified kin here.
+    pub fn piglins_zombify(&self) -> bool {
+        self.piglins_zombify
     }
 
     pub fn has_fixed_time(&self) -> bool {

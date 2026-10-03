@@ -207,6 +207,8 @@ pub(crate) struct EntityState {
     pub(crate) cat: crate::cat::CatState,
     /// `Strider.isSuffocating`: it is out of lava and cold.
     pub(crate) strider_suffocating: bool,
+    /// `Hoglin.isImmuneToZombification`.
+    pub(crate) hoglin_immune: bool,
     /// A polar bear's standing animation.
     pub(crate) polar_bear: crate::polar_bear::PolarBearState,
     /// A fox's flags, variant and own client state.
@@ -746,6 +748,10 @@ pub struct EntitySnapshot {
     pub attack_time: f32,
     /// Whether the arm that swings is the left (`attackArm`).
     pub attack_arm_left: bool,
+    /// `EntityRenderState.ageInTicks`.
+    pub age_in_ticks: f32,
+    /// `LivingEntityRenderer.isShaking`.
+    pub shaking: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2063,6 +2069,20 @@ impl ClientEntity {
     /// A fox's flags, variant and own client state (its head roll and crouch).
     pub fn fox(&self) -> &crate::fox::FoxState {
         &self.living.fox
+    }
+
+    /// `LivingEntityRenderer.isShaking` with the overrides of the hoglin
+    /// (`Hoglin.isConverting`) and the strider (`Strider.isSuffocating`):
+    /// frozen through, converting to a zoglin, or out of lava and cold.
+    pub fn is_shaking(&self, piglins_zombify: bool) -> bool {
+        self.is_fully_frozen()
+            || match voxel_data::entity_type::name(self.type_id) {
+                Some("minecraft:hoglin") => {
+                    !self.living.hoglin_immune && !self.is_no_ai() && piglins_zombify
+                }
+                Some("minecraft:strider") => self.living.strider_suffocating,
+                _ => false,
+            }
     }
 
     /// `Strider.isSuffocating`.

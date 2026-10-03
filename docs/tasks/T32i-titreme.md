@@ -24,4 +24,7 @@ Boğulan zombi (`isUnderWaterConverting`) vb. diğer dönüşüm titremeleri ayr
 `docs/index.md` yeni satır gerekmez; `docs/client-hoglin-parity-conformance.md` sapma satırı güncellenir.
 
 ## Devir notu
-(boş)
+- Yapıldı: `EntitySnapshot.{age_in_ticks, shaking}` (`ClientEntity::is_shaking`: donmuş | hoglin dönüşüyor | strider boğuluyor), `MobPlacement.shaking`, `DimensionEnvironment.piglins_zombify` (kayıt `attributes` alanı: düz değer ve `BooleanModifier`, yoksa varsayılan doğru), hoglin `DATA_IMMUNE_TO_ZOMBIFICATION` (kimlik 18).
+- Oracle: `entity/shaking-rotations` (gerçek `setupRotations` + `HoglinRenderer`/`StriderRenderer`/`CowRenderer`); `Hoglin.isConverting` formülü ve `isFullyFrozen` (≥140) oracle'da değerlerden kurulur (varlık örneği yok), boyut özniteliği kayıt defterinden okunur.
+- Sapma/açık: biyom/hava katmanları `piglins_zombify`ı etkilemez (okunmaz); zombi (`isUnderWaterConverting`), piglin, zombi köylü, iskelet/bogged dönüşüm titremeleri ayrı (ilgili render durumları yok).
+- `tools/voxel.py` yerel port değişikliği kullanıcıya ait, commit'e dahil edilmedi.

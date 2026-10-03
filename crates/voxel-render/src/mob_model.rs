@@ -2598,6 +2598,9 @@ pub struct MobPlacement {
     pub pitch: Option<f32>,
     /// The panda renderer's turns (the somersault, sitting, lying on its back).
     pub panda: Option<PandaRotation>,
+    /// `LivingEntityRenderer.isShaking`: the age in ticks of a mob whose body
+    /// shudders, or none.
+    pub shaking: Option<f32>,
 }
 
 impl Default for MobPlacement {
@@ -2618,6 +2621,7 @@ impl Default for MobPlacement {
             roll_shift: None,
             pitch: None,
             panda: None,
+            shaking: None,
         }
     }
 }
@@ -2682,6 +2686,13 @@ pub fn placement_pose(placement: &MobPlacement) -> Pose {
     pose
 }
 
+/// What `LivingEntityRenderer.setupRotations` adds to the body's facing while
+/// it shakes: a cosine of the whole tick, in degrees.
+pub fn shake_degrees(age_in_ticks: f32) -> f32 {
+    (f64::from(age_in_ticks.floor() * 3.25_f32).cos() * std::f64::consts::PI * f64::from(0.4_f32))
+        as f32
+}
+
 /// What `LivingEntityRenderer.submit` has done by the end of the renderer's
 /// `setupRotations`: the feet, the scale, the turn to face away from the
 /// body's facing, the fall of a dead mob and the renderer's own turns.
@@ -2690,7 +2701,7 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
     pose.translate(placement.feet[0], placement.feet[1], placement.feet[2]);
     pose.scale(placement.scale, placement.scale, placement.scale);
     pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0 - placement.body_rot,
+        180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
     )));
     if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
         pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
