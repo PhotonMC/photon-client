@@ -184,6 +184,8 @@ pub(crate) struct EntityState {
     pub(crate) mooshroom_type: i32,
     /// A rabbit's variant, zero for brown.
     pub(crate) rabbit_type: i32,
+    /// Whether a creeper is charged.
+    pub(crate) powered: bool,
     /// A bee's flags and the game time its anger ends.
     pub(crate) bee_flags: u8,
     pub(crate) bee_anger_end: i64,
@@ -1835,6 +1837,11 @@ impl ClientEntity {
         self.living.animal.goat_lower_head_tick as f32 / 20.0
             * maximum
             * (std::f64::consts::PI / 180.0) as f32
+    }
+
+    /// `Creeper.isPowered`.
+    pub fn is_powered(&self) -> bool {
+        self.living.powered
     }
 
     /// `Bee.getRollAmount`: how far the bee has rolled over, between two ticks.

@@ -6,11 +6,13 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    EndermanState, QuadrupedState, creeper_scale, creeper_white_overlay, mob_vertices,
-    mob_vertices_glow, placement_pose,
+    EndermanState, MobModel, MobPlacement, QuadrupedState, creeper_scale, creeper_white_overlay,
+    mob_vertices, mob_vertices_glow, mob_vertices_swirl, placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
+use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
 use voxel_render::scene::Vertex;
+use voxel_world::{ClientEntity, EntitySnapshot};
 
 use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
@@ -95,6 +97,44 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
             ]
         })
         .flatten()
+        .chain([POWER_TEXTURE])
+}
+
+/// The model's `setupAnim` of the monster, and what its renderer adds to the
+/// pose (a swelling creeper's scale).
+fn pose_monster(
+    model: &mut MobModel,
+    monster: &Monster,
+    entity: &ClientEntity,
+    (look, snapshot, partial): (QuadrupedState, &EntitySnapshot, f32),
+    placed: &mut MobPlacement,
+) {
+    match monster.pose {
+        Pose::Spider => model.setup_spider(&look),
+        Pose::Segmented(silverfish) => {
+            model.setup_segmented(entity.tick_count() as f32 + partial, silverfish);
+        }
+        Pose::Enderman => model.setup_enderman(&EndermanState {
+            humanoid: PlayerRenderState {
+                head_y_rot: look.head_y_rot,
+                x_rot: look.x_rot,
+                walk_position: look.walk_position,
+                walk_speed: look.walk_speed,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                swim_amount: snapshot.swim_amount,
+                attack_time: snapshot.attack_time,
+                ..Default::default()
+            },
+            carrying: entity.is_carrying_block(),
+            creepy: entity.is_creepy(),
+        }),
+        Pose::Creeper => {
+            let swelling = entity.creeper_swelling(partial);
+            model.setup_creeper(&look);
+            placed.hook_scale = Some(creeper_scale(swelling));
+            placed.white_overlay = creeper_white_overlay(swelling);
+        }
+    }
 }
 
 /// `LivingEntityRenderer` for the spiders, creepers and endermen the server
@@ -114,6 +154,7 @@ pub fn remote_monsters(
         .collect();
     let mut vertices = Vec::new();
     let mut glow = Vec::new();
+    let mut swirl = Vec::new();
     for entity in world.entities() {
         let Some(monster) = ids
             .iter()
@@ -150,38 +191,36 @@ pub fn remote_monsters(
             placed.feet[0] += x as f32;
             placed.feet[2] += z as f32;
         }
-        match monster.pose {
-            Pose::Spider => model.setup_spider(&look),
-            Pose::Segmented(silverfish) => {
-                model.setup_segmented(entity.tick_count() as f32 + partial, silverfish);
-            }
-            Pose::Enderman => model.setup_enderman(&EndermanState {
-                humanoid: PlayerRenderState {
-                    head_y_rot: look.head_y_rot,
-                    x_rot: look.x_rot,
-                    walk_position: look.walk_position,
-                    walk_speed: look.walk_speed,
-                    age_in_ticks: entity.tick_count() as f32 + partial,
-                    swim_amount: snapshot.swim_amount,
-                    attack_time: snapshot.attack_time,
-                    ..Default::default()
-                },
-                carrying: entity.is_carrying_block(),
-                creepy: entity.is_creepy(),
-            }),
-            Pose::Creeper => {
-                let swelling = entity.creeper_swelling(partial);
-                model.setup_creeper(&look);
-                placed.hook_scale = Some(creeper_scale(swelling));
-                placed.white_overlay = creeper_white_overlay(swelling);
-            }
-        }
+        pose_monster(
+            model,
+            monster,
+            entity,
+            (look, &snapshot, partial),
+            &mut placed,
+        );
         vertices.extend(mob_vertices(model, &placed, rect));
         // The eyes, over the model as it is posed, after the other layers.
         if let Some(eyes) = voxel_render::render_types::eyes_texture(monster.type_name)
             .and_then(|eyes| textures.rect(eyes))
         {
             glow.extend(mob_vertices_glow(model, &placed, eyes));
+        }
+        // A charged creeper's swirl: the armor model, posed as the creeper is.
+        if monster.pose == Pose::Creeper
+            && entity.is_powered()
+            && let (Some(rect), Some(armor)) = (
+                textures.rect(POWER_TEXTURE),
+                models.model("minecraft:creeper#armor"),
+            )
+        {
+            armor.setup_creeper(&look);
+            swirl.extend(mob_vertices_swirl(
+                armor,
+                &placed,
+                rect,
+                swirl_offset(entity.tick_count() as f32 + partial),
+                POWER_COLOUR as u32,
+            ));
         }
         if let Some(state) = entity
             .carried_block_state()
@@ -195,5 +234,6 @@ pub fn remote_monsters(
         }
     }
     models.glow.extend(glow);
+    models.swirl.extend(swirl);
     vertices
 }

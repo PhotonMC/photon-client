@@ -197,6 +197,15 @@ pub(crate) fn creeper_fuse_from_metadata(
     )
 }
 
+/// Whether a creeper is charged (`Creeper.DATA_IS_POWERED`), when the data
+/// holds it.
+pub(crate) fn creeper_powered_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:creeper" {
+        return None;
+    }
+    metadata_boolean_value(metadata, CREEPER_POWERED_DATA_ID)
+}
+
 /// A villager's or zombie villager's type, profession and level
 /// (`Villager.DATA_VILLAGER_DATA`), when the data holds them.
 pub(crate) fn villager_data_from_metadata(type_id: i32, metadata: &[u8]) -> Option<[i32; 3]> {

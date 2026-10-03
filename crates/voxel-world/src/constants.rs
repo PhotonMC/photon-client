@@ -196,6 +196,8 @@ pub const SPELLCASTER_CASTING_DATA_ID: u8 = 17;
 /// Where a creeper's fuse direction (an int) and ignited flag (a boolean)
 /// sit among its data.
 pub const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+/// Where a creeper's charged flag (a boolean) sits among its data.
+pub const CREEPER_POWERED_DATA_ID: u8 = 17;
 pub const CREEPER_IGNITED_DATA_ID: u8 = 18;
 /// Where an experience orb's value sits among its data (an int).
 pub const EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;

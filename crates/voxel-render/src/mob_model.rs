@@ -1279,6 +1279,41 @@ pub fn mob_vertices_glow(
     vertices
 }
 
+/// An energy swirl's triangles (`EnergySwirlLayer`, `RenderTypes.energySwirl`):
+/// the same posed model, each vertex carrying where its texture is in the
+/// packed image (the corner and the size, in its tint), the texture offset
+/// (in its light) and the colour (`0xRRGGBB`, in its shade) that the shader
+/// moves, wraps and multiplies the texture by.
+pub fn mob_vertices_swirl(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+    offset: [f32; 2],
+    colour: u32,
+) -> Vec<Vertex> {
+    let pose = placement_pose(placement);
+    let rect = [
+        texture[0],
+        texture[1],
+        texture[2] - texture[0],
+        texture[3] - texture[1],
+    ];
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: uv(texture, corner.uv),
+                shade: (colour & 0x00FF_FFFF) as f32,
+                tint: rect,
+                light: offset,
+            });
+        }
+    }
+    vertices
+}
+
 /// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a
 /// sheep's wool.
 pub fn mob_vertices_coloured(

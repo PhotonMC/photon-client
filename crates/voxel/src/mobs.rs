@@ -316,6 +316,8 @@ pub struct MobModels {
     /// What the glowing layers drew this frame (eyes), for the frame to hand
     /// to the renderer after the mobs.
     pub(crate) glow: Vec<Vertex>,
+    /// What the energy swirls drew this frame (a charged creeper's).
+    pub(crate) swirl: Vec<Vertex>,
     /// What shakes a creepy enderman: the renderer's own random source, which
     /// the reference does not seed.
     pub(crate) shake: voxel_core::random::RandomSource,
@@ -334,6 +336,7 @@ impl MobModels {
                 .collect(),
             models: HashMap::new(),
             glow: Vec::new(),
+            swirl: Vec::new(),
             shake: voxel_core::random::RandomSource::create(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -393,6 +396,7 @@ pub fn remote_mobs(
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
     models.glow.clear();
+    models.swirl.clear();
     for entity in world.entities() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;

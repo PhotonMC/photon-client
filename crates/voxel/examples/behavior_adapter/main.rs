@@ -19894,6 +19894,43 @@ fn goat_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `swirl_layers`: what the charged creeper's swirl layer submits.
+fn swirl_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::render_types::{
+        ENERGY_SWIRL, EYES_ORDER, NO_OVERLAY, POWER_COLOUR, POWER_TEXTURE, swirl_offset,
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        if !row["powered"].as_bool().ok_or("powered")? {
+            out.push(json!({"label": row["label"], "submitted": false}));
+            continue;
+        }
+        let age = u32::from_str_radix(row["age_in_ticks"].as_str().ok_or("age")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let [u, v] = swirl_offset(age);
+        out.push(json!({
+            "label": row["label"],
+            "order": EYES_ORDER,
+            "light": 15_728_880,
+            "overlay": NO_OVERLAY,
+            "colour": POWER_COLOUR,
+            "texture": format!("textures/{POWER_TEXTURE}.png"),
+            "pipeline": ENERGY_SWIRL.location,
+            "flags": ENERGY_SWIRL.flags,
+            "values": ENERGY_SWIRL.values,
+            "blend": ENERGY_SWIRL.blend,
+            "depth_test": ENERGY_SWIRL.depth_test,
+            "depth_write": ENERGY_SWIRL.depth_write,
+            "cull": ENERGY_SWIRL.cull,
+            "u_offset": format!("{:08x}", u.to_bits()),
+            "v_offset": format!("{:08x}", v.to_bits()),
+            "submitted": true,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `eyes_layers`: what the glowing-eyes layers submit: the draw order, the
 /// texture, the pipeline's state, the light passed and the overlay.
 fn eyes_layers_result(request: &Value) -> Result<Value, String> {
@@ -20455,6 +20492,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "iron_golem_render" => return iron_golem_render_result(request),
         "entity_block_layers" => return entity_block_layers_result(request),
         "eyes_layers" => return eyes_layers_result(request),
+        "swirl_layers" => return swirl_layers_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20501,15 +20539,15 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
                 BEE_ANGER_END_DATA_ID, BEE_FLAGS_DATA_ID, CHICKEN_VARIANT_DATA_ID,
                 CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
-                CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID, ENDERMAN_CARRY_DATA_ID,
-                ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID, GOAT_LEFT_HORN_DATA_ID,
-                GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, LONG_SERIALIZER_ID,
-                MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
-                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
-                RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID,
-                SHEEP_WOOL_DATA_ID, SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID,
-                VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
-                ZOMBIE_VILLAGER_DATA_DATA_ID,
+                CREEPER_IGNITED_DATA_ID, CREEPER_POWERED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
+                ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
+                GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
+                LONG_SERIALIZER_ID, MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
+                PIGLIN_DANCING_DATA_ID, RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID,
+                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID, SNOW_GOLEM_PUMPKIN_DATA_ID,
+                SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID,
+                VILLAGER_UNHAPPY_DATA_ID, ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -20541,6 +20579,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "zombie-villager-data", "data_id": ZOMBIE_VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "raider-celebrating", "data_id": RAIDER_CELEBRATING_DATA_ID, "serializer": 8},
                 {"label": "spellcaster-casting", "data_id": SPELLCASTER_CASTING_DATA_ID, "serializer": 0},
+                {"label": "creeper-powered", "data_id": CREEPER_POWERED_DATA_ID, "serializer": 8},
                 {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
                 {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
             ]}));

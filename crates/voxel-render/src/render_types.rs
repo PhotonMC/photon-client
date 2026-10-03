@@ -48,3 +48,29 @@ pub fn eyes_texture(entity_type: &str) -> Option<&'static str> {
         _ => None,
     }
 }
+
+/// `RenderPipelines.ENERGY_SWIRL`: the entity shader with no light, no overlay
+/// and no per-face shading, its texture coordinates moved by the layer's
+/// offset, cut out below a tenth of alpha, added to what is behind, drawn on
+/// both faces and written to the depth.
+pub const ENERGY_SWIRL: PipelineState = PipelineState {
+    location: "minecraft:pipeline/energy_swirl",
+    flags: "APPLY_TEXTURE_MATRIX,EMISSIVE,NO_CARDINAL_LIGHTING,NO_OVERLAY",
+    values: "ALPHA_CUTOUT=0.1,",
+    blend: "ADDITIVE",
+    depth_test: "GREATER_THAN_OR_EQUAL",
+    depth_write: true,
+    cull: false,
+};
+
+/// `CreeperPowerLayer`: the texture the charge is drawn in and the colour it
+/// is multiplied by (`-8355712`, 0xFF808080).
+pub const POWER_TEXTURE: &str = "entity/creeper/creeper_armor";
+pub const POWER_COLOUR: i32 = -8_355_712;
+
+/// `EnergySwirlLayer.submit`'s texture offset at an age: both coordinates
+/// `t * 0.01 % 1` (`CreeperPowerLayer.xOffset`).
+pub fn swirl_offset(age_in_ticks: f32) -> [f32; 2] {
+    let offset = age_in_ticks * 0.01 % 1.0;
+    [offset, offset]
+}

@@ -14876,7 +14876,7 @@ def entity_spider_cases():
     yield {"case_id": "entity/spider-model", "family": "entity", "operation": "spider_model",
            "rows": rows(("minecraft:spider#main", "minecraft:cave_spider#main"), "spider_model")}
     yield {"case_id": "entity/creeper-model", "family": "entity", "operation": "creeper_model",
-           "rows": rows(("minecraft:creeper#main",), "creeper_model")}
+           "rows": rows(("minecraft:creeper#main", "minecraft:creeper#armor"), "creeper_model")}
 
 
 def entity_villager_cases():
@@ -15056,6 +15056,11 @@ def entity_golem_cases():
     ]
     rows += [render(f"health-{fraction}", 5.0, 0.7, 10.0, fraction)
              for fraction in (0.0, 0.1, 0.2499, 0.25, 0.4999, 0.5, 0.7499, 0.75, 0.9, 1.0)]
+    # What the charged creeper's swirl layer submits, at several ages, charged and not.
+    yield {"case_id": "entity/swirl-layers", "family": "entity", "operation": "swirl_layers",
+           "rows": [{"label": f"age-{age}-{'charged' if powered else 'plain'}",
+                     "age_in_ticks": float_bits(age), "powered": powered}
+                    for age in (0.0, 7.5, 123.25, 1000.5, 99999.75) for powered in (True, False)]}
     # What the glowing-eyes layers submit: the draw order, the texture, the pipeline's
     # shader flags, blend and depth state, the light and the overlay.
     yield {"case_id": "entity/eyes-layers", "family": "entity", "operation": "eyes_layers",

@@ -3312,6 +3312,9 @@ impl ClientWorld {
         if let Some(right) = right_horn {
             entity.living.lost_right_horn = !right;
         }
+        if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
+            entity.living.powered = powered;
+        }
         let (bee_flags, bee_anger) = bee_data_from_metadata(entity.type_id, metadata);
         if let Some(flags) = bee_flags {
             entity.living.bee_flags = flags;

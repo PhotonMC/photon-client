@@ -1501,6 +1501,81 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * What the charged creeper's swirl layer submits, from the reference's own `CreeperPowerLayer`:
+     * nothing unless it is charged; then the draw order, the texture, the pipeline's state, the
+     * texture offset, the colour it is multiplied by, the light and the overlay.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject swirlLayers(final JsonObject request) throws Exception {
+        var roots = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var order = new int[] {-1};
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        order[0] = (int) args[0];
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitModel")) {
+                        var renderType = (net.minecraft.client.renderer.rendertype.RenderType) args[3];
+                        out.addProperty("order", order[0]);
+                        out.addProperty("light", (int) args[4]);
+                        out.addProperty("overlay", (int) args[5]);
+                        out.addProperty("colour", (int) args[6]);
+                        var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)")
+                            .matcher(String.valueOf(renderType));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
+                        var stateField = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
+                        stateField.setAccessible(true);
+                        var setup = stateField.get(renderType);
+                        var pipelineField = setup.getClass().getDeclaredField("pipeline");
+                        pipelineField.setAccessible(true);
+                        var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
+                        out.addProperty("pipeline", pipeline.getLocation().toString());
+                        out.addProperty("flags", String.join(",", new java.util.TreeSet<>(pipeline.getShaderDefines().flags())));
+                        var values = new java.util.TreeMap<>(pipeline.getShaderDefines().values());
+                        var text = new StringBuilder();
+                        values.forEach((key, value) -> text.append(key).append('=').append(value).append(','));
+                        out.addProperty("values", text.toString());
+                        var blend = pipeline.getColorTargetState().blendFunction();
+                        out.addProperty("blend", blend.isEmpty() ? "NONE"
+                            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.TRANSLUCENT) ? "TRANSLUCENT"
+                            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.ADDITIVE) ? "ADDITIVE" : "OTHER");
+                        out.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
+                        out.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
+                        out.addProperty("cull", pipeline.isCull());
+                        var transformField = setup.getClass().getDeclaredField("textureTransform");
+                        transformField.setAccessible(true);
+                        var matrix = ((net.minecraft.client.renderer.rendertype.TextureTransform) transformField.get(setup))
+                            .createMatrix();
+                        out.addProperty("u_offset", Oracle.bits(matrix.m30()));
+                        out.addProperty("v_offset", Oracle.bits(matrix.m31()));
+                    }
+                    return null;
+                });
+            var state = new net.minecraft.client.renderer.entity.state.CreeperRenderState();
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isPowered = row.get("powered").getAsBoolean();
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+            new net.minecraft.client.renderer.entity.layers.CreeperPowerLayer(
+                parent, new net.minecraft.client.model.geom.EntityModelSet(roots))
+                .submit(new com.mojang.blaze3d.vertex.PoseStack(), holder[0], 15728880, state, 0.0F, 0.0F);
+            out.addProperty("submitted", out.has("order"));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1979,6 +2054,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.zombie.ZombieVillager.class, "DATA_VILLAGER_DATA", "zombie-villager-data"},
             {net.minecraft.world.entity.raid.Raider.class, "IS_CELEBRATING", "raider-celebrating"},
             {net.minecraft.world.entity.monster.illager.SpellcasterIllager.class, "DATA_SPELL_CASTING_ID", "spellcaster-casting"},
+            {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_POWERED", "creeper-powered"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
         };
@@ -2107,6 +2183,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("swirl_layers")) {
+            return swirlLayers(request);
         }
         if (operation.equals("segmented_model")) {
             return segmentedModel(request);

@@ -237,6 +237,65 @@ void main() {
 ",
 );
 
+/// The energy swirl's vertex shader (`ENERGY_SWIRL`): no light and no shading;
+/// the vertex's tint carries its texture's place in the packed image (the
+/// corner and the size), its light the texture offset, and its shade the
+/// colour (0xRRGGBB, exact in a float) the texel is multiplied by.
+const SWIRL_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) flat out vec4 out_rect;
+layout(location = 2) flat out vec2 out_offset;
+layout(location = 3) flat out float out_colour;
+layout(location = 4) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_rect = in_tint;
+    out_offset = in_light;
+    out_colour = in_shade;
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The energy swirl's fragment shader: the texture moved by the offset and
+/// wrapped inside its own place in the packed image (the reference's texture
+/// repeats), cut out below a tenth of alpha, times its colour, then fog.
+const SWIRL_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D skin;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) flat in vec4 in_rect;
+layout(location = 2) flat in vec2 in_offset;
+layout(location = 3) flat in float in_colour;
+layout(location = 4) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec2 local = (in_uv - in_rect.xy) / in_rect.zw + in_offset;
+    vec2 wrapped = in_rect.xy + fract(local) * in_rect.zw;
+    vec4 colour = texture(skin, wrapped);
+    if (colour.a < 0.1) { discard; }
+    colour.rgb *= vec3(
+        mod(floor(in_colour / 65536.0), 256.0),
+        mod(floor(in_colour / 256.0), 256.0),
+        mod(in_colour, 256.0)) / 255.0;
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
 /// The shadow's vertex shader (`rendertype_entity_shadow`): the colour as it
 /// is, with no light, and the distances fog reads.
 const SHADOW_VERTEX_SHADER: &str = concat!(
@@ -718,6 +777,9 @@ enum PipelineKind {
     /// An entity's shadow (`ENTITY_SHADOW`): the entity textures, blended, no
     /// light, tested but not written to the depth.
     Shadow,
+    /// An energy swirl (`ENERGY_SWIRL`): the entity textures moved and wrapped,
+    /// added to what is behind, written to the depth.
+    Swirl,
 }
 
 /// Instance API version the reference asks for.
@@ -847,6 +909,8 @@ struct SceneResources {
     text_translucent_pipeline: vk::Pipeline,
     shadow_pipeline_layout: vk::PipelineLayout,
     shadow_pipeline: vk::Pipeline,
+    swirl_pipeline_layout: vk::PipelineLayout,
+    swirl_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -1066,6 +1130,9 @@ pub struct VulkanBackend {
     /// textures, unlit and blended, tested but not written to the depth.
     glow_buffer: Option<SkyBuffer>,
     glow_count: u32,
+    /// The energy swirls' triangles (`RenderTypes.energySwirl`).
+    swirl_buffer: Option<SkyBuffer>,
+    swirl_count: u32,
     name_tag_buffer: Option<SkyBuffer>,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
@@ -1372,6 +1439,8 @@ impl VulkanBackend {
                 shadow_count: 0,
                 glow_buffer: None,
                 glow_count: 0,
+                swirl_buffer: None,
+                swirl_count: 0,
                 name_tag_buffer: None,
                 name_tag_count: 0,
                 hand_buffer: None,
@@ -1597,6 +1666,15 @@ impl VulkanBackend {
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     set,
                     (buffer, self.glow_count),
+                    terrain_push,
+                );
+            }
+            // The energy swirls (a charged creeper's): added over the entities.
+            if let (Some(buffer), Some(set)) = (self.swirl_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (scene.swirl_pipeline, scene.swirl_pipeline_layout),
+                    set,
+                    (buffer, self.swirl_count),
                     terrain_push,
                 );
             }
@@ -2245,6 +2323,7 @@ impl VulkanBackend {
         let weather = kind == PipelineKind::Weather;
         let entity = kind == PipelineKind::Entity;
         let shadow = kind == PipelineKind::Shadow;
+        let swirl = kind == PipelineKind::Swirl;
         let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
@@ -2269,6 +2348,8 @@ impl VulkanBackend {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
+            } else if swirl {
+                (SWIRL_VERTEX_SHADER, SWIRL_FRAGMENT_SHADER)
             } else if shadow {
                 (SHADOW_VERTEX_SHADER, SHADOW_FRAGMENT_SHADER)
             } else if text {
@@ -2506,6 +2587,7 @@ impl VulkanBackend {
                     if sky
                         || weather
                         || entity
+                        || swirl
                         || text
                         || text_see_through
                         || gui
@@ -2539,6 +2621,7 @@ impl VulkanBackend {
                     PipelineKind::Terrain
                         | PipelineKind::Clouds
                         | PipelineKind::Entity
+                        | PipelineKind::Swirl
                         | PipelineKind::Text
                         | PipelineKind::Lines
                         | PipelineKind::GuiItem
@@ -2573,6 +2656,17 @@ impl VulkanBackend {
                     .color_blend_op(vk::BlendOp::ADD)
                     .src_alpha_blend_factor(vk::BlendFactor::ONE)
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if swirl {
+                // Added to what is behind (`BlendFunction.ADDITIVE`).
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::ONE)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
             } else if translucent
@@ -3276,6 +3370,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::TextTranslucent)?;
             let (shadow_pipeline_layout, shadow_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Shadow)?;
+            let (swirl_pipeline_layout, swirl_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Swirl)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -3320,6 +3416,8 @@ impl VulkanBackend {
                 text_translucent_pipeline,
                 shadow_pipeline_layout,
                 shadow_pipeline,
+                swirl_pipeline_layout,
+                swirl_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3642,6 +3740,7 @@ impl VulkanBackend {
                         scene.text_translucent_pipeline_layout,
                     ),
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    (scene.swirl_pipeline, scene.swirl_pipeline_layout),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
                     (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
@@ -3949,6 +4048,16 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.glow_buffer = buffer;
         self.glow_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's energy swirls: each vertex carries its
+    /// texture's place, the offset and the colour (see [`SWIRL_VERTEX_SHADER`]).
+    pub fn set_entity_swirl(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.swirl_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.swirl_buffer = buffer;
+        self.swirl_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -4561,6 +4670,7 @@ impl Drop for VulkanBackend {
                 self.orb_buffer.take(),
                 self.shadow_buffer.take(),
                 self.glow_buffer.take(),
+                self.swirl_buffer.take(),
                 self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
