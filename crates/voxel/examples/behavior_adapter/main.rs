@@ -18424,6 +18424,11 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
                         }
                     }
+                    "iron_golem" => {
+                        let (attack, offer) = entity.iron_golem_ticks();
+                        described["attack_tick"] = json!(attack);
+                        described["offer_flower_tick"] = json!(offer);
+                    }
                     "creeper" => {
                         for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
                             described[format!("swelling_{key}")] =
@@ -19283,6 +19288,117 @@ fn illager_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The look and stride fields the golems' rows name.
+fn quadruped_state(row: &Value) -> Result<voxel_render::mob_model::QuadrupedState, String> {
+    let bits = |key: &str| -> Result<f32, String> {
+        u32::from_str_radix(
+            row[key].as_str().ok_or(format!("{key} must be a string"))?,
+            16,
+        )
+        .map(f32::from_bits)
+        .map_err(|error| error.to_string())
+    };
+    Ok(voxel_render::mob_model::QuadrupedState {
+        head_y_rot: bits("head_y_rot")?,
+        x_rot: bits("x_rot")?,
+        walk_position: bits("walk_position")?,
+        walk_speed: bits("walk_speed")?,
+    })
+}
+
+/// `iron_golem_model`: the iron golem's model posed and drawn.
+fn iron_golem_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{IronGolemState, MobModel};
+    let layer = voxel_data::entity_model::layer("minecraft:iron_golem#main")
+        .ok_or("no iron golem layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let attack = u32::from_str_radix(row["attack_ticks"].as_str().ok_or("attack_ticks")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_iron_golem(&IronGolemState {
+            quadruped: quadruped_state(row)?,
+            attack_ticks_remaining: attack,
+            offer_flower_tick: row["offer_flower_tick"].as_i64().ok_or("offer")? as i32,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `snow_golem_model`: the snow golem's model posed and drawn.
+fn snow_golem_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let layer = voxel_data::entity_model::layer("minecraft:snow_golem#main")
+        .ok_or("no snow golem layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut model = MobModel::bake(layer);
+        model.setup_snow_golem(&quadruped_state(row)?);
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `enderman_model`: the enderman's model posed and drawn.
+fn enderman_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{EndermanState, MobModel};
+    let layer =
+        voxel_data::entity_model::layer("minecraft:enderman#main").ok_or("no enderman layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut model = MobModel::bake(layer);
+        model.setup_enderman(&EndermanState {
+            humanoid: humanoid_state(row)?,
+            carrying: row["carrying"].as_bool().ok_or("carrying")?,
+            creepy: row["creepy"].as_bool().ok_or("creepy")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `iron_golem_render`: the sway the iron golem's renderer adds to the pose
+/// while it walks, as the pose's matrix, and the crackiness its health shows.
+fn iron_golem_render_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::joml::Quaternion;
+    use voxel_render::mob_model::{Crackiness, golem_crackiness, iron_golem_roll};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut pose = Pose::default();
+        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+            180.0 - bits("body_rot")?,
+        )));
+        if let Some(roll) = iron_golem_roll(bits("walk_position")?, bits("walk_speed")?) {
+            pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+                roll,
+            )));
+        }
+        let matrix: Vec<String> = (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect();
+        let crackiness = match golem_crackiness(bits("fraction")?) {
+            Crackiness::None => "NONE",
+            Crackiness::Low => "LOW",
+            Crackiness::Medium => "MEDIUM",
+            Crackiness::High => "HIGH",
+        };
+        out.push(json!({"label": row["label"], "pose": matrix, "crackiness": crackiness}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `witch_model`: the witch's model posed and drawn.
 fn witch_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, QuadrupedState, WitchState};
@@ -19808,6 +19924,10 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "sheep_model" => return sheep_model_result(request),
         "armor_stand_model" => return armor_stand_model_result(request),
         "equipment_layers" => return equipment_layers_result(),
+        "iron_golem_model" => return iron_golem_model_result(request),
+        "snow_golem_model" => return snow_golem_model_result(request),
+        "enderman_model" => return enderman_model_result(request),
+        "iron_golem_render" => return iron_golem_render_result(request),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),
@@ -19845,11 +19965,13 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
                 CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID,
                 COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
-                EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
-                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
-                RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
-                SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID,
-                VILLAGER_UNHAPPY_DATA_ID,
+                ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
+                HUMANOID_ARM_SERIALIZER_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
+                PIGLIN_DANCING_DATA_ID, RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID,
+                SHEEP_WOOL_DATA_ID, SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
+                ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19869,6 +19991,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "enderman-carry", "data_id": ENDERMAN_CARRY_DATA_ID, "serializer": OPTIONAL_BLOCK_STATE_SERIALIZER_ID},
+                {"label": "enderman-creepy", "data_id": ENDERMAN_CREEPY_DATA_ID, "serializer": 8},
+                {"label": "zombie-villager-data", "data_id": ZOMBIE_VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "raider-celebrating", "data_id": RAIDER_CELEBRATING_DATA_ID, "serializer": 8},
                 {"label": "spellcaster-casting", "data_id": SPELLCASTER_CASTING_DATA_ID, "serializer": 0},
                 {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},

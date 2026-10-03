@@ -171,6 +171,9 @@ pub(crate) struct EntityState {
     /// `Raider.isCelebrating`, and whether a spellcaster is casting.
     pub(crate) celebrating: bool,
     pub(crate) casting_spell: bool,
+    /// An enderman carries a block, and is creepy (stared at).
+    pub(crate) carrying_block: bool,
+    pub(crate) creepy: bool,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1779,6 +1782,22 @@ impl ClientEntity {
         self.living.unhappy_counter > 0
     }
 
+    /// Whether an enderman carries a block (`getCarriedBlock() != null`).
+    pub fn is_carrying_block(&self) -> bool {
+        self.living.carrying_block
+    }
+
+    /// `EnderMan.isCreepy`.
+    pub fn is_creepy(&self) -> bool {
+        self.living.creepy
+    }
+
+    /// An iron golem's `getAttackAnimationTick` and `getOfferFlowerTick`.
+    pub fn iron_golem_ticks(&self) -> (i32, i32) {
+        let animal = &self.living.animal;
+        (animal.golem_attack_tick, animal.golem_offer_flower_tick)
+    }
+
     /// `Raider.isCelebrating`.
     pub fn is_celebrating(&self) -> bool {
         self.living.celebrating
@@ -1847,6 +1866,7 @@ impl ClientEntity {
             Some("minecraft:sheep") => self.living.animal.tick_sheep(),
             Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
             Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
+            Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             _ => {}
         }
     }

@@ -14355,6 +14355,17 @@ def movement_item_cases():
         living("creeper-dies-while-the-fuse-burns", "creeper", 30,
                [{"tick": 2, "type": "creeper_data", "swell_dir": 1}, {"tick": 12, "type": "death"}],
                extras=["creeper"]),
+        living("iron-golem-quiet", "iron_golem", 6, [], extras=["iron_golem"]),
+        living("iron-golem-attacks", "iron_golem", 20, [{"tick": 2, "type": "entity_event", "event": 4}],
+               extras=["iron_golem"]),
+        living("iron-golem-offers-a-flower", "iron_golem", 30,
+               [{"tick": 1, "type": "entity_event", "event": 11}], extras=["iron_golem"]),
+        living("iron-golem-offers-then-stops", "iron_golem", 30,
+               [{"tick": 1, "type": "entity_event", "event": 11},
+                {"tick": 12, "type": "entity_event", "event": 34}], extras=["iron_golem"]),
+        living("iron-golem-attacks-again", "iron_golem", 30,
+               [{"tick": 1, "type": "entity_event", "event": 4},
+                {"tick": 6, "type": "entity_event", "event": 4}], extras=["iron_golem"]),
         living("chicken-in-the-air", "chicken", 24, [], extras=["chicken"]),
         living("chicken-lands", "chicken", 24, [on_ground(6, True)], extras=["chicken"]),
         living("chicken-lands-and-takes-off", "chicken", 40,
@@ -14399,6 +14410,7 @@ def entity_cases():
     yield from entity_equipment_layer_cases()
     yield from entity_villager_cases()
     yield from entity_illager_cases()
+    yield from entity_golem_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14505,6 +14517,14 @@ def entity_zombie_cases():
             pose("swing-early", layer, attack=0.1, age=5.0),
             pose("swing-mid", layer, attack=0.55, aggressive=True, age=9.0),
             pose("swing-late", layer, attack=0.9, walk_position=3.4, walk_speed=0.6),
+            pose("walk-aggressive-swing", layer, head_y_rot=12.0, x_rot=-8.0, walk_position=7.3,
+                 walk_speed=0.83, attack=0.3, aggressive=True, age=64.0),
+        ]
+    # The zombie villager's own classes pose as a zombie does; a few rows show it.
+    for layer in ("minecraft:zombie_villager#main", "minecraft:zombie_villager_baby#main",
+                  "minecraft:zombie_villager_no_hat#main"):
+        rows += [
+            pose("standing", layer),
             pose("walk-aggressive-swing", layer, head_y_rot=12.0, x_rot=-8.0, walk_position=7.3,
                  walk_speed=0.83, attack=0.3, aggressive=True, age=64.0),
         ]
@@ -14911,6 +14931,74 @@ def entity_illager_cases():
                witch("walking", entity_id=3, age=40.0, walk_position=7.3, walk_speed=0.83),
                witch("holding", entity_id=7, holding=True, age=31.5),
            ]}
+
+
+def entity_golem_cases():
+    """The golems and the enderman posed by the reference's own `setupAnim`
+    (`IronGolemModel`, `SnowGolemModel`, `EndermanModel`); the pose the iron
+    golem's renderer adds while it walks and the crackiness level a health
+    fraction gives, by the reference's own methods."""
+    def look(label, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=0.0, **more):
+        return {"label": label, "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), **more}
+
+    def iron(label, attack_ticks=0.0, offer=0, **kwargs):
+        return look(label, attack_ticks=float_bits(attack_ticks), offer_flower_tick=offer, **kwargs)
+
+    yield {"case_id": "entity/iron-golem-model", "family": "entity", "operation": "iron_golem_model",
+           "rows": [
+               iron("standing"),
+               iron("looking", head_y_rot=-35.5, x_rot=48.0),
+               iron("walking", walk_position=7.3, walk_speed=0.83),
+               iron("walking-fast", walk_position=21.6, walk_speed=1.0, head_y_rot=12.0, x_rot=-8.0),
+               iron("attacking-early", attack_ticks=9.5, walk_position=7.3, walk_speed=0.83),
+               iron("attacking-late", attack_ticks=2.25),
+               iron("offering-a-flower", offer=400, walk_position=7.3, walk_speed=0.83),
+               iron("offering-a-flower-late", offer=33),
+               iron("attacking-while-offering", attack_ticks=4.0, offer=100),
+           ]}
+    yield {"case_id": "entity/snow-golem-model", "family": "entity", "operation": "snow_golem_model",
+           "rows": [
+               look("standing"),
+               look("looking", head_y_rot=-35.5, x_rot=48.0),
+               look("looking-the-other-way", head_y_rot=120.0, x_rot=-20.0),
+           ]}
+    yield {"case_id": "entity/enderman-model", "family": "entity", "operation": "enderman_model",
+           "rows": [
+               look("standing", attack_time=float_bits(0.0), swim_amount=float_bits(0.0),
+                    creepy=False, carrying=False),
+               look("walking", walk_position=7.3, walk_speed=0.83, age=40.0,
+                    attack_time=float_bits(0.0), swim_amount=float_bits(0.0),
+                    creepy=False, carrying=False),
+               look("walking-fast-looking", walk_position=21.6, walk_speed=1.0, head_y_rot=12.0,
+                    x_rot=-8.0, attack_time=float_bits(0.0), swim_amount=float_bits(0.0),
+                    creepy=False, carrying=False),
+               look("creepy", head_y_rot=-35.5, x_rot=48.0, attack_time=float_bits(0.0),
+                    swim_amount=float_bits(0.0), creepy=True, carrying=False),
+               look("carrying", walk_position=7.3, walk_speed=0.83, attack_time=float_bits(0.0),
+                    swim_amount=float_bits(0.0), creepy=False, carrying=True),
+               look("carrying-and-creepy", attack_time=float_bits(0.0), swim_amount=float_bits(0.0),
+                    creepy=True, carrying=True),
+           ]}
+
+    def render(label, walk_position, walk_speed, body_rot, fraction):
+        return {"label": label, "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "body_rot": float_bits(body_rot),
+                "fraction": float_bits(fraction)}
+
+    rows = [
+        render("still", 3.0, 0.0, 30.0, 1.0),
+        render("barely-moving", 3.0, 0.009, 30.0, 1.0),
+        render("walk-start", 0.0, 0.5, 90.0, 0.8),
+        render("walk-mid", 7.3, 0.83, 90.0, 0.75),
+        render("walk-late", 21.6, 1.0, -45.0, 0.74),
+        render("walk-far", 1234.5, 0.6, 200.0, 0.5),
+    ]
+    rows += [render(f"health-{fraction}", 5.0, 0.7, 10.0, fraction)
+             for fraction in (0.0, 0.1, 0.2499, 0.25, 0.4999, 0.5, 0.7499, 0.75, 0.9, 1.0)]
+    yield {"case_id": "entity/iron-golem-render", "family": "entity",
+           "operation": "iron_golem_render", "rows": rows}
 
 
 def entity_armor_stand_cases():

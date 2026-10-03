@@ -17,6 +17,9 @@ pub(crate) struct AnimalState {
     /// `Sheep.DATA_WOOL_ID`: the dye in the low four bits, sheared in bit four.
     pub(crate) wool: u8,
     pub(crate) eat_tick: i32,
+    /// `IronGolem.attackAnimationTick` and `offerFlowerTick`.
+    pub(crate) golem_attack_tick: i32,
+    pub(crate) golem_offer_flower_tick: i32,
     flap_bits: u32,
     old_flap_bits: u32,
     flap_speed_bits: u32,
@@ -35,6 +38,14 @@ const CREEPER_MAX_SWELL: i32 = 30;
 
 /// `Sheep.getHeadEatPositionScale`: how far the head is down, with the eating
 /// timer at `tick`.
+/// The entity events `IronGolem.handleEntityEvent` answers: it swings its
+/// arms for ten ticks, offers a flower for four hundred, or stops offering.
+pub(crate) const GOLEM_ATTACK_EVENT: i8 = 4;
+pub(crate) const GOLEM_OFFER_FLOWER_EVENT: i8 = 11;
+pub(crate) const GOLEM_STOP_OFFERING_EVENT: i8 = 34;
+const GOLEM_ATTACK_TICKS: i32 = 10;
+const GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
+
 pub fn head_eat_position_scale(tick: i32, partial: f32) -> f32 {
     if tick <= 0 {
         0.0
@@ -66,6 +77,8 @@ impl Default for AnimalState {
         Self {
             wool: 0,
             eat_tick: 0,
+            golem_attack_tick: 0,
+            golem_offer_flower_tick: 0,
             flap_bits: 0,
             old_flap_bits: 0,
             flap_speed_bits: 0,
@@ -83,6 +96,24 @@ impl AnimalState {
     /// `Sheep.aiStep` on the client: the eating timer runs down.
     pub(crate) fn tick_sheep(&mut self) {
         self.eat_tick = (self.eat_tick - 1).max(0);
+    }
+
+    /// `IronGolem.handleEntityEvent`: whether the event was one of its own.
+    pub(crate) fn golem_event(&mut self, event: i8) -> bool {
+        match event {
+            GOLEM_ATTACK_EVENT => self.golem_attack_tick = GOLEM_ATTACK_TICKS,
+            GOLEM_OFFER_FLOWER_EVENT => self.golem_offer_flower_tick = GOLEM_OFFER_FLOWER_TICKS,
+            GOLEM_STOP_OFFERING_EVENT => self.golem_offer_flower_tick = 0,
+            _ => return false,
+        }
+        true
+    }
+
+    /// `IronGolem.aiStep` on the client: the attack and the flower timers run
+    /// down.
+    pub(crate) fn tick_iron_golem(&mut self) {
+        self.golem_attack_tick = (self.golem_attack_tick - 1).max(0);
+        self.golem_offer_flower_tick = (self.golem_offer_flower_tick - 1).max(0);
     }
 
     /// `Chicken.aiStep`'s flap: the wings beat faster while it is off the

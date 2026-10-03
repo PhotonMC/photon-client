@@ -166,6 +166,13 @@ pub const ROTATIONS_SERIALIZER_ID: i32 = 9;
 pub const VILLAGER_UNHAPPY_DATA_ID: u8 = 18;
 pub const VILLAGER_DATA_DATA_ID: u8 = 19;
 pub const VILLAGER_DATA_SERIALIZER_ID: i32 = 18;
+/// Where an enderman's carried block (an optional block state, which is zero
+/// when it carries none) and creepy flag sit among its data, and the
+/// serializer of the former; where a zombie villager's villager data sits.
+pub const ENDERMAN_CARRY_DATA_ID: u8 = 16;
+pub const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
+pub const ENDERMAN_CREEPY_DATA_ID: u8 = 17;
+pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Where a raider's celebrating flag (a boolean) and a spellcaster's spell
 /// (a byte, above zero while casting) sit among their data.
 pub const RAIDER_CELEBRATING_DATA_ID: u8 = 16;

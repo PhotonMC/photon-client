@@ -1,9 +1,13 @@
-//! The monsters of the arthropod and creeper kind the frame draws: spiders
-//! and the creeper (`SpiderRenderer`, `CreeperRenderer`).
+//! The monsters of the arthropod, creeper and enderman kind the frame draws:
+//! spiders, the creeper and the enderman (`SpiderRenderer`, `CreeperRenderer`,
+//! `EndermanRenderer`).
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{QuadrupedState, creeper_scale, creeper_white_overlay, mob_vertices};
+use voxel_render::mob_model::{
+    EndermanState, QuadrupedState, creeper_scale, creeper_white_overlay, mob_vertices,
+};
+use voxel_render::player_model::PlayerRenderState;
 use voxel_render::scene::Vertex;
 
 use crate::mobs::{MobModels, placement};
@@ -16,6 +20,8 @@ enum Pose {
     Spider,
     /// `CreeperModel`, which swells.
     Creeper,
+    /// `EndermanModel`.
+    Enderman,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -28,7 +34,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 3] = [
+const MONSTERS: [Monster; 4] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -50,6 +56,13 @@ const MONSTERS: [Monster; 3] = [
         pose: Pose::Creeper,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:enderman",
+        layer: "minecraft:enderman#main",
+        texture: "entity/enderman/enderman",
+        pose: Pose::Enderman,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
 
 /// The paths (under `textures/`) of the textures the monsters wear.
@@ -57,8 +70,10 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     MONSTERS.iter().map(|monster| monster.texture)
 }
 
-/// `LivingEntityRenderer` for the spiders and creepers the server added. The
-/// spiders' glowing eyes and the charged creeper's swirl are not drawn yet.
+/// `LivingEntityRenderer` for the spiders, creepers and endermen the server
+/// added. The spiders' and the enderman's glowing eyes, the charged creeper's
+/// swirl, the block an enderman carries and the shaking of a creepy one are
+/// not drawn yet.
 pub fn remote_monsters(
     session: &PlaySession,
     models: &mut MobModels,
@@ -97,6 +112,20 @@ pub fn remote_monsters(
         placed.flip_degrees = monster.flip_degrees;
         match monster.pose {
             Pose::Spider => model.setup_spider(&look),
+            Pose::Enderman => model.setup_enderman(&EndermanState {
+                humanoid: PlayerRenderState {
+                    head_y_rot: look.head_y_rot,
+                    x_rot: look.x_rot,
+                    walk_position: look.walk_position,
+                    walk_speed: look.walk_speed,
+                    age_in_ticks: entity.tick_count() as f32 + partial,
+                    swim_amount: snapshot.swim_amount,
+                    attack_time: snapshot.attack_time,
+                    ..Default::default()
+                },
+                carrying: entity.is_carrying_block(),
+                creepy: entity.is_creepy(),
+            }),
             Pose::Creeper => {
                 let swelling = entity.creeper_swelling(partial);
                 model.setup_creeper(&look);

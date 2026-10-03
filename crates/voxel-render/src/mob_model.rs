@@ -88,6 +88,59 @@ pub struct WitchState {
     pub holding_item: bool,
 }
 
+/// What the iron golem's model is posed from (`IronGolemRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct IronGolemState {
+    pub quadruped: QuadrupedState,
+    /// `attackTicksRemaining`: the arms' swing, in ticks with the part of one.
+    pub attack_ticks_remaining: f32,
+    /// `offerFlowerTick`: how long it has still to hold out its flower.
+    pub offer_flower_tick: i32,
+}
+
+/// What an enderman's model is posed from: the humanoid state, whether it
+/// carries a block (`carriedBlock` is not empty) and `isCreepy`.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EndermanState {
+    pub humanoid: PlayerRenderState,
+    pub carrying: bool,
+    pub creepy: bool,
+}
+
+/// `Crackiness.Level`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Crackiness {
+    None,
+    Low,
+    Medium,
+    High,
+}
+
+/// `Crackiness.GOLEM.byFraction`: how cracked an iron golem with this
+/// fraction of its health left looks.
+pub fn golem_crackiness(fraction: f32) -> Crackiness {
+    if fraction < 0.25 {
+        Crackiness::High
+    } else if fraction < 0.5 {
+        Crackiness::Medium
+    } else if fraction < 0.75 {
+        Crackiness::Low
+    } else {
+        Crackiness::None
+    }
+}
+
+/// `Mth.triangleWave`.
+fn triangle_wave(index: f32, period: f32) -> f32 {
+    ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
+}
+
+/// What `IronGolemRenderer.setupRotations` rolls the pose by while the golem
+/// walks, in degrees, or none while it stands.
+pub fn iron_golem_roll(walk_position: f32, walk_speed: f32) -> Option<f32> {
+    (walk_speed >= 0.01).then(|| 6.5 * triangle_wave(walk_position + 6.0, 13.0))
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -579,6 +632,105 @@ impl MobModel {
         }
     }
 
+    /// `IronGolemModel.setupAnim`: the arms swing as the golem strikes, hold
+    /// out a flower, or swing with its stride; the head follows the look and
+    /// the legs stride as a pair.
+    pub fn setup_iron_golem(&mut self, state: &IronGolemState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let look = &state.quadruped;
+        let (position, speed) = (look.walk_position, look.walk_speed);
+        let stride = triangle_wave(position, 13.0);
+        let (right_arm, left_arm) = if state.attack_ticks_remaining > 0.0 {
+            let swing = -2.0 + 1.5 * triangle_wave(state.attack_ticks_remaining, 10.0);
+            (swing, swing)
+        } else if state.offer_flower_tick > 0 {
+            (
+                -0.8 + 0.025 * triangle_wave(state.offer_flower_tick as f32, 70.0),
+                0.0,
+            )
+        } else {
+            ((-0.2 + 1.5 * stride) * speed, (-0.2 - 1.5 * stride) * speed)
+        };
+        for (name, x_rot) in [
+            ("right_arm", right_arm),
+            ("left_arm", left_arm),
+            ("right_leg", -1.5 * stride * speed),
+            ("left_leg", 1.5 * stride * speed),
+        ] {
+            if let Some(part) = self.root.child_mut(name) {
+                part.x_rot = x_rot;
+                if name.ends_with("_leg") {
+                    part.y_rot = 0.0;
+                }
+            }
+        }
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = look.head_y_rot * degrees;
+            head.x_rot = look.x_rot * degrees;
+        }
+    }
+
+    /// `SnowGolemModel.setupAnim`: the head follows the look, the upper body
+    /// follows a quarter of it, and the arms, held out from the upper body,
+    /// turn with it.
+    pub fn setup_snow_golem(&mut self, state: &QuadrupedState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = state.head_y_rot * degrees;
+            head.x_rot = state.x_rot * degrees;
+        }
+        let turn = state.head_y_rot * degrees * 0.25;
+        let sin = mth_sin_f64(f64::from(turn));
+        let cos = mth_cos_f64(f64::from(turn));
+        if let Some(body) = self.root.child_mut("upper_body") {
+            body.y_rot = turn;
+        }
+        if let Some(arm) = self.root.child_mut("left_arm") {
+            arm.y_rot = turn;
+            arm.x = cos * 5.0;
+            arm.z = -sin * 5.0;
+        }
+        if let Some(arm) = self.root.child_mut("right_arm") {
+            arm.y_rot = turn + pi;
+            arm.x = -cos * 5.0;
+            arm.z = sin * 5.0;
+        }
+    }
+
+    /// `EndermanModel.setupAnim`: the humanoid pose with the limbs' swing
+    /// halved and held within 0.4; a carried block holds the arms forward and
+    /// a creepy one lifts its head off its hat.
+    pub fn setup_enderman(&mut self, state: &EndermanState) {
+        humanoid_anim(&mut self.root, &state.humanoid);
+        if let Some(head) = self.root.child_mut("head") {
+            head.visible = true;
+        }
+        for name in ["right_arm", "left_arm", "right_leg", "left_leg"] {
+            if let Some(part) = self.root.child_mut(name) {
+                part.x_rot = (part.x_rot * 0.5).clamp(-0.4, 0.4);
+            }
+        }
+        if state.carrying {
+            for (name, x_rot, z_rot) in [("right_arm", -0.5, 0.05), ("left_arm", -0.5, -0.05)] {
+                if let Some(arm) = self.root.child_mut(name) {
+                    arm.x_rot = x_rot;
+                    arm.z_rot = z_rot;
+                }
+            }
+        }
+        if state.creepy
+            && let Some(head) = self.root.child_mut("head")
+        {
+            head.y -= 5.0;
+            if let Some(hat) = head.child_mut("hat") {
+                hat.y += 5.0;
+            }
+        }
+    }
+
     /// `SheepModel.setupAnim` (and the wool's): the quadruped's pose, with
     /// the head lowered and tipped to eat.
     pub fn setup_sheep(&mut self, state: &SheepState) {
@@ -797,6 +949,9 @@ pub struct MobPlacement {
     /// What the renderer's own `scale` hook scales the pose by, after the
     /// flip (a creeper's swelling), or none.
     pub hook_scale: Option<[f32; 3]>,
+    /// A roll about z the renderer's own `setupRotations` adds after the
+    /// fall of a dead mob, in degrees (the walking iron golem's sway).
+    pub roll: Option<f32>,
 }
 
 impl Default for MobPlacement {
@@ -812,6 +967,7 @@ impl Default for MobPlacement {
             red_overlay: false,
             white_overlay: 0.0,
             hook_scale: None,
+            roll: None,
         }
     }
 }
@@ -874,6 +1030,11 @@ pub fn placement_pose(placement: &MobPlacement) -> Pose {
         180.0 - placement.body_rot,
     )));
     if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
+        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+            roll,
+        )));
+    }
+    if let Some(roll) = placement.roll {
         pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
             roll,
         )));

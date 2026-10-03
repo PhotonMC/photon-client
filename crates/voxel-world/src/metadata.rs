@@ -197,13 +197,15 @@ pub(crate) fn creeper_fuse_from_metadata(
     )
 }
 
-/// A villager's type, profession and level (`Villager.DATA_VILLAGER_DATA`),
-/// when the data holds them.
+/// A villager's or zombie villager's type, profession and level
+/// (`Villager.DATA_VILLAGER_DATA`), when the data holds them.
 pub(crate) fn villager_data_from_metadata(type_id: i32, metadata: &[u8]) -> Option<[i32; 3]> {
-    if voxel_data::entity_type::name(type_id)? != "minecraft:villager" {
-        return None;
-    }
-    let (serializer, mut value) = find_metadata_field(metadata, VILLAGER_DATA_DATA_ID)?;
+    let data_id = match voxel_data::entity_type::name(type_id)? {
+        "minecraft:villager" => VILLAGER_DATA_DATA_ID,
+        "minecraft:zombie_villager" => ZOMBIE_VILLAGER_DATA_DATA_ID,
+        _ => return None,
+    };
+    let (serializer, mut value) = find_metadata_field(metadata, data_id)?;
     if serializer != VILLAGER_DATA_SERIALIZER_ID {
         return None;
     }
@@ -243,6 +245,25 @@ pub(crate) fn illager_flags_from_metadata(
         .then(|| metadata_byte_value(metadata, SPELLCASTER_CASTING_DATA_ID).map(|spell| spell > 0))
         .flatten();
     (celebrating, casting)
+}
+
+/// Whether an enderman carries a block (`DATA_CARRY_STATE` is not empty) and
+/// whether it is creepy (`DATA_CREEPY`), when the data holds them.
+pub(crate) fn enderman_flags_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<bool>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:enderman") {
+        return (None, None);
+    }
+    let carrying = find_metadata_field(metadata, ENDERMAN_CARRY_DATA_ID)
+        .filter(|(serializer, _)| *serializer == OPTIONAL_BLOCK_STATE_SERIALIZER_ID)
+        .and_then(|(_, mut value)| voxel_core::wire::read_varint(&mut value).ok())
+        .map(|state| state != 0);
+    (
+        carrying,
+        metadata_boolean_value(metadata, ENDERMAN_CREEPY_DATA_ID),
+    )
 }
 
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
@@ -489,6 +510,45 @@ mod tests {
         assert_eq!(unhappy_counter_from_metadata(villager, &metadata), Some(40));
         assert_eq!(villager_data_from_metadata(cow, &metadata), None);
         assert_eq!(unhappy_counter_from_metadata(cow, &metadata), None);
+    }
+
+    #[test]
+    fn an_endermans_block_and_a_zombie_villagers_data_are_read_from_their_fields() {
+        let id = |name| voxel_data::entity_type::id(name).expect("a type");
+        let metadata = data(&[
+            (
+                ENDERMAN_CARRY_DATA_ID,
+                OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                &[0x81, 0x01],
+            ),
+            (
+                ENDERMAN_CREEPY_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                &[1],
+            ),
+            (
+                ZOMBIE_VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID,
+                &[1, 2, 3],
+            ),
+        ]);
+        assert_eq!(
+            enderman_flags_from_metadata(id("minecraft:enderman"), &metadata),
+            (Some(true), Some(true))
+        );
+        let empty = data(&[(
+            ENDERMAN_CARRY_DATA_ID,
+            OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+            &[0],
+        )]);
+        assert_eq!(
+            enderman_flags_from_metadata(id("minecraft:enderman"), &empty),
+            (Some(false), None)
+        );
+        assert_eq!(
+            villager_data_from_metadata(id("minecraft:zombie_villager"), &metadata),
+            Some([1, 2, 3])
+        );
     }
 
     #[test]

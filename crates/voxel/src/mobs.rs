@@ -82,10 +82,13 @@ struct HumanoidKind {
     outer: Option<[&'static str; 4]>,
     family: Family,
     scale: f32,
+    /// The texture folder of a villager's profession layer, for the zombie
+    /// villager (`VillagerProfessionLayer`).
+    profession_folder: Option<&'static str>,
 }
 
 /// The zombies drawn so far.
-const HUMANOIDS: [HumanoidKind; 12] = [
+const HUMANOIDS: [HumanoidKind; 13] = [
     HumanoidKind {
         type_name: "minecraft:zombie",
         adult_layer: "minecraft:zombie#main",
@@ -95,6 +98,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Zombie { drowned: false },
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:husk",
@@ -105,6 +109,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Zombie { drowned: false },
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:drowned",
@@ -120,8 +125,20 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         ]),
         family: Family::Zombie { drowned: true },
         scale: 1.0,
+        profession_folder: None,
     },
     // `EntityRenderers`: the giant's renderer is made with scale six.
+    HumanoidKind {
+        type_name: "minecraft:zombie_villager",
+        adult_layer: "minecraft:zombie_villager#main",
+        baby_layer: "minecraft:zombie_villager_baby#main",
+        adult_texture: "entity/zombie_villager/zombie_villager",
+        baby_texture: "entity/zombie_villager/zombie_villager_baby",
+        outer: None,
+        family: Family::Zombie { drowned: false },
+        scale: 1.0,
+        profession_folder: Some("zombie_villager"),
+    },
     HumanoidKind {
         type_name: "minecraft:giant",
         adult_layer: "minecraft:giant#main",
@@ -131,6 +148,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Zombie { drowned: false },
         scale: 6.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:skeleton",
@@ -141,6 +159,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Skeleton,
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:stray",
@@ -156,6 +175,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         ]),
         family: Family::Skeleton,
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:bogged",
@@ -171,6 +191,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         ]),
         family: Family::Skeleton,
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:parched",
@@ -181,6 +202,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Skeleton,
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:wither_skeleton",
@@ -191,6 +213,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Skeleton,
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:piglin",
@@ -201,6 +224,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Piglin { zombified: false },
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:piglin_brute",
@@ -211,6 +235,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Piglin { zombified: false },
         scale: 1.0,
+        profession_folder: None,
     },
     HumanoidKind {
         type_name: "minecraft:zombified_piglin",
@@ -221,6 +246,7 @@ const HUMANOIDS: [HumanoidKind; 12] = [
         outer: None,
         family: Family::Piglin { zombified: true },
         scale: 1.0,
+        profession_folder: None,
     },
 ];
 
@@ -277,6 +303,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::sheep::textures())
         .chain(crate::monsters::textures())
         .chain(crate::illagers::textures())
+        .chain(crate::golems::textures())
         .chain([crate::armor_stands::TEXTURE])
 }
 
@@ -424,6 +451,9 @@ pub fn remote_mobs(
     vertices.extend(crate::villagers::remote_villagers(
         session, models, textures, view,
     ));
+    vertices.extend(crate::golems::remote_golems(
+        session, models, textures, view,
+    ));
     vertices.extend(crate::villagers::remote_witches(
         session, models, textures, view,
     ));
@@ -519,6 +549,17 @@ fn remote_humanoids(
             &|model| pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity),
             &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
         ));
+        if let Some(folder) = kind.profession_folder {
+            for pass in crate::villagers::profession_layer(entity, folder, baby) {
+                let id = crate::villagers::layer(folder, pass.hatless, baby);
+                let (Some(rect), Some(model)) = (textures.rect(&pass.texture), models.model(&id))
+                else {
+                    continue;
+                };
+                pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity);
+                vertices.extend(mob_vertices(model, &placement, rect));
+            }
+        }
     }
     vertices
 }

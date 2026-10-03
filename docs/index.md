@@ -101,6 +101,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](client-entity-hurt-death-parity-conformance.md)
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](client-entity-metadata-variants-parity-conformance.md)
 - [T42 — Entity gölgesi — client-parity](client-entity-shadow-parity-conformance.md)
+- [T34c — Golemler, enderman ve zombi köylü — client-parity](client-golem-enderman-parity-conformance.md)
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](client-held-item-parity-conformance.md)
 - [T34b — Illager ve cadı — client-parity](client-illager-witch-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)

@@ -673,6 +673,11 @@ public final class MovementOracle {
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
                         }
+                        case "iron_golem" -> {
+                            var golem = (net.minecraft.world.entity.animal.golem.IronGolem) entity;
+                            described.addProperty("attack_tick", golem.getAttackAnimationTick());
+                            described.addProperty("offer_flower_tick", golem.getOfferFlowerTick());
+                        }
                         case "creeper" -> {
                             var creeper = (net.minecraft.world.entity.monster.Creeper) entity;
                             for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {

@@ -856,6 +856,105 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The iron golem's model posed by the reference's own `IronGolemModel.setupAnim`, drawn. */
+    private static JsonObject ironGolemModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.animal.golem.IronGolemModel(bakedLayer("minecraft:iron_golem#main"));
+            var state = new net.minecraft.client.renderer.entity.state.IronGolemRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.attackTicksRemaining = Oracle.f32(row, "attack_ticks");
+            state.offerFlowerTick = row.get("offer_flower_tick").getAsInt();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The snow golem's model posed by the reference's own `SnowGolemModel.setupAnim`, drawn. */
+    private static JsonObject snowGolemModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.animal.golem.SnowGolemModel(bakedLayer("minecraft:snow_golem#main"));
+            var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The enderman's model posed by the reference's own `EndermanModel.setupAnim`, drawn; a
+     * carried block makes the state's block non-empty through the reference's own class.
+     */
+    private static JsonObject endermanModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.enderman.EndermanModel<
+                net.minecraft.client.renderer.entity.state.EndermanRenderState>(bakedLayer("minecraft:enderman#main"));
+            var state = new net.minecraft.client.renderer.entity.state.EndermanRenderState();
+            humanoidFields(state, row);
+            state.isCreepy = row.get("creepy").getAsBoolean();
+            if (row.get("carrying").getAsBoolean()) {
+                state.carriedBlock.setupModel(new org.joml.Matrix4f(), false);
+            }
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the iron golem's renderer adds to the pose while it walks (`setupRotations`), as the
+     * matrix of the pose stack, and the crackiness level its health fraction gives.
+     */
+    private static JsonObject ironGolemRender(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var renderer = (net.minecraft.client.renderer.entity.IronGolemRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.entity.IronGolemRenderer.class);
+        var rotations = net.minecraft.client.renderer.entity.IronGolemRenderer.class.getDeclaredMethod("setupRotations",
+            net.minecraft.client.renderer.entity.state.IronGolemRenderState.class,
+            com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
+        rotations.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.IronGolemRenderState();
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            rotations.invoke(renderer, state, stack, Oracle.f32(row, "body_rot"), 1.0F);
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("pose", described);
+            out.addProperty("crackiness",
+                net.minecraft.world.entity.Crackiness.GOLEM.byFraction(Oracle.f32(row, "fraction")).name());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1040,6 +1139,7 @@ public final class EntityOracle {
      * A zombie family model from the layer table, posed by the reference's own
      * `setupAnim` (humanoid pose, held-out arms, the drowned's swim), drawn.
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private static JsonObject zombieModel(final JsonObject request) throws Exception {
         Oracle.vanillaRegistries();
         var layers = new java.util.HashMap<String, net.minecraft.client.model.geom.builders.LayerDefinition>();
@@ -1051,8 +1151,13 @@ public final class EntityOracle {
             var row = element.getAsJsonObject();
             String id = row.get("layer").getAsString();
             var root = layers.get(id).bakeRoot();
-            net.minecraft.client.model.HumanoidModel<net.minecraft.client.renderer.entity.state.ZombieRenderState> model;
-            if (id.startsWith("minecraft:drowned_baby")) {
+            net.minecraft.client.model.HumanoidModel model;
+            boolean villager = id.startsWith("minecraft:zombie_villager");
+            if (villager && id.contains("_baby")) {
+                model = new net.minecraft.client.model.monster.zombie.BabyZombieVillagerModel(root);
+            } else if (villager) {
+                model = new net.minecraft.client.model.monster.zombie.ZombieVillagerModel(root);
+            } else if (id.startsWith("minecraft:drowned_baby")) {
                 model = new net.minecraft.client.model.monster.zombie.BabyDrownedModel(root);
             } else if (id.startsWith("minecraft:drowned")) {
                 model = new net.minecraft.client.model.monster.zombie.DrownedModel(root);
@@ -1063,7 +1168,9 @@ public final class EntityOracle {
             } else {
                 model = new net.minecraft.client.model.monster.zombie.ZombieModel<>(root);
             }
-            var state = new net.minecraft.client.renderer.entity.state.ZombieRenderState();
+            net.minecraft.client.renderer.entity.state.ZombieRenderState state = villager
+                ? new net.minecraft.client.renderer.entity.state.ZombieVillagerRenderState()
+                : new net.minecraft.client.renderer.entity.state.ZombieRenderState();
             state.yRot = Oracle.f32(row, "head_y_rot");
             state.xRot = Oracle.f32(row, "x_rot");
             state.walkAnimationPos = Oracle.f32(row, "walk_position");
@@ -1314,6 +1421,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CARRY_STATE", "enderman-carry"},
+            {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CREEPY", "enderman-creepy"},
+            {net.minecraft.world.entity.monster.zombie.ZombieVillager.class, "DATA_VILLAGER_DATA", "zombie-villager-data"},
             {net.minecraft.world.entity.raid.Raider.class, "IS_CELEBRATING", "raider-celebrating"},
             {net.minecraft.world.entity.monster.illager.SpellcasterIllager.class, "DATA_SPELL_CASTING_ID", "spellcaster-casting"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
@@ -1432,6 +1542,18 @@ public final class EntityOracle {
         }
         if (operation.equals("villager_layers")) {
             return villagerLayers(request);
+        }
+        if (operation.equals("iron_golem_model")) {
+            return ironGolemModel(request);
+        }
+        if (operation.equals("snow_golem_model")) {
+            return snowGolemModel(request);
+        }
+        if (operation.equals("enderman_model")) {
+            return endermanModel(request);
+        }
+        if (operation.equals("iron_golem_render")) {
+            return ironGolemRender(request);
         }
         if (operation.equals("illager_model")) {
             return illagerModel(request);

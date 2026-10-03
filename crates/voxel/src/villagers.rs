@@ -7,9 +7,9 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{QuadrupedState, VillagerState, WitchState, mob_vertices};
 use voxel_render::scene::Vertex;
-use voxel_render::villager::{profession_passes, profession_textures};
+use voxel_render::villager::{Pass, profession_passes, profession_textures};
 
-use voxel_world::EquipmentSlot;
+use voxel_world::{ClientEntity, EquipmentSlot};
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -33,13 +33,34 @@ pub fn textures() -> impl Iterator<Item = String> {
     .into_iter()
     .map(str::to_owned)
     .chain(profession_textures(FOLDER))
+    .chain(profession_textures("zombie_villager"))
 }
 
-/// The model layer of a villager's model, hatted or not, grown or baby.
-fn layer(hatless: bool, baby: bool) -> String {
+/// The model layer of a villager's model of the folder (`villager` or
+/// `zombie_villager`), hatted or not, grown or baby.
+pub(crate) fn layer(folder: &str, hatless: bool, baby: bool) -> String {
     let baby = if baby { "_baby" } else { "" };
     let hat = if hatless { "_no_hat" } else { "" };
-    format!("minecraft:villager{baby}{hat}#main")
+    format!("minecraft:{folder}{baby}{hat}#main")
+}
+
+/// The passes of `VillagerProfessionLayer` for the entity, from the villager
+/// data the server sent; none while it cannot be seen or names a type or
+/// profession the registries lack.
+pub(crate) fn profession_layer(entity: &ClientEntity, folder: &str, baby: bool) -> Vec<Pass> {
+    if entity.is_invisible() {
+        return Vec::new();
+    }
+    let [type_id, profession_id, level] = entity.villager_data();
+    match (
+        voxel_data::villager::villager_type(type_id),
+        voxel_data::villager::profession(profession_id),
+    ) {
+        (Some((type_name, _)), Some((profession, _))) => {
+            profession_passes(folder, type_name, profession, level, baby)
+        }
+        _ => Vec::new(),
+    }
 }
 
 /// `VillagerRenderer` and `WanderingTraderRenderer` for the villagers the
@@ -85,7 +106,7 @@ pub fn remote_villagers(
         // The model and texture of each pass: the body first, then the layer.
         let mut passes = vec![if is_villager {
             (
-                layer(false, baby),
+                layer(FOLDER, false, baby),
                 if baby {
                     "entity/villager/villager_baby".to_owned()
                 } else {
@@ -98,19 +119,12 @@ pub fn remote_villagers(
                 WANDERING_TRADER_TEXTURE.to_owned(),
             )
         }];
-        // The layer is not drawn on a villager that cannot be seen.
-        if is_villager && !entity.is_invisible() {
-            let [type_id, profession_id, level] = entity.villager_data();
-            if let (Some((type_name, _)), Some((profession, _))) = (
-                voxel_data::villager::villager_type(type_id),
-                voxel_data::villager::profession(profession_id),
-            ) {
-                passes.extend(
-                    profession_passes(FOLDER, type_name, profession, level, baby)
-                        .into_iter()
-                        .map(|pass| (layer(pass.hatless, baby), pass.texture)),
-                );
-            }
+        if is_villager {
+            passes.extend(
+                profession_layer(entity, FOLDER, baby)
+                    .into_iter()
+                    .map(|pass| (layer(FOLDER, pass.hatless, baby), pass.texture)),
+            );
         }
         for (id, texture) in passes {
             let (Some(rect), Some(model)) = (textures.rect(&texture), models.model(&id)) else {

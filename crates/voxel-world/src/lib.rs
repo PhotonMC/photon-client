@@ -1965,6 +1965,9 @@ impl ClientWorld {
             entity.living.animal.eat_tick = animal::SHEEP_EAT_TICKS;
             return true;
         }
+        if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:iron_golem") {
+            return entity.living.animal.golem_event(event);
+        }
         false
     }
 
@@ -3239,6 +3242,13 @@ impl ClientWorld {
         }
         if let Some(counter) = unhappy_counter_from_metadata(entity.type_id, metadata) {
             entity.living.unhappy_counter = counter;
+        }
+        let (carrying, creepy) = enderman_flags_from_metadata(entity.type_id, metadata);
+        if let Some(carrying) = carrying {
+            entity.living.carrying_block = carrying;
+        }
+        if let Some(creepy) = creepy {
+            entity.living.creepy = creepy;
         }
         let (celebrating, casting) = illager_flags_from_metadata(entity.type_id, metadata);
         if let Some(celebrating) = celebrating {
