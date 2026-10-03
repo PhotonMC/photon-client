@@ -34,6 +34,7 @@ mod container;
 mod dimension;
 mod entity;
 mod fluid;
+pub mod fox;
 pub mod horse;
 pub mod item_components;
 mod item_physics;
@@ -3416,6 +3417,8 @@ impl ClientWorld {
         entity
             .living
             .apply_cat(cat_data_from_metadata(entity.type_id, metadata));
+        let (fox_flags, fox_variant) = fox_data_from_metadata(entity.type_id, metadata);
+        entity.living.fox.set_data(fox_flags, fox_variant);
         if let Some(standing) = polar_bear_standing_from_metadata(entity.type_id, metadata) {
             entity.living.polar_bear.set_standing(standing);
         }

@@ -706,6 +706,18 @@ public final class MovementOracle {
                             entity.setHealth(Oracle.f32(event, "health"));
                         }
                     }
+                    case "fox_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var foxClass = net.minecraft.world.entity.animal.fox.Fox.class;
+                        if (event.has("variant")) {
+                            data.add(wolfData(foxClass, "DATA_TYPE_ID", event.get("variant").getAsInt()));
+                        }
+                        if (event.has("flags")) {
+                            data.add(wolfData(foxClass, "DATA_FLAGS_ID", (byte) event.get("flags").getAsInt()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "polar_bear_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID",
@@ -851,6 +863,19 @@ public final class MovementOracle {
                             for (float partial : new float[] {0.0F, 0.5F}) {
                                 described.addProperty("head_roll_" + partial, Oracle.bits(wolf.getHeadRollAngle(partial)));
                                 described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
+                            }
+                        }
+                        case "fox" -> {
+                            var fox = (net.minecraft.world.entity.animal.fox.Fox) entity;
+                            described.addProperty("variant", fox.getVariant().getId());
+                            described.addProperty("sitting", fox.isSitting());
+                            described.addProperty("crouching", fox.isCrouching());
+                            described.addProperty("sleeping", fox.isSleeping());
+                            described.addProperty("faceplanted", fox.isFaceplanted());
+                            described.addProperty("pouncing", fox.isPouncing());
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("head_roll_" + partial, Oracle.bits(fox.getHeadRollAngle(partial)));
+                                described.addProperty("crouch_" + partial, Oracle.bits(fox.getCrouchAmount(partial)));
                             }
                         }
                         case "hoglin" -> described.addProperty("attack_ticks",

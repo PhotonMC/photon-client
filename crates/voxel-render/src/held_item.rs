@@ -79,6 +79,45 @@ pub fn crossed_arms_item_pose(base: &Pose, root: &Part, arms: &Part) -> Pose {
     pose
 }
 
+/// `FoxHeldItemLayer`: what a fox holds in its mouth sits where its head is,
+/// rolled and turned with it (not tipped by the head's own pose), then in
+/// the mouth, laid flat (and on its side while the fox sleeps).
+pub fn fox_item_pose(
+    base: &Pose,
+    head: &Part,
+    (baby, sleeping): (bool, bool),
+    (head_roll_angle, y_rot, x_rot): (f32, f32, f32),
+) -> Pose {
+    let mut pose = *base;
+    pose.translate(head.x / 16.0, head.y / 16.0, head.z / 16.0);
+    if baby {
+        pose.scale(0.75, 0.75, 0.75);
+    }
+    pose.rotate(&Quaternion::rotation_z(head_roll_angle));
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        y_rot,
+    )));
+    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+        x_rot,
+    )));
+    let (x, y, z) = match (baby, sleeping) {
+        (true, true) => (0.4, 0.26, 0.15),
+        (true, false) => (0.06, 0.26, -0.5),
+        (false, true) => (0.46, 0.26, 0.22),
+        (false, false) => (0.06, 0.27, -0.5),
+    };
+    pose.translate(x, y, z);
+    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+        90.0,
+    )));
+    if sleeping {
+        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+            90.0,
+        )));
+    }
+    pose
+}
+
 /// `WitchItemLayer` for a potion: held at the tip of the nose, which the
 /// head carries.
 pub fn witch_potion_pose(base: &Pose, root: &Part, head: &Part, nose: &Part) -> Pose {

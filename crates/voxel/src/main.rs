@@ -8,6 +8,7 @@ mod controls;
 mod dropped_items;
 mod farm_animals;
 mod felines;
+mod foxes;
 mod golems;
 mod gui;
 mod held_items;

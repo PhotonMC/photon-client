@@ -26,4 +26,7 @@ Tilki davranışı/yapay zekâsı (sunucu), güven listesi, sesler.
 `docs/index.md` satırı, yeni `docs/client-fox-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_fox` (yetişkin + bebek: yürüme/anahtar kare, çömelme, uyku, oturma, zıplama, yüz üstü), `fox_item_pose` (ağızdaki eşya), `MobPlacement.pitch`, `voxel-world/src/fox.rs` (bayraklar, çeşit, ilgi açısı, çömelme miktarı), `voxel_data::entity_type::fox_texture`, `crates/voxel/src/foxes.rs`. Kayıt: `docs/client-fox-parity-conformance.md`.
+- Oracle: `fox-model` 26 (eşya matrisiyle), `fox-textures` 8, `living-entity-animations` 5, `variant-fields` +2.
+- Sapma: `legMotionPos` canlıda karedir (oracle ilk pozu); parçacık ve ses yok; güvenilen varlıklar okunmuyor.
+- Açık: T32f panda, T32g ravager, T32h strider, T32i titreme.

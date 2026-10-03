@@ -14420,6 +14420,18 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("fox-idle", "fox", 4, [], extras=["fox"]),
+        living("fox-snow-sleeps", "fox", 6, [{"tick": 1, "type": "fox_data", "variant": 1, "flags": 32}],
+               extras=["fox"]),
+        living("fox-crouches", "fox", 20, [{"tick": 2, "type": "fox_data", "flags": 4},
+                                           {"tick": 14, "type": "fox_data", "flags": 0}],
+               extras=["fox"]),
+        living("fox-takes-an-interest", "fox", 24, [{"tick": 2, "type": "fox_data", "flags": 8},
+                                                    {"tick": 12, "type": "fox_data", "flags": 1}],
+               extras=["fox"]),
+        living("fox-pounces-and-faceplants", "fox", 8, [{"tick": 1, "type": "fox_data", "flags": 16},
+                                                        {"tick": 4, "type": "fox_data", "flags": 64}],
+               extras=["fox"]),
         living("hoglin-idle", "hoglin", 4, [], extras=["hoglin"]),
         living("hoglin-swings", "hoglin", 20, [{"tick": 3, "type": "entity_event", "event": 4}],
                extras=["hoglin"]),
@@ -14568,6 +14580,7 @@ def entity_cases():
     yield from entity_feline_cases()
     yield from entity_polar_bear_cases()
     yield from entity_hoglin_cases()
+    yield from entity_fox_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15505,6 +15518,43 @@ def entity_hoglin_cases():
         ]
     yield {"case_id": "entity/hoglin-model", "family": "entity", "operation": "hoglin_model",
            "rows": rows}
+
+
+def entity_fox_cases():
+    """The fox, grown and baby, posed by the reference's own `FoxModel.setupAnim` (the walk, the
+    crouching, sleeping, sitting and pouncing poses, the faceplant) and the matrix its held item is
+    carried with, and the textures it wears."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, roll=0.0,
+             crouch=0.0, crouching=False, sleeping=False, sitting=False, faceplanted=False,
+             pouncing=False, age=37.5):
+        scale = 0.5 if "_baby" in layer else 1.0
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "head_roll_angle": float_bits(roll),
+                "crouch_amount": float_bits(crouch), "crouching": crouching, "sleeping": sleeping,
+                "sitting": sitting, "faceplanted": faceplanted, "pouncing": pouncing,
+                "age_in_ticks": float_bits(age), "age_scale": float_bits(scale)}
+
+    rows = []
+    for layer in ("minecraft:fox#main", "minecraft:fox_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("walking-slow", layer, walk_position=2.1, walk_speed=0.2, roll=0.2),
+            pose("interested", layer, roll=0.34, head_y_rot=10.0),
+            pose("crouching", layer, crouching=True, crouch=3.4, walk_position=1.0, walk_speed=0.3),
+            pose("crouched", layer, crouching=True, crouch=5.0, head_y_rot=20.0),
+            pose("sleeping", layer, sleeping=True, roll=0.2, head_y_rot=15.0),
+            pose("sitting", layer, sitting=True, head_y_rot=14.0, x_rot=-20.0),
+            pose("sleeping-and-sitting", layer, sleeping=True, sitting=True),
+            pose("pouncing", layer, pouncing=True, crouch=4.0, x_rot=-30.0),
+            pose("pouncing-crouched", layer, pouncing=True, crouching=True, crouch=5.0),
+            pose("faceplanted", layer, faceplanted=True, x_rot=60.0, head_y_rot=5.0),
+        ]
+    yield {"case_id": "entity/fox-model", "family": "entity", "operation": "fox_model", "rows": rows}
+    yield {"case_id": "entity/fox-textures", "family": "entity", "operation": "fox_textures",
+           "rows": [{"label": "all"}]}
 
 
 def entity_llama_cases():

@@ -1798,6 +1798,93 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The fox's model posed by the reference's own `FoxModel.setupAnim` (grown and baby), drawn, and
+     * the matrix `FoxHeldItemLayer` submits what it holds with from an identity entity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject foxModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            boolean baby = id.contains("_baby");
+            net.minecraft.client.model.animal.fox.FoxModel model = baby
+                ? new net.minecraft.client.model.animal.fox.BabyFoxModel(root)
+                : new net.minecraft.client.model.animal.fox.AdultFoxModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.FoxRenderState();
+            state.isBaby = baby;
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.headRollAngle = Oracle.f32(row, "head_roll_angle");
+            state.crouchAmount = Oracle.f32(row, "crouch_amount");
+            state.isCrouching = row.get("crouching").getAsBoolean();
+            state.isSleeping = row.get("sleeping").getAsBoolean();
+            state.isSitting = row.get("sitting").getAsBoolean();
+            state.isFaceplanted = row.get("faceplanted").getAsBoolean();
+            state.isPouncing = row.get("pouncing").getAsBoolean();
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.ageScale = Oracle.f32(row, "age_scale");
+            model.setupAnim(state);
+            var out = posedQuads(row.get("label").getAsString(), model);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            state.heldItem.newLayer();
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+            new net.minecraft.client.renderer.entity.layers.FoxHeldItemLayer(parent)
+                .submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, state, state.yRot, state.xRot);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The fox's textures by variant, state and age, from the renderer's own table. */
+    private static JsonObject foxTextures() throws Exception {
+        var field = net.minecraft.client.renderer.entity.FoxRenderer.class.getDeclaredField("TEXTURES_BY_VARIANT");
+        field.setAccessible(true);
+        var table = (java.util.Map<?, ?>) field.get(null);
+        var rows = new JsonArray();
+        for (var variant : net.minecraft.world.entity.animal.fox.Fox.Variant.values()) {
+            var byState = table.get(variant);
+            for (String stateName : new String[] {"idle", "sleeping"}) {
+                var stateMethod = byState.getClass().getDeclaredMethod(stateName);
+                stateMethod.setAccessible(true);
+                var byAge = stateMethod.invoke(byState);
+                for (String age : new String[] {"adult", "baby"}) {
+                    var ageMethod = byAge.getClass().getDeclaredMethod(age);
+                    ageMethod.setAccessible(true);
+                    var out = new JsonObject();
+                    out.addProperty("label", variant.getId() + "-" + stateName + "-" + age);
+                    out.addProperty("texture", ageMethod.invoke(byAge).toString());
+                    rows.add(out);
+                }
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2309,6 +2396,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
             {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
+            {net.minecraft.world.entity.animal.fox.Fox.class, "DATA_TYPE_ID", "fox-variant"},
+            {net.minecraft.world.entity.animal.fox.Fox.class, "DATA_FLAGS_ID", "fox-flags"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "DATA_VARIANT_ID", "cat-variant"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "IS_LYING", "cat-lying"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "RELAX_STATE_ONE", "cat-relax"},
@@ -2460,6 +2549,12 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("fox_model")) {
+            return foxModel(request);
+        }
+        if (operation.equals("fox_textures")) {
+            return foxTextures();
         }
         if (operation.equals("hoglin_model")) {
             return hoglinModel(request);

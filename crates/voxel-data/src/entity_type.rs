@@ -57,6 +57,26 @@ impl WolfVariant {
     }
 }
 
+/// The texture (under `textures/`) a fox wears (`FoxRenderer.getTextureLocation`):
+/// by variant (red or snow), whether it sleeps, and whether it is a baby. Every
+/// path is compared to the reference's own table on each parity run.
+pub fn fox_texture(variant: i32, sleeping: bool, baby: bool) -> &'static str {
+    const TEXTURES: [[[&str; 2]; 2]; 2] = [
+        [
+            ["entity/fox/fox", "entity/fox/fox_baby"],
+            ["entity/fox/fox_sleep", "entity/fox/fox_sleep_baby"],
+        ],
+        [
+            ["entity/fox/fox_snow", "entity/fox/fox_snow_baby"],
+            [
+                "entity/fox/fox_snow_sleep",
+                "entity/fox/fox_snow_sleep_baby",
+            ],
+        ],
+    ];
+    TEXTURES[usize::from(variant == 1)][usize::from(sleeping)][usize::from(baby)]
+}
+
 /// Every wolf variant, by name.
 pub fn wolf_variants() -> impl Iterator<Item = &'static WolfVariant> {
     crate::generated::wolf_variants::WOLF_VARIANTS.iter()

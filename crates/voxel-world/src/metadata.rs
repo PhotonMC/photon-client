@@ -425,6 +425,18 @@ pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
     }
 }
 
+/// A fox's flags and variant (`Fox.DATA_FLAGS_ID`, `DATA_TYPE_ID`), each when
+/// the data holds it.
+pub(crate) fn fox_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u8>, Option<i32>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:fox") {
+        return (None, None);
+    }
+    (
+        metadata_byte_value(metadata, FOX_FLAGS_DATA_ID),
+        metadata_int_value(metadata, FOX_VARIANT_DATA_ID),
+    )
+}
+
 /// A polar bear's standing flag (`PolarBear.DATA_STANDING_ID`), when the data holds it.
 pub(crate) fn polar_bear_standing_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:polar_bear" {

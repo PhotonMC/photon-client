@@ -18431,6 +18431,18 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "fox_data" => {
+                        let mut data = Vec::new();
+                        if let Some(variant) = event["variant"].as_i64() {
+                            data.extend([voxel_world::FOX_VARIANT_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(variant as i32, &mut data);
+                        }
+                        if let Some(flags) = event["flags"].as_i64() {
+                            data.extend([voxel_world::FOX_FLAGS_DATA_ID, 0, flags as u8]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "polar_bear_data" => {
                         let standing = event["standing"].as_bool().ok_or("standing")?;
                         let data = [
@@ -18618,6 +18630,21 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.head_roll_angle(partial)));
                             described[format!("shake_{key}")] =
                                 json!(hex(wolf.shake_anim(partial)));
+                        }
+                    }
+                    "fox" => {
+                        let fox = entity.fox();
+                        described["variant"] = json!(fox.variant());
+                        described["sitting"] = json!(fox.is_sitting());
+                        described["crouching"] = json!(fox.is_crouching());
+                        described["sleeping"] = json!(fox.is_sleeping());
+                        described["faceplanted"] = json!(fox.is_faceplanted());
+                        described["pouncing"] = json!(fox.is_pouncing());
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                            described[format!("head_roll_{key}")] =
+                                json!(hex(fox.head_roll_angle(partial)));
+                            described[format!("crouch_{key}")] =
+                                json!(hex(fox.crouch_amount(partial)));
                         }
                     }
                     "hoglin" => {
@@ -20093,6 +20120,87 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `fox_textures`: the textures a fox wears by variant, state and age.
+fn fox_textures_result() -> Value {
+    let mut rows = Vec::new();
+    for variant in [0, 1] {
+        for sleeping in [false, true] {
+            for baby in [false, true] {
+                rows.push(json!({
+                    "label": format!(
+                        "{variant}-{}-{}",
+                        if sleeping { "sleeping" } else { "idle" },
+                        if baby { "baby" } else { "adult" }
+                    ),
+                    "texture": format!(
+                        "minecraft:textures/{}.png",
+                        voxel_data::entity_type::fox_texture(variant, sleeping, baby)
+                    ),
+                }));
+            }
+        }
+    }
+    json!({"rows": rows})
+}
+
+/// `fox_model`: a fox's model posed and drawn, and the matrix its held item is carried with.
+fn fox_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::held_item::fox_item_pose;
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{FoxState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let baby = id.contains("_baby");
+        let quadruped = quadruped_state(row)?;
+        let state = FoxState {
+            quadruped,
+            head_roll_angle: bits("head_roll_angle")?,
+            crouch_amount: bits("crouch_amount")?,
+            crouching: flag("crouching")?,
+            sleeping: flag("sleeping")?,
+            sitting: flag("sitting")?,
+            faceplanted: flag("faceplanted")?,
+            pouncing: flag("pouncing")?,
+            age_in_ticks: bits("age_in_ticks")?,
+            age_scale: bits("age_scale")?,
+            baby,
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_fox(&state);
+        let head = model
+            .root()
+            .children()
+            .iter()
+            .find(|part| part.name() == "head")
+            .ok_or("no head")?;
+        let mut pose = fox_item_pose(
+            &Pose::default(),
+            head,
+            (baby, state.sleeping),
+            (state.head_roll_angle, quadruped.head_y_rot, quadruped.x_rot),
+        );
+        // The stack's own display transform is none: the model is moved to its corner.
+        pose.translate(-0.5, -0.5, -0.5);
+        let matrix: Vec<String> = (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect();
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model), "poses": [matrix]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `hoglin_model`: a hoglin's or a zoglin's model posed and drawn.
 fn hoglin_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{HoglinState, MobModel};
@@ -20889,6 +20997,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "feline_model" => return feline_model_result(request),
         "polar_bear_model" => return polar_bear_model_result(request),
         "hoglin_model" => return hoglin_model_result(request),
+        "fox_model" => return fox_model_result(request),
+        "fox_textures" => return Ok(fox_textures_result()),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20989,6 +21099,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "wolf-anger-end", "data_id": voxel_world::WOLF_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "wolf-variant", "data_id": voxel_world::WOLF_VARIANT_DATA_ID, "serializer": voxel_world::WOLF_VARIANT_SERIALIZER_ID},
                 {"label": "polar-bear-standing", "data_id": voxel_world::POLAR_BEAR_STANDING_DATA_ID, "serializer": 8},
+                {"label": "fox-variant", "data_id": voxel_world::FOX_VARIANT_DATA_ID, "serializer": 1},
+                {"label": "fox-flags", "data_id": voxel_world::FOX_FLAGS_DATA_ID, "serializer": 0},
                 {"label": "cat-variant", "data_id": voxel_world::CAT_VARIANT_DATA_ID, "serializer": voxel_world::CAT_VARIANT_SERIALIZER_ID},
                 {"label": "cat-lying", "data_id": voxel_world::CAT_LYING_DATA_ID, "serializer": 8},
                 {"label": "cat-relax", "data_id": voxel_world::CAT_RELAX_DATA_ID, "serializer": 8},
