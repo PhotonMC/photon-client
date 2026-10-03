@@ -162,6 +162,18 @@ pub struct RabbitState {
     pub baby: bool,
 }
 
+/// What a bee's models are posed from (`BeeRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BeeState {
+    pub age_in_ticks: f32,
+    pub roll_amount: f32,
+    pub has_stinger: bool,
+    /// Resting on the ground: the wings and legs stay as modelled.
+    pub on_ground: bool,
+    pub angry: bool,
+    pub baby: bool,
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -788,6 +800,108 @@ impl MobModel {
                 let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
                 self.animate(definition, millis, 1.0);
             }
+        }
+    }
+
+    /// `SilverfishModel.setupAnim` and `EndermiteModel.setupAnim`: each
+    /// segment sways about y and slides sideways in a wave that travels down
+    /// the body (the silverfish's three layers follow the segments under them).
+    pub fn setup_segmented(&mut self, age_in_ticks: f32, silverfish: bool) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let (segments, turn, slide) = if silverfish {
+            (7_i32, 0.05_f32, 0.2_f32)
+        } else {
+            (4, 0.01, 0.1)
+        };
+        for index in 0..segments {
+            let phase = age_in_ticks * 0.9 + index as f32 * 0.15 * pi;
+            let distance = (index - 2).abs();
+            let y_rot = mth_cos_f64(f64::from(phase)) * pi * turn * (1 + distance) as f32;
+            let x = mth_sin_f64(f64::from(phase)) * pi * slide * distance as f32;
+            if let Some(segment) = self.root.child_mut(&format!("segment{index}")) {
+                segment.y_rot = y_rot;
+                segment.x = x;
+            }
+        }
+        if !silverfish {
+            return;
+        }
+        let pose = |root: &mut Part, index: usize| {
+            root.child_mut(&format!("segment{index}"))
+                .map(|segment| (segment.y_rot, segment.x))
+        };
+        for (layer, segment, slides) in [(0, 2, false), (1, 4, true), (2, 1, true)] {
+            let Some((y_rot, x)) = pose(&mut self.root, segment) else {
+                continue;
+            };
+            if let Some(layer) = self.root.child_mut(&format!("layer{layer}")) {
+                layer.y_rot = y_rot;
+                if slides {
+                    layer.x = x;
+                }
+            }
+        }
+    }
+
+    /// `BeeModel.setupAnim` (and the adult's antennas): the stinger while it
+    /// has one; in the air the wings beat and the legs hang; a bee that is not
+    /// angry bobs; a rolling one turns over.
+    pub fn setup_bee(&mut self, state: &BeeState) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let sin_cos = |value: f32| mth_cos_f64(f64::from(value));
+        let age = state.age_in_ticks;
+        let Some(bone) = self.root.child_mut("bone") else {
+            return;
+        };
+        if let Some(stinger) = bone
+            .child_mut("body")
+            .and_then(|body| body.child_mut("stinger"))
+        {
+            stinger.visible = state.has_stinger;
+        }
+        if !state.on_ground {
+            let speed = age * 120.321_13 * (std::f64::consts::PI / 180.0) as f32;
+            let flap = sin_cos(speed) * pi * 0.15;
+            let right_x = bone.child_mut("right_wing").map_or(0.0, |wing| {
+                wing.y_rot = 0.0;
+                wing.z_rot = flap;
+                wing.x_rot
+            });
+            if let Some(wing) = bone.child_mut("left_wing") {
+                wing.x_rot = right_x;
+                wing.y_rot = 0.0;
+                wing.z_rot = -flap;
+            }
+            for name in ["front_legs", "middle_legs", "back_legs"] {
+                if let Some(leg) = bone.child_mut(name) {
+                    leg.x_rot = (std::f64::consts::PI / 4.0) as f32;
+                }
+            }
+        }
+        if !state.angry && !state.on_ground {
+            let speed = sin_cos(age * 0.18);
+            bone.x_rot = 0.1 + speed * pi * 0.025;
+            bone.y -= sin_cos(age * 0.18) * 0.9;
+            if let Some(leg) = bone.child_mut("front_legs") {
+                leg.x_rot = -speed * pi * 0.1 + (std::f64::consts::PI / 8.0) as f32;
+            }
+            if let Some(leg) = bone.child_mut("back_legs") {
+                leg.x_rot = -speed * pi * 0.05 + (std::f64::consts::PI / 4.0) as f32;
+            }
+            if !state.baby
+                && let Some(body) = bone.child_mut("body")
+            {
+                for name in ["left_antenna", "right_antenna"] {
+                    if let Some(antenna) = body.child_mut(name) {
+                        antenna.x_rot = speed * pi * 0.03;
+                    }
+                }
+            }
+        }
+        if state.roll_amount > 0.0 {
+            bone.x_rot = rot_lerp_rad(state.roll_amount, bone.x_rot, 3.091_592_8);
         }
     }
 

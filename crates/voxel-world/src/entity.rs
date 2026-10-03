@@ -184,6 +184,9 @@ pub(crate) struct EntityState {
     pub(crate) mooshroom_type: i32,
     /// A rabbit's variant, zero for brown.
     pub(crate) rabbit_type: i32,
+    /// A bee's flags and the game time its anger ends.
+    pub(crate) bee_flags: u8,
+    pub(crate) bee_anger_end: i64,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1834,6 +1837,27 @@ impl ClientEntity {
             * (std::f64::consts::PI / 180.0) as f32
     }
 
+    /// `Bee.getRollAmount`: how far the bee has rolled over, between two ticks.
+    pub fn bee_roll_amount(&self, partial: f32) -> f32 {
+        self.living.animal.bee_roll_at(partial)
+    }
+
+    /// `Bee.hasStung`.
+    pub fn bee_has_stung(&self) -> bool {
+        self.living.bee_flags & 4 != 0
+    }
+
+    /// `Bee.hasNectar`.
+    pub fn bee_has_nectar(&self) -> bool {
+        self.living.bee_flags & 8 != 0
+    }
+
+    /// The game time a bee's anger ends (`getPersistentAngerEndTime`); angry
+    /// while that is later than now (`NeutralMob.isAngry`).
+    pub fn bee_anger_end(&self) -> i64 {
+        self.living.bee_anger_end
+    }
+
     /// `Rabbit.getVariant`'s id: zero is brown (an id the variants lack is brown).
     pub fn rabbit_variant(&self) -> i32 {
         self.living.rabbit_type
@@ -1964,6 +1988,10 @@ impl ClientEntity {
             Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
+            Some("minecraft:bee") => {
+                let rolling = self.living.bee_flags & 2 != 0;
+                self.living.animal.tick_bee(rolling);
+            }
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
                 self.rabbit

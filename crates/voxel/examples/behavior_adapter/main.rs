@@ -18389,6 +18389,18 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     "animate" => {
                         world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
                     }
+                    "bee_data" => {
+                        let mut data = Vec::new();
+                        if let Some(flags) = event["flags"].as_i64() {
+                            data.extend([voxel_world::BEE_FLAGS_DATA_ID, 0, flags as u8]);
+                        }
+                        if let Some(end) = event["anger_end"].as_i64() {
+                            data.extend([voxel_world::BEE_ANGER_END_DATA_ID, 2]);
+                            voxel_core::wire::write_varlong(end, &mut data);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "rabbit_idle" => {
                         world.fix_rabbit_idle(
                             entity_id,
@@ -18457,6 +18469,14 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
                         }
+                    }
+                    "bee" => {
+                        described["roll_0.0"] = json!(hex(entity.bee_roll_amount(0.0)));
+                        described["roll_0.5"] = json!(hex(entity.bee_roll_amount(0.5)));
+                        described["stung"] = json!(entity.bee_has_stung());
+                        described["nectar"] = json!(entity.bee_has_nectar());
+                        let end = entity.bee_anger_end();
+                        described["angry"] = json!(end > 0 && end - world.game_time() as i64 > 0);
                     }
                     "rabbit" => {
                         if let Some(rabbit) = entity.rabbit() {
@@ -19522,6 +19542,52 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `segmented_model`: the silverfish's or the endermite's model posed and drawn.
+fn segmented_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let age = u32::from_str_radix(row["age_in_ticks"].as_str().ok_or("age")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_segmented(age, id.starts_with("minecraft:silverfish"));
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `bee_model`: a bee's model posed and drawn.
+fn bee_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{BeeState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_bee(&BeeState {
+            age_in_ticks: bits("age_in_ticks")?,
+            roll_amount: bits("roll_amount")?,
+            has_stinger: row["has_stinger"].as_bool().ok_or("has_stinger")?,
+            on_ground: row["on_ground"].as_bool().ok_or("on_ground")?,
+            angry: row["angry"].as_bool().ok_or("angry")?,
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `rabbit_model`: a rabbit's model posed with its animation states, drawn.
 fn rabbit_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, QuadrupedState, RabbitState};
@@ -20394,6 +20460,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_attributes" => return Ok(entity_attributes_result()),
         "animation_definitions" => return Ok(animation_definitions_result()),
         "rabbit_model" => return rabbit_model_result(request),
+        "segmented_model" => return segmented_model_result(request),
+        "bee_model" => return bee_model_result(request),
         "keyframe_animation" => return keyframe_animation_result(request),
         "animation_states" => return animation_states_result(request),
         "illager_model" => return illager_model_result(request),
@@ -20431,10 +20499,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_variant_fields" => {
             use voxel_world::{
                 ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
-                CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID,
-                COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
-                ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
+                BEE_ANGER_END_DATA_ID, BEE_FLAGS_DATA_ID, CHICKEN_VARIANT_DATA_ID,
+                CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
+                CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID, ENDERMAN_CARRY_DATA_ID,
+                ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID, GOAT_LEFT_HORN_DATA_ID,
+                GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, LONG_SERIALIZER_ID,
                 MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
                 PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
                 RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID,
@@ -20460,6 +20529,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "bee-flags", "data_id": BEE_FLAGS_DATA_ID, "serializer": 0},
+                {"label": "bee-anger-end", "data_id": BEE_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},
                 {"label": "goat-left-horn", "data_id": GOAT_LEFT_HORN_DATA_ID, "serializer": 8},
                 {"label": "goat-right-horn", "data_id": GOAT_RIGHT_HORN_DATA_ID, "serializer": 8},

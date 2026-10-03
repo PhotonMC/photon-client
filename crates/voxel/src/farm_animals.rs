@@ -1,12 +1,14 @@
-//! The farm animals that are not drawn from a variant registry: the goat, the
-//! mooshroom with its mushrooms and the rabbit (`GoatRenderer`,
-//! `MushroomCowRenderer`, `MushroomCowMushroomLayer`, `RabbitRenderer`).
+//! The animals that are not drawn from a variant registry: the goat, the
+//! mooshroom with its mushrooms, the rabbit and the bee (`GoatRenderer`,
+//! `MushroomCowRenderer`, `MushroomCowMushroomLayer`, `RabbitRenderer`,
+//! `BeeRenderer`).
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::mooshroom_mushroom_poses;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    GoatState, MobModel, MobPlacement, QuadrupedState, RabbitState, mob_vertices, placement_pose,
+    BeeState, GoatState, MobModel, MobPlacement, QuadrupedState, RabbitState, mob_vertices,
+    placement_pose,
 };
 use voxel_render::scene::Vertex;
 use voxel_world::ClientEntity;
@@ -32,6 +34,22 @@ const MOOSHROOMS: [([&str; 2], &str); 2] = [
         ],
         "minecraft:brown_mushroom",
     ),
+];
+
+/// The bee's textures: grown then baby, each calm or angry, without and with
+/// nectar (`BeeRenderer`); indexed by baby, angry, nectar.
+const BEES: [[[&str; 2]; 2]; 2] = [
+    [
+        ["entity/bee/bee", "entity/bee/bee_nectar"],
+        ["entity/bee/bee_angry", "entity/bee/bee_angry_nectar"],
+    ],
+    [
+        ["entity/bee/bee_baby", "entity/bee/bee_nectar_baby"],
+        [
+            "entity/bee/bee_angry_baby",
+            "entity/bee/bee_angry_nectar_baby",
+        ],
+    ],
 ];
 
 /// The rabbit's variants by id (`Rabbit.Variant`): the id and the name its
@@ -94,6 +112,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .into_iter()
         .chain(MOOSHROOMS.into_iter().flat_map(|(textures, _)| textures))
         .chain(RABBITS.into_iter().flat_map(|(_, textures)| textures))
+        .chain(BEES.into_iter().flatten().flatten())
 }
 
 /// Which of these animals an entity is.
@@ -102,13 +121,34 @@ enum Animal {
     Goat,
     Mooshroom,
     Rabbit,
+    Bee,
+}
+
+/// Whether a bee is angry: its anger ends later than the game time now
+/// (`NeutralMob.isAngry`).
+fn bee_is_angry(entity: &ClientEntity, game_time: u64) -> bool {
+    let end = entity.bee_anger_end();
+    end > 0 && end - game_time as i64 > 0
 }
 
 /// The texture and the model layer an animal is drawn in.
-fn appearance(animal: Animal, entity: &ClientEntity) -> (&'static str, &'static str) {
+fn appearance(
+    animal: Animal,
+    entity: &ClientEntity,
+    game_time: u64,
+) -> (&'static str, &'static str) {
     let baby = entity.is_baby();
     let age = usize::from(baby);
     match animal {
+        Animal::Bee => (
+            BEES[age][usize::from(bee_is_angry(entity, game_time))]
+                [usize::from(entity.bee_has_nectar())],
+            if baby {
+                "minecraft:bee_baby#main"
+            } else {
+                "minecraft:bee#main"
+            },
+        ),
         Animal::Rabbit => {
             let variant = RABBITS
                 .iter()
@@ -151,11 +191,21 @@ fn pose(
     model: &mut MobModel,
     animal: Animal,
     entity: &ClientEntity,
-    look: QuadrupedState,
-    partial: f32,
+    (look, partial, game_time): (QuadrupedState, f32, u64),
 ) {
     let baby = entity.is_baby();
     match animal {
+        Animal::Bee => {
+            let (x, y, z) = entity.motion();
+            model.setup_bee(&BeeState {
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                roll_amount: entity.bee_roll_amount(partial),
+                has_stinger: !entity.bee_has_stung(),
+                on_ground: entity.on_ground() && x * x + y * y + z * z < 1.0e-7,
+                angry: bee_is_angry(entity, game_time),
+                baby,
+            });
+        }
         Animal::Rabbit => {
             let states = entity.rabbit();
             model.setup_rabbit(&RabbitState {
@@ -222,6 +272,7 @@ pub fn remote_farm_animals(
         ("minecraft:goat", Animal::Goat),
         ("minecraft:mooshroom", Animal::Mooshroom),
         ("minecraft:rabbit", Animal::Rabbit),
+        ("minecraft:bee", Animal::Bee),
     ]
     .into_iter()
     .filter_map(|(name, animal)| Some((voxel_data::entity_type::id(name)?, animal)))
@@ -246,11 +297,11 @@ pub fn remote_farm_animals(
             walk_position: snapshot.walk_position,
             walk_speed: snapshot.walk_speed,
         };
-        let (texture, layer) = appearance(animal, entity);
+        let (texture, layer) = appearance(animal, entity, world.game_time());
         let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
             continue;
         };
-        pose(model, animal, entity, look, partial);
+        pose(model, animal, entity, (look, partial, world.game_time()));
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
         if animal == Animal::Mooshroom {

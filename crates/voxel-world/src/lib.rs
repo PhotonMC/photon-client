@@ -3312,6 +3312,13 @@ impl ClientWorld {
         if let Some(right) = right_horn {
             entity.living.lost_right_horn = !right;
         }
+        let (bee_flags, bee_anger) = bee_data_from_metadata(entity.type_id, metadata);
+        if let Some(flags) = bee_flags {
+            entity.living.bee_flags = flags;
+        }
+        if let Some(end) = bee_anger {
+            entity.living.bee_anger_end = end;
+        }
         if let Some(variant) = rabbit_type_from_metadata(entity.type_id, metadata) {
             entity.living.rabbit_type = variant;
         }

@@ -280,6 +280,21 @@ pub(crate) fn goat_horns_from_metadata(
     )
 }
 
+/// A bee's flags (`Bee.DATA_FLAGS_ID`) and the game time its anger ends
+/// (`DATA_ANGER_END_TIME`), when the data holds them.
+pub(crate) fn bee_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u8>, Option<i64>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:bee") {
+        return (None, None);
+    }
+    let anger = find_metadata_field(metadata, BEE_ANGER_END_DATA_ID)
+        .filter(|(serializer, _)| *serializer == LONG_SERIALIZER_ID)
+        .and_then(|(_, mut value)| {
+            let end = voxel_core::wire::read_varlong(&mut value).ok()?;
+            (!value.is_empty()).then_some(end)
+        });
+    (metadata_byte_value(metadata, BEE_FLAGS_DATA_ID), anger)
+}
+
 /// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
 pub(crate) fn rabbit_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:rabbit" {
@@ -607,6 +622,25 @@ mod tests {
         assert_eq!(
             villager_data_from_metadata(id("minecraft:zombie_villager"), &metadata),
             Some([1, 2, 3])
+        );
+    }
+
+    #[test]
+    fn a_bees_flags_and_anger_are_read_from_their_fields() {
+        let id = |name| voxel_data::entity_type::id(name).expect("a type");
+        let mut anger = Vec::new();
+        voxel_core::wire::write_varlong(1_234_567_890_123, &mut anger);
+        let metadata = data(&[
+            (BEE_FLAGS_DATA_ID, ENTITY_DATA_SERIALIZER_BYTE_ID, &[12]),
+            (BEE_ANGER_END_DATA_ID, LONG_SERIALIZER_ID, &anger),
+        ]);
+        assert_eq!(
+            bee_data_from_metadata(id("minecraft:bee"), &metadata),
+            (Some(12), Some(1_234_567_890_123))
+        );
+        assert_eq!(
+            bee_data_from_metadata(id("minecraft:cow"), &metadata),
+            (None, None)
         );
     }
 

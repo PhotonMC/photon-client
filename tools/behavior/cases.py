@@ -14375,6 +14375,16 @@ def movement_item_cases():
                    {"name": "minecraft:flying_speed", "base": float_bits(3.0, "f64"), "modifiers": []},
                    {"name": "minecraft:max_health", "base": float_bits(12.0, "f64"), "modifiers": []}]}],
                extras=["attributes"]),
+        living("bee-quiet", "bee", 6, [], extras=["bee"]),
+        living("bee-rolls", "bee", 20, [{"tick": 2, "type": "bee_data", "flags": 2}], extras=["bee"]),
+        living("bee-rolls-then-stops", "bee", 30, [{"tick": 1, "type": "bee_data", "flags": 2},
+                                                   {"tick": 9, "type": "bee_data", "flags": 0}],
+               extras=["bee"]),
+        # A bee with nectar drops nectar particles at random, which the headless client cannot draw.
+        living("bee-stung", "bee", 6, [{"tick": 1, "type": "bee_data", "flags": 4}], extras=["bee"]),
+        living("bee-angry", "bee", 12, [{"tick": 1, "type": "bee_data", "anger_end": 5}], extras=["bee"]),
+        living("bee-angry-for-a-long-time", "bee", 12, [{"tick": 1, "type": "bee_data", "anger_end": 500}],
+               extras=["bee"]),
         living("rabbit-quiet", "rabbit", 40, [{"tick": 0, "type": "rabbit_idle", "timeout": 400, "seed": 5}],
                extras=["rabbit"]),
         living("rabbit-hops", "rabbit", 60,
@@ -14455,6 +14465,7 @@ def entity_cases():
     yield from entity_goat_cases()
     yield from entity_animation_cases()
     yield from entity_rabbit_cases()
+    yield from entity_insect_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15175,6 +15186,39 @@ def entity_rabbit_cases():
             pose("both", layer, head_y_rot=12.0, x_rot=-8.0, age=50.0, hop=30, idle=20),
         ]
     yield {"case_id": "entity/rabbit-model", "family": "entity", "operation": "rabbit_model", "rows": rows}
+
+
+def entity_insect_cases():
+    """The silverfish, the endermite and the bee, posed by the reference's own `setupAnim` (the
+    segments' wave, the bee's wings, legs and bobbing, its roll and its stinger) and the bee's own
+    tick: its roll amount follows the rolling flag, its anger the game time."""
+    def age(label, layer, age):
+        return {"label": f"{layer}-{label}", "layer": layer, "age_in_ticks": float_bits(age)}
+
+    rows = []
+    for layer in ("minecraft:silverfish#main", "minecraft:endermite#main"):
+        rows += [age("start", layer, 0.0), age("early", layer, 3.5), age("late", layer, 47.25),
+                 age("long", layer, 1234.5)]
+    yield {"case_id": "entity/segmented-model", "family": "entity",
+           "operation": "segmented_model", "rows": rows}
+
+    def bee(label, layer, age=0.0, roll=0.0, stinger=True, ground=False, angry=False):
+        return {"label": f"{layer}-{label}", "layer": layer, "age_in_ticks": float_bits(age),
+                "roll_amount": float_bits(roll), "has_stinger": stinger, "on_ground": ground,
+                "angry": angry}
+
+    rows = []
+    for layer in ("minecraft:bee#main", "minecraft:bee_baby#main"):
+        rows += [
+            bee("flying", layer, age=12.5),
+            bee("flying-later", layer, age=70.25),
+            bee("angry", layer, age=33.0, angry=True),
+            bee("on-the-ground", layer, age=33.0, ground=True),
+            bee("stung", layer, age=33.0, stinger=False),
+            bee("rolling-half", layer, age=21.0, roll=0.5, angry=True),
+            bee("rolling-full", layer, age=21.0, roll=1.0, angry=True, stinger=False),
+        ]
+    yield {"case_id": "entity/bee-model", "family": "entity", "operation": "bee_model", "rows": rows}
 
 
 def entity_goat_cases():

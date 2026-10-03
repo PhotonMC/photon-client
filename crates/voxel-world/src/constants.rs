@@ -173,6 +173,11 @@ pub const ENDERMAN_CARRY_DATA_ID: u8 = 16;
 pub const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 pub const ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
+/// Where a bee's flags (a byte: rolling, stung, nectar) and the time its anger
+/// ends (a long) sit among its data, and the serializer of the latter.
+pub const BEE_FLAGS_DATA_ID: u8 = 18;
+pub const BEE_ANGER_END_DATA_ID: u8 = 19;
+pub const LONG_SERIALIZER_ID: i32 = 2;
 /// Where a rabbit's variant (an int: brown is zero, the killer 99) sits among
 /// its data.
 pub const RABBIT_TYPE_DATA_ID: u8 = 18;

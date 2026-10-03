@@ -108,6 +108,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T34c — Golemler, enderman ve zombi köylü — client-parity](client-golem-enderman-parity-conformance.md)
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](client-held-item-parity-conformance.md)
 - [T34b — Illager ve cadı — client-parity](client-illager-witch-parity-conformance.md)
+- [T33b — Gümüş balığı, endermite ve arı — client-parity](client-insects-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](client-keyframe-animation-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
 - [T26b — Orta tık seçimi (`PickItemFrom*`) ve bakılan varlık önerisi — client-parity](client-pick-item-suggestion-parity-conformance.md)

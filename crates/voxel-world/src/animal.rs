@@ -17,6 +17,9 @@ pub(crate) struct AnimalState {
     /// `Sheep.DATA_WOOL_ID`: the dye in the low four bits, sheared in bit four.
     pub(crate) wool: u8,
     pub(crate) eat_tick: i32,
+    /// `Bee.rollAmount` and the last tick's.
+    bee_roll_bits: u32,
+    bee_old_roll_bits: u32,
     /// `Goat.isLoweringHead` and `lowerHeadTick`.
     pub(crate) goat_lowering_head: bool,
     pub(crate) goat_lower_head_tick: i32,
@@ -85,6 +88,8 @@ impl Default for AnimalState {
         Self {
             wool: 0,
             eat_tick: 0,
+            bee_roll_bits: 0,
+            bee_old_roll_bits: 0,
             goat_lowering_head: false,
             goat_lower_head_tick: 0,
             golem_attack_tick: 0,
@@ -106,6 +111,28 @@ impl AnimalState {
     /// `Sheep.aiStep` on the client: the eating timer runs down.
     pub(crate) fn tick_sheep(&mut self) {
         self.eat_tick = (self.eat_tick - 1).max(0);
+    }
+
+    /// `Bee.updateRollAmount`: the roll grows by a fifth a tick while the bee
+    /// rolls and shrinks by about a quarter a tick when it stops.
+    pub(crate) fn tick_bee(&mut self, rolling: bool) {
+        let roll = f32::from_bits(self.bee_roll_bits);
+        self.bee_old_roll_bits = self.bee_roll_bits;
+        let next = if rolling {
+            (roll + 0.2).min(1.0)
+        } else {
+            (roll - 0.24).max(0.0)
+        };
+        self.bee_roll_bits = next.to_bits();
+    }
+
+    /// `Bee.getRollAmount`.
+    pub(crate) fn bee_roll_at(&self, partial: f32) -> f32 {
+        let (old, new) = (
+            f32::from_bits(self.bee_old_roll_bits),
+            f32::from_bits(self.bee_roll_bits),
+        );
+        old + partial * (new - old)
     }
 
     /// `Goat.handleEntityEvent`: whether the event was one of its own.

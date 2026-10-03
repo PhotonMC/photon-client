@@ -1456,6 +1456,51 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The silverfish's and the endermite's models, posed by the reference's own `setupAnim`, drawn. */
+    private static JsonObject segmentedModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.EntityModel<net.minecraft.client.renderer.entity.state.EntityRenderState> model =
+                id.startsWith("minecraft:silverfish")
+                    ? new net.minecraft.client.model.monster.silverfish.SilverfishModel(root)
+                    : new net.minecraft.client.model.monster.endermite.EndermiteModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.EntityRenderState();
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The bee's models, posed by the reference's own `BeeModel.setupAnim`, drawn. */
+    private static JsonObject beeModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.animal.bee.BeeModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.bee.BabyBeeModel(root)
+                : new net.minecraft.client.model.animal.bee.AdultBeeModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.BeeRenderState();
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.rollAmount = Oracle.f32(row, "roll_amount");
+            state.hasStinger = row.get("has_stinger").getAsBoolean();
+            state.isOnGround = row.get("on_ground").getAsBoolean();
+            state.isAngry = row.get("angry").getAsBoolean();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1922,6 +1967,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_FLAGS_ID", "bee-flags"},
+            {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_ANGER_END_TIME", "bee-anger-end"},
             {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
             {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_LEFT_HORN", "goat-left-horn"},
             {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_RIGHT_HORN", "goat-right-horn"},
@@ -2060,6 +2107,12 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("segmented_model")) {
+            return segmentedModel(request);
+        }
+        if (operation.equals("bee_model")) {
+            return beeModel(request);
         }
         if (operation.equals("rabbit_model")) {
             return rabbitModel(request);

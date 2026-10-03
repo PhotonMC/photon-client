@@ -632,6 +632,17 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "bee_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("flags")) {
+                            data.add(beeData("DATA_FLAGS_ID", (byte) event.get("flags").getAsInt()));
+                        }
+                        if (event.has("anger_end")) {
+                            data.add(beeData("DATA_ANGER_END_TIME", event.get("anger_end").getAsLong()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "rabbit_idle" -> {
                         // What the reference draws from an unseeded random source: fixed here.
                         var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
@@ -705,6 +716,14 @@ public final class MovementOracle {
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
                         }
+                        case "bee" -> {
+                            var bee = (net.minecraft.world.entity.animal.bee.Bee) entity;
+                            described.addProperty("roll_0.0", Oracle.bits(bee.getRollAmount(0.0F)));
+                            described.addProperty("roll_0.5", Oracle.bits(bee.getRollAmount(0.5F)));
+                            described.addProperty("stung", bee.hasStung());
+                            described.addProperty("nectar", bee.hasNectar());
+                            described.addProperty("angry", bee.isAngry());
+                        }
                         case "rabbit" -> {
                             var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
                             described.addProperty("hop_started", rabbit.hopAnimationState.isStarted());
@@ -742,6 +761,16 @@ public final class MovementOracle {
         entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    /** A bee's data value, built from the reference's own accessor. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> beeData(
+        final String field, final Object value) throws Exception {
+        var accessor = net.minecraft.world.entity.animal.bee.Bee.class.getDeclaredField(field);
+        accessor.setAccessible(true);
+        return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+            (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
     }
 
     /** A creeper's data value, built from the reference's own accessor. */

@@ -72,7 +72,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T31](T31-at-deve-ailesi.md) | At, eşek, katır, deve ve lama aileleri (T43b hazır; sığmazsa at ailesi / deve+lama diye böl) | L | T24 | açık |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
-| [T33b](T33b-goz-sarj-bocek-ari.md) | Gümüş balığı, endermite, arı | M | T33 | açık |
+| [T33b](T33b-goz-sarj-bocek-ari.md) | Gümüş balığı, endermite, arı | M | T33 | bitti |
 | [T33c](T33c-emissive-goz-katmani.md) | Emissive göz katmanı (örümcek, enderman) | S | T33, T34c | bitti (949699a3) |
 | [T33d](T33d-enerji-girdabi.md) | Enerji girdabı ve şarjlı creeper | M | T33c | açık |
 | [T34](T34-koylu-illager-golem.md) | Köylü, tüccar, illager, cadı, golemler ve enderman | L | T24 | bölündü (bc0ab848) |

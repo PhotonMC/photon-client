@@ -25,6 +25,8 @@ enum Pose {
     Creeper,
     /// `EndermanModel`.
     Enderman,
+    /// `SilverfishModel`, `EndermiteModel`: the segments' wave (true for the silverfish).
+    Segmented(bool),
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -37,7 +39,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 4] = [
+const MONSTERS: [Monster; 6] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -58,6 +60,20 @@ const MONSTERS: [Monster; 4] = [
         texture: "entity/creeper/creeper",
         pose: Pose::Creeper,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
+    Monster {
+        type_name: "minecraft:silverfish",
+        layer: "minecraft:silverfish#main",
+        texture: "entity/silverfish/silverfish",
+        pose: Pose::Segmented(true),
+        flip_degrees: 180.0,
+    },
+    Monster {
+        type_name: "minecraft:endermite",
+        layer: "minecraft:endermite#main",
+        texture: "entity/endermite/endermite",
+        pose: Pose::Segmented(false),
+        flip_degrees: 180.0,
     },
     Monster {
         type_name: "minecraft:enderman",
@@ -136,6 +152,9 @@ pub fn remote_monsters(
         }
         match monster.pose {
             Pose::Spider => model.setup_spider(&look),
+            Pose::Segmented(silverfish) => {
+                model.setup_segmented(entity.tick_count() as f32 + partial, silverfish);
+            }
             Pose::Enderman => model.setup_enderman(&EndermanState {
                 humanoid: PlayerRenderState {
                     head_y_rot: look.head_y_rot,
