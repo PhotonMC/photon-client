@@ -77,7 +77,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T32e](T32e-tilki.md) | Tilki | M | T32c | bitti (49f6fcc8) |
 | [T32f](T32f-panda.md) | Panda | M | T32c | bitti (3725df2a) |
 | [T32d](T32d-hoglin-ravager-strider.md) | Hoglin, zoglin, ravager, strider | M | T32 | bölündü (hoglin: 1230fe92) |
-| [T32g](T32g-ravager.md) | Ravager | M | T32d | bitti (HASH) |
+| [T32g](T32g-ravager.md) | Ravager | M | T32d | bitti (819fac6f) |
 | [T32h](T32h-strider.md) | Strider | M | T32d | açık |
 | [T32i](T32i-titreme.md) | Titreme: donmuş ve zombileşen mob (`isShaking`) | S | T32d | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
