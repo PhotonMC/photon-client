@@ -90,6 +90,25 @@ pub fn varint_value(value: &[u8]) -> Option<i32> {
     cursor.varint().ok()
 }
 
+/// `block_state` (`BlockItemStateProperties`): the property names and the
+/// values the stack gives them.
+pub fn block_state_properties(value: &[u8]) -> Option<Vec<(String, String)>> {
+    let mut cursor = Cursor { data: value };
+    let string = |cursor: &mut Cursor| -> Option<String> {
+        let length = cursor.count().ok()?;
+        let bytes = cursor.data.get(..length)?;
+        let text = String::from_utf8_lossy(bytes).into_owned();
+        cursor.skip(length).ok()?;
+        Some(text)
+    };
+    let mut properties = Vec::new();
+    for _ in 0..cursor.count().ok()? {
+        let name = string(&mut cursor)?;
+        properties.push((name, string(&mut cursor)?));
+    }
+    Some(properties)
+}
+
 /// `potion_contents`.
 pub fn potion_contents(value: &[u8]) -> Option<PotionContents> {
     let mut cursor = Cursor { data: value };

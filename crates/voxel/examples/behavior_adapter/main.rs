@@ -19999,6 +19999,80 @@ fn copper_golem_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `copper_golem_layers`: where the layers a copper golem carries things with put them, on the
+/// model as posed.
+fn copper_golem_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::held_item::{
+        copper_golem_antenna_pose, copper_golem_hand_pose, copper_golem_head_pose,
+    };
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
+    use voxel_render::player_model::Arm;
+    let layer = voxel_data::entity_model::layer("minecraft:copper_golem#main").ok_or("no layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_copper_golem(&CopperGolemModelState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            // The layers hold something in both hands: the walk with arms raised.
+            holds_item: true,
+            animations: Default::default(),
+        });
+        let root = model.root();
+        fn part<'a>(
+            name: &str,
+            of: &'a voxel_render::player_model::Part,
+        ) -> Result<&'a voxel_render::player_model::Part, String> {
+            of.children()
+                .iter()
+                .find(|part| part.name() == name)
+                .ok_or(format!("no {name}"))
+        }
+        let body = part("body", root)?;
+        let (head, right, left) = (
+            part("head", body)?,
+            part("right_arm", body)?,
+            part("left_arm", body)?,
+        );
+        let base = Pose::default();
+        let idle = row["action"].as_str().ok_or("action")? == "IDLE";
+        // A stack's own display transform is none: its model is moved to its corner.
+        let corner = |mut pose: Pose| {
+            pose.translate(-0.5, -0.5, -0.5);
+            matrix_bits(&pose)
+        };
+        let poses: Vec<Vec<String>> = match row["layer"].as_str().ok_or("layer")? {
+            "hands" => [(Arm::Right, right), (Arm::Left, left)]
+                .into_iter()
+                .map(|(side, arm)| {
+                    corner(copper_golem_hand_pose(&base, (root, body, arm), side, idle))
+                })
+                .collect(),
+            "head" => vec![corner(copper_golem_head_pose(&base, (root, body, head)))],
+            _ => vec![matrix_bits(&copper_golem_antenna_pose(
+                &base,
+                (root, body, head),
+            ))],
+        };
+        out.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `animation_definitions`: every keyframe animation definition, from the
 /// generated table.
 fn animation_definitions_result() -> Value {
@@ -21460,6 +21534,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "polar_bear_model" => return polar_bear_model_result(request),
         "hoglin_model" => return hoglin_model_result(request),
         "copper_golem_model" => return copper_golem_model_result(request),
+        "copper_golem_layers" => return copper_golem_layers_result(request),
         "fox_model" => return fox_model_result(request),
         "panda_model" => return panda_model_result(request),
         "ravager_model" => return ravager_model_result(request),

@@ -24,4 +24,6 @@ Gölge, sesler, heykel dönüşümü.
 `docs/client-copper-golem-parity-conformance.md` içindeki sapma satırı güncellenir.
 
 ## Devir notu
-(boş)
+- Yapıldı: `copper_golem_{hand,head,antenna}_pose` (voxel-render), joml'a `Matrix4::{translation, rotate_around}`, `Matrix3::mul`, `Pose::mul_matrix`; `copper_golems.rs` elleri, kafa eşyasını ve antendeki bloğu (`BlockItem` + `block_state` bileşeni) `held` listesine toplar; `item_components::block_state_properties`. Kayıt: `docs/client-copper-golem-parity-conformance.md`.
+- Oracle: `entity/copper-golem-layers` 27 satır (gerçek `ItemInHandLayer`, `CustomHeadLayer`, `BlockDecorationLayer`); anten matrisi `rotateAround` dâhil bit bit eşit.
+- Sapma: parlayan golemin blok dış hattı yok; canlı gözlem yapılmadı.

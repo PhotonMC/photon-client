@@ -83,6 +83,13 @@ impl Values {
             .unwrap_or_default()
     }
 
+    /// `block_state`: the properties a block item sets on its block.
+    pub fn block_state_properties(&self) -> Vec<(String, String)> {
+        self.raw(ids::BLOCK_STATE)
+            .and_then(item_components::block_state_properties)
+            .unwrap_or_default()
+    }
+
     /// `potion_contents`.
     pub fn potion_contents(&self) -> Option<PotionContents> {
         item_components::potion_contents(self.raw(ids::POTION_CONTENTS)?)

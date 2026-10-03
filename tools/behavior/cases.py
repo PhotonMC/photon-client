@@ -14665,6 +14665,7 @@ def entity_cases():
     yield from entity_strider_cases()
     yield from entity_shaking_cases()
     yield from entity_copper_golem_cases()
+    yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15427,6 +15428,27 @@ def entity_copper_golem_cases():
     ]
     yield {"case_id": "entity/copper-golem-model", "family": "entity",
            "operation": "copper_golem_model", "rows": rows}
+
+
+def entity_copper_golem_layer_cases():
+    """Where the layers that carry things on a copper golem put them, from the reference's own
+    `ItemInHandLayer`, `CustomHeadLayer` and `BlockDecorationLayer` on the model as posed, idle and
+    at a chest (the hand's transform differs), for the look and walk."""
+    rows = []
+    for layer in ("hands", "head", "antenna"):
+        for action in ("IDLE", "GETTING_ITEM", "DROPPING_NO_ITEM"):
+            for label, look, walk in (
+                ("standing", (0.0, 0.0), (0.0, 0.0)),
+                ("looking", (-35.5, 48.0), (0.0, 0.0)),
+                ("walking", (12.0, -8.0), (7.3, 0.6)),
+            ):
+                rows.append({
+                    "label": f"{layer}-{action.lower()}-{label}", "layer": layer, "action": action,
+                    "head_y_rot": float_bits(look[0]), "x_rot": float_bits(look[1]),
+                    "walk_position": float_bits(walk[0]), "walk_speed": float_bits(walk[1]),
+                    "age_in_ticks": float_bits(21.5)})
+    yield {"case_id": "entity/copper-golem-layers", "family": "entity",
+           "operation": "copper_golem_layers", "rows": rows}
 
 
 def entity_insect_cases():

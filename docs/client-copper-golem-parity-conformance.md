@@ -1,4 +1,4 @@
-# T34e — Bakır golem — [client-parity]
+# T34e, T34f — Bakır golem — [client-parity]
 
 Bu kayıt, bakır golemin modelinin (`CopperGolemModel.setupAnim`: bakış, yürüyüş, eşya tutarken
 kolların kalkması, boşta baş dönüşü ve dört sandık animasyonu), istemci durumunun (`CopperGolem`
@@ -25,17 +25,29 @@ gözler) birim koduyla bağlanır, canlı gözlemi `server-conformance`'tır.
   golemin aralığı 120, sesi yoktur): boşta beklemenin çekilişi bu yüzden tohumdan yalnız bu çekilişlerle
   birlikte tahmin edilir; Rust aynı sırayı izler.
 
+- `ItemInHandLayer` + `CopperGolemModel.translateToHand`: kökten gövdeye ve koldan; `IDLE`'da el sağda
+  `-90°`, solda `+90°` döner ve `0,125` öne gider, aksi hâlde `0,55` ölçeklenir ve `(-0,125; 0,3125;
+  -0,1875)` kayar; sonra katmanın ortak `-90° x`, `180° y` ve avuç kaydırması. `CustomHeadLayer`
+  `translateToHead`'i (gövde, baş, `0,125` yukarı, `1,0625` büyük) ve ortak baş dönüşümünü kullanır.
+  `BlockDecorationLayer` anten dönüşümünden (baş, `-1,75`) sonra birim küpün alt ortasını anten
+  ortasına taşıyan matrisi (`translation(-0,5; 0; -0,5)` sonra `(0,5; 0,5; 0,5)` çevresinde `180° z`)
+  çarpar; blok `BlockItem` eşyasından gelir (eyer yuvası), varsayılan durum üstüne
+  `BlockItemStateProperties` uygulanır (blokta olmayan öz nitelik ve tutamayacağı değer atlanır).
+
 ## Kapsam
 
 `entity/copper-golem-model` 45 satır (bakış, yürüyüş, eşyalı yürüyüş ve kol sınırı, boşta yedi yaş,
 dört sandık animasyonu yedi yaşta, ikisi birleşik); `living-entity-animations`'a 19 gerçek `CopperGolem`
 tiki satırı (boşta başlangıcı ve ikinci dönüş, dört sandık eylemi ve geçişleri, `NoAI`, iki hava
-aşaması); `entity/data-ids`'a iki satır (hava durumu 16, durum 17, serileştirici kimlikleriyle).
+aşaması); `entity/data-ids`'a iki satır (hava durumu 16, durum 17, serileştirici kimlikleriyle);
+`entity/copper-golem-layers` 27 satır (eller, baş, anten × üç eylem × üç duruş: gerçek katman sınıflarının
+yakalayıcı toplayıcıya gönderdiği matris, anten matrisi dâhil `rotateAround` bit bit); antendeki blok
+durumu birim testle.
 
 ## Sapmalar (açık)
 
-- Eldeki eşya, antenin üstündeki blok ve kafa eşyası çizilmez (T34f); eşya tutmak yalnız kol duruşunu ve
-  yürüyüş animasyonunu etkiler.
+- Antendeki bloğun dış hat rengi (parlayan golem) çizilmez; blok katmanı, eşya yolundaki öteki blok
+  katmanları gibi, yalnız model çizer.
 - Boşta bekleme tohumsuz kaynaktan çıkar (referans da tohumlamaz); karşılaştırmada tohum sabitlenir
   (`fix_copper_golem_seed`), üretimde saat.
 - Baş dönüş sesi, adım ve hasar sesleri yok; heykele dönüşme ve düğme/mum etkileşimleri kapsam dışı.

@@ -1459,6 +1459,77 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the layers a copper golem carries things with put them, from the reference's own layer
+     * classes on the model as posed: the matrix each is submitted with, from an identity entity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject copperGolemLayers(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var poses = new JsonArray();
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitItem") || method.getName().equals("submitBlockModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var model = new net.minecraft.client.model.animal.golem.CopperGolemModel(
+                bakedLayer("minecraft:copper_golem#main"));
+            var state = new net.minecraft.client.renderer.entity.state.CopperGolemRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.copperGolemState = net.minecraft.world.entity.animal.golem.CopperGolemState.valueOf(
+                row.get("action").getAsString());
+            state.rightHandItemState.newLayer();
+            state.leftHandItemState.newLayer();
+            state.headItem.newLayer();
+            fillBlock(state.blockOnAntenna);
+            model.setupAnim(state);
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            String layer = row.get("layer").getAsString();
+            if (layer.equals("hands")) {
+                new net.minecraft.client.renderer.entity.layers.ItemInHandLayer(parent)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            } else if (layer.equals("head")) {
+                new net.minecraft.client.renderer.entity.layers.CustomHeadLayer(parent, null, null,
+                    net.minecraft.client.renderer.entity.layers.CustomHeadLayer.Transforms.DEFAULT)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            } else {
+                new net.minecraft.client.renderer.entity.layers.BlockDecorationLayer(parent,
+                    (java.util.function.Function<net.minecraft.client.renderer.entity.state.CopperGolemRenderState,
+                        net.minecraft.client.renderer.block.BlockModelRenderState>) s -> s.blockOnAntenna,
+                    (java.util.function.Consumer<com.mojang.blaze3d.vertex.PoseStack>) model::applyBlockOnAntennaTransform)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The copper golem's model posed by the reference's own `CopperGolemModel.setupAnim`, drawn. */
     private static JsonObject copperGolemModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -2912,6 +2983,9 @@ public final class EntityOracle {
         }
         if (operation.equals("bee_model")) {
             return beeModel(request);
+        }
+        if (operation.equals("copper_golem_layers")) {
+            return copperGolemLayers(request);
         }
         if (operation.equals("copper_golem_model")) {
             return copperGolemModel(request);

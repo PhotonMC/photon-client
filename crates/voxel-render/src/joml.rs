@@ -306,6 +306,53 @@ impl Matrix4 {
         }
     }
 
+    /// `Matrix4f.translation(x, y, z)`.
+    pub fn translation(x: f32, y: f32, z: f32) -> Self {
+        let mut matrix = Self::identity();
+        matrix.m[3][0] = x;
+        matrix.m[3][1] = y;
+        matrix.m[3][2] = z;
+        matrix.properties = AFFINE | TRANSLATION | ORTHONORMAL;
+        matrix
+    }
+
+    /// `Matrix4f.rotateAround(quat, ox, oy, oz)` for an affine matrix
+    /// (`rotateAroundAffine`): the rotation about the point `(ox, oy, oz)`.
+    pub fn rotate_around(&mut self, quat: &Quaternion, (ox, oy, oz): (f32, f32, f32)) {
+        assert!(
+            self.properties & AFFINE != 0 && self.properties & IDENTITY == 0,
+            "only affine matrices are rotated about a point"
+        );
+        let r = quat.expand();
+        let m = self.m;
+        let mut out = [[0.0_f32; 4]; 4];
+        for (column, (a, b, c)) in [(r[6], r[7], r[8]), (r[0], r[1], r[2]), (r[3], r[4], r[5])]
+            .into_iter()
+            .enumerate()
+        {
+            // The third column is written first, then the first, then the second.
+            let target = [2, 0, 1][column];
+            for row in 0..3 {
+                out[target][row] = fma(m[0][row], a, fma(m[1][row], b, m[2][row] * c));
+            }
+        }
+        for row in 0..3 {
+            let moved = fma(
+                m[0][row],
+                ox,
+                fma(m[1][row], oy, fma(m[2][row], oz, m[3][row])),
+            );
+            out[3][row] = fma(
+                -out[0][row],
+                ox,
+                fma(-out[1][row], oy, fma(-out[2][row], oz, moved)),
+            );
+        }
+        out[3][3] = 1.0;
+        self.m = out;
+        self.properties &= !(PERSPECTIVE | IDENTITY | TRANSLATION);
+    }
+
     /// `Matrix4f.invertAffine()`.
     pub fn invert_affine(&self) -> Self {
         let m = &self.m;
@@ -493,6 +540,27 @@ impl Default for Matrix3 {
 }
 
 impl Matrix3 {
+    /// `new Matrix3f(Matrix4fc)`: the upper left of a 4x4.
+    pub fn from_matrix4(matrix: &Matrix4) -> Self {
+        Self {
+            m: std::array::from_fn(|column| std::array::from_fn(|row| matrix.m[column][row])),
+        }
+    }
+
+    /// `Matrix3f.mul(right)`.
+    pub fn mul(&mut self, right: &Self) {
+        let (l, r) = (self.m, &right.m);
+        for column in 0..3 {
+            for row in 0..3 {
+                self.m[column][row] = fma(
+                    l[0][row],
+                    r[column][0],
+                    fma(l[1][row], r[column][1], l[2][row] * r[column][2]),
+                );
+            }
+        }
+    }
+
     /// `Matrix3f.rotate(Quaternionfc)`.
     pub fn rotate(&mut self, quat: &Quaternion) {
         // The 3x3 writes the second column's first entry as `dxy - dzw`,
@@ -544,6 +612,12 @@ pub struct Pose {
 impl Pose {
     pub fn translate(&mut self, x: f32, y: f32, z: f32) {
         self.pose.translate(x, y, z);
+    }
+
+    /// `PoseStack.mulPose(Matrix4fc)` for an orthonormal, affine matrix.
+    pub fn mul_matrix(&mut self, matrix: &Matrix4) {
+        self.pose = self.pose.mul(matrix);
+        self.normal.mul(&Matrix3::from_matrix4(matrix));
     }
 
     pub fn rotate(&mut self, quat: &Quaternion) {

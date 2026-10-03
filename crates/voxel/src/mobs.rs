@@ -560,7 +560,10 @@ fn remote_families(
         view,
     ));
     vertices.extend(crate::copper_golems::remote_copper_golems(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::armor_stands::remote_armor_stands(
         session,

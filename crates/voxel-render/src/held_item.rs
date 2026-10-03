@@ -1,7 +1,7 @@
 //! `ItemInHandLayer`: where a stack held in a hand is drawn, from the arm of
 //! the posed model.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Matrix4, Pose, Quaternion};
 use crate::player_model::{Arm, Part};
 
 /// `ItemInHandLayer.submitArmWithItem` up to the item's own display
@@ -24,6 +24,13 @@ pub fn hand_pose(
     let left = side == Arm::Left;
     root.translate_and_rotate(&mut pose);
     arm.translate_and_rotate_shifted(&mut pose, if left { -hand_shift } else { hand_shift });
+    in_hand(&mut pose, left, baby);
+    pose
+}
+
+/// What `ItemInHandLayer.submitArmWithItem` does after the model has moved the
+/// pose to the hand: lay the item along the arm and into the palm.
+fn in_hand(pose: &mut Pose, left: bool, baby: bool) {
     pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
         -90.0,
     )));
@@ -40,6 +47,68 @@ pub fn hand_pose(
         y / 16.0,
         z / 16.0,
     );
+}
+
+/// `CopperGolemModel.translateToHand` and the item layer after it: the body
+/// and the arm, then, while the golem idles, the hand turned to face along
+/// the arm and moved forward; otherwise the item shrunk and moved up and in.
+pub fn copper_golem_hand_pose(
+    base: &Pose,
+    (root, body, arm): (&Part, &Part, &Part),
+    side: Arm,
+    idle: bool,
+) -> Pose {
+    let mut pose = *base;
+    let left = side == Arm::Left;
+    root.translate_and_rotate(&mut pose);
+    body.translate_and_rotate(&mut pose);
+    arm.translate_and_rotate(&mut pose);
+    if idle {
+        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+            if left { 90.0 } else { -90.0 },
+        )));
+        pose.translate(0.0, 0.0, 0.125);
+    } else {
+        pose.scale(0.55, 0.55, 0.55);
+        pose.translate(-0.125, 0.3125, -0.1875);
+    }
+    in_hand(&mut pose, left, false);
+    pose
+}
+
+/// `CopperGolemModel.translateToHead` and the head layer after it (the
+/// default transforms): the head, a little up and larger, then the item set
+/// on top of it.
+pub fn copper_golem_head_pose(base: &Pose, (root, body, head): (&Part, &Part, &Part)) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    body.translate_and_rotate(&mut pose);
+    head.translate_and_rotate(&mut pose);
+    pose.translate(0.0, 0.125, 0.0);
+    pose.scale(1.0625, 1.0625, 1.0625);
+    pose.translate(0.0, -0.25, 0.0);
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        180.0,
+    )));
+    pose.scale(0.625, -0.625, -0.625);
+    pose
+}
+
+/// `BlockDecorationLayer` on the copper golem's antenna
+/// (`applyBlockOnAntennaTransform`, then the unit cube's bottom centre moved
+/// to the antenna's centre, turned over).
+pub fn copper_golem_antenna_pose(base: &Pose, (root, body, head): (&Part, &Part, &Part)) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    body.translate_and_rotate(&mut pose);
+    head.translate_and_rotate(&mut pose);
+    pose.translate(0.0, -1.75, 0.0);
+    let mut cube = Matrix4::translation(-0.5, 0.0, -0.5);
+    cube.rotate_around(
+        &Quaternion::rotation_z(Quaternion::degrees_to_radians(180.0)),
+        (0.5, 0.5, 0.5),
+    );
+    pose.mul_matrix(&cube);
     pose
 }
 
