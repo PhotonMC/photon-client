@@ -203,6 +203,21 @@ pub struct EquineState {
     pub has_chest: bool,
 }
 
+/// What a camel's models are posed from (`CamelRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CamelState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    /// The dash cooldown left, which tips the head down while it runs.
+    pub jump_cooldown: f32,
+    pub sit: voxel_world::animation_state::AnimationState,
+    pub sit_pose: voxel_world::animation_state::AnimationState,
+    pub sit_up: voxel_world::animation_state::AnimationState,
+    pub idle: voxel_world::animation_state::AnimationState,
+    pub dash: voxel_world::animation_state::AnimationState,
+    pub baby: bool,
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -1073,6 +1088,85 @@ impl MobModel {
                 if let Some(chest) = root.child_mut("body").and_then(|body| body.child_mut(name)) {
                     chest.visible = state.has_chest;
                 }
+            }
+        }
+    }
+
+    /// `CamelModel.setupAnim`: the head follows the look within limits (and
+    /// dips while the dash cools down), then the walk and each animation state
+    /// that has started.
+    pub fn setup_camel(&mut self, state: &CamelState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let y_rot = state.quadruped.head_y_rot.clamp(-30.0, 30.0);
+        let mut x_rot = state.quadruped.x_rot.clamp(-25.0, 45.0);
+        if state.jump_cooldown > 0.0 {
+            let head_rotation = 45.0 * state.jump_cooldown / 55.0;
+            x_rot = (x_rot + head_rotation).clamp(-25.0, 70.0);
+        }
+        if let Some(head) = self
+            .root
+            .child_mut("body")
+            .and_then(|body| body.child_mut("head"))
+        {
+            head.y_rot = y_rot * degrees;
+            head.x_rot = x_rot * degrees;
+        }
+        let prefix = if state.baby {
+            "CamelBaby.CAMEL_BABY"
+        } else {
+            "Camel.CAMEL"
+        };
+        let walk = voxel_data::animation::definition(&format!("{prefix}_WALK"));
+        if let Some(definition) = walk {
+            // `applyWalk(pos, speed, 2.0, 2.5)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 2.0) as i64;
+            let scale = (state.quadruped.walk_speed * 2.5).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        for (name, running) in [
+            ("SIT", state.sit),
+            ("SIT_POSE", state.sit_pose),
+            ("STANDUP", state.sit_up),
+            ("IDLE", state.idle),
+            ("DASH", state.dash),
+        ] {
+            if !running.is_started() {
+                continue;
+            }
+            if let Some(definition) = voxel_data::animation::definition(&format!("{prefix}_{name}"))
+            {
+                let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
+                self.animate(definition, millis, 1.0);
+            }
+        }
+    }
+
+    /// `LlamaModel.setupAnim` (and the baby's): the head follows the look, the
+    /// legs swing in diagonal pairs, and the chests show on a loaded llama.
+    pub fn setup_llama(&mut self, state: &QuadrupedState, has_chest: bool) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        if let Some(head) = self.root.child_mut("head") {
+            head.x_rot = state.x_rot * degrees;
+            head.y_rot = state.head_y_rot * degrees;
+        }
+        let (position, speed) = (state.walk_position, state.walk_speed);
+        for (name, x_rot) in [
+            ("right_hind_leg", cos(position * 0.6662) * 1.4 * speed),
+            ("left_hind_leg", cos(position * 0.6662 + pi) * 1.4 * speed),
+            ("right_front_leg", cos(position * 0.6662 + pi) * 1.4 * speed),
+            ("left_front_leg", cos(position * 0.6662) * 1.4 * speed),
+        ] {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.x_rot = x_rot;
+            }
+        }
+        for name in ["right_chest", "left_chest"] {
+            if let Some(chest) = self.root.child_mut(name) {
+                chest.visible = has_chest;
             }
         }
     }

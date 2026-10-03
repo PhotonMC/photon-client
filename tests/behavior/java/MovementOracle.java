@@ -632,6 +632,29 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "game_time" -> level.setTimeFromServer(event.get("time").getAsLong());
+                    case "camel_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var camel = net.minecraft.world.entity.animal.camel.Camel.class;
+                        if (event.has("dash")) {
+                            data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                                net.minecraft.world.entity.animal.camel.Camel.DASH, event.get("dash").getAsBoolean()));
+                        }
+                        if (event.has("last_pose")) {
+                            data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                                net.minecraft.world.entity.animal.camel.Camel.LAST_POSE_CHANGE_TICK,
+                                event.get("last_pose").getAsLong()));
+                        }
+                        if (event.has("pose")) {
+                            var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
+                            pose.setAccessible(true);
+                            data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                                (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
+                                net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "horse_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var flags = net.minecraft.world.entity.animal.equine.AbstractHorse.class.getDeclaredField("DATA_ID_FLAGS");
@@ -731,6 +754,19 @@ public final class MovementOracle {
                             described.addProperty("flap_speed", Oracle.bits(chicken.flapSpeed));
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
+                        }
+                        case "camel" -> {
+                            var camel = (net.minecraft.world.entity.animal.camel.Camel) entity;
+                            var states = new net.minecraft.world.entity.AnimationState[] {
+                                camel.sitAnimationState, camel.sitPoseAnimationState, camel.sitUpAnimationState,
+                                camel.idleAnimationState, camel.dashAnimationState};
+                            String[] names = {"sit", "sit_pose", "sit_up", "idle", "dash"};
+                            for (int i = 0; i < names.length; i++) {
+                                described.addProperty(names[i] + "_started", states[i].isStarted());
+                                described.addProperty(names[i] + "_millis",
+                                    states[i].isStarted() ? states[i].getTimeInMillis(camel.tickCount) : 0L);
+                            }
+                            described.addProperty("dashing", camel.isDashing());
                         }
                         case "horse" -> {
                             var horse = (net.minecraft.world.entity.animal.equine.AbstractHorse) entity;

@@ -1620,6 +1620,64 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The camel's model posed by the reference's own `CamelModel.setupAnim` with its animation states, drawn. */
+    private static JsonObject camelModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.animal.camel.CamelModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.camel.BabyCamelModel(root)
+                : new net.minecraft.client.model.animal.camel.AdultCamelModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.CamelRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.jumpCooldown = Oracle.f32(row, "jump_cooldown");
+            var states = new net.minecraft.world.entity.AnimationState[] {
+                state.sitAnimationState, state.sitPoseAnimationState, state.sitUpAnimationState,
+                state.idleAnimationState, state.dashAnimationState};
+            String[] names = {"sit", "sit_pose", "sit_up", "idle", "dash"};
+            for (int i = 0; i < names.length; i++) {
+                if (row.has(names[i])) {
+                    states[i].start(row.get(names[i]).getAsInt());
+                }
+            }
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The llama's model from the layer table, posed by the reference's own `LlamaModel.setupAnim`, drawn. */
+    private static JsonObject llamaModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.llama.BabyLlamaModel(root)
+                : new net.minecraft.client.model.animal.llama.LlamaModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.LlamaRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.hasChest = row.get("has_chest").getAsBoolean();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2089,6 +2147,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.equine.AbstractHorse.class, "DATA_ID_FLAGS", "horse-flags"},
             {net.minecraft.world.entity.animal.equine.Horse.class, "DATA_ID_TYPE_VARIANT", "horse-variant"},
             {net.minecraft.world.entity.animal.equine.AbstractChestedHorse.class, "DATA_ID_CHEST", "horse-chest"},
+            {net.minecraft.world.entity.animal.equine.Llama.class, "DATA_VARIANT_ID", "llama-variant"},
+            {net.minecraft.world.entity.animal.camel.Camel.class, "DASH", "camel-dash"},
+            {net.minecraft.world.entity.animal.camel.Camel.class, "LAST_POSE_CHANGE_TICK", "camel-last-pose"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_FLAGS_ID", "bee-flags"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_ANGER_END_TIME", "bee-anger-end"},
             {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
@@ -2230,6 +2291,12 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("llama_model")) {
+            return llamaModel(request);
+        }
+        if (operation.equals("camel_model")) {
+            return camelModel(request);
         }
         if (operation.equals("equine_model")) {
             return equineModel(request);

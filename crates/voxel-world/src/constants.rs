@@ -179,6 +179,13 @@ pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 pub const HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const HORSE_VARIANT_DATA_ID: u8 = 19;
 pub const HORSE_CHEST_DATA_ID: u8 = 19;
+/// Where a llama's variant (an int: creamy 0, white 1, brown 2, gray 3) sits
+/// among its data.
+pub const LLAMA_VARIANT_DATA_ID: u8 = 21;
+/// Where a camel's dash flag (a boolean) and the tick its pose last changed
+/// (a long, negative while it sits) sit among its data.
+pub const CAMEL_DASH_DATA_ID: u8 = 19;
+pub const CAMEL_LAST_POSE_CHANGE_DATA_ID: u8 = 20;
 /// Where a bee's flags (a byte: rolling, stung, nectar) and the time its anger
 /// ends (a long) sit among its data, and the serializer of the latter.
 pub const BEE_FLAGS_DATA_ID: u8 = 18;

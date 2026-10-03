@@ -963,7 +963,28 @@ impl ClientEntity {
         self.old_y_head_rot_bits = head_old.to_bits();
         // `calculateEntityAnimation`: a rider or a dead entity stands still.
         if self.vehicle_id.is_none() && self.alive {
-            self.walk.follow(moved.0.hypot(moved.1));
+            let camel = matches!(
+                voxel_data::entity_type::name(self.type_id),
+                Some("minecraft:camel" | "minecraft:camel_husk")
+            );
+            if camel {
+                // `Camel.updateWalkAnimation`: only a standing camel that is
+                // not dashing walks, and its stride is quicker to settle.
+                let walking = self.pose == ClientEntityPose::Standing
+                    && !self
+                        .horse
+                        .as_ref()
+                        .is_some_and(|horse| horse.camel.is_dash_animation_started());
+                let target = if walking {
+                    ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
+                } else {
+                    0.0
+                };
+                self.walk
+                    .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
+            } else {
+                self.walk.follow(moved.0.hypot(moved.1));
+            }
         } else {
             self.walk.stop();
         }
@@ -1835,6 +1856,12 @@ impl ClientEntity {
         )
     }
 
+    /// `Llama.getVariant`'s id, kept within the four variants (an id past the
+    /// last takes the last).
+    pub fn llama_variant(&self) -> i32 {
+        self.living.horse_variant.clamp(0, 3)
+    }
+
     /// `AbstractChestedHorse.hasChest`.
     pub fn horse_has_chest(&self) -> bool {
         self.living.horse_chest
@@ -2022,8 +2049,17 @@ impl ClientEntity {
         }
     }
 
+    /// What a living entity does each tick besides moving: hurt and death,
+    /// its pose, its swing, and what its kind does of its own.
+    pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
+        self.tick_hurt_and_death(tick_death);
+        self.tick_living_pose(kind);
+        self.tick_swing(kind);
+        self.tick_animal(game_time);
+    }
+
     /// What a sheep or a chicken does of its own each tick (`aiStep`).
-    pub(crate) fn tick_animal(&mut self) {
+    pub(crate) fn tick_animal(&mut self, game_time: u64) {
         match voxel_data::entity_type::name(self.type_id) {
             Some("minecraft:sheep") => self.living.animal.tick_sheep(),
             Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
@@ -2045,10 +2081,22 @@ impl ClientEntity {
                 | "minecraft:camel"
                 | "minecraft:camel_husk",
             ) => {
-                let alive = self.alive;
-                self.horse
-                    .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()))
-                    .tick(alive);
+                let (alive, camel) = (
+                    self.alive,
+                    matches!(
+                        voxel_data::entity_type::name(self.type_id),
+                        Some("minecraft:camel" | "minecraft:camel_husk")
+                    ),
+                );
+                let (tick_count, on_ground, passenger) =
+                    (self.tick_count, self.on_ground, self.vehicle_id.is_some());
+                let horse = self
+                    .horse
+                    .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+                horse.tick(alive);
+                if camel {
+                    horse.tick_camel((tick_count, game_time as i64), (on_ground, passenger));
+                }
             }
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());

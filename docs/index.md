@@ -97,6 +97,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T43 — `Animate` paketi, kol sallaması ve `EntityEvent` durumları — client-parity](client-animate-swing-parity-conformance.md)
 - [T41b — Zırh katmanı (insansılar) — client-parity](client-armor-parity-conformance.md)
 - [T40 — Zırh askısı — client-parity](client-armor-stand-parity-conformance.md)
+- [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)
 - [T33d — Enerji girdabı ve şarjlı creeper — client-parity](client-energy-swirl-parity-conformance.md)
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
 - [T46 — Varlık öznitelikleri — client-parity](client-entity-attributes-parity-conformance.md)

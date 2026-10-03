@@ -14375,6 +14375,29 @@ def movement_item_cases():
                    {"name": "minecraft:flying_speed", "base": float_bits(3.0, "f64"), "modifiers": []},
                    {"name": "minecraft:max_health", "base": float_bits(12.0, "f64"), "modifiers": []}]}],
                extras=["attributes"]),
+        living("camel-quiet", "camel", 100, [{"tick": 0, "type": "game_time", "time": 1000},
+                                              {"tick": 0, "type": "seed", "seed": 5}], extras=["camel"]),
+        living("camel-sits", "camel", 110, [{"tick": 0, "type": "game_time", "time": 1000},
+                                             {"tick": 0, "type": "seed", "seed": 5},
+                                             {"tick": 3, "type": "camel_data", "last_pose": -990, "pose": "SITTING"},
+                                             {"tick": 50, "type": "game_time", "time": 1050}],
+               extras=["camel"]),
+        living("camel-stands-up", "camel", 110, [{"tick": 0, "type": "game_time", "time": 1100},
+                                                  {"tick": 0, "type": "seed", "seed": 5},
+                                                  {"tick": 0, "type": "camel_data", "last_pose": -1000, "pose": "SITTING"},
+                                                  {"tick": 60, "type": "game_time", "time": 1160},
+                                                  {"tick": 60, "type": "camel_data", "last_pose": 1160, "pose": "STANDING"}],
+               extras=["camel"]),
+        living("camel-dashes", "camel", 40, [{"tick": 0, "type": "game_time", "time": 1000},
+                                              {"tick": 0, "type": "seed", "seed": 5},
+                                              {"tick": 2, "type": "camel_data", "dash": True}],
+               extras=["camel"]),
+        living("camel-dashes-until-it-lands", "camel", 40,
+               [{"tick": 0, "type": "game_time", "time": 1000}, {"tick": 0, "type": "seed", "seed": 5},
+                {"tick": 2, "type": "camel_data", "dash": True},
+                {"tick": 10, "type": "move", "xa": 0, "ya": 0, "za": 0, "on_ground": True},
+                {"tick": 20, "type": "camel_data", "dash": True}],
+               extras=["camel"]),
         living("horse-quiet", "horse", 8, [{"tick": 0, "type": "seed", "seed": 11}], extras=["horse"]),
         living("horse-grazes", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
                                               {"tick": 2, "type": "horse_data", "flags": 16}],
@@ -14487,6 +14510,8 @@ def entity_cases():
     yield from entity_rabbit_cases()
     yield from entity_insect_cases()
     yield from entity_equine_cases()
+    yield from entity_camel_cases()
+    yield from entity_llama_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15279,6 +15304,58 @@ def entity_equine_cases():
             pose("rearing-and-grazing", layer, stand=0.5, eat=0.5, feeding=0.7, age=50.0),
         ]
     yield {"case_id": "entity/equine-model", "family": "entity", "operation": "equine_model",
+           "rows": rows}
+
+
+def entity_camel_cases():
+    """The camel, grown and baby, posed by the reference's own `CamelModel.setupAnim`: the head
+    within its limits, dipping while the dash cools down, the walk and each animation state; and
+    the camel's own client tick through the pose, dash and last-pose data and the game time."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=0.0,
+             cooldown=0.0, **started):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "age_in_ticks": float_bits(age),
+                "jump_cooldown": float_bits(cooldown), **started}
+
+    rows = []
+    for layer in ("minecraft:camel#main", "minecraft:camel_baby#main"):
+        rows += [
+            pose("standing", layer, head_y_rot=-50.0, x_rot=60.0, age=3.25),
+            pose("looking", layer, head_y_rot=12.0, x_rot=-40.0, age=3.25),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0),
+            pose("walking-fast", layer, walk_position=21.6, walk_speed=1.0, age=63.0),
+            pose("dash-cooldown", layer, x_rot=10.0, cooldown=30.0, age=9.0),
+            pose("dash-cooldown-long", layer, x_rot=60.0, cooldown=55.0, age=9.0),
+            pose("sitting-down", layer, age=30.0, sit=10),
+            pose("sitting", layer, age=130.0, sit_pose=10, walk_position=3.0, walk_speed=0.4),
+            pose("standing-up", layer, age=45.0, sit_up=20),
+            pose("idle", layer, age=77.5, idle=30, head_y_rot=20.0),
+            pose("dashing", layer, age=33.0, dash=12, walk_position=4.0, walk_speed=0.9),
+            pose("dashing-and-idle", layer, age=61.25, dash=12, idle=44),
+        ]
+    yield {"case_id": "entity/camel-model", "family": "entity", "operation": "camel_model",
+           "rows": rows}
+
+
+def entity_llama_cases():
+    """The llama, grown and baby, posed by the reference's own `LlamaModel.setupAnim`: the head, the
+    diagonal stride, the chests."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, chest=False):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "has_chest": chest}
+
+    rows = []
+    for layer in ("minecraft:llama#main", "minecraft:llama_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("walking-fast-with-a-chest", layer, walk_position=21.6, walk_speed=1.0, chest=True),
+            pose("chest", layer, head_y_rot=12.0, x_rot=-8.0, chest=True),
+        ]
+    yield {"case_id": "entity/llama-model", "family": "entity", "operation": "llama_model",
            "rows": rows}
 
 

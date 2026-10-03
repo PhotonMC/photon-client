@@ -1273,6 +1273,11 @@ impl ClientWorld {
         self.game_time
     }
 
+    /// `ClientLevel.setTimeFromServer`: the game time the server sent.
+    pub fn set_game_time(&mut self, game_time: u64) {
+        self.game_time = game_time;
+    }
+
     pub fn tick(&mut self) {
         self.world_border.tick();
         self.game_time = self.game_time.wrapping_add(1);
@@ -1609,6 +1614,7 @@ impl ClientWorld {
             .entities
             .get(&entity_id)
             .is_some_and(|entity| self.should_tick_death(entity));
+        let game_time = self.game_time;
         {
             let entity = self
                 .entities
@@ -1627,10 +1633,7 @@ impl ClientWorld {
                 entity.tick_motion_interpolation();
             }
             if let Some(kind) = living {
-                entity.tick_hurt_and_death(tick_death);
-                entity.tick_living_pose(kind);
-                entity.tick_swing(kind);
-                entity.tick_animal();
+                entity.tick_living(kind, tick_death, game_time);
             }
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
@@ -3326,6 +3329,18 @@ impl ClientWorld {
         }
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
+        }
+        let (camel_dash, camel_last_pose) = camel_data_from_metadata(entity.type_id, metadata);
+        if camel_dash.is_some() || camel_last_pose.is_some() {
+            let horse = entity
+                .horse
+                .get_or_insert_with(|| Box::new(horse::HorseState::new()));
+            if let Some(dash) = camel_dash {
+                horse.camel.set_dashing(dash);
+            }
+            if let Some(tick) = camel_last_pose {
+                horse.camel.set_last_pose_change_tick(tick);
+            }
         }
         let (horse_flags, horse_variant, horse_chest) =
             horse_data_from_metadata(entity.type_id, metadata);

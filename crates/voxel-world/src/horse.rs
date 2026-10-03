@@ -5,6 +5,8 @@
 
 use voxel_core::random::RandomSource;
 
+use crate::animation_state::AnimationState;
+
 /// `AbstractHorse.DATA_ID_FLAGS` bits.
 const FLAG_EATING: u8 = 16;
 const FLAG_STANDING: u8 = 32;
@@ -29,8 +31,109 @@ impl PartialEq for TailRandom {
 
 impl Eq for TailRandom {}
 
+/// A camel's own client state (`Camel.setupAnimationStates` and what it reads):
+/// five animation states, the idle timer, the dash flag the server sent and
+/// the tick the pose last changed (negative while sitting).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CamelState {
+    pub sit: AnimationState,
+    pub sit_pose: AnimationState,
+    pub sit_up: AnimationState,
+    pub idle: AnimationState,
+    pub dash: AnimationState,
+    idle_timeout: i32,
+    dashing: bool,
+    last_pose_change_tick: i64,
+}
+
+/// How long a camel takes to sit down and to stand up, in ticks.
+const SIT_DOWN_TICKS: i64 = 40;
+const STAND_UP_TICKS: i64 = 52;
+
+impl CamelState {
+    pub(crate) fn set_dashing(&mut self, dashing: bool) {
+        self.dashing = dashing;
+    }
+
+    pub(crate) fn set_last_pose_change_tick(&mut self, tick: i64) {
+        self.last_pose_change_tick = tick;
+    }
+
+    /// `isCamelSitting`.
+    fn sitting(&self) -> bool {
+        self.last_pose_change_tick < 0
+    }
+
+    /// `getPoseTime`: the game time since the pose last changed.
+    fn pose_time(&self, game_time: i64) -> i64 {
+        game_time.wrapping_sub(self.last_pose_change_tick.wrapping_abs())
+    }
+
+    /// `isInPoseTransition`.
+    fn in_pose_transition(&self, game_time: i64) -> bool {
+        self.pose_time(game_time)
+            < if self.sitting() {
+                SIT_DOWN_TICKS
+            } else {
+                STAND_UP_TICKS
+            }
+    }
+
+    /// Whether the server has the camel dashing, as the client last had it.
+    pub fn is_dashing(&self) -> bool {
+        self.dashing
+    }
+
+    /// Whether the dash animation is running (`dashAnimationState.isStarted`),
+    /// which keeps the walk still.
+    pub fn is_dash_animation_started(&self) -> bool {
+        self.dash.is_started()
+    }
+
+    /// `Camel.tick` after the horse's: a dash ends when the camel is on the
+    /// ground or rides, then the animation states follow the pose.
+    pub(crate) fn tick(
+        &mut self,
+        random: &mut RandomSource,
+        (tick_count, game_time): (i32, i64),
+        (on_ground, passenger): (bool, bool),
+    ) {
+        if self.dashing && (on_ground || passenger) {
+            self.dashing = false;
+        }
+        if self.idle_timeout <= 0 {
+            self.idle_timeout = random.next_int_bound(40).unwrap_or(0) + 80;
+            self.idle.start(tick_count);
+        } else {
+            self.idle_timeout -= 1;
+        }
+        let pose_time = self.pose_time(game_time);
+        let sitting = self.sitting();
+        if (pose_time < 0) != sitting {
+            self.sit_up.stop();
+            self.dash.stop();
+            if sitting && (0..SIT_DOWN_TICKS).contains(&pose_time) {
+                self.sit.start_if_stopped(tick_count);
+                self.sit_pose.stop();
+            } else {
+                self.sit.stop();
+                self.sit_pose.start_if_stopped(tick_count);
+            }
+        } else {
+            self.sit.stop();
+            self.sit_pose.stop();
+            self.dash.animate_when(self.dashing, tick_count);
+            self.sit_up.animate_when(
+                self.in_pose_transition(game_time) && pose_time >= 0,
+                tick_count,
+            );
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HorseState {
+    pub camel: CamelState,
     flags: u8,
     eat_bits: u32,
     eat_old_bits: u32,
@@ -56,6 +159,7 @@ impl HorseState {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |elapsed| elapsed.as_nanos() as i64);
         Self {
+            camel: CamelState::default(),
             flags: 0,
             eat_bits: 0,
             eat_old_bits: 0,
@@ -132,6 +236,19 @@ impl HorseState {
             (mouth + ((0.0 - mouth) * 0.7 - 0.05)).max(0.0)
         };
         self.mouth_bits = mouth.to_bits();
+    }
+
+    /// A camel's own tick, after the horse's (see [`CamelState::tick`]).
+    pub(crate) fn tick_camel(
+        &mut self,
+        (tick_count, game_time): (i32, i64),
+        (on_ground, passenger): (bool, bool),
+    ) {
+        self.camel.tick(
+            &mut self.random.0,
+            (tick_count, game_time),
+            (on_ground, passenger),
+        );
     }
 
     /// `getEatAnim`: how far the head is down to graze, between two ticks.

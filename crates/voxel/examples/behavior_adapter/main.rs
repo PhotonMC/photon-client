@@ -18410,6 +18410,24 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         ];
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "game_time" => world.set_game_time(i64_field(event, "time")? as u64),
+                    "camel_data" => {
+                        let mut data = Vec::new();
+                        if let Some(dash) = event["dash"].as_bool() {
+                            data.extend([voxel_world::CAMEL_DASH_DATA_ID, 8, u8::from(dash)]);
+                        }
+                        if let Some(tick) = event["last_pose"].as_i64() {
+                            data.extend([voxel_world::CAMEL_LAST_POSE_CHANGE_DATA_ID, 2]);
+                            voxel_core::wire::write_varlong(tick, &mut data);
+                        }
+                        if let Some(pose) = event["pose"].as_str() {
+                            // `Pose` ids: standing is zero, sitting ten.
+                            let id = if pose == "SITTING" { 10 } else { 0 };
+                            data.extend([6, 20, id]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "seed" => {
                         world.fix_horse_seed(entity_id, i64_field(event, "seed")?);
                     }
@@ -18480,6 +18498,27 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
+                        }
+                    }
+                    "camel" => {
+                        if let Some(camel) = entity.horse().map(|horse| &horse.camel) {
+                            let tick = entity.tick_count() as f32;
+                            for (name, state) in [
+                                ("sit", camel.sit),
+                                ("sit_pose", camel.sit_pose),
+                                ("sit_up", camel.sit_up),
+                                ("idle", camel.idle),
+                                ("dash", camel.dash),
+                            ] {
+                                described[format!("{name}_started")] = json!(state.is_started());
+                                described[format!("{name}_millis")] =
+                                    json!(if state.is_started() {
+                                        state.time_in_millis(tick)
+                                    } else {
+                                        0
+                                    });
+                            }
+                            described["dashing"] = json!(camel.is_dashing());
                         }
                     }
                     "horse" => {
@@ -19919,6 +19958,63 @@ fn goat_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `llama_model`: a llama's model posed and drawn.
+fn llama_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_llama(
+            &quadruped_state(row)?,
+            row["has_chest"].as_bool().ok_or("has_chest")?,
+        );
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `camel_model`: a camel's model posed with its animation states, drawn.
+fn camel_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{CamelState, MobModel};
+    use voxel_world::animation_state::AnimationState;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let started = |key: &str| {
+            let mut state = AnimationState::default();
+            if let Some(tick) = row[key].as_i64() {
+                state.start(tick as i32);
+            }
+            state
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_camel(&CamelState {
+            quadruped: quadruped_state(row)?,
+            age_in_ticks: bits("age_in_ticks")?,
+            jump_cooldown: bits("jump_cooldown")?,
+            sit: started("sit"),
+            sit_pose: started("sit_pose"),
+            sit_up: started("sit_up"),
+            idle: started("idle"),
+            dash: started("dash"),
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `equine_model`: a horse, donkey or mule model posed and drawn.
 fn equine_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{EquineKind, EquineState, MobModel};
@@ -20560,6 +20656,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "eyes_layers" => return eyes_layers_result(request),
         "swirl_layers" => return swirl_layers_result(request),
         "equine_model" => return equine_model_result(request),
+        "camel_model" => return camel_model_result(request),
+        "llama_model" => return llama_model_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20604,18 +20702,20 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_variant_fields" => {
             use voxel_world::{
                 ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
-                BEE_ANGER_END_DATA_ID, BEE_FLAGS_DATA_ID, CHICKEN_VARIANT_DATA_ID,
+                BEE_ANGER_END_DATA_ID, BEE_FLAGS_DATA_ID, CAMEL_DASH_DATA_ID,
+                CAMEL_LAST_POSE_CHANGE_DATA_ID, CHICKEN_VARIANT_DATA_ID,
                 CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
                 CREEPER_IGNITED_DATA_ID, CREEPER_POWERED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
                 ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
                 GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HORSE_CHEST_DATA_ID,
                 HORSE_FLAGS_DATA_ID, HORSE_VARIANT_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
-                LONG_SERIALIZER_ID, MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
-                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
-                PIGLIN_DANCING_DATA_ID, RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID,
-                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID, SNOW_GOLEM_PUMPKIN_DATA_ID,
-                SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID,
-                VILLAGER_UNHAPPY_DATA_ID, ZOMBIE_VILLAGER_DATA_DATA_ID,
+                LLAMA_VARIANT_DATA_ID, LONG_SERIALIZER_ID, MOOSHROOM_TYPE_DATA_ID,
+                OPTIONAL_BLOCK_STATE_SERIALIZER_ID, PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
+                PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID, RABBIT_TYPE_DATA_ID,
+                RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
+                SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
+                ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -20638,6 +20738,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "horse-flags", "data_id": HORSE_FLAGS_DATA_ID, "serializer": 0},
                 {"label": "horse-variant", "data_id": HORSE_VARIANT_DATA_ID, "serializer": 1},
                 {"label": "horse-chest", "data_id": HORSE_CHEST_DATA_ID, "serializer": 8},
+                {"label": "llama-variant", "data_id": LLAMA_VARIANT_DATA_ID, "serializer": 1},
+                {"label": "camel-dash", "data_id": CAMEL_DASH_DATA_ID, "serializer": 8},
+                {"label": "camel-last-pose", "data_id": CAMEL_LAST_POSE_CHANGE_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "bee-flags", "data_id": BEE_FLAGS_DATA_ID, "serializer": 0},
                 {"label": "bee-anger-end", "data_id": BEE_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},

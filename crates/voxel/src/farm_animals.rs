@@ -8,11 +8,12 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::mooshroom_mushroom_poses;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    BeeState, EquineKind, EquineState, GoatState, MobModel, MobPlacement, QuadrupedState,
-    RabbitState, mob_vertices, placement_pose,
+    BeeState, CamelState, EquineKind, EquineState, GoatState, MobModel, MobPlacement,
+    QuadrupedState, RabbitState, mob_vertices, placement_pose,
 };
 use voxel_render::scene::Vertex;
 use voxel_world::ClientEntity;
+use voxel_world::animation_state::AnimationState;
 
 use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
@@ -120,6 +121,25 @@ const OTHER_EQUINES: [(&str, [&str; 2], [&str; 2], bool); 4] = [
     ),
 ];
 
+/// The camel's textures, grown and baby, and the husk's (`CamelRenderer`,
+/// `CamelHuskRenderer`: the husk is a grown camel's model in its own skin).
+const CAMELS: [&str; 3] = [
+    "entity/camel/camel",
+    "entity/camel/camel_baby",
+    "entity/camel/camel_husk",
+];
+
+/// The llama's coats by variant id, grown and baby (`LlamaRenderer`).
+const LLAMAS: [[&str; 2]; 4] = [
+    [
+        "entity/llama/llama_creamy",
+        "entity/llama/llama_creamy_baby",
+    ],
+    ["entity/llama/llama_white", "entity/llama/llama_white_baby"],
+    ["entity/llama/llama_brown", "entity/llama/llama_brown_baby"],
+    ["entity/llama/llama_gray", "entity/llama/llama_gray_baby"],
+];
+
 /// The bee's textures: grown then baby, each calm or angry, without and with
 /// nectar (`BeeRenderer`); indexed by baby, angry, nectar.
 const BEES: [[[&str; 2]; 2]; 2] = [
@@ -197,6 +217,8 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(MOOSHROOMS.into_iter().flat_map(|(textures, _)| textures))
         .chain(RABBITS.into_iter().flat_map(|(_, textures)| textures))
         .chain(BEES.into_iter().flatten().flatten())
+        .chain(CAMELS)
+        .chain(LLAMAS.into_iter().flatten())
         .chain(HORSES.into_iter().flatten())
         .chain(MARKINGS.into_iter().flatten().flatten())
         .chain(
@@ -217,6 +239,10 @@ enum Animal {
     /// index of [`OTHER_EQUINES`].
     Horse,
     Equine(usize),
+    /// The camel, or the camel husk.
+    Camel(bool),
+    /// The llama, or the trader's.
+    Llama(bool),
 }
 
 /// Whether a bee is angry: its anger ends later than the game time now
@@ -235,6 +261,23 @@ fn appearance(
     let baby = entity.is_baby();
     let age = usize::from(baby);
     match animal {
+        Animal::Llama(trader) => (
+            LLAMAS[usize::try_from(entity.llama_variant()).unwrap_or(0)][age],
+            match (trader, baby) {
+                (false, false) => "minecraft:llama#main",
+                (false, true) => "minecraft:llama_baby#main",
+                (true, false) => "minecraft:trader_llama#main",
+                (true, true) => "minecraft:trader_llama_baby#main",
+            },
+        ),
+        Animal::Camel(husk) => (
+            CAMELS[if husk { 2 } else { age }],
+            if baby && !husk {
+                "minecraft:camel_baby#main"
+            } else {
+                "minecraft:camel#main"
+            },
+        ),
         Animal::Horse => (
             HORSES[usize::try_from(entity.horse_look().0).unwrap_or(0)][age],
             if baby {
@@ -299,6 +342,26 @@ fn pose(
 ) {
     let baby = entity.is_baby();
     match animal {
+        // A baby llama carries no chest (`LlamaRenderer.extractRenderState`).
+        Animal::Llama(_) => model.setup_llama(&look, !baby && entity.horse_has_chest()),
+        Animal::Camel(_) => {
+            let camel = entity.horse().map(|horse| &horse.camel);
+            let state = |pick: fn(&voxel_world::horse::CamelState) -> AnimationState| {
+                camel.map(pick).unwrap_or_default()
+            };
+            model.setup_camel(&CamelState {
+                quadruped: look,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                // The cooldown is only counted for a camel its own player rides.
+                jump_cooldown: 0.0,
+                sit: state(|camel| camel.sit),
+                sit_pose: state(|camel| camel.sit_pose),
+                sit_up: state(|camel| camel.sit_up),
+                idle: state(|camel| camel.idle),
+                dash: state(|camel| camel.dash),
+                baby,
+            });
+        }
         Animal::Horse | Animal::Equine(_) => {
             let donkey = matches!(animal, Animal::Equine(index) if OTHER_EQUINES[index].3);
             let anim = entity.horse();
@@ -399,6 +462,10 @@ pub fn remote_farm_animals(
         ("minecraft:mooshroom", Animal::Mooshroom),
         ("minecraft:rabbit", Animal::Rabbit),
         ("minecraft:bee", Animal::Bee),
+        ("minecraft:llama", Animal::Llama(false)),
+        ("minecraft:trader_llama", Animal::Llama(true)),
+        ("minecraft:camel", Animal::Camel(false)),
+        ("minecraft:camel_husk", Animal::Camel(true)),
         ("minecraft:horse", Animal::Horse),
         ("minecraft:donkey", Animal::Equine(0)),
         ("minecraft:mule", Animal::Equine(1)),

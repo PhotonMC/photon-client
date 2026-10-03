@@ -1726,6 +1726,7 @@ impl PlaySession {
                 let game_time = read_i64(&mut input)?;
                 let count = wire::read_varint(&mut input)
                     .map_err(|_| ConnectionError::Codec("set time"))?;
+                self.trace.world.set_game_time(game_time as u64);
                 // handleUpdates: the clocks catch up first, then take the
                 // server's values.
                 self.tick_clocks(game_time);

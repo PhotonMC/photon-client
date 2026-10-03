@@ -314,9 +314,13 @@ pub(crate) fn horse_data_from_metadata(
     if !horselike {
         return (None, None, None);
     }
-    let variant = (name == "minecraft:horse")
-        .then(|| metadata_int_value(metadata, HORSE_VARIANT_DATA_ID))
-        .flatten();
+    let variant = match name {
+        "minecraft:horse" => metadata_int_value(metadata, HORSE_VARIANT_DATA_ID),
+        "minecraft:llama" | "minecraft:trader_llama" => {
+            metadata_int_value(metadata, LLAMA_VARIANT_DATA_ID)
+        }
+        _ => None,
+    };
     let chest = matches!(
         name,
         "minecraft:donkey" | "minecraft:mule" | "minecraft:llama" | "minecraft:trader_llama"
@@ -327,6 +331,30 @@ pub(crate) fn horse_data_from_metadata(
         metadata_byte_value(metadata, HORSE_FLAGS_DATA_ID),
         variant,
         chest,
+    )
+}
+
+/// A camel's dash flag (`Camel.DASH`) and the tick its pose last changed
+/// (`LAST_POSE_CHANGE_TICK`), when the data holds them.
+pub(crate) fn camel_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<i64>) {
+    if !matches!(
+        voxel_data::entity_type::name(type_id),
+        Some("minecraft:camel" | "minecraft:camel_husk")
+    ) {
+        return (None, None);
+    }
+    let last_pose = find_metadata_field(metadata, CAMEL_LAST_POSE_CHANGE_DATA_ID)
+        .filter(|(serializer, _)| *serializer == LONG_SERIALIZER_ID)
+        .and_then(|(_, mut value)| {
+            let tick = voxel_core::wire::read_varlong(&mut value).ok()?;
+            (!value.is_empty()).then_some(tick)
+        });
+    (
+        metadata_boolean_value(metadata, CAMEL_DASH_DATA_ID),
+        last_pose,
     )
 }
 
