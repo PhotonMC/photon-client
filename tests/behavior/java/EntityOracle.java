@@ -622,6 +622,180 @@ public final class EntityOracle {
             Float.intBitsToFloat((int) Long.parseLong(bits.get(2).getAsString(), 16)));
     }
 
+    /** `.data/minecraft/assets/jar/assets/minecraft`, found from the game's jar. */
+    private static java.nio.file.Path jarAssets() throws Exception {
+        var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
+            .getProtectionDomain().getCodeSource().getLocation().toURI());
+        return jar.getParent().getParent().resolve("assets/jar/assets/minecraft");
+    }
+
+    /** The hat a villager texture's metadata asks for, through the reference's own codec. */
+    private static net.minecraft.client.resources.metadata.animation.VillagerMetadataSection.Hat villagerHat(
+        final String kind, final String name) throws Exception {
+        var file = jarAssets().resolve("textures/entity/villager/" + kind + "/" + name + ".png.mcmeta");
+        if (!java.nio.file.Files.exists(file)) {
+            return net.minecraft.client.resources.metadata.animation.VillagerMetadataSection.Hat.NONE;
+        }
+        var json = com.google.gson.JsonParser.parseReader(java.nio.file.Files.newBufferedReader(file)).getAsJsonObject();
+        return net.minecraft.client.resources.metadata.animation.VillagerMetadataSection.CODEC
+            .parse(com.mojang.serialization.JsonOps.INSTANCE, json.get("villager")).getOrThrow().hat();
+    }
+
+    /**
+     * The villager types and professions in the order the wire numbers them (the built-in
+     * registries), and for each the hat its texture's metadata asks for.
+     */
+    private static JsonObject villagerRegistries() throws Exception {
+        Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        var types = new java.util.TreeMap<Integer, String>();
+        for (var type : net.minecraft.core.registries.BuiltInRegistries.VILLAGER_TYPE) {
+            types.put(net.minecraft.core.registries.BuiltInRegistries.VILLAGER_TYPE.getId(type),
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_TYPE.getKey(type).getPath());
+        }
+        var professions = new java.util.TreeMap<Integer, String>();
+        for (var profession : net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION) {
+            professions.put(net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getId(profession),
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).getPath());
+        }
+        for (var entry : new Object[][] {{"type", types}, {"profession", professions}}) {
+            @SuppressWarnings("unchecked")
+            var names = (java.util.TreeMap<Integer, String>) entry[1];
+            int index = 0;
+            for (var name : names.entrySet()) {
+                var out = new JsonObject();
+                out.addProperty("label", entry[0] + ":" + name.getValue());
+                out.addProperty("kind", (String) entry[0]);
+                out.addProperty("id", name.getKey());
+                out.addProperty("name", name.getValue());
+                out.addProperty("hat", villagerHat((String) entry[0], name.getValue()).getSerializedName());
+                rows.add(out);
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What `VillagerProfessionLayer` draws for a villager: the model (the hatted one or not) and
+     * the texture and colour of each pass, from the reference's own layer with the hats its textures
+     * ask for.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject villagerLayers(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            boolean baby = row.get("baby").getAsBoolean();
+            String prefix = row.get("path").getAsString();
+            boolean zombie = prefix.equals("zombie_villager");
+            net.minecraft.client.model.EntityModel model = zombie
+                ? new net.minecraft.client.model.monster.zombie.ZombieVillagerModel(bakedLayer("minecraft:" + prefix + "#main"))
+                : new net.minecraft.client.model.npc.VillagerModel(bakedLayer("minecraft:" + prefix + "#main"));
+            net.minecraft.client.model.EntityModel babyModel = zombie
+                ? new net.minecraft.client.model.monster.zombie.BabyZombieVillagerModel(bakedLayer("minecraft:" + prefix + "_baby#main"))
+                : new net.minecraft.client.model.npc.BabyVillagerModel(bakedLayer("minecraft:" + prefix + "_baby#main"));
+            net.minecraft.client.model.EntityModel noHat = zombie
+                ? new net.minecraft.client.model.monster.zombie.ZombieVillagerModel(bakedLayer("minecraft:" + prefix + "_no_hat#main"))
+                : new net.minecraft.client.model.npc.VillagerModel(bakedLayer("minecraft:" + prefix + "_no_hat#main"));
+            net.minecraft.client.model.EntityModel noHatBaby = zombie
+                ? new net.minecraft.client.model.monster.zombie.BabyZombieVillagerModel(
+                    bakedLayer("minecraft:" + prefix + "_baby_no_hat#main"))
+                : new net.minecraft.client.model.npc.BabyVillagerModel(bakedLayer("minecraft:" + prefix + "_baby_no_hat#main"));
+            var current = baby ? babyModel : model;
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> current;
+            var layer = new net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer(
+                parent, null, prefix, noHat, noHatBaby);
+            var typeKey = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.VILLAGER_TYPE,
+                net.minecraft.resources.Identifier.withDefaultNamespace(row.get("type").getAsString()));
+            var professionKey = net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.VILLAGER_PROFESSION,
+                net.minecraft.resources.Identifier.withDefaultNamespace(row.get("profession").getAsString()));
+            var typeCache = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class.getDeclaredField("typeHatCache");
+            typeCache.setAccessible(true);
+            ((java.util.Map) typeCache.get(layer)).put(typeKey, villagerHat("type", typeKey.identifier().getPath()));
+            var professionCache = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class
+                .getDeclaredField("professionHatCache");
+            professionCache.setAccessible(true);
+            ((java.util.Map) professionCache.get(layer)).put(professionKey,
+                villagerHat("profession", professionKey.identifier().getPath()));
+            var villagerData = new net.minecraft.world.entity.npc.villager.VillagerData(
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_TYPE.getOrThrow(typeKey),
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getOrThrow(professionKey),
+                row.get("level").getAsInt());
+            net.minecraft.client.renderer.entity.state.LivingEntityRenderState state;
+            if (zombie) {
+                var zombieState = new net.minecraft.client.renderer.entity.state.ZombieVillagerRenderState();
+                zombieState.villagerData = villagerData;
+                state = zombieState;
+            } else {
+                var villagerState = new net.minecraft.client.renderer.entity.state.VillagerRenderState();
+                villagerState.villagerData = villagerData;
+                state = villagerState;
+            }
+            state.isBaby = baby;
+            var passes = new JsonArray();
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitModel") && args.length == 10) {
+                        var pass = new JsonObject();
+                        pass.addProperty("model", args[0] == model ? "main" : args[0] == babyModel ? "main_baby"
+                            : args[0] == noHat ? "no_hat" : "no_hat_baby");
+                        var text = String.valueOf(args[3]);
+                        var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)").matcher(text);
+                        pass.addProperty("texture", found.find() ? found.group(1) : text);
+                        pass.addProperty("color", (int) args[6]);
+                        passes.add(pass);
+                    }
+                    return null;
+                });
+            layer.submit(new com.mojang.blaze3d.vertex.PoseStack(), holder[0], 0, state, 0.0F, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("passes", passes);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * A villager's models from the layer table (the villager, the wandering trader, grown and baby,
+     * hatted or not), posed by the reference's own `VillagerModel.setupAnim`, drawn.
+     */
+    private static JsonObject villagerModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.npc.VillagerModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.npc.BabyVillagerModel(root)
+                : new net.minecraft.client.model.npc.VillagerModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.VillagerRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isUnhappy = row.get("unhappy").getAsBoolean();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1078,6 +1252,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_ARM_POSE", "armor-stand-right-arm"},
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_LEFT_LEG_POSE", "armor-stand-left-leg"},
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
+            {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
+            {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
         };
@@ -1188,6 +1364,15 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("villager_registries")) {
+            return villagerRegistries();
+        }
+        if (operation.equals("villager_layers")) {
+            return villagerLayers(request);
+        }
+        if (operation.equals("villager_model")) {
+            return villagerModel(request);
         }
         if (operation.equals("armor_stand_model")) {
             return armorStandModel(request);

@@ -19154,6 +19154,96 @@ fn spider_model_result(request: &Value, creeper: bool) -> Result<Value, String> 
     Ok(json!({"rows": out}))
 }
 
+/// `villager_registries`: the types and professions in wire order, each with
+/// its hat.
+fn villager_registries_result() -> Value {
+    use voxel_data::villager::{Hat, professions, types};
+    let hat_name = |hat: Hat| match hat {
+        Hat::None => "none",
+        Hat::Partial => "partial",
+        Hat::Full => "full",
+    };
+    let mut rows = Vec::new();
+    for (kind, table) in [("type", types()), ("profession", professions())] {
+        for (id, (name, hat)) in table.iter().enumerate() {
+            rows.push(json!({
+                "label": format!("{kind}:{name}"),
+                "kind": kind,
+                "id": id,
+                "name": name,
+                "hat": hat_name(*hat),
+            }));
+        }
+    }
+    json!({"rows": rows})
+}
+
+/// `villager_layers`: the passes `VillagerProfessionLayer` makes for each
+/// villager: the model and the texture of each.
+fn villager_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::villager::profession_passes;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let baby = row["baby"].as_bool().ok_or("baby")?;
+        let passes: Vec<Value> = profession_passes(
+            row["path"].as_str().ok_or("path")?,
+            row["type"].as_str().ok_or("type")?,
+            row["profession"].as_str().ok_or("profession")?,
+            row["level"].as_i64().ok_or("level")? as i32,
+            baby,
+        )
+        .into_iter()
+        .map(|pass| {
+            let model = match (pass.hatless, baby) {
+                (false, false) => "main",
+                (false, true) => "main_baby",
+                (true, false) => "no_hat",
+                (true, true) => "no_hat_baby",
+            };
+            json!({
+                "model": model,
+                "texture": format!("textures/{}.png", pass.texture),
+                "color": -1,
+            })
+        })
+        .collect();
+        out.push(json!({"label": row["label"], "passes": passes}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `villager_model`: a villager's or a wandering trader's model posed and
+/// drawn.
+fn villager_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState, VillagerState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_villager(&VillagerState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            unhappy: row["unhappy"].as_bool().ok_or("unhappy")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `creeper_render`: the scale a swelling creeper's renderer applies, and how
 /// far it flashes white.
 fn creeper_render_result(request: &Value) -> Result<Value, String> {
@@ -19648,6 +19738,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "sheep_model" => return sheep_model_result(request),
         "armor_stand_model" => return armor_stand_model_result(request),
         "equipment_layers" => return equipment_layers_result(),
+        "villager_registries" => return Ok(villager_registries_result()),
+        "villager_layers" => return villager_layers_result(request),
+        "villager_model" => return villager_model_result(request),
         "spider_model" => return spider_model_result(request, false),
         "creeper_model" => return spider_model_result(request, true),
         "creeper_render" => return creeper_render_result(request),
@@ -19682,7 +19775,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
                 EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
                 PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
-                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
+                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID, VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19700,6 +19794,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-arm", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 3, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "armor-stand-left-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 4, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
+                {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
                 {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
                 {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
             ]}));

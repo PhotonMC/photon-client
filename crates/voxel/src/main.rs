@@ -21,6 +21,7 @@ mod sections;
 mod sheep;
 mod sky;
 mod view;
+mod villagers;
 mod window_probe;
 
 use std::env;

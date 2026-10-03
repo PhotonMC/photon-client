@@ -164,6 +164,10 @@ pub(crate) struct EntityState {
     pub(crate) dancing: bool,
     /// An avatar's main arm is the left.
     pub(crate) main_arm_left: bool,
+    /// A villager's type, profession and level (registry ids), once told.
+    pub(crate) villager_data: Option<[i32; 3]>,
+    /// `AbstractVillager.getUnhappyCounter`.
+    pub(crate) unhappy_counter: i32,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1757,6 +1761,19 @@ impl ClientEntity {
         } else {
             self.is_left_handed()
         }
+    }
+
+    /// `Villager.getVillagerData`: the registry ids of its type and profession
+    /// and its level; a plains villager without a profession, at level one,
+    /// until the server says otherwise (`createDefaultVillagerData`).
+    pub fn villager_data(&self) -> [i32; 3] {
+        self.living.villager_data.unwrap_or([2, 0, 1])
+    }
+
+    /// Whether a villager or a wandering trader shakes its head
+    /// (`getUnhappyCounter() > 0`).
+    pub fn is_unhappy(&self) -> bool {
+        self.living.unhappy_counter > 0
     }
 
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).

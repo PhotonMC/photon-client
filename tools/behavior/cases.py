@@ -14397,6 +14397,7 @@ def entity_cases():
     yield from entity_spider_cases()
     yield from entity_creeper_render_cases()
     yield from entity_equipment_layer_cases()
+    yield from entity_villager_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14796,6 +14797,57 @@ def entity_spider_cases():
            "rows": rows(("minecraft:spider#main", "minecraft:cave_spider#main"), "spider_model")}
     yield {"case_id": "entity/creeper-model", "family": "entity", "operation": "creeper_model",
            "rows": rows(("minecraft:creeper#main",), "creeper_model")}
+
+
+def entity_villager_cases():
+    """The villagers: the built-in registries' order of the types and the
+    professions with the hat each texture's metadata asks for; the models
+    (the villager and the wandering trader, grown and baby, hatted or not)
+    posed by the reference's `VillagerModel.setupAnim`; and the passes of the
+    reference's own `VillagerProfessionLayer` (the model, the texture, the
+    colour) for each type and profession, grown and baby, at each level."""
+    yield {"case_id": "entity/villager-registries", "family": "entity",
+           "operation": "villager_registries", "rows": [{"label": "all"}]}
+
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             age=0.0, unhappy=False):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "unhappy": unhappy}
+
+    rows = []
+    for layer in ("minecraft:villager#main", "minecraft:villager_baby#main",
+                  "minecraft:villager_no_hat#main", "minecraft:villager_baby_no_hat#main",
+                  "minecraft:wandering_trader#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0),
+            pose("unhappy", layer, unhappy=True, age=17.5),
+            pose("unhappy-walking", layer, unhappy=True, walk_position=2.0, walk_speed=0.4,
+                 head_y_rot=12.0, x_rot=-8.0, age=63.0),
+        ]
+    yield {"case_id": "entity/villager-model", "family": "entity",
+           "operation": "villager_model", "rows": rows}
+
+    types = ("desert", "jungle", "plains", "savanna", "snow", "swamp", "taiga")
+    professions = ("none", "armorer", "butcher", "cartographer", "cleric", "farmer", "fisherman",
+                   "fletcher", "leatherworker", "librarian", "mason", "nitwit", "shepherd",
+                   "toolsmith", "weaponsmith")
+    layer_rows = []
+    for path in ("villager", "zombie_villager"):
+        for baby in (False, True):
+            for type_name in types:
+                for profession in professions:
+                    layer_rows.append({"label": f"{path}-{'baby-' if baby else ''}{type_name}-{profession}-3",
+                                       "path": path, "baby": baby, "type": type_name,
+                                       "profession": profession, "level": 3})
+        for level in (0, 1, 2, 4, 5, 9):
+            layer_rows.append({"label": f"{path}-plains-farmer-level-{level}", "path": path,
+                               "baby": False, "type": "plains", "profession": "farmer", "level": level})
+    yield {"case_id": "entity/villager-layers", "family": "entity",
+           "operation": "villager_layers", "rows": layer_rows}
 
 
 def entity_armor_stand_cases():

@@ -197,6 +197,32 @@ pub(crate) fn creeper_fuse_from_metadata(
     )
 }
 
+/// A villager's type, profession and level (`Villager.DATA_VILLAGER_DATA`),
+/// when the data holds them.
+pub(crate) fn villager_data_from_metadata(type_id: i32, metadata: &[u8]) -> Option<[i32; 3]> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:villager" {
+        return None;
+    }
+    let (serializer, mut value) = find_metadata_field(metadata, VILLAGER_DATA_DATA_ID)?;
+    if serializer != VILLAGER_DATA_SERIALIZER_ID {
+        return None;
+    }
+    let mut read = || voxel_core::wire::read_varint(&mut value).ok();
+    let data = [read()?, read()?, read()?];
+    // The list's terminator must follow.
+    (!value.is_empty()).then_some(data)
+}
+
+/// A villager's or wandering trader's unhappy counter
+/// (`AbstractVillager.DATA_UNHAPPY_COUNTER`), when the data holds it.
+pub(crate) fn unhappy_counter_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    matches!(
+        voxel_data::entity_type::name(type_id)?,
+        "minecraft:villager" | "minecraft:wandering_trader"
+    )
+    .then(|| metadata_int_value(metadata, VILLAGER_UNHAPPY_DATA_ID))?
+}
+
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
 pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:experience_orb" {
@@ -420,6 +446,27 @@ mod tests {
         }
         out.push(255);
         out
+    }
+
+    #[test]
+    fn a_villagers_data_and_unhappy_counter_are_read_from_their_fields() {
+        let villager = voxel_data::entity_type::id("minecraft:villager").expect("a villager");
+        let cow = voxel_data::entity_type::id("minecraft:cow").expect("a cow");
+        let metadata = data(&[
+            (VILLAGER_UNHAPPY_DATA_ID, 1, &[40]),
+            (
+                VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID,
+                &[4, 5, 3],
+            ),
+        ]);
+        assert_eq!(
+            villager_data_from_metadata(villager, &metadata),
+            Some([4, 5, 3])
+        );
+        assert_eq!(unhappy_counter_from_metadata(villager, &metadata), Some(40));
+        assert_eq!(villager_data_from_metadata(cow, &metadata), None);
+        assert_eq!(unhappy_counter_from_metadata(cow, &metadata), None);
     }
 
     #[test]

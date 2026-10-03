@@ -20,6 +20,15 @@ pub struct QuadrupedState {
     pub walk_speed: f32,
 }
 
+/// What a villager's (or a wandering trader's) model is posed from.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct VillagerState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    /// Shaking its head: `AbstractVillager.getUnhappyCounter` is above zero.
+    pub unhappy: bool,
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -271,6 +280,38 @@ impl MobModel {
         for (name, x_rot) in swing {
             if let Some(leg) = self.root.child_mut(name) {
                 leg.x_rot = x_rot;
+            }
+        }
+    }
+
+    /// `VillagerModel.setupAnim` (the baby's model inherits it): the head
+    /// follows the look, or shakes while the villager is unhappy, and the legs
+    /// swing as a pair.
+    pub fn setup_villager(&mut self, state: &VillagerState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let look = &state.quadruped;
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = look.head_y_rot * degrees;
+            head.x_rot = look.x_rot * degrees;
+            if state.unhappy {
+                head.z_rot = 0.3 * mth_sin_f64(f64::from(0.45 * state.age_in_ticks));
+                head.x_rot = 0.4;
+            } else {
+                head.z_rot = 0.0;
+            }
+        }
+        let (position, speed) = (look.walk_position, look.walk_speed);
+        let swing = [
+            ("right_leg", cos(position * 0.6662) * 1.4 * speed * 0.5),
+            ("left_leg", cos(position * 0.6662 + pi) * 1.4 * speed * 0.5),
+        ];
+        for (name, x_rot) in swing {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.x_rot = x_rot;
+                leg.y_rot = 0.0;
             }
         }
     }

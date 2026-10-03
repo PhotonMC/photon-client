@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 GENERATORS = [
     "block_tints", "blocks", "creative_tabs",
     "component_types", "items", "item_components",
-    "attributes", "potions", "entity_models", "entity_types", "entity_picks", "entity_serializers", "entity_variants", "sheep_colors",
+    "attributes", "potions", "entity_models", "entity_types", "entity_picks", "entity_serializers", "entity_variants", "sheep_colors", "villager_registries",
 ]
 
 

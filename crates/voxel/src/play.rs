@@ -20,7 +20,6 @@ use crate::dropped_items::dropped_items;
 use crate::gui::Gui;
 use crate::held_items::held_item_vertices;
 use crate::item_layers::ItemLayerCache;
-use crate::mobs;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::FrameProfile;
@@ -29,6 +28,7 @@ use crate::script::{HeldKeys, Script};
 use crate::sections::SectionMeshes;
 use crate::sky::{Sky, SkyCamera};
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
+use crate::{mobs, villagers};
 use voxel_game::pick::pick;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -211,6 +211,7 @@ impl Play {
                 .chain(mobs::textures())
                 .chain([overlays::ORB_TEXTURE, overlays::SHADOW_TEXTURE])
                 .map(str::to_owned)
+                .chain(villagers::textures())
                 .chain(armor.textures())
                 .map(|name| {
                     let image = texture(&root, &name, "entity texture")?;

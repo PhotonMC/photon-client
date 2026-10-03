@@ -420,6 +420,9 @@ pub fn remote_mobs(
     vertices.extend(crate::monsters::remote_monsters(
         session, models, textures, view,
     ));
+    vertices.extend(crate::villagers::remote_villagers(
+        session, models, textures, view,
+    ));
     vertices.extend(crate::armor_stands::remote_armor_stands(
         session,
         (models, armor),

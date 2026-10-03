@@ -3234,6 +3234,12 @@ impl ClientWorld {
         if let Some(left) = avatar_main_arm_is_left(metadata) {
             entity.living.main_arm_left = left;
         }
+        if let Some(data) = villager_data_from_metadata(entity.type_id, metadata) {
+            entity.living.villager_data = Some(data);
+        }
+        if let Some(counter) = unhappy_counter_from_metadata(entity.type_id, metadata) {
+            entity.living.unhappy_counter = counter;
+        }
         if let Some(wool) = sheep_wool_from_metadata(entity.type_id, metadata) {
             entity.living.animal.wool = wool;
         }
@@ -3295,8 +3301,10 @@ impl ClientWorld {
             entity.pose = pose;
         }
         // `DATA_BABY_ID` is the same field for a zombie and for every
-        // animal (`AgeableMob`).
-        if (entity.is_zombie_type() || vanilla_passenger_is_animal(entity.type_id))
+        // animal and villager (`AgeableMob`).
+        if (entity.is_zombie_type()
+            || vanilla_passenger_is_animal(entity.type_id)
+            || voxel_data::entity_type::name(entity.type_id) == Some("minecraft:villager"))
             && let Some(zombie_baby) = zombie_baby
         {
             entity.baby = zombie_baby;

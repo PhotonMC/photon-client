@@ -28,4 +28,7 @@ Ticaret ekranı (`MerchantScreen`, ayrı ekran görevi), köylü sesleri.
 Villager dalı açar; illagerlar tablo satırı (aynı model, farklı doku/poz). Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı (bölündü): köylü ve gezgin tüccar (`setup_villager`, `voxel-render/src/villager.rs` katman geçişleri, `voxel/src/villagers.rs`), `VillagerData`/mutsuzluk/bebek verisi, tür-meslek kayıt tablosu (`villager_registries.py`). Kayıt: `docs/client-villager-parity-conformance.md`.
+- Oracle: `entity/villager-registries` 22, `villager-model` 25, `villager-layers` 432 satır (gerçek `VillagerProfessionLayer`); `variant-fields` köylü satırları.
+- Sapma: zombi köylü çizilmiyor, kafa eşyası ve çapraz kol eşyası yok.
+- Açık: illager, cadı, golemler, enderman, zombi köylü çizimi (T34b).

@@ -161,6 +161,11 @@ pub const CHICKEN_VARIANT_SERIALIZER_ID: i32 = 30;
 pub const ARMOR_STAND_FLAGS_DATA_ID: u8 = 15;
 pub const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 pub const ROTATIONS_SERIALIZER_ID: i32 = 9;
+/// Where a villager's unhappy counter (an int) and its type, profession and
+/// level sit among its data, and the serializer that carries the latter.
+pub const VILLAGER_UNHAPPY_DATA_ID: u8 = 18;
+pub const VILLAGER_DATA_DATA_ID: u8 = 19;
+pub const VILLAGER_DATA_SERIALIZER_ID: i32 = 18;
 /// Where a creeper's fuse direction (an int) and ignited flag (a boolean)
 /// sit among its data.
 pub const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
