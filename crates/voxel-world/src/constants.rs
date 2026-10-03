@@ -209,6 +209,9 @@ pub const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const FOX_VARIANT_DATA_ID: u8 = 18;
 /// Where a panda's counters (unhappy, sneeze, eat: ints), genes (main, hidden)
 /// and flags (bytes) sit among its data.
+/// Where a strider's suffocating flag sits among its data (the boost time, an
+/// int, is before it).
+pub const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;
 pub const PANDA_SNEEZE_DATA_ID: u8 = 19;
 pub const PANDA_EAT_DATA_ID: u8 = 20;

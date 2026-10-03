@@ -719,6 +719,20 @@ public final class MovementOracle {
                             entityId, java.util.List.of(com.mojang.datafixers.util.Pair.of(
                                 net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack))));
                     }
+                    case "mob_flags" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.Mob.class, "DATA_MOB_FLAGS_ID",
+                            (byte) event.get("flags").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "strider_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.monster.Strider.class, "DATA_SUFFOCATING",
+                            event.get("suffocating").getAsBoolean()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "panda_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var pandaClass = net.minecraft.world.entity.animal.panda.Panda.class;
@@ -926,6 +940,8 @@ public final class MovementOracle {
                                 described.addProperty("crouch_" + partial, Oracle.bits(fox.getCrouchAmount(partial)));
                             }
                         }
+                        case "strider" -> described.addProperty("suffocating",
+                            ((net.minecraft.world.entity.monster.Strider) entity).isSuffocating());
                         case "ravager" -> {
                             var ravager = (net.minecraft.world.entity.monster.Ravager) entity;
                             described.addProperty("attack_tick", ravager.getAttackTick());

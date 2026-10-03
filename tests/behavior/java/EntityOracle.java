@@ -2045,6 +2045,47 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The strider's models (main, baby and saddle) posed by the reference's own `setupAnim`, drawn. */
+    private static JsonObject striderModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.monster.strider.StriderModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.monster.strider.BabyStriderModel(root)
+                : new net.minecraft.client.model.monster.strider.AdultStriderModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.StriderRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isRidden = row.get("ridden").getAsBoolean();
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The strider's textures by state and age, from the renderer's own constants. */
+    private static JsonObject striderTextures() throws Exception {
+        var rows = new JsonArray();
+        for (String name : new String[] {"STRIDER_LOCATION", "STRIDER_BABY_LOCATION", "COLD_LOCATION", "COLD_BABY_LOCATION"}) {
+            var field = net.minecraft.client.renderer.entity.StriderRenderer.class.getDeclaredField(name);
+            field.setAccessible(true);
+            var out = new JsonObject();
+            out.addProperty("label", name);
+            out.addProperty("texture", field.get(null).toString());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2556,6 +2597,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
             {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
+            {net.minecraft.world.entity.monster.Strider.class, "DATA_SUFFOCATING", "strider-suffocating"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "UNHAPPY_COUNTER", "panda-unhappy"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "SNEEZE_COUNTER", "panda-sneeze"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "EAT_COUNTER", "panda-eat"},
@@ -2715,6 +2757,12 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("strider_model")) {
+            return striderModel(request);
+        }
+        if (operation.equals("strider_textures")) {
+            return striderTextures();
         }
         if (operation.equals("ravager_model")) {
             return ravagerModel(request);

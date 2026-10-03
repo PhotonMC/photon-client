@@ -1,6 +1,6 @@
 # T32i — Titreme (`isShaking`)
 
-**Amaç:** `LivingEntityRenderer.isShaking`: donmuş (`isFullyFrozen`) her mob ve zombileşen hoglin gövde açısı titremesi (`bodyRot += cos(floor(ageInTicks)·3,25)·π·0,4`).
+**Amaç:** `LivingEntityRenderer.isShaking`: donmuş (`isFullyFrozen`) her mob, zombileşen hoglin ve boğulan strider (`StriderRenderer.isShaking`: `Strider.isSuffocating`, T32h'de okunur) gövde açısı titremesi (`bodyRot += cos(floor(ageInTicks)·3,25)·π·0,4`).
 **Bağımlılık:** T32d. **Boy:** S.
 
 ## Oku

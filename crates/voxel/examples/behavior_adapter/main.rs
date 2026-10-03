@@ -18450,6 +18450,20 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             stack,
                         );
                     }
+                    "mob_flags" => {
+                        let flags = event["flags"].as_i64().ok_or("flags")? as u8;
+                        world.apply_entity_metadata(entity_id, &[15, 0, flags, 255]);
+                    }
+                    "strider_data" => {
+                        let suffocating = event["suffocating"].as_bool().ok_or("suffocating")?;
+                        let data = [
+                            voxel_world::STRIDER_SUFFOCATING_DATA_ID,
+                            8,
+                            u8::from(suffocating),
+                            255,
+                        ];
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "panda_data" => {
                         let mut data = Vec::new();
                         for (key, id) in [
@@ -18679,6 +18693,9 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described[format!("shake_{key}")] =
                                 json!(hex(wolf.shake_anim(partial)));
                         }
+                    }
+                    "strider" => {
+                        described["suffocating"] = json!(entity.is_suffocating());
                     }
                     "ravager" => {
                         let ravager = entity.ravager();
@@ -20196,6 +20213,44 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `strider_textures`: the textures a strider wears.
+fn strider_textures_result() -> Value {
+    let rows: Vec<Value> = [
+        ("STRIDER_LOCATION", "entity/strider/strider"),
+        ("STRIDER_BABY_LOCATION", "entity/strider/strider_baby"),
+        ("COLD_LOCATION", "entity/strider/strider_cold"),
+        ("COLD_BABY_LOCATION", "entity/strider/strider_cold_baby"),
+    ]
+    .iter()
+    .map(|(label, path)| {
+        json!({"label": label, "texture": format!("minecraft:textures/{path}.png")})
+    })
+    .collect();
+    json!({"rows": rows})
+}
+
+/// `strider_model`: a strider's model (grown, baby or saddle) posed and drawn.
+fn strider_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, StriderState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let age = u32::from_str_radix(row["age_in_ticks"].as_str().ok_or("age_in_ticks")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_strider(&StriderState {
+            quadruped: quadruped_state(row)?,
+            age_in_ticks: age,
+            ridden: row["ridden"].as_bool().ok_or("ridden")?,
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `ravager_model`: a ravager's model posed and drawn.
 fn ravager_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, RavagerState};
@@ -21221,6 +21276,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "fox_model" => return fox_model_result(request),
         "panda_model" => return panda_model_result(request),
         "ravager_model" => return ravager_model_result(request),
+        "strider_model" => return strider_model_result(request),
+        "strider_textures" => return Ok(strider_textures_result()),
         "panda_textures" => return Ok(panda_textures_result()),
         "setup_rotations" => return setup_rotations_result(request),
         "fox_textures" => return Ok(fox_textures_result()),
@@ -21418,6 +21475,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 (
                     "polar-bear-standing",
                     i64::from(voxel_world::POLAR_BEAR_STANDING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "strider-suffocating",
+                    i64::from(voxel_world::STRIDER_SUFFOCATING_DATA_ID),
                     i64::from(8),
                 ),
                 (

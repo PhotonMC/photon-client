@@ -294,6 +294,17 @@ pub struct FoxState {
     pub baby: bool,
 }
 
+/// What a strider's models are posed from (`StriderRenderState`): the look
+/// and walk, the age (the bristles stir with it), and whether it is ridden
+/// (its body then faces front).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct StriderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub ridden: bool,
+    pub baby: bool,
+}
+
 /// What a ravager's model is posed from (`RavagerRenderState`): the quadruped's
 /// look and walk, and how long the stun, the attack swing and the roar have
 /// to run (the ticks left less the partial tick; the roar as a fraction).
@@ -2092,6 +2103,107 @@ impl MobModel {
                     leg.z -= 0.25;
                 }
             }
+        }
+    }
+
+    /// `StriderModel.setupAnim` (and `AdultStriderModel`'s and
+    /// `BabyStriderModel`'s own part): the body turns with the look unless it
+    /// is ridden and rocks with the walk, the legs swing, and the bristles
+    /// flow and stir.
+    pub fn setup_strider(&mut self, state: &StriderState) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let position = state.quadruped.walk_position;
+        let speed = state.quadruped.walk_speed.min(0.25);
+        let age = state.age_in_ticks;
+        let set = |model: &mut Self, name: &str, change: &dyn Fn(&mut Part)| {
+            if let Some(part) = model.root.child_mut(name) {
+                change(part);
+            }
+        };
+        set(self, "body", &|body| {
+            if state.ridden {
+                body.x_rot = 0.0;
+                body.y_rot = 0.0;
+            } else {
+                body.x_rot = state.quadruped.x_rot * degrees;
+                body.y_rot = state.quadruped.head_y_rot * degrees;
+            }
+            body.z_rot = 0.1 * sin(position * 1.5) * 4.0 * speed;
+        });
+        let half = position * 1.5 * 0.5;
+        set(self, "left_leg", &|leg| {
+            leg.x_rot = sin(half) * 2.0 * speed;
+            leg.z_rot = (std::f64::consts::PI / 18.0) as f32 * cos(half) * speed;
+        });
+        set(self, "right_leg", &|leg| {
+            leg.x_rot = sin(half + pi) * 2.0 * speed;
+            leg.z_rot = (std::f64::consts::PI / 18.0) as f32 * cos(half + pi) * speed;
+        });
+        let flow = cos(position * 1.5 + pi) * speed;
+        let leg_swing = |sign: f32| 2.0 * sin(half + sign) * 2.0 * speed;
+        if state.baby {
+            set(self, "body", &|body| {
+                body.y = 17.25;
+                body.y -= 1.0 * cos(position * 1.5) * 2.0 * speed;
+                for (name, scale, stir) in [
+                    ("bristle2", 0.6, 0.1 * sin(age * 0.4)),
+                    ("bristle1", 1.2, 0.1 * sin(age * 0.2)),
+                    ("bristle0", 1.3, 0.05 * sin(age * -0.4)),
+                ] {
+                    if let Some(bristle) = body.child_mut(name) {
+                        bristle.x_rot += flow * scale;
+                        bristle.x_rot += stir;
+                    }
+                }
+            });
+            set(self, "left_leg", &|leg| leg.y = 20.0 + leg_swing(pi));
+            set(self, "right_leg", &|leg| leg.y = 20.0 + leg_swing(0.0));
+        } else {
+            set(self, "body", &|body| {
+                body.y = 2.0;
+                body.y -= 2.0 * cos(position * 1.5) * 2.0 * speed;
+                // The sides' bristles rest turned, then take the flow and the stirs.
+                for (name, rest, scale, stir) in [
+                    (
+                        "right_bottom_bristle",
+                        -1.221_730_5,
+                        1.3,
+                        0.05 * sin(age * -0.4),
+                    ),
+                    (
+                        "right_middle_bristle",
+                        -1.134_464,
+                        1.2,
+                        0.1 * sin(age * 0.2),
+                    ),
+                    (
+                        "right_top_bristle",
+                        -0.872_664_63,
+                        0.6,
+                        0.1 * sin(age * 0.4),
+                    ),
+                    ("left_top_bristle", 0.872_664_63, 0.6, 0.1 * sin(age * 0.4)),
+                    ("left_middle_bristle", 1.134_464, 1.2, 0.1 * sin(age * 0.2)),
+                    (
+                        "left_bottom_bristle",
+                        1.221_730_5,
+                        1.3,
+                        0.05 * sin(age * -0.4),
+                    ),
+                ] {
+                    if let Some(bristle) = body.child_mut(name) {
+                        bristle.z_rot = rest;
+                        bristle.z_rot += flow * scale;
+                        bristle.z_rot += stir;
+                    }
+                }
+            });
+            set(self, "left_leg", &|leg| leg.y = 8.0 + leg_swing(pi));
+            set(self, "right_leg", &|leg| leg.y = 8.0 + leg_swing(0.0));
         }
     }
 

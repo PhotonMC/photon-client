@@ -29,6 +29,7 @@ mod script;
 mod sections;
 mod sheep;
 mod sky;
+mod striders;
 mod view;
 mod villagers;
 mod window_probe;

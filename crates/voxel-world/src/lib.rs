@@ -3481,6 +3481,9 @@ impl ClientWorld {
         }
         let (fox_flags, fox_variant) = fox_data_from_metadata(entity.type_id, metadata);
         entity.living.fox.set_data(fox_flags, fox_variant);
+        if let Some(suffocating) = strider_suffocating_from_metadata(entity.type_id, metadata) {
+            entity.living.strider_suffocating = suffocating;
+        }
         if let Some(standing) = polar_bear_standing_from_metadata(entity.type_id, metadata) {
             entity.living.polar_bear.set_standing(standing);
         }

@@ -1,0 +1,87 @@
+//! The strider (`StriderRenderer`): its texture (the cold one while it
+//! suffocates), its pose and its saddle (`SimpleEquipmentLayer`).
+//!
+//! A suffocating strider also shakes in the reference (`isShaking`): that is
+//! not drawn (see the frozen mobs' shaking in the task board).
+
+use voxel_net::connection::PlaySession;
+use voxel_render::entity_textures::EntityTextures;
+use voxel_render::mob_model::{QuadrupedState, StriderState, mob_vertices, mob_vertices_coloured};
+use voxel_render::scene::Vertex;
+use voxel_world::EquipmentSlot;
+
+use crate::armor::Armor;
+use crate::mobs::{MobModels, placement};
+use crate::overlays::FrameView;
+
+/// The strider's textures: warm, then cold; grown, then baby.
+const TEXTURES: [[&str; 2]; 2] = [
+    ["entity/strider/strider", "entity/strider/strider_baby"],
+    [
+        "entity/strider/strider_cold",
+        "entity/strider/strider_cold_baby",
+    ],
+];
+
+/// The paths (under `textures/`) of the textures a strider wears.
+pub fn textures() -> impl Iterator<Item = &'static str> {
+    TEXTURES.into_iter().flatten()
+}
+
+/// `StriderRenderer` for the striders the server added.
+pub fn remote_striders(
+    session: &PlaySession,
+    (models, armor): (&mut MobModels, &mut Armor),
+    textures: &EntityTextures,
+    view: FrameView,
+) -> Vec<Vertex> {
+    let Some(strider) = voxel_data::entity_type::id("minecraft:strider") else {
+        return Vec::new();
+    };
+    let world = session.world();
+    let partial = view.partial as f32;
+    let mut vertices = Vec::new();
+    for entity in world.entities().filter(|entity| entity.type_id == strider) {
+        let baby = entity.is_baby();
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        let state = StriderState {
+            quadruped: QuadrupedState {
+                head_y_rot: voxel_core::math::wrap_degrees_f32(
+                    snapshot.head_yaw - snapshot.body_yaw,
+                ),
+                x_rot: snapshot.pitch,
+                walk_position: snapshot.walk_position,
+                walk_speed: snapshot.walk_speed,
+            },
+            age_in_ticks: entity.tick_count() as f32 + partial,
+            ridden: entity.is_vehicle(),
+            baby,
+        };
+        let (Some(rect), Some(model)) = (
+            textures.rect(TEXTURES[usize::from(entity.is_suffocating())][usize::from(baby)]),
+            models.model(if baby {
+                "minecraft:strider_baby#main"
+            } else {
+                "minecraft:strider#main"
+            }),
+        ) else {
+            continue;
+        };
+        model.setup_strider(&state);
+        let placed = placement(world, &snapshot, view, entity.scale());
+        vertices.extend(mob_vertices(model, &placed, rect));
+        // The saddle goes on a grown strider's own model, posed as it is.
+        if let (false, Some(stack)) = (baby, entity.equipment(EquipmentSlot::Saddle)) {
+            vertices.extend(armor.simple_layer(
+                stack,
+                ("saddle", "strider_saddle", "minecraft:strider#saddle"),
+                textures,
+                &|model| model.setup_strider(&state),
+                &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
+            ));
+        }
+    }
+    vertices
+}

@@ -205,6 +205,8 @@ pub(crate) struct EntityState {
     pub(crate) cat_lying: bool,
     pub(crate) cat_relaxed: bool,
     pub(crate) cat: crate::cat::CatState,
+    /// `Strider.isSuffocating`: it is out of lava and cold.
+    pub(crate) strider_suffocating: bool,
     /// A polar bear's standing animation.
     pub(crate) polar_bear: crate::polar_bear::PolarBearState,
     /// A fox's flags, variant and own client state.
@@ -2061,6 +2063,16 @@ impl ClientEntity {
     /// A fox's flags, variant and own client state (its head roll and crouch).
     pub fn fox(&self) -> &crate::fox::FoxState {
         &self.living.fox
+    }
+
+    /// `Strider.isSuffocating`.
+    pub fn is_suffocating(&self) -> bool {
+        self.living.strider_suffocating
+    }
+
+    /// `Entity.isVehicle`: something rides it.
+    pub fn is_vehicle(&self) -> bool {
+        !self.passenger_ids.is_empty()
     }
 
     /// A polar bear's own client state (how far it has stood up).

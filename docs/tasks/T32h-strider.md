@@ -24,4 +24,7 @@ Strider davranışı ve binme kontrolü (T44), sesler.
 `docs/index.md` satırı, yeni `docs/client-strider-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_strider` (yetişkin, bebek, eyer katmanı modeli), `Armor::simple_layer` (genel basit ekipman katmanı: strider eyeri), `voxel-world` boğulma verisi ve `is_vehicle`, `crates/voxel/src/striders.rs`. Kayıt: `docs/client-strider-parity-conformance.md`.
+- Oracle: `strider-model` 18, `strider-textures` 4, `living-entity-animations` 2 (yapay zekâsız), `variant-fields` +1; harness'a `mob_flags`, `strider_data` olayları.
+- Sapma: yapay zekâlı strider boğulmayı kendi hesaplamıyor (sunucu verisi); titreme T32i; eyer sırası ve ses yok.
+- Açık: T32i titreme (boğulan strider de eklendi).

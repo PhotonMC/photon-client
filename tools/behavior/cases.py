@@ -14420,6 +14420,14 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        # A strider with AI works out for itself, from the blocks and the lava around it, whether it
+        # suffocates (`Strider.tick`); the client does not carry that, so these have no AI and go by
+        # the data the server sends.
+        living("strider-warm", "strider", 4, [{"tick": 0, "type": "mob_flags", "flags": 1}],
+               extras=["strider"]),
+        living("strider-suffocates", "strider", 6,
+               [{"tick": 0, "type": "mob_flags", "flags": 1},
+                {"tick": 2, "type": "strider_data", "suffocating": True}], extras=["strider"]),
         living("ravager-idle", "ravager", 4, [], extras=["ravager"]),
         # The stun's effect throws a cloud one tick in six, which a headless client cannot add (and
         # the reference's draws for it are not repeatable): the stun and the roar after it are a
@@ -14623,6 +14631,7 @@ def entity_cases():
     yield from entity_fox_cases()
     yield from entity_panda_cases()
     yield from entity_ravager_cases()
+    yield from entity_strider_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15703,6 +15712,35 @@ def entity_ravager_cases():
     rows.append(pose("attacking-while-stunned", attack=7.0, stunned=20.0))
     yield {"case_id": "entity/ravager-model", "family": "entity", "operation": "ravager_model",
            "rows": rows}
+
+
+def entity_strider_cases():
+    """The strider (grown, baby and the saddle's model) posed by the reference's own `setupAnim`: the
+    body turned by the look unless ridden, rocking with the walk, the legs, the flowing and stirring
+    bristles; and the textures it wears."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=37.5,
+             ridden=False):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "age_in_ticks": float_bits(age),
+                "ridden": ridden}
+
+    rows = []
+    for layer in ("minecraft:strider#main", "minecraft:strider_baby#main",
+                  "minecraft:strider#saddle"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.2),
+            pose("running", layer, walk_position=11.9, walk_speed=0.83, age=91.3),
+            pose("ridden", layer, head_y_rot=20.0, x_rot=-15.0, walk_position=3.1, walk_speed=0.1,
+                 ridden=True),
+            pose("ridden-and-fast", layer, walk_position=5.5, walk_speed=0.9, ridden=True, age=5.0),
+        ]
+    yield {"case_id": "entity/strider-model", "family": "entity", "operation": "strider_model",
+           "rows": rows}
+    yield {"case_id": "entity/strider-textures", "family": "entity", "operation": "strider_textures",
+           "rows": [{"label": "all"}]}
 
 
 def entity_llama_cases():

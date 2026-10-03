@@ -87,6 +87,8 @@ pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vert
 const HUMANOID: &str = "humanoid";
 const LEGGINGS: &str = "humanoid_leggings";
 const BABY: &str = "humanoid_baby";
+/// The layer types mobs wear one piece in (`SimpleEquipmentLayer`): the saddles.
+const SIMPLE: [&str; 1] = ["strider_saddle"];
 
 impl Armor {
     /// Every `equipment/<name>.json` under the asset root.
@@ -116,6 +118,7 @@ impl Armor {
             .flat_map(|info| {
                 [HUMANOID, LEGGINGS, BABY]
                     .into_iter()
+                    .chain(SIMPLE)
                     .flat_map(|layer_type| {
                         info.layers(layer_type)
                             .iter()
@@ -187,17 +190,59 @@ impl Armor {
         vertices
     }
 
+    /// `SimpleEquipmentLayer`: what a mob wears in the equipment slot `slot`
+    /// (a saddle) drawn in the layer type `layer_type` of its asset on the
+    /// model `model`, posed as the wearer is posed.
+    pub fn simple_layer(
+        &mut self,
+        stack: &ClientItemStackState,
+        (slot, layer_type, model): (&str, &str, &str),
+        textures: &EntityTextures,
+        pose: &dyn Fn(&mut MobModel),
+        place: Place,
+    ) -> Vec<Vertex> {
+        let Some(asset) = self.asset_for(stack, slot) else {
+            return Vec::new();
+        };
+        let layers: Vec<String> = self.infos[&asset]
+            .layers(layer_type)
+            .iter()
+            .map(|layer| layer.texture_path(layer_type))
+            .collect();
+        if !self.models.contains_key(model) {
+            let Some(layer) = voxel_data::entity_model::layer(model) else {
+                return Vec::new();
+            };
+            self.models.insert(model.to_owned(), MobModel::bake(layer));
+        }
+        let model = self
+            .models
+            .get_mut(model)
+            .expect("the model was just built");
+        pose(model);
+        layers
+            .iter()
+            .filter_map(|texture| textures.rect(texture))
+            .flat_map(|rect| place(model, rect, None))
+            .collect()
+    }
+
     /// The equipment asset a stack is worn as in a slot: its item's
     /// `equippable` component names it and the slot it goes in
     /// (`HumanoidArmorLayer.shouldRender`).
     fn asset_of(&self, stack: &ClientItemStackState, slot: Slot) -> Option<String> {
+        self.asset_for(stack, slot.name())
+    }
+
+    /// The equipment asset a stack is worn as in the slot of this name.
+    fn asset_for(&self, stack: &ClientItemStackState, slot: &str) -> Option<String> {
         let item = usize::try_from(stack.item_registry_id())
             .ok()
             .and_then(|index| voxel_data::item::registry::ITEMS.get(index))?;
         let equip = item
             .equippable
             .as_ref()
-            .filter(|equip| equip.slot == slot.name())?;
+            .filter(|equip| equip.slot == slot)?;
         let asset = equip.asset?.strip_prefix("minecraft:")?;
         self.infos.contains_key(asset).then(|| asset.to_owned())
     }
