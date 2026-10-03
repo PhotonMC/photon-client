@@ -16,7 +16,7 @@ use voxel_world::local_player::LocalPlayer;
 use voxel_world::{ClientItemStackState, EquipmentSlot};
 
 use crate::armor::{Armor, Worn};
-use crate::held_items::{Hands, HeldItem};
+use crate::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::hud_input::attack_speed;
 use crate::item_layers::ItemLayerCache;
 use crate::view::eye_position;
@@ -262,6 +262,8 @@ pub fn player_model(
         light: placement.light,
         right: stacks.0,
         left: stacks.1,
+        head: worn.head_item(armor),
+        head_transforms: HEAD_TRANSFORMS,
     }
     .collect(held);
     let mut vertices = voxel_render::player_renderer::player_vertices(model, &placement);
@@ -372,6 +374,12 @@ pub fn remote_players(
             death_time: snapshot.death_time,
             red_overlay: snapshot.red_overlay,
         };
+        let worn = Worn {
+            head: entity.equipment(EquipmentSlot::Head),
+            chest: entity.equipment(EquipmentSlot::Chest),
+            legs: entity.equipment(EquipmentSlot::Legs),
+            feet: entity.equipment(EquipmentSlot::Feet),
+        };
         Hands {
             base: &voxel_render::player_renderer::placement_pose(&placement),
             root: &model.root,
@@ -380,17 +388,13 @@ pub fn remote_players(
             light: placement.light,
             right,
             left,
+            head: worn.head_item(armor),
+            head_transforms: HEAD_TRANSFORMS,
         }
         .collect(held);
         vertices.extend(voxel_render::player_renderer::player_vertices(
             model, &placement,
         ));
-        let worn = Worn {
-            head: entity.equipment(EquipmentSlot::Head),
-            chest: entity.equipment(EquipmentSlot::Chest),
-            legs: entity.equipment(EquipmentSlot::Legs),
-            feet: entity.equipment(EquipmentSlot::Feet),
-        };
         vertices.extend(wear(
             armor,
             worn,

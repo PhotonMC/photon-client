@@ -14598,8 +14598,9 @@ def entity_held_item_cases():
     zombie, the skeleton and the piglin, grown and baby, either hand."""
     def row(label, kind, baby=False, right="empty", left="empty", holds=(False, False),
             main="right", head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
-            age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False):
-        return {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
+            age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False,
+            head=None):
+        out = {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
                 "right_pose": right, "left_pose": left, "main_arm": main,
                 "holds_right": holds[0], "holds_left": holds[1],
                 "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
@@ -14607,6 +14608,10 @@ def entity_held_item_cases():
                 "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
                 "swim_amount": float_bits(swim), "crouching": crouching,
                 "aggressive": aggressive, "holding_bow": bow}
+        if head is not None:
+            out.update({"head_y_offset": float_bits(head[0]), "head_skull_y": float_bits(head[1]),
+                        "head_scale": float_bits(head[2])})
+        return out
 
     rows = []
     for kind in ("player", "player_slim"):
@@ -14648,6 +14653,18 @@ def entity_held_item_cases():
         row("sword-aggressive", "skeleton", holds=(True, False), aggressive=True, age=17.5,
             attack=0.55),
     ]
+    # The item on the head (`CustomHeadLayer`), with each renderer's transforms.
+    default = (0.0, 0.0, 1.0)
+    for kind, transforms in (("player", default), ("player_slim", default), ("zombie", default),
+                             ("skeleton", default), ("piglin", (0.0, 0.0, 1.0019531))):
+        for baby in ((False, True) if kind in ("zombie", "piglin") else (False,)):
+            rows += [
+                row("head-item", kind, baby, head=transforms),
+                row("head-item-looking", kind, baby, head=transforms, head_y_rot=-35.5, x_rot=48.0),
+                row("head-item-crouching", kind, baby, head=transforms, crouching=True, age=3.0),
+            ]
+    rows.append(row("head-item-villager-transforms", "zombie", head=(-0.1171875, -0.07421875, 1.0),
+                    walk_position=7.3, walk_speed=0.83))
     yield {
         "case_id": "entity/held-item-pose",
         "family": "entity",

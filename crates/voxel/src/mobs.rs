@@ -15,7 +15,7 @@ use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
 
 use crate::armor::{Armor, Worn};
-use crate::held_items::{Hands, HeldItem};
+use crate::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::overlays::{FrameView, packed_light};
 
 /// A mob that wears a variant the server names: its entity type, the kind
@@ -454,6 +454,13 @@ fn remote_humanoids(
         let (humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
         let aggressive = entity.is_aggressive();
         let placement = placement(world, &snapshot, view, kind.scale);
+        // What it wears, in the armor models of its build, posed as it is.
+        let worn = Worn {
+            head: entity.equipment(EquipmentSlot::Head),
+            chest: entity.equipment(EquipmentSlot::Chest),
+            legs: entity.equipment(EquipmentSlot::Legs),
+            feet: entity.equipment(EquipmentSlot::Feet),
+        };
         let mut first = true;
         for (layer, texture) in model_layers(kind, baby).into_iter().flatten() {
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
@@ -474,18 +481,18 @@ fn remote_humanoids(
                     light: placement.light,
                     right: entity.item_held_by_arm(false),
                     left: entity.item_held_by_arm(true),
+                    head: worn.head_item(armor),
+                    // `PiglinRenderer.PIGLIN_CUSTOM_HEAD_TRANSFORMS`.
+                    head_transforms: if matches!(kind.family, Family::Piglin { .. }) {
+                        (0.0, 1.0019531)
+                    } else {
+                        HEAD_TRANSFORMS
+                    },
                 }
                 .collect(held);
             }
             vertices.extend(mob_vertices(model, &placement, rect));
         }
-        // What it wears, in the armor models of its build, posed as it is.
-        let worn = Worn {
-            head: entity.equipment(EquipmentSlot::Head),
-            chest: entity.equipment(EquipmentSlot::Chest),
-            legs: entity.equipment(EquipmentSlot::Legs),
-            feet: entity.equipment(EquipmentSlot::Feet),
-        };
         let layer = if baby {
             kind.baby_layer
         } else {

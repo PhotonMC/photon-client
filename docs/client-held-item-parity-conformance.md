@@ -1,4 +1,4 @@
-# T41 — Elde eşya: `SetEquipment` ve `ItemInHandLayer` — [client-parity]
+# T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — [client-parity]
 
 Bu kayıt, insansı canlıların (oyuncu, zombi, iskelet, piglin ve aileleri,
 yetişkin ve bebek) ellerinde tuttuğu eşyanın Java 26.2 ile aynı yere çizilmesini
@@ -24,6 +24,12 @@ karşılaştırılır. `SetEquipment` paketinin ayrıştırılması `server-conf
 - `ArmedEntityRenderState`: sağ el `getItemHeldByArm(RIGHT)`, `THIRD_PERSON_RIGHT_HAND`
   bağlamıyla; ana kol oyuncuda `Avatar.DATA_PLAYER_MAIN_HAND`, mobda sol elli bayrağı.
 
+- `CustomHeadLayer.submit`: yatay ölçek (`Transforms.horizontalScale`), kök, kafa parçası,
+  `translate(0, −0,25 + yOffset, 0)`, y'de 180°, `scale(0,625, −0,625, −0,625)`; eşya `HEAD`
+  görüntü bağlamıyla çizilir. Zırh olarak çizilen kafa parçası ve kafatasları (`AbstractSkullBlock`,
+  kafatası modeli) bu yoldan geçmez. Dönüşümler: piglin (0, 0, 1,0019531), köylü
+  (−0,1171875, −0,07421875, 1), ötekiler varsayılan.
+
 ## Veri
 
 `ClientboundSetEquipmentPacket` (kimlik 102): varint entity, her yuva için bayt (üst bit
@@ -34,7 +40,7 @@ koşuda Java'nın erişimcisinden karşılaştırılır.
 
 ## Kapsam ve dal kararı
 
-`entity/held-item-pose` 42 satır: oyuncu (geniş ve ince) için on bir poz (boş, sağ/sol
+`entity/held-item-pose` 65 satır (42 el + 23 kafa eşyası satırı: oyuncu, ince oyuncu, zombi, iskelet, piglin, bebekler, bakış, çömelme, köylü dönüşümü): oyuncu (geniş ve ince) için on bir poz (boş, sağ/sol
 eşya, iki el, bakış, çömelme, sallama, yüzme, solak, solak yay çekme, yan elde iki elli
 poz); zombi ve piglin yetişkin/bebek için üçer poz; zombi saldırgan ve solak; iskelet
 için yay, yaylı saldırgan (sağ ve solak), kılıçlı saldırgan. Aile içi türler tablo
@@ -49,6 +55,6 @@ satırıdır; eşyanın görüntü dönüşümü ayrıca `model/display-*` ailes
   `SPEAR` pozu yok; mobda `EMPTY` kalır. Saldırı kolu/sallaması `Animate` ile (T43).
 - Yerel oyuncunun ana kolu seçenek olarak okunmuyor (sağ sayılır); üçüncü şahıs
   yerel oyuncu eşyası envanterden alınır, sunucunun yankısından değil.
-- Eşya dokuları blok atlasından, ışık entity konumundan alınır; kafa eşyası, zırh,
-  pelerin, elytra ve armor stand/diğer kollu modeller (köylü, illager, allay…) T41b/T41c
-  ve ilgili aile görevlerinde.
+- Eşya dokuları blok atlasından, ışık entity konumundan alınır; kafatası modelleri
+  (`SkullBlockRenderer`), pelerin, elytra ve diğer kollu/başlı modeller (köylü, illager, allay…)
+  T41c ve ilgili aile görevlerinde.

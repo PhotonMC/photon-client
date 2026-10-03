@@ -55,6 +55,13 @@ pub struct Worn<'a> {
 }
 
 impl<'a> Worn<'a> {
+    /// What sits on the head besides armor (`LivingEntityRenderer`'s head
+    /// item): a stack the armor layer does not draw.
+    pub fn head_item(&self, armor: &Armor) -> Option<&'a ClientItemStackState> {
+        self.head
+            .filter(|stack| armor.asset_of(stack, Slot::Head).is_none())
+    }
+
     fn get(&self, slot: Slot) -> Option<&'a ClientItemStackState> {
         match slot {
             Slot::Head => self.head,

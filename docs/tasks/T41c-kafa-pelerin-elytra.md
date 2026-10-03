@@ -24,3 +24,6 @@ Pelerin dokusu indirme (PLAN-M9), zırh (T41b).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Yapıldı (kısmen): kafa eşyası (`CustomHeadLayer`: `head_item_pose`, `Hands.head`, `Place::Head`, `Armor::head_item`; piglin dönüşümü) oyuncu, zombi/iskelet/piglin ve zırh askısında; `entity/held-item-pose`'a 23 kafa satırı. Kayıt: `docs/client-held-item-parity-conformance.md`.
+- Sapma: kafatası modelleri (`SkullBlockRenderer`, oyuncu kafası profili), köylü kafa dönüşümü kullanılmıyor (köylü çizilmiyor).
+- Açık: elytra (`WingsLayer`, `ElytraModel` + `elytraAnimationState`), pelerin (PLAN-M9), dürbün gözde (`renderItemHeldToEye`), kafatası modelleri.

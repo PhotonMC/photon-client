@@ -19292,7 +19292,7 @@ fn sheep_eat_result(request: &Value) -> Result<Value, String> {
 /// pose each held item is drawn from (`ItemInHandLayer`), before the item's
 /// own display transform.
 fn held_item_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::held_item::hand_pose;
+    use voxel_render::held_item::{hand_pose, head_item_pose};
     use voxel_render::joml::Pose;
     use voxel_render::mob_model::{MobModel, PiglinState, SkeletonState, ZombieState};
     use voxel_render::player_model::{Arm, ArmPose, Part, PlayerModel};
@@ -19324,7 +19324,7 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                 .ok_or("no such layer")
         };
         let slim = kind == "player_slim";
-        let (quads, poses) = if kind.starts_with("player") {
+        let (quads, (poses, head_poses)) = if kind.starts_with("player") {
             let mut model = PlayerModel::new(slim);
             model.setup_anim(&humanoid);
             let poses = held_poses(&model.root, row, if slim { 0.5 } else { 0.0 }, baby);
@@ -19376,9 +19376,45 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
             );
             (posed_quads(&model), poses)
         };
-        fn held_poses(root: &Part, row: &Value, hand_shift: f32, baby: bool) -> Vec<Vec<String>> {
+        /// The poses of the held items, and of the head item when the row
+        /// asks for one.
+        #[allow(clippy::type_complexity)]
+        fn held_poses(
+            root: &Part,
+            row: &Value,
+            hand_shift: f32,
+            baby: bool,
+        ) -> (Vec<Vec<String>>, Vec<Vec<String>>) {
             let hex = |value: f32| format!("{:08x}", value.to_bits());
             let mut poses = Vec::new();
+            let mut head_poses = Vec::new();
+            if let Some(scale) = row.get("head_scale") {
+                let bits = |value: &Value| {
+                    value
+                        .as_str()
+                        .and_then(|text| u32::from_str_radix(text, 16).ok())
+                        .map(f32::from_bits)
+                        .expect("bits")
+                };
+                let head = root
+                    .children()
+                    .iter()
+                    .find(|part| part.name() == "head")
+                    .expect("the model has a head");
+                let mut pose = head_item_pose(
+                    &Pose::default(),
+                    root,
+                    head,
+                    (bits(&row["head_y_offset"]), bits(scale)),
+                );
+                pose.translate(-0.5, -0.5, -0.5);
+                head_poses.push(
+                    (0..4)
+                        .flat_map(|column| (0..4).map(move |row| (column, row)))
+                        .map(|(column, row)| hex(pose.pose.m[column][row]))
+                        .collect(),
+                );
+            }
             for (key, side, name) in [
                 ("holds_right", Arm::Right, "right_arm"),
                 ("holds_left", Arm::Left, "left_arm"),
@@ -19402,9 +19438,13 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                         .collect(),
                 );
             }
-            poses
+            (poses, head_poses)
         }
-        out.push(json!({"label": row["label"], "quads": quads, "poses": poses}));
+        let mut described = json!({"label": row["label"], "quads": quads, "poses": poses});
+        if row.get("head_scale").is_some() {
+            described["head_poses"] = json!(head_poses);
+        }
+        out.push(described);
     }
     Ok(json!({"rows": out}))
 }

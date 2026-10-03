@@ -10,7 +10,7 @@ use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
 
 use crate::armor::{Armor, Worn};
-use crate::held_items::{Hands, HeldItem};
+use crate::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -54,6 +54,12 @@ pub fn remote_armor_stands(
         } else {
             "minecraft:armor_stand"
         };
+        let worn = Worn {
+            head: entity.equipment(EquipmentSlot::Head),
+            chest: entity.equipment(EquipmentSlot::Chest),
+            legs: entity.equipment(EquipmentSlot::Legs),
+            feet: entity.equipment(EquipmentSlot::Feet),
+        };
         if let (Some(rect), Some(model)) = (
             textures.rect(TEXTURE),
             models.model(&format!("{prefix}#main")),
@@ -67,16 +73,12 @@ pub fn remote_armor_stands(
                 light: placed.light,
                 right: entity.item_held_by_arm(false),
                 left: entity.item_held_by_arm(true),
+                head: worn.head_item(armor),
+                head_transforms: HEAD_TRANSFORMS,
             }
             .collect(held);
             vertices.extend(mob_vertices(model, &placed, rect));
         }
-        let worn = Worn {
-            head: entity.equipment(EquipmentSlot::Head),
-            chest: entity.equipment(EquipmentSlot::Chest),
-            legs: entity.equipment(EquipmentSlot::Legs),
-            feet: entity.equipment(EquipmentSlot::Feet),
-        };
         vertices.extend(armor.vertices(
             worn,
             (prefix, false),

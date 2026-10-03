@@ -2,7 +2,7 @@
 //! its arm's hand is, drawn like the items lying in the world.
 
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::held_item::hand_pose;
+use voxel_render::held_item::{hand_pose, head_item_pose};
 use voxel_render::item_entity::item_layer_vertices;
 use voxel_render::joml::Pose;
 use voxel_render::player_model::{Arm, Part};
@@ -12,11 +12,26 @@ use voxel_world::ClientItemStackState;
 
 use crate::item_layers::ItemLayerCache;
 
-/// A held stack with the pose of its hand.
+/// Where a stack is carried: in a hand, or on the head.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Place {
+    Right,
+    Left,
+    Head,
+}
+
+impl Place {
+    /// The index of the layer cache of the place's display context.
+    pub fn index(self) -> usize {
+        self as usize
+    }
+}
+
+/// A carried stack with the pose of where it is carried.
 pub struct HeldItem {
     pub stack: ClientItemStackState,
     pub pose: Pose,
-    pub left: bool,
+    pub place: Place,
     pub light: i32,
 }
 
@@ -32,7 +47,14 @@ pub struct Hands<'a> {
     /// What the right and the left arm hold.
     pub right: Option<&'a ClientItemStackState>,
     pub left: Option<&'a ClientItemStackState>,
+    /// What sits on the head (armor aside), with the renderer's
+    /// `CustomHeadLayer.Transforms`: its offset and its horizontal scale.
+    pub head: Option<&'a ClientItemStackState>,
+    pub head_transforms: (f32, f32),
 }
+
+/// `CustomHeadLayer.Transforms.DEFAULT` less its skull offset.
+pub const HEAD_TRANSFORMS: (f32, f32) = (0.0, 1.0);
 
 impl Hands<'_> {
     /// Adds each held stack, the right arm's first.
@@ -52,7 +74,25 @@ impl Hands<'_> {
             out.push(HeldItem {
                 stack: stack.clone(),
                 pose: hand_pose(self.base, self.root, arm, side, self.hand_shift, self.baby),
-                left: side == Arm::Left,
+                place: if side == Arm::Left {
+                    Place::Left
+                } else {
+                    Place::Right
+                },
+                light: self.light,
+            });
+        }
+        if let (Some(stack), Some(head)) = (
+            self.head,
+            self.root
+                .children()
+                .iter()
+                .find(|part| part.name() == "head"),
+        ) {
+            out.push(HeldItem {
+                stack: stack.clone(),
+                pose: head_item_pose(self.base, self.root, head, self.head_transforms),
+                place: Place::Head,
                 light: self.light,
             });
         }
@@ -62,18 +102,18 @@ impl Hands<'_> {
 /// The layers of each held stack, in the display context of its hand.
 pub fn held_item_vertices(
     held: &[HeldItem],
-    layers: &mut [ItemLayerCache; 2],
+    layers: &mut [ItemLayerCache; 3],
     (renderer, tints): (&BlockRenderer, &BiomeTints),
 ) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     for item in held {
-        let cache = &mut layers[usize::from(item.left)];
+        let cache = &mut layers[item.place.index()];
         let item_layers = cache.get(&item.stack, renderer, tints);
         vertices.extend(item_layer_vertices(
             item_layers,
             &[item.pose],
             item.light,
-            item.left,
+            item.place == Place::Left,
         ));
     }
     vertices

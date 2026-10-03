@@ -42,3 +42,25 @@ pub fn hand_pose(
     );
     pose
 }
+
+/// `CustomHeadLayer.submit` up to the item's own display transform: scaled
+/// across by the renderer's horizontal scale, to the head, then set on top of
+/// it, turned and shrunk (`translateToHead`). `y_offset` and
+/// `horizontal_scale` are the renderer's `Transforms`.
+pub fn head_item_pose(
+    base: &Pose,
+    root: &Part,
+    head: &Part,
+    (y_offset, horizontal_scale): (f32, f32),
+) -> Pose {
+    let mut pose = *base;
+    pose.scale(horizontal_scale, 1.0, horizontal_scale);
+    root.translate_and_rotate(&mut pose);
+    head.translate_and_rotate(&mut pose);
+    pose.translate(0.0, -0.25 + y_offset, 0.0);
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        180.0,
+    )));
+    pose.scale(0.625, -0.625, -0.625);
+    pose
+}

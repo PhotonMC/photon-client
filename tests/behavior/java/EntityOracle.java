@@ -317,6 +317,33 @@ public final class EntityOracle {
             layer.submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, state, 0.0F, 0.0F);
             var out = posedQuads(row.get("label").getAsString(), model);
             out.add("poses", poses);
+            if (row.has("head_scale")) {
+                // What the head item is placed with, by the renderer's transforms (a vertical
+                // offset, the skull's, and a horizontal scale).
+                state.headItem.newLayer();
+                var transforms = new net.minecraft.client.renderer.entity.layers.CustomHeadLayer.Transforms(
+                    Oracle.f32(row, "head_y_offset"), Oracle.f32(row, "head_skull_y"), Oracle.f32(row, "head_scale"));
+                var headPoses = new JsonArray();
+                var headCollector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                    EntityOracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                    (proxy, method, args) -> {
+                        if (method.getName().equals("submitItem")) {
+                            var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                            var matrix = new float[16];
+                            stack.last().pose().get(matrix);
+                            var described = new JsonArray();
+                            for (float value : matrix) {
+                                described.add(Oracle.bits(value));
+                            }
+                            headPoses.add(described);
+                        }
+                        return null;
+                    });
+                new net.minecraft.client.renderer.entity.layers.CustomHeadLayer(parent, null, null, transforms)
+                    .submit(new com.mojang.blaze3d.vertex.PoseStack(), headCollector, 0, state, 0.0F, 0.0F);
+                out.add("head_poses", headPoses);
+            }
             rows.add(out);
         }
         var result = new JsonObject();
