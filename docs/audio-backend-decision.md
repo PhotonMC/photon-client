@@ -1,6 +1,6 @@
-# PLAN-M7 — Ses yığını kararı: seçenekler (onay bekliyor)
+# PLAN-M7 — Ses yığını kararı: `cpal` çıkışı, `lewton` çözücü
 
-**Tarih:** 2026-10-03 · **Referans:** Java Edition 26.2 / protokol 776 / Java 25 · **Durum:** karar yok; kullanıcı onayı olmadan ses görevi açılmaz.
+**Tarih:** 2026-10-03 · **Referans:** Java Edition 26.2 / protokol 776 / Java 25 · **Durum:** karar verildi (2026-10-03, kullanıcı onayı): çıkış B (`cpal` + kendi miks), çözücü `lewton`. Görevler T60–T65 panoda.
 
 Bu kayıt bir davranış dilimi değildir; [AGENTS.md](../AGENTS.md)'nin "teknolojiyi ihtiyaç ve kaynak incelemesi ortaya çıkmadan seçme" kuralı gereği, ses bölümüne girmeden önceki kaynak incelemesidir ve [render yığını kararının](render-backend-decision.md) biçimini izler. Uygulama kodu eklenmedi.
 
@@ -68,6 +68,6 @@ Sürüm ve tarihler crates.io'dan 2026-10-03'te okundu.
 | T64 | Oyun tetikleri: adım, kırma/koyma, eşya, hasar, ortam, yağmur; müzik (`MusicManager`) |
 | T65 | Ses ayarları ekranı ve kategori kaydırıcıları, duraklatmada devam eden kategoriler |
 
-## Kullanıcıya sorulacak karar
+## Karar
 
-Çıkış yığını A, B ya da C mi; çözücü `lewton` mu `symphonia` mı. Onaydan sonra bu belge "karar" belgesine çevrilir, ilgili görevler panoya açılır ve `Cargo.toml`'a bağımlılık o görevde eklenir.
+Kullanıcı 2026-10-03'te B (`cpal` + kendi miks) ve `lewton`'u onayladı. A (OpenAL Soft'a doğrudan bağlanma) ileride P26 dağıtım matrisinde aynı kanal arayüzünün ikinci uygulaması olarak açılabilir. `Cargo.toml`'a bağımlılık ilgili görevde (T62: `lewton`, T63: `cpal`) eklenir; başka ses çerçevesi eklenmez.
