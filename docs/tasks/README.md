@@ -70,7 +70,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T30b](T30b-keci-tavsan-mantar-inegi.md) | Keçi ve mantar ineği | M | T30, T34d | bitti (9bb2c314) |
 | [T30c](T30c-tavsan.md) | Tavşan (zıplama ve baş eğme anahtar kareleri) | M | T43b | bitti (ed3f293b) |
 | [T31](T31-at-deve-ailesi.md) | At, eşek, katır ve ölü atlar | L | T24 | bölündü (73f480bb) |
-| [T31b](T31b-deve-lama.md) | Deve, deve kabuğu, lama ve tüccar lamasi | M | T31, T43b | bitti |
+| [T31b](T31b-deve-lama.md) | Deve, deve kabuğu, lama ve tüccar lamasi | M | T31, T43b | bitti (a7268138) |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
 | [T33b](T33b-goz-sarj-bocek-ari.md) | Gümüş balığı, endermite, arı | M | T33 | bitti (3fb0a4f9) |
