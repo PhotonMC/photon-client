@@ -118,6 +118,8 @@ En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
 dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
 bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları; yaşayan entity'ler üç tikte yumuşak ilerler, mob gövdesi `BodyRotationControl` ile döner) ve çizim için `entity_snapshot` veriyor; uzaktaki oyuncular (varsayılan deriyle, ad etiketiyle) ile domuz ve inek (yetişkin/bebek, sunucunun söylediği çeşitle) yerdeki eşyalar (bob/spin, yığın kopyaları) ve deneyim küreleri çiziliyor; model katmanları `voxel-data` tablosunda (358), çizim `Part::baked` ve tek paketlenmiş entity dokusuyla.
 
+**Güncel durum (2026-10-03, ayrıntı panoda):** çizilenler: uzaktaki oyuncu, yerdeki eşya, XP küresi, zırh askısı, domuz/inek/tavuk/koyun, zombi/iskelet/piglin aileleri (zırh, kafa ve eldeki eşya dahil), örümcek/creeper/enderman, köylü, gezgin tüccar, zombi köylü, illagerlar, cadı, demir ve kar golemi; gölge ve hasar/ölüm geri bildirimi tamam. Açık ortak altyapı: emissive göz katmanı (T33c), varlık üstünde blok çizimi (T34d), kullanım pozları ve mobda kullanım tiki (T41d), mob öznitelikleri (T46), anahtar kare oynatıcı (T43b).
+
 1. **Paketler (L)** Kalan: `SetEntityLink`, `SetEquipment`, `EntityEvent`
    (yalnız oyuncunun işlem düzeyi ve ölüm olayı okunuyor), `Animate`,
    `TakeItemEntity`, `MoveVehicle`, `MoveMinecart`,
@@ -397,7 +399,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 
 ## 13. Sıradaki işler
 
-Görevler [görev panosundadır](tasks/README.md) (T01–T26 ve PLAN görevleri); burada ikinci bir liste tutulmaz.
+Görevler [görev panosundadır](tasks/README.md) (T-görevleri ve PLAN görevleri); burada ikinci bir liste tutulmaz. Kap ekranları (§3) ve kalan ekranlar (§6) için PLAN-M3d ve PLAN-M6, ses (§7) için PLAN-M7 açıktır.
 
 ## 14. Mimari ve kod sağlığı kuyruğu
 
