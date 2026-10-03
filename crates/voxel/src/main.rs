@@ -5,6 +5,7 @@ mod assets;
 mod atmosphere;
 mod bears;
 mod controls;
+mod copper_golems;
 mod dropped_items;
 mod farm_animals;
 mod felines;

@@ -212,6 +212,12 @@ pub const FOX_VARIANT_DATA_ID: u8 = 18;
 /// Where a strider's suffocating flag sits among its data (the boost time, an
 /// int, is before it).
 pub const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
+/// Where a copper golem's weathering and its action sit among its data, and
+/// the serializers that carry them (`WEATHERING_COPPER_STATE`, `COPPER_GOLEM_STATE`).
+pub const COPPER_GOLEM_WEATHER_DATA_ID: u8 = 16;
+pub const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
+pub(crate) const COPPER_GOLEM_WEATHER_SERIALIZER_ID: i32 = 38;
+pub(crate) const COPPER_GOLEM_STATE_SERIALIZER_ID: i32 = 37;
 /// Where a hoglin's immunity to zombification sits among its data.
 pub const HOGLIN_IMMUNE_DATA_ID: u8 = 18;
 pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;

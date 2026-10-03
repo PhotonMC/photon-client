@@ -209,6 +209,9 @@ pub(crate) struct EntityState {
     pub(crate) strider_suffocating: bool,
     /// `Hoglin.isImmuneToZombification`.
     pub(crate) hoglin_immune: bool,
+    /// A copper golem's `CopperGolemState` and its weathering (0 to 3).
+    pub(crate) copper_golem_action: crate::copper_golem::GolemAction,
+    pub(crate) copper_golem_weather: u8,
     /// A polar bear's standing animation.
     pub(crate) polar_bear: crate::polar_bear::PolarBearState,
     /// A fox's flags, variant and own client state.
@@ -675,6 +678,8 @@ pub struct ClientEntity {
     pub(crate) attributes: Vec<ClientAttributeState>,
     /// A rabbit's hop and animation states, made when it first ticks.
     pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
+    /// A copper golem's animation states, made when it first ticks.
+    pub(crate) copper_golem: Option<Box<crate::copper_golem::CopperGolemAnimations>>,
     /// A panda's data and own client state, once it has any.
     pub(crate) panda: Option<Box<crate::panda::PandaState>>,
     /// A ravager's counters, once it has any.
@@ -1950,6 +1955,21 @@ impl ClientEntity {
             .fix_idle(timeout, seed);
     }
 
+    /// A copper golem's animation states, if it has ticked.
+    pub fn copper_golem(&self) -> Option<&crate::copper_golem::CopperGolemAnimations> {
+        self.copper_golem.as_deref()
+    }
+
+    /// `CopperGolem.getState`.
+    pub fn copper_golem_action(&self) -> crate::copper_golem::GolemAction {
+        self.living.copper_golem_action
+    }
+
+    /// `CopperGolem.getWeatherState`: unaffected, exposed, weathered, oxidized (0 to 3).
+    pub fn copper_golem_weather(&self) -> u8 {
+        self.living.copper_golem_weather
+    }
+
     /// `Goat.hasLeftHorn` and `hasRightHorn`.
     pub fn goat_horns(&self) -> (bool, bool) {
         (!self.living.lost_left_horn, !self.living.lost_right_horn)
@@ -2318,6 +2338,18 @@ impl ClientEntity {
                 self.rabbit
                     .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
                     .tick(tick_count, no_ai);
+            }
+            Some("minecraft:copper_golem") => {
+                let (action, tick_count, flags) = (
+                    self.living.copper_golem_action,
+                    self.tick_count,
+                    (self.is_no_ai(), self.alive),
+                );
+                self.copper_golem
+                    .get_or_insert_with(|| {
+                        Box::new(crate::copper_golem::CopperGolemAnimations::new())
+                    })
+                    .tick(action, tick_count, flags);
             }
             Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
             Some("minecraft:fox") => self.living.fox.tick(),

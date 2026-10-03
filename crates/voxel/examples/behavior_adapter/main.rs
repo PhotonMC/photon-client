@@ -18570,6 +18570,24 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             world.fix_horse_seed(entity_id, seed);
                         }
                     }
+                    "copper_golem_data" => {
+                        let mut data = Vec::new();
+                        if let Some(weather) = event["weather"].as_i64() {
+                            data.extend([
+                                voxel_world::COPPER_GOLEM_WEATHER_DATA_ID,
+                                38,
+                                weather as u8,
+                            ]);
+                        }
+                        if let Some(state) = event["state"].as_i64() {
+                            data.extend([voxel_world::COPPER_GOLEM_STATE_DATA_ID, 37, state as u8]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
+                    "copper_golem_idle" => {
+                        world.fix_copper_golem_seed(entity_id, i64_field(event, "seed")?);
+                    }
                     "rabbit_idle" => {
                         world.fix_rabbit_idle(
                             entity_id,
@@ -18776,6 +18794,25 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(rabbit.idle_head_tilt.time_in_millis(tick));
                             described["jump_completion"] = json!(hex(rabbit.jump_completion(0.5)));
                         }
+                    }
+                    "copper_golem" => {
+                        let tick = entity.tick_count() as f32;
+                        if let Some(golem) = entity.copper_golem() {
+                            let playing = golem.playing;
+                            for (key, state) in [
+                                ("idle", playing.idle),
+                                ("get_item", playing.get_item),
+                                ("get_no_item", playing.get_no_item),
+                                ("drop_item", playing.drop_item),
+                                ("drop_no_item", playing.drop_no_item),
+                            ] {
+                                described[format!("{key}_started")] = json!(state.is_started());
+                                described[format!("{key}_millis")] =
+                                    json!(state.time_in_millis(tick));
+                            }
+                        }
+                        described["state"] = json!(entity.copper_golem_action() as i32);
+                        described["weather"] = json!(entity.copper_golem_weather());
                     }
                     "attributes" => {
                         described["max_health"] = json!(hex(entity.max_health().unwrap_or(0.0)));
@@ -19910,6 +19947,52 @@ fn rabbit_model_result(request: &Value) -> Result<Value, String> {
             hop: started("hop_start"),
             idle_head_tilt: started("idle_start"),
             baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `copper_golem_model`: a copper golem's model posed and drawn.
+fn copper_golem_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
+    use voxel_world::animation_state::AnimationState;
+    use voxel_world::copper_golem::CopperGolemPlaying;
+    let layer = voxel_data::entity_model::layer("minecraft:copper_golem#main").ok_or("no layer")?;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let started = |key: &str| {
+            let mut state = AnimationState::default();
+            if let Some(tick) = row[key].as_i64() {
+                state.start(tick as i32);
+            }
+            state
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_copper_golem(&CopperGolemModelState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            holds_item: row["holds_item"].as_bool().ok_or("holds_item")?,
+            animations: CopperGolemPlaying {
+                idle: started("idle"),
+                get_item: started("get_item"),
+                get_no_item: started("get_no_item"),
+                drop_item: started("drop_item"),
+                drop_no_item: started("drop_no_item"),
+            },
         });
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
@@ -21376,6 +21459,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "feline_model" => return feline_model_result(request),
         "polar_bear_model" => return polar_bear_model_result(request),
         "hoglin_model" => return hoglin_model_result(request),
+        "copper_golem_model" => return copper_golem_model_result(request),
         "fox_model" => return fox_model_result(request),
         "panda_model" => return panda_model_result(request),
         "ravager_model" => return ravager_model_result(request),
@@ -21590,6 +21674,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "hoglin-immune",
                     i64::from(voxel_world::HOGLIN_IMMUNE_DATA_ID),
                     i64::from(8),
+                ),
+                (
+                    "copper-golem-weather",
+                    i64::from(voxel_world::COPPER_GOLEM_WEATHER_DATA_ID),
+                    38,
+                ),
+                (
+                    "copper-golem-state",
+                    i64::from(voxel_world::COPPER_GOLEM_STATE_DATA_ID),
+                    37,
                 ),
                 (
                     "panda-unhappy",

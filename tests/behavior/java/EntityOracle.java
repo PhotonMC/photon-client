@@ -1459,6 +1459,43 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The copper golem's model posed by the reference's own `CopperGolemModel.setupAnim`, drawn. */
+    private static JsonObject copperGolemModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.animal.golem.CopperGolemModel(
+                bakedLayer("minecraft:copper_golem#main"));
+            var state = new net.minecraft.client.renderer.entity.state.CopperGolemRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            if (row.get("holds_item").getAsBoolean()) {
+                state.rightHandItemState.newLayer();
+            }
+            var animations = new Object[][] {
+                {"idle", state.idleAnimationState},
+                {"get_item", state.interactionGetItem},
+                {"get_no_item", state.interactionGetNoItem},
+                {"drop_item", state.interactionDropItem},
+                {"drop_no_item", state.interactionDropNoItem},
+            };
+            for (var animation : animations) {
+                if (row.has((String) animation[0])) {
+                    ((net.minecraft.world.entity.AnimationState) animation[1]).start(
+                        row.get((String) animation[0]).getAsInt());
+                }
+            }
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The silverfish's and the endermite's models, posed by the reference's own `setupAnim`, drawn. */
     private static JsonObject segmentedModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -2660,6 +2697,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
             {net.minecraft.world.entity.monster.Strider.class, "DATA_SUFFOCATING", "strider-suffocating"},
             {net.minecraft.world.entity.monster.hoglin.Hoglin.class, "DATA_IMMUNE_TO_ZOMBIFICATION", "hoglin-immune"},
+            {net.minecraft.world.entity.animal.golem.CopperGolem.class, "DATA_WEATHER_STATE", "copper-golem-weather"},
+            {net.minecraft.world.entity.animal.golem.CopperGolem.class, "COPPER_GOLEM_STATE", "copper-golem-state"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "UNHAPPY_COUNTER", "panda-unhappy"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "SNEEZE_COUNTER", "panda-sneeze"},
             {net.minecraft.world.entity.animal.panda.Panda.class, "EAT_COUNTER", "panda-eat"},
@@ -2873,6 +2912,9 @@ public final class EntityOracle {
         }
         if (operation.equals("bee_model")) {
             return beeModel(request);
+        }
+        if (operation.equals("copper_golem_model")) {
+            return copperGolemModel(request);
         }
         if (operation.equals("rabbit_model")) {
             return rabbitModel(request);

@@ -587,6 +587,10 @@ public final class MovementOracle {
             net.minecraft.world.entity.player.Input.EMPTY, false, null);
         player.snapTo(row.has("player_x") ? Oracle.f64(row, "player_x") : 6.5, 64.0, 0.5, 0.0F, 0.0F);
         setField(scene.minecraft(), "player", player);
+        // A sound an entity makes asks the renderer's camera how far it is: none is heard here.
+        var soundRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(soundRenderer, "mainCamera", new net.minecraft.client.Camera());
+        setField(scene.minecraft(), "gameRenderer", soundRenderer);
         setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
             net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
@@ -794,6 +798,26 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "copper_golem_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var golemClass = net.minecraft.world.entity.animal.golem.CopperGolem.class;
+                        if (event.has("state")) {
+                            data.add(wolfData(golemClass, "COPPER_GOLEM_STATE",
+                                net.minecraft.world.entity.animal.golem.CopperGolemState.values()[event.get("state").getAsInt()]));
+                        }
+                        if (event.has("weather")) {
+                            data.add(wolfData(golemClass, "DATA_WEATHER_STATE",
+                                net.minecraft.world.level.block.WeatheringCopper.WeatherState.values()[event.get("weather").getAsInt()]));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "copper_golem_idle" -> {
+                        // What the reference draws from an unseeded random source: fixed here.
+                        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
+                        random.setAccessible(true);
+                        ((net.minecraft.util.RandomSource) random.get(entity)).setSeed(event.get("seed").getAsLong());
+                    }
                     case "rabbit_idle" -> {
                         // What the reference draws from an unseeded random source: fixed here.
                         var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
@@ -977,6 +1001,23 @@ public final class MovementOracle {
                             described.addProperty("idle_millis",
                                 rabbit.idleHeadTiltAnimationState.getTimeInMillis(rabbit.tickCount));
                             described.addProperty("jump_completion", Oracle.bits(rabbit.getJumpCompletion(0.5F)));
+                        }
+                        case "copper_golem" -> {
+                            var golem = (net.minecraft.world.entity.animal.golem.CopperGolem) entity;
+                            var playing = new Object[][] {
+                                {"idle", golem.getIdleAnimationState()},
+                                {"get_item", golem.getInteractionGetItemAnimationState()},
+                                {"get_no_item", golem.getInteractionGetNoItemAnimationState()},
+                                {"drop_item", golem.getInteractionDropItemAnimationState()},
+                                {"drop_no_item", golem.getInteractionDropNoItemAnimationState()},
+                            };
+                            for (var animation : playing) {
+                                var state = (net.minecraft.world.entity.AnimationState) animation[1];
+                                described.addProperty(animation[0] + "_started", state.isStarted());
+                                described.addProperty(animation[0] + "_millis", state.getTimeInMillis(golem.tickCount));
+                            }
+                            described.addProperty("state", golem.getState().ordinal());
+                            described.addProperty("weather", golem.getWeatherState().ordinal());
                         }
                         case "attributes" -> {
                             described.addProperty("max_health", Oracle.bits(entity.getMaxHealth()));

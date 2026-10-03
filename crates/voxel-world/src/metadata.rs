@@ -446,6 +446,32 @@ pub(crate) fn strider_suffocating_from_metadata(type_id: i32, metadata: &[u8]) -
     metadata_boolean_value(metadata, STRIDER_SUFFOCATING_DATA_ID)
 }
 
+/// A copper golem's action and weathering (`COPPER_GOLEM_STATE`,
+/// `DATA_WEATHER_STATE`: each a varint id), each when the data holds it.
+pub(crate) fn copper_golem_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> Option<(Option<i32>, Option<i32>)> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:copper_golem" {
+        return None;
+    }
+    let varint = |data_id: u8, serializer: i32| {
+        let (serializer_id, mut value_input) = find_metadata_field(metadata, data_id)?;
+        if serializer_id != serializer {
+            return None;
+        }
+        let value = voxel_core::wire::read_varint(&mut value_input).ok()?;
+        (!value_input.is_empty()).then_some(value)
+    };
+    Some((
+        varint(COPPER_GOLEM_STATE_DATA_ID, COPPER_GOLEM_STATE_SERIALIZER_ID),
+        varint(
+            COPPER_GOLEM_WEATHER_DATA_ID,
+            COPPER_GOLEM_WEATHER_SERIALIZER_ID,
+        ),
+    ))
+}
+
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
 pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {

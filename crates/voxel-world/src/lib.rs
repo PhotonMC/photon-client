@@ -31,6 +31,7 @@ mod chunk;
 mod collision;
 mod constants;
 mod container;
+pub mod copper_golem;
 mod dimension;
 mod entity;
 mod entity_random;
@@ -1149,6 +1150,19 @@ impl ClientWorld {
             return false;
         };
         entity.fix_rabbit_idle(timeout, seed);
+        true
+    }
+
+    /// Fixes the source a copper golem's idle wait is drawn from (see
+    /// [`copper_golem::CopperGolemAnimations::fix_seed`]); false for an entity that is not there.
+    pub fn fix_copper_golem_seed(&mut self, entity_id: i32, seed: i64) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity
+            .copper_golem
+            .get_or_insert_with(|| Box::new(copper_golem::CopperGolemAnimations::new()))
+            .fix_seed(seed);
         true
     }
 
@@ -3047,6 +3061,7 @@ impl ClientWorld {
                 passenger_ids: Vec::new(),
                 attributes: Vec::new(),
                 rabbit: None,
+                copper_golem: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3485,6 +3500,14 @@ impl ClientWorld {
         entity.living.fox.set_data(fox_flags, fox_variant);
         if let Some(suffocating) = strider_suffocating_from_metadata(entity.type_id, metadata) {
             entity.living.strider_suffocating = suffocating;
+        }
+        if let Some((state, weather)) = copper_golem_data_from_metadata(entity.type_id, metadata) {
+            if let Some(state) = state {
+                entity.living.copper_golem_action = copper_golem::GolemAction::from_id(state);
+            }
+            if let Some(weather) = weather {
+                entity.living.copper_golem_weather = weather.clamp(0, 3) as u8;
+            }
         }
         if let Some(immune) = hoglin_immune_from_metadata(entity.type_id, metadata) {
             entity.living.hoglin_immune = immune;

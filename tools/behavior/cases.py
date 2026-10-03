@@ -14539,6 +14539,37 @@ def movement_item_cases():
         living("bee-angry", "bee", 12, [{"tick": 1, "type": "bee_data", "anger_end": 5}], extras=["bee"]),
         living("bee-angry-for-a-long-time", "bee", 12, [{"tick": 1, "type": "bee_data", "anger_end": 500}],
                extras=["bee"]),
+        # The idle spin starts 200 to 240 ticks after the wait is drawn (from a source the reference
+        # does not seed: fixed), plays for 3.5 seconds and, ten ticks after it started, draws again.
+        *[living(f"copper-golem-idle-{ticks}", "copper_golem", ticks,
+                 [{"tick": 0, "type": "copper_golem_idle", "seed": 5}], extras=["copper_golem"])
+          for ticks in (4, 100, 205, 215, 235, 255, 290, 330, 470, 700)],
+        living("copper-golem-gets-an-item", "copper_golem", 40,
+               [{"tick": 0, "type": "copper_golem_idle", "seed": 5},
+                {"tick": 6, "type": "copper_golem_data", "state": 1}], extras=["copper_golem"]),
+        living("copper-golem-gets-nothing", "copper_golem", 40,
+               [{"tick": 6, "type": "copper_golem_data", "state": 2}], extras=["copper_golem"]),
+        living("copper-golem-drops-an-item", "copper_golem", 40,
+               [{"tick": 6, "type": "copper_golem_data", "state": 3}], extras=["copper_golem"]),
+        living("copper-golem-drops-nothing", "copper_golem", 40,
+               [{"tick": 6, "type": "copper_golem_data", "state": 4}], extras=["copper_golem"]),
+        living("copper-golem-switches-between-chest-actions", "copper_golem", 60,
+               [{"tick": 6, "type": "copper_golem_data", "state": 1},
+                {"tick": 20, "type": "copper_golem_data", "state": 3},
+                {"tick": 33, "type": "copper_golem_data", "state": 0}], extras=["copper_golem"]),
+        living("copper-golem-spins-again-after-a-chest", "copper_golem", 330,
+               [{"tick": 0, "type": "copper_golem_idle", "seed": 9},
+                {"tick": 6, "type": "copper_golem_data", "state": 2},
+                {"tick": 20, "type": "copper_golem_data", "state": 0}], extras=["copper_golem"]),
+        living("copper-golem-without-ai-does-not-animate", "copper_golem", 300,
+               [{"tick": 0, "type": "copper_golem_idle", "seed": 5},
+                {"tick": 0, "type": "mob_flags", "flags": 1},
+                {"tick": 6, "type": "copper_golem_data", "state": 1}], extras=["copper_golem"]),
+        living("copper-golem-weathers", "copper_golem", 8,
+               [{"tick": 2, "type": "copper_golem_data", "weather": 2}], extras=["copper_golem"]),
+        living("copper-golem-oxidizes-while-working", "copper_golem", 12,
+               [{"tick": 2, "type": "copper_golem_data", "weather": 3, "state": 4}],
+               extras=["copper_golem"]),
         living("rabbit-quiet", "rabbit", 40, [{"tick": 0, "type": "rabbit_idle", "timeout": 400, "seed": 5}],
                extras=["rabbit"]),
         living("rabbit-hops", "rabbit", 60,
@@ -14633,6 +14664,7 @@ def entity_cases():
     yield from entity_ravager_cases()
     yield from entity_strider_cases()
     yield from entity_shaking_cases()
+    yield from entity_copper_golem_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15359,6 +15391,42 @@ def entity_rabbit_cases():
             pose("both", layer, head_y_rot=12.0, x_rot=-8.0, age=50.0, hop=30, idle=20),
         ]
     yield {"case_id": "entity/rabbit-model", "family": "entity", "operation": "rabbit_model", "rows": rows}
+
+
+def entity_copper_golem_cases():
+    """The copper golem posed by the reference's own `CopperGolemModel.setupAnim`: the look, the
+    walk (with arms raised while an item is held, the arms never lower than that), the idle spin and
+    the four chest animations, each started at a tick and read at a later age."""
+    def pose(label, age=0.0, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             holds_item=False, **starts):
+        row = {"label": label, "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+               "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+               "age_in_ticks": float_bits(age), "holds_item": holds_item}
+        row.update(starts)
+        return row
+
+    rows = [
+        pose("standing", head_y_rot=-35.5, x_rot=48.0),
+        pose("walking", walk_position=7.3, walk_speed=0.31, age=20.5),
+        pose("running", walk_position=19.75, walk_speed=0.9, head_y_rot=12.0, x_rot=-8.0),
+        pose("holding-still", holds_item=True),
+        pose("holding-looking", holds_item=True, head_y_rot=20.0, x_rot=15.0),
+        pose("holding-walking-slowly", holds_item=True, walk_position=3.1, walk_speed=0.12),
+        pose("holding-walking", holds_item=True, walk_position=8.9, walk_speed=0.45),
+        pose("holding-running", holds_item=True, walk_position=21.4, walk_speed=1.0),
+    ]
+    for age in (10.0, 11.5, 14.25, 19.0, 30.0, 55.5, 80.0):
+        rows.append(pose(f"idle-{age}", age=age, idle=10))
+    for key in ("get_item", "get_no_item", "drop_item", "drop_no_item"):
+        for age in (5.0, 12.5, 25.0, 41.75, 70.0, 110.0, 190.0):
+            rows.append(pose(f"{key}-{age}", age=age, **{key: 5}))
+    rows += [
+        pose("walking-and-idle", age=24.0, walk_position=6.0, walk_speed=0.5, idle=10),
+        pose("holding-and-dropping", age=33.0, holds_item=True, walk_position=2.0, walk_speed=0.2,
+             drop_item=5, head_y_rot=-14.0, x_rot=6.0),
+    ]
+    yield {"case_id": "entity/copper-golem-model", "family": "entity",
+           "operation": "copper_golem_model", "rows": rows}
 
 
 def entity_insect_cases():

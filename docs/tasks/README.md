@@ -88,7 +88,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T34b](T34b-illager-cadi-golem-enderman.md) | Illager ve cadı | M | T34 | bitti (48e17e52) |
 | [T34c](T34c-golem-enderman-zombi-koylu.md) | Demir ve kar golemi, enderman, zombi köylü | L | T34b | bitti (f2c973a6) |
 | [T34d](T34d-varlik-ustunde-blok.md) | Varlık üstünde blok durumu çizimi (balkabağı, çiçek, taşınan blok) | M | T34c | bitti (02ea54b4) |
-| [T34e](T34e-bakir-golem.md) | Bakır golem | M | T43b | açık |
+| [T34e](T34e-bakir-golem.md) | Bakır golem (model, durum, doku, gözler) | M | T43b | bitti |
+| [T34f](T34f-bakir-golem-katmanlari.md) | Bakır golemin eli, anteni ve başı (`ItemInHandLayer`, `BlockDecorationLayer`, `CustomHeadLayer`) | M | T34e, T41c, T34d | açık |
 | [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |

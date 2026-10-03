@@ -14,7 +14,32 @@ const IDLE_MINIMAL_DURATION_TICKS: i32 = 180;
 /// The source the idle timeout is drawn from: the entity's own, which the
 /// reference does not seed. Two states never differ by it.
 #[derive(Debug, Clone)]
-struct IdleRandom(RandomSource);
+pub(crate) struct IdleRandom(RandomSource);
+
+impl IdleRandom {
+    pub(crate) fn new(random: RandomSource) -> Self {
+        Self(random)
+    }
+
+    pub(crate) fn set_seed(&mut self, seed: i64) {
+        self.0.set_seed(seed);
+    }
+
+    pub(crate) fn next_int_bound(
+        &mut self,
+        bound: i32,
+    ) -> Result<i32, voxel_core::random::RandomError> {
+        self.0.next_int_bound(bound)
+    }
+
+    pub(crate) fn next_int_range(
+        &mut self,
+        origin: i32,
+        bound: i32,
+    ) -> Result<i32, voxel_core::random::RandomError> {
+        self.0.next_int_range(origin, bound)
+    }
+}
 
 impl PartialEq for IdleRandom {
     fn eq(&self, _: &Self) -> bool {

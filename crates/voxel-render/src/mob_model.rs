@@ -162,6 +162,16 @@ pub struct RabbitState {
     pub baby: bool,
 }
 
+/// What a copper golem's model is posed from (`CopperGolemRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CopperGolemModelState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    /// Either hand holds something (`rightHandItemState` or `leftHandItemState`).
+    pub holds_item: bool,
+    pub animations: voxel_world::copper_golem::CopperGolemPlaying,
+}
+
 /// What a bee's models are posed from (`BeeRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BeeState {
@@ -1124,6 +1134,81 @@ impl MobModel {
             {
                 let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
                 self.animate(definition, millis, 1.0);
+            }
+        }
+    }
+
+    /// `CopperGolemModel.setupAnim`: the head follows the look; the walk (the
+    /// one with arms raised while an item is held, which keeps the arms
+    /// raised at least that far), then the idle spin and the chest animations
+    /// each if started.
+    pub fn setup_copper_golem(&mut self, state: &CopperGolemModelState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(head) = self
+            .root
+            .child_mut("body")
+            .and_then(|body| body.child_mut("head"))
+        {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        }
+        let walk = if state.holds_item {
+            "CopperGolem.COPPER_GOLEM_WALK_ITEM"
+        } else {
+            "CopperGolem.COPPER_GOLEM_WALK"
+        };
+        if let Some(definition) = voxel_data::animation::definition(walk) {
+            // `applyWalk(pos, speed, 2.0, 2.5)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 2.0) as i64;
+            let scale = (state.quadruped.walk_speed * 2.5).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        if state.holds_item
+            && let Some(body) = self.root.child_mut("body")
+        {
+            // `poseHeldItemArmsIfStill`.
+            const RAISE: f32 = -0.87266463;
+            const TURN: f32 = 0.1134464;
+            const ROLL: f32 = 0.064577185;
+            if let Some(arm) = body.child_mut("right_arm") {
+                arm.x_rot = arm.x_rot.min(RAISE);
+                arm.y_rot = arm.y_rot.min(-TURN);
+                arm.z_rot = arm.z_rot.min(-ROLL);
+            }
+            if let Some(arm) = body.child_mut("left_arm") {
+                arm.x_rot = arm.x_rot.min(RAISE);
+                arm.y_rot = arm.y_rot.max(TURN);
+                arm.z_rot = arm.z_rot.max(ROLL);
+            }
+        }
+        let animations = &state.animations;
+        for (name, running) in [
+            ("COPPER_GOLEM_IDLE", animations.idle),
+            (
+                "COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET",
+                animations.get_item,
+            ),
+            (
+                "COPPER_GOLEM_CHEST_INTERACTION_NOITEM_NOGET",
+                animations.get_no_item,
+            ),
+            (
+                "COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP",
+                animations.drop_item,
+            ),
+            (
+                "COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP",
+                animations.drop_no_item,
+            ),
+        ] {
+            if !running.is_started() {
+                continue;
+            }
+            if let Some(definition) =
+                voxel_data::animation::definition(&format!("CopperGolem.{name}"))
+            {
+                self.animate(definition, running.time_in_millis(state.age_in_ticks), 1.0);
             }
         }
     }
