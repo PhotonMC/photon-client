@@ -1,5 +1,6 @@
 mod animated_atlas;
 mod armor;
+mod armor_stands;
 mod assets;
 mod atmosphere;
 mod controls;

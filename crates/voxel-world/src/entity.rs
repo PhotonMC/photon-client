@@ -168,6 +168,8 @@ pub(crate) struct EntityState {
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
     pub(crate) swing: crate::living::SwingState,
+    /// An armor stand's flags and poses.
+    pub(crate) armor_stand: crate::armor_stand::ArmorStandState,
 }
 
 /// `EquipmentSlot`, in the order the wire counts them.
@@ -1786,6 +1788,11 @@ impl ClientEntity {
     pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
         let animal = &self.living.animal;
         (animal.flap_at(partial), animal.flap_speed_at(partial))
+    }
+
+    /// An armor stand's flags and poses.
+    pub fn armor_stand(&self) -> &crate::armor_stand::ArmorStandState {
+        &self.living.armor_stand
     }
 
     /// The swing of an arm (`LivingEntity.swing`).

@@ -14397,6 +14397,7 @@ def entity_cases():
     yield from entity_spider_cases()
     yield from entity_creeper_render_cases()
     yield from entity_equipment_layer_cases()
+    yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14778,6 +14779,41 @@ def entity_spider_cases():
            "rows": rows(("minecraft:spider#main", "minecraft:cave_spider#main"), "spider_model")}
     yield {"case_id": "entity/creeper-model", "family": "entity", "operation": "creeper_model",
            "rows": rows(("minecraft:creeper#main",), "creeper_model")}
+
+
+def entity_armor_stand_cases():
+    """An armor stand's model and the models of the armor it wears (grown and
+    small), posed by the reference's `ArmorStandModel`/`ArmorStandArmorModel`
+    `setupAnim`: the default pose, a custom one, arms shown or not, the base
+    plate and a turn."""
+    default = {"head_pose": (0.0, 0.0, 0.0), "body_pose": (0.0, 0.0, 0.0),
+               "left_arm_pose": (-10.0, 0.0, -10.0), "right_arm_pose": (-15.0, 0.0, 10.0),
+               "left_leg_pose": (-1.0, 0.0, -1.0), "right_leg_pose": (1.0, 0.0, 1.0)}
+    custom = {"head_pose": (12.5, -35.0, 7.25), "body_pose": (-8.0, 20.0, 3.0),
+              "left_arm_pose": (-80.0, 15.0, -45.0), "right_arm_pose": (30.0, -60.0, 100.0),
+              "left_leg_pose": (25.0, 0.0, -12.0), "right_leg_pose": (-35.0, 10.0, 12.0)}
+
+    def pose(label, layer, poses, arms=False, plate=True, y_rot=0.0):
+        row = {"label": f"{layer}-{label}", "layer": layer, "y_rot": float_bits(y_rot),
+               "show_arms": arms, "show_base_plate": plate}
+        for key, angles in poses.items():
+            row[key] = [float_bits(angle) for angle in angles]
+        return row
+
+    layers = []
+    for size in ("armor_stand", "armor_stand_small"):
+        layers += [f"minecraft:{size}#{part}" for part in
+                   ("main", "helmet", "chestplate", "leggings", "boots")]
+    rows = []
+    for layer in layers:
+        rows += [
+            pose("default", layer, default),
+            pose("with-arms", layer, default, arms=True),
+            pose("custom", layer, custom, arms=True, y_rot=47.5),
+            pose("no-plate", layer, custom, plate=False, y_rot=-120.0),
+        ]
+    yield {"case_id": "entity/armor-stand-model", "family": "entity",
+           "operation": "armor_stand_model", "rows": rows}
 
 
 def entity_equipment_layer_cases():

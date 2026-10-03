@@ -43,6 +43,36 @@ pub struct ChickenState {
     pub flap_speed: f32,
 }
 
+/// What an armor stand's models are posed from (`ArmorStandRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArmorStandState {
+    /// The rotations of the head, the body, the left and right arm and the
+    /// left and right leg, in degrees about x, y, z.
+    pub poses: [[f32; 3]; 6],
+    pub show_arms: bool,
+    pub show_base_plate: bool,
+    /// The stand's turn, in degrees (the base plate follows it).
+    pub y_rot: f32,
+}
+
+impl Default for ArmorStandState {
+    fn default() -> Self {
+        Self {
+            poses: [
+                [0.0; 3],
+                [0.0; 3],
+                [-10.0, 0.0, -10.0],
+                [-15.0, 0.0, 10.0],
+                [-1.0, 0.0, -1.0],
+                [1.0, 0.0, 1.0],
+            ],
+            show_arms: false,
+            show_base_plate: true,
+            y_rot: 0.0,
+        }
+    }
+}
+
 /// What a zombie's model is posed from: the humanoid state, and the flags
 /// `ZombieRenderState` adds. The held item is not read yet, so the arms are
 /// raised for the baby as for the grown (`state.getMainHandItemStack() ==
@@ -119,6 +149,57 @@ impl MobModel {
             if let Some(leg) = self.root.child_mut(name) {
                 leg.x_rot = x_rot;
             }
+        }
+    }
+
+    /// `ArmorStandModel.setupAnim` (and `ArmorStandArmorModel`'s, `stand` false
+    /// for the armor): the humanoid pose with each part turned to the stand's
+    /// rotation; the stand itself also hides its hat and its arms and base
+    /// plate by its flags, and turns its sticks with the body.
+    pub fn setup_armor_stand(&mut self, state: &ArmorStandState, stand: bool) {
+        humanoid_anim(&mut self.root, &PlayerRenderState::default());
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let parts = [
+            "head",
+            "body",
+            "left_arm",
+            "right_arm",
+            "left_leg",
+            "right_leg",
+        ];
+        for (name, [x, y, z]) in parts.into_iter().zip(state.poses) {
+            if let Some(part) = self.root.child_mut(name) {
+                part.x_rot = degrees * x;
+                part.y_rot = degrees * y;
+                part.z_rot = degrees * z;
+            }
+        }
+        if !stand {
+            return;
+        }
+        if let Some(hat) = self
+            .root
+            .child_mut("head")
+            .and_then(|head| head.child_mut("hat"))
+        {
+            hat.visible = false;
+        }
+        for name in ["left_arm", "right_arm"] {
+            if let Some(arm) = self.root.child_mut(name) {
+                arm.visible = state.show_arms;
+            }
+        }
+        let [x, y, z] = state.poses[1];
+        for name in ["right_body_stick", "left_body_stick", "shoulder_stick"] {
+            if let Some(stick) = self.root.child_mut(name) {
+                stick.x_rot = degrees * x;
+                stick.y_rot = degrees * y;
+                stick.z_rot = degrees * z;
+            }
+        }
+        if let Some(plate) = self.root.child_mut("base_plate") {
+            plate.y_rot = degrees * -state.y_rot;
+            plate.visible = state.show_base_plate;
         }
     }
 

@@ -19042,6 +19042,48 @@ fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRende
     })
 }
 
+/// `armor_stand_model`: an armor stand's model, or the model of the armor it
+/// wears, posed and drawn.
+fn armor_stand_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{ArmorStandState, MobModel};
+    let bits = |text: &Value| -> Result<f32, String> {
+        u32::from_str_radix(text.as_str().ok_or("bits must be strings")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let mut state = ArmorStandState {
+            show_arms: row["show_arms"].as_bool().ok_or("show_arms")?,
+            show_base_plate: row["show_base_plate"].as_bool().ok_or("show_base_plate")?,
+            y_rot: bits(&row["y_rot"])?,
+            ..ArmorStandState::default()
+        };
+        for (index, key) in [
+            "head_pose",
+            "body_pose",
+            "left_arm_pose",
+            "right_arm_pose",
+            "left_leg_pose",
+            "right_leg_pose",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let angles = row[key].as_array().ok_or("a pose is three angles")?;
+            for (axis, angle) in angles.iter().take(3).enumerate() {
+                state.poses[index][axis] = bits(angle)?;
+            }
+        }
+        let mut model = MobModel::bake(layer);
+        model.setup_armor_stand(&state, id.ends_with("#main"));
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `equipment_layers`: every equipment asset of the game's resources, the
 /// layers of each for the humanoid layer types.
 fn equipment_layers_result() -> Result<Value, String> {
@@ -19564,6 +19606,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "living_pose" => return living_pose_result(request),
         "held_item_pose" => return held_item_pose_result(request),
         "sheep_model" => return sheep_model_result(request),
+        "armor_stand_model" => return armor_stand_model_result(request),
         "equipment_layers" => return equipment_layers_result(),
         "spider_model" => return spider_model_result(request, false),
         "creeper_model" => return spider_model_result(request, true),
@@ -19594,11 +19637,12 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         }
         "entity_variant_fields" => {
             use voxel_world::{
-                AVATAR_MAIN_HAND_DATA_ID, CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID,
-                COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID,
-                CREEPER_SWELL_DIR_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID,
-                PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID, SHEEP_WOOL_DATA_ID,
+                ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
+                CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID,
+                COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
+                EXPERIENCE_ORB_VALUE_DATA_ID, HUMANOID_ARM_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
+                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
+                ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
             };
             return Ok(json!({"rows": [
                 {"label": "pig", "data_id": PIG_VARIANT_DATA_ID, "serializer": PIG_VARIANT_SERIALIZER_ID},
@@ -19609,6 +19653,13 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "avatar-main-hand", "data_id": AVATAR_MAIN_HAND_DATA_ID, "serializer": HUMANOID_ARM_SERIALIZER_ID},
                 {"label": "sheep-wool", "data_id": SHEEP_WOOL_DATA_ID, "serializer": 0},
                 {"label": "chicken", "data_id": CHICKEN_VARIANT_DATA_ID, "serializer": CHICKEN_VARIANT_SERIALIZER_ID},
+                {"label": "armor-stand-flags", "data_id": ARMOR_STAND_FLAGS_DATA_ID, "serializer": 0},
+                {"label": "armor-stand-head", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "armor-stand-body", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 1, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "armor-stand-left-arm", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 2, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "armor-stand-right-arm", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 3, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "armor-stand-left-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 4, "serializer": ROTATIONS_SERIALIZER_ID},
+                {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "creeper-swell-dir", "data_id": CREEPER_SWELL_DIR_DATA_ID, "serializer": 1},
                 {"label": "creeper-ignited", "data_id": CREEPER_IGNITED_DATA_ID, "serializer": 8},
             ]}));

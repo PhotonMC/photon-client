@@ -557,6 +557,44 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * An armor stand's model, and the models of the armor it wears, from the layer table, posed by
+     * the reference's own `ArmorStandModel`/`ArmorStandArmorModel.setupAnim`, drawn.
+     */
+    private static JsonObject armorStandModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var state = new net.minecraft.client.renderer.entity.state.ArmorStandRenderState();
+            state.yRot = Oracle.f32(row, "y_rot");
+            state.showArms = row.get("show_arms").getAsBoolean();
+            state.showBasePlate = row.get("show_base_plate").getAsBoolean();
+            state.headPose = rotations(row.getAsJsonArray("head_pose"));
+            state.bodyPose = rotations(row.getAsJsonArray("body_pose"));
+            state.leftArmPose = rotations(row.getAsJsonArray("left_arm_pose"));
+            state.rightArmPose = rotations(row.getAsJsonArray("right_arm_pose"));
+            state.leftLegPose = rotations(row.getAsJsonArray("left_leg_pose"));
+            state.rightLegPose = rotations(row.getAsJsonArray("right_leg_pose"));
+            net.minecraft.client.model.object.armorstand.ArmorStandArmorModel model = id.endsWith("#main")
+                ? new net.minecraft.client.model.object.armorstand.ArmorStandModel(root)
+                : new net.minecraft.client.model.object.armorstand.ArmorStandArmorModel(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    private static net.minecraft.core.Rotations rotations(final JsonArray bits) {
+        return new net.minecraft.core.Rotations(
+            Float.intBitsToFloat((int) Long.parseLong(bits.get(0).getAsString(), 16)),
+            Float.intBitsToFloat((int) Long.parseLong(bits.get(1).getAsString(), 16)),
+            Float.intBitsToFloat((int) Long.parseLong(bits.get(2).getAsString(), 16)));
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1006,6 +1044,13 @@ public final class EntityOracle {
             {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MAIN_HAND", "avatar-main-hand"},
             {net.minecraft.world.entity.animal.sheep.Sheep.class, "DATA_WOOL_ID", "sheep-wool"},
             {net.minecraft.world.entity.animal.chicken.Chicken.class, "DATA_VARIANT_ID", "chicken"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_CLIENT_FLAGS", "armor-stand-flags"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_HEAD_POSE", "armor-stand-head"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_BODY_POSE", "armor-stand-body"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_LEFT_ARM_POSE", "armor-stand-left-arm"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_ARM_POSE", "armor-stand-right-arm"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_LEFT_LEG_POSE", "armor-stand-left-leg"},
+            {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
         };
@@ -1116,6 +1161,9 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("armor_stand_model")) {
+            return armorStandModel(request);
         }
         if (operation.equals("equipment_layers")) {
             return equipmentLayers(request);

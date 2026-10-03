@@ -276,6 +276,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(zombies)
         .chain(crate::sheep::textures())
         .chain(crate::monsters::textures())
+        .chain([crate::armor_stands::TEXTURE])
 }
 
 /// The baked models of the mobs, which are posed anew for each one drawn.
@@ -418,6 +419,12 @@ pub fn remote_mobs(
     vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
     vertices.extend(crate::monsters::remote_monsters(
         session, models, textures, view,
+    ));
+    vertices.extend(crate::armor_stands::remote_armor_stands(
+        session,
+        (models, armor),
+        textures,
+        (view, held),
     ));
     vertices
 }

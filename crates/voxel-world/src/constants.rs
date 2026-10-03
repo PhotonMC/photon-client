@@ -155,6 +155,12 @@ pub const HUMANOID_ARM_SERIALIZER_ID: i32 = 42;
 pub const SHEEP_WOOL_DATA_ID: u8 = 18;
 pub const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 pub const CHICKEN_VARIANT_SERIALIZER_ID: i32 = 30;
+/// Where an armor stand's flags (a byte: small, arms, no base plate, marker)
+/// and its six rotations sit among its data, and the serializer of the
+/// rotations (`Rotations`).
+pub const ARMOR_STAND_FLAGS_DATA_ID: u8 = 15;
+pub const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
+pub const ROTATIONS_SERIALIZER_ID: i32 = 9;
 /// Where a creeper's fuse direction (an int) and ignited flag (a boolean)
 /// sit among its data.
 pub const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;

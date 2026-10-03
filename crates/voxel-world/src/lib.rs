@@ -19,6 +19,7 @@ use voxel_core::{
 };
 
 pub mod animal;
+pub mod armor_stand;
 pub mod block;
 mod block_entity;
 pub mod block_rules;
@@ -3235,6 +3236,9 @@ impl ClientWorld {
         }
         if let Some(wool) = sheep_wool_from_metadata(entity.type_id, metadata) {
             entity.living.animal.wool = wool;
+        }
+        if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:armor_stand") {
+            entity.living.armor_stand.apply(metadata);
         }
         let (swell_dir, ignited) = creeper_fuse_from_metadata(entity.type_id, metadata);
         if let Some(direction) = swell_dir {

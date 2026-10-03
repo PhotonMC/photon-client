@@ -29,4 +29,7 @@ Display entity'lerinin tüm enterpolasyon kolları ilk oturumda; blok entity çi
 Çok bağımsız dal; ilk oturumda armor stand + çerçeve + tablo. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı (bölündü): zırh askısı (büyük/küçük): `ArmorStandState` + `setup_armor_stand` (ana model ve zırh modelleri), `voxel-world/armor_stand.rs` (bayrak ve altı dönüş verisi birleştirilir), `voxel/armor_stands.rs` (zırh, elde eşya). Kayıt: `docs/client-armor-stand-parity-conformance.md`.
+- Oracle: `entity/armor-stand-model` 40 satır (gerçek model sınıfları); `variant-fields`'e yedi veri indeksi.
+- Sapma: `wiggle` ve işaretçi render türü yok.
+- Açık: çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler (T40b).
