@@ -47,6 +47,30 @@ pub fn iron_golem_flower_pose(entity: &Pose, right_arm: &Part) -> Pose {
     pose
 }
 
+/// `MushroomCowMushroomLayer`: three mushrooms on a grown mooshroom, two on
+/// its back and one on its head, each turned its own way.
+pub fn mooshroom_mushroom_poses(entity: &Pose, head: &Part) -> [Pose; 3] {
+    let mut first = *entity;
+    first.translate(0.2, -0.35, 0.5);
+    degrees(&mut first, Quaternion::rotation_y, -48.0);
+    first.scale(-1.0, -1.0, 1.0);
+    first.translate(-0.5, -0.5, -0.5);
+    let mut second = *entity;
+    second.translate(0.2, -0.35, 0.5);
+    degrees(&mut second, Quaternion::rotation_y, 42.0);
+    second.translate(0.1, 0.0, -0.6);
+    degrees(&mut second, Quaternion::rotation_y, -48.0);
+    second.scale(-1.0, -1.0, 1.0);
+    second.translate(-0.5, -0.5, -0.5);
+    let mut third = *entity;
+    head.translate_and_rotate(&mut third);
+    third.translate(0.0, -0.7, -0.2);
+    degrees(&mut third, Quaternion::rotation_y, -78.0);
+    third.scale(-1.0, -1.0, 1.0);
+    third.translate(-0.5, -0.5, -0.5);
+    [first, second, third]
+}
+
 /// `BlockModelResolver.update`'s `blockLightCoords`: a block that renders
 /// emissively is lit fully, any other by what it gives off (no sky light).
 pub fn block_light_coords(emission: u8, emissive_rendering: bool) -> i32 {

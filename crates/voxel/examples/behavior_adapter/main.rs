@@ -18424,6 +18424,9 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
                         }
                     }
+                    "goat" => {
+                        described["ramming"] = json!(hex(entity.goat_ramming_x_head_rot()));
+                    }
                     "iron_golem" => {
                         let (attack, offer) = entity.iron_golem_ticks();
                         described["attack_tick"] = json!(attack);
@@ -19403,7 +19406,7 @@ fn iron_golem_render_result(request: &Value) -> Result<Value, String> {
 /// puts it at, from an identity entity pose.
 fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     use voxel_render::entity_block::{
-        carried_block_pose, iron_golem_flower_pose, snow_golem_head_pose,
+        carried_block_pose, iron_golem_flower_pose, mooshroom_mushroom_poses, snow_golem_head_pose,
     };
     use voxel_render::joml::Pose;
     use voxel_render::mob_model::{IronGolemState, MobModel};
@@ -19425,12 +19428,17 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
                 .cloned()
                 .ok_or(format!("no {name}"))
         };
-        let pose = match row["layer"].as_str().ok_or("layer")? {
-            "carried" => carried_block_pose(&entity),
+        let poses = match row["layer"].as_str().ok_or("layer")? {
+            "carried" => vec![carried_block_pose(&entity)],
+            "mushrooms" => {
+                let mut model = bake("minecraft:mooshroom#main")?;
+                model.setup_quadruped(&look);
+                mooshroom_mushroom_poses(&entity, &part(&model, "head")?).to_vec()
+            }
             "snow_head" => {
                 let mut model = bake("minecraft:snow_golem#main")?;
                 model.setup_snow_golem(&look);
-                snow_golem_head_pose(&entity, &part(&model, "head")?)
+                vec![snow_golem_head_pose(&entity, &part(&model, "head")?)]
             }
             _ => {
                 let attack =
@@ -19443,14 +19451,47 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
                     attack_ticks_remaining: attack,
                     offer_flower_tick: row["offer_flower_tick"].as_i64().ok_or("offer")? as i32,
                 });
-                iron_golem_flower_pose(&entity, &part(&model, "right_arm")?)
+                vec![iron_golem_flower_pose(&entity, &part(&model, "right_arm")?)]
             }
         };
-        let matrix: Vec<String> = (0..4)
-            .flat_map(|column| (0..4).map(move |row| (column, row)))
-            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+        let matrices: Vec<Vec<String>> = poses
+            .iter()
+            .map(|pose| {
+                (0..4)
+                    .flat_map(|column| (0..4).map(move |row| (column, row)))
+                    .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+                    .collect()
+            })
             .collect();
-        out.push(json!({"label": row["label"], "drawn": true, "pose": matrix}));
+        out.push(json!({
+            "label": row["label"],
+            "drawn": true,
+            "pose": matrices.last(),
+            "poses": matrices,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `goat_model`: the goat's model posed and drawn.
+fn goat_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{GoatState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let ramming = u32::from_str_radix(row["ramming"].as_str().ok_or("ramming")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_goat(&GoatState {
+            quadruped: quadruped_state(row)?,
+            has_left_horn: row["left_horn"].as_bool().ok_or("left_horn")?,
+            has_right_horn: row["right_horn"].as_bool().ok_or("right_horn")?,
+            ramming_x_head_rot: ramming,
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
     Ok(json!({"rows": out}))
 }
@@ -20016,6 +20057,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "iron_golem_render" => return iron_golem_render_result(request),
         "entity_block_layers" => return entity_block_layers_result(request),
         "eyes_layers" => return eyes_layers_result(request),
+        "goat_model" => return goat_model_result(request),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),
@@ -20054,11 +20096,12 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID,
                 COW_VARIANT_SERIALIZER_ID, CREEPER_IGNITED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
                 ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                HUMANOID_ARM_SERIALIZER_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
-                PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
-                PIGLIN_DANCING_DATA_ID, RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID,
-                SHEEP_WOOL_DATA_ID, SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID,
-                VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
+                GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
+                MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
+                PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
+                RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
+                SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID,
+                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
                 ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
             return Ok(json!({"rows": [
@@ -20079,6 +20122,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "goat-left-horn", "data_id": GOAT_LEFT_HORN_DATA_ID, "serializer": 8},
+                {"label": "goat-right-horn", "data_id": GOAT_RIGHT_HORN_DATA_ID, "serializer": 8},
+                {"label": "mooshroom-type", "data_id": MOOSHROOM_TYPE_DATA_ID, "serializer": 1},
                 {"label": "snow-golem-pumpkin", "data_id": SNOW_GOLEM_PUMPKIN_DATA_ID, "serializer": 0},
                 {"label": "enderman-carry", "data_id": ENDERMAN_CARRY_DATA_ID, "serializer": OPTIONAL_BLOCK_STATE_SERIALIZER_ID},
                 {"label": "enderman-creepy", "data_id": ENDERMAN_CREEPY_DATA_ID, "serializer": 8},

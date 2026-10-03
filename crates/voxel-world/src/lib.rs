@@ -1965,8 +1965,10 @@ impl ClientWorld {
             entity.living.animal.eat_tick = animal::SHEEP_EAT_TICKS;
             return true;
         }
-        if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:iron_golem") {
-            return entity.living.animal.golem_event(event);
+        match voxel_data::entity_type::name(entity.type_id) {
+            Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
+            Some("minecraft:goat") => return entity.living.animal.goat_event(event),
+            _ => {}
         }
         false
     }
@@ -3246,6 +3248,16 @@ impl ClientWorld {
         let (carrying, creepy) = enderman_flags_from_metadata(entity.type_id, metadata);
         if let Some(carried) = carrying {
             entity.living.carried_state = carried;
+        }
+        let (left_horn, right_horn) = goat_horns_from_metadata(entity.type_id, metadata);
+        if let Some(left) = left_horn {
+            entity.living.lost_left_horn = !left;
+        }
+        if let Some(right) = right_horn {
+            entity.living.lost_right_horn = !right;
+        }
+        if let Some(variant) = mooshroom_type_from_metadata(entity.type_id, metadata) {
+            entity.living.mooshroom_type = variant;
         }
         if let Some(pumpkin) = snow_golem_pumpkin_from_metadata(entity.type_id, metadata) {
             entity.living.bare_head = !pumpkin;

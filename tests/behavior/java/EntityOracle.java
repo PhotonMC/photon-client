@@ -988,6 +988,7 @@ public final class EntityOracle {
             var row = element.getAsJsonObject();
             var captured = new float[16];
             var seen = new boolean[1];
+            var all = new JsonArray();
             var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
             holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
                 EntityOracle.class.getClassLoader(),
@@ -999,6 +1000,11 @@ public final class EntityOracle {
                     if (method.getName().equals("submitBlockModel")) {
                         ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(captured);
                         seen[0] = true;
+                        var one = new JsonArray();
+                        for (float value : captured) {
+                            one.add(Oracle.bits(value));
+                        }
+                        all.add(one);
                     }
                     return null;
                 });
@@ -1009,6 +1015,16 @@ public final class EntityOracle {
                 fillBlock(state.carriedBlock);
                 net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
                 new net.minecraft.client.renderer.entity.layers.CarriedBlockLayer(parent)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            } else if (kind.equals("mushrooms")) {
+                var model = new net.minecraft.client.model.animal.cow.CowModel(bakedLayer("minecraft:mooshroom#main"));
+                var state = new net.minecraft.client.renderer.entity.state.MushroomCowRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                model.setupAnim(state);
+                fillBlock(state.mushroomModel);
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                new net.minecraft.client.renderer.entity.layers.MushroomCowMushroomLayer(parent)
                     .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
             } else if (kind.equals("snow_head")) {
                 var model = new net.minecraft.client.model.animal.golem.SnowGolemModel(bakedLayer("minecraft:snow_golem#main"));
@@ -1043,6 +1059,7 @@ public final class EntityOracle {
                 described.add(Oracle.bits(value));
             }
             out.add("pose", described);
+            out.add("poses", all);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -1117,6 +1134,32 @@ public final class EntityOracle {
                     0.0F, 0.0F);
             }
             rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The goat's model from the layer table, posed by the reference's own `GoatModel.setupAnim`, drawn. */
+    private static JsonObject goatModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.goat.BabyGoatModel(root)
+                : new net.minecraft.client.model.animal.goat.GoatModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.GoatRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.hasLeftHorn = row.get("left_horn").getAsBoolean();
+            state.hasRightHorn = row.get("right_horn").getAsBoolean();
+            state.rammingXHeadRot = Oracle.f32(row, "ramming");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
         }
         var result = new JsonObject();
         result.add("rows", rows);
@@ -1382,7 +1425,7 @@ public final class EntityOracle {
             var root = layers.get(id).bakeRoot();
             net.minecraft.client.model.QuadrupedModel<net.minecraft.client.renderer.entity.state.LivingEntityRenderState>
                 model = id.startsWith("minecraft:cow") || id.startsWith("minecraft:warm_cow")
-                    || id.startsWith("minecraft:cold_cow")
+                    || id.startsWith("minecraft:cold_cow") || id.startsWith("minecraft:mooshroom")
                     ? new net.minecraft.client.model.animal.cow.CowModel(root)
                     : new net.minecraft.client.model.animal.pig.PigModel(root);
             var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
@@ -1589,6 +1632,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_LEFT_HORN", "goat-left-horn"},
+            {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_RIGHT_HORN", "goat-right-horn"},
+            {net.minecraft.world.entity.animal.cow.MushroomCow.class, "DATA_TYPE", "mooshroom-type"},
             {net.minecraft.world.entity.animal.golem.SnowGolem.class, "DATA_PUMPKIN_ID", "snow-golem-pumpkin"},
             {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CARRY_STATE", "enderman-carry"},
             {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CREEPY", "enderman-creepy"},
@@ -1723,6 +1769,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("goat_model")) {
+            return goatModel(request);
         }
         if (operation.equals("eyes_layers")) {
             return eyesLayers(request);

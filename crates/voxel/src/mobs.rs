@@ -304,6 +304,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::monsters::textures())
         .chain(crate::illagers::textures())
         .chain(crate::golems::textures())
+        .chain(crate::farm_animals::textures())
         .chain([crate::armor_stands::TEXTURE])
 }
 
@@ -451,6 +452,25 @@ pub fn remote_mobs(
             rect,
         ));
     }
+    vertices.extend(remote_families(
+        session,
+        (models, armor),
+        textures,
+        (view, held),
+    ));
+    vertices
+}
+
+/// The renderers of the families that have a module of their own, one after
+/// the other: humanoids, sheep, monsters, villagers, farm animals, golems,
+/// witches, illagers and armor stands.
+fn remote_families(
+    session: &PlaySession,
+    (models, armor): (&mut MobModels, &mut Armor),
+    textures: &EntityTextures,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
+) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
     vertices.extend(remote_humanoids(
         session,
         (models, armor),
@@ -466,6 +486,12 @@ pub fn remote_mobs(
     ));
     vertices.extend(crate::villagers::remote_villagers(
         session, models, textures, view,
+    ));
+    vertices.extend(crate::farm_animals::remote_farm_animals(
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::golems::remote_golems(
         session,

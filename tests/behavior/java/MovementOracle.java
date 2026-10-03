@@ -673,6 +673,10 @@ public final class MovementOracle {
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
                         }
+                        case "goat" -> {
+                            var goat = (net.minecraft.world.entity.animal.goat.Goat) entity;
+                            described.addProperty("ramming", Oracle.bits(goat.getRammingXHeadRot()));
+                        }
                         case "iron_golem" -> {
                             var golem = (net.minecraft.world.entity.animal.golem.IronGolem) entity;
                             described.addProperty("attack_tick", golem.getAttackAnimationTick());

@@ -67,7 +67,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T28](T28-insansi-zombi.md) | Zombi ailesi (`HumanoidModel` + zombi kolları) | L | T24, T27 | bitti (33ec5128) |
 | [T29](T29-iskelet-piglin.md) | İskelet ve piglin aileleri (yay/arbalet/kılıç pozları) | M | T28 | bitti (05d7dc65) |
 | [T30](T30-ciftlik-hayvanlari-2.md) | Çiftlik hayvanları 2: koyun, mantar ineği, tavuk, keçi, tavşan | M | T24 | bölündü (b56f4b9c) |
-| [T30b](T30b-keci-tavsan-mantar-inegi.md) | Keçi, tavşan, mantar ineği | M | T30 | açık |
+| [T30b](T30b-keci-tavsan-mantar-inegi.md) | Keçi ve mantar ineği | M | T30, T34d | bitti |
+| [T30c](T30c-tavsan.md) | Tavşan (zıplama ve baş eğme anahtar kareleri) | M | T43b | açık |
 | [T31](T31-at-deve-ailesi.md) | At, eşek, katır, deve ve lama aileleri (T43b deve animasyonuyla içinde yapılır; sığmazsa at ailesi / deve+lama diye böl) | L | T24 | açık |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |

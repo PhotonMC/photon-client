@@ -14355,6 +14355,13 @@ def movement_item_cases():
         living("creeper-dies-while-the-fuse-burns", "creeper", 30,
                [{"tick": 2, "type": "creeper_data", "swell_dir": 1}, {"tick": 12, "type": "death"}],
                extras=["creeper"]),
+        living("goat-quiet", "goat", 6, [], extras=["goat"]),
+        living("goat-rams", "goat", 40, [{"tick": 2, "type": "entity_event", "event": 58},
+                                         {"tick": 18, "type": "entity_event", "event": 59}],
+               extras=["goat"]),
+        living("goat-rams-and-stops-early", "goat", 30, [{"tick": 1, "type": "entity_event", "event": 58},
+                                                         {"tick": 7, "type": "entity_event", "event": 59}],
+               extras=["goat"]),
         living("iron-golem-quiet", "iron_golem", 6, [], extras=["iron_golem"]),
         living("iron-golem-attacks", "iron_golem", 20, [{"tick": 2, "type": "entity_event", "event": 4}],
                extras=["iron_golem"]),
@@ -14411,6 +14418,7 @@ def entity_cases():
     yield from entity_villager_cases()
     yield from entity_illager_cases()
     yield from entity_golem_cases()
+    yield from entity_goat_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -14474,7 +14482,8 @@ def entity_quadruped_cases():
 
     rows = []
     for layer in ("minecraft:pig#main", "minecraft:pig_baby#main", "minecraft:cow#main",
-                  "minecraft:cow_baby#main", "minecraft:cold_pig#main"):
+                  "minecraft:cow_baby#main", "minecraft:cold_pig#main", "minecraft:mooshroom#main",
+                  "minecraft:mooshroom_baby#main"):
         rows += [
             pose("standing", layer),
             pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
@@ -15015,6 +15024,8 @@ def entity_golem_cases():
     yield {"case_id": "entity/block-layers", "family": "entity", "operation": "entity_block_layers",
            "rows": [
                block_layer("carried", "carried"),
+               block_layer("mushrooms-straight", "mushrooms"),
+               block_layer("mushrooms-looking", "mushrooms", head_y_rot=-35.5, x_rot=48.0),
                block_layer("pumpkin-straight", "snow_head"),
                block_layer("pumpkin-looking", "snow_head", head_y_rot=-35.5, x_rot=48.0),
                block_layer("pumpkin-turned", "snow_head", head_y_rot=120.0, x_rot=-20.0),
@@ -15026,6 +15037,32 @@ def entity_golem_cases():
            ]}
     yield {"case_id": "entity/iron-golem-render", "family": "entity",
            "operation": "iron_golem_render", "rows": rows}
+
+
+def entity_goat_cases():
+    """The goat, grown and baby, posed by the reference's own `GoatModel.setupAnim`
+    (the quadruped pose, the horns it still has, the head lowered to ram) and drawn."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             left=True, right=True, ramming=0.0):
+        return {"label": f"{layer}-{label}", "layer": layer,
+                "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "left_horn": left, "right_horn": right, "ramming": float_bits(ramming)}
+
+    rows = []
+    for layer in ("minecraft:goat#main", "minecraft:goat_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("walking-and-looking", layer, head_y_rot=12.0, x_rot=-8.0, walk_position=7.3,
+                 walk_speed=0.83),
+            pose("no-left-horn", layer, left=False),
+            pose("no-right-horn", layer, right=False),
+            pose("hornless", layer, left=False, right=False),
+            pose("ramming-half", layer, head_y_rot=-35.5, x_rot=48.0, ramming=0.2617994),
+            pose("ramming-full", layer, walk_position=3.4, walk_speed=0.6, ramming=0.5235988),
+        ]
+    yield {"case_id": "entity/goat-model", "family": "entity", "operation": "goat_model",
+           "rows": rows}
 
 
 def entity_armor_stand_cases():

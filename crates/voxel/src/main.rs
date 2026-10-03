@@ -5,6 +5,7 @@ mod assets;
 mod atmosphere;
 mod controls;
 mod dropped_items;
+mod farm_animals;
 mod golems;
 mod gui;
 mod held_items;

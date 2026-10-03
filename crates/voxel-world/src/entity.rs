@@ -177,6 +177,11 @@ pub(crate) struct EntityState {
     pub(crate) creepy: bool,
     /// Whether a snow golem wears its pumpkin; it does until the data says not.
     pub(crate) bare_head: bool,
+    /// Which of its horns a goat has lost, until the data says it has none.
+    pub(crate) lost_left_horn: bool,
+    pub(crate) lost_right_horn: bool,
+    /// A mooshroom's variant, zero for red.
+    pub(crate) mooshroom_type: i32,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1797,6 +1802,25 @@ impl ClientEntity {
             .filter(|state| *state != 0)
     }
 
+    /// `Goat.hasLeftHorn` and `hasRightHorn`.
+    pub fn goat_horns(&self) -> (bool, bool) {
+        (!self.living.lost_left_horn, !self.living.lost_right_horn)
+    }
+
+    /// `Goat.getRammingXHeadRot`: how far the head is lowered, in radians.
+    pub fn goat_ramming_x_head_rot(&self) -> f32 {
+        let maximum = if self.baby { 52.5 } else { 30.0 };
+        self.living.animal.goat_lower_head_tick as f32 / 20.0
+            * maximum
+            * (std::f64::consts::PI / 180.0) as f32
+    }
+
+    /// `MushroomCow.getVariant`'s id: zero is red, one brown (an id past the
+    /// last takes the last).
+    pub fn mooshroom_variant(&self) -> i32 {
+        self.living.mooshroom_type.clamp(0, 1)
+    }
+
     /// `SnowGolem.hasPumpkin`.
     pub fn has_pumpkin(&self) -> bool {
         !self.living.bare_head
@@ -1882,6 +1906,7 @@ impl ClientEntity {
             Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
             Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
+            Some("minecraft:goat") => self.living.animal.tick_goat(),
             _ => {}
         }
     }

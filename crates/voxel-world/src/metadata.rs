@@ -265,6 +265,29 @@ pub(crate) fn enderman_flags_from_metadata(
     )
 }
 
+/// Whether a goat has its left and its right horn (`Goat.DATA_HAS_LEFT_HORN`,
+/// `DATA_HAS_RIGHT_HORN`), when the data holds them.
+pub(crate) fn goat_horns_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<bool>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:goat") {
+        return (None, None);
+    }
+    (
+        metadata_boolean_value(metadata, GOAT_LEFT_HORN_DATA_ID),
+        metadata_boolean_value(metadata, GOAT_RIGHT_HORN_DATA_ID),
+    )
+}
+
+/// A mooshroom's variant (`MushroomCow.DATA_TYPE`), when the data holds it.
+pub(crate) fn mooshroom_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:mooshroom" {
+        return None;
+    }
+    metadata_int_value(metadata, MOOSHROOM_TYPE_DATA_ID)
+}
+
 /// Whether a snow golem wears its pumpkin (`SnowGolem.DATA_PUMPKIN_ID`, bit
 /// sixteen), when the data holds it.
 pub(crate) fn snow_golem_pumpkin_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
@@ -576,6 +599,36 @@ mod tests {
         assert_eq!(
             villager_data_from_metadata(id("minecraft:zombie_villager"), &metadata),
             Some([1, 2, 3])
+        );
+    }
+
+    #[test]
+    fn a_goats_horns_and_a_mooshrooms_variant_are_read_from_their_fields() {
+        let id = |name| voxel_data::entity_type::id(name).expect("a type");
+        let metadata = data(&[
+            (MOOSHROOM_TYPE_DATA_ID, ENTITY_DATA_SERIALIZER_INT_ID, &[1]),
+            (
+                GOAT_LEFT_HORN_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                &[0],
+            ),
+            (
+                GOAT_RIGHT_HORN_DATA_ID,
+                ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                &[1],
+            ),
+        ]);
+        assert_eq!(
+            goat_horns_from_metadata(id("minecraft:goat"), &metadata),
+            (Some(false), Some(true))
+        );
+        assert_eq!(
+            mooshroom_type_from_metadata(id("minecraft:mooshroom"), &metadata),
+            Some(1)
+        );
+        assert_eq!(
+            mooshroom_type_from_metadata(id("minecraft:cow"), &metadata),
+            None
         );
     }
 

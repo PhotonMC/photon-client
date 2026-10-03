@@ -141,6 +141,17 @@ pub fn iron_golem_roll(walk_position: f32, walk_speed: f32) -> Option<f32> {
     (walk_speed >= 0.01).then(|| 6.5 * triangle_wave(walk_position + 6.0, 13.0))
 }
 
+/// What a goat's models are posed from (`GoatRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GoatState {
+    pub quadruped: QuadrupedState,
+    pub has_left_horn: bool,
+    pub has_right_horn: bool,
+    /// `rammingXHeadRot`: how far the head is lowered to ram, in radians.
+    pub ramming_x_head_rot: f32,
+    pub baby: bool,
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -727,6 +738,28 @@ impl MobModel {
             head.y -= 5.0;
             if let Some(hat) = head.child_mut("hat") {
                 hat.y += 5.0;
+            }
+        }
+    }
+
+    /// `GoatModel.setupAnim` (and `BabyGoatModel`'s): the quadruped's pose, the
+    /// horns the goat still has, and the head lowered to ram; a baby's head
+    /// tips forward when it is not ramming.
+    pub fn setup_goat(&mut self, state: &GoatState) {
+        self.setup_quadruped(&state.quadruped);
+        if let Some(head) = self.root.child_mut("head") {
+            for (name, visible) in [
+                ("left_horn", state.has_left_horn),
+                ("right_horn", state.has_right_horn),
+            ] {
+                if let Some(horn) = head.child_mut(name) {
+                    horn.visible = visible;
+                }
+            }
+            if state.ramming_x_head_rot != 0.0 {
+                head.x_rot = state.ramming_x_head_rot;
+            } else if state.baby {
+                head.x_rot = (std::f64::consts::PI / 8.0) as f32;
             }
         }
     }

@@ -17,6 +17,9 @@ pub(crate) struct AnimalState {
     /// `Sheep.DATA_WOOL_ID`: the dye in the low four bits, sheared in bit four.
     pub(crate) wool: u8,
     pub(crate) eat_tick: i32,
+    /// `Goat.isLoweringHead` and `lowerHeadTick`.
+    pub(crate) goat_lowering_head: bool,
+    pub(crate) goat_lower_head_tick: i32,
     /// `IronGolem.attackAnimationTick` and `offerFlowerTick`.
     pub(crate) golem_attack_tick: i32,
     pub(crate) golem_offer_flower_tick: i32,
@@ -38,6 +41,11 @@ const CREEPER_MAX_SWELL: i32 = 30;
 
 /// `Sheep.getHeadEatPositionScale`: how far the head is down, with the eating
 /// timer at `tick`.
+/// The entity events `Goat.handleEntityEvent` answers: it starts lowering its
+/// head to ram, or stops.
+pub(crate) const GOAT_START_RAMMING_EVENT: i8 = 58;
+pub(crate) const GOAT_STOP_RAMMING_EVENT: i8 = 59;
+
 /// The entity events `IronGolem.handleEntityEvent` answers: it swings its
 /// arms for ten ticks, offers a flower for four hundred, or stops offering.
 pub(crate) const GOLEM_ATTACK_EVENT: i8 = 4;
@@ -77,6 +85,8 @@ impl Default for AnimalState {
         Self {
             wool: 0,
             eat_tick: 0,
+            goat_lowering_head: false,
+            goat_lower_head_tick: 0,
             golem_attack_tick: 0,
             golem_offer_flower_tick: 0,
             flap_bits: 0,
@@ -96,6 +106,23 @@ impl AnimalState {
     /// `Sheep.aiStep` on the client: the eating timer runs down.
     pub(crate) fn tick_sheep(&mut self) {
         self.eat_tick = (self.eat_tick - 1).max(0);
+    }
+
+    /// `Goat.handleEntityEvent`: whether the event was one of its own.
+    pub(crate) fn goat_event(&mut self, event: i8) -> bool {
+        match event {
+            GOAT_START_RAMMING_EVENT => self.goat_lowering_head = true,
+            GOAT_STOP_RAMMING_EVENT => self.goat_lowering_head = false,
+            _ => return false,
+        }
+        true
+    }
+
+    /// `Goat.aiStep`: the head goes down a tick at a time and comes up two
+    /// at a time, within twenty.
+    pub(crate) fn tick_goat(&mut self) {
+        self.goat_lower_head_tick += if self.goat_lowering_head { 1 } else { -2 };
+        self.goat_lower_head_tick = self.goat_lower_head_tick.clamp(0, 20);
     }
 
     /// `IronGolem.handleEntityEvent`: whether the event was one of its own.
