@@ -312,6 +312,9 @@ pub struct MobModels {
     kinds: HashMap<i32, &'static MobKind>,
     humanoids: HashMap<i32, &'static HumanoidKind>,
     models: HashMap<String, MobModel>,
+    /// What the glowing layers drew this frame (eyes), for the frame to hand
+    /// to the renderer after the mobs.
+    pub(crate) glow: Vec<Vertex>,
     /// What shakes a creepy enderman: the renderer's own random source, which
     /// the reference does not seed.
     pub(crate) shake: voxel_core::random::RandomSource,
@@ -329,6 +332,7 @@ impl MobModels {
                 .filter_map(|kind| Some((voxel_data::entity_type::id(kind.type_name)?, kind)))
                 .collect(),
             models: HashMap::new(),
+            glow: Vec::new(),
             shake: voxel_core::random::RandomSource::create(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -387,6 +391,7 @@ pub fn remote_mobs(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
+    models.glow.clear();
     for entity in world.entities() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;

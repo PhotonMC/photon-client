@@ -7,7 +7,7 @@ use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     EndermanState, QuadrupedState, creeper_scale, creeper_white_overlay, mob_vertices,
-    placement_pose,
+    mob_vertices_glow, placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::scene::Vertex;
@@ -70,7 +70,15 @@ const MONSTERS: [Monster; 4] = [
 
 /// The paths (under `textures/`) of the textures the monsters wear.
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    MONSTERS.iter().map(|monster| monster.texture)
+    MONSTERS
+        .iter()
+        .flat_map(|monster| {
+            [
+                Some(monster.texture),
+                voxel_render::render_types::eyes_texture(monster.type_name),
+            ]
+        })
+        .flatten()
 }
 
 /// `LivingEntityRenderer` for the spiders, creepers and endermen the server
@@ -89,6 +97,7 @@ pub fn remote_monsters(
         .filter_map(|monster| Some((voxel_data::entity_type::id(monster.type_name)?, monster)))
         .collect();
     let mut vertices = Vec::new();
+    let mut glow = Vec::new();
     for entity in world.entities() {
         let Some(monster) = ids
             .iter()
@@ -149,6 +158,12 @@ pub fn remote_monsters(
             }
         }
         vertices.extend(mob_vertices(model, &placed, rect));
+        // The eyes, over the model as it is posed, after the other layers.
+        if let Some(eyes) = voxel_render::render_types::eyes_texture(monster.type_name)
+            .and_then(|eyes| textures.rect(eyes))
+        {
+            glow.extend(mob_vertices_glow(model, &placed, eyes));
+        }
         if let Some(state) = entity
             .carried_block_state()
             .filter(|_| monster.pose == Pose::Enderman)
@@ -160,5 +175,6 @@ pub fn remote_monsters(
             ));
         }
     }
+    models.glow.extend(glow);
     vertices
 }

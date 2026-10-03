@@ -623,6 +623,8 @@ impl Play {
             ));
         }
         self.backend.set_entities(&models)?;
+        self.backend
+            .set_entity_glow(&std::mem::take(&mut self.mob_models.glow))?;
         let local = (!first_person && !player.spectating())
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;

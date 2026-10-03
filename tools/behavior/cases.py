@@ -14997,6 +14997,11 @@ def entity_golem_cases():
     ]
     rows += [render(f"health-{fraction}", 5.0, 0.7, 10.0, fraction)
              for fraction in (0.0, 0.1, 0.2499, 0.25, 0.4999, 0.5, 0.7499, 0.75, 0.9, 1.0)]
+    # What the glowing-eyes layers submit: the draw order, the texture, the pipeline's
+    # shader flags, blend and depth state, the light and the overlay.
+    yield {"case_id": "entity/eyes-layers", "family": "entity", "operation": "eyes_layers",
+           "rows": [{"label": "spider", "layer": "spider"}, {"label": "enderman", "layer": "enderman"}]}
+
     def block_layer(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
                     attack_ticks=0.0, offer=0):
         return {"label": label, "layer": layer, "head_y_rot": float_bits(head_y_rot),

@@ -1058,6 +1058,31 @@ pub fn mob_vertices(
     mob_vertices_coloured(model, placement, texture, None)
 }
 
+/// A glowing layer's triangles (`EyesLayer`, `RenderTypes.eyes`): the same
+/// posed model, drawn unlit and without the hurt overlay, each vertex's tint
+/// the white it is multiplied by.
+pub fn mob_vertices_glow(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+) -> Vec<Vertex> {
+    let pose = placement_pose(placement);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: uv(texture, corner.uv),
+                shade: 0.0,
+                tint: [1.0; 4],
+                light: [0.0; 2],
+            });
+        }
+    }
+    vertices
+}
+
 /// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a
 /// sheep's wool.
 pub fn mob_vertices_coloured(

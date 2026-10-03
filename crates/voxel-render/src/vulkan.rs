@@ -1062,6 +1062,10 @@ pub struct VulkanBackend {
     /// The entity shadows' triangles, which sample the entity textures.
     shadow_buffer: Option<SkyBuffer>,
     shadow_count: u32,
+    /// The glowing layers' triangles (`RenderTypes.eyes`): the entity
+    /// textures, unlit and blended, tested but not written to the depth.
+    glow_buffer: Option<SkyBuffer>,
+    glow_count: u32,
     name_tag_buffer: Option<SkyBuffer>,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
@@ -1366,6 +1370,8 @@ impl VulkanBackend {
                 orb_count: 0,
                 shadow_buffer: None,
                 shadow_count: 0,
+                glow_buffer: None,
+                glow_count: 0,
                 name_tag_buffer: None,
                 name_tag_count: 0,
                 hand_buffer: None,
@@ -1580,6 +1586,17 @@ impl VulkanBackend {
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     set,
                     (buffer, self.shadow_count),
+                    terrain_push,
+                );
+            }
+            // The glowing layers (the eyes of spiders and endermen): the
+            // `EYES` pipeline is the shadow's shaders and state, the texel
+            // times the colour with no light and no cut-out, then fog.
+            if let (Some(buffer), Some(set)) = (self.glow_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    set,
+                    (buffer, self.glow_count),
                     terrain_push,
                 );
             }
@@ -3925,6 +3942,16 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the next frame's glowing layers, as triangles that sample the
+    /// entity textures, each vertex's tint its colour.
+    pub fn set_entity_glow(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.glow_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.glow_buffer = buffer;
+        self.glow_count = vertices.len() as u32;
+        Ok(())
+    }
+
     /// Hand over the next frame's dropped items: triangles placed like the
     /// terrain's, each with its shade and colour, sampling the block atlas.
     pub fn set_ground_items(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
@@ -4533,6 +4560,7 @@ impl Drop for VulkanBackend {
                 self.name_tag_see_buffer.take(),
                 self.orb_buffer.take(),
                 self.shadow_buffer.take(),
+                self.glow_buffer.take(),
                 self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),

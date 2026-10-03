@@ -19455,6 +19455,36 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `eyes_layers`: what the glowing-eyes layers submit: the draw order, the
+/// texture, the pipeline's state, the light passed and the overlay.
+fn eyes_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::render_types::{EYES, EYES_ORDER, NO_OVERLAY, eyes_texture};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let entity = match row["layer"].as_str().ok_or("layer")? {
+            "spider" => "minecraft:spider",
+            _ => "minecraft:enderman",
+        };
+        let texture = eyes_texture(entity).ok_or("no eyes")?;
+        out.push(json!({
+            "label": row["label"],
+            "order": EYES_ORDER,
+            // The layer hands its light on unchanged; the pipeline ignores it.
+            "light": 15_728_880,
+            "overlay": NO_OVERLAY,
+            "texture": format!("textures/{texture}.png"),
+            "pipeline": EYES.location,
+            "flags": EYES.flags,
+            "values": EYES.values,
+            "blend": EYES.blend,
+            "depth_test": EYES.depth_test,
+            "depth_write": EYES.depth_write,
+            "cull": EYES.cull,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `witch_model`: the witch's model posed and drawn.
 fn witch_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{MobModel, QuadrupedState, WitchState};
@@ -19985,6 +20015,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "enderman_model" => return enderman_model_result(request),
         "iron_golem_render" => return iron_golem_render_result(request),
         "entity_block_layers" => return entity_block_layers_result(request),
+        "eyes_layers" => return eyes_layers_result(request),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),

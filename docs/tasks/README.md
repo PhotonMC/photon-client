@@ -72,7 +72,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | açık |
 | [T33](T33-eklembacaklilar-creeper.md) | Örümcek, böcek, arı ve creeper | M | T24 | bölündü (584d5eca) |
 | [T33b](T33b-goz-sarj-bocek-ari.md) | Gümüş balığı, endermite, arı | M | T33 | açık |
-| [T33c](T33c-emissive-goz-katmani.md) | Emissive göz katmanı (örümcek, enderman) ve şarjlı creeper girdabı | M | T33, T34c | açık |
+| [T33c](T33c-emissive-goz-katmani.md) | Emissive göz katmanı (örümcek, enderman) | S | T33, T34c | bitti |
+| [T33d](T33d-enerji-girdabi.md) | Enerji girdabı ve şarjlı creeper | M | T33c | açık |
 | [T34](T34-koylu-illager-golem.md) | Köylü, tüccar, illager, cadı, golemler ve enderman | L | T24 | bölündü (bc0ab848) |
 | [T34b](T34b-illager-cadi-golem-enderman.md) | Illager ve cadı | M | T34 | bitti (48e17e52) |
 | [T34c](T34c-golem-enderman-zombi-koylu.md) | Demir ve kar golemi, enderman, zombi köylü | L | T34b | bitti (f2c973a6) |

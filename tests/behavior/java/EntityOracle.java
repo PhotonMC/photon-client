@@ -1050,6 +1050,79 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * What the glowing-eyes layers submit, from the reference's own `SpiderEyesLayer` and
+     * `EnderEyesLayer`: the draw order, the texture and the pipeline's state of the render type,
+     * the light coordinates and the overlay.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject eyesLayers(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var order = new int[] {-1};
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        order[0] = (int) args[0];
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitModel")) {
+                        var renderType = (net.minecraft.client.renderer.rendertype.RenderType) args[3];
+                        out.addProperty("order", order[0]);
+                        out.addProperty("light", (int) args[4]);
+                        out.addProperty("overlay", (int) args[5]);
+                        var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)")
+                            .matcher(String.valueOf(renderType));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
+                        var stateField = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
+                        stateField.setAccessible(true);
+                        var setup = stateField.get(renderType);
+                        var pipelineField = setup.getClass().getDeclaredField("pipeline");
+                        pipelineField.setAccessible(true);
+                        var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
+                        out.addProperty("pipeline", pipeline.getLocation().toString());
+                        var flags = new java.util.TreeSet<>(pipeline.getShaderDefines().flags());
+                        out.addProperty("flags", String.join(",", flags));
+                        var values = new java.util.TreeMap<>(pipeline.getShaderDefines().values());
+                        var text = new StringBuilder();
+                        values.forEach((key, value) -> text.append(key).append('=').append(value).append(','));
+                        out.addProperty("values", text.toString());
+                        var blend = pipeline.getColorTargetState().blendFunction();
+                        out.addProperty("blend", blend.isEmpty() ? "NONE"
+                            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.TRANSLUCENT) ? "TRANSLUCENT"
+                            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.ADDITIVE) ? "ADDITIVE" : "OTHER");
+                        out.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
+                        out.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
+                        out.addProperty("cull", pipeline.isCull());
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            var model = new net.minecraft.client.model.monster.spider.SpiderModel(bakedLayer("minecraft:spider#main"));
+            if (row.get("layer").getAsString().equals("spider")) {
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                new net.minecraft.client.renderer.entity.layers.SpiderEyesLayer(parent).submit(
+                    stack, holder[0], 15728880, new net.minecraft.client.renderer.entity.state.LivingEntityRenderState(),
+                    0.0F, 0.0F);
+            } else {
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+                new net.minecraft.client.renderer.entity.layers.EnderEyesLayer(parent).submit(
+                    stack, holder[0], 15728880, new net.minecraft.client.renderer.entity.state.EndermanRenderState(),
+                    0.0F, 0.0F);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1650,6 +1723,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("eyes_layers")) {
+            return eyesLayers(request);
         }
         if (operation.equals("entity_block_layers")) {
             return entityBlockLayers(request);
