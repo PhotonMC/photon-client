@@ -5,13 +5,18 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{QuadrupedState, VillagerState, WitchState, mob_vertices};
+use voxel_render::held_item::{crossed_arms_item_pose, head_item_pose, witch_potion_pose};
+use voxel_render::mob_model::{
+    QuadrupedState, VillagerState, WitchState, mob_vertices, placement_pose,
+};
+use voxel_render::player_model::Part;
 use voxel_render::scene::Vertex;
 use voxel_render::villager::{Pass, profession_passes, profession_textures};
 
 use voxel_world::{ClientEntity, EquipmentSlot};
 
-use crate::mobs::{MobModels, placement};
+use crate::held_items::{HeldItem, Place};
+use crate::mobs::{MobModels, is_item, placement};
 use crate::overlays::FrameView;
 
 const WANDERING_TRADER_LAYER: &str = "minecraft:wandering_trader#main";
@@ -64,13 +69,13 @@ pub(crate) fn profession_layer(entity: &ClientEntity, folder: &str, baby: bool) 
 }
 
 /// `VillagerRenderer` and `WanderingTraderRenderer` for the villagers the
-/// server added. What they hold in their crossed arms and wear on their heads
-/// is not drawn yet.
+/// server added, with what they hold in their crossed arms and wear on their
+/// heads.
 pub fn remote_villagers(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let (Some(villager), Some(trader)) = (
         voxel_data::entity_type::id("minecraft:villager"),
@@ -102,7 +107,7 @@ pub fn remote_villagers(
             age_in_ticks: entity.tick_count() as f32 + partial,
             unhappy: entity.is_unhappy(),
         };
-        let placement = placement(world, &snapshot, view, 1.0);
+        let placed = placement(world, &snapshot, view, 1.0);
         // The model and texture of each pass: the body first, then the layer.
         let mut passes = vec![if is_villager {
             (
@@ -126,24 +131,56 @@ pub fn remote_villagers(
                     .map(|pass| (layer(FOLDER, pass.hatless, baby), pass.texture)),
             );
         }
+        let main_layer = passes[0].0.clone();
         for (id, texture) in passes {
             let (Some(rect), Some(model)) = (textures.rect(&texture), models.model(&id)) else {
                 continue;
             };
             model.setup_villager(&state);
-            vertices.extend(mob_vertices(model, &placement, rect));
+            vertices.extend(mob_vertices(model, &placed, rect));
+        }
+        let Some(model) = models.model(&main_layer) else {
+            continue;
+        };
+        let part = |name: &str| {
+            model
+                .root()
+                .children()
+                .iter()
+                .find(|part| part.name() == name)
+        };
+        let entity_pose = placement_pose(&placed);
+        if let (Some(stack), Some(arms)) = (entity.equipment(EquipmentSlot::MainHand), part("arms"))
+        {
+            let pose = crossed_arms_item_pose(&entity_pose, model.root(), arms);
+            held.push(HeldItem::stack(stack, pose, Place::Ground, placed.light));
+        }
+        if let (Some(stack), Some(head)) = (entity.equipment(EquipmentSlot::Head), part("head")) {
+            // `VillagerRenderer.CUSTOM_HEAD_TRANSFORMS`, or the default's.
+            let transforms = if is_villager {
+                (-0.117_187_5, 1.0)
+            } else {
+                (0.0, 1.0)
+            };
+            let pose = head_item_pose(&entity_pose, model.root(), head, transforms);
+            held.push(HeldItem::stack(stack, pose, Place::Head, placed.light));
         }
     }
     vertices
 }
 
-/// `WitchRenderer` for the witches the server added. What a witch holds
-/// (`WitchItemLayer`) is not drawn yet.
+/// A part of a model's tree by its name.
+fn child<'a>(from: &'a Part, name: &str) -> Option<&'a Part> {
+    from.children().iter().find(|part| part.name() == name)
+}
+
+/// `WitchRenderer` for the witches the server added, with what they hold
+/// (`WitchItemLayer`): a potion at the nose, anything else on the folded arms.
 pub fn remote_witches(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let Some(witch) = voxel_data::entity_type::id("minecraft:witch") else {
         return Vec::new();
@@ -173,11 +210,25 @@ pub fn remote_witches(
             entity_id: entity.id(),
             holding_item: entity.equipment(EquipmentSlot::MainHand).is_some(),
         });
-        vertices.extend(mob_vertices(
-            model,
-            &placement(world, &snapshot, view, 1.0),
-            rect,
-        ));
+        let placed = placement(world, &snapshot, view, 1.0);
+        vertices.extend(mob_vertices(model, &placed, rect));
+        let Some(stack) = entity.equipment(EquipmentSlot::MainHand) else {
+            continue;
+        };
+        let part = child;
+        let entity_pose = placement_pose(&placed);
+        let root = model.root();
+        let pose = if is_item(stack, "minecraft:potion")
+            && let Some(head) = part(root, "head")
+            && let Some(nose) = part(head, "nose")
+        {
+            witch_potion_pose(&entity_pose, root, head, nose)
+        } else if let Some(arms) = part(root, "arms") {
+            crossed_arms_item_pose(&entity_pose, root, arms)
+        } else {
+            continue;
+        };
+        held.push(HeldItem::stack(stack, pose, Place::Ground, placed.light));
     }
     vertices
 }

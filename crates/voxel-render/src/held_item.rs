@@ -64,3 +64,36 @@ pub fn head_item_pose(
     pose.scale(0.625, -0.625, -0.625);
     pose
 }
+
+/// `CrossedArmsItemLayer`: what a villager, a wandering trader or a witch
+/// holds sits on the folded arms, tipped back, a little larger than the
+/// model's scale and turned over.
+pub fn crossed_arms_item_pose(base: &Pose, root: &Part, arms: &Part) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    arms.translate_and_rotate(&mut pose);
+    pose.rotate(&Quaternion::rotation_x(0.75));
+    pose.scale(1.07, 1.07, 1.07);
+    pose.translate(0.0, 0.13, -0.34);
+    pose.rotate(&Quaternion::rotation_x(std::f64::consts::PI as f32));
+    pose
+}
+
+/// `WitchItemLayer` for a potion: held at the tip of the nose, which the
+/// head carries.
+pub fn witch_potion_pose(base: &Pose, root: &Part, head: &Part, nose: &Part) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    head.translate_and_rotate(&mut pose);
+    nose.translate_and_rotate(&mut pose);
+    pose.translate(0.0625, 0.25, 0.0);
+    for (turn, degrees) in [(true, 180.0), (false, 140.0), (true, 10.0), (false, 180.0)] {
+        let angle = Quaternion::degrees_to_radians(degrees);
+        pose.rotate(&if turn {
+            Quaternion::rotation_z(angle)
+        } else {
+            Quaternion::rotation_x(angle)
+        });
+    }
+    pose
+}

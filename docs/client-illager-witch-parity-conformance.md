@@ -45,6 +45,6 @@ satırlarıyla her koşuda karşılaştırılır.
   kullanıldığını ister (`ticksUsingItem`, `CrossbowItem.getChargeDuration`); mob için
   izlenmiyor, çizimde arbalet tutma pozu görünür (T41d).
 - Illusioner'ın görünmezken çizilen yansımaları ve kutlama/büyü sesleri yok.
-- Cadının tuttuğu eşya (`WitchItemLayer`) çizilmiyor; yalnız burun pozu var.
+- Cadının tuttuğu eşya T41g'de çizilir ([kayıt](client-villager-held-parity-conformance.md)).
 - Büyü yaparken çağırıcının tuttuğu eşya ve yağmacı/gözcü silahı, genel eldeki eşya
   katmanıyla çizilir; kullanım pozları T41d'de.

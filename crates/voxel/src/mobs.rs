@@ -485,7 +485,10 @@ fn remote_families(
         (view, &mut *held),
     ));
     vertices.extend(crate::villagers::remote_villagers(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::farm_animals::remote_farm_animals(
         session,
@@ -500,7 +503,10 @@ fn remote_families(
         (view, &mut *held),
     ));
     vertices.extend(crate::villagers::remote_witches(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::illagers::remote_illagers(
         session,

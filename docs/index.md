@@ -133,6 +133,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T30 — Koyun ve tavuk — client-parity](client-sheep-chicken-parity-conformance.md)
 - [T29 — İskelet ve piglin aileleri modeli — client-parity](client-skeleton-piglin-parity-conformance.md)
 - [T33 — Örümcek, mağara örümceği ve creeper — client-parity](client-spider-creeper-parity-conformance.md)
+- [T41g — Köylü, tüccar ve cadının tuttuğu ve taktığı eşya — client-parity](client-villager-held-parity-conformance.md)
 - [T34 — Köylü ve gezgin tüccar — client-parity](client-villager-parity-conformance.md)
 - [P09.a — ClientWorld blok çarpışma şekli toplama — client-parity birleşik kayıt](client-world-block-collision-conformance.md)
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)

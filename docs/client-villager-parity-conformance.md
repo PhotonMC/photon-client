@@ -44,8 +44,8 @@ satır (köylü ve zombi köylü klasörü; yetişkin ve bebek × tür × meslek
 
 - Zombi köylü çizilmiyor (`ZombieVillagerModel` ayrı insansı model); katman mantığı
   oracle'da `zombie_villager` klasörüyle karşılaştırılır, çizime T34b'de bağlanır.
-- Köylünün kafa eşyası (`CustomHeadLayer`, köylü dönüşümüyle) ve çapraz kolundaki eşya
-  (`CrossedArmsItemLayer`) yok; tüccarın da.
+- Köylünün ve tüccarın kafa eşyası ile çapraz kolundaki eşya T41g'de çizilir
+  ([kayıt](client-villager-held-parity-conformance.md)).
 - Ticaret ekranı, köylü sesleri ve yatakta uyuma pozu kapsam dışı.
 - Katmanların dokuları sınır yüzeylerde aynı derinlikte çizilir; `GREATER_OR_EQUAL`
   derinlik testi sonradan çizileni öne alır, referanstaki sıra korunur.

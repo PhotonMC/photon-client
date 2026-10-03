@@ -14419,6 +14419,7 @@ def entity_cases():
     yield from entity_illager_cases()
     yield from entity_golem_cases()
     yield from entity_goat_cases()
+    yield from entity_villager_held_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
@@ -15037,6 +15038,32 @@ def entity_golem_cases():
            ]}
     yield {"case_id": "entity/iron-golem-render", "family": "entity",
            "operation": "iron_golem_render", "rows": rows}
+
+
+def entity_villager_held_cases():
+    """Where the layers that hold something on a villager, a wandering trader and a witch
+    put it: the crossed arms' item, the witch's item and potion, and the head item (with the
+    villager's transforms and the default's), from the reference's own layer classes."""
+    def row(label, kind, baby=False, head_y_rot=0.0, x_rot=0.0, age=0.0, unhappy=False,
+            entity_id=0, villager_transforms=True):
+        return {"label": label, "kind": kind, "baby": baby, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "age_in_ticks": float_bits(age), "unhappy": unhappy,
+                "entity_id": entity_id, "villager_transforms": villager_transforms}
+
+    yield {"case_id": "entity/villager-held-layers", "family": "entity",
+           "operation": "villager_held_layers", "rows": [
+               row("crossed-arms", "crossed"),
+               row("crossed-arms-baby", "crossed", baby=True),
+               row("witch-item", "witch_item", head_y_rot=-35.5, x_rot=48.0, age=31.5, entity_id=7),
+               row("witch-potion", "witch_potion", age=31.5, entity_id=7),
+               row("witch-potion-looking", "witch_potion", head_y_rot=12.0, x_rot=-8.0, age=9.0,
+                   entity_id=13),
+               row("head-villager", "villager_head", head_y_rot=-35.5, x_rot=48.0, age=3.25),
+               row("head-villager-unhappy", "villager_head", unhappy=True, age=17.5),
+               row("head-baby-villager", "villager_head", baby=True, head_y_rot=12.0, x_rot=-8.0),
+               row("head-trader", "villager_head", villager_transforms=False, head_y_rot=-35.5,
+                   x_rot=48.0),
+           ]}
 
 
 def entity_goat_cases():

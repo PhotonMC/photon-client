@@ -1166,6 +1166,82 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the layers that hold something on a villager, a trader or a witch put it, from the
+     * reference's own layer classes: the matrix each is submitted with, from an identity entity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject villagerHeldLayers(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            String kind = row.get("kind").getAsString();
+            boolean baby = row.get("baby").getAsBoolean();
+            if (kind.startsWith("witch")) {
+                var model = new net.minecraft.client.model.monster.witch.WitchModel(bakedLayer("minecraft:witch#main"));
+                var state = new net.minecraft.client.renderer.entity.state.WitchRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.entityId = row.get("entity_id").getAsInt();
+                state.isHoldingItem = true;
+                state.isHoldingPotion = kind.equals("witch_potion");
+                model.setupAnim(state);
+                state.heldItem.newLayer();
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                new net.minecraft.client.renderer.entity.layers.WitchItemLayer(parent)
+                    .submit(stack, collector, 0, state, 0.0F, 0.0F);
+            } else {
+                var model = baby
+                    ? new net.minecraft.client.model.npc.BabyVillagerModel(bakedLayer("minecraft:villager_baby#main"))
+                    : new net.minecraft.client.model.npc.VillagerModel(bakedLayer("minecraft:villager#main"));
+                var state = new net.minecraft.client.renderer.entity.state.VillagerRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.isUnhappy = row.get("unhappy").getAsBoolean();
+                model.setupAnim(state);
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                if (kind.equals("villager_head")) {
+                    state.headItem.newLayer();
+                    var transforms = row.get("villager_transforms").getAsBoolean()
+                        ? net.minecraft.client.renderer.entity.VillagerRenderer.CUSTOM_HEAD_TRANSFORMS
+                        : net.minecraft.client.renderer.entity.layers.CustomHeadLayer.Transforms.DEFAULT;
+                    new net.minecraft.client.renderer.entity.layers.CustomHeadLayer(parent, null, null, transforms)
+                        .submit(stack, collector, 0, state, 0.0F, 0.0F);
+                } else {
+                    state.heldItem.newLayer();
+                    new net.minecraft.client.renderer.entity.layers.CrossedArmsItemLayer(parent)
+                        .submit(stack, collector, 0, state, 0.0F, 0.0F);
+                }
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1769,6 +1845,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("villager_held_layers")) {
+            return villagerHeldLayers(request);
         }
         if (operation.equals("goat_model")) {
             return goatModel(request);

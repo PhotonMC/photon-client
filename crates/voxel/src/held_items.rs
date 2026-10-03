@@ -18,6 +18,9 @@ pub enum Place {
     Right,
     Left,
     Head,
+    /// Held on folded arms or at a witch's nose: shown as it lies on the
+    /// ground (`HoldingEntityRenderState.heldItem`).
+    Ground,
 }
 
 impl Place {
@@ -45,6 +48,16 @@ pub struct HeldItem {
 }
 
 impl HeldItem {
+    /// A stack carried at a place, from the pose its layer leaves.
+    pub fn stack(stack: &ClientItemStackState, pose: Pose, place: Place, light: i32) -> Self {
+        Self {
+            stack: Carried::Stack(stack.clone()),
+            pose,
+            place,
+            light,
+        }
+    }
+
     /// A block state drawn on an entity, from the pose its layer leaves.
     pub fn block(state: u32, pose: Pose, light: i32) -> Self {
         Self {
@@ -123,7 +136,7 @@ impl Hands<'_> {
 /// The layers of each held stack, in the display context of its hand.
 pub fn held_item_vertices(
     held: &[HeldItem],
-    layers: &mut [ItemLayerCache; 3],
+    layers: &mut [ItemLayerCache; 4],
     (renderer, tints): (&BlockRenderer, &BiomeTints),
 ) -> Vec<Vertex> {
     let mut vertices = Vec::new();

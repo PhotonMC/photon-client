@@ -19473,6 +19473,97 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `villager_held_layers`: where the layers that hold something on a villager,
+/// a trader and a witch put it, from an identity entity pose.
+fn villager_held_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::held_item::{crossed_arms_item_pose, head_item_pose, witch_potion_pose};
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{MobModel, QuadrupedState, VillagerState, WitchState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let look = QuadrupedState {
+            head_y_rot: bits("head_y_rot")?,
+            x_rot: bits("x_rot")?,
+            ..Default::default()
+        };
+        let kind = row["kind"].as_str().ok_or("kind")?;
+        let baby = row["baby"].as_bool().ok_or("baby")?;
+        let entity = Pose::default();
+        let mut model = MobModel::bake(
+            voxel_data::entity_model::layer(match (kind.starts_with("witch"), baby) {
+                (true, _) => "minecraft:witch#main",
+                (false, true) => "minecraft:villager_baby#main",
+                (false, false) => "minecraft:villager#main",
+            })
+            .ok_or("no such layer")?,
+        );
+        let mut pose = if kind.starts_with("witch") {
+            model.setup_witch(&WitchState {
+                quadruped: look,
+                age_in_ticks: bits("age_in_ticks")?,
+                entity_id: row["entity_id"].as_i64().ok_or("entity_id")? as i32,
+                holding_item: true,
+            });
+            let part = |from: &voxel_render::player_model::Part, name: &str| {
+                from.children()
+                    .iter()
+                    .find(|part| part.name() == name)
+                    .cloned()
+                    .ok_or(format!("no {name}"))
+            };
+            if kind == "witch_potion" {
+                let head = part(model.root(), "head")?;
+                let nose = part(&head, "nose")?;
+                witch_potion_pose(&entity, model.root(), &head, &nose)
+            } else {
+                crossed_arms_item_pose(&entity, model.root(), &part(model.root(), "arms")?)
+            }
+        } else {
+            model.setup_villager(&VillagerState {
+                quadruped: look,
+                age_in_ticks: bits("age_in_ticks")?,
+                unhappy: row["unhappy"].as_bool().ok_or("unhappy")?,
+            });
+            let part = |name: &str| {
+                model
+                    .root()
+                    .children()
+                    .iter()
+                    .find(|part| part.name() == name)
+                    .cloned()
+                    .ok_or(format!("no {name}"))
+            };
+            if kind == "villager_head" {
+                // The villager renderer's own head transforms, or the default.
+                let transforms = if row["villager_transforms"].as_bool().ok_or("transforms")? {
+                    (-0.117_187_5, 1.0)
+                } else {
+                    (0.0, 1.0)
+                };
+                head_item_pose(&entity, model.root(), &part("head")?, transforms)
+            } else {
+                crossed_arms_item_pose(&entity, model.root(), &part("arms")?)
+            }
+        };
+        // The stack's own display transform is none: the model is moved to its corner.
+        pose.translate(-0.5, -0.5, -0.5);
+        let matrix: Vec<String> = (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| format!("{:08x}", pose.pose.m[column][row].to_bits()))
+            .collect();
+        out.push(json!({"label": row["label"], "poses": [matrix]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `goat_model`: the goat's model posed and drawn.
 fn goat_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{GoatState, MobModel};
@@ -20058,6 +20149,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_block_layers" => return entity_block_layers_result(request),
         "eyes_layers" => return eyes_layers_result(request),
         "goat_model" => return goat_model_result(request),
+        "villager_held_layers" => return villager_held_layers_result(request),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),

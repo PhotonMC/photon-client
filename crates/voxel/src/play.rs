@@ -111,7 +111,7 @@ struct Play {
     /// What humanoids wear.
     armor: Armor,
     /// The layers of what humanoids hold, in the right and the left hand.
-    worn_layers: [ItemLayerCache; 3],
+    worn_layers: [ItemLayerCache; 4],
     entity_textures: voxel_render::entity_textures::EntityTextures,
     skin_rect: voxel_render::entity_textures::TextureRect,
     gui: Gui,
@@ -271,6 +271,7 @@ impl Play {
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonRightHand),
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonLeftHand),
                 ItemLayerCache::new(voxel_render::model::DisplayContext::Head),
+                ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
             ],
             entity_textures,
             skin_rect,
