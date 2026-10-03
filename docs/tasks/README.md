@@ -101,7 +101,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | açık |
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | açık |
 | [PLAN-M6](PLAN-M3d.md) | Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl | S | – | açık |
-| PLAN-M7 | Ses: bağımlılık kararı (kullanıcı onayı gerekir) ve görevlere bölme | S | – | açık |
+| PLAN-M7 | Ses: bağımlılık kararı ([seçenekler](../audio-backend-decision.md), kullanıcı onayı bekliyor) ve görevlere bölme | S | – | açık |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
 
 Görev yazarken şablon: Amaç · Bağımlılık · Oku · Yapılacaklar · Oracle · Kabul · Kapsam dışı · Belgeler · Devir notu (≤ 60 satır).
