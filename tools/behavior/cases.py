@@ -14398,6 +14398,28 @@ def movement_item_cases():
                 {"tick": 10, "type": "move", "xa": 0, "ya": 0, "za": 0, "on_ground": True},
                 {"tick": 20, "type": "camel_data", "dash": True}],
                extras=["camel"]),
+        living("wolf-wild", "wolf", 6, [], extras=["wolf"]),
+        living("wolf-tame-sits", "wolf", 6, [{"tick": 1, "type": "wolf_data", "flags": 5}],
+               extras=["wolf"]),
+        living("wolf-tame-hurt", "wolf", 8,
+               [{"tick": 0, "type": "attributes", "attributes": [
+                   {"name": "minecraft:max_health", "base": float_bits(40.0, "f64"), "modifiers": []}]},
+                {"tick": 1, "type": "wolf_data", "flags": 4, "health": float_bits(13.5)}],
+               extras=["wolf"]),
+        living("wolf-angers", "wolf", 12, [{"tick": 0, "type": "game_time", "time": 1000},
+                                            {"tick": 2, "type": "wolf_data", "anger_end": 1006},
+                                            {"tick": 6, "type": "game_time", "time": 1007}],
+               extras=["wolf"]),
+        living("wolf-takes-an-interest", "wolf", 30, [{"tick": 2, "type": "wolf_data", "interested": True},
+                                                      {"tick": 12, "type": "wolf_data", "interested": False}],
+               extras=["wolf"]),
+        # The shake past 0.4 throws splash particles, which a headless client cannot add; the
+        # rest of its run is a unit test of the state.
+        living("wolf-shakes", "wolf", 10, [{"tick": 3, "type": "entity_event", "event": 8}],
+               extras=["wolf"]),
+        living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
+                                                    {"tick": 8, "type": "entity_event", "event": 56}],
+               extras=["wolf"]),
         living("horse-quiet", "horse", 8, [{"tick": 0, "type": "seed", "seed": 11}], extras=["horse"]),
         living("horse-grazes", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
                                               {"tick": 2, "type": "horse_data", "flags": 16}],
@@ -14489,6 +14511,7 @@ def entity_cases():
     yield from entity_data_serializer_cases()
     yield from entity_variant_field_cases()
     yield from entity_variant_cases()
+    yield from entity_wolf_variant_cases()
     yield from entity_zombie_cases()
     yield from entity_skeleton_cases()
     yield from entity_piglin_cases()
@@ -14512,6 +14535,7 @@ def entity_cases():
     yield from entity_equine_cases()
     yield from entity_camel_cases()
     yield from entity_llama_cases()
+    yield from entity_wolf_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -14868,6 +14892,7 @@ def entity_sheep_colour_cases():
     """What a sheep's wool is multiplied by: the reference's table for each of
     the sixteen dyes, and a `jeb_` sheep's colour along its cycle."""
     rows = [{"label": f"dye-{dye}", "dye": dye} for dye in range(16)]
+    rows += [{"label": f"texture-dye-{dye}", "texture_dye": dye} for dye in range(16)]
     for tick in (0.0, 0.5, 12.25, 24.9, 25.0, 31.5, 100.1, 399.0, 400.0, 401.7, 1234.567):
         rows.append({"label": f"jeb-{tick}", "tick": float_bits(tick)})
     yield {
@@ -15338,6 +15363,37 @@ def entity_camel_cases():
            "rows": rows}
 
 
+def entity_wolf_cases():
+    """The wolf, grown and baby, posed by the reference's own `WolfModel.setupAnim`: the walk, the
+    tail (angry, by health), sitting, the head roll and the body rolled by a shake."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             angry=False, sitting=False, tail=0.6283185, roll=0.0, shake=0.0):
+        scale = 0.5 if layer.endswith("wolf_baby#main") else 1.0
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "angry": angry, "sitting": sitting,
+                "tail_angle": float_bits(tail), "head_roll_angle": float_bits(roll),
+                "shake_anim": float_bits(shake), "age_scale": float_bits(scale)}
+
+    rows = []
+    for layer in ("minecraft:wolf#main", "minecraft:wolf_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("angry", layer, walk_position=7.3, walk_speed=0.83, angry=True, tail=1.5393804),
+            pose("tame-hurt", layer, tail=1.2),
+            pose("sitting", layer, sitting=True, walk_position=7.3, walk_speed=0.83),
+            pose("sitting-looking", layer, sitting=True, head_y_rot=14.0, x_rot=-20.0, tail=1.7),
+            pose("interested", layer, roll=0.3, head_y_rot=10.0),
+            pose("shaking", layer, shake=0.9, roll=0.1),
+            pose("shaking-late", layer, shake=1.65),
+            pose("shaking-sitting", layer, shake=0.5, sitting=True),
+        ]
+    yield {"case_id": "entity/wolf-model", "family": "entity", "operation": "wolf_model",
+           "rows": rows}
+
+
 def entity_llama_cases():
     """The llama, grown and baby, posed by the reference's own `LlamaModel.setupAnim`: the head, the
     diagonal stride, the chests."""
@@ -15515,6 +15571,16 @@ def entity_variant_cases():
         "case_id": "entity/variants",
         "family": "entity",
         "operation": "entity_variants",
+        "rows": [{"label": "all"}],
+    }
+
+
+def entity_wolf_variant_cases():
+    """The wolf variants of the game's data pack: the textures each wears."""
+    yield {
+        "case_id": "entity/wolf-variants",
+        "family": "entity",
+        "operation": "wolf_variants",
         "rows": [{"label": "all"}],
     }
 

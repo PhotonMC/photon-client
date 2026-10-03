@@ -26,6 +26,7 @@ mod sky;
 mod view;
 mod villagers;
 mod window_probe;
+mod wolves;
 
 use std::env;
 use std::net::SocketAddr;

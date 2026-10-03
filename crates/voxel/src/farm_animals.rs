@@ -248,7 +248,7 @@ enum Animal {
 /// Whether a bee is angry: its anger ends later than the game time now
 /// (`NeutralMob.isAngry`).
 fn bee_is_angry(entity: &ClientEntity, game_time: u64) -> bool {
-    let end = entity.bee_anger_end();
+    let end = entity.anger_end();
     end > 0 && end - game_time as i64 > 0
 }
 

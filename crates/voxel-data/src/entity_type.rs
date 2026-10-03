@@ -33,6 +33,42 @@ pub struct EntityVariant {
     pub model: &'static str,
 }
 
+/// A wolf variant of the data pack: the textures (with their namespace) a
+/// grown wolf and a baby wear, each wild, tame and angry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WolfVariant {
+    pub name: &'static str,
+    /// Wild, tame, angry; then the baby's wild, tame, angry.
+    pub assets: [&'static str; 6],
+}
+
+impl WolfVariant {
+    /// The texture of a wolf in this state (`Wolf.getTexture`): a tame wolf is
+    /// tame whether or not it is angry.
+    pub fn texture(&self, baby: bool, tame: bool, angry: bool) -> &'static str {
+        let state = if tame {
+            1
+        } else if angry {
+            2
+        } else {
+            0
+        };
+        self.assets[if baby { 3 + state } else { state }]
+    }
+}
+
+/// Every wolf variant, by name.
+pub fn wolf_variants() -> impl Iterator<Item = &'static WolfVariant> {
+    crate::generated::wolf_variants::WOLF_VARIANTS.iter()
+}
+
+/// The wolf variant with this name (`minecraft:ashen`).
+pub fn wolf_variant(name: &str) -> Option<&'static WolfVariant> {
+    crate::generated::wolf_variants::WOLF_VARIANTS
+        .iter()
+        .find(|variant| variant.name == name)
+}
+
 /// The variant of that kind with this name (`minecraft:cold`).
 pub fn variant(kind: &str, name: &str) -> Option<&'static EntityVariant> {
     crate::generated::entity_variants::ENTITY_VARIANTS
@@ -99,6 +135,14 @@ pub fn default_attribute(entity_type: &str, attribute: &str) -> Option<f64> {
 /// ARGB (`ColorLerper.Type.SHEEP`).
 pub fn sheep_colour(dye: usize) -> Option<u32> {
     crate::generated::sheep_colors::SHEEP_COLORS
+        .get(dye)
+        .copied()
+}
+
+/// `DyeColor.getTextureDiffuseColor` of this dye (`DyeColor.getId`), as the
+/// reference's int (a wolf's collar).
+pub fn dye_texture_colour(dye: usize) -> Option<u32> {
+    crate::generated::sheep_colors::DYE_TEXTURE_COLORS
         .get(dye)
         .copied()
 }

@@ -136,6 +136,7 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
         "minecraft:pig" => (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID),
         "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
         "minecraft:chicken" => (CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID),
+        "minecraft:wolf" => (WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID),
         _ => return None,
     };
     let (found, mut value) = find_metadata_field(metadata, data_id)?;
@@ -371,6 +372,34 @@ pub(crate) fn bee_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u
             (!value.is_empty()).then_some(end)
         });
     (metadata_byte_value(metadata, BEE_FLAGS_DATA_ID), anger)
+}
+
+/// What a wolf's data holds (`TamableAnimal.DATA_FLAGS_ID`, `Wolf.DATA_INTERESTED_ID`,
+/// `DATA_COLLAR_COLOR`, `DATA_ANGER_END_TIME`), each when it is there.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct WolfData {
+    pub(crate) flags: Option<u8>,
+    pub(crate) interested: Option<bool>,
+    pub(crate) collar: Option<i32>,
+    pub(crate) anger_end: Option<i64>,
+}
+
+pub(crate) fn wolf_data_from_metadata(type_id: i32, metadata: &[u8]) -> WolfData {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:wolf") {
+        return WolfData::default();
+    }
+    let anger_end = find_metadata_field(metadata, WOLF_ANGER_END_DATA_ID)
+        .filter(|(serializer, _)| *serializer == LONG_SERIALIZER_ID)
+        .and_then(|(_, mut value)| {
+            let end = voxel_core::wire::read_varlong(&mut value).ok()?;
+            (!value.is_empty()).then_some(end)
+        });
+    WolfData {
+        flags: metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID),
+        interested: metadata_boolean_value(metadata, WOLF_INTERESTED_DATA_ID),
+        collar: metadata_int_value(metadata, WOLF_COLLAR_DATA_ID),
+        anger_end,
+    }
 }
 
 /// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
@@ -621,6 +650,26 @@ mod tests {
         }
         out.push(255);
         out
+    }
+
+    #[test]
+    fn a_wolfs_flags_collar_and_anger_are_read_and_its_variant_is_a_registry_id() {
+        let wolf = voxel_data::entity_type::id("minecraft:wolf").unwrap();
+        let pig = voxel_data::entity_type::id("minecraft:pig").unwrap();
+        let metadata = data(&[
+            (TAMABLE_FLAGS_DATA_ID, 0, &[5]),
+            (WOLF_INTERESTED_DATA_ID, 8, &[1]),
+            (WOLF_COLLAR_DATA_ID, 1, &[3]),
+            (WOLF_ANGER_END_DATA_ID, 2, &[0x90, 0x4e]),
+            (WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID, &[4]),
+        ]);
+        let read = wolf_data_from_metadata(wolf, &metadata);
+        assert_eq!(read.flags, Some(5));
+        assert_eq!(read.interested, Some(true));
+        assert_eq!(read.collar, Some(3));
+        assert_eq!(read.anger_end, Some(10_000));
+        assert_eq!(variant_from_metadata(wolf, &metadata), Some(4));
+        assert_eq!(wolf_data_from_metadata(pig, &metadata), WolfData::default());
     }
 
     #[test]

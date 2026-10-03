@@ -682,6 +682,30 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "wolf_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("flags")) {
+                            data.add(wolfData(net.minecraft.world.entity.TamableAnimal.class, "DATA_FLAGS_ID",
+                                (byte) event.get("flags").getAsInt()));
+                        }
+                        if (event.has("interested")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_INTERESTED_ID",
+                                event.get("interested").getAsBoolean()));
+                        }
+                        if (event.has("collar")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_COLLAR_COLOR",
+                                event.get("collar").getAsInt()));
+                        }
+                        if (event.has("anger_end")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME",
+                                event.get("anger_end").getAsLong()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                        if (event.has("health")) {
+                            entity.setHealth(Oracle.f32(event, "health"));
+                        }
+                    }
                     case "rabbit_idle" -> {
                         // What the reference draws from an unseeded random source: fixed here.
                         var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
@@ -785,6 +809,17 @@ public final class MovementOracle {
                             described.addProperty("nectar", bee.hasNectar());
                             described.addProperty("angry", bee.isAngry());
                         }
+                        case "wolf" -> {
+                            var wolf = (net.minecraft.world.entity.animal.wolf.Wolf) entity;
+                            described.addProperty("angry", wolf.isAngry());
+                            described.addProperty("sitting", wolf.isInSittingPose());
+                            described.addProperty("tame", wolf.isTame());
+                            described.addProperty("tail_angle", Oracle.bits(wolf.getTailAngle()));
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("head_roll_" + partial, Oracle.bits(wolf.getHeadRollAngle(partial)));
+                                described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
+                            }
+                        }
                         case "rabbit" -> {
                             var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
                             described.addProperty("hop_started", rabbit.hopAnimationState.isStarted());
@@ -829,6 +864,16 @@ public final class MovementOracle {
     private static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> beeData(
         final String field, final Object value) throws Exception {
         var accessor = net.minecraft.world.entity.animal.bee.Bee.class.getDeclaredField(field);
+        accessor.setAccessible(true);
+        return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+            (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
+    }
+
+    /** A wolf's data value, built from the reference's own accessor. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> wolfData(
+        final Class<?> owner, final String field, final Object value) throws Exception {
+        var accessor = owner.getDeclaredField(field);
         accessor.setAccessible(true);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);

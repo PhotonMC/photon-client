@@ -48,6 +48,7 @@ pub mod rabbit;
 mod recipes;
 mod region_copy;
 mod shadow;
+pub mod wolf;
 
 pub use block_entity::*;
 pub use block_state::*;
@@ -2029,6 +2030,14 @@ impl ClientWorld {
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
+            Some("minecraft:wolf") if event == wolf::SHAKE_EVENT => {
+                entity.living.wolf.start_shake();
+                return true;
+            }
+            Some("minecraft:wolf") if event == wolf::CANCEL_SHAKE_EVENT => {
+                entity.living.wolf.cancel_shake();
+                return true;
+            }
             Some("minecraft:rabbit") if event == 1 => {
                 entity
                     .rabbit
@@ -2050,6 +2059,8 @@ impl ClientWorld {
         }
         entity.health_bits = Some(0.0_f32.to_bits());
         entity.alive = false;
+        // `Wolf.die` stops a shake.
+        entity.living.wolf.cancel_shake();
         true
     }
 
@@ -3361,8 +3372,11 @@ impl ClientWorld {
             entity.living.bee_flags = flags;
         }
         if let Some(end) = bee_anger {
-            entity.living.bee_anger_end = end;
+            entity.living.anger_end = end;
         }
+        entity
+            .living
+            .apply_wolf(wolf_data_from_metadata(entity.type_id, metadata));
         if let Some(variant) = rabbit_type_from_metadata(entity.type_id, metadata) {
             entity.living.rabbit_type = variant;
         }

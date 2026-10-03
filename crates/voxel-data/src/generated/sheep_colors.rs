@@ -21,3 +21,24 @@ pub static SHEEP_COLORS: [u32; 16] = [
     0xFF84221C,
     0xFF151518,
 ];
+
+/// `DyeColor.getTextureDiffuseColor` (a wolf's collar), by dye id.
+#[rustfmt::skip]
+pub static DYE_TEXTURE_COLORS: [u32; 16] = [
+    0xFFF9FFFE,
+    0xFFF9801D,
+    0xFFC74EBD,
+    0xFF3AB3DA,
+    0xFFFED83D,
+    0xFF80C71F,
+    0xFFF38BAA,
+    0xFF474F52,
+    0xFF9D9D97,
+    0xFF169C9C,
+    0xFF8932B8,
+    0xFF3C44AA,
+    0xFF835432,
+    0xFF5E7C16,
+    0xFFB02E26,
+    0xFF1D1D21,
+];

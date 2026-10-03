@@ -28,4 +28,7 @@ Evcil hayvan etkileşimi (sunucu), yakalık boyama çizimi dışındaki GUI.
 Bu görev büyükse kurt+kedi ve diğerleri diye bölünür. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı: yalnız kurt (bölündü). `setup_wolf` (yetişkin + bebek, oturma, silkelenme, kuyruk), `voxel-world/src/wolf.rs` (ilgi eğimi, silkelenme; olay 8/56), evcil/oturma/öfke/tasma verisi, `wolf_variants` ve boya doku rengi tabloları (oracle'dan üretilir), `crates/voxel/src/wolves.rs` (çeşit dokusu + tasma katmanı). Kayıt: `docs/client-wolf-parity-conformance.md`.
+- Oracle: `wolf-model` 22, `living-entity-animations` 7 kurt, `wolf-variants`, `variant-fields` +5.
+- Sapma: ıslaklık/koyulaşma (suda olma izlenmiyor), zırh katmanı, ses/parçacık.
+- Açık: T32b kedi/vaşak, T32c tilki/panda/kutup ayısı, T32d hoglin/ravager/strider.

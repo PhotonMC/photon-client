@@ -190,6 +190,15 @@ pub const CAMEL_LAST_POSE_CHANGE_DATA_ID: u8 = 20;
 /// ends (a long) sit among its data, and the serializer of the latter.
 pub const BEE_FLAGS_DATA_ID: u8 = 18;
 pub const BEE_ANGER_END_DATA_ID: u8 = 19;
+/// Where a tamable animal's flags (1 sitting, 4 tame) and a wolf's own data
+/// sit: whether it is interested, its collar's dye, the game time its anger
+/// ends and its variant (a registry id).
+pub const TAMABLE_FLAGS_DATA_ID: u8 = 18;
+pub const WOLF_INTERESTED_DATA_ID: u8 = 20;
+pub const WOLF_COLLAR_DATA_ID: u8 = 21;
+pub const WOLF_ANGER_END_DATA_ID: u8 = 22;
+pub const WOLF_VARIANT_DATA_ID: u8 = 23;
+pub const WOLF_VARIANT_SERIALIZER_ID: i32 = 25;
 pub const LONG_SERIALIZER_ID: i32 = 2;
 /// Where a rabbit's variant (an int: brown is zero, the killer 99) sits among
 /// its data.

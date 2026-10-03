@@ -423,7 +423,10 @@ public final class EntityOracle {
             var row = element.getAsJsonObject();
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            if (row.has("dye")) {
+            if (row.has("texture_dye")) {
+                out.addProperty("color", net.minecraft.world.item.DyeColor.byId(row.get("texture_dye").getAsInt())
+                    .getTextureDiffuseColor());
+            } else if (row.has("dye")) {
                 out.addProperty("color", net.minecraft.client.color.ColorLerper.Type.SHEEP.getColor(
                     net.minecraft.world.item.DyeColor.byId(row.get("dye").getAsInt())));
             } else {
@@ -1678,6 +1681,35 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The wolf's model posed by the reference's own `WolfModel.setupAnim` (grown and baby), drawn. */
+    private static JsonObject wolfModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.animal.wolf.WolfModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.wolf.BabyWolfModel(root)
+                : new net.minecraft.client.model.animal.wolf.AdultWolfModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.WolfRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.isAngry = row.get("angry").getAsBoolean();
+            state.isSitting = row.get("sitting").getAsBoolean();
+            state.tailAngle = Oracle.f32(row, "tail_angle");
+            state.headRollAngle = Oracle.f32(row, "head_roll_angle");
+            state.shakeAnim = Oracle.f32(row, "shake_anim");
+            state.ageScale = Oracle.f32(row, "age_scale");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2104,6 +2136,33 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The wolf variants of the game's data pack: the six textures each wears (grown and baby; wild, tame, angry). */
+    private static JsonObject wolfVariants() {
+        var rows = new java.util.TreeMap<String, JsonObject>();
+        Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.WOLF_VARIANT)
+            .listElements().forEach(holder -> {
+                var variant = holder.value();
+                var out = new JsonObject();
+                String name = holder.key().identifier().toString();
+                out.addProperty("label", name);
+                out.addProperty("name", name);
+                var adult = variant.adultInfo();
+                var baby = variant.babyInfo();
+                out.addProperty("wild", adult.wild().id().toString());
+                out.addProperty("tame", adult.tame().id().toString());
+                out.addProperty("angry", adult.angry().id().toString());
+                out.addProperty("baby_wild", baby.wild().id().toString());
+                out.addProperty("baby_tame", baby.tame().id().toString());
+                out.addProperty("baby_angry", baby.angry().id().toString());
+                rows.put(name, out);
+            });
+        var list = new JsonArray();
+        rows.values().forEach(list::add);
+        var result = new JsonObject();
+        result.add("rows", list);
+        return result;
+    }
+
     private static void variants(
         final java.util.Map<String, JsonObject> rows, final String kind, final String name,
         final net.minecraft.resources.Identifier asset, final net.minecraft.resources.Identifier baby,
@@ -2150,6 +2209,11 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.equine.Llama.class, "DATA_VARIANT_ID", "llama-variant"},
             {net.minecraft.world.entity.animal.camel.Camel.class, "DASH", "camel-dash"},
             {net.minecraft.world.entity.animal.camel.Camel.class, "LAST_POSE_CHANGE_TICK", "camel-last-pose"},
+            {net.minecraft.world.entity.TamableAnimal.class, "DATA_FLAGS_ID", "tamable-flags"},
+            {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_INTERESTED_ID", "wolf-interested"},
+            {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_COLLAR_COLOR", "wolf-collar"},
+            {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
+            {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_FLAGS_ID", "bee-flags"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_ANGER_END_TIME", "bee-anger-end"},
             {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
@@ -2253,6 +2317,9 @@ public final class EntityOracle {
         if (operation.equals("experience_orb")) {
             return experienceOrb(request);
         }
+        if (operation.equals("wolf_variants")) {
+            return wolfVariants();
+        }
         if (operation.equals("entity_variants")) {
             return entityVariants();
         }
@@ -2291,6 +2358,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("wolf_model")) {
+            return wolfModel(request);
         }
         if (operation.equals("llama_model")) {
             return llamaModel(request);

@@ -192,13 +192,38 @@ pub(crate) struct EntityState {
     pub(crate) horse_chest: bool,
     /// A bee's flags and the game time its anger ends.
     pub(crate) bee_flags: u8,
-    pub(crate) bee_anger_end: i64,
+    pub(crate) anger_end: i64,
+    /// A tamable animal's flags (1 sitting, 4 tame), a wolf's interest, and
+    /// the dye of its collar, when the data has said (red otherwise).
+    pub(crate) tamable_flags: u8,
+    pub(crate) wolf_interested: bool,
+    /// A wolf's interest angle and shake.
+    pub(crate) wolf: crate::wolf::WolfState,
+    pub(crate) collar: Option<i32>,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
     pub(crate) swing: crate::living::SwingState,
     /// An armor stand's flags and poses.
     pub(crate) armor_stand: crate::armor_stand::ArmorStandState,
+}
+
+impl EntityState {
+    /// Takes what a wolf's data holds (see [`crate::metadata::WolfData`]).
+    pub(crate) fn apply_wolf(&mut self, wolf: crate::metadata::WolfData) {
+        if let Some(flags) = wolf.flags {
+            self.tamable_flags = flags;
+        }
+        if let Some(interested) = wolf.interested {
+            self.wolf_interested = interested;
+        }
+        if let Some(dye) = wolf.collar {
+            self.collar = Some(dye);
+        }
+        if let Some(end) = wolf.anger_end {
+            self.anger_end = end;
+        }
+    }
 }
 
 /// `EquipmentSlot`, in the order the wire counts them.
@@ -1921,10 +1946,51 @@ impl ClientEntity {
         self.living.bee_flags & 8 != 0
     }
 
-    /// The game time a bee's anger ends (`getPersistentAngerEndTime`); angry
-    /// while that is later than now (`NeutralMob.isAngry`).
-    pub fn bee_anger_end(&self) -> i64 {
-        self.living.bee_anger_end
+    /// The game time a neutral mob's anger ends (`getPersistentAngerEndTime`).
+    pub fn anger_end(&self) -> i64 {
+        self.living.anger_end
+    }
+
+    /// `NeutralMob.isAngry`: the anger ends later than the game time now.
+    pub fn is_angry(&self, game_time: u64) -> bool {
+        let end = self.living.anger_end;
+        end > 0 && end - game_time as i64 > 0
+    }
+
+    /// `TamableAnimal.isInSittingPose`.
+    pub fn is_sitting(&self) -> bool {
+        self.living.tamable_flags & 1 != 0
+    }
+
+    /// `TamableAnimal.isTame`.
+    pub fn is_tame(&self) -> bool {
+        self.living.tamable_flags & 4 != 0
+    }
+
+    /// The dye of a wolf's collar (`Wolf.getCollarColor`).
+    pub fn collar_dye(&self) -> i32 {
+        // `DyeColor.RED` until the data says otherwise.
+        self.living.collar.unwrap_or(14)
+    }
+
+    /// A wolf's own client state (its interest and its shake).
+    pub fn wolf(&self) -> &crate::wolf::WolfState {
+        &self.living.wolf
+    }
+
+    /// `Wolf.getTailAngle`: raised while angry, by health while tame.
+    pub fn wolf_tail_angle(&self, game_time: u64) -> f32 {
+        let pi = std::f64::consts::PI as f32;
+        if self.is_angry(game_time) {
+            1.539_380_4
+        } else if self.is_tame() {
+            let max_health = self.max_health().unwrap_or(0.0);
+            let health = self.health().unwrap_or(max_health);
+            let damage_ratio = (max_health - health) / max_health;
+            (0.55 - damage_ratio * 0.4) * pi
+        } else {
+            (std::f64::consts::PI / 5.0) as f32
+        }
     }
 
     /// `Rabbit.getVariant`'s id: zero is brown (an id the variants lack is brown).
@@ -2103,6 +2169,10 @@ impl ClientEntity {
                 self.rabbit
                     .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
                     .tick(tick_count, no_ai);
+            }
+            Some("minecraft:wolf") => {
+                let (alive, interested) = (self.alive, self.living.wolf_interested);
+                self.living.wolf.tick(alive, interested);
             }
             _ => {}
         }

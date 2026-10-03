@@ -218,6 +218,32 @@ pub struct CamelState {
     pub baby: bool,
 }
 
+/// What a wolf's models are posed from (`WolfRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WolfState {
+    pub quadruped: QuadrupedState,
+    pub angry: bool,
+    pub sitting: bool,
+    pub baby: bool,
+    /// How far the tail is raised, and how far the head rolls to a side.
+    pub tail_angle: f32,
+    pub head_roll_angle: f32,
+    /// The shake's progress, which rolls the body.
+    pub shake_anim: f32,
+    /// `LivingEntityRenderState.ageScale`: what the sitting pose is scaled by.
+    pub age_scale: f32,
+}
+
+impl WolfState {
+    /// `WolfRenderState.getBodyRollAngle`.
+    fn body_roll_angle(&self, offset: f32) -> f32 {
+        let pi = std::f64::consts::PI as f32;
+        let progress = ((self.shake_anim + offset) / 1.8).clamp(0.0, 1.0);
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        sin(progress * pi) * sin(progress * pi * 11.0) * 0.15 * pi
+    }
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -1169,6 +1195,102 @@ impl MobModel {
                 chest.visible = has_chest;
             }
         }
+    }
+
+    /// `WolfModel.setupAnim` (grown and baby): the tail and legs by the walk
+    /// (the legs folded while it sits), the body rolled by the shake, then
+    /// the head follows the look and the tail rises.
+    pub fn setup_wolf(&mut self, state: &WolfState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let (position, speed) = (state.quadruped.walk_position, state.quadruped.walk_speed);
+        let scale = state.age_scale;
+        let leg_swing = |offset: f32| cos(position * 0.6662 + offset) * 1.4 * speed;
+        let tail_y_rot = if state.angry { 0.0 } else { leg_swing(0.0) };
+        let set = |model: &mut Self, name: &str, change: &dyn Fn(&mut Part)| {
+            if let Some(part) = model.root.child_mut(name) {
+                change(part);
+            }
+        };
+        set(self, "tail", &|tail| tail.y_rot = tail_y_rot);
+        if state.sitting {
+            set(self, "body", &|part| {
+                part.y += 4.0 * scale;
+                part.z -= 2.0 * scale;
+                part.x_rot = (std::f64::consts::PI / 4.0) as f32;
+                if state.baby {
+                    part.x_rot -= (std::f64::consts::PI / 2.0) as f32;
+                }
+            });
+            set(self, "tail", &|part| {
+                part.y += 9.0 * scale;
+                part.z -= 2.0 * scale;
+            });
+            for name in ["right_hind_leg", "left_hind_leg"] {
+                set(self, name, &|part| {
+                    part.y += 6.7 * scale;
+                    part.z -= 5.0 * scale;
+                    part.x_rot = (std::f64::consts::PI * 3.0 / 2.0) as f32;
+                });
+            }
+            for (name, side) in [("right_front_leg", 1.0), ("left_front_leg", -1.0)] {
+                set(self, name, &|part| {
+                    part.x_rot = 5.811_947;
+                    part.x += side * 0.01 * scale;
+                    part.y += 1.0 * scale;
+                });
+            }
+            if !state.baby {
+                set(self, "upper_body", &|part| {
+                    part.y += 2.0;
+                    part.x_rot = (std::f64::consts::PI * 2.0 / 5.0) as f32;
+                    part.y_rot = 0.0;
+                });
+            }
+        } else {
+            for (name, offset) in [
+                ("right_hind_leg", 0.0),
+                ("left_hind_leg", pi),
+                ("right_front_leg", pi),
+                ("left_front_leg", 0.0),
+            ] {
+                set(self, name, &|part| part.x_rot = leg_swing(offset));
+            }
+        }
+        // `shakeOffWater`: the body rolls; the grown wolf's head, upper body
+        // and tail roll in their own parts, the baby's whole head and tail.
+        set(self, "body", &|part| {
+            part.z_rot = state.body_roll_angle(-0.16)
+        });
+        if state.baby {
+            set(self, "head", &|part| {
+                part.z_rot = state.head_roll_angle + state.body_roll_angle(0.0);
+            });
+            set(self, "tail", &|part| {
+                part.z_rot = state.body_roll_angle(-0.2)
+            });
+        } else {
+            set(self, "head", &|head| {
+                if let Some(real) = head.child_mut("real_head") {
+                    real.z_rot = state.head_roll_angle + state.body_roll_angle(0.0);
+                }
+            });
+            set(self, "upper_body", &|part| {
+                part.z_rot = state.body_roll_angle(-0.08)
+            });
+            set(self, "tail", &|tail| {
+                if let Some(real) = tail.child_mut("real_tail") {
+                    real.z_rot = state.body_roll_angle(-0.2);
+                }
+            });
+        }
+        set(self, "head", &|head| {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        });
+        set(self, "tail", &|tail| tail.x_rot = state.tail_angle);
     }
 
     /// `GoatModel.setupAnim` (and `BabyGoatModel`'s): the quadruped's pose, the
