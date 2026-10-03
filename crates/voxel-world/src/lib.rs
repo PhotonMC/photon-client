@@ -44,6 +44,7 @@ mod metadata;
 mod paletted;
 mod pick;
 mod player;
+pub mod polar_bear;
 mod prediction;
 pub mod rabbit;
 mod recipes;
@@ -3412,6 +3413,9 @@ impl ClientWorld {
         entity
             .living
             .apply_cat(cat_data_from_metadata(entity.type_id, metadata));
+        if let Some(standing) = polar_bear_standing_from_metadata(entity.type_id, metadata) {
+            entity.living.polar_bear.set_standing(standing);
+        }
         if let Some(variant) = rabbit_type_from_metadata(entity.type_id, metadata) {
             entity.living.rabbit_type = variant;
         }

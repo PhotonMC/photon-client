@@ -425,6 +425,14 @@ pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
     }
 }
 
+/// A polar bear's standing flag (`PolarBear.DATA_STANDING_ID`), when the data holds it.
+pub(crate) fn polar_bear_standing_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:polar_bear" {
+        return None;
+    }
+    metadata_boolean_value(metadata, POLAR_BEAR_STANDING_DATA_ID)
+}
+
 /// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
 pub(crate) fn rabbit_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:rabbit" {

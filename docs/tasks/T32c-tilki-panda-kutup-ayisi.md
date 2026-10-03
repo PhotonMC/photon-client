@@ -24,4 +24,7 @@ Evcil hayvan etkileşimi (sunucu), zırh/ekipman katmanları.
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: yalnız kutup ayısı (bölündü). `setup_polar_bear` (yetişkin + bebek, ayağa kalkma), `voxel-world/src/polar_bear.rs` (kalkış sayacı, olay yok: veri bayrağı 18), `crates/voxel/src/bears.rs`. Kayıt: `docs/client-polar-bear-parity-conformance.md`.
+- Oracle: `polar-bear-model` 10, `living-entity-animations` 2 ayı, `variant-fields` +1.
+- Sapma: ayağa kalkınca çarpışma kutusu uzamıyor (mob kutusu poz taşımaz); ses yok.
+- Açık: T32e tilki, T32f panda.

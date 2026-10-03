@@ -205,6 +205,8 @@ pub(crate) struct EntityState {
     pub(crate) cat_lying: bool,
     pub(crate) cat_relaxed: bool,
     pub(crate) cat: crate::cat::CatState,
+    /// A polar bear's standing animation.
+    pub(crate) polar_bear: crate::polar_bear::PolarBearState,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -2008,6 +2010,11 @@ impl ClientEntity {
         }
     }
 
+    /// A polar bear's own client state (how far it has stood up).
+    pub fn polar_bear(&self) -> &crate::polar_bear::PolarBearState {
+        &self.living.polar_bear
+    }
+
     /// A cat's own client state (how far it lies and relaxes).
     pub fn cat(&self) -> &crate::cat::CatState {
         &self.living.cat
@@ -2215,6 +2222,7 @@ impl ClientEntity {
                     .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
                     .tick(tick_count, no_ai);
             }
+            Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
             Some("minecraft:wolf") => {
                 let (alive, interested) = (self.alive, self.living.wolf_interested);
                 self.living.wolf.tick(alive, interested);

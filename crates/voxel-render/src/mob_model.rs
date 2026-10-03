@@ -244,6 +244,16 @@ impl WolfState {
     }
 }
 
+/// What a polar bear's models are posed from: the quadruped's, how far it
+/// has stood up (`PolarBearRenderState.standScale`, zero to one) and the age
+/// scale its shifts are scaled by.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct PolarBearState {
+    pub quadruped: QuadrupedState,
+    pub stand_scale: f32,
+    pub age_scale: f32,
+}
+
 /// What a cat's or an ocelot's models are posed from (`FelineRenderState`,
 /// `CatRenderState`): an ocelot never sits, lies down or relaxes.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -1534,6 +1544,36 @@ impl MobModel {
             set(self, "tail2", &|part| {
                 part.x_rot = rot_lerp(tail, part.x_rot, -0.4);
             });
+        }
+    }
+
+    /// `PolarBearModel.setupAnim` (grown and baby): the quadruped's pose, then
+    /// standing up lifts the body and head and raises the front legs.
+    pub fn setup_polar_bear(&mut self, state: &PolarBearState) {
+        self.setup_quadruped(&state.quadruped);
+        let pi = std::f64::consts::PI as f32;
+        let stand = state.stand_scale * state.stand_scale;
+        let age = state.age_scale;
+        let (mut leg_y, mut leg_z) = (0.0, 0.0);
+        if let Some(leg) = self.root.child_mut("right_front_leg") {
+            leg.y -= stand * age * 20.0;
+            leg.z += stand * age * 4.0;
+            leg.x_rot -= stand * pi * 0.45;
+            (leg_y, leg_z) = (leg.y, leg.z);
+        }
+        if let Some(leg) = self.root.child_mut("left_front_leg") {
+            leg.y = leg_y;
+            leg.z = leg_z;
+            leg.x_rot -= stand * pi * 0.45;
+        }
+        if let Some(body) = self.root.child_mut("body") {
+            body.x_rot -= stand * pi * 0.35;
+            body.y += stand * age * 2.0;
+        }
+        if let Some(head) = self.root.child_mut("head") {
+            head.y -= stand * 24.0;
+            head.z += stand * 13.0;
+            head.x_rot += stand * pi * 0.15;
         }
     }
 

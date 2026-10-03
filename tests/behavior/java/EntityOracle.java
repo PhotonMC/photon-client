@@ -1754,6 +1754,27 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The polar bear's model posed by the reference's own `PolarBearModel.setupAnim` (grown and baby), drawn. */
+    private static JsonObject polarBearModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.animal.polarbear.PolarBearModel(bakedLayer(row.get("layer").getAsString()));
+            var state = new net.minecraft.client.renderer.entity.state.PolarBearRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.standScale = Oracle.f32(row, "stand_scale");
+            state.ageScale = Oracle.f32(row, "age_scale");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2264,6 +2285,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_COLLAR_COLOR", "wolf-collar"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
+            {net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID", "polar-bear-standing"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "DATA_VARIANT_ID", "cat-variant"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "IS_LYING", "cat-lying"},
             {net.minecraft.world.entity.animal.feline.Cat.class, "RELAX_STATE_ONE", "cat-relax"},
@@ -2415,6 +2437,9 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("polar_bear_model")) {
+            return polarBearModel(request);
         }
         if (operation.equals("feline_model")) {
             return felineModel(request);

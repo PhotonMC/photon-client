@@ -18431,6 +18431,16 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "polar_bear_data" => {
+                        let standing = event["standing"].as_bool().ok_or("standing")?;
+                        let data = [
+                            voxel_world::POLAR_BEAR_STANDING_DATA_ID,
+                            8,
+                            u8::from(standing),
+                            255,
+                        ];
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "cat_data" => {
                         let mut data = Vec::new();
                         if let Some(flags) = event["flags"].as_i64() {
@@ -18608,6 +18618,14 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.head_roll_angle(partial)));
                             described[format!("shake_{key}")] =
                                 json!(hex(wolf.shake_anim(partial)));
+                        }
+                    }
+                    "polar_bear" => {
+                        let bear = entity.polar_bear();
+                        described["standing"] = json!(bear.is_standing());
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                            described[format!("stand_{key}")] =
+                                json!(hex(bear.standing_animation_scale(partial)));
                         }
                     }
                     "cat" => {
@@ -20072,6 +20090,32 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `polar_bear_model`: a polar bear's model posed and drawn.
+fn polar_bear_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, PolarBearState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_polar_bear(&PolarBearState {
+            quadruped: quadruped_state(row)?,
+            stand_scale: bits("stand_scale")?,
+            age_scale: bits("age_scale")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `feline_model`: a cat's or an ocelot's model posed and drawn.
 fn feline_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::{FelineState, MobModel};
@@ -20812,6 +20856,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "llama_model" => return llama_model_result(request),
         "wolf_model" => return wolf_model_result(request),
         "feline_model" => return feline_model_result(request),
+        "polar_bear_model" => return polar_bear_model_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20911,6 +20956,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "wolf-collar", "data_id": voxel_world::WOLF_COLLAR_DATA_ID, "serializer": 1},
                 {"label": "wolf-anger-end", "data_id": voxel_world::WOLF_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "wolf-variant", "data_id": voxel_world::WOLF_VARIANT_DATA_ID, "serializer": voxel_world::WOLF_VARIANT_SERIALIZER_ID},
+                {"label": "polar-bear-standing", "data_id": voxel_world::POLAR_BEAR_STANDING_DATA_ID, "serializer": 8},
                 {"label": "cat-variant", "data_id": voxel_world::CAT_VARIANT_DATA_ID, "serializer": voxel_world::CAT_VARIANT_SERIALIZER_ID},
                 {"label": "cat-lying", "data_id": voxel_world::CAT_LYING_DATA_ID, "serializer": 8},
                 {"label": "cat-relax", "data_id": voxel_world::CAT_RELAX_DATA_ID, "serializer": 8},

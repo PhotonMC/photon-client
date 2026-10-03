@@ -203,6 +203,8 @@ pub const WOLF_VARIANT_SERIALIZER_ID: i32 = 25;
 /// relaxed and the dye of its collar sit among its data (it shares the
 /// tamable flags with the wolf).
 pub const CAT_VARIANT_DATA_ID: u8 = 20;
+/// Where a polar bear's standing flag sits among its data.
+pub const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const CAT_VARIANT_SERIALIZER_ID: i32 = 21;
 pub const CAT_LYING_DATA_ID: u8 = 21;
 pub const CAT_RELAX_DATA_ID: u8 = 22;

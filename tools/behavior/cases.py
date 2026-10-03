@@ -14420,6 +14420,11 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("polar-bear-idle", "polar_bear", 4, [], extras=["polar_bear"]),
+        living("polar-bear-stands-and-sits", "polar_bear", 24,
+               [{"tick": 2, "type": "polar_bear_data", "standing": True},
+                {"tick": 14, "type": "polar_bear_data", "standing": False}],
+               extras=["polar_bear"]),
         living("cat-wild", "cat", 6, [], extras=["cat"]),
         living("cat-tame-sits", "cat", 6, [{"tick": 1, "type": "cat_data", "flags": 5, "collar": 3}],
                extras=["cat"]),
@@ -14555,6 +14560,7 @@ def entity_cases():
     yield from entity_llama_cases()
     yield from entity_wolf_cases()
     yield from entity_feline_cases()
+    yield from entity_polar_bear_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15444,6 +15450,29 @@ def entity_feline_cases():
             pose("lying-relaxed", layer, lie=0.45, lie_tail=0.16, relax=0.3),
         ]
     yield {"case_id": "entity/feline-model", "family": "entity", "operation": "feline_model",
+           "rows": rows}
+
+
+def entity_polar_bear_cases():
+    """The polar bear, grown and baby, posed by the reference's own `PolarBearModel.setupAnim`: the
+    quadruped's walk and look, and how far it has stood up."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, stand=0.0):
+        scale = 0.5 if "_baby" in layer else 1.0
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "stand_scale": float_bits(stand),
+                "age_scale": float_bits(scale)}
+
+    rows = []
+    for layer in ("minecraft:polar_bear#main", "minecraft:polar_bear_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("rising", layer, stand=0.5, walk_position=2.1, walk_speed=0.3),
+            pose("risen", layer, stand=1.0, head_y_rot=12.0, x_rot=-20.0),
+        ]
+    yield {"case_id": "entity/polar-bear-model", "family": "entity", "operation": "polar_bear_model",
            "rows": rows}
 
 

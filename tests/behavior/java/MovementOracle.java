@@ -706,6 +706,13 @@ public final class MovementOracle {
                             entity.setHealth(Oracle.f32(event, "health"));
                         }
                     }
+                    case "polar_bear_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.animal.polarbear.PolarBear.class, "DATA_STANDING_ID",
+                            event.get("standing").getAsBoolean()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "cat_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var catClass = net.minecraft.world.entity.animal.feline.Cat.class;
@@ -844,6 +851,13 @@ public final class MovementOracle {
                             for (float partial : new float[] {0.0F, 0.5F}) {
                                 described.addProperty("head_roll_" + partial, Oracle.bits(wolf.getHeadRollAngle(partial)));
                                 described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
+                            }
+                        }
+                        case "polar_bear" -> {
+                            var bear = (net.minecraft.world.entity.animal.polarbear.PolarBear) entity;
+                            described.addProperty("standing", bear.isStanding());
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("stand_" + partial, Oracle.bits(bear.getStandingAnimationScale(partial)));
                             }
                         }
                         case "cat" -> {
