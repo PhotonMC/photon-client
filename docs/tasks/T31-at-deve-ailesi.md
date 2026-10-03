@@ -1,7 +1,7 @@
-# T31 — At, eşek, katır, deve ve lama aileleri
+# T31 — At, eşek, katır ve ölü atlar
 
-**Amaç:** `AbstractEquineModel` ailesi (at, eşek, katır, iskelet atı, zombi atı), deve ve hörgücü/oturma animasyonları, lama ve tüccar lamasının halı katmanı. Eyer katmanı ve binme T41/T44'te.
-**Bağımlılık:** T24. **Boy:** L. **Türler:** horse, donkey, mule, skeleton_horse, zombie_horse, llama, trader_llama, camel, camel_husk.
+**Amaç:** `AbstractEquineModel` ailesi (at, eşek, katır, iskelet atı, zombi atı): şahlanma, otlama, kuyruk, renk/işaret. Deve ve lama T31b'ye ayrıldı.
+**Bağımlılık:** T24. **Boy:** L. **Türler:** horse, donkey, mule, skeleton_horse, zombie_horse.
 
 ## Oku
 - Java: `client/model/animal/equine/AbstractEquineModel.java`, `client/model/animal/equine/HorseModel.java`, `client/model/animal/llama/LlamaModel.java`, `client/model/animal/camel/CamelModel.java`, `client/renderer/entity/AbstractHorseRenderer.java`, `client/renderer/entity/HorseRenderer.java`, `client/renderer/entity/LlamaRenderer.java`, `client/renderer/entity/CamelRenderer.java`.
@@ -29,3 +29,8 @@ At dalı açar; eşek/katır/iskelet/zombi atı ölçek+doku satırı; lama ayr�
 
 ## Devir notu
 (boş)
+- Yapıldı (bölündü): `setup_equine` (yedi model, baby donkey iç içe), `voxel-world/src/horse.rs` (otlama/şahlanma/ağız animasyonları, kuyruk, ambiyans yoklamasının rastgele çekimleri), çeşit/işaret/sandık verisi, işaret katmanı; `farm_animals.rs`. Kayıt: `docs/client-horse-parity-conformance.md`.
+- Oracle: `equine-model` 80, `living-entity-animations` 7 at satırı; `variant-fields` üç satır. Canlı: sekiz kadar at, eşek, katır ve ölü at `shot` ile görüldü.
+- Sapma: suda olma izlenmiyor, işaret katmanı varlık hattıyla, eyer/zırh yok.
+- Açık: deve ve lama (T31b).
+

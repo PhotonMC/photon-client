@@ -289,6 +289,47 @@ pub(crate) fn goat_horns_from_metadata(
     )
 }
 
+/// An abstract horse's flags (`AbstractHorse.DATA_ID_FLAGS`), a horse's
+/// variant data (`Horse.DATA_ID_TYPE_VARIANT`) and a chested horse's chest
+/// (`AbstractChestedHorse.DATA_ID_CHEST`), when the data holds them.
+pub(crate) fn horse_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<u8>, Option<i32>, Option<bool>) {
+    let Some(name) = voxel_data::entity_type::name(type_id) else {
+        return (None, None, None);
+    };
+    let horselike = matches!(
+        name,
+        "minecraft:horse"
+            | "minecraft:donkey"
+            | "minecraft:mule"
+            | "minecraft:skeleton_horse"
+            | "minecraft:zombie_horse"
+            | "minecraft:llama"
+            | "minecraft:trader_llama"
+            | "minecraft:camel"
+            | "minecraft:camel_husk"
+    );
+    if !horselike {
+        return (None, None, None);
+    }
+    let variant = (name == "minecraft:horse")
+        .then(|| metadata_int_value(metadata, HORSE_VARIANT_DATA_ID))
+        .flatten();
+    let chest = matches!(
+        name,
+        "minecraft:donkey" | "minecraft:mule" | "minecraft:llama" | "minecraft:trader_llama"
+    )
+    .then(|| metadata_boolean_value(metadata, HORSE_CHEST_DATA_ID))
+    .flatten();
+    (
+        metadata_byte_value(metadata, HORSE_FLAGS_DATA_ID),
+        variant,
+        chest,
+    )
+}
+
 /// A bee's flags (`Bee.DATA_FLAGS_ID`) and the game time its anger ends
 /// (`DATA_ANGER_END_TIME`), when the data holds them.
 pub(crate) fn bee_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u8>, Option<i64>) {

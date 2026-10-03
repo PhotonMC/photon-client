@@ -1576,6 +1576,50 @@ public final class EntityOracle {
         return result;
     }
 
+    /** A horse, donkey or mule model from the layer table, posed by the reference's own `setupAnim`, drawn. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject equineModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            boolean baby = id.contains("_baby");
+            boolean donkey = id.startsWith("minecraft:donkey") || id.startsWith("minecraft:mule");
+            net.minecraft.client.model.animal.equine.AbstractEquineModel model;
+            net.minecraft.client.renderer.entity.state.EquineRenderState state;
+            if (donkey) {
+                model = baby
+                    ? new net.minecraft.client.model.animal.equine.BabyDonkeyModel(root)
+                    : new net.minecraft.client.model.animal.equine.DonkeyModel(root);
+                var donkeyState = new net.minecraft.client.renderer.entity.state.DonkeyRenderState();
+                donkeyState.hasChest = row.get("has_chest").getAsBoolean();
+                state = donkeyState;
+            } else {
+                model = baby
+                    ? new net.minecraft.client.model.animal.equine.BabyHorseModel(root)
+                    : new net.minecraft.client.model.animal.equine.HorseModel(root);
+                state = new net.minecraft.client.renderer.entity.state.EquineRenderState();
+            }
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.eatAnimation = Oracle.f32(row, "eat");
+            state.standAnimation = Oracle.f32(row, "stand");
+            state.feedingAnimation = Oracle.f32(row, "feeding");
+            state.animateTail = row.get("animate_tail").getAsBoolean();
+            state.isInWater = row.get("in_water").getAsBoolean();
+            state.ageScale = baby ? 0.5F : 1.0F;
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2042,6 +2086,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.animal.equine.AbstractHorse.class, "DATA_ID_FLAGS", "horse-flags"},
+            {net.minecraft.world.entity.animal.equine.Horse.class, "DATA_ID_TYPE_VARIANT", "horse-variant"},
+            {net.minecraft.world.entity.animal.equine.AbstractChestedHorse.class, "DATA_ID_CHEST", "horse-chest"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_FLAGS_ID", "bee-flags"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_ANGER_END_TIME", "bee-anger-end"},
             {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
@@ -2183,6 +2230,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("equine_model")) {
+            return equineModel(request);
         }
         if (operation.equals("swirl_layers")) {
             return swirlLayers(request);

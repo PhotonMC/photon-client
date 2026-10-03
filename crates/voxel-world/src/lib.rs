@@ -33,6 +33,7 @@ mod container;
 mod dimension;
 mod entity;
 mod fluid;
+pub mod horse;
 pub mod item_components;
 mod item_physics;
 mod java_math;
@@ -1105,6 +1106,16 @@ impl ClientWorld {
                 entity.attributes.push(attribute.clone());
             }
         }
+        true
+    }
+
+    /// Fixes the source a horse's tail chance is drawn from; false for an
+    /// entity that is not there.
+    pub fn fix_horse_seed(&mut self, entity_id: i32, seed: i64) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.fix_horse_seed(seed);
         true
     }
 
@@ -2936,6 +2947,7 @@ impl ClientWorld {
                 passenger_ids: Vec::new(),
                 attributes: Vec::new(),
                 rabbit: None,
+                horse: None,
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
@@ -3314,6 +3326,20 @@ impl ClientWorld {
         }
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
+        }
+        let (horse_flags, horse_variant, horse_chest) =
+            horse_data_from_metadata(entity.type_id, metadata);
+        if let Some(flags) = horse_flags {
+            entity
+                .horse
+                .get_or_insert_with(|| Box::new(horse::HorseState::new()))
+                .set_flags(flags);
+        }
+        if let Some(variant) = horse_variant {
+            entity.living.horse_variant = variant;
+        }
+        if let Some(chest) = horse_chest {
+            entity.living.horse_chest = chest;
         }
         let (bee_flags, bee_anger) = bee_data_from_metadata(entity.type_id, metadata);
         if let Some(flags) = bee_flags {

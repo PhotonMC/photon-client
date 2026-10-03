@@ -186,6 +186,10 @@ pub(crate) struct EntityState {
     pub(crate) rabbit_type: i32,
     /// Whether a creeper is charged.
     pub(crate) powered: bool,
+    /// A horse's variant data (the variant in the low byte, the markings in
+    /// the next) and whether a chested one carries its chest.
+    pub(crate) horse_variant: i32,
+    pub(crate) horse_chest: bool,
     /// A bee's flags and the game time its anger ends.
     pub(crate) bee_flags: u8,
     pub(crate) bee_anger_end: i64,
@@ -617,6 +621,9 @@ pub struct ClientEntity {
     pub(crate) attributes: Vec<ClientAttributeState>,
     /// A rabbit's hop and animation states, made when it first ticks.
     pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
+    /// A horse's animations and tail, made when it first ticks, and the flags
+    /// the server sent before that.
+    pub(crate) horse: Option<Box<crate::horse::HorseState>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1813,6 +1820,34 @@ impl ClientEntity {
             .filter(|state| *state != 0)
     }
 
+    /// A horse's animations and tail, if it has ticked.
+    pub fn horse(&self) -> Option<&crate::horse::HorseState> {
+        self.horse.as_deref()
+    }
+
+    /// `Horse.getVariant` and `getMarkings`: ids, each wrapped into its enum
+    /// (seven variants, five markings).
+    pub fn horse_look(&self) -> (i32, i32) {
+        let data = self.living.horse_variant;
+        (
+            (data & 0xFF).rem_euclid(7),
+            ((data & 0xFF00) >> 8).rem_euclid(5),
+        )
+    }
+
+    /// `AbstractChestedHorse.hasChest`.
+    pub fn horse_has_chest(&self) -> bool {
+        self.living.horse_chest
+    }
+
+    /// Fixes the source a horse's tail chance is drawn from (see
+    /// [`crate::horse::HorseState::fix_seed`]).
+    pub fn fix_horse_seed(&mut self, seed: i64) {
+        self.horse
+            .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()))
+            .fix_seed(seed);
+    }
+
     /// A rabbit's hop and animation states, if it has ticked.
     pub fn rabbit(&self) -> Option<&crate::rabbit::RabbitState> {
         self.rabbit.as_deref()
@@ -1998,6 +2033,22 @@ impl ClientEntity {
             Some("minecraft:bee") => {
                 let rolling = self.living.bee_flags & 2 != 0;
                 self.living.animal.tick_bee(rolling);
+            }
+            Some(
+                "minecraft:horse"
+                | "minecraft:donkey"
+                | "minecraft:mule"
+                | "minecraft:skeleton_horse"
+                | "minecraft:zombie_horse"
+                | "minecraft:llama"
+                | "minecraft:trader_llama"
+                | "minecraft:camel"
+                | "minecraft:camel_husk",
+            ) => {
+                let alive = self.alive;
+                self.horse
+                    .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()))
+                    .tick(alive);
             }
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());

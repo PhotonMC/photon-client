@@ -14375,6 +14375,26 @@ def movement_item_cases():
                    {"name": "minecraft:flying_speed", "base": float_bits(3.0, "f64"), "modifiers": []},
                    {"name": "minecraft:max_health", "base": float_bits(12.0, "f64"), "modifiers": []}]}],
                extras=["attributes"]),
+        living("horse-quiet", "horse", 8, [{"tick": 0, "type": "seed", "seed": 11}], extras=["horse"]),
+        living("horse-grazes", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
+                                              {"tick": 2, "type": "horse_data", "flags": 16}],
+               extras=["horse"]),
+        living("horse-grazes-then-stops", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
+                                                         {"tick": 2, "type": "horse_data", "flags": 16},
+                                                         {"tick": 12, "type": "horse_data", "flags": 0}],
+               extras=["horse"]),
+        living("horse-rears", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
+                                             {"tick": 2, "type": "horse_data", "flags": 32}],
+               extras=["horse"]),
+        living("horse-rears-while-grazing", "donkey", 30, [{"tick": 0, "type": "seed", "seed": 11},
+                                                            {"tick": 2, "type": "horse_data", "flags": 16},
+                                                            {"tick": 8, "type": "horse_data", "flags": 48}],
+               extras=["horse"]),
+        living("horse-opens-its-mouth", "horse", 50, [{"tick": 0, "type": "seed", "seed": 11},
+                                                       {"tick": 2, "type": "horse_data", "flags": 64}],
+               extras=["horse"]),
+        living("horse-swishes-its-tail", "horse", 600, [{"tick": 0, "type": "seed", "seed": 3}],
+               extras=["horse"]),
         living("bee-quiet", "bee", 6, [], extras=["bee"]),
         living("bee-rolls", "bee", 20, [{"tick": 2, "type": "bee_data", "flags": 2}], extras=["bee"]),
         living("bee-rolls-then-stops", "bee", 30, [{"tick": 1, "type": "bee_data", "flags": 2},
@@ -14466,6 +14486,7 @@ def entity_cases():
     yield from entity_animation_cases()
     yield from entity_rabbit_cases()
     yield from entity_insect_cases()
+    yield from entity_equine_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15224,6 +15245,41 @@ def entity_insect_cases():
             bee("rolling-full", layer, age=21.0, roll=1.0, angry=True, stinger=False),
         ]
     yield {"case_id": "entity/bee-model", "family": "entity", "operation": "bee_model", "rows": rows}
+
+
+def entity_equine_cases():
+    """The horse family from the layer table, posed by the reference's own
+    `AbstractEquineModel.setupAnim` (and the baby and donkey overrides): standing,
+    walking, galloping in water, grazing, rearing, the mouth open, the tail swishing,
+    the donkey's chests; and the animal's own client tick (grazing, rearing and mouth
+    animations from the flags the server sends, the tail from the animal's random)."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0, age=0.0,
+             eat=0.0, stand=0.0, feeding=0.0, tail=False, water=False, chest=False):
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "age_in_ticks": float_bits(age),
+                "eat": float_bits(eat), "stand": float_bits(stand), "feeding": float_bits(feeding),
+                "animate_tail": tail, "in_water": water, "has_chest": chest}
+
+    rows = []
+    layers = ("minecraft:horse#main", "minecraft:horse_baby#main", "minecraft:donkey#main",
+              "minecraft:donkey_baby#main", "minecraft:mule#main", "minecraft:mule_baby#main",
+              "minecraft:zombie_horse#main", "minecraft:skeleton_horse_baby#main")
+    for layer in layers:
+        rows += [
+            pose("standing", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83, age=40.0, tail=True),
+            pose("slow-walk", layer, walk_position=2.1, walk_speed=0.15, age=12.0),
+            pose("swimming", layer, walk_position=7.3, walk_speed=0.6, age=40.0, water=True),
+            pose("grazing-half", layer, eat=0.5, age=21.5),
+            pose("grazing", layer, eat=1.0, head_y_rot=12.0, x_rot=-8.0, age=33.0),
+            pose("rearing-half", layer, stand=0.4, walk_speed=0.2, age=9.0),
+            pose("rearing", layer, stand=1.0, age=64.0, chest=True),
+            pose("mouth-open", layer, feeding=1.0, age=17.0, chest=True),
+            pose("rearing-and-grazing", layer, stand=0.5, eat=0.5, feeding=0.7, age=50.0),
+        ]
+    yield {"case_id": "entity/equine-model", "family": "entity", "operation": "equine_model",
+           "rows": rows}
 
 
 def entity_goat_cases():

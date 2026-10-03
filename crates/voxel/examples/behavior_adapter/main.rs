@@ -18401,6 +18401,18 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "horse_data" => {
+                        let data = [
+                            voxel_world::HORSE_FLAGS_DATA_ID,
+                            0,
+                            i32_field(event, "flags")? as u8,
+                            255,
+                        ];
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
+                    "seed" => {
+                        world.fix_horse_seed(entity_id, i64_field(event, "seed")?);
+                    }
                     "rabbit_idle" => {
                         world.fix_rabbit_idle(
                             entity_id,
@@ -18468,6 +18480,19 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
+                        }
+                    }
+                    "horse" => {
+                        if let Some(horse) = entity.horse() {
+                            for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                                described[format!("eat_{key}")] =
+                                    json!(hex(horse.eat_animation(partial)));
+                                described[format!("stand_{key}")] =
+                                    json!(hex(horse.stand_animation(partial)));
+                                described[format!("mouth_{key}")] =
+                                    json!(hex(horse.mouth_animation(partial)));
+                            }
+                            described["tail_counter"] = json!(horse.tail_counter());
                         }
                     }
                     "bee" => {
@@ -19894,6 +19919,47 @@ fn goat_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `equine_model`: a horse, donkey or mule model posed and drawn.
+fn equine_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{EquineKind, EquineState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let baby = id.contains("_baby");
+        let donkey = id.starts_with("minecraft:donkey") || id.starts_with("minecraft:mule");
+        let kind = match (donkey, baby) {
+            (false, false) => EquineKind::Horse,
+            (false, true) => EquineKind::BabyHorse,
+            (true, false) => EquineKind::Donkey,
+            (true, true) => EquineKind::BabyDonkey,
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_equine(&EquineState {
+            kind,
+            quadruped: quadruped_state(row)?,
+            age_in_ticks: bits("age_in_ticks")?,
+            eat_animation: bits("eat")?,
+            stand_animation: bits("stand")?,
+            feeding_animation: bits("feeding")?,
+            animate_tail: row["animate_tail"].as_bool().ok_or("animate_tail")?,
+            in_water: row["in_water"].as_bool().ok_or("in_water")?,
+            age_scale: if baby { 0.5 } else { 1.0 },
+            has_chest: row["has_chest"].as_bool().ok_or("has_chest")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `swirl_layers`: what the charged creeper's swirl layer submits.
 fn swirl_layers_result(request: &Value) -> Result<Value, String> {
     use voxel_render::render_types::{
@@ -20493,6 +20559,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_block_layers" => return entity_block_layers_result(request),
         "eyes_layers" => return eyes_layers_result(request),
         "swirl_layers" => return swirl_layers_result(request),
+        "equine_model" => return equine_model_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20541,7 +20608,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 CHICKEN_VARIANT_SERIALIZER_ID, COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID,
                 CREEPER_IGNITED_DATA_ID, CREEPER_POWERED_DATA_ID, CREEPER_SWELL_DIR_DATA_ID,
                 ENDERMAN_CARRY_DATA_ID, ENDERMAN_CREEPY_DATA_ID, EXPERIENCE_ORB_VALUE_DATA_ID,
-                GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
+                GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HORSE_CHEST_DATA_ID,
+                HORSE_FLAGS_DATA_ID, HORSE_VARIANT_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
                 LONG_SERIALIZER_ID, MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
                 PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID,
                 PIGLIN_DANCING_DATA_ID, RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID,
@@ -20567,6 +20635,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "horse-flags", "data_id": HORSE_FLAGS_DATA_ID, "serializer": 0},
+                {"label": "horse-variant", "data_id": HORSE_VARIANT_DATA_ID, "serializer": 1},
+                {"label": "horse-chest", "data_id": HORSE_CHEST_DATA_ID, "serializer": 8},
                 {"label": "bee-flags", "data_id": BEE_FLAGS_DATA_ID, "serializer": 0},
                 {"label": "bee-anger-end", "data_id": BEE_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},

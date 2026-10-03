@@ -632,6 +632,22 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "horse_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var flags = net.minecraft.world.entity.animal.equine.AbstractHorse.class.getDeclaredField("DATA_ID_FLAGS");
+                        flags.setAccessible(true);
+                        data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                            (net.minecraft.network.syncher.EntityDataAccessor<Byte>) flags.get(null),
+                            (byte) event.get("flags").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "seed" -> {
+                        // What the reference draws from an unseeded random source: fixed here.
+                        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
+                        random.setAccessible(true);
+                        ((net.minecraft.util.RandomSource) random.get(entity)).setSeed(event.get("seed").getAsLong());
+                    }
                     case "bee_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         if (event.has("flags")) {
@@ -715,6 +731,15 @@ public final class MovementOracle {
                             described.addProperty("flap_speed", Oracle.bits(chicken.flapSpeed));
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
+                        }
+                        case "horse" -> {
+                            var horse = (net.minecraft.world.entity.animal.equine.AbstractHorse) entity;
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("eat_" + partial, Oracle.bits(horse.getEatAnim(partial)));
+                                described.addProperty("stand_" + partial, Oracle.bits(horse.getStandAnim(partial)));
+                                described.addProperty("mouth_" + partial, Oracle.bits(horse.getMouthAnim(partial)));
+                            }
+                            described.addProperty("tail_counter", horse.tailCounter);
                         }
                         case "bee" -> {
                             var bee = (net.minecraft.world.entity.animal.bee.Bee) entity;

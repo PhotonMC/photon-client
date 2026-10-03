@@ -1,14 +1,15 @@
 //! The animals that are not drawn from a variant registry: the goat, the
-//! mooshroom with its mushrooms, the rabbit and the bee (`GoatRenderer`,
-//! `MushroomCowRenderer`, `MushroomCowMushroomLayer`, `RabbitRenderer`,
-//! `BeeRenderer`).
+//! mooshroom with its mushrooms, the rabbit, the bee and the horse family
+//! (`GoatRenderer`, `MushroomCowRenderer`, `MushroomCowMushroomLayer`,
+//! `RabbitRenderer`, `BeeRenderer`, `HorseRenderer`, `DonkeyRenderer`,
+//! `UndeadHorseRenderer`, `HorseMarkingLayer`).
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::mooshroom_mushroom_poses;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    BeeState, GoatState, MobModel, MobPlacement, QuadrupedState, RabbitState, mob_vertices,
-    placement_pose,
+    BeeState, EquineKind, EquineState, GoatState, MobModel, MobPlacement, QuadrupedState,
+    RabbitState, mob_vertices, placement_pose,
 };
 use voxel_render::scene::Vertex;
 use voxel_world::ClientEntity;
@@ -33,6 +34,89 @@ const MOOSHROOMS: [([&str; 2], &str); 2] = [
             "entity/cow/mooshroom_brown_baby",
         ],
         "minecraft:brown_mushroom",
+    ),
+];
+
+/// The horse's coats by variant id, grown and baby (`HorseRenderer`).
+const HORSES: [[&str; 2]; 7] = [
+    ["entity/horse/horse_white", "entity/horse/horse_white_baby"],
+    [
+        "entity/horse/horse_creamy",
+        "entity/horse/horse_creamy_baby",
+    ],
+    [
+        "entity/horse/horse_chestnut",
+        "entity/horse/horse_chestnut_baby",
+    ],
+    ["entity/horse/horse_brown", "entity/horse/horse_brown_baby"],
+    ["entity/horse/horse_black", "entity/horse/horse_black_baby"],
+    ["entity/horse/horse_gray", "entity/horse/horse_gray_baby"],
+    [
+        "entity/horse/horse_darkbrown",
+        "entity/horse/horse_darkbrown_baby",
+    ],
+];
+
+/// The horse's markings by id, grown and baby; none is drawn for the first
+/// (`HorseMarkingLayer`).
+const MARKINGS: [Option<[&str; 2]>; 5] = [
+    None,
+    Some([
+        "entity/horse/horse_markings_white",
+        "entity/horse/horse_markings_white_baby",
+    ]),
+    Some([
+        "entity/horse/horse_markings_whitefield",
+        "entity/horse/horse_markings_whitefield_baby",
+    ]),
+    Some([
+        "entity/horse/horse_markings_whitedots",
+        "entity/horse/horse_markings_whitedots_baby",
+    ]),
+    Some([
+        "entity/horse/horse_markings_blackdots",
+        "entity/horse/horse_markings_blackdots_baby",
+    ]),
+];
+
+/// The other equines' textures and model layers, grown and baby: donkey,
+/// mule, skeleton horse and zombie horse.
+const OTHER_EQUINES: [(&str, [&str; 2], [&str; 2], bool); 4] = [
+    (
+        "minecraft:donkey",
+        ["entity/horse/donkey", "entity/horse/donkey_baby"],
+        ["minecraft:donkey#main", "minecraft:donkey_baby#main"],
+        true,
+    ),
+    (
+        "minecraft:mule",
+        ["entity/horse/mule", "entity/horse/mule_baby"],
+        ["minecraft:mule#main", "minecraft:mule_baby#main"],
+        true,
+    ),
+    (
+        "minecraft:skeleton_horse",
+        [
+            "entity/horse/horse_skeleton",
+            "entity/horse/horse_skeleton_baby",
+        ],
+        [
+            "minecraft:skeleton_horse#main",
+            "minecraft:skeleton_horse_baby#main",
+        ],
+        false,
+    ),
+    (
+        "minecraft:zombie_horse",
+        [
+            "entity/horse/horse_zombie",
+            "entity/horse/horse_zombie_baby",
+        ],
+        [
+            "minecraft:zombie_horse#main",
+            "minecraft:zombie_horse_baby#main",
+        ],
+        false,
     ),
 ];
 
@@ -113,6 +197,13 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(MOOSHROOMS.into_iter().flat_map(|(textures, _)| textures))
         .chain(RABBITS.into_iter().flat_map(|(_, textures)| textures))
         .chain(BEES.into_iter().flatten().flatten())
+        .chain(HORSES.into_iter().flatten())
+        .chain(MARKINGS.into_iter().flatten().flatten())
+        .chain(
+            OTHER_EQUINES
+                .into_iter()
+                .flat_map(|(_, textures, _, _)| textures),
+        )
 }
 
 /// Which of these animals an entity is.
@@ -122,6 +213,10 @@ enum Animal {
     Mooshroom,
     Rabbit,
     Bee,
+    /// A horse (its coat and markings), or one of the other equines by the
+    /// index of [`OTHER_EQUINES`].
+    Horse,
+    Equine(usize),
 }
 
 /// Whether a bee is angry: its anger ends later than the game time now
@@ -140,6 +235,15 @@ fn appearance(
     let baby = entity.is_baby();
     let age = usize::from(baby);
     match animal {
+        Animal::Horse => (
+            HORSES[usize::try_from(entity.horse_look().0).unwrap_or(0)][age],
+            if baby {
+                "minecraft:horse_baby#main"
+            } else {
+                "minecraft:horse#main"
+            },
+        ),
+        Animal::Equine(index) => (OTHER_EQUINES[index].1[age], OTHER_EQUINES[index].2[age]),
         Animal::Bee => (
             BEES[age][usize::from(bee_is_angry(entity, game_time))]
                 [usize::from(entity.bee_has_nectar())],
@@ -195,6 +299,28 @@ fn pose(
 ) {
     let baby = entity.is_baby();
     match animal {
+        Animal::Horse | Animal::Equine(_) => {
+            let donkey = matches!(animal, Animal::Equine(index) if OTHER_EQUINES[index].3);
+            let anim = entity.horse();
+            model.setup_equine(&EquineState {
+                kind: match (donkey, baby) {
+                    (false, false) => EquineKind::Horse,
+                    (false, true) => EquineKind::BabyHorse,
+                    (true, false) => EquineKind::Donkey,
+                    (true, true) => EquineKind::BabyDonkey,
+                },
+                quadruped: look,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                eat_animation: anim.map_or(0.0, |horse| horse.eat_animation(partial)),
+                stand_animation: anim.map_or(0.0, |horse| horse.stand_animation(partial)),
+                feeding_animation: anim.map_or(0.0, |horse| horse.mouth_animation(partial)),
+                animate_tail: anim.is_some_and(|horse| horse.tail_counter() > 0),
+                // Whether the animal is in water is not tracked for mobs yet.
+                in_water: false,
+                age_scale: if baby { 0.5 } else { 1.0 },
+                has_chest: entity.horse_has_chest(),
+            });
+        }
         Animal::Bee => {
             let (x, y, z) = entity.motion();
             model.setup_bee(&BeeState {
@@ -273,6 +399,11 @@ pub fn remote_farm_animals(
         ("minecraft:mooshroom", Animal::Mooshroom),
         ("minecraft:rabbit", Animal::Rabbit),
         ("minecraft:bee", Animal::Bee),
+        ("minecraft:horse", Animal::Horse),
+        ("minecraft:donkey", Animal::Equine(0)),
+        ("minecraft:mule", Animal::Equine(1)),
+        ("minecraft:skeleton_horse", Animal::Equine(2)),
+        ("minecraft:zombie_horse", Animal::Equine(3)),
     ]
     .into_iter()
     .filter_map(|(name, animal)| Some((voxel_data::entity_type::id(name)?, animal)))
@@ -306,6 +437,16 @@ pub fn remote_farm_animals(
         vertices.extend(mob_vertices(model, &placed, rect));
         if animal == Animal::Mooshroom {
             mushrooms(model, entity, &placed, held);
+        }
+        // `HorseMarkingLayer`: the markings over the coat, not on an invisible horse.
+        if animal == Animal::Horse
+            && !entity.is_invisible()
+            && let Some(markings) = usize::try_from(entity.horse_look().1)
+                .ok()
+                .and_then(|index| MARKINGS[index])
+            && let Some(marking) = textures.rect(markings[usize::from(entity.is_baby())])
+        {
+            vertices.extend(mob_vertices(model, &placed, marking));
         }
     }
     vertices

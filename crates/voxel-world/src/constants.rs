@@ -173,6 +173,12 @@ pub const ENDERMAN_CARRY_DATA_ID: u8 = 16;
 pub const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 pub const ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 pub const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
+/// Where an abstract horse's flags (a byte: eating 16, standing 32, mouth open
+/// 64), a horse's variant data (an int) and a chested horse's chest (a
+/// boolean) sit among their data.
+pub const HORSE_FLAGS_DATA_ID: u8 = 18;
+pub const HORSE_VARIANT_DATA_ID: u8 = 19;
+pub const HORSE_CHEST_DATA_ID: u8 = 19;
 /// Where a bee's flags (a byte: rolling, stung, nectar) and the time its anger
 /// ends (a long) sit among its data, and the serializer of the latter.
 pub const BEE_FLAGS_DATA_ID: u8 = 18;
