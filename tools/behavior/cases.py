@@ -14997,6 +14997,28 @@ def entity_golem_cases():
     ]
     rows += [render(f"health-{fraction}", 5.0, 0.7, 10.0, fraction)
              for fraction in (0.0, 0.1, 0.2499, 0.25, 0.4999, 0.5, 0.7499, 0.75, 0.9, 1.0)]
+    def block_layer(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+                    attack_ticks=0.0, offer=0):
+        return {"label": label, "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "attack_ticks": float_bits(attack_ticks),
+                "offer_flower_tick": offer}
+
+    # Where the layers that draw a block on an entity put it: the enderman's carried
+    # block, the snow golem's pumpkin (on the head's pose) and the iron golem's flower
+    # (on the right arm's pose).
+    yield {"case_id": "entity/block-layers", "family": "entity", "operation": "entity_block_layers",
+           "rows": [
+               block_layer("carried", "carried"),
+               block_layer("pumpkin-straight", "snow_head"),
+               block_layer("pumpkin-looking", "snow_head", head_y_rot=-35.5, x_rot=48.0),
+               block_layer("pumpkin-turned", "snow_head", head_y_rot=120.0, x_rot=-20.0),
+               block_layer("flower-offered", "flower", offer=400),
+               block_layer("flower-offered-late", "flower", offer=33, head_y_rot=12.0, x_rot=-8.0),
+               block_layer("flower-while-striking", "flower", attack_ticks=4.0, offer=100),
+               block_layer("flower-while-walking", "flower", offer=70, walk_position=7.3,
+                           walk_speed=0.83),
+           ]}
     yield {"case_id": "entity/iron-golem-render", "family": "entity",
            "operation": "iron_golem_render", "rows": rows}
 

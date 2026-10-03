@@ -1,14 +1,18 @@
-//! The golems the frame draws: the iron golem with its cracks over it, and
-//! the snow golem (`IronGolemRenderer`, `IronGolemCrackinessLayer`,
-//! `SnowGolemRenderer`).
+//! The golems the frame draws: the iron golem with its cracks over it and the
+//! flower it offers, and the snow golem with its pumpkin (`IronGolemRenderer`,
+//! `IronGolemCrackinessLayer`, `IronGolemFlowerLayer`, `SnowGolemRenderer`,
+//! `SnowGolemHeadLayer`).
 
 use voxel_net::connection::PlaySession;
+use voxel_render::entity_block::{iron_golem_flower_pose, snow_golem_head_pose};
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     Crackiness, IronGolemState, QuadrupedState, golem_crackiness, iron_golem_roll, mob_vertices,
+    placement_pose,
 };
 use voxel_render::scene::Vertex;
 
+use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -43,14 +47,21 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     .into_iter()
 }
 
+/// The default state of a block, which is what the layers draw
+/// (`Blocks.CARVED_PUMPKIN.defaultBlockState()`).
+fn default_state(name: &str) -> Option<u32> {
+    voxel_data::block::registry::block(name)
+        .map(voxel_data::block::registry::Block::default_state_id)
+}
+
 /// `IronGolemRenderer` and `SnowGolemRenderer` for the golems the server
-/// added. The flower an iron golem offers and the pumpkin a snow golem wears
-/// are blocks, which are not drawn on entities yet.
+/// added, with the flower and the pumpkin. A pumpkin on an invisible golem
+/// that glows would be drawn as an outline only, which is not drawn yet.
 pub fn remote_golems(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let (Some(iron), Some(snow)) = (
         voxel_data::entity_type::id("minecraft:iron_golem"),
@@ -115,6 +126,38 @@ pub fn remote_golems(
                 model.setup_snow_golem(&look);
             }
             vertices.extend(mob_vertices(model, &placed, rect));
+        }
+        let layer = if is_iron {
+            IRON_GOLEM_LAYER
+        } else {
+            SNOW_GOLEM_LAYER
+        };
+        let Some(model) = models.model(layer) else {
+            continue;
+        };
+        let part = |name: &str| {
+            model
+                .root()
+                .children()
+                .iter()
+                .find(|part| part.name() == name)
+        };
+        let entity_pose = placement_pose(&placed);
+        let (pose, state) = if is_iron && entity.iron_golem_ticks().1 > 0 {
+            (
+                part("right_arm").map(|arm| iron_golem_flower_pose(&entity_pose, arm)),
+                default_state("minecraft:poppy"),
+            )
+        } else if !is_iron && entity.has_pumpkin() && !entity.is_invisible() {
+            (
+                part("head").map(|head| snow_golem_head_pose(&entity_pose, head)),
+                default_state("minecraft:carved_pumpkin"),
+            )
+        } else {
+            (None, None)
+        };
+        if let (Some(pose), Some(state)) = (pose, state) {
+            held.push(HeldItem::block(state, pose, placed.light));
         }
     }
     vertices

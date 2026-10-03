@@ -47,10 +47,9 @@ zombi köylü için 6 satır, `living-entity-animations`'a beş demir golem sat�
 
 ## Sapmalar (açık)
 
-- Kar golemin balkabağı, demir golemin çiçeği ve endermanın taşıdığı blok çizilmiyor:
-  hepsi `BlockModelRenderState` ister, varlık üstünde blok durumu çizimi yok (T34d).
-- Endermanın gözleri (`EnderEyesLayer`, parlak katman) ve ürkütülmüşken titremesi
-  (rastgele kayma) yok.
+- Kar golemin balkabağı, demir golemin çiçeği ve endermanın taşıdığı blok T34d'de
+  çizilir ([kayıt](client-entity-block-parity-conformance.md)).
+- Endermanın gözleri (`EnderEyesLayer`, parlak katman) yok (T33c).
 - Demir golemin can üst sınırı 100 sayılır; sunucunun değiştirdiği öznitelik mob için
   okunmuyor. Sağlık verisi gelene dek bir sağlık varsayılır (referans da öyle).
 - Bakır golem yapılmadı (T34e). Zombi köylünün dönüşürken sallanması

@@ -955,6 +955,101 @@ public final class EntityOracle {
         return result;
     }
 
+    /** A block model part with no quads: enough for a block model state to submit something. */
+    private static net.minecraft.client.renderer.block.dispatch.BlockStateModelPart emptyPart() {
+        return (net.minecraft.client.renderer.block.dispatch.BlockStateModelPart) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
+            (proxy, method, args) -> {
+                var type = method.getReturnType();
+                if (type == java.util.List.class) {
+                    return java.util.List.of();
+                }
+                if (type == boolean.class) {
+                    return false;
+                }
+                return type == int.class ? 0 : null;
+            });
+    }
+
+    /** Makes a block model state non-empty, with a part that draws nothing. */
+    private static void fillBlock(final net.minecraft.client.renderer.block.BlockModelRenderState block) {
+        block.setupModel(new org.joml.Matrix4f(), false).add(emptyPart());
+    }
+
+    /**
+     * The pose each layer that draws a block on an entity puts the block at, from the reference's
+     * own layer classes: the matrix the block is submitted with, from an identity entity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject entityBlockLayers(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var captured = new float[16];
+            var seen = new boolean[1];
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitBlockModel")) {
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(captured);
+                        seen[0] = true;
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            String kind = row.get("layer").getAsString();
+            if (kind.equals("carried")) {
+                var state = new net.minecraft.client.renderer.entity.state.EndermanRenderState();
+                fillBlock(state.carriedBlock);
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+                new net.minecraft.client.renderer.entity.layers.CarriedBlockLayer(parent)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            } else if (kind.equals("snow_head")) {
+                var model = new net.minecraft.client.model.animal.golem.SnowGolemModel(bakedLayer("minecraft:snow_golem#main"));
+                var state = new net.minecraft.client.renderer.entity.state.SnowGolemRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                model.setupAnim(state);
+                fillBlock(state.headBlock);
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                new net.minecraft.client.renderer.entity.layers.SnowGolemHeadLayer(parent)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            } else {
+                var model = new net.minecraft.client.model.animal.golem.IronGolemModel(bakedLayer("minecraft:iron_golem#main"));
+                var state = new net.minecraft.client.renderer.entity.state.IronGolemRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.attackTicksRemaining = Oracle.f32(row, "attack_ticks");
+                state.offerFlowerTick = row.get("offer_flower_tick").getAsInt();
+                model.setupAnim(state);
+                fillBlock(state.flowerBlock);
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> model;
+                new net.minecraft.client.renderer.entity.layers.IronGolemFlowerLayer(parent)
+                    .submit(stack, holder[0], 0, state, 0.0F, 0.0F);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("drawn", seen[0]);
+            var described = new JsonArray();
+            for (float value : captured) {
+                described.add(Oracle.bits(value));
+            }
+            out.add("pose", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1421,6 +1516,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.animal.golem.SnowGolem.class, "DATA_PUMPKIN_ID", "snow-golem-pumpkin"},
             {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CARRY_STATE", "enderman-carry"},
             {net.minecraft.world.entity.monster.EnderMan.class, "DATA_CREEPY", "enderman-creepy"},
             {net.minecraft.world.entity.monster.zombie.ZombieVillager.class, "DATA_VILLAGER_DATA", "zombie-villager-data"},
@@ -1554,6 +1650,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("entity_block_layers")) {
+            return entityBlockLayers(request);
         }
         if (operation.equals("illager_model")) {
             return illagerModel(request);

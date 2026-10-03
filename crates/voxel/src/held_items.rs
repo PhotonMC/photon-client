@@ -27,12 +27,33 @@ impl Place {
     }
 }
 
-/// A carried stack with the pose of where it is carried.
+/// What is carried: an item stack, or a block state drawn as a block model
+/// (the enderman's block, the snow golem's pumpkin, the iron golem's flower).
+pub enum Carried {
+    Stack(ClientItemStackState),
+    /// A block state by its id, with the pose its model is drawn from (the
+    /// layer has already moved it to the block's corner).
+    Block(u32),
+}
+
+/// A carried thing with the pose of where it is carried.
 pub struct HeldItem {
-    pub stack: ClientItemStackState,
+    pub stack: Carried,
     pub pose: Pose,
     pub place: Place,
     pub light: i32,
+}
+
+impl HeldItem {
+    /// A block state drawn on an entity, from the pose its layer leaves.
+    pub fn block(state: u32, pose: Pose, light: i32) -> Self {
+        Self {
+            stack: Carried::Block(state),
+            pose,
+            place: Place::Head,
+            light,
+        }
+    }
 }
 
 /// The posed model a humanoid's hands are found on.
@@ -72,7 +93,7 @@ impl Hands<'_> {
                 continue;
             };
             out.push(HeldItem {
-                stack: stack.clone(),
+                stack: Carried::Stack(stack.clone()),
                 pose: hand_pose(self.base, self.root, arm, side, self.hand_shift, self.baby),
                 place: if side == Arm::Left {
                     Place::Left
@@ -90,7 +111,7 @@ impl Hands<'_> {
                 .find(|part| part.name() == "head"),
         ) {
             out.push(HeldItem {
-                stack: stack.clone(),
+                stack: Carried::Stack(stack.clone()),
                 pose: head_item_pose(self.base, self.root, head, self.head_transforms),
                 place: Place::Head,
                 light: self.light,
@@ -108,7 +129,20 @@ pub fn held_item_vertices(
     let mut vertices = Vec::new();
     for item in held {
         let cache = &mut layers[item.place.index()];
-        let item_layers = cache.get(&item.stack, renderer, tints);
+        let stack = match &item.stack {
+            Carried::Stack(stack) => stack,
+            Carried::Block(state) => {
+                if let Some((layer, block_light)) = cache.block(*state, renderer) {
+                    vertices.extend(voxel_render::item_entity::entity_block_vertices(
+                        layer,
+                        &item.pose,
+                        voxel_render::entity_block::submit_light(item.light, *block_light),
+                    ));
+                }
+                continue;
+            }
+        };
+        let item_layers = cache.get(stack, renderer, tints);
         vertices.extend(item_layer_vertices(
             item_layers,
             &[item.pose],

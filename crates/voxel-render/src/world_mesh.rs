@@ -623,6 +623,68 @@ impl BlockRenderer {
         (quads, offset)
     }
 
+    /// `BlockModelResolver.update` for a block state drawn on an entity: every
+    /// quad of the variants the model's own seed picks (`MODEL_SEED`, 42),
+    /// culled against nothing, each tinted by the state's colour outside a
+    /// world, and the light the state gives off (`blockLightCoords`). Nothing
+    /// for air and for states with no model to draw.
+    pub fn entity_block(&self, state_id: u32) -> Option<(ItemLayer, i32)> {
+        let Some(StateRender::Drawn(drawn)) = self.states.get(state_id as usize) else {
+            return None;
+        };
+        let tints: Vec<u32> = match &drawn.tints {
+            StateTints::Fixed(colours) => colours.clone(),
+            StateTints::Biome { constant, .. } => constant.to_vec(),
+        };
+        let mut random = voxel_core::random::RandomSource::create(42);
+        let mut mesh = Mesh::default();
+        pick_variants(&drawn.lists, &mut random, |model| {
+            let Some(model) = model else {
+                return;
+            };
+            for quad in &self.baked[model as usize].quads {
+                let tint = usize::try_from(quad.tint_index)
+                    .ok()
+                    .and_then(|slot| tints.get(slot).copied())
+                    .unwrap_or(0xFFFF_FFFF);
+                let [red, green, blue] =
+                    [16, 8, 0].map(|bits| f32::from(((tint >> bits) & 0xFF) as u8) / 255.0);
+                let base = mesh.vertices.len() as u32;
+                for corner in 0..4 {
+                    mesh.vertices.push(crate::scene::BlockVertex::new(
+                        quad.corners[corner],
+                        quad.uvs[corner],
+                        [red, green, blue, 1.0],
+                        [0.0; 2],
+                    ));
+                }
+                mesh.indices.extend_from_slice(&[
+                    base,
+                    base + 1,
+                    base + 2,
+                    base,
+                    base + 2,
+                    base + 3,
+                ]);
+                mesh.quads.push(crate::scene::QuadInfo {
+                    direction: quad.direction,
+                    cull: None,
+                    shade: quad.shade,
+                    tint_index: quad.tint_index,
+                });
+            }
+        });
+        let info = voxel_world::block::state_or_air(i64::from(state_id));
+        Some((
+            ItemLayer {
+                mesh,
+                side_lit: true,
+                transform: None,
+            },
+            crate::entity_block::block_light_coords(info.light_emission, info.emissive_rendering),
+        ))
+    }
+
     /// Mesh every block in a box of the world, positioned relative to
     /// `mesh_origin`.
     ///

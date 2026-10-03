@@ -10,6 +10,7 @@ pub mod blockstate;
 pub mod breaking;
 pub mod camera;
 pub mod clouds;
+pub mod entity_block;
 pub mod entity_textures;
 pub mod equipment;
 pub mod geometry;

@@ -3244,8 +3244,11 @@ impl ClientWorld {
             entity.living.unhappy_counter = counter;
         }
         let (carrying, creepy) = enderman_flags_from_metadata(entity.type_id, metadata);
-        if let Some(carrying) = carrying {
-            entity.living.carrying_block = carrying;
+        if let Some(carried) = carrying {
+            entity.living.carried_state = carried;
+        }
+        if let Some(pumpkin) = snow_golem_pumpkin_from_metadata(entity.type_id, metadata) {
+            entity.living.bare_head = !pumpkin;
         }
         if let Some(creepy) = creepy {
             entity.living.creepy = creepy;

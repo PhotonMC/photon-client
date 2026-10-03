@@ -312,6 +312,9 @@ pub struct MobModels {
     kinds: HashMap<i32, &'static MobKind>,
     humanoids: HashMap<i32, &'static HumanoidKind>,
     models: HashMap<String, MobModel>,
+    /// What shakes a creepy enderman: the renderer's own random source, which
+    /// the reference does not seed.
+    pub(crate) shake: voxel_core::random::RandomSource,
 }
 
 impl MobModels {
@@ -326,6 +329,11 @@ impl MobModels {
                 .filter_map(|kind| Some((voxel_data::entity_type::id(kind.type_name)?, kind)))
                 .collect(),
             models: HashMap::new(),
+            shake: voxel_core::random::RandomSource::create(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| elapsed.as_nanos() as i64),
+            ),
         }
     }
 
@@ -446,13 +454,19 @@ pub fn remote_mobs(
     ));
     vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
     vertices.extend(crate::monsters::remote_monsters(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::villagers::remote_villagers(
         session, models, textures, view,
     ));
     vertices.extend(crate::golems::remote_golems(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, &mut *held),
     ));
     vertices.extend(crate::villagers::remote_witches(
         session, models, textures, view,

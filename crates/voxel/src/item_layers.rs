@@ -10,6 +10,8 @@ use voxel_world::ClientItemStackState;
 pub struct ItemLayerCache {
     context: DisplayContext,
     layers: std::collections::HashMap<i32, Vec<PatchLayers>>,
+    /// Block states drawn on entities, by state id, with the light each gives off.
+    blocks: std::collections::HashMap<u32, Option<(ItemLayer, i32)>>,
 }
 
 /// The layers of an item with one component patch.
@@ -20,7 +22,17 @@ impl ItemLayerCache {
         Self {
             context,
             layers: std::collections::HashMap::new(),
+            blocks: std::collections::HashMap::new(),
         }
+    }
+
+    /// The model of a block state drawn on an entity (`BlockModelResolver`),
+    /// built the first time it is drawn.
+    pub fn block(&mut self, state: u32, renderer: &BlockRenderer) -> Option<&(ItemLayer, i32)> {
+        self.blocks
+            .entry(state)
+            .or_insert_with(|| renderer.entity_block(state))
+            .as_ref()
     }
 
     /// A stack's layers, its grass tinted by climate.

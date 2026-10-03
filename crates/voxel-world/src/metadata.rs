@@ -247,23 +247,31 @@ pub(crate) fn illager_flags_from_metadata(
     (celebrating, casting)
 }
 
-/// Whether an enderman carries a block (`DATA_CARRY_STATE` is not empty) and
-/// whether it is creepy (`DATA_CREEPY`), when the data holds them.
+/// The block state an enderman carries (`DATA_CARRY_STATE`, zero for none)
+/// and whether it is creepy (`DATA_CREEPY`), when the data holds them.
 pub(crate) fn enderman_flags_from_metadata(
     type_id: i32,
     metadata: &[u8],
-) -> (Option<bool>, Option<bool>) {
+) -> (Option<i32>, Option<bool>) {
     if voxel_data::entity_type::name(type_id) != Some("minecraft:enderman") {
         return (None, None);
     }
     let carrying = find_metadata_field(metadata, ENDERMAN_CARRY_DATA_ID)
         .filter(|(serializer, _)| *serializer == OPTIONAL_BLOCK_STATE_SERIALIZER_ID)
-        .and_then(|(_, mut value)| voxel_core::wire::read_varint(&mut value).ok())
-        .map(|state| state != 0);
+        .and_then(|(_, mut value)| voxel_core::wire::read_varint(&mut value).ok());
     (
         carrying,
         metadata_boolean_value(metadata, ENDERMAN_CREEPY_DATA_ID),
     )
+}
+
+/// Whether a snow golem wears its pumpkin (`SnowGolem.DATA_PUMPKIN_ID`, bit
+/// sixteen), when the data holds it.
+pub(crate) fn snow_golem_pumpkin_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:snow_golem" {
+        return None;
+    }
+    metadata_byte_value(metadata, SNOW_GOLEM_PUMPKIN_DATA_ID).map(|flags| flags & 16 != 0)
 }
 
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
@@ -534,7 +542,7 @@ mod tests {
         ]);
         assert_eq!(
             enderman_flags_from_metadata(id("minecraft:enderman"), &metadata),
-            (Some(true), Some(true))
+            (Some(129), Some(true))
         );
         let empty = data(&[(
             ENDERMAN_CARRY_DATA_ID,
@@ -543,7 +551,27 @@ mod tests {
         )]);
         assert_eq!(
             enderman_flags_from_metadata(id("minecraft:enderman"), &empty),
-            (Some(false), None)
+            (Some(0), None)
+        );
+        let pumpkin = data(&[(
+            SNOW_GOLEM_PUMPKIN_DATA_ID,
+            ENTITY_DATA_SERIALIZER_BYTE_ID,
+            &[16],
+        )]);
+        let bare = data(&[(
+            SNOW_GOLEM_PUMPKIN_DATA_ID,
+            ENTITY_DATA_SERIALIZER_BYTE_ID,
+            &[0],
+        )]);
+        let golem = id("minecraft:snow_golem");
+        assert_eq!(
+            snow_golem_pumpkin_from_metadata(golem, &pumpkin),
+            Some(true)
+        );
+        assert_eq!(snow_golem_pumpkin_from_metadata(golem, &bare), Some(false));
+        assert_eq!(
+            snow_golem_pumpkin_from_metadata(id("minecraft:cow"), &pumpkin),
+            None
         );
         assert_eq!(
             villager_data_from_metadata(id("minecraft:zombie_villager"), &metadata),

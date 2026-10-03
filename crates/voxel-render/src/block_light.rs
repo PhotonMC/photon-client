@@ -24,6 +24,19 @@ fn pack(block: i32, sky: i32) -> i32 {
     (block << 4) | (sky << 20)
 }
 
+/// `LightCoordsUtil.pack`.
+pub fn pack_light(block: i32, sky: i32) -> i32 {
+    pack(block, sky)
+}
+
+/// `LightCoordsUtil.max`: the larger of each of the block and sky light.
+pub fn max_light(first: i32, second: i32) -> i32 {
+    pack(
+        block_of(first).max(block_of(second)),
+        sky_of(first).max(sky_of(second)),
+    )
+}
+
 fn block_of(packed: i32) -> i32 {
     (packed >> 4) & 15
 }

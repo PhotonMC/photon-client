@@ -175,25 +175,38 @@ pub fn item_layer_vertices(
         for layer in layers {
             let mut pose = *copy;
             apply_display_transform(&mut pose, layer, left_hand);
-            for (quad, info) in layer.mesh.quads.iter().enumerate() {
-                let (dx, dy, dz) = info.direction.step();
-                let normal = pose.transform_normal([dx as f32, dy as f32, dz as f32]);
-                let shade = entity_light(normal);
-                for index in [0, 1, 2, 0, 2, 3] {
-                    let source = &layer.mesh.vertices[quad * 4 + index];
-                    let [x, y, z] = source.position;
-                    vertices.push(Vertex {
-                        position: pose.pose.transform_position(x, y, z),
-                        uv: source.uv,
-                        shade,
-                        tint: source.colour(),
-                        light,
-                    });
-                }
-            }
+            push_layer(&mut vertices, layer, &pose, light);
         }
     }
     vertices
+}
+
+/// A block model drawn on an entity (`BlockModelRenderState.submit`): the
+/// model from `pose`, which the layer that places it has already moved to the
+/// block's corner, with no display transform.
+pub fn entity_block_vertices(layer: &ItemLayer, pose: &Pose, light: i32) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+    push_layer(&mut vertices, layer, pose, light_uv(light));
+    vertices
+}
+
+fn push_layer(vertices: &mut Vec<Vertex>, layer: &ItemLayer, pose: &Pose, light: [f32; 2]) {
+    for (quad, info) in layer.mesh.quads.iter().enumerate() {
+        let (dx, dy, dz) = info.direction.step();
+        let normal = pose.transform_normal([dx as f32, dy as f32, dz as f32]);
+        let shade = entity_light(normal);
+        for index in [0, 1, 2, 0, 2, 3] {
+            let source = &layer.mesh.vertices[quad * 4 + index];
+            let [x, y, z] = source.position;
+            vertices.push(Vertex {
+                position: pose.pose.transform_position(x, y, z),
+                uv: source.uv,
+                shade,
+                tint: source.colour(),
+                light,
+            });
+        }
+    }
 }
 
 #[cfg(test)]

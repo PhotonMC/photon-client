@@ -171,9 +171,12 @@ pub(crate) struct EntityState {
     /// `Raider.isCelebrating`, and whether a spellcaster is casting.
     pub(crate) celebrating: bool,
     pub(crate) casting_spell: bool,
-    /// An enderman carries a block, and is creepy (stared at).
-    pub(crate) carrying_block: bool,
+    /// The block state an enderman carries (zero for none), and whether it is
+    /// creepy (stared at).
+    pub(crate) carried_state: i32,
     pub(crate) creepy: bool,
+    /// Whether a snow golem wears its pumpkin; it does until the data says not.
+    pub(crate) bare_head: bool,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -1784,7 +1787,19 @@ impl ClientEntity {
 
     /// Whether an enderman carries a block (`getCarriedBlock() != null`).
     pub fn is_carrying_block(&self) -> bool {
-        self.living.carrying_block
+        self.living.carried_state != 0
+    }
+
+    /// The block state an enderman carries (`getCarriedBlock`), by its id.
+    pub fn carried_block_state(&self) -> Option<u32> {
+        u32::try_from(self.living.carried_state)
+            .ok()
+            .filter(|state| *state != 0)
+    }
+
+    /// `SnowGolem.hasPumpkin`.
+    pub fn has_pumpkin(&self) -> bool {
+        !self.living.bare_head
     }
 
     /// `EnderMan.isCreepy`.

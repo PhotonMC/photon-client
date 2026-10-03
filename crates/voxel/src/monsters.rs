@@ -3,13 +3,16 @@
 //! `EndermanRenderer`).
 
 use voxel_net::connection::PlaySession;
+use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     EndermanState, QuadrupedState, creeper_scale, creeper_white_overlay, mob_vertices,
+    placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::scene::Vertex;
 
+use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -71,14 +74,13 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 }
 
 /// `LivingEntityRenderer` for the spiders, creepers and endermen the server
-/// added. The spiders' and the enderman's glowing eyes, the charged creeper's
-/// swirl, the block an enderman carries and the shaking of a creepy one are
-/// not drawn yet.
+/// added, with the block an enderman carries. The spiders' and the enderman's
+/// glowing eyes and the charged creeper's swirl are not drawn yet.
 pub fn remote_monsters(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let partial = view.partial as f32;
@@ -95,6 +97,15 @@ pub fn remote_monsters(
         else {
             continue;
         };
+        // `EndermanRenderer.getRenderOffset`: a creepy enderman shakes, by a
+        // little in x and in z (two draws of the renderer's random source).
+        let shake = (monster.pose == Pose::Enderman && entity.is_creepy()).then(|| {
+            let spread = 0.02;
+            [
+                models.shake.next_gaussian() * spread,
+                models.shake.next_gaussian() * spread,
+            ]
+        });
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(monster.texture),
@@ -110,6 +121,10 @@ pub fn remote_monsters(
         };
         let mut placed = placement(world, &snapshot, view, 1.0);
         placed.flip_degrees = monster.flip_degrees;
+        if let Some([x, z]) = shake {
+            placed.feet[0] += x as f32;
+            placed.feet[2] += z as f32;
+        }
         match monster.pose {
             Pose::Spider => model.setup_spider(&look),
             Pose::Enderman => model.setup_enderman(&EndermanState {
@@ -134,6 +149,16 @@ pub fn remote_monsters(
             }
         }
         vertices.extend(mob_vertices(model, &placed, rect));
+        if let Some(state) = entity
+            .carried_block_state()
+            .filter(|_| monster.pose == Pose::Enderman)
+        {
+            held.push(HeldItem::block(
+                state,
+                carried_block_pose(&placement_pose(&placed)),
+                placed.light,
+            ));
+        }
     }
     vertices
 }
