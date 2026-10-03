@@ -137,6 +137,7 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
         "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
         "minecraft:chicken" => (CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID),
         "minecraft:wolf" => (WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID),
+        "minecraft:cat" => (CAT_VARIANT_DATA_ID, CAT_VARIANT_SERIALIZER_ID),
         _ => return None,
     };
     let (found, mut value) = find_metadata_field(metadata, data_id)?;
@@ -399,6 +400,28 @@ pub(crate) fn wolf_data_from_metadata(type_id: i32, metadata: &[u8]) -> WolfData
         interested: metadata_boolean_value(metadata, WOLF_INTERESTED_DATA_ID),
         collar: metadata_int_value(metadata, WOLF_COLLAR_DATA_ID),
         anger_end,
+    }
+}
+
+/// What a cat's data holds (`TamableAnimal.DATA_FLAGS_ID`, `Cat.IS_LYING`,
+/// `RELAX_STATE_ONE`, `DATA_COLLAR_COLOR`), each when it is there.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CatData {
+    pub(crate) flags: Option<u8>,
+    pub(crate) lying: Option<bool>,
+    pub(crate) relaxed: Option<bool>,
+    pub(crate) collar: Option<i32>,
+}
+
+pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:cat") {
+        return CatData::default();
+    }
+    CatData {
+        flags: metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID),
+        lying: metadata_boolean_value(metadata, CAT_LYING_DATA_ID),
+        relaxed: metadata_boolean_value(metadata, CAT_RELAX_DATA_ID),
+        collar: metadata_int_value(metadata, CAT_COLLAR_DATA_ID),
     }
 }
 
@@ -670,6 +693,26 @@ mod tests {
         assert_eq!(read.anger_end, Some(10_000));
         assert_eq!(variant_from_metadata(wolf, &metadata), Some(4));
         assert_eq!(wolf_data_from_metadata(pig, &metadata), WolfData::default());
+    }
+
+    #[test]
+    fn a_cats_flags_lying_relax_and_collar_are_read_and_its_variant_is_a_registry_id() {
+        let cat = voxel_data::entity_type::id("minecraft:cat").unwrap();
+        let wolf = voxel_data::entity_type::id("minecraft:wolf").unwrap();
+        let metadata = data(&[
+            (TAMABLE_FLAGS_DATA_ID, 0, &[5]),
+            (CAT_VARIANT_DATA_ID, CAT_VARIANT_SERIALIZER_ID, &[7]),
+            (CAT_LYING_DATA_ID, 8, &[1]),
+            (CAT_RELAX_DATA_ID, 8, &[0]),
+            (CAT_COLLAR_DATA_ID, 1, &[3]),
+        ]);
+        let read = cat_data_from_metadata(cat, &metadata);
+        assert_eq!(read.flags, Some(5));
+        assert_eq!(read.lying, Some(true));
+        assert_eq!(read.relaxed, Some(false));
+        assert_eq!(read.collar, Some(3));
+        assert_eq!(variant_from_metadata(cat, &metadata), Some(7));
+        assert_eq!(cat_data_from_metadata(wolf, &metadata), CatData::default());
     }
 
     #[test]

@@ -1710,6 +1710,50 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The cat's and ocelot's models posed by the reference's own `setupAnim` (grown and baby), drawn. */
+    private static JsonObject felineModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            boolean baby = id.contains("_baby");
+            var state = id.contains("cat")
+                ? new net.minecraft.client.renderer.entity.state.CatRenderState()
+                : new net.minecraft.client.renderer.entity.state.FelineRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.isCrouching = row.get("crouching").getAsBoolean();
+            state.isSprinting = row.get("sprinting").getAsBoolean();
+            state.isSitting = row.get("sitting").getAsBoolean();
+            state.lieDownAmount = Oracle.f32(row, "lie_down_amount");
+            state.lieDownAmountTail = Oracle.f32(row, "lie_down_amount_tail");
+            state.relaxStateOneAmount = Oracle.f32(row, "relax_state_one_amount");
+            state.ageScale = Oracle.f32(row, "age_scale");
+            net.minecraft.client.model.EntityModel<?> model;
+            if (id.contains("cat")) {
+                var cat = (net.minecraft.client.renderer.entity.state.CatRenderState) state;
+                var catModel = baby
+                    ? new net.minecraft.client.model.animal.feline.BabyCatModel(root)
+                    : new net.minecraft.client.model.animal.feline.AdultCatModel(root);
+                catModel.setupAnim(cat);
+                model = catModel;
+            } else {
+                var ocelotModel = baby
+                    ? new net.minecraft.client.model.animal.feline.BabyOcelotModel(root)
+                    : new net.minecraft.client.model.animal.feline.AdultOcelotModel(root);
+                ocelotModel.setupAnim(state);
+                model = ocelotModel;
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -2129,6 +2173,12 @@ public final class EntityOracle {
             variants(rows, "chicken", holder.key().identifier().toString(), variant.modelAndTexture().asset().id(),
                 variant.babyTexture().id(), variant.modelAndTexture().model().name());
         });
+        // A cat's variant has no model family of its own: the model is the cat's.
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.CAT_VARIANT).listElements().forEach(holder -> {
+            var variant = holder.value();
+            variants(rows, "cat", holder.key().identifier().toString(), variant.adultAssetInfo().id(),
+                variant.babyAssetInfo().id(), "normal");
+        });
         var list = new JsonArray();
         rows.values().forEach(list::add);
         var result = new JsonObject();
@@ -2214,6 +2264,10 @@ public final class EntityOracle {
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_COLLAR_COLOR", "wolf-collar"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_ANGER_END_TIME", "wolf-anger-end"},
             {net.minecraft.world.entity.animal.wolf.Wolf.class, "DATA_VARIANT_ID", "wolf-variant"},
+            {net.minecraft.world.entity.animal.feline.Cat.class, "DATA_VARIANT_ID", "cat-variant"},
+            {net.minecraft.world.entity.animal.feline.Cat.class, "IS_LYING", "cat-lying"},
+            {net.minecraft.world.entity.animal.feline.Cat.class, "RELAX_STATE_ONE", "cat-relax"},
+            {net.minecraft.world.entity.animal.feline.Cat.class, "DATA_COLLAR_COLOR", "cat-collar"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_FLAGS_ID", "bee-flags"},
             {net.minecraft.world.entity.animal.bee.Bee.class, "DATA_ANGER_END_TIME", "bee-anger-end"},
             {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
@@ -2361,6 +2415,9 @@ public final class EntityOracle {
         }
         if (operation.equals("wolf_model")) {
             return wolfModel(request);
+        }
+        if (operation.equals("feline_model")) {
+            return felineModel(request);
         }
         if (operation.equals("llama_model")) {
             return llamaModel(request);

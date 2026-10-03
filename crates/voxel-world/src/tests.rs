@@ -7013,3 +7013,54 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     assert_eq!(id_of(world.entity_at(6).expect("the mob"), false), None);
     assert!(!world.apply_entity_equipment(99, EquipmentSlot::Head, None));
 }
+
+#[test]
+fn a_cat_lies_on_top_of_a_player_who_sleeps_within_two_blocks_of_it() {
+    let cat = voxel_data::entity_type::id("minecraft:cat").expect("a cat");
+    let mut world = ClientWorld::default();
+    let input = |entity_id, type_id, x| EntityInput {
+        entity_id,
+        uuid: Uuid::new(1, entity_id as u64),
+        type_id,
+        x,
+        y: 80.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    };
+    assert!(world.apply_entity(input(1, cat, 0.5)));
+    assert!(world.apply_entity(input(2, VANILLA_PLAYER_ENTITY_TYPE_ID, 2.5)));
+    // The cat lies down (`IS_LYING`); the player stands near it, then sleeps.
+    assert!(world.apply_entity_metadata(1, &[super::CAT_LYING_DATA_ID, 8, 1, 255]));
+    let lies_on_player = |world: &mut ClientWorld| {
+        // No chunk is loaded here, which would leave the cat idle.
+        world.entities.get_mut(&1).unwrap().ticking = true;
+        world.tick_entities();
+        world
+            .entity_at(1)
+            .unwrap()
+            .cat()
+            .is_lying_on_top_of_sleeping_player()
+    };
+    assert!(!lies_on_player(&mut world));
+    let mut asleep = vec![
+        super::ENTITY_SLEEPING_POS_DATA_ID,
+        super::ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID as u8,
+        1,
+    ];
+    voxel_core::binary::write_blockpos(voxel_core::binary::BlockPos::new(2, 80, 0), &mut asleep);
+    // The sleeping pose (`Pose.SLEEPING`) makes the player's box small.
+    asleep.extend([6, 20, 2, 255]);
+    assert!(world.apply_entity_metadata(2, &asleep));
+    assert!(lies_on_player(&mut world));
+    // One that sleeps beyond the box the cat looks in does not count.
+    assert!(world.apply_entity(input(3, VANILLA_PLAYER_ENTITY_TYPE_ID, 9.5)));
+    assert!(world.apply_entity_metadata(2, &[14, 11, 0, 255]));
+    assert!(world.apply_entity_metadata(3, &asleep));
+    assert!(!lies_on_player(&mut world));
+    // And a cat that does not lie never lies on anyone.
+    assert!(world.apply_entity_metadata(2, &asleep));
+    assert!(world.apply_entity_metadata(1, &[super::CAT_LYING_DATA_ID, 8, 0, 255]));
+    assert!(!lies_on_player(&mut world));
+}

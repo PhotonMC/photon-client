@@ -200,6 +200,11 @@ pub(crate) struct EntityState {
     /// A wolf's interest angle and shake.
     pub(crate) wolf: crate::wolf::WolfState,
     pub(crate) collar: Option<i32>,
+    /// A cat's data (whether it lies, whether it is relaxed) and its own
+    /// client state.
+    pub(crate) cat_lying: bool,
+    pub(crate) cat_relaxed: bool,
+    pub(crate) cat: crate::cat::CatState,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -209,6 +214,22 @@ pub(crate) struct EntityState {
 }
 
 impl EntityState {
+    /// Takes what a cat's data holds (see [`crate::metadata::CatData`]).
+    pub(crate) fn apply_cat(&mut self, cat: crate::metadata::CatData) {
+        if let Some(flags) = cat.flags {
+            self.tamable_flags = flags;
+        }
+        if let Some(lying) = cat.lying {
+            self.cat_lying = lying;
+        }
+        if let Some(relaxed) = cat.relaxed {
+            self.cat_relaxed = relaxed;
+        }
+        if let Some(dye) = cat.collar {
+            self.collar = Some(dye);
+        }
+    }
+
     /// Takes what a wolf's data holds (see [`crate::metadata::WolfData`]).
     pub(crate) fn apply_wolf(&mut self, wolf: crate::metadata::WolfData) {
         if let Some(flags) = wolf.flags {
@@ -1971,6 +1992,30 @@ impl ClientEntity {
     pub fn collar_dye(&self) -> i32 {
         // `DyeColor.RED` until the data says otherwise.
         self.living.collar.unwrap_or(14)
+    }
+
+    /// Whether this is a cat whose data says it lies down.
+    pub(crate) fn is_lying_cat(&self) -> bool {
+        self.living.cat_lying
+            && voxel_data::entity_type::name(self.type_id) == Some("minecraft:cat")
+    }
+
+    /// `Cat.tick` after `super.tick`: the lie-down and relax amounts.
+    pub(crate) fn tick_cat(&mut self, sleeper_near: bool) {
+        if voxel_data::entity_type::name(self.type_id) == Some("minecraft:cat") {
+            let (lying, relaxed) = (self.living.cat_lying, self.living.cat_relaxed);
+            self.living.cat.tick(lying, relaxed, sleeper_near);
+        }
+    }
+
+    /// A cat's own client state (how far it lies and relaxes).
+    pub fn cat(&self) -> &crate::cat::CatState {
+        &self.living.cat
+    }
+
+    /// `Entity.isCrouching`: the crouching pose.
+    pub fn is_crouching(&self) -> bool {
+        self.pose == ClientEntityPose::Crouching
     }
 
     /// A wolf's own client state (its interest and its shake).

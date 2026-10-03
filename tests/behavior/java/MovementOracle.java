@@ -706,6 +706,32 @@ public final class MovementOracle {
                             entity.setHealth(Oracle.f32(event, "health"));
                         }
                     }
+                    case "cat_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var catClass = net.minecraft.world.entity.animal.feline.Cat.class;
+                        if (event.has("flags")) {
+                            data.add(wolfData(net.minecraft.world.entity.TamableAnimal.class, "DATA_FLAGS_ID",
+                                (byte) event.get("flags").getAsInt()));
+                        }
+                        if (event.has("lying")) {
+                            data.add(wolfData(catClass, "IS_LYING", event.get("lying").getAsBoolean()));
+                        }
+                        if (event.has("relaxed")) {
+                            data.add(wolfData(catClass, "RELAX_STATE_ONE", event.get("relaxed").getAsBoolean()));
+                        }
+                        if (event.has("collar")) {
+                            data.add(wolfData(catClass, "DATA_COLLAR_COLOR", event.get("collar").getAsInt()));
+                        }
+                        if (event.has("pose")) {
+                            var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
+                            pose.setAccessible(true);
+                            data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                                (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
+                                net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "rabbit_idle" -> {
                         // What the reference draws from an unseeded random source: fixed here.
                         var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
@@ -818,6 +844,18 @@ public final class MovementOracle {
                             for (float partial : new float[] {0.0F, 0.5F}) {
                                 described.addProperty("head_roll_" + partial, Oracle.bits(wolf.getHeadRollAngle(partial)));
                                 described.addProperty("shake_" + partial, Oracle.bits(wolf.getShakeAnim(partial)));
+                            }
+                        }
+                        case "cat" -> {
+                            var cat = (net.minecraft.world.entity.animal.feline.Cat) entity;
+                            described.addProperty("sitting", cat.isInSittingPose());
+                            described.addProperty("tame", cat.isTame());
+                            described.addProperty("crouching", cat.isCrouching());
+                            described.addProperty("on_player", cat.isLyingOnTopOfSleepingPlayer());
+                            for (float partial : new float[] {0.0F, 0.5F}) {
+                                described.addProperty("lie_" + partial, Oracle.bits(cat.getLieDownAmount(partial)));
+                                described.addProperty("lie_tail_" + partial, Oracle.bits(cat.getLieDownAmountTail(partial)));
+                                described.addProperty("relax_" + partial, Oracle.bits(cat.getRelaxStateOneAmount(partial)));
                             }
                         }
                         case "rabbit" -> {

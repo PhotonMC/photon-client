@@ -26,6 +26,7 @@ mod block_entity;
 pub mod block_rules;
 pub mod block_state;
 mod border;
+pub mod cat;
 mod chunk;
 mod collision;
 mod constants;
@@ -1575,6 +1576,35 @@ impl ClientWorld {
         }
     }
 
+    /// `Cat.handleLieDown`'s search: a player who sleeps within two blocks of
+    /// the cat's block (the local player, or one the server added).
+    fn sleeping_player_near(&self, cat: &ClientEntity) -> bool {
+        let (x, y, z) = cat.position();
+        let (x, y, z) = (x.floor(), y.floor(), z.floor());
+        let area =
+            voxel_core::aabb::Aabb::new(x, y, z, x + 1.0, y + 1.0, z + 1.0).inflate(2.0, 2.0, 2.0);
+        let local = self.local_player.as_ref().is_some_and(|player| {
+            let (x, y, z) = player.position();
+            player.is_sleeping()
+                && player
+                    .pose()
+                    .player_dimensions()
+                    .make_bounding_box(Vec3::new(x, y, z))
+                    .intersects(area)
+        });
+        local
+            || self.entities.values().any(|other| {
+                other.is_player() && other.is_sleeping() && other.bounding_box().intersects(area)
+            })
+    }
+
+    /// Whether this entity is a cat that lies down with a sleeping player near.
+    fn sleeper_near_lying_cat(&self, entity_id: i32) -> bool {
+        self.entities
+            .get(&entity_id)
+            .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity))
+    }
+
     fn tick_entity_once(&mut self, entity_id: i32) {
         // One read of the entity decides every branch below; the reference
         // evaluates these conditions against the pre-tick state, so they are
@@ -1616,6 +1646,7 @@ impl ClientWorld {
             .get(&entity_id)
             .is_some_and(|entity| self.should_tick_death(entity));
         let game_time = self.game_time;
+        let sleeper_near_cat = self.sleeper_near_lying_cat(entity_id);
         {
             let entity = self
                 .entities
@@ -1636,6 +1667,7 @@ impl ClientWorld {
             if let Some(kind) = living {
                 entity.tick_living(kind, tick_death, game_time);
             }
+            entity.tick_cat(sleeper_near_cat);
             if boat_is_non_authoritative {
                 entity.motion_x_bits = 0.0_f64.to_bits();
                 entity.motion_y_bits = 0.0_f64.to_bits();
@@ -3377,6 +3409,9 @@ impl ClientWorld {
         entity
             .living
             .apply_wolf(wolf_data_from_metadata(entity.type_id, metadata));
+        entity
+            .living
+            .apply_cat(cat_data_from_metadata(entity.type_id, metadata));
         if let Some(variant) = rabbit_type_from_metadata(entity.type_id, metadata) {
             entity.living.rabbit_type = variant;
         }

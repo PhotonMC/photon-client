@@ -18431,6 +18431,31 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "cat_data" => {
+                        let mut data = Vec::new();
+                        if let Some(flags) = event["flags"].as_i64() {
+                            data.extend([voxel_world::TAMABLE_FLAGS_DATA_ID, 0, flags as u8]);
+                        }
+                        for (key, id) in [
+                            ("lying", voxel_world::CAT_LYING_DATA_ID),
+                            ("relaxed", voxel_world::CAT_RELAX_DATA_ID),
+                        ] {
+                            if let Some(value) = event[key].as_bool() {
+                                data.extend([id, 8, u8::from(value)]);
+                            }
+                        }
+                        if let Some(dye) = event["collar"].as_i64() {
+                            data.extend([voxel_world::CAT_COLLAR_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(dye as i32, &mut data);
+                        }
+                        if let Some(pose) = event["pose"].as_str() {
+                            // `Pose` ids: standing is zero, crouching five.
+                            let id = if pose == "CROUCHING" { 5 } else { 0 };
+                            data.extend([6, 20, id]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "horse_data" => {
                         let data = [
                             voxel_world::HORSE_FLAGS_DATA_ID,
@@ -18583,6 +18608,21 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(hex(wolf.head_roll_angle(partial)));
                             described[format!("shake_{key}")] =
                                 json!(hex(wolf.shake_anim(partial)));
+                        }
+                    }
+                    "cat" => {
+                        described["sitting"] = json!(entity.is_sitting());
+                        described["tame"] = json!(entity.is_tame());
+                        described["crouching"] = json!(entity.is_crouching());
+                        let cat = entity.cat();
+                        described["on_player"] = json!(cat.is_lying_on_top_of_sleeping_player());
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
+                            described[format!("lie_{key}")] =
+                                json!(hex(cat.lie_down_amount(partial)));
+                            described[format!("lie_tail_{key}")] =
+                                json!(hex(cat.lie_down_amount_tail(partial)));
+                            described[format!("relax_{key}")] =
+                                json!(hex(cat.relax_state_one_amount(partial)));
                         }
                     }
                     "rabbit" => {
@@ -20032,6 +20072,39 @@ fn wolf_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `feline_model`: a cat's or an ocelot's model posed and drawn.
+fn feline_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{FelineState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let mut model = MobModel::bake(layer);
+        model.setup_feline(&FelineState {
+            quadruped: quadruped_state(row)?,
+            crouching: flag("crouching")?,
+            sprinting: flag("sprinting")?,
+            sitting: flag("sitting")?,
+            baby: id.contains("_baby"),
+            lie_down_amount: bits("lie_down_amount")?,
+            lie_down_amount_tail: bits("lie_down_amount_tail")?,
+            relax_state_one_amount: bits("relax_state_one_amount")?,
+            age_scale: bits("age_scale")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `llama_model`: a llama's model posed and drawn.
 fn llama_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::MobModel;
@@ -20738,6 +20811,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "camel_model" => return camel_model_result(request),
         "llama_model" => return llama_model_result(request),
         "wolf_model" => return wolf_model_result(request),
+        "feline_model" => return feline_model_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
@@ -20774,7 +20848,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
             return Ok(json!({"rows": rows}));
         }
         "entity_variants" => {
-            let rows: Vec<Value> = ["chicken", "cow", "pig"]
+            let rows: Vec<Value> = ["cat", "chicken", "cow", "pig"]
                 .iter()
                 .flat_map(|kind| voxel_data::entity_type::variants(kind))
                 .map(|variant| {
@@ -20837,6 +20911,10 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "wolf-collar", "data_id": voxel_world::WOLF_COLLAR_DATA_ID, "serializer": 1},
                 {"label": "wolf-anger-end", "data_id": voxel_world::WOLF_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "wolf-variant", "data_id": voxel_world::WOLF_VARIANT_DATA_ID, "serializer": voxel_world::WOLF_VARIANT_SERIALIZER_ID},
+                {"label": "cat-variant", "data_id": voxel_world::CAT_VARIANT_DATA_ID, "serializer": voxel_world::CAT_VARIANT_SERIALIZER_ID},
+                {"label": "cat-lying", "data_id": voxel_world::CAT_LYING_DATA_ID, "serializer": 8},
+                {"label": "cat-relax", "data_id": voxel_world::CAT_RELAX_DATA_ID, "serializer": 8},
+                {"label": "cat-collar", "data_id": voxel_world::CAT_COLLAR_DATA_ID, "serializer": 1},
                 {"label": "bee-flags", "data_id": BEE_FLAGS_DATA_ID, "serializer": 0},
                 {"label": "bee-anger-end", "data_id": BEE_ANGER_END_DATA_ID, "serializer": LONG_SERIALIZER_ID},
                 {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},

@@ -14420,6 +14420,24 @@ def movement_item_cases():
         living("wolf-shake-cancelled", "wolf", 20, [{"tick": 3, "type": "entity_event", "event": 8},
                                                     {"tick": 8, "type": "entity_event", "event": 56}],
                extras=["wolf"]),
+        living("cat-wild", "cat", 6, [], extras=["cat"]),
+        living("cat-tame-sits", "cat", 6, [{"tick": 1, "type": "cat_data", "flags": 5, "collar": 3}],
+               extras=["cat"]),
+        living("cat-crouches", "cat", 6, [{"tick": 1, "type": "cat_data", "pose": "CROUCHING"}],
+               extras=["cat"]),
+        # The amounts climb by their own steps, the tail's slower than the body's, and fall faster.
+        living("cat-lies-down-and-gets-up", "cat", 24,
+               [{"tick": 2, "type": "cat_data", "lying": True},
+                {"tick": 12, "type": "cat_data", "lying": False}],
+               extras=["cat"]),
+        living("cat-relaxes", "cat", 20,
+               [{"tick": 1, "type": "cat_data", "relaxed": True},
+                {"tick": 9, "type": "cat_data", "relaxed": False}],
+               extras=["cat"]),
+        living("cat-lies-down-mid-relax", "cat", 14,
+               [{"tick": 1, "type": "cat_data", "relaxed": True},
+                {"tick": 4, "type": "cat_data", "lying": True, "relaxed": False}],
+               extras=["cat"]),
         living("horse-quiet", "horse", 8, [{"tick": 0, "type": "seed", "seed": 11}], extras=["horse"]),
         living("horse-grazes", "horse", 30, [{"tick": 0, "type": "seed", "seed": 11},
                                               {"tick": 2, "type": "horse_data", "flags": 16}],
@@ -14536,6 +14554,7 @@ def entity_cases():
     yield from entity_camel_cases()
     yield from entity_llama_cases()
     yield from entity_wolf_cases()
+    yield from entity_feline_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15391,6 +15410,40 @@ def entity_wolf_cases():
             pose("shaking-sitting", layer, shake=0.5, sitting=True),
         ]
     yield {"case_id": "entity/wolf-model", "family": "entity", "operation": "wolf_model",
+           "rows": rows}
+
+
+def entity_feline_cases():
+    """The cat and the ocelot, grown and baby, posed by the reference's own `setupAnim`: the walk,
+    crouching, sprinting, sitting, lying down (the tail on its own progress) and relaxing."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+             crouching=False, sprinting=False, sitting=False, lie=0.0, lie_tail=0.0, relax=0.0):
+        scale = 0.5 if "_baby" in layer else 1.0
+        return {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+                "x_rot": float_bits(x_rot), "walk_position": float_bits(walk_position),
+                "walk_speed": float_bits(walk_speed), "crouching": crouching,
+                "sprinting": sprinting, "sitting": sitting,
+                "lie_down_amount": float_bits(lie), "lie_down_amount_tail": float_bits(lie_tail),
+                "relax_state_one_amount": float_bits(relax), "age_scale": float_bits(scale)}
+
+    rows = []
+    for layer in ("minecraft:cat#main", "minecraft:cat_baby#main",
+                  "minecraft:ocelot#main", "minecraft:ocelot_baby#main"):
+        rows += [
+            pose("standing", layer),
+            pose("looking", layer, head_y_rot=-35.5, x_rot=48.0),
+            pose("walking", layer, walk_position=7.3, walk_speed=0.83),
+            pose("crouching", layer, crouching=True, walk_position=7.3, walk_speed=0.83),
+            pose("sprinting", layer, sprinting=True, walk_position=7.3, walk_speed=0.83),
+            pose("sitting", layer, sitting=True, walk_position=7.3, walk_speed=0.83),
+            pose("sitting-looking", layer, sitting=True, head_y_rot=14.0, x_rot=-20.0),
+            pose("crouching-sitting", layer, crouching=True, sitting=True),
+            pose("lying", layer, lie=0.6, lie_tail=0.32, walk_position=3.1, walk_speed=0.4),
+            pose("lying-down", layer, lie=1.0, lie_tail=1.0, head_y_rot=9.0, x_rot=-12.0),
+            pose("relaxed", layer, relax=0.7, x_rot=20.0),
+            pose("lying-relaxed", layer, lie=0.45, lie_tail=0.16, relax=0.3),
+        ]
+    yield {"case_id": "entity/feline-model", "family": "entity", "operation": "feline_model",
            "rows": rows}
 
 

@@ -199,6 +199,14 @@ pub const WOLF_COLLAR_DATA_ID: u8 = 21;
 pub const WOLF_ANGER_END_DATA_ID: u8 = 22;
 pub const WOLF_VARIANT_DATA_ID: u8 = 23;
 pub const WOLF_VARIANT_SERIALIZER_ID: i32 = 25;
+/// Where a cat's variant (a registry id), whether it lies down, whether it is
+/// relaxed and the dye of its collar sit among its data (it shares the
+/// tamable flags with the wolf).
+pub const CAT_VARIANT_DATA_ID: u8 = 20;
+pub const CAT_VARIANT_SERIALIZER_ID: i32 = 21;
+pub const CAT_LYING_DATA_ID: u8 = 21;
+pub const CAT_RELAX_DATA_ID: u8 = 22;
+pub const CAT_COLLAR_DATA_ID: u8 = 23;
 pub const LONG_SERIALIZER_ID: i32 = 2;
 /// Where a rabbit's variant (an int: brown is zero, the killer 99) sits among
 /// its data.

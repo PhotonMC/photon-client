@@ -25,4 +25,7 @@ Evcil hayvan etkileşimi (sunucu), zırh/ekipman katmanları.
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_feline` (yetişkin + bebek kedi/ocelot: çömelme, koşma, oturma, yatma, rahatlama), `voxel-world/src/cat.rs` (yatma/kuyruk/rahatlama miktarları, uyuyan oyuncu araması), kedi veri kimlikleri ve `entity_variants`'a on bir kedi çeşidi (oracle'dan), `crates/voxel/src/felines.rs` (doku, yatış yerleşimi `MobPlacement.shift/roll_shift`, tasma katmanı kendi modeliyle). Kayıt: `docs/client-feline-parity-conformance.md`.
+- Oracle: `feline-model` 48, `living-entity-animations` 6 kedi, `variants` +11, `variant-fields` +4.
+- Sapma: uyuyan oyuncu dalı yalnız birim testi (sahnede kurulamıyor); ocelot güven verisi okunmuyor; ses yok.
+- Açık: T32c, T32d.
