@@ -1294,6 +1294,168 @@ public final class EntityOracle {
         return result;
     }
 
+    private static final String[] ANIMATION_CLASSES = {
+        "Armadillo", "BabyArmadillo", "BabyAxolotl", "BabyRabbit", "Bat", "Breeze", "Camel", "CamelBaby",
+        "CopperGolem", "Creaking", "FoxBaby", "Frog", "Nautilus", "Rabbit", "Sniffer", "Warden"};
+
+    /** Every animation definition of the reference's `definitions` package, by `Class.FIELD`. */
+    private static java.util.Map<String, net.minecraft.client.animation.AnimationDefinition> animationDefinitions()
+        throws Exception {
+        var found = new java.util.LinkedHashMap<String, net.minecraft.client.animation.AnimationDefinition>();
+        for (String name : ANIMATION_CLASSES) {
+            var type = Class.forName("net.minecraft.client.animation.definitions." + name + "Animation");
+            for (var field : type.getDeclaredFields()) {
+                if (field.getType() == net.minecraft.client.animation.AnimationDefinition.class
+                    && java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    found.put(name + "." + field.getName(),
+                        (net.minecraft.client.animation.AnimationDefinition) field.get(null));
+                }
+            }
+        }
+        return found;
+    }
+
+    private static JsonArray vector(final org.joml.Vector3fc vector) {
+        var out = new JsonArray();
+        out.add(Oracle.bits(vector.x()));
+        out.add(Oracle.bits(vector.y()));
+        out.add(Oracle.bits(vector.z()));
+        return out;
+    }
+
+    /**
+     * Every animation definition: its length, whether it loops, and for each bone (in the order
+     * the reference keeps them) each channel's target and keyframes.
+     */
+    private static JsonObject animationDefinitionRows() throws Exception {
+        var rows = new JsonArray();
+        for (var entry : animationDefinitions().entrySet()) {
+            var definition = entry.getValue();
+            var out = new JsonObject();
+            out.addProperty("label", entry.getKey());
+            out.addProperty("length", Oracle.bits(definition.lengthInSeconds()));
+            out.addProperty("looping", definition.looping());
+            var bones = new JsonArray();
+            for (var bone : definition.boneAnimations().entrySet()) {
+                var described = new JsonObject();
+                described.addProperty("name", bone.getKey());
+                var channels = new JsonArray();
+                for (var channel : bone.getValue()) {
+                    var one = new JsonObject();
+                    one.addProperty("target", channel.target() == net.minecraft.client.animation.AnimationChannel.Targets.POSITION
+                        ? "POSITION" : channel.target() == net.minecraft.client.animation.AnimationChannel.Targets.ROTATION
+                        ? "ROTATION" : channel.target() == net.minecraft.client.animation.AnimationChannel.Targets.SCALE
+                        ? "SCALE" : "OTHER");
+                    var frames = new JsonArray();
+                    for (var frame : channel.keyframes()) {
+                        var two = new JsonObject();
+                        two.addProperty("time", Oracle.bits(frame.timestamp()));
+                        two.add("pre", vector(frame.preTarget()));
+                        two.add("post", vector(frame.postTarget()));
+                        two.addProperty("interpolation",
+                            frame.interpolation() == net.minecraft.client.animation.AnimationChannel.Interpolations.LINEAR
+                                ? "LINEAR" : frame.interpolation()
+                                    == net.minecraft.client.animation.AnimationChannel.Interpolations.CATMULLROM
+                                ? "CATMULLROM" : "OTHER");
+                        frames.add(two);
+                    }
+                    one.add("keyframes", frames);
+                    channels.add(one);
+                }
+                described.add("channels", channels);
+                bones.add(described);
+            }
+            out.add("bones", bones);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * A model's pose after the reference's own `KeyframeAnimation.apply(millis, scale)` of a definition,
+     * drawn.
+     */
+    private static JsonObject keyframeAnimation(final JsonObject request) throws Exception {
+        var definitions = animationDefinitions();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.Model<?> model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.rabbit.BabyRabbitModel(root)
+                : new net.minecraft.client.model.animal.rabbit.AdultRabbitModel(root);
+            var animation = definitions.get(row.get("definition").getAsString()).bake(root);
+            animation.apply(row.get("millis").getAsLong(), Oracle.f32(row, "scale"));
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** `AnimationState`: what each call sequence makes of the time an animation has run. */
+    private static JsonObject animationStates(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.world.entity.AnimationState();
+            var millis = new JsonArray();
+            for (var step : row.getAsJsonArray("steps")) {
+                var call = step.getAsJsonObject();
+                switch (call.get("call").getAsString()) {
+                    case "start" -> state.start(call.get("tick").getAsInt());
+                    case "start_if_stopped" -> state.startIfStopped(call.get("tick").getAsInt());
+                    case "animate_when" -> state.animateWhen(call.get("condition").getAsBoolean(), call.get("tick").getAsInt());
+                    case "stop" -> state.stop();
+                    case "fast_forward" -> state.fastForward(call.get("ticks").getAsInt(), Oracle.f32(call, "scale"));
+                    default -> throw new IllegalArgumentException("Unknown call " + call);
+                }
+                var seen = new JsonObject();
+                seen.addProperty("started", state.isStarted());
+                seen.addProperty("millis", state.getTimeInMillis(Oracle.f32(call, "age")));
+                millis.add(seen);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("steps", millis);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The rabbit's model posed by the reference's own `RabbitModel.setupAnim` with its animation states, drawn. */
+    private static JsonObject rabbitModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.animal.rabbit.RabbitModel model = id.contains("_baby")
+                ? new net.minecraft.client.model.animal.rabbit.BabyRabbitModel(root)
+                : new net.minecraft.client.model.animal.rabbit.AdultRabbitModel(root);
+            var state = new net.minecraft.client.renderer.entity.state.RabbitRenderState();
+            state.yRot = Oracle.f32(row, "head_y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            if (row.has("hop_start")) {
+                state.hopAnimationState.start(row.get("hop_start").getAsInt());
+            }
+            if (row.has("idle_start")) {
+                state.idleHeadTiltAnimationState.start(row.get("idle_start").getAsInt());
+            }
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1760,6 +1922,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.decoration.ArmorStand.class, "DATA_RIGHT_LEG_POSE", "armor-stand-right-leg"},
             {net.minecraft.world.entity.npc.villager.Villager.class, "DATA_VILLAGER_DATA", "villager-data"},
             {net.minecraft.world.entity.npc.villager.AbstractVillager.class, "DATA_UNHAPPY_COUNTER", "villager-unhappy"},
+            {net.minecraft.world.entity.animal.rabbit.Rabbit.class, "DATA_TYPE_ID", "rabbit-type"},
             {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_LEFT_HORN", "goat-left-horn"},
             {net.minecraft.world.entity.animal.goat.Goat.class, "DATA_HAS_RIGHT_HORN", "goat-right-horn"},
             {net.minecraft.world.entity.animal.cow.MushroomCow.class, "DATA_TYPE", "mooshroom-type"},
@@ -1897,6 +2060,18 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("rabbit_model")) {
+            return rabbitModel(request);
+        }
+        if (operation.equals("animation_definitions")) {
+            return animationDefinitionRows();
+        }
+        if (operation.equals("keyframe_animation")) {
+            return keyframeAnimation(request);
+        }
+        if (operation.equals("animation_states")) {
+            return animationStates(request);
         }
         if (operation.equals("entity_attributes")) {
             return entityAttributes();

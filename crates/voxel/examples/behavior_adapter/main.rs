@@ -18389,6 +18389,13 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     "animate" => {
                         world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
                     }
+                    "rabbit_idle" => {
+                        world.fix_rabbit_idle(
+                            entity_id,
+                            i32_field(event, "timeout")?,
+                            i64_field(event, "seed")?,
+                        );
+                    }
                     "attributes" => {
                         let mut changed = Vec::new();
                         for item in event["attributes"].as_array().ok_or("attributes")? {
@@ -18449,6 +18456,17 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
+                        }
+                    }
+                    "rabbit" => {
+                        if let Some(rabbit) = entity.rabbit() {
+                            let tick = entity.tick_count() as f32;
+                            described["hop_started"] = json!(rabbit.hop.is_started());
+                            described["idle_started"] = json!(rabbit.idle_head_tilt.is_started());
+                            described["hop_millis"] = json!(rabbit.hop.time_in_millis(tick));
+                            described["idle_millis"] =
+                                json!(rabbit.idle_head_tilt.time_in_millis(tick));
+                            described["jump_completion"] = json!(hex(rabbit.jump_completion(0.5)));
                         }
                     }
                     "attributes" => {
@@ -19504,6 +19522,162 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `rabbit_model`: a rabbit's model posed with its animation states, drawn.
+fn rabbit_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, QuadrupedState, RabbitState};
+    use voxel_world::animation_state::AnimationState;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let started = |key: &str| {
+            let mut state = AnimationState::default();
+            if let Some(tick) = row[key].as_i64() {
+                state.start(tick as i32);
+            }
+            state
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_rabbit(&RabbitState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("head_y_rot")?,
+                x_rot: bits("x_rot")?,
+                ..Default::default()
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            hop: started("hop_start"),
+            idle_head_tilt: started("idle_start"),
+            baby: id.contains("_baby"),
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `animation_definitions`: every keyframe animation definition, from the
+/// generated table.
+fn animation_definitions_result() -> Value {
+    use voxel_data::animation::{Interpolation, Target};
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let vector =
+        |values: [f32; 3]| -> Vec<String> { values.iter().map(|value| hex(*value)).collect() };
+    let rows: Vec<Value> = voxel_data::animation::definitions()
+        .iter()
+        .map(|definition| {
+            let bones: Vec<Value> = definition
+                .bones
+                .iter()
+                .map(|bone| {
+                    let channels: Vec<Value> = bone
+                        .channels
+                        .iter()
+                        .map(|channel| {
+                            let frames: Vec<Value> = channel
+                                .keyframes
+                                .iter()
+                                .map(|frame| {
+                                    json!({
+                                        "time": hex(frame.time),
+                                        "pre": vector(frame.pre),
+                                        "post": vector(frame.post),
+                                        "interpolation": match frame.interpolation {
+                                            Interpolation::Linear => "LINEAR",
+                                            Interpolation::CatmullRom => "CATMULLROM",
+                                        },
+                                    })
+                                })
+                                .collect();
+                            json!({
+                                "target": match channel.target {
+                                    Target::Position => "POSITION",
+                                    Target::Rotation => "ROTATION",
+                                    Target::Scale => "SCALE",
+                                },
+                                "keyframes": frames,
+                            })
+                        })
+                        .collect();
+                    json!({"name": bone.name, "channels": channels})
+                })
+                .collect();
+            json!({
+                "label": definition.name,
+                "length": hex(definition.length),
+                "looping": definition.looping,
+                "bones": bones,
+            })
+        })
+        .collect();
+    json!({"rows": rows})
+}
+
+/// `keyframe_animation`: a rabbit model posed by a definition at a time, drawn.
+fn keyframe_animation_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let definition =
+            voxel_data::animation::definition(row["definition"].as_str().ok_or("definition")?)
+                .ok_or("no such definition")?;
+        let scale = u32::from_str_radix(row["scale"].as_str().ok_or("scale")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.animate(definition, row["millis"].as_i64().ok_or("millis")?, scale);
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `animation_states`: what call sequences make of the time an animation has run.
+fn animation_states_result(request: &Value) -> Result<Value, String> {
+    use voxel_world::animation_state::AnimationState;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut state = AnimationState::default();
+        let mut steps = Vec::new();
+        for call in row["steps"].as_array().ok_or("steps")? {
+            let bits = |key: &str| -> Result<f32, String> {
+                u32::from_str_radix(
+                    call[key]
+                        .as_str()
+                        .ok_or(format!("{key} must be a string"))?,
+                    16,
+                )
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+            };
+            let tick = || i32_field(call, "tick");
+            match call["call"].as_str().ok_or("call")? {
+                "start" => state.start(tick()?),
+                "start_if_stopped" => state.start_if_stopped(tick()?),
+                "animate_when" => {
+                    state.animate_when(call["condition"].as_bool().ok_or("condition")?, tick()?);
+                }
+                "stop" => state.stop(),
+                "fast_forward" => state.fast_forward(i32_field(call, "ticks")?, bits("scale")?),
+                other => return Err(format!("unknown call {other}")),
+            }
+            steps.push(json!({
+                "started": state.is_started(),
+                "millis": state.time_in_millis(bits("age")?),
+            }));
+        }
+        out.push(json!({"label": row["label"], "steps": steps}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `entity_attributes`: the attributes each living entity type starts with and
 /// each attribute's range, from the generated table.
 fn entity_attributes_result() -> Value {
@@ -20218,6 +20392,10 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
         "entity_attributes" => return Ok(entity_attributes_result()),
+        "animation_definitions" => return Ok(animation_definitions_result()),
+        "rabbit_model" => return rabbit_model_result(request),
+        "keyframe_animation" => return keyframe_animation_result(request),
+        "animation_states" => return animation_states_result(request),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),
@@ -20259,9 +20437,9 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 GOAT_LEFT_HORN_DATA_ID, GOAT_RIGHT_HORN_DATA_ID, HUMANOID_ARM_SERIALIZER_ID,
                 MOOSHROOM_TYPE_DATA_ID, OPTIONAL_BLOCK_STATE_SERIALIZER_ID, PIG_VARIANT_DATA_ID,
                 PIG_VARIANT_SERIALIZER_ID, PIGLIN_BABY_DATA_ID, PIGLIN_DANCING_DATA_ID,
-                RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID, SHEEP_WOOL_DATA_ID,
-                SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID, VILLAGER_DATA_DATA_ID,
-                VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
+                RABBIT_TYPE_DATA_ID, RAIDER_CELEBRATING_DATA_ID, ROTATIONS_SERIALIZER_ID,
+                SHEEP_WOOL_DATA_ID, SNOW_GOLEM_PUMPKIN_DATA_ID, SPELLCASTER_CASTING_DATA_ID,
+                VILLAGER_DATA_DATA_ID, VILLAGER_DATA_SERIALIZER_ID, VILLAGER_UNHAPPY_DATA_ID,
                 ZOMBIE_VILLAGER_DATA_DATA_ID,
             };
             return Ok(json!({"rows": [
@@ -20282,6 +20460,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 {"label": "armor-stand-right-leg", "data_id": ARMOR_STAND_HEAD_POSE_DATA_ID + 5, "serializer": ROTATIONS_SERIALIZER_ID},
                 {"label": "villager-data", "data_id": VILLAGER_DATA_DATA_ID, "serializer": VILLAGER_DATA_SERIALIZER_ID},
                 {"label": "villager-unhappy", "data_id": VILLAGER_UNHAPPY_DATA_ID, "serializer": 1},
+                {"label": "rabbit-type", "data_id": RABBIT_TYPE_DATA_ID, "serializer": 1},
                 {"label": "goat-left-horn", "data_id": GOAT_LEFT_HORN_DATA_ID, "serializer": 8},
                 {"label": "goat-right-horn", "data_id": GOAT_RIGHT_HORN_DATA_ID, "serializer": 8},
                 {"label": "mooshroom-type", "data_id": MOOSHROOM_TYPE_DATA_ID, "serializer": 1},

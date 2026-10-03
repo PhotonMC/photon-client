@@ -293,6 +293,11 @@ impl Part {
     }
 
     /// `ModelPart.getChild`, by name.
+    /// The child at this place in the list (`children()` order).
+    pub fn child_at_mut(&mut self, index: usize) -> &mut Part {
+        &mut self.children[index]
+    }
+
     pub fn child_mut(&mut self, name: &str) -> Option<&mut Part> {
         self.children.iter_mut().find(|child| child.name == name)
     }

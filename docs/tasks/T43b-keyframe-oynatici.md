@@ -24,3 +24,7 @@ Tüm mob animasyon tanımları (aile görevlerinde).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Yapıldı: gerçek `definitions` tablosu (74, `animations.py`, `voxel_data::animation`), `keyframe::apply` (`KeyframeAnimation.apply`, kaynaştırmasız lerp), `AnimationState` (`voxel-world`), `MobModel::animate`. İlk tüketici tavşan (T30c). Kayıt: `docs/client-keyframe-animation-parity-conformance.md`.
+- Oracle: `animation-definitions` 74, `keyframe-animation` 52, `animation-states` 4 satır.
+- Sapma: yok.
+- Açık: diğer tüketiciler (deve, aksolotl, kurbağa, warden, bakır golem…) kendi aile görevlerinde.

@@ -19,6 +19,7 @@ use voxel_core::{
 };
 
 pub mod animal;
+pub mod animation_state;
 pub mod armor_stand;
 pub mod block;
 mod block_entity;
@@ -42,6 +43,7 @@ mod paletted;
 mod pick;
 mod player;
 mod prediction;
+pub mod rabbit;
 mod recipes;
 mod region_copy;
 mod shadow;
@@ -1106,6 +1108,16 @@ impl ClientWorld {
         true
     }
 
+    /// Fixes a rabbit's idle head tilt wait and random source (see
+    /// [`rabbit::RabbitState::fix_idle`]); false for an entity that is not there.
+    pub fn fix_rabbit_idle(&mut self, entity_id: i32, timeout: i32, seed: i64) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.fix_rabbit_idle(timeout, seed);
+        true
+    }
+
     /// Apply Java LivingEntity.setSprinting to the local player state.
     pub fn apply_local_player_sprinting(&mut self, player_id: i32, sprinting: bool) -> bool {
         let Some(player) = self
@@ -2003,6 +2015,13 @@ impl ClientWorld {
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
+            Some("minecraft:rabbit") if event == 1 => {
+                entity
+                    .rabbit
+                    .get_or_insert_with(|| Box::new(rabbit::RabbitState::new()))
+                    .start_hop();
+                return true;
+            }
             _ => {}
         }
         false
@@ -2916,6 +2935,7 @@ impl ClientWorld {
                 vehicle_id: None,
                 passenger_ids: Vec::new(),
                 attributes: Vec::new(),
+                rabbit: None,
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
@@ -3291,6 +3311,9 @@ impl ClientWorld {
         }
         if let Some(right) = right_horn {
             entity.living.lost_right_horn = !right;
+        }
+        if let Some(variant) = rabbit_type_from_metadata(entity.type_id, metadata) {
+            entity.living.rabbit_type = variant;
         }
         if let Some(variant) = mooshroom_type_from_metadata(entity.type_id, metadata) {
             entity.living.mooshroom_type = variant;

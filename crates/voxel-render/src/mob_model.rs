@@ -152,6 +152,16 @@ pub struct GoatState {
     pub baby: bool,
 }
 
+/// What a rabbit's models are posed from (`RabbitRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RabbitState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub hop: voxel_world::animation_state::AnimationState,
+    pub idle_head_tilt: voxel_world::animation_state::AnimationState,
+    pub baby: bool,
+}
+
 /// What a sheep's models are posed from: the quadruped's, and how far the
 /// head is down and tipped while it eats (`SheepRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -738,6 +748,45 @@ impl MobModel {
             head.y -= 5.0;
             if let Some(hat) = head.child_mut("hat") {
                 hat.y += 5.0;
+            }
+        }
+    }
+
+    /// `KeyframeAnimation.apply(millisSinceStart, targetScale)` of a definition
+    /// on the pose the model is in.
+    pub fn animate(
+        &mut self,
+        definition: &voxel_data::animation::Definition,
+        millis: i64,
+        target_scale: f32,
+    ) {
+        crate::keyframe::apply(&mut self.root, definition, millis, target_scale);
+    }
+
+    /// `RabbitModel.setupAnim`: the head follows the look unless the idle head
+    /// tilt is playing; then the hop and the tilt, each if it has started.
+    pub fn setup_rabbit(&mut self, state: &RabbitState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if !state.idle_head_tilt.is_started()
+            && let Some(head) = self
+                .root
+                .child_mut("body")
+                .and_then(|body| body.child_mut("head"))
+        {
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+            head.x_rot = state.quadruped.x_rot * degrees;
+        }
+        let prefix = if state.baby { "BabyRabbit" } else { "Rabbit" };
+        for (animation, running) in [("HOP", state.hop), ("IDLE_HEAD_TILT", state.idle_head_tilt)] {
+            if !running.is_started() {
+                continue;
+            }
+            if let Some(definition) =
+                voxel_data::animation::definition(&format!("{prefix}.{animation}"))
+            {
+                let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
+                self.animate(definition, millis, 1.0);
             }
         }
     }

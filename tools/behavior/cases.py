@@ -14375,6 +14375,20 @@ def movement_item_cases():
                    {"name": "minecraft:flying_speed", "base": float_bits(3.0, "f64"), "modifiers": []},
                    {"name": "minecraft:max_health", "base": float_bits(12.0, "f64"), "modifiers": []}]}],
                extras=["attributes"]),
+        living("rabbit-quiet", "rabbit", 40, [{"tick": 0, "type": "rabbit_idle", "timeout": 400, "seed": 5}],
+               extras=["rabbit"]),
+        living("rabbit-hops", "rabbit", 60,
+               [{"tick": 0, "type": "rabbit_idle", "timeout": 400, "seed": 5},
+                {"tick": 3, "type": "entity_event", "event": 1}], extras=["rabbit"]),
+        living("rabbit-hops-twice", "rabbit", 70,
+               [{"tick": 0, "type": "rabbit_idle", "timeout": 400, "seed": 5},
+                {"tick": 3, "type": "entity_event", "event": 1},
+                {"tick": 11, "type": "entity_event", "event": 1}], extras=["rabbit"]),
+        living("rabbit-tilts-its-head", "rabbit", 60,
+               [{"tick": 0, "type": "rabbit_idle", "timeout": 12, "seed": 77}], extras=["rabbit"]),
+        living("rabbit-tilts-then-hops", "rabbit", 80,
+               [{"tick": 0, "type": "rabbit_idle", "timeout": 12, "seed": 77},
+                {"tick": 20, "type": "entity_event", "event": 1}], extras=["rabbit"]),
         living("goat-quiet", "goat", 6, [], extras=["goat"]),
         living("goat-rams", "goat", 40, [{"tick": 2, "type": "entity_event", "event": 58},
                                          {"tick": 18, "type": "entity_event", "event": 59}],
@@ -14439,6 +14453,8 @@ def entity_cases():
     yield from entity_illager_cases()
     yield from entity_golem_cases()
     yield from entity_goat_cases()
+    yield from entity_animation_cases()
+    yield from entity_rabbit_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
            "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
@@ -15086,6 +15102,79 @@ def entity_villager_held_cases():
                row("head-trader", "villager_head", villager_transforms=False, head_y_rot=-35.5,
                    x_rot=48.0),
            ]}
+
+
+def entity_animation_cases():
+    """The reference's keyframe animations: every definition (the table), a rabbit model
+    posed by the reference's own `KeyframeAnimation.apply` at points of the hop and of the
+    idle head tilt (both interpolations, all three targets, a looping and a clamped
+    definition, a target scale below one), and `AnimationState`'s timing."""
+    yield {"case_id": "entity/animation-definitions", "family": "entity",
+           "operation": "animation_definitions", "rows": [{"label": "all"}]}
+
+    def pose(layer, definition, millis, scale=1.0):
+        return {"label": f"{layer}-{definition}-{millis}-{scale}", "layer": layer,
+                "definition": definition, "millis": millis, "scale": float_bits(scale)}
+
+    rows = []
+    for layer, hop, tilt in (("minecraft:rabbit#main", "Rabbit.HOP", "Rabbit.IDLE_HEAD_TILT"),
+                             ("minecraft:rabbit_baby#main", "BabyRabbit.HOP", "BabyRabbit.IDLE_HEAD_TILT")):
+        rows += [pose(layer, hop, millis) for millis in (0, 62, 125, 208, 250, 291, 375, 500, 583, 749, 750, 1100)]
+        rows += [pose(layer, hop, 300, 0.5), pose(layer, hop, 300, 0.0)]
+        rows += [pose(layer, tilt, millis) for millis in (0, 400, 1000, 2000, 3500, 3999, 4000, 6000)]
+    yield {"case_id": "entity/keyframe-animation", "family": "entity",
+           "operation": "keyframe_animation", "rows": rows}
+
+    def steps(*calls):
+        return list(calls)
+
+    def call(name, age, **more):
+        return {"call": name, "age": float_bits(age), **more}
+
+    yield {"case_id": "entity/animation-states", "family": "entity", "operation": "animation_states",
+           "rows": [
+               {"label": "start-and-run", "steps": steps(
+                   call("start", 10.0, tick=10), call("start", 10.5, tick=10), call("start", 25.25, tick=10))},
+               {"label": "start-if-stopped", "steps": steps(
+                   call("start_if_stopped", 3.0, tick=3), call("start_if_stopped", 9.5, tick=8),
+                   call("stop", 12.0), call("start_if_stopped", 15.0, tick=14))},
+               {"label": "animate-when", "steps": steps(
+                   call("animate_when", 5.0, condition=True, tick=5),
+                   call("animate_when", 9.0, condition=True, tick=9),
+                   call("animate_when", 11.0, condition=False, tick=11),
+                   call("animate_when", 20.0, condition=True, tick=20))},
+               {"label": "fast-forward", "steps": steps(
+                   call("fast_forward", 30.0, ticks=5, scale=float_bits(1.5)),
+                   call("start", 30.0, tick=30),
+                   call("fast_forward", 30.0, ticks=5, scale=float_bits(1.5)),
+                   call("fast_forward", 30.5, ticks=7, scale=float_bits(0.4)))},
+           ]}
+
+
+def entity_rabbit_cases():
+    """The rabbit, grown and baby, posed by the reference's own `RabbitModel.setupAnim` with its
+    hop and idle head tilt animation states started at different ticks, and the rabbit's
+    own tick: the jump event, the hop and idle states, the jump completion."""
+    def pose(label, layer, head_y_rot=0.0, x_rot=0.0, age=0.0, hop=None, idle=None):
+        row = {"label": f"{layer}-{label}", "layer": layer, "head_y_rot": float_bits(head_y_rot),
+               "x_rot": float_bits(x_rot), "age_in_ticks": float_bits(age)}
+        if hop is not None:
+            row["hop_start"] = hop
+        if idle is not None:
+            row["idle_start"] = idle
+        return row
+
+    rows = []
+    for layer in ("minecraft:rabbit#main", "minecraft:rabbit_baby#main"):
+        rows += [
+            pose("standing", layer, head_y_rot=-35.5, x_rot=48.0, age=3.25),
+            pose("hopping-early", layer, head_y_rot=12.0, x_rot=-8.0, age=14.5, hop=10),
+            pose("hopping-late", layer, age=40.0, hop=10),
+            pose("idle-tilting", layer, head_y_rot=-35.5, x_rot=48.0, age=60.25, idle=20),
+            pose("idle-tilting-late", layer, age=120.0, idle=20),
+            pose("both", layer, head_y_rot=12.0, x_rot=-8.0, age=50.0, hop=30, idle=20),
+        ]
+    yield {"case_id": "entity/rabbit-model", "family": "entity", "operation": "rabbit_model", "rows": rows}
 
 
 def entity_goat_cases():

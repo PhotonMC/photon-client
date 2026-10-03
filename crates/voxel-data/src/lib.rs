@@ -10,6 +10,7 @@
 //! `item/` outside `generated/`) holds the types the tables share and the
 //! lookups on them.
 
+pub mod animation;
 pub mod block;
 pub mod entity_model;
 pub mod entity_type;

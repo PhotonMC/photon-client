@@ -182,6 +182,8 @@ pub(crate) struct EntityState {
     pub(crate) lost_right_horn: bool,
     /// A mooshroom's variant, zero for red.
     pub(crate) mooshroom_type: i32,
+    /// A rabbit's variant, zero for brown.
+    pub(crate) rabbit_type: i32,
     /// A sheep's wool and eating, a chicken's flap.
     pub(crate) animal: crate::animal::AnimalState,
     /// The arm's swing.
@@ -608,6 +610,8 @@ pub struct ClientEntity {
     pub(crate) passenger_ids: Vec<i32>,
     /// What the server changed of the attributes the type starts with.
     pub(crate) attributes: Vec<ClientAttributeState>,
+    /// A rabbit's hop and animation states, made when it first ticks.
+    pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1804,6 +1808,19 @@ impl ClientEntity {
             .filter(|state| *state != 0)
     }
 
+    /// A rabbit's hop and animation states, if it has ticked.
+    pub fn rabbit(&self) -> Option<&crate::rabbit::RabbitState> {
+        self.rabbit.as_deref()
+    }
+
+    /// Fixes the idle head tilt's wait and random source of a rabbit (see
+    /// [`crate::rabbit::RabbitState::fix_idle`]).
+    pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {
+        self.rabbit
+            .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
+            .fix_idle(timeout, seed);
+    }
+
     /// `Goat.hasLeftHorn` and `hasRightHorn`.
     pub fn goat_horns(&self) -> (bool, bool) {
         (!self.living.lost_left_horn, !self.living.lost_right_horn)
@@ -1815,6 +1832,11 @@ impl ClientEntity {
         self.living.animal.goat_lower_head_tick as f32 / 20.0
             * maximum
             * (std::f64::consts::PI / 180.0) as f32
+    }
+
+    /// `Rabbit.getVariant`'s id: zero is brown (an id the variants lack is brown).
+    pub fn rabbit_variant(&self) -> i32 {
+        self.living.rabbit_type
     }
 
     /// `MushroomCow.getVariant`'s id: zero is red, one brown (an id past the
@@ -1942,6 +1964,12 @@ impl ClientEntity {
             Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
+            Some("minecraft:rabbit") => {
+                let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
+                self.rabbit
+                    .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
+                    .tick(tick_count, no_ai);
+            }
             _ => {}
         }
     }

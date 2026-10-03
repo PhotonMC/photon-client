@@ -280,6 +280,14 @@ pub(crate) fn goat_horns_from_metadata(
     )
 }
 
+/// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
+pub(crate) fn rabbit_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:rabbit" {
+        return None;
+    }
+    metadata_int_value(metadata, RABBIT_TYPE_DATA_ID)
+}
+
 /// A mooshroom's variant (`MushroomCow.DATA_TYPE`), when the data holds it.
 pub(crate) fn mooshroom_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:mooshroom" {

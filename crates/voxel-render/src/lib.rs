@@ -19,6 +19,7 @@ pub mod held_item;
 pub mod item_entity;
 pub mod item_model;
 pub mod joml;
+pub mod keyframe;
 pub mod mipmap;
 pub mod mob_model;
 pub mod model;

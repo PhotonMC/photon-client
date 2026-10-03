@@ -632,6 +632,17 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "rabbit_idle" -> {
+                        // What the reference draws from an unseeded random source: fixed here.
+                        var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
+                        var timeout = net.minecraft.world.entity.animal.rabbit.Rabbit.class
+                            .getDeclaredField("idleAnimationTimeout");
+                        timeout.setAccessible(true);
+                        timeout.setInt(rabbit, event.get("timeout").getAsInt());
+                        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
+                        random.setAccessible(true);
+                        ((net.minecraft.util.RandomSource) random.get(rabbit)).setSeed(event.get("seed").getAsLong());
+                    }
                     case "attributes" -> {
                         var instances = new java.util.ArrayList<net.minecraft.world.entity.ai.attributes.AttributeInstance>();
                         for (var item : event.getAsJsonArray("attributes")) {
@@ -693,6 +704,15 @@ public final class MovementOracle {
                             described.addProperty("flap_speed", Oracle.bits(chicken.flapSpeed));
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
+                        }
+                        case "rabbit" -> {
+                            var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
+                            described.addProperty("hop_started", rabbit.hopAnimationState.isStarted());
+                            described.addProperty("idle_started", rabbit.idleHeadTiltAnimationState.isStarted());
+                            described.addProperty("hop_millis", rabbit.hopAnimationState.getTimeInMillis(rabbit.tickCount));
+                            described.addProperty("idle_millis",
+                                rabbit.idleHeadTiltAnimationState.getTimeInMillis(rabbit.tickCount));
+                            described.addProperty("jump_completion", Oracle.bits(rabbit.getJumpCompletion(0.5F)));
                         }
                         case "attributes" -> {
                             described.addProperty("max_health", Oracle.bits(entity.getMaxHealth()));
