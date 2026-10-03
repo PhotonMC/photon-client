@@ -1071,6 +1071,41 @@ impl ClientWorld {
         true
     }
 
+    /// `ClientPacketListener.handleUpdateAttributes` for an entity that is not
+    /// the local player: an attribute the type has takes the server's base
+    /// value and modifiers; one it does not have is ignored.
+    pub fn apply_entity_attributes(
+        &mut self,
+        entity_id: i32,
+        attributes: &[ClientAttributeState],
+    ) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        let Some(type_name) = voxel_data::entity_type::name(entity.type_id) else {
+            return false;
+        };
+        for attribute in attributes {
+            let known = voxel_data::entity_type::attribute_by_id(attribute.attribute_id)
+                .is_some_and(|range| {
+                    voxel_data::entity_type::default_attribute(type_name, range.name).is_some()
+                });
+            if !known {
+                continue;
+            }
+            if let Some(existing) = entity
+                .attributes
+                .iter_mut()
+                .find(|existing| existing.attribute_id == attribute.attribute_id)
+            {
+                *existing = attribute.clone();
+            } else {
+                entity.attributes.push(attribute.clone());
+            }
+        }
+        true
+    }
+
     /// Apply Java LivingEntity.setSprinting to the local player state.
     pub fn apply_local_player_sprinting(&mut self, player_id: i32, sprinting: bool) -> bool {
         let Some(player) = self
@@ -2880,6 +2915,7 @@ impl ClientWorld {
                 ticks_frozen: 0,
                 vehicle_id: None,
                 passenger_ids: Vec::new(),
+                attributes: Vec::new(),
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));

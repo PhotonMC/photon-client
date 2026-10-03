@@ -1242,6 +1242,58 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The attributes every living entity type starts with (`DefaultAttributes`: the base value of
+     * each attribute its supplier has), in entity type order, and each attribute's range.
+     */
+    private static JsonObject entityAttributes() throws Exception {
+        Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        var types = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
+        var attributes = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE;
+        for (var type : types) {
+            if (!net.minecraft.world.entity.ai.attributes.DefaultAttributes.hasSupplier(
+                (net.minecraft.world.entity.EntityType) type)) {
+                continue;
+            }
+            var supplier = net.minecraft.world.entity.ai.attributes.DefaultAttributes.getSupplier(
+                (net.minecraft.world.entity.EntityType) type);
+            var out = new JsonObject();
+            out.addProperty("label", types.getKey(type).toString());
+            out.addProperty("kind", "type");
+            out.addProperty("id", types.getId(type));
+            var list = new JsonArray();
+            var holders = new java.util.ArrayList<net.minecraft.core.Holder.Reference<
+                net.minecraft.world.entity.ai.attributes.Attribute>>(attributes.listElements().toList());
+            holders.sort(java.util.Comparator.comparingInt(holder -> attributes.getId(holder.value())));
+            for (var holder : holders) {
+                if (supplier.hasAttribute(holder)) {
+                    var pair = new JsonObject();
+                    pair.addProperty("name", holder.key().identifier().toString());
+                    pair.addProperty("base", Oracle.bits(supplier.getBaseValue(holder)));
+                    list.add(pair);
+                }
+            }
+            out.add("attributes", list);
+            rows.add(out);
+        }
+        for (var attribute : attributes) {
+            var out = new JsonObject();
+            out.addProperty("label", attributes.getKey(attribute).toString());
+            out.addProperty("kind", "range");
+            out.addProperty("id", attributes.getId(attribute));
+            out.addProperty("default", Oracle.bits(attribute.getDefaultValue()));
+            if (attribute instanceof net.minecraft.world.entity.ai.attributes.RangedAttribute ranged) {
+                out.addProperty("min", Oracle.bits(ranged.getMinValue()));
+                out.addProperty("max", Oracle.bits(ranged.getMaxValue()));
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1845,6 +1897,9 @@ public final class EntityOracle {
         }
         if (operation.equals("iron_golem_render")) {
             return ironGolemRender(request);
+        }
+        if (operation.equals("entity_attributes")) {
+            return entityAttributes();
         }
         if (operation.equals("villager_held_layers")) {
             return villagerHeldLayers(request);

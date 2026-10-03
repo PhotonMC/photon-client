@@ -107,7 +107,7 @@ pub fn remote_villagers(
             age_in_ticks: entity.tick_count() as f32 + partial,
             unhappy: entity.is_unhappy(),
         };
-        let placed = placement(world, &snapshot, view, 1.0);
+        let placed = placement(world, &snapshot, view, entity.scale());
         // The model and texture of each pass: the body first, then the layer.
         let mut passes = vec![if is_villager {
             (
@@ -210,7 +210,7 @@ pub fn remote_witches(
             entity_id: entity.id(),
             holding_item: entity.equipment(EquipmentSlot::MainHand).is_some(),
         });
-        let placed = placement(world, &snapshot, view, 1.0);
+        let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
         let Some(stack) = entity.equipment(EquipmentSlot::MainHand) else {
             continue;

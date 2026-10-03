@@ -3,6 +3,7 @@
 //! these under their usual paths (`block::blocks`, `item::items`, ...).
 
 pub mod block;
+pub mod entity_attributes;
 pub mod entity_models;
 pub mod entity_picks;
 pub mod entity_serializers;

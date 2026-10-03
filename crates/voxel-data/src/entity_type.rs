@@ -48,6 +48,53 @@ pub fn variants(kind: &str) -> impl Iterator<Item = &'static EntityVariant> {
         .filter(move |variant| variant.kind == kind)
 }
 
+/// An attribute's default and, when it has one, its range
+/// (`Attribute.getDefaultValue`, `RangedAttribute`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AttributeRange {
+    pub name: &'static str,
+    pub default: f64,
+    pub range: Option<(f64, f64)>,
+}
+
+/// Every attribute, in registry order.
+pub fn attribute_ranges() -> &'static [AttributeRange] {
+    &crate::generated::entity_attributes::ATTRIBUTE_RANGES
+}
+
+/// What each living entity type starts with: its name and the base value of
+/// each attribute it has, in registry order of entity types.
+pub fn default_attributes() -> &'static [(&'static str, &'static [(&'static str, f64)])] {
+    &crate::generated::entity_attributes::ENTITY_ATTRIBUTES
+}
+
+/// The attribute with this name: its place in the registry and its range.
+pub fn attribute(name: &str) -> Option<(usize, &'static AttributeRange)> {
+    crate::generated::entity_attributes::ATTRIBUTE_RANGES
+        .iter()
+        .enumerate()
+        .find(|(_, attribute)| attribute.name == name)
+}
+
+/// The attribute with this place in the registry.
+pub fn attribute_by_id(id: i32) -> Option<&'static AttributeRange> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| crate::generated::entity_attributes::ATTRIBUTE_RANGES.get(index))
+}
+
+/// The base value a new entity of this type gives an attribute
+/// (`DefaultAttributes`), if the type has the attribute.
+pub fn default_attribute(entity_type: &str, attribute: &str) -> Option<f64> {
+    crate::generated::entity_attributes::ENTITY_ATTRIBUTES
+        .iter()
+        .find(|(name, _)| *name == entity_type)?
+        .1
+        .iter()
+        .find(|(name, _)| *name == attribute)
+        .map(|(_, base)| *base)
+}
+
 /// What a sheep's wool of this dye (`DyeColor.getId`) is multiplied by, as
 /// ARGB (`ColorLerper.Type.SHEEP`).
 pub fn sheep_colour(dye: usize) -> Option<u32> {

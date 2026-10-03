@@ -1612,9 +1612,10 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
                 let packet = parse_update_attributes_packet(payload)?;
-                self.trace
-                    .world
-                    .apply_local_player_attributes(packet.entity_id, &packet.attributes);
+                let world = &mut self.trace.world;
+                if !world.apply_local_player_attributes(packet.entity_id, &packet.attributes) {
+                    world.apply_entity_attributes(packet.entity_id, &packet.attributes);
+                }
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {
                 let packet = parse_update_mob_effect_packet(payload)?;

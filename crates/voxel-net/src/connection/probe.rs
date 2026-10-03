@@ -2855,7 +2855,10 @@ fn connect_and_probe_with_mode(
                 let mut observation = parse_update_attributes_packet(payload)?;
                 observation.applied_to_world = trace
                     .world
-                    .apply_local_player_attributes(observation.entity_id, &observation.attributes);
+                    .apply_local_player_attributes(observation.entity_id, &observation.attributes)
+                    || trace
+                        .world
+                        .apply_entity_attributes(observation.entity_id, &observation.attributes);
                 trace.attribute_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID => {

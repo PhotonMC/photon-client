@@ -14355,6 +14355,26 @@ def movement_item_cases():
         living("creeper-dies-while-the-fuse-burns", "creeper", 30,
                [{"tick": 2, "type": "creeper_data", "swell_dir": 1}, {"tick": 12, "type": "death"}],
                extras=["creeper"]),
+        living("attributes-pig", "pig", 3, [], extras=["attributes"]),
+        living("attributes-iron-golem", "iron_golem", 3, [], extras=["attributes"]),
+        living("attributes-changed", "iron_golem", 6,
+               [{"tick": 1, "type": "attributes", "attributes": [
+                   {"name": "minecraft:max_health", "base": float_bits(40.0, "f64"), "modifiers": [
+                       {"id": "minecraft:test_add", "amount": float_bits(5.0, "f64"), "operation": 0},
+                       {"id": "minecraft:test_total", "amount": float_bits(0.5, "f64"), "operation": 2}]},
+                   {"name": "minecraft:scale", "base": float_bits(2.0, "f64"), "modifiers": [
+                       {"id": "minecraft:test_base", "amount": float_bits(0.25, "f64"), "operation": 1}]}]}],
+               extras=["attributes"]),
+        living("attributes-out-of-range", "cow", 6,
+               [{"tick": 1, "type": "attributes", "attributes": [
+                   {"name": "minecraft:max_health", "base": float_bits(5000.0, "f64"), "modifiers": []},
+                   {"name": "minecraft:scale", "base": float_bits(0.01, "f64"), "modifiers": []}]}],
+               extras=["attributes"]),
+        living("attributes-one-the-type-lacks", "pig", 6,
+               [{"tick": 1, "type": "attributes", "attributes": [
+                   {"name": "minecraft:flying_speed", "base": float_bits(3.0, "f64"), "modifiers": []},
+                   {"name": "minecraft:max_health", "base": float_bits(12.0, "f64"), "modifiers": []}]}],
+               extras=["attributes"]),
         living("goat-quiet", "goat", 6, [], extras=["goat"]),
         living("goat-rams", "goat", 40, [{"tick": 2, "type": "entity_event", "event": 58},
                                          {"tick": 18, "type": "entity_event", "event": 59}],
@@ -14419,6 +14439,8 @@ def entity_cases():
     yield from entity_illager_cases()
     yield from entity_golem_cases()
     yield from entity_goat_cases()
+    yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
+           "rows": [{"label": "all"}]}
     yield from entity_villager_held_cases()
     yield from entity_armor_stand_cases()
     yield from entity_type_cases()

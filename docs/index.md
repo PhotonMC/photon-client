@@ -98,6 +98,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T41b — Zırh katmanı (insansılar) — client-parity](client-armor-parity-conformance.md)
 - [T40 — Zırh askısı — client-parity](client-armor-stand-parity-conformance.md)
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
+- [T46 — Varlık öznitelikleri — client-parity](client-entity-attributes-parity-conformance.md)
 - [T34d — Varlık üstünde blok durumu çizimi — client-parity](client-entity-block-parity-conformance.md)
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](client-entity-hurt-death-parity-conformance.md)
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](client-entity-metadata-variants-parity-conformance.md)

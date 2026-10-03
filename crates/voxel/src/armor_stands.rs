@@ -47,7 +47,7 @@ pub fn remote_armor_stands(
             y_rot: snapshot.yaw,
         };
         // `setupRotations` turns the stand by its own rotation, not a body's.
-        let mut placed = placement(world, &snapshot, view, 1.0);
+        let mut placed = placement(world, &snapshot, view, entity.scale());
         placed.body_rot = snapshot.yaw;
         let prefix = if data.is_small() {
             "minecraft:armor_stand_small"

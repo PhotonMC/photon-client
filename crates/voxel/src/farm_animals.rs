@@ -106,7 +106,7 @@ pub fn remote_farm_animals(
         } else {
             model.setup_quadruped(&look);
         }
-        let placed = placement(world, &snapshot, view, 1.0);
+        let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
         if !is_goat
             && !baby

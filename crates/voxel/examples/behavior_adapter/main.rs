@@ -18389,6 +18389,33 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     "animate" => {
                         world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
                     }
+                    "attributes" => {
+                        let mut changed = Vec::new();
+                        for item in event["attributes"].as_array().ok_or("attributes")? {
+                            let (id, _) = voxel_data::entity_type::attribute(
+                                item["name"].as_str().ok_or("name")?,
+                            )
+                            .ok_or("no such attribute")?;
+                            let modifiers = item["modifiers"]
+                                .as_array()
+                                .ok_or("modifiers")?
+                                .iter()
+                                .map(|modifier| {
+                                    Ok(voxel_world::ClientAttributeModifierState::new(
+                                        modifier["id"].as_str().ok_or("id")?.to_owned(),
+                                        f64_field(modifier, "amount")?,
+                                        i32_field(modifier, "operation")? as u8,
+                                    ))
+                                })
+                                .collect::<Result<Vec<_>, String>>()?;
+                            changed.push(voxel_world::ClientAttributeState::new(
+                                id as i32,
+                                f64_field(item, "base")?,
+                                modifiers,
+                            ));
+                        }
+                        world.apply_entity_attributes(entity_id, &changed);
+                    }
                     "entity_event" => {
                         world.apply_entity_event(entity_id, i32_field(event, "event")? as i8);
                     }
@@ -18423,6 +18450,10 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described[format!("eat_position_{key}")] = json!(hex(position));
                             described[format!("eat_angle_{key}")] = json!(hex(angle));
                         }
+                    }
+                    "attributes" => {
+                        described["max_health"] = json!(hex(entity.max_health().unwrap_or(0.0)));
+                        described["scale"] = json!(hex(entity.scale()));
                     }
                     "goat" => {
                         described["ramming"] = json!(hex(entity.goat_ramming_x_head_rot()));
@@ -19473,6 +19504,42 @@ fn entity_block_layers_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `entity_attributes`: the attributes each living entity type starts with and
+/// each attribute's range, from the generated table.
+fn entity_attributes_result() -> Value {
+    let hex = |value: f64| format!("{:016x}", value.to_bits());
+    let mut rows = Vec::new();
+    for (name, attributes) in voxel_data::entity_type::default_attributes() {
+        let list: Vec<Value> = attributes
+            .iter()
+            .map(|(attribute, base)| json!({"name": attribute, "base": hex(*base)}))
+            .collect();
+        rows.push(json!({
+            "label": name,
+            "kind": "type",
+            "id": voxel_data::entity_type::id(name),
+            "attributes": list,
+        }));
+    }
+    for (id, attribute) in voxel_data::entity_type::attribute_ranges()
+        .iter()
+        .enumerate()
+    {
+        let mut row = json!({
+            "label": attribute.name,
+            "kind": "range",
+            "id": id,
+            "default": hex(attribute.default),
+        });
+        if let Some((low, high)) = attribute.range {
+            row["min"] = json!(hex(low));
+            row["max"] = json!(hex(high));
+        }
+        rows.push(row);
+    }
+    json!({"rows": rows})
+}
+
 /// `villager_held_layers`: where the layers that hold something on a villager,
 /// a trader and a witch put it, from an identity entity pose.
 fn villager_held_layers_result(request: &Value) -> Result<Value, String> {
@@ -20150,6 +20217,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "eyes_layers" => return eyes_layers_result(request),
         "goat_model" => return goat_model_result(request),
         "villager_held_layers" => return villager_held_layers_result(request),
+        "entity_attributes" => return Ok(entity_attributes_result()),
         "illager_model" => return illager_model_result(request),
         "witch_model" => return witch_model_result(request),
         "villager_registries" => return Ok(villager_registries_result()),

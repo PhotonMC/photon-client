@@ -128,7 +128,7 @@ pub fn remote_monsters(
             walk_position: snapshot.walk_position,
             walk_speed: snapshot.walk_speed,
         };
-        let mut placed = placement(world, &snapshot, view, 1.0);
+        let mut placed = placement(world, &snapshot, view, entity.scale());
         placed.flip_degrees = monster.flip_degrees;
         if let Some([x, z]) = shake {
             placed.feet[0] += x as f32;

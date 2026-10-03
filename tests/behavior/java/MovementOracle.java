@@ -632,6 +632,27 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "attributes" -> {
+                        var instances = new java.util.ArrayList<net.minecraft.world.entity.ai.attributes.AttributeInstance>();
+                        for (var item : event.getAsJsonArray("attributes")) {
+                            var changed = item.getAsJsonObject();
+                            var holder = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.get(
+                                net.minecraft.resources.Identifier.parse(changed.get("name").getAsString())).orElseThrow();
+                            var instance = new net.minecraft.world.entity.ai.attributes.AttributeInstance(holder, ignored -> {});
+                            instance.setBaseValue(Oracle.f64(changed, "base"));
+                            for (var modifier : changed.getAsJsonArray("modifiers")) {
+                                var described = modifier.getAsJsonObject();
+                                instance.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                                    net.minecraft.resources.Identifier.parse(described.get("id").getAsString()),
+                                    Oracle.f64(described, "amount"),
+                                    net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.BY_ID.apply(
+                                        described.get("operation").getAsInt())));
+                            }
+                            instances.add(instance);
+                        }
+                        listener.handleUpdateAttributes(
+                            new net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket(entityId, instances));
+                    }
                     case "entity_event" -> listener.handleEntityEvent(
                         new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(
                             entity, (byte) event.get("event").getAsInt()));
@@ -672,6 +693,10 @@ public final class MovementOracle {
                             described.addProperty("flap_speed", Oracle.bits(chicken.flapSpeed));
                             described.addProperty("old_flap", Oracle.bits(chicken.oFlap));
                             described.addProperty("old_flap_speed", Oracle.bits(chicken.oFlapSpeed));
+                        }
+                        case "attributes" -> {
+                            described.addProperty("max_health", Oracle.bits(entity.getMaxHealth()));
+                            described.addProperty("scale", Oracle.bits(entity.getScale()));
                         }
                         case "goat" -> {
                             var goat = (net.minecraft.world.entity.animal.goat.Goat) entity;

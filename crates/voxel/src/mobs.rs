@@ -448,7 +448,7 @@ pub fn remote_mobs(
         }
         vertices.extend(mob_vertices(
             model,
-            &placement(world, &snapshot, view, 1.0),
+            &placement(world, &snapshot, view, entity.scale()),
             rect,
         ));
     }
@@ -547,7 +547,7 @@ fn remote_humanoids(
         };
         let (humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
         let aggressive = entity.is_aggressive();
-        let placement = placement(world, &snapshot, view, kind.scale);
+        let placement = placement(world, &snapshot, view, kind.scale * entity.scale());
         // What it wears, in the armor models of its build, posed as it is.
         let worn = Worn {
             head: entity.equipment(EquipmentSlot::Head),

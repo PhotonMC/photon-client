@@ -100,7 +100,7 @@ pub fn remote_sheep(
             age_scale: if baby { 0.5 } else { 1.0 },
         };
         let dye = entity.sheep_dye_id();
-        let placement = placement(world, &snapshot, view, 1.0);
+        let placement = placement(world, &snapshot, view, entity.scale());
         for (index, layer) in LAYERS.iter().enumerate() {
             // The wool layers are not drawn on a sheep that cannot be seen.
             let hidden = index > 0 && entity.is_invisible();

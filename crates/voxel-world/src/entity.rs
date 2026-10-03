@@ -606,6 +606,8 @@ pub struct ClientEntity {
     pub(crate) ticks_frozen: i32,
     pub(crate) vehicle_id: Option<i32>,
     pub(crate) passenger_ids: Vec<i32>,
+    /// What the server changed of the attributes the type starts with.
+    pub(crate) attributes: Vec<ClientAttributeState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1835,6 +1837,39 @@ impl ClientEntity {
     pub fn iron_golem_ticks(&self) -> (i32, i32) {
         let animal = &self.living.animal;
         (animal.golem_attack_tick, animal.golem_offer_flower_tick)
+    }
+
+    /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
+    /// type starts with and what the server has changed (`AttributeInstance.getValue`:
+    /// the base, the modifiers in their order, kept in the attribute's range).
+    /// Nothing for an attribute the type does not have.
+    pub fn attribute_value(&self, attribute: &str) -> Option<f64> {
+        let (id, range) = voxel_data::entity_type::attribute(attribute)?;
+        let default = voxel_data::entity_type::default_attribute(
+            voxel_data::entity_type::name(self.type_id)?,
+            attribute,
+        )?;
+        let (low, high) = range.range.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
+        let changed = self
+            .attributes
+            .iter()
+            .find(|state| usize::try_from(state.attribute_id) == Ok(id));
+        Some(changed.map_or_else(
+            || ClientAttributeState::new(0, default, Vec::new()).effective_value(low, high),
+            |state| state.effective_value(low, high),
+        ))
+    }
+
+    /// `LivingEntity.getMaxHealth`.
+    pub fn max_health(&self) -> Option<f32> {
+        self.attribute_value("minecraft:max_health")
+            .map(|value| value as f32)
+    }
+
+    /// `LivingEntity.getScale`: one for an entity that has no scale attribute.
+    pub fn scale(&self) -> f32 {
+        self.attribute_value("minecraft:scale")
+            .map_or(1.0, |value| value as f32)
     }
 
     /// `Raider.isCelebrating`.

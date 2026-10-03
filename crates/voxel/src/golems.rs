@@ -21,10 +21,6 @@ const IRON_GOLEM_TEXTURE: &str = "entity/iron_golem/iron_golem";
 const SNOW_GOLEM_LAYER: &str = "minecraft:snow_golem#main";
 const SNOW_GOLEM_TEXTURE: &str = "entity/snow_golem/snow_golem";
 
-/// The most health an iron golem has (`IronGolem.createAttributes`); the
-/// attribute the server may change is not read for mobs yet.
-const IRON_GOLEM_MAX_HEALTH: f32 = 100.0;
-
 /// The texture the cracks of each level are drawn in.
 fn crack_texture(level: Crackiness) -> Option<&'static str> {
     match level {
@@ -86,14 +82,14 @@ pub fn remote_golems(
             walk_position: snapshot.walk_position,
             walk_speed: snapshot.walk_speed,
         };
-        let mut placed = placement(world, &snapshot, view, 1.0);
+        let mut placed = placement(world, &snapshot, view, entity.scale());
         let mut passes = Vec::new();
         if is_iron {
             placed.roll = iron_golem_roll(look.walk_position, look.walk_speed);
             passes.push(IRON_GOLEM_TEXTURE);
             // What the data holds until the server says otherwise is one
             // health (`LivingEntity.DATA_HEALTH_ID`).
-            let fraction = entity.health().unwrap_or(1.0) / IRON_GOLEM_MAX_HEALTH;
+            let fraction = entity.health().unwrap_or(1.0) / entity.max_health().unwrap_or(1.0);
             if !entity.is_invisible()
                 && let Some(texture) = crack_texture(golem_crackiness(fraction))
             {

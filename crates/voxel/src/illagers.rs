@@ -159,7 +159,7 @@ pub fn remote_illagers(
             ticks_using_item: 0.0,
             hat_visible: illager.kind == Kind::Illusioner,
         });
-        let placed = placement(world, &snapshot, view, 1.0);
+        let placed = placement(world, &snapshot, view, entity.scale());
         let hands = shows_hand_items(illager.kind, entity);
         Hands {
             base: &voxel_render::mob_model::placement_pose(&placed),
