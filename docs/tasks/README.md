@@ -73,7 +73,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T31b](T31b-deve-lama.md) | Deve, deve kabuğu, lama ve tüccar lamasi | M | T31, T43b | bitti (a7268138) |
 | [T32](T32-evcil-yirtici-dortayak.md) | Evcil ve yırtıcı dört ayaklılar: kurt, kedi, vaşak, tilki, panda, kutup ayısı, hoglin, ravager, strider | L | T24 | bölündü (kurt: 500f245b) |
 | [T32b](T32b-kedi-vasak.md) | Kedi ve ocelot | M | T32 | bitti (a39fc02d) |
-| [T32c](T32c-tilki-panda-kutup-ayisi.md) | Tilki, panda, kutup ayısı | L | T32 | bölündü (kutup ayısı: HASH) |
+| [T32c](T32c-tilki-panda-kutup-ayisi.md) | Tilki, panda, kutup ayısı | L | T32 | bölündü (kutup ayısı: c350f431) |
 | [T32e](T32e-tilki.md) | Tilki | M | T32c | açık |
 | [T32f](T32f-panda.md) | Panda | M | T32c | açık |
 | [T32d](T32d-hoglin-ravager-strider.md) | Hoglin, zoglin, ravager, strider | M | T32 | açık |
