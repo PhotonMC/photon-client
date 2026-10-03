@@ -14396,6 +14396,7 @@ def entity_cases():
     yield from entity_sheep_eat_cases()
     yield from entity_spider_cases()
     yield from entity_creeper_render_cases()
+    yield from entity_equipment_layer_cases()
     yield from entity_type_cases()
     yield from entity_quadruped_cases()
     yield from entity_item_pose_cases()
@@ -14777,6 +14778,14 @@ def entity_spider_cases():
            "rows": rows(("minecraft:spider#main", "minecraft:cave_spider#main"), "spider_model")}
     yield {"case_id": "entity/creeper-model", "family": "entity", "operation": "creeper_model",
            "rows": rows(("minecraft:creeper#main",), "creeper_model")}
+
+
+def entity_equipment_layer_cases():
+    """Every equipment asset of the game's resources: the layers each names for
+    the humanoid layer types (the texture and what it is multiplied by,
+    undyed and dyed), through the reference's own codec."""
+    yield {"case_id": "entity/equipment-layers", "family": "entity",
+           "operation": "equipment_layers", "rows": [{"label": "all"}]}
 
 
 def entity_creeper_render_cases():

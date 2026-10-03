@@ -95,6 +95,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — ChunkPos validity sözleşmesi — client-parity birleşik kayıt](chunkpos-validity-conformance.md)
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
 - [T43 — `Animate` paketi, kol sallaması ve `EntityEvent` durumları — client-parity](client-animate-swing-parity-conformance.md)
+- [T41b — Zırh katmanı (insansılar) — client-parity](client-armor-parity-conformance.md)
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](client-entity-hurt-death-parity-conformance.md)
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](client-entity-metadata-variants-parity-conformance.md)

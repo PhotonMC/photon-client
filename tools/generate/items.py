@@ -125,7 +125,8 @@ def items_file(items):
         if equip:
             calls.append(f"equippable(Equip {{ slot: {rust_str(equip['slot'])}, "
                          f"player: {str(equip['player']).lower()}, "
-                         f"swappable: {str(equip['swappable']).lower()} }})")
+                         f"swappable: {str(equip['swappable']).lower()}, "
+                         f"asset: {rust_opt_str(equip.get('asset'))} }})")
         remainder = item.get("crafting_remainder")
         if remainder:
             calls.append(f"crafting_remainder({rust_str(remainder['item'])}, {remainder['count']})")
@@ -145,6 +146,10 @@ def items_file(items):
                    + "".join(f".{call}" for call in calls) + ",")
     out.append("];")
     return out
+
+
+def rust_opt_str(text):
+    return "None" if text is None else f"Some({rust_str(text)})"
 
 
 def generate(capture):

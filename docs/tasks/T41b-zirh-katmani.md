@@ -25,3 +25,7 @@ Kafa eşyası/pelerin/elytra (T41c), at zırhı (T31).
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
+- Yapıldı: `Equip.asset` (eşya tablosu, oracle'dan), `voxel-render/equipment.rs` (ekipman varlıkları: katmanlar, boyanabilirlik, `colour`), `voxel/armor.rs` (`Armor`: giyilen parçaların modeli giyenin pozuyla, dokusu ve boyasıyla; `Worn`), `MobModel::setup_humanoid`, `player_renderer::layer_vertices`; oyuncu (uzak ve yerel üçüncü şahıs), zombi/iskelet/piglin ailesi (bebek dahil) zırh giyer. Kayıt: `docs/client-armor-parity-conformance.md`.
+- Oracle: `entity/equipment-layers` 39 satır (gerçek `EquipmentClientInfo.CODEC`, `getColorForLayer`); `block/item-declarations`'a `asset`.
+- Sapma: süs/parıltı yok (T41e), yamadaki `equippable` okunmuyor.
+- Açık: T41e (süs, parıltı, yama), T41c (kafa eşyası, pelerin, elytra).

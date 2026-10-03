@@ -122,6 +122,13 @@ impl MobModel {
         }
     }
 
+    /// `HumanoidModel.setupAnim` for a humanoid model of the table whose class
+    /// adds nothing of its own (an armor model: the wearer's pose, the arms'
+    /// poses its held items ask for).
+    pub fn setup_humanoid(&mut self, state: &PlayerRenderState) {
+        humanoid_anim(&mut self.root, state);
+    }
+
     /// `SpiderModel.setupAnim`: the head follows the look; each leg is
     /// swung about y and lifted about z in turn, the pairs a quarter of a
     /// stride apart.

@@ -13,6 +13,7 @@ use voxel_render::window::{DisplayData, WindowSurface};
 use voxel_render::world_mesh::BlockRenderer;
 
 use crate::animated_atlas::AnimatedAtlas;
+use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
 use crate::controls::Controls;
 use crate::dropped_items::dropped_items;
@@ -107,6 +108,8 @@ struct Play {
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
     ground_layers: ItemLayerCache,
+    /// What humanoids wear.
+    armor: Armor,
     /// The layers of what humanoids hold, in the right and the left hand.
     worn_layers: [ItemLayerCache; 2],
     entity_textures: voxel_render::entity_textures::EntityTextures,
@@ -202,11 +205,17 @@ impl Play {
                 .profile_id()
                 .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
         );
+        let armor = Armor::load(&root);
         let entity_textures = voxel_render::entity_textures::EntityTextures::build(
             voxel_render::player_renderer::skin_textures()
                 .chain(mobs::textures())
                 .chain([overlays::ORB_TEXTURE, overlays::SHADOW_TEXTURE])
-                .map(|name| Ok((name.to_owned(), texture(&root, name, "entity texture")?)))
+                .map(str::to_owned)
+                .chain(armor.textures())
+                .map(|name| {
+                    let image = texture(&root, &name, "entity texture")?;
+                    Ok((name, image))
+                })
                 .collect::<Result<Vec<_>>>()?,
         )
         .ok_or("the entity textures did not fit")?;
@@ -256,6 +265,7 @@ impl Play {
             remote_models: overlays::RemoteModels::new(),
             mob_models: mobs::MobModels::new(),
             ground_layers: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
+            armor,
             worn_layers: [
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonRightHand),
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonLeftHand),
@@ -572,13 +582,13 @@ impl Play {
         let mut held = Vec::new();
         let mut models = overlays::remote_players(
             &self.session,
-            &mut self.remote_models,
+            (&mut self.remote_models, &mut self.armor),
             &self.entity_textures,
             (view, &mut held),
         );
         models.extend(mobs::remote_mobs(
             &self.session,
-            &mut self.mob_models,
+            (&mut self.mob_models, &mut self.armor),
             &self.entity_textures,
             (view, &mut held),
         ));
@@ -598,6 +608,16 @@ impl Play {
                 &mut self.player_model,
                 (view, &mut held),
                 (stack(36 + selected), stack(45)),
+                (
+                    &mut self.armor,
+                    Worn {
+                        head: stack(5),
+                        chest: stack(6),
+                        legs: stack(7),
+                        feet: stack(8),
+                    },
+                    &self.entity_textures,
+                ),
             ));
         }
         self.backend.set_entities(&models)?;

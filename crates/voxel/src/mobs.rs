@@ -8,12 +8,13 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     ChickenState, MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState,
-    mob_vertices, placement_pose,
+    mob_vertices, mob_vertices_coloured, placement_pose,
 };
 use voxel_render::player_model::{Arm, ArmPose, PlayerRenderState};
 use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
 
+use crate::armor::{Armor, Worn};
 use crate::held_items::{Hands, HeldItem};
 use crate::overlays::{FrameView, packed_light};
 
@@ -342,7 +343,7 @@ pub(crate) fn placement(
 /// where it is between two ticks.
 pub fn remote_mobs(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
@@ -408,7 +409,12 @@ pub fn remote_mobs(
             rect,
         ));
     }
-    vertices.extend(remote_humanoids(session, models, textures, (view, held)));
+    vertices.extend(remote_humanoids(
+        session,
+        (models, armor),
+        textures,
+        (view, held),
+    ));
     vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
     vertices.extend(crate::monsters::remote_monsters(
         session, models, textures, view,
@@ -423,7 +429,7 @@ pub fn remote_mobs(
 /// spear) are not read yet.
 fn remote_humanoids(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
@@ -466,6 +472,26 @@ fn remote_humanoids(
             }
             vertices.extend(mob_vertices(model, &placement, rect));
         }
+        // What it wears, in the armor models of its build, posed as it is.
+        let worn = Worn {
+            head: entity.equipment(EquipmentSlot::Head),
+            chest: entity.equipment(EquipmentSlot::Chest),
+            legs: entity.equipment(EquipmentSlot::Legs),
+            feet: entity.equipment(EquipmentSlot::Feet),
+        };
+        let layer = if baby {
+            kind.baby_layer
+        } else {
+            kind.adult_layer
+        };
+        let prefix = layer.strip_suffix("#main").unwrap_or(layer);
+        vertices.extend(armor.vertices(
+            worn,
+            (prefix, baby),
+            textures,
+            &|model| pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity),
+            &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
+        ));
     }
     vertices
 }

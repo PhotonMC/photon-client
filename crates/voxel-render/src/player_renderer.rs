@@ -161,6 +161,33 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
     vertices
 }
 
+/// Another model of the wearer's (an armor model), placed as the player is,
+/// in its own texture and multiplied by a colour (`0xRRGGBB`).
+pub fn layer_vertices(
+    model: &crate::mob_model::MobModel,
+    placement: &Placement,
+    texture: crate::entity_textures::TextureRect,
+    colour: Option<u32>,
+) -> Vec<Vertex> {
+    let pose = placement_pose(placement);
+    let light = crate::block_light::light_uv(placement.light);
+    let colour = colour.map_or(0.0, crate::scene::entity_colour);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: crate::entity_textures::uv(texture, corner.uv),
+                shade: crate::mob_model::overlay_code(placement.red_overlay, 0.0),
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], colour],
+                light,
+            });
+        }
+    }
+    vertices
+}
+
 /// `InventoryScreen.extractEntityInInventoryFollowsMouse`: the player's model
 /// in the box `area` (`x0, y0, x1, y1` in GUI units), `size` GUI units to a
 /// block, turned towards the mouse, as triangles in GUI units with depth

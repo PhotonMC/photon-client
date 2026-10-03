@@ -12,9 +12,10 @@ use voxel_render::player_model::{Arm, ArmPose, PlayerModel, PlayerRenderState};
 use voxel_render::player_renderer::{HandView, Placement};
 use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
-use voxel_world::ClientItemStackState;
 use voxel_world::local_player::LocalPlayer;
+use voxel_world::{ClientItemStackState, EquipmentSlot};
 
+use crate::armor::{Armor, Worn};
 use crate::held_items::{Hands, HeldItem};
 use crate::hud_input::attack_speed;
 use crate::item_layers::ItemLayerCache;
@@ -211,12 +212,17 @@ pub fn player_model(
     model: &mut PlayerModel,
     (view, held): (FrameView, &mut Vec<HeldItem>),
     stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+    (armor, worn, textures): (
+        &mut Armor,
+        Worn,
+        &voxel_render::entity_textures::EntityTextures,
+    ),
 ) -> Vec<Vertex> {
     let feet = player.interpolated_position(view.partial);
     let partial = view.partial as f32;
     let (_, x_rot) = player.rotation();
     let pose = player.model_pose(partial);
-    model.setup_anim(&PlayerRenderState {
+    let state = PlayerRenderState {
         head_y_rot: voxel_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
         x_rot,
         walk_position: pose.walk_position,
@@ -229,7 +235,8 @@ pub fn player_model(
         right_arm_pose: held_arm_pose(stacks.0),
         left_arm_pose: held_arm_pose(stacks.1),
         ..Default::default()
-    });
+    };
+    model.setup_anim(&state);
     let placement = Placement {
         feet: [
             (feet.x - f64::from(view.origin[0])) as f32,
@@ -257,7 +264,15 @@ pub fn player_model(
         left: stacks.1,
     }
     .collect(held);
-    voxel_render::player_renderer::player_vertices(model, &placement)
+    let mut vertices = voxel_render::player_renderer::player_vertices(model, &placement);
+    vertices.extend(wear(
+        armor,
+        worn,
+        model.slim,
+        textures,
+        (&state, &placement),
+    ));
+    vertices
 }
 
 /// The player models the frame draws for the players the server added: one
@@ -288,7 +303,7 @@ impl Default for RemoteModels {
 /// model.
 pub fn remote_players(
     session: &PlaySession,
-    models: &mut RemoteModels,
+    (models, armor): (&mut RemoteModels, &mut Armor),
     textures: &voxel_render::entity_textures::EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
@@ -318,7 +333,7 @@ pub fn remote_players(
             entity.item_held_by_arm(false),
             entity.item_held_by_arm(true),
         );
-        model.setup_anim(&PlayerRenderState {
+        let state = PlayerRenderState {
             right_arm_pose: held_arm_pose(right),
             left_arm_pose: held_arm_pose(left),
             main_arm: if main_left { Arm::Left } else { Arm::Right },
@@ -336,7 +351,8 @@ pub fn remote_players(
                 Arm::Right
             },
             ..Default::default()
-        });
+        };
+        model.setup_anim(&state);
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
         let placement = Placement {
@@ -369,8 +385,46 @@ pub fn remote_players(
         vertices.extend(voxel_render::player_renderer::player_vertices(
             model, &placement,
         ));
+        let worn = Worn {
+            head: entity.equipment(EquipmentSlot::Head),
+            chest: entity.equipment(EquipmentSlot::Chest),
+            legs: entity.equipment(EquipmentSlot::Legs),
+            feet: entity.equipment(EquipmentSlot::Feet),
+        };
+        vertices.extend(wear(
+            armor,
+            worn,
+            model.slim,
+            textures,
+            (&state, &placement),
+        ));
     }
     vertices
+}
+
+/// What a player wears, drawn over its model: the armor models of its build,
+/// posed as it is.
+fn wear(
+    armor: &mut Armor,
+    worn: Worn,
+    slim: bool,
+    textures: &voxel_render::entity_textures::EntityTextures,
+    (state, placement): (&PlayerRenderState, &Placement),
+) -> Vec<Vertex> {
+    let prefix = if slim {
+        "minecraft:player_slim"
+    } else {
+        "minecraft:player"
+    };
+    armor.vertices(
+        worn,
+        (prefix, false),
+        textures,
+        &|model| model.setup_humanoid(state),
+        &|model, rect, colour| {
+            voxel_render::player_renderer::layer_vertices(model, placement, rect, colour)
+        },
+    )
 }
 
 /// `AvatarRenderer.getArmPose` of an arm that is not in use: a held stack

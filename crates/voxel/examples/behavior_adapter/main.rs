@@ -16803,6 +16803,9 @@ fn item_declarations(label: &str) -> Value {
                     "player": equip.player,
                     "swappable": equip.swappable,
                 });
+                if let Some(asset) = equip.asset {
+                    described["equippable"]["asset"] = json!(asset);
+                }
             }
             if let Some(remainder) = &item.crafting_remainder {
                 described["crafting_remainder"] =
@@ -19039,6 +19042,43 @@ fn humanoid_state(row: &Value) -> Result<voxel_render::player_model::PlayerRende
     })
 }
 
+/// `equipment_layers`: every equipment asset of the game's resources, the
+/// layers of each for the humanoid layer types.
+fn equipment_layers_result() -> Result<Value, String> {
+    use voxel_render::equipment::parse_equipment_info;
+    let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/assets/minecraft/equipment");
+    let mut names: Vec<String> = std::fs::read_dir(&folder)
+        .map_err(|error| error.to_string())?
+        .filter_map(|entry| Some(entry.ok()?.file_name().to_str()?.to_owned()))
+        .collect();
+    names.sort();
+    let mut rows = Vec::new();
+    for name in names {
+        let text =
+            std::fs::read_to_string(folder.join(&name)).map_err(|error| error.to_string())?;
+        let info = parse_equipment_info(&text).ok_or(format!("{name} did not parse"))?;
+        let mut types = serde_json::Map::new();
+        for layer_type in ["humanoid", "humanoid_leggings", "humanoid_baby"] {
+            let layers: Vec<Value> = info
+                .layers(layer_type)
+                .iter()
+                .map(|layer| {
+                    json!({
+                        "texture": format!("minecraft:textures/{}.png", layer.texture_path(layer_type)),
+                        "undyed": layer.colour(0) as i32,
+                        "dyed": layer.colour(0xFF33_6699) as i32,
+                        "player_texture": layer.use_player_texture,
+                    })
+                })
+                .collect();
+            types.insert(layer_type.to_owned(), Value::Array(layers));
+        }
+        rows.push(json!({"label": name, "types": types}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `spider_model` and `creeper_model`: a spider's or a creeper's model posed
 /// and drawn.
 fn spider_model_result(request: &Value, creeper: bool) -> Result<Value, String> {
@@ -19524,6 +19564,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "living_pose" => return living_pose_result(request),
         "held_item_pose" => return held_item_pose_result(request),
         "sheep_model" => return sheep_model_result(request),
+        "equipment_layers" => return equipment_layers_result(),
         "spider_model" => return spider_model_result(request, false),
         "creeper_model" => return spider_model_result(request, true),
         "creeper_render" => return creeper_render_result(request),

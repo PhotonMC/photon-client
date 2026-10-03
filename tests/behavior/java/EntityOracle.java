@@ -509,6 +509,54 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Every equipment asset of the game's resources through the reference's own codec: the layers of
+     * each for the humanoid layer types, as the texture they name and what each is multiplied by
+     * undyed and dyed (`EquipmentLayerRenderer.getColorForLayer`).
+     */
+    private static JsonObject equipmentLayers(final JsonObject request) throws Exception {
+        var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
+            .getProtectionDomain().getCodeSource().getLocation().toURI());
+        var folder = jar.getParent().getParent().resolve("assets/jar/assets/minecraft/equipment");
+        var color = net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer.class.getDeclaredMethod(
+            "getColorForLayer", net.minecraft.client.resources.model.EquipmentClientInfo.Layer.class, int.class);
+        color.setAccessible(true);
+        var names = new java.util.TreeSet<String>();
+        try (var files = java.nio.file.Files.list(folder)) {
+            files.forEach(file -> names.add(file.getFileName().toString()));
+        }
+        var rows = new JsonArray();
+        int dyed = 0xFF336699;
+        for (String file : names) {
+            var json = com.google.gson.JsonParser.parseReader(java.nio.file.Files.newBufferedReader(folder.resolve(file)));
+            var info = net.minecraft.client.resources.model.EquipmentClientInfo.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
+            var out = new JsonObject();
+            out.addProperty("label", file);
+            var types = new JsonObject();
+            for (var type : new net.minecraft.client.resources.model.EquipmentClientInfo.LayerType[] {
+                net.minecraft.client.resources.model.EquipmentClientInfo.LayerType.HUMANOID,
+                net.minecraft.client.resources.model.EquipmentClientInfo.LayerType.HUMANOID_LEGGINGS,
+                net.minecraft.client.resources.model.EquipmentClientInfo.LayerType.HUMANOID_BABY}) {
+                var layers = new JsonArray();
+                for (var layer : info.getLayers(type)) {
+                    var described = new JsonObject();
+                    described.addProperty("texture", layer.getTextureLocation(type).toString());
+                    described.addProperty("undyed", (int) color.invoke(null, layer, 0));
+                    described.addProperty("dyed", (int) color.invoke(null, layer, dyed));
+                    described.addProperty("player_texture", layer.usePlayerTexture());
+                    layers.add(described);
+                }
+                types.add(type.getSerializedName(), layers);
+            }
+            out.add("types", types);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Stops `LivingEntityRenderer.submit` once the pose it builds is in hand. */
     private static final class PoseCaptured extends RuntimeException {
         PoseCaptured() {
@@ -1068,6 +1116,9 @@ public final class EntityOracle {
         }
         if (operation.equals("quadruped_model")) {
             return quadrupedModel(request);
+        }
+        if (operation.equals("equipment_layers")) {
+            return equipmentLayers(request);
         }
         if (operation.equals("spider_model")) {
             return spiderModel(request, false);

@@ -38,6 +38,9 @@ pub struct Equip {
     pub player: bool,
     /// Using it swaps it with what is worn.
     pub swappable: bool,
+    /// The equipment asset it is worn as (`Equippable.assetId`): which
+    /// layers and textures draw it on a wearer.
+    pub asset: Option<&'static str>,
 }
 
 /// The item crafting leaves behind, and how many.

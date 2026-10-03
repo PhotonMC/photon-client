@@ -11,6 +11,7 @@ pub mod breaking;
 pub mod camera;
 pub mod clouds;
 pub mod entity_textures;
+pub mod equipment;
 pub mod geometry;
 pub mod gui;
 pub mod held_item;

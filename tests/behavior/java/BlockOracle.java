@@ -1506,6 +1506,7 @@ public final class BlockOracle {
                 equip.addProperty("slot", equippable.slot().getSerializedName());
                 equip.addProperty("player", equippable.canBeEquippedBy(playerType));
                 equip.addProperty("swappable", equippable.swappable());
+                equippable.assetId().ifPresent(asset -> equip.addProperty("asset", asset.identifier().toString()));
                 described.add("equippable", equip);
             }
             var remainder = item.getCraftingRemainder();
