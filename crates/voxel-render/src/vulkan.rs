@@ -138,7 +138,8 @@ void main() {
 
 /// The entities' vertex shader, after the reference's entity shader with
 /// per-face lighting: the vertex's normal rides in its tint, and both faces'
-/// light is worked out so the fragment can pick by which way it faces.
+/// light is worked out so the fragment can pick by which way it faces. A zero
+/// normal means no per-face lighting and a negative light no lightmap.
 const ENTITY_VERTEX_SHADER: &str = concat!(
     vertex_prelude!(vertex_inputs!()),
     r"layout(location = 0) out vec2 out_uv;
@@ -159,9 +160,12 @@ void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
     vec2 light = vec2(dot(LIGHT0, in_tint.xyz), dot(LIGHT1, in_tint.xyz));
-    out_front = vec3(mix_light(light));
-    out_back = vec3(mix_light(-light));
-    out_light = sample_lightmap(in_light);
+    // A vertex with no normal is not shaded by face (`NO_CARDINAL_LIGHTING`),
+    // and one with a negative light is not lit by the lightmap (`EMISSIVE`).
+    bool shaded = dot(in_tint.xyz, in_tint.xyz) > 0.0;
+    out_front = vec3(shaded ? mix_light(light) : 1.0);
+    out_back = vec3(shaded ? mix_light(-light) : 1.0);
+    out_light = in_light.x < 0.0 ? vec3(1.0) : sample_lightmap(in_light);
     // The vertex's shade says whether the hurt overlay is on, and the fourth
     // component of its tint the colour its texel is multiplied by, as
     // 0xRRGGBB (exact in a float), or zero for none.
@@ -4858,5 +4862,25 @@ fn clamp_extent(
             capabilities.min_image_extent.height,
             capabilities.max_image_extent.height,
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The shaders are compiled when a pipeline is made, which needs a device;
+    /// the entity pair is compiled here so a change to it fails the gate.
+    #[test]
+    fn the_entity_shaders_compile() {
+        let compiler = shaderc::Compiler::new().expect("a shader compiler");
+        for (source, kind) in [
+            (ENTITY_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
+            (ENTITY_FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
+        ] {
+            compiler
+                .compile_into_spirv(source, kind, "entity", "main", None)
+                .unwrap_or_else(|error| panic!("{error}"));
+        }
     }
 }

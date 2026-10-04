@@ -716,6 +716,8 @@ pub struct ClientEntity {
     pub(crate) allay: Option<Box<crate::allay::AllayState>>,
     /// A guardian's animations, made when it first ticks.
     pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
+    /// A breeze's animation states, made when its pose first changes or it first ticks.
+    pub(crate) breeze: Option<Box<crate::breeze::BreezeState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2207,6 +2209,32 @@ impl ClientEntity {
                 .get_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
+        if self.is_breeze() {
+            let tick_count = self.tick_count;
+            self.breeze
+                .get_or_insert_with(Default::default)
+                .set_pose(pose, tick_count);
+        }
+    }
+
+    pub(crate) fn is_breeze(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:breeze")
+    }
+
+    /// A breeze's animation states, if it has any.
+    pub fn breeze(&self) -> Option<&crate::breeze::BreezeState> {
+        self.breeze.as_deref()
+    }
+
+    /// `Breeze.tick`'s client half, before the rest of the tick.
+    pub(crate) fn tick_breeze(&mut self) {
+        if !self.is_breeze() {
+            return;
+        }
+        let (pose, tick_count) = (self.pose, self.tick_count);
+        self.breeze
+            .get_or_insert_with(Default::default)
+            .tick(pose, tick_count);
     }
 
     /// `Frog.tick`'s client half, which runs before the rest of the tick and
@@ -2357,6 +2385,7 @@ impl ClientEntity {
     /// turn, and a mob's motion fades; then what a species does of its own there.
     pub(crate) fn tick_ai_step(&mut self, living: Option<LivingKind>, in_water: Option<bool>) {
         self.tick_frog();
+        self.tick_breeze();
         if let Some(in_water) = in_water {
             self.living.in_water = in_water;
         }

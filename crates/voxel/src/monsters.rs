@@ -7,9 +7,10 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    AllayRenderState, BatRenderState, EndermanState, MobModel, MobPlacement, ParrotPose,
-    ParrotRenderState, QuadrupedState, VexRenderState, creeper_scale, creeper_white_overlay,
-    mob_vertices, mob_vertices_glow, mob_vertices_swirl, placement_pose,
+    AllayRenderState, BatRenderState, BreezeRenderState, EndermanState, MobModel, MobPlacement,
+    ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState, creeper_scale,
+    creeper_white_overlay, mob_vertices, mob_vertices_emissive, mob_vertices_glow,
+    mob_vertices_scrolled, mob_vertices_swirl, placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
@@ -45,6 +46,8 @@ enum Pose {
     Allay,
     /// `ParrotModel`, in the texture of its variant.
     Parrot,
+    /// `BreezeModel`, with its wind and its eyes drawn over it.
+    Breeze,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -57,7 +60,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 13] = [
+const MONSTERS: [Monster; 14] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -149,7 +152,19 @@ const MONSTERS: [Monster; 13] = [
         pose: Pose::Parrot,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:breeze",
+        layer: "minecraft:breeze#main",
+        texture: "entity/breeze/breeze",
+        pose: Pose::Breeze,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
+
+/// The wind and the eyes of a breeze (`BreezeWindLayer`, `BreezeEyesLayer`): their
+/// model layers and textures.
+const BREEZE_WIND: (&str, &str) = ("minecraft:breeze#wind", "entity/breeze/breeze_wind");
+const BREEZE_EYES: (&str, &str) = ("minecraft:breeze#eyes", "entity/breeze/breeze_eyes");
 
 /// The texture a vex charges in (`VexRenderer.getTextureLocation`).
 const VEX_CHARGING_TEXTURE: &str = "entity/illager/vex_charging";
@@ -170,6 +185,47 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .flatten()
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
         .chain(voxel_world::parrot::VARIANT_TEXTURES)
+        .chain([BREEZE_WIND.1, BREEZE_EYES.1])
+}
+
+/// `BreezeRenderer.extractRenderState`: the animation states the breeze runs.
+fn breeze_state(entity: &ClientEntity, partial: f32) -> BreezeRenderState {
+    let own = entity.breeze().copied().unwrap_or_default();
+    BreezeRenderState {
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        idle: own.idle,
+        shoot: own.shoot,
+        slide: own.slide,
+        slide_back: own.slide_back,
+        inhale: own.inhale,
+        long_jump: own.long_jump,
+    }
+}
+
+/// A breeze's wind and eyes over its body: the wind scrolled along its texture
+/// and lit by the world, the eyes lit by faces only; both posed as the body is.
+fn breeze_layers(
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (entity, partial): (&ClientEntity, f32),
+    placed: &MobPlacement,
+) -> Vec<Vertex> {
+    let state = breeze_state(entity, partial);
+    let mut vertices = Vec::new();
+    // `BreezeWindLayer.xOffset`: a fiftieth of the age, within one texture.
+    let scroll = (state.age_in_ticks * 0.02) % 1.0;
+    for (layer, texture) in [BREEZE_WIND, BREEZE_EYES] {
+        let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
+            continue;
+        };
+        model.setup_breeze(&state);
+        vertices.extend(if layer == BREEZE_WIND.0 {
+            mob_vertices_scrolled(model, placed, rect, scroll)
+        } else {
+            mob_vertices_emissive(model, placed, rect)
+        });
+    }
+    vertices
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -239,6 +295,7 @@ fn pose_monster(
             // `VexRenderer.getBlockLightLevel`.
             placed.light = (placed.light & !0xFFFF) | (15 << 4);
         }
+        Pose::Breeze => model.setup_breeze(&breeze_state(entity, partial)),
         Pose::Parrot => {
             let own = entity.parrot().copied();
             // `ParrotModel.getPose`: sitting, else flying in the air (the party
@@ -365,6 +422,9 @@ pub fn remote_monsters(
             .and_then(|eyes| textures.rect(eyes))
         {
             glow.extend(mob_vertices_glow(model, &placed, eyes));
+        }
+        if monster.pose == Pose::Breeze {
+            vertices.extend(breeze_layers(models, textures, (entity, partial), &placed));
         }
         // A charged creeper's swirl: the armor model, posed as the creeper is.
         if monster.pose == Pose::Creeper

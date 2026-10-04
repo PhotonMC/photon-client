@@ -1177,6 +1177,20 @@ public final class MovementOracle {
                                     animation.isStarted() ? animation.getTimeInMillis((float) bat.tickCount) : 0L);
                             }
                         }
+                        case "breeze" -> {
+                            var breeze = (net.minecraft.world.entity.monster.breeze.Breeze) entity;
+                            var states = new Object[][] {
+                                {"idle", breeze.idle}, {"shoot", breeze.shoot}, {"slide", breeze.slide},
+                                {"slide_back", breeze.slideBack}, {"inhale", breeze.inhale},
+                                {"long_jump", breeze.longJump},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
+                            }
+                        }
                         case "parrot" -> {
                             var parrot = (net.minecraft.world.entity.animal.parrot.Parrot) entity;
                             described.addProperty("variant", parrot.getVariant().getId());

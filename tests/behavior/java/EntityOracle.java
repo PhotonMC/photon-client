@@ -1700,6 +1700,21 @@ public final class EntityOracle {
                 var blaze = new net.minecraft.client.model.monster.blaze.BlazeModel(root);
                 blaze.setupAnim(state);
                 model = blaze;
+            } else if (id.contains("breeze")) {
+                var state = new net.minecraft.client.renderer.entity.state.BreezeRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                var animations = new Object[][] {
+                    {"idle", state.idle}, {"shoot", state.shoot}, {"slide", state.slide},
+                    {"slide_back", state.slideBack}, {"inhale", state.inhale}, {"long_jump", state.longJump},
+                };
+                for (var animation : animations) {
+                    if (row.has((String) animation[0])) {
+                        ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                    }
+                }
+                var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
+                breeze.setupAnim(state);
+                model = breeze;
             } else if (id.contains("parrot")) {
                 var state = new net.minecraft.client.renderer.entity.state.ParrotRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

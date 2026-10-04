@@ -203,6 +203,19 @@ pub struct FrogRenderState {
     pub swim_idle: voxel_world::animation_state::AnimationState,
 }
 
+/// What a breeze's models (the body, the wind and the eyes) are posed from
+/// (`BreezeRenderState`): the animation states its pose and its ticks run.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BreezeRenderState {
+    pub age_in_ticks: f32,
+    pub idle: voxel_world::animation_state::AnimationState,
+    pub shoot: voxel_world::animation_state::AnimationState,
+    pub slide: voxel_world::animation_state::AnimationState,
+    pub slide_back: voxel_world::animation_state::AnimationState,
+    pub inhale: voxel_world::animation_state::AnimationState,
+    pub long_jump: voxel_world::animation_state::AnimationState,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -1764,6 +1777,23 @@ impl MobModel {
                     part.y += y;
                 });
             }
+        }
+    }
+
+    /// `BreezeModel.setupAnim`: the six animations, each if its state has
+    /// started (the body's, the wind's and the eyes' layers share the parts'
+    /// names, so the same call poses all three).
+    pub fn setup_breeze(&mut self, state: &BreezeRenderState) {
+        self.root.reset();
+        for (name, running) in [
+            ("Breeze.IDLE", state.idle),
+            ("Breeze.SHOOT", state.shoot),
+            ("Breeze.SLIDE", state.slide),
+            ("Breeze.SLIDE_BACK", state.slide_back),
+            ("Breeze.INHALE", state.inhale),
+            ("Breeze.JUMP", state.long_jump),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
         }
     }
 
@@ -4043,6 +4073,97 @@ pub fn mob_vertices_swirl(
     vertices
 }
 
+/// A glowing layer drawn lit by faces but not by the world (`EMISSIVE` with
+/// per-face lighting, `RenderTypes.entityTranslucentEmissive`): the same posed
+/// model, no overlay, its light the full bright the entity shader reads as
+/// negative.
+pub fn mob_vertices_emissive(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+) -> Vec<Vertex> {
+    let pose = placement_pose(placement);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: uv(texture, corner.uv),
+                shade: 0.0,
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
+                light: [-1.0; 2],
+            });
+        }
+    }
+    vertices
+}
+
+/// A layer whose texture scrolls along `u` and repeats (`RenderPipelines.BREEZE_WIND`):
+/// lit by the world but not by faces, no overlay. The packed image does not
+/// repeat, so each quad the scroll carries across the texture's edge is cut
+/// there, and the part beyond is drawn from the start of the texture.
+pub fn mob_vertices_scrolled(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+    u_offset: f32,
+) -> Vec<Vertex> {
+    let pose = placement_pose(placement);
+    let light = crate::block_light::light_uv(placement.light);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(&pose) {
+        let scrolled: Vec<([f32; 3], [f32; 2])> = corners
+            .iter()
+            .map(|corner| (corner.position, [corner.uv[0] + u_offset, corner.uv[1]]))
+            .collect();
+        for (polygon, shift) in [
+            (clip_u(&scrolled, true), 0.0),
+            (clip_u(&scrolled, false), 1.0),
+        ] {
+            // A fan of triangles from the first corner.
+            for index in 1..polygon.len().saturating_sub(1) {
+                for (position, coordinate) in [polygon[0], polygon[index], polygon[index + 1]] {
+                    vertices.push(Vertex {
+                        position,
+                        uv: uv(texture, [coordinate[0] - shift, coordinate[1]]),
+                        shade: 0.0,
+                        tint: [0.0; 4],
+                        light,
+                    });
+                }
+            }
+        }
+    }
+    vertices
+}
+
+/// The part of a convex polygon on one side of `u = 1` (the lower side, or the
+/// upper), cut where its edges cross it.
+fn clip_u(polygon: &[([f32; 3], [f32; 2])], below: bool) -> Vec<([f32; 3], [f32; 2])> {
+    let inside = |u: f32| if below { u <= 1.0 } else { u >= 1.0 };
+    let mut out = Vec::new();
+    for (index, &(position, coordinate)) in polygon.iter().enumerate() {
+        let (next_position, next_coordinate) = polygon[(index + 1) % polygon.len()];
+        if inside(coordinate[0]) {
+            out.push((position, coordinate));
+        }
+        if inside(coordinate[0]) != inside(next_coordinate[0]) {
+            let t = (1.0 - coordinate[0]) / (next_coordinate[0] - coordinate[0]);
+            out.push((
+                std::array::from_fn(|axis| {
+                    position[axis] + (next_position[axis] - position[axis]) * t
+                }),
+                [
+                    1.0,
+                    coordinate[1] + (next_coordinate[1] - coordinate[1]) * t,
+                ],
+            ));
+        }
+    }
+    out
+}
+
 /// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a
 /// sheep's wool.
 pub fn mob_vertices_coloured(
@@ -4074,6 +4195,30 @@ pub fn mob_vertices_coloured(
 mod tests {
     use super::*;
     use voxel_data::entity_model::layer;
+
+    #[test]
+    fn a_quad_the_scroll_carries_over_the_edge_is_cut_there_and_keeps_its_area() {
+        let breeze = MobModel::bake(layer("minecraft:breeze#wind").expect("the wind's layer"));
+        let placement = MobPlacement::default();
+        let area = |vertices: &[Vertex]| -> f32 {
+            vertices
+                .chunks_exact(3)
+                .map(|triangle| {
+                    let [a, b, c] = [triangle[0].uv, triangle[1].uv, triangle[2].uv];
+                    ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])).abs() / 2.0
+                })
+                .sum()
+        };
+        let rect = [0.0, 0.0, 1.0, 1.0];
+        let still = mob_vertices_scrolled(&breeze, &placement, rect, 0.0);
+        let scrolled = mob_vertices_scrolled(&breeze, &placement, rect, 0.37);
+        // Every texel stays inside the texture, and the picture keeps its size.
+        for vertex in &scrolled {
+            assert!((0.0..=1.0).contains(&vertex.uv[0]), "{:?}", vertex.uv);
+        }
+        assert!((area(&still) - area(&scrolled)).abs() < 1e-3);
+        assert!(scrolled.len() > still.len());
+    }
 
     fn pig() -> MobModel {
         MobModel::bake(layer("minecraft:pig#main").expect("the pig's layer"))

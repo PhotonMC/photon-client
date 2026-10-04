@@ -18670,11 +18670,14 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     }
                     "frog_data" => {
                         // `Pose` ids: standing is zero, long jumping six, croaking eight, using
-                        // the tongue nine.
+                        // the tongue nine, sliding fifteen, shooting sixteen, inhaling seventeen.
                         let id = match event["pose"].as_str().ok_or("pose")? {
                             "LONG_JUMPING" => 6,
                             "CROAKING" => 8,
                             "USING_TONGUE" => 9,
+                            "SLIDING" => 15,
+                            "SHOOTING" => 16,
+                            "INHALING" => 17,
                             _ => 0,
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
@@ -18944,6 +18947,26 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         let state = entity.bat().copied().unwrap_or_default();
                         let age = entity.tick_count() as f32;
                         for (name, animation) in [("fly", state.fly), ("rest", state.rest)] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                    }
+                    "breeze" => {
+                        let state = entity.breeze().copied().unwrap_or_default();
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("idle", state.idle),
+                            ("shoot", state.shoot),
+                            ("slide", state.slide),
+                            ("slide_back", state.slide_back),
+                            ("inhale", state.inhale),
+                            ("long_jump", state.long_jump),
+                        ] {
                             described[format!("{name}_started")] = json!(animation.is_started());
                             described[format!("{name}_millis")] =
                                 json!(if animation.is_started() {
@@ -20437,6 +20460,24 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
         let mut model = MobModel::bake(layer);
         if id.contains("blaze") {
             model.setup_blaze(bits("age_in_ticks")?, bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("breeze") {
+            use voxel_render::mob_model::BreezeRenderState;
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_breeze(&BreezeRenderState {
+                age_in_ticks: bits("age_in_ticks")?,
+                idle: started("idle"),
+                shoot: started("shoot"),
+                slide: started("slide"),
+                slide_back: started("slide_back"),
+                inhale: started("inhale"),
+                long_jump: started("long_jump"),
+            });
         } else if id.contains("parrot") {
             use voxel_render::mob_model::{ParrotPose, ParrotRenderState};
             let pose = match row["pose"].as_str().ok_or("pose")? {

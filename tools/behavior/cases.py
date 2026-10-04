@@ -14513,6 +14513,31 @@ def movement_item_cases():
                extras=["parrot"]),
         living("parrot-variant", "parrot", 10,
                [{"tick": 2, "type": "flier_data", "parrot_variant": 3}], extras=["parrot"]),
+        # A breeze runs its idle animation from its first tick; its pose starts the shooting,
+        # inhaling and sliding ones (stopping the idle, inhaling, jumping and shooting ones), a
+        # long jump runs on its own tick, and ending a slide starts the slide back.
+        living("breeze-idles", "breeze", 30, [], extras=["breeze"]),
+        living("breeze-shoots", "breeze", 40,
+               [{"tick": 5, "type": "frog_data", "pose": "SHOOTING"},
+                {"tick": 20, "type": "frog_data", "pose": "STANDING"}], extras=["breeze"]),
+        living("breeze-inhales", "breeze", 40,
+               [{"tick": 5, "type": "frog_data", "pose": "INHALING"},
+                {"tick": 15, "type": "frog_data", "pose": "SHOOTING"}], extras=["breeze"]),
+        living("breeze-slides", "breeze", 40,
+               [{"tick": 5, "type": "frog_data", "pose": "SLIDING"}], extras=["breeze"]),
+        living("breeze-slides-and-stops", "breeze", 50,
+               [{"tick": 5, "type": "frog_data", "pose": "SLIDING"},
+                {"tick": 20, "type": "frog_data", "pose": "STANDING"}], extras=["breeze"]),
+        living("breeze-slides-again", "breeze", 60,
+               [{"tick": 5, "type": "frog_data", "pose": "SLIDING"},
+                {"tick": 20, "type": "frog_data", "pose": "STANDING"},
+                {"tick": 30, "type": "frog_data", "pose": "SLIDING"}], extras=["breeze"]),
+        living("breeze-jumps", "breeze", 40,
+               [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"},
+                {"tick": 18, "type": "frog_data", "pose": "STANDING"}], extras=["breeze"]),
+        living("breeze-shoots-again", "breeze", 40,
+               [{"tick": 5, "type": "frog_data", "pose": "SHOOTING"},
+                {"tick": 12, "type": "frog_data", "pose": "SHOOTING"}], extras=["breeze"]),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -14907,6 +14932,7 @@ def entity_cases():
     yield from entity_airborne_cases()
     yield from entity_flier_cases()
     yield from entity_parrot_cases()
+    yield from entity_breeze_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15995,6 +16021,28 @@ def entity_parrot_cases():
            "rows": rows}
     yield {"case_id": "entity/parrot-textures", "family": "entity", "operation": "parrot_textures",
            "rows": [{"label": f"variant-{variant}", "id": variant} for variant in (-3, 0, 1, 2, 3, 4, 5, 9)]}
+
+
+def entity_breeze_cases():
+    """The breeze's three models (the body with its rods and head, the wind, the eyes) posed by the
+    reference's own `BreezeModel.setupAnim`: each of the six animations alone (the looping idle,
+    the others running out), early and late, and some together."""
+    def breeze(layer, label, age=37.5, **started):
+        row = {"label": f"breeze-{layer}-{label}", "layer": f"minecraft:breeze#{layer}",
+               "age_in_ticks": float_bits(age)}
+        row.update(started)
+        return row
+    rows = []
+    for layer in ("main", "wind", "eyes"):
+        rows += [breeze(layer, "nothing"), breeze(layer, "idle", idle=3),
+                 breeze(layer, "idle-later", age=111.0, idle=3),
+                 breeze(layer, "shoot", age=45.0, shoot=30), breeze(layer, "shoot-over", age=120.0, shoot=30),
+                 breeze(layer, "slide", age=50.0, slide=40), breeze(layer, "slide-back", age=62.0, slide_back=55),
+                 breeze(layer, "inhale", age=41.0, inhale=33), breeze(layer, "jump", age=60.0, long_jump=50),
+                 breeze(layer, "idle-shooting", age=45.0, idle=3, shoot=30),
+                 breeze(layer, "sliding-then-back", age=70.0, slide=40, slide_back=65, idle=3)]
+    yield {"case_id": "entity/breeze-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
 
 
 def entity_copper_golem_cases():

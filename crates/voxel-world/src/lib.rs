@@ -29,6 +29,7 @@ mod block_entity;
 pub mod block_rules;
 pub mod block_state;
 mod border;
+pub mod breeze;
 pub mod cat;
 mod chunk;
 mod collision;
@@ -3137,6 +3138,7 @@ impl ClientWorld {
                 frog: None,
                 guardian: None,
                 bat: None,
+                breeze: None,
                 parrot: None,
                 allay: None,
                 panda: None,
