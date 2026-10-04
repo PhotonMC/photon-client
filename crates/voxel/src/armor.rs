@@ -87,8 +87,14 @@ pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vert
 const HUMANOID: &str = "humanoid";
 const LEGGINGS: &str = "humanoid_leggings";
 const BABY: &str = "humanoid_baby";
-/// The layer types mobs wear one piece in (`SimpleEquipmentLayer`): the saddles.
-const SIMPLE: [&str; 1] = ["strider_saddle"];
+/// The layer types mobs wear one piece in (`SimpleEquipmentLayer`): the saddles, the
+/// happy ghast's harness and the nautilus's armor.
+const SIMPLE: [&str; 4] = [
+    "strider_saddle",
+    "happy_ghast_body",
+    "nautilus_body",
+    "nautilus_saddle",
+];
 
 impl Armor {
     /// Every `equipment/<name>.json` under the asset root.

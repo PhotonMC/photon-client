@@ -14933,6 +14933,7 @@ def entity_cases():
     yield from entity_flier_cases()
     yield from entity_parrot_cases()
     yield from entity_breeze_cases()
+    yield from entity_happy_ghast_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15854,6 +15855,10 @@ def entity_nautilus_cases():
                  nautilus(layer, "looks-past-the-limit", y_rot=-48.0, x_rot=35.0),
                  nautilus(layer, "swims", walk_position=4.5, walk_speed=0.3),
                  nautilus(layer, "swims-fast", age=12.0, walk_position=9.0, walk_speed=1.0)]
+    for layer in ("minecraft:nautilus#saddle", "minecraft:nautilus_armor#main"):
+        rows += [nautilus(layer, "still"),
+                 nautilus(layer, "looks-and-swims", y_rot=-7.0, x_rot=12.0, walk_position=3.0,
+                          walk_speed=0.5, age=91.25)]
     for layer in ("minecraft:zombie_nautilus#main", "minecraft:zombie_nautilus_coral#main"):
         rows += [nautilus(layer, "still"),
                  nautilus(layer, "looks-and-swims", y_rot=-7.0, x_rot=12.0, walk_position=3.0,
@@ -16042,6 +16047,26 @@ def entity_breeze_cases():
                  breeze(layer, "idle-shooting", age=45.0, idle=3, shoot=30),
                  breeze(layer, "sliding-then-back", age=70.0, slide=40, slide_back=65, idle=3)]
     yield {"case_id": "entity/breeze-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_happy_ghast_cases():
+    """The happy ghast posed by the reference's own `HappyGhastModel.setupAnim` (tentacles swaying out
+    of step; the body squeezed while it wears something), grown and baby, and the harness's goggles on
+    the brow or, ridden, over the eyes."""
+    rows = []
+    for layer in ("happy_ghast", "happy_ghast_baby"):
+        for age in (0.0, 1.5, 37.25, 211.75):
+            rows.append({"label": f"{layer}-{age}", "layer": f"minecraft:{layer}#main",
+                         "age_in_ticks": float_bits(age), "body_item": False, "ridden": False})
+        rows.append({"label": f"{layer}-harnessed", "layer": f"minecraft:{layer}#main",
+                     "age_in_ticks": float_bits(37.25), "body_item": True, "ridden": False})
+    for layer in ("happy_ghast_harness", "happy_ghast_baby_harness"):
+        for ridden in (False, True):
+            rows.append({"label": f"{layer}-{'ridden' if ridden else 'idle'}",
+                         "layer": f"minecraft:{layer}#main", "age_in_ticks": float_bits(0.0),
+                         "body_item": True, "ridden": ridden})
+    yield {"case_id": "entity/happy-ghast-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

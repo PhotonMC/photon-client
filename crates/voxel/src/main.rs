@@ -17,6 +17,7 @@ mod frogs;
 mod golems;
 mod guardians;
 mod gui;
+mod happy_ghasts;
 mod held_items;
 mod hoglins;
 mod hud_input;

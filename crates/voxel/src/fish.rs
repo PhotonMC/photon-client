@@ -16,6 +16,7 @@ use voxel_world::fish::{
     tropical_pattern_dye,
 };
 
+use crate::armor::Armor;
 use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -39,7 +40,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 /// The animals of the water the server added: squids, fish, dolphins, turtles, axolotls, frogs, tadpoles, guardians and nautiluses.
 pub fn remote_water_animals(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
@@ -62,7 +63,10 @@ pub fn remote_water_animals(
         session, models, textures, view,
     ));
     vertices.extend(crate::nautilus::remote_nautiluses(
-        session, models, textures, view,
+        session,
+        (models, armor),
+        textures,
+        view,
     ));
     vertices
 }

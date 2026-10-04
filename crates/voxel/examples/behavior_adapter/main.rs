@@ -20460,6 +20460,12 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
         let mut model = MobModel::bake(layer);
         if id.contains("blaze") {
             model.setup_blaze(bits("age_in_ticks")?, bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("happy_ghast") {
+            if id.contains("harness") {
+                model.setup_happy_ghast_harness(flag("ridden")?);
+            } else {
+                model.setup_happy_ghast(bits("age_in_ticks")?, flag("body_item")?);
+            }
         } else if id.contains("breeze") {
             use voxel_render::mob_model::BreezeRenderState;
             let started = |key: &str| {

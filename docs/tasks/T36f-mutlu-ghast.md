@@ -1,6 +1,6 @@
 # T36f — Mutlu ghast
 
-**Amaç:** `HappyGhastModel` (+ `HappyGhastHarnessModel` koşum katmanı, ip katmanı), `HappyGhastRenderer` ve ilgili istemci durumları (bebek ve yetişkin, koşum eşyası, `isRidden`, dokunaç salınımı).
+**Amaç:** `HappyGhastModel` (+ `HappyGhastHarnessModel` koşum katmanı), `HappyGhastRenderer` ve ilgili istemci durumları (bebek ve yetişkin, koşum eşyası, `isRidden`, dokunaç salınımı). Bu oturumda nautilusun eyer ve zırh katmanları da (T35e açığı) aynı altyapıyla kapandı. İp katmanı (bağlı mob durumu yok) açık.
 **Bağımlılık:** T36, T41. **Boy:** M.
 
 ## Oku
@@ -17,4 +17,5 @@
 Sesler, parçacıklar, davranışlar, binme denetimi.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_happy_ghast` ve `setup_happy_ghast_harness`, `crates/voxel/src/happy_ghasts.rs` (koşum `simple_layer` ile), nautilusun eyer ve zırh katmanları (`armor` `remote_water_animals` ve `remote_nautiluses`'a taşındı; `SIMPLE` katman türleri `happy_ghast_body`, `nautilus_body`, `nautilus_saddle`). Kayıt: `docs/client-happy-ghast-parity-conformance.md`.
+- Sapma: ip katmanı yok (bağlı mob bilgisi `SetEntityLink` istemcide tutulmuyor); koşum ve eyer dokuları oracle'sız. Canlı gözlem yapılmadı.

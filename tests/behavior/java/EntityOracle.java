@@ -1700,6 +1700,22 @@ public final class EntityOracle {
                 var blaze = new net.minecraft.client.model.monster.blaze.BlazeModel(root);
                 blaze.setupAnim(state);
                 model = blaze;
+            } else if (id.contains("happy_ghast")) {
+                var state = new net.minecraft.client.renderer.entity.state.HappyGhastRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.isRidden = row.get("ridden").getAsBoolean();
+                if (row.get("body_item").getAsBoolean()) {
+                    state.bodyItem = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.HARNESS.white());
+                }
+                if (id.contains("harness")) {
+                    var harness = new net.minecraft.client.model.animal.ghast.HappyGhastHarnessModel(root);
+                    harness.setupAnim(state);
+                    model = harness;
+                } else {
+                    var happy = new net.minecraft.client.model.animal.ghast.HappyGhastModel(root);
+                    happy.setupAnim(state);
+                    model = happy;
+                }
             } else if (id.contains("breeze")) {
                 var state = new net.minecraft.client.renderer.entity.state.BreezeRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");
@@ -1984,7 +2000,11 @@ public final class EntityOracle {
             }
             net.minecraft.client.model.animal.nautilus.NautilusModel model = id.contains("coral")
                 ? new net.minecraft.client.model.monster.nautilus.ZombieNautilusCoralModel(root)
-                : new net.minecraft.client.model.animal.nautilus.NautilusModel(root);
+                : id.contains("saddle")
+                    ? new net.minecraft.client.model.animal.nautilus.NautilusSaddleModel(root)
+                    : id.contains("_armor")
+                        ? new net.minecraft.client.model.animal.nautilus.NautilusArmorModel(root)
+                        : new net.minecraft.client.model.animal.nautilus.NautilusModel(root);
             model.setupAnim(state);
             rows.add(posedQuads(row.get("label").getAsString(), model));
         }

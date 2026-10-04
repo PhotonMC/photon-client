@@ -5,10 +5,11 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{NautilusState, QuadrupedState, mob_vertices};
+use voxel_render::mob_model::{NautilusState, QuadrupedState, mob_vertices, mob_vertices_coloured};
 use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
 
+use crate::armor::Armor;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -33,7 +34,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 /// `NautilusRenderer` and `ZombieNautilusRenderer` for the ones the server added.
 pub fn remote_nautiluses(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     view: FrameView,
 ) -> Vec<Vertex> {
@@ -80,7 +81,7 @@ pub fn remote_nautiluses(
         ) else {
             continue;
         };
-        model.setup_nautilus(&NautilusState {
+        let state = NautilusState {
             quadruped: QuadrupedState {
                 head_y_rot: voxel_core::math::wrap_degrees_f32(
                     snapshot.head_yaw - snapshot.body_yaw,
@@ -91,9 +92,40 @@ pub fn remote_nautiluses(
             },
             age_in_ticks: entity.tick_count() as f32 + partial,
             has_body_armor: entity.equipment(EquipmentSlot::Body).is_some(),
-        });
+        };
+        model.setup_nautilus(&state);
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
+        // A grown nautilus's saddle and armor (`SimpleEquipmentLayer`; a baby has
+        // neither), each on a model of its own, posed as the nautilus is.
+        if entity.is_baby() {
+            continue;
+        }
+        for (slot, stack, layer_type, model) in [
+            (
+                "saddle",
+                entity.equipment(EquipmentSlot::Saddle),
+                "nautilus_saddle",
+                "minecraft:nautilus#saddle",
+            ),
+            (
+                "body",
+                entity.equipment(EquipmentSlot::Body),
+                "nautilus_body",
+                "minecraft:nautilus_armor#main",
+            ),
+        ] {
+            let Some(stack) = stack else {
+                continue;
+            };
+            vertices.extend(armor.simple_layer(
+                stack,
+                (slot, layer_type, model),
+                textures,
+                &|model| model.setup_nautilus(&state),
+                &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
+            ));
+        }
     }
     vertices
 }

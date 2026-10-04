@@ -2043,6 +2043,41 @@ impl MobModel {
         }
     }
 
+    /// `HappyGhastModel.setupAnim`: a body that wears something is squeezed to
+    /// fifteen sixteenths, and the nine tentacles (children of the body) sway
+    /// as a ghast's.
+    pub fn setup_happy_ghast(&mut self, age_in_ticks: f32, wears_body_item: bool) {
+        self.root.reset();
+        let Some(body) = self.root.child_mut("body") else {
+            return;
+        };
+        if wears_body_item {
+            body.scale = [0.9375; 3];
+        }
+        for i in 0..9 {
+            if let Some(tentacle) = body.child_mut(&format!("tentacle{i}")) {
+                tentacle.x_rot = 0.2 * mth_sin_f64(f64::from(age_in_ticks * 0.3 + i as f32)) + 0.4;
+            }
+        }
+    }
+
+    /// `HappyGhastHarnessModel.setupAnim`: the goggles sit on the brow, and are
+    /// pulled down over the eyes while the ghast is ridden.
+    // The reference writes the tilt as the literal `-0.7854F`, not as a quarter turn.
+    #[allow(clippy::approx_constant)]
+    pub fn setup_happy_ghast_harness(&mut self, is_ridden: bool) {
+        self.root.reset();
+        if let Some(goggles) = self.root.child_mut("goggles") {
+            if is_ridden {
+                goggles.x_rot = 0.0;
+                goggles.y = 14.0;
+            } else {
+                goggles.x_rot = -0.7854;
+                goggles.y = 9.0;
+            }
+        }
+    }
+
     /// `GhastModel.setupAnim`: the nine tentacles sway out of step.
     pub fn setup_ghast(&mut self, age_in_ticks: f32) {
         self.root.reset();
