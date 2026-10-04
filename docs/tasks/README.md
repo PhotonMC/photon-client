@@ -107,7 +107,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T36e](T36e-breeze.md) | Breeze (model, rüzgâr ve göz katmanı, animasyon durumları) | M | T36 | bitti (57aafdac) |
 | [T36f](T36f-mutlu-ghast.md) | Mutlu ghast | M | T36, T41 | bitti (360dc83a) |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
-| [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti |
+| [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti (21875028) |
 | [T38b](T38b-minecart.md) | Minecart ailesi | M | T38 | açık |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | bölündü (bde91dfc) |
