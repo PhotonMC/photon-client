@@ -3,7 +3,7 @@
 //! animation (`WalkAnimationState`), the swimming pose easing in and out, and
 //! the body turning towards where the entity walks (`LivingEntity.tickHeadTurn`).
 
-use voxel_core::math::{mth_atan2, wrap_degrees_f32};
+use voxel_core::math::{clamp_f32, mth_atan2, mth_degrees_difference_f32, wrap_degrees_f32};
 
 /// `WalkAnimationState`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -106,6 +106,40 @@ pub(crate) fn rotate_if_necessary(base: f32, target: f32, max_difference: f32) -
         delta.min(max_difference)
     };
     target - clamped
+}
+
+/// `Control.rotateTowards`: from an angle towards another, at most `max` turned.
+fn rotate_towards(from_angle: f32, to_angle: f32, max: f32) -> f32 {
+    from_angle + clamp_f32(mth_degrees_difference_f32(from_angle, to_angle), -max, max)
+}
+
+/// `LookControl.setLookAt(x, y, z, y_max, x_max)` then `tick()` for a mob
+/// whose navigation is idle (the client never runs a path): the pitch resets,
+/// then head and pitch turn towards the point, each by at most its limit.
+/// `from` is the mob's feet in x and z and its eyes in y.
+pub(crate) fn look_at_tick(
+    (head, x_rot): (&mut f32, &mut f32),
+    from: (f64, f64, f64),
+    wanted: (f64, f64, f64),
+    (y_max_rot_speed, x_max_rot_angle): (f32, f32),
+) {
+    // `1.0E-5F` widened to the doubles it is compared with, and the float
+    // `180.0F / (float)Math.PI` the compiler folds into the angle's scale.
+    let epsilon = f64::from(1.0e-5_f32);
+    let degrees = f64::from(180.0_f32 / std::f32::consts::PI);
+    *x_rot = 0.0;
+    let xd = wanted.0 - from.0;
+    let yd = wanted.1 - from.1;
+    let zd = wanted.2 - from.2;
+    let sd = (xd * xd + zd * zd).sqrt();
+    if zd.abs() > epsilon || xd.abs() > epsilon {
+        let y_rot_d = (mth_atan2(zd, xd) * degrees) as f32 - 90.0;
+        *head = rotate_towards(*head, y_rot_d, y_max_rot_speed);
+    }
+    if yd.abs() > epsilon || sd.abs() > epsilon {
+        let x_rot_d = (-(mth_atan2(yd, sd) * degrees)) as f32;
+        *x_rot = rotate_towards(*x_rot, x_rot_d, x_max_rot_angle);
+    }
 }
 
 /// A mob's head and body, which `BodyRotationControl` keeps in step on the

@@ -17,4 +17,6 @@ Gerçek `Guardian` tiki için `living-entity-animations`; hedefin oracle sahnesi
 Sesler, parçacık çizimi, saldırı davranışı.
 
 ## Devir notu
-(boş)
+- Yapıldı: `living::look_at_tick` (`LookControl`), `GuardianState::tick` hedefe bakış, kabarcık çekilişleri, karada çırpınış, ortam sesi zarı; hedef dünyadan çözülür (`guardian_target_of`). Kayıt: `docs/client-guardian-look-parity-conformance.md`.
+- Bulgu: javac `180F / (float)Math.PI`'yi float katlıyor; dekompile kaynak yanıltıcı, `javap -c` ile okundu. Ortam sesi zarı (`baseTick`) gardiyanın kaynağını gizlice kaydırıyordu; ancak rastgele durum karşılaştırılınca göründü.
+- Sapma: yerel oyuncu hedefi yalnız birim testle; hasar, ölüm, adım sesi çekilişleri ve hasarda ortam süresi sıfırlanması yok (ses görevleri).

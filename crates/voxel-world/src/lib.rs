@@ -1763,6 +1763,28 @@ impl ClientWorld {
         Some(found.water.height > 0.0)
     }
 
+    /// `Guardian.getActiveAttackTarget` on the client: the living entity the
+    /// beam's id names, the local player among them.
+    fn guardian_target_of(&self, entity_id: i32) -> Option<guardian::GuardianTarget> {
+        let id = self.entities.get(&entity_id)?.guardian_attack_target()?;
+        if let Some(player) = self.local_player.as_ref().filter(|p| p.id() == id) {
+            let dimensions = player.player_dimensions();
+            return Some(guardian::GuardianTarget {
+                position: player.position(),
+                height: dimensions.height(),
+                eye_height: dimensions.eye_height(),
+            });
+        }
+        let target = self.entities.get(&id)?;
+        target.living_kind()?;
+        let dimensions = target.dimensions().scale(target.scale(), target.scale());
+        Some(guardian::GuardianTarget {
+            position: target.position(),
+            height: dimensions.height(),
+            eye_height: dimensions.eye_height(),
+        })
+    }
+
     fn species_surroundings(&self, entity_id: i32) -> (bool, bool) {
         let sleeper_near_cat = self
             .entities
@@ -1811,9 +1833,9 @@ impl ClientWorld {
             .entities
             .get(&entity_id)
             .is_some_and(|entity| self.should_tick_death(entity));
-        let game_time = self.game_time;
         let surroundings = self.species_surroundings(entity_id);
         let in_water = self.mob_in_water(entity_id);
+        let guardian_target = self.guardian_target_of(entity_id);
         let boat_under_water = self.boat_under_water_of(entity_id);
         {
             let entity = self
@@ -1824,12 +1846,12 @@ impl ClientWorld {
             entity.tick_count = entity.tick_count.wrapping_add(1);
             entity.tick_boat(boat_under_water);
             let living = entity.living_kind();
-            entity.tick_ai_step(living, in_water);
+            entity.tick_ai_step(living, in_water, guardian_target);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
             }
             if let Some(kind) = living {
-                entity.tick_living(kind, tick_death, game_time);
+                entity.tick_living(kind, tick_death, self.game_time);
             }
             entity.tick_species(surroundings);
             if boat_is_non_authoritative {

@@ -23,13 +23,11 @@ impl ClientEntity {
         voxel_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
     }
 
-    /// `Entity.getBoundingBox`: the size the type starts with (a baby's, for
-    /// the types that have babies, a player's by pose), around where the
-    /// entity is. Not carried: the scale attribute and the poses of the mobs
-    /// that change size with them, bar a fish's.
-    pub fn bounding_box(&self) -> Aabb {
-        let (x, y, z) = self.position();
-        let dimensions = match voxel_data::entity_type::pick(self.type_id) {
+    /// The size the type starts with (a baby's, for the types that have
+    /// babies, a player's by pose). Not carried: the scale attribute and the
+    /// poses of the mobs that change size with them, bar a fish's.
+    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+        match voxel_data::entity_type::pick(self.type_id) {
             Some(pick) if !self.is_player() => {
                 let (width, height, eye_height) = match pick.baby {
                     Some(baby) if self.baby => baby,
@@ -40,8 +38,14 @@ impl ClientEntity {
                     .scale(scale, scale)
             }
             _ => self.pose.player_dimensions(),
-        };
-        dimensions.make_bounding_box(Vec3::new(x, y, z))
+        }
+    }
+
+    /// `Entity.getBoundingBox`: the box of those dimensions around where the
+    /// entity is.
+    pub fn bounding_box(&self) -> Aabb {
+        let (x, y, z) = self.position();
+        self.dimensions().make_bounding_box(Vec3::new(x, y, z))
     }
 
     /// `Entity.getPickRadius`: what the aim inflates the box by.

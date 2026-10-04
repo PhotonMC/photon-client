@@ -14354,6 +14354,13 @@ def movement_item_cases():
                          for y in layers for x in range(4, 13) for z in range(4, 13)]
         return row
 
+    def beside(row, entity, x, y, z):
+        """The row with another entity, which stays where it is."""
+        row["second"] = {"entity": f"minecraft:{entity}", "entity_id": 41,
+                         "x": float_bits(x, "f64"), "y": float_bits(y, "f64"),
+                         "z": float_bits(z, "f64")}
+        return row
+
     guardian_random = lambda tail, seed: {"tick": 0, "type": "guardian_random",
                                           "tail": float_bits(tail), "seed": seed}
     fish_data = lambda tick, fish, value: {"tick": tick, "type": "fish_data", "fish": fish,
@@ -14596,6 +14603,41 @@ def movement_item_cases():
         fish("elder-guardian-glides", "elder_guardian", 30,
              [guardian_random(0.5, 3), {"tick": 5, "type": "guardian_data", "moving": True}],
              extras="guardian"),
+        # With a target the world holds (a pig here, which stays where it is) the beam aims: the
+        # head and pitch turn to it, at most 90 degrees a tick, the body's yaw follows the head,
+        # and the bubbles along the beam take their draws from the same source. A target right
+        # above leaves the head where it is; one behind meets the limit of a tick's turn.
+        beside(fish("guardian-looks-at-its-target", "guardian", 70,
+                    [guardian_random(0.37, 11), {"tick": 3, "type": "guardian_data", "target": 41}],
+                    extras="guardian"), "pig", 11.5, 64.0, 5.5),
+        beside(fish("guardian-looks-at-its-target-while-moving", "guardian", 50,
+                    [guardian_random(0.37, 11), {"tick": 2, "type": "guardian_data", "moving": True},
+                     {"tick": 3, "type": "guardian_data", "target": 41}], extras="guardian"),
+               "pig", 5.5, 63.0, 11.5),
+        beside(fish("guardian-looks-up-at-its-target", "guardian", 40,
+                    [guardian_random(0.37, 11), {"tick": 3, "type": "guardian_data", "target": 41}],
+                    extras="guardian"), "cow", 8.5, 66.0, 8.5),
+        beside(fish("guardian-turns-away-to-its-target", "guardian", 40,
+                    [guardian_random(0.37, 11), {"tick": 3, "type": "guardian_data", "target": 41}],
+                    extras="guardian"), "pig", 8.5, 64.0, 4.5),
+        beside(fish("elder-guardian-looks-at-its-target", "elder_guardian", 80,
+                    [guardian_random(0.37, 11), {"tick": 3, "type": "guardian_data", "target": 41}],
+                    extras="guardian"), "pig", 5.5, 64.0, 5.5),
+        beside(fish("guardian-keeps-aiming-when-sent-again", "guardian", 60,
+                    [guardian_random(0.37, 11), {"tick": 3, "type": "guardian_data", "target": 41},
+                     {"tick": 25, "type": "guardian_data", "target": 41},
+                     {"tick": 40, "type": "guardian_data", "target": 0}], extras="guardian"),
+               "pig", 11.5, 64.0, 5.5),
+        # Out of water a guardian that rests on the ground flops: a push, a turn and a leap, drawn
+        # in that order; with a target its yaw is then the head's.
+        fish("guardian-flops-on-land", "guardian", 30,
+             [guardian_random(0.82, 23), {"tick": 3, "type": "move", "xa": 0, "ya": 0, "za": 0},
+              {"tick": 12, "type": "move", "xa": 0, "ya": 0, "za": 0}],
+             water="none", extras="guardian"),
+        beside(fish("guardian-flops-on-land-aiming", "guardian", 30,
+                    [guardian_random(0.82, 23), {"tick": 2, "type": "guardian_data", "target": 41},
+                     {"tick": 5, "type": "move", "xa": 0, "ya": 0, "za": 0}],
+                    water="none", extras="guardian"), "pig", 11.5, 64.0, 5.5),
         fish("tadpole-in-water", "tadpole", 10, [], extras="frog"),
         fish("tadpole-out-of-water", "tadpole", 10, [], water="none", extras="frog"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),

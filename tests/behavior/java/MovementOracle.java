@@ -615,6 +615,24 @@ public final class MovementOracle {
         }
         entity.syncPacketPositionCodec(entity.getX(), entity.getY(), entity.getZ());
         level.addEntity(entity);
+        // Another entity that stays where it is: what a guardian's beam aims at.
+        if (row.has("second")) {
+            var second = row.getAsJsonObject("second");
+            var secondType = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(second.get("entity").getAsString()));
+            var other = secondType.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+            other.setId(second.get("entity_id").getAsInt());
+            other.snapTo(Oracle.f64(second, "x"), Oracle.f64(second, "y"), Oracle.f64(second, "z"), 0.0F, 0.0F);
+            if (other instanceof net.minecraft.world.entity.LivingEntity otherLiving) {
+                otherLiving.yBodyRot = 0.0F;
+                otherLiving.yHeadRot = 0.0F;
+                otherLiving.yBodyRotO = 0.0F;
+                otherLiving.yHeadRotO = 0.0F;
+            }
+            other.syncPacketPositionCodec(other.getX(), other.getY(), other.getZ());
+            level.addEntity(other);
+        }
         var ticks = new JsonArray();
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
             for (var element : row.getAsJsonArray("events")) {
@@ -1262,6 +1280,25 @@ public final class MovementOracle {
                                 described.addProperty("spikes_" + partial, Oracle.bits(guardian.getSpikesAnimation(partial)));
                             }
                             described.addProperty("attack_time", Oracle.bits(guardian.getClientSideAttackTime()));
+                            // The turn of the head and body, the flop and the draws the tick took.
+                            described.addProperty("y_rot", Oracle.bits(guardian.getYRot()));
+                            described.addProperty("x_rot", Oracle.bits(guardian.getXRot()));
+                            described.addProperty("head_y", Oracle.bits(guardian.getYHeadRot()));
+                            described.addProperty("body_y", Oracle.bits(guardian.yBodyRot));
+                            described.addProperty("on_ground", guardian.onGround());
+                            described.addProperty("pos_x", Oracle.bits(guardian.getX()));
+                            described.addProperty("pos_y", Oracle.bits(guardian.getY()));
+                            described.addProperty("pos_z", Oracle.bits(guardian.getZ()));
+                            described.addProperty("motion_x", Oracle.bits(guardian.getDeltaMovement().x));
+                            described.addProperty("motion_y", Oracle.bits(guardian.getDeltaMovement().y));
+                            described.addProperty("motion_z", Oracle.bits(guardian.getDeltaMovement().z));
+                            var randomField = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
+                            randomField.setAccessible(true);
+                            var source = randomField.get(guardian);
+                            var seedField = source.getClass().getDeclaredField("seed");
+                            seedField.setAccessible(true);
+                            described.addProperty("random_state",
+                                ((java.util.concurrent.atomic.AtomicLong) seedField.get(source)).get());
                         }
                         case "frog" -> {
                             described.addProperty("in_water", entity.isInWater());

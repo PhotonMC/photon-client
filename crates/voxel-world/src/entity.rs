@@ -2233,20 +2233,44 @@ impl ClientEntity {
         }
     }
 
-    /// `Guardian.aiStep`'s client half, while the guardian lives.
-    pub(crate) fn tick_guardian(&mut self) {
+    /// `Guardian.aiStep`'s client half, while the guardian lives: the beam's
+    /// target (which the world resolves from its id) is where the head turns.
+    pub(crate) fn tick_guardian(&mut self, target: Option<crate::guardian::GuardianTarget>) {
         if !self.is_guardian() || !self.alive {
             return;
         }
-        let flags = (
-            self.living.in_water,
-            self.living.guardian_moving,
-            self.living.guardian_target != 0,
-        );
+        let eye_height = self
+            .dimensions()
+            .scale(self.scale(), self.scale())
+            .eye_height();
+        let place = crate::guardian::GuardianPlace {
+            in_water: self.living.in_water,
+            moving: self.living.guardian_moving,
+            position: self.position(),
+            eye_height,
+            target,
+        };
+        let mut pose = crate::guardian::GuardianPose {
+            y_rot: f32::from_bits(self.y_rot_bits),
+            x_rot: f32::from_bits(self.x_rot_bits),
+            y_head_rot: f32::from_bits(self.y_head_rot_bits),
+            motion: self.motion(),
+            on_ground: self.on_ground,
+        };
+        let has_target = self.living.guardian_target != 0;
         let duration = self.guardian_attack_duration();
         self.guardian
             .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
-            .tick(flags, duration);
+            .tick(&place, has_target, duration, &mut pose);
+        self.y_rot_bits = pose.y_rot.to_bits();
+        self.x_rot_bits = pose.x_rot.to_bits();
+        self.y_head_rot_bits = pose.y_head_rot.to_bits();
+        (self.motion_x_bits, self.motion_y_bits, self.motion_z_bits) = (
+            pose.motion.0.to_bits(),
+            pose.motion.1.to_bits(),
+            pose.motion.2.to_bits(),
+        );
+        self.on_ground = pose.on_ground;
     }
 
     /// `Guardian.getAttackDuration`, shorter for the elder.
@@ -2452,14 +2476,19 @@ impl ClientEntity {
     /// `Entity.baseTick`'s fluid pass, then `LivingEntity.aiStep`: a living entity
     /// eases to the position and turn its last packet gave and its head to the head
     /// turn, and a mob's motion fades; then what a species does of its own there.
-    pub(crate) fn tick_ai_step(&mut self, living: Option<LivingKind>, in_water: Option<bool>) {
+    pub(crate) fn tick_ai_step(
+        &mut self,
+        living: Option<LivingKind>,
+        in_water: Option<bool>,
+        guardian_target: Option<crate::guardian::GuardianTarget>,
+    ) {
         self.tick_frog();
         self.tick_breeze();
         if let Some(in_water) = in_water {
             self.living.in_water = in_water;
         }
         self.tick_axolotl();
-        self.tick_guardian();
+        self.tick_guardian(guardian_target);
         let was_interpolating = self.is_interpolating();
         if living.is_some() {
             self.tick_position_interpolation();

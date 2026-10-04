@@ -7064,3 +7064,41 @@ fn a_cat_lies_on_top_of_a_player_who_sleeps_within_two_blocks_of_it() {
     assert!(world.apply_entity_metadata(1, &[super::CAT_LYING_DATA_ID, 8, 0, 255]));
     assert!(!lies_on_player(&mut world));
 }
+
+#[test]
+fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
+    let guardian = voxel_data::entity_type::id("minecraft:guardian").expect("a guardian");
+    let mut world = ClientWorld::default();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: 1,
+        uuid: Uuid::new(1, 1),
+        type_id: guardian,
+        x: 0.5,
+        y: 80.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    // The local player stands six blocks east: the guardian looks along -x.
+    world.set_local_player_id(2);
+    assert!(world.apply_local_player_position((6.5, 80.0, 0.5), (0.0, 0.0, 0.0), (0.0, 0.0)));
+    let mut data = vec![super::GUARDIAN_ATTACK_TARGET_DATA_ID, 1, 2, 255];
+    assert!(world.apply_entity_metadata(1, &data));
+    // No chunk is loaded here, which would leave the guardian idle.
+    world.entities.get_mut(&1).unwrap().ticking = true;
+    world.tick_entities();
+    let (y_rot, x_rot, head) = world.entity_at(1).unwrap().rotation();
+    assert_eq!((head, y_rot), (-90.0, -90.0));
+    // The player's eyes are 1.195 blocks above the guardian's, six away.
+    assert!(
+        (x_rot + (1.195_f32 / 6.0).atan().to_degrees()).abs() < 0.01,
+        "{x_rot}"
+    );
+    // Aiming at nothing the world holds does not look: head and pitch stay.
+    let looked = world.entity_at(1).unwrap().rotation();
+    data[2] = 9;
+    assert!(world.apply_entity_metadata(1, &data));
+    world.tick_entities();
+    assert_eq!(world.entity_at(1).unwrap().rotation(), looked);
+}

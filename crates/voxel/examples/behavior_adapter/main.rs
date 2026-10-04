@@ -18337,6 +18337,24 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
         }) {
             return Err("entity was rejected".into());
         }
+        // Another entity that stays where it is (what a guardian's beam aims at).
+        if let Some(second) = row.get("second") {
+            let second_id = i32_field(second, "entity_id")?;
+            if !world.apply_entity(EntityInput {
+                entity_id: second_id,
+                uuid: Uuid::new(0, u64::from(second_id as u32)),
+                type_id: voxel_data::entity_type::id(string(second, "entity")?)
+                    .ok_or("unknown entity type")?,
+                x: bits64(second, "x")?,
+                y: bits64(second, "y")?,
+                z: bits64(second, "z")?,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }) {
+                return Err("second entity was rejected".into());
+            }
+        }
         let mut ticks = Vec::new();
         for tick in 0..i32_field(row, "tick_count")? {
             for event in row["events"].as_array().ok_or("events must be an array")? {
@@ -19035,6 +19053,22 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     }
                     "guardian" => {
                         described["in_water"] = json!(entity.is_in_water());
+                        let (y_rot, x_rot, head_y) = entity.rotation();
+                        described["y_rot"] = json!(hex(y_rot));
+                        described["x_rot"] = json!(hex(x_rot));
+                        described["head_y"] = json!(hex(head_y));
+                        described["body_y"] = json!(hex(entity.body_y_rotation()));
+                        described["on_ground"] = json!(entity.on_ground());
+                        let (pos_x, pos_y, pos_z) = entity.position();
+                        for (key, value) in [("x", pos_x), ("y", pos_y), ("z", pos_z)] {
+                            described[format!("pos_{key}")] =
+                                json!(format!("{:016x}", value.to_bits()));
+                        }
+                        let (motion_x, motion_y, motion_z) = entity.motion();
+                        for (key, value) in [("x", motion_x), ("y", motion_y), ("z", motion_z)] {
+                            described[format!("motion_{key}")] =
+                                json!(format!("{:016x}", value.to_bits()));
+                        }
                         if let Some(guardian) = entity.guardian() {
                             for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
                                 described[format!("tail_{key}")] =
@@ -19043,6 +19077,7 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     json!(hex(guardian.spikes_animation(partial)));
                             }
                             described["attack_time"] = json!(hex(guardian.attack_time() as f32));
+                            described["random_state"] = json!(guardian.random_state());
                         }
                     }
                     "frog" => {

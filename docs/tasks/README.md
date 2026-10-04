@@ -99,7 +99,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35e](T35e-nautilus-gardiyan.md) | Nautilus ve zombi nautilus | M | T35b | bitti (f2f5ca0c) |
 | [T35h](T35h-gardiyan.md) | Gardiyan ve elder gardiyan (model, diken/kuyruk durumu, göz) | M | T35b | bitti (ed8fa43e) |
 | [T35i](T35i-gardiyan-isini.md) | Gardiyanın ışını | M | T35h | bitti (f82729ab) |
-| [T35j](T35j-gardiyan-hedefe-bakis.md) | Gardiyanın hedefe bakışı ve karadaki çırpınışı | M | T35i | açık |
+| [T35j](T35j-gardiyan-hedefe-bakis.md) | Gardiyanın hedefe bakışı ve karadaki çırpınışı | M | T35i | bitti |
 | [T36](T36-ucanlar.md) | Blaze, ghast ve phantom | M | T24 | bitti (7ba07997) |
 | [T36b](T36b-yarasa-vex-allay.md) | Yarasa, vex ve allay | M | T36 | bitti (23ecb288) |
 | [T36d](T36d-vex-allay-esya.md) | Vex ve allayın elindeki eşya | S | T36b, T41 | bitti (1cbe81f6) |

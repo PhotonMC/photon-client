@@ -38,6 +38,11 @@ impl RandomSource {
         self.gaussian = None;
     }
 
+    /// The 48-bit state the source holds (the reference's `seed` field).
+    pub fn state(&self) -> u64 {
+        self.seed
+    }
+
     fn next_bits(&mut self, bits: u32) -> u32 {
         debug_assert!((1..=32).contains(&bits));
         self.seed = self
