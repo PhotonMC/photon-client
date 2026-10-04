@@ -5,12 +5,26 @@
 use voxel_core::math::mth_lerp_f32;
 
 /// `AbstractCubeMob`'s squish, with the ground it stood on a tick ago.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CubeMobState {
     target_squish: f32,
     squish: f32,
     old_squish: f32,
     was_on_ground: bool,
+    /// `SulfurCube.fuse`: below zero while it is not primed.
+    fuse: i32,
+}
+
+impl Default for CubeMobState {
+    fn default() -> Self {
+        Self {
+            target_squish: 0.0,
+            squish: 0.0,
+            old_squish: 0.0,
+            was_on_ground: false,
+            fuse: -1,
+        }
+    }
 }
 
 /// The squish is finite, so the comparison is a total one.
@@ -31,6 +45,29 @@ impl CubeMobState {
         }
         self.was_on_ground = on_ground;
         self.target_squish *= decay;
+    }
+
+    /// `SulfurCube.tickFuse`: a primed fuse runs down to zero and stays (the
+    /// explosion belongs to the server).
+    pub(crate) fn tick_fuse(&mut self) {
+        if self.fuse > 0 {
+            self.fuse -= 1;
+        }
+    }
+
+    /// `SulfurCube.setFuse`, which the data (`MAX_FUSE`) calls.
+    pub(crate) fn set_fuse(&mut self, fuse: i32) {
+        self.fuse = fuse;
+    }
+
+    /// `SulfurCube.getFuse`.
+    pub fn fuse(&self) -> i32 {
+        self.fuse
+    }
+
+    /// `SulfurCube.isPrimed`.
+    pub fn is_primed(&self) -> bool {
+        self.fuse >= 0
     }
 
     /// `AbstractCubeMobRenderer.extractRenderState`'s squish between two ticks.

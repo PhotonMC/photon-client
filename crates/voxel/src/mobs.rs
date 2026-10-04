@@ -610,6 +610,9 @@ fn remote_hostiles(
     vertices.extend(crate::cube_mobs::remote_cube_mobs(
         session, models, textures, view,
     ));
+    vertices.extend(crate::cube_mobs::remote_sulfur_cubes(
+        session, models, textures, view,
+    ));
     vertices.extend(crate::shulkers::remote_shulkers(
         session, models, textures, view,
     ));

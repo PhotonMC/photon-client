@@ -220,6 +220,8 @@ pub const FOX_VARIANT_DATA_ID: u8 = 18;
 pub const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 /// Where a slime's or a magma cube's size (`AbstractCubeMob.ID_SIZE`, an int) sits among its data.
 pub const CUBE_MOB_SIZE_DATA_ID: u8 = 17;
+/// Where a sulfur cube's fuse (`SulfurCube.MAX_FUSE`, an int) sits among its data.
+pub const SULFUR_CUBE_FUSE_DATA_ID: u8 = 18;
 /// Where a shulker's attach face (a direction), peek (hundredths, a byte) and colour (a byte, 16 for none) sit among its data.
 pub const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 pub const SHULKER_PEEK_DATA_ID: u8 = 17;

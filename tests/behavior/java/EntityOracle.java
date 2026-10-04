@@ -2925,11 +2925,18 @@ public final class EntityOracle {
                 var shulker = new net.minecraft.client.renderer.entity.state.ShulkerRenderState();
                 shulker.attachFace = net.minecraft.core.Direction.from3DDataValue(row.get("attach_face").getAsInt());
                 state = shulker;
-            } else if (kind.equals("slime") || kind.equals("magma_cube")) {
+            } else if (kind.equals("slime") || kind.equals("magma_cube") || kind.equals("sulfur_cube")) {
                 rendererClass = kind.equals("slime")
                     ? net.minecraft.client.renderer.entity.SlimeRenderer.class
-                    : net.minecraft.client.renderer.entity.MagmaCubeRenderer.class;
-                var cube = new net.minecraft.client.renderer.entity.state.SlimeRenderState();
+                    : kind.equals("sulfur_cube")
+                        ? net.minecraft.client.renderer.entity.SulfurCubeRenderer.class
+                        : net.minecraft.client.renderer.entity.MagmaCubeRenderer.class;
+                var cube = kind.equals("sulfur_cube")
+                    ? new net.minecraft.client.renderer.entity.state.SulfurCubeRenderState()
+                    : new net.minecraft.client.renderer.entity.state.SlimeRenderState();
+                if (cube instanceof net.minecraft.client.renderer.entity.state.SulfurCubeRenderState sulfur) {
+                    sulfur.fuseRemainingTicks = Oracle.f32(row, "fuse_remaining");
+                }
                 cube.size = row.get("size").getAsInt();
                 cube.squish = Oracle.f32(row, "squish");
                 state = cube;
@@ -2971,7 +2978,7 @@ public final class EntityOracle {
                 state.deathTime = Oracle.f32(row, "death_time");
             }
             var renderer = UNSAFE.allocateInstance(rendererClass);
-            boolean cubeMob = kind.equals("slime") || kind.equals("magma_cube");
+            boolean cubeMob = kind.equals("slime") || kind.equals("magma_cube") || kind.equals("sulfur_cube");
             // The cube mobs' renderers take the common turns of `LivingEntityRenderer`.
             var method = (cubeMob ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class : rendererClass)
                 .getDeclaredMethod("setupRotations",
@@ -3001,7 +3008,7 @@ public final class EntityOracle {
                 stack.scale(-1.0F, -1.0F, 1.0F);
                 var hook = (kind.equals("magma_cube")
                         ? net.minecraft.client.renderer.entity.AbstractCubeMobRenderer.class : rendererClass)
-                    .getDeclaredMethod("scale", cubeMob
+                    .getDeclaredMethod("scale", cubeMob && !kind.equals("sulfur_cube")
                         ? net.minecraft.client.renderer.entity.state.SlimeRenderState.class : state.getClass(),
                         com.mojang.blaze3d.vertex.PoseStack.class);
                 hook.setAccessible(true);

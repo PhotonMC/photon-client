@@ -14403,6 +14403,14 @@ def movement_item_cases():
         living("shulker-no-colour", "shulker", 6, [shulker_data(1, color=16)], extras=["shulker"]),
         living("shulker-looks-around", "shulker", 30,
                [head_turn(2, 64), head_turn(9, -100), shulker_data(12, peek=40)], extras=["shulker"]),
+        # A sulfur cube squashes like the others and, once primed, runs its fuse down to zero and
+        # stays there; its small body (a baby's) and a size said again.
+        living("sulfur-cube-hops", "sulfur_cube", 44, hops, extras=["cube"]),
+        living("sulfur-cube-primed", "sulfur_cube", 40,
+               [{"tick": 2, "type": "sulfur_fuse", "fuse": 12}, cube_size(3, 2)], extras=["cube"]),
+        living("sulfur-cube-small", "sulfur_cube", 30,
+               [{"tick": 1, "type": "baby_data", "baby": True}, cube_size(2, 1), on_ground(4, True)],
+               extras=["cube"]),
         squid("squid-at-rest-in-water", 40, []),
         squid("squid-glides-in-water", 70, [motion(3, 0.12, -0.04, 0.07), motion(30, -0.1, 0.06, 0.02)]),
         squid("squid-fast-tentacles", 60, [motion(3, 0.0, 0.1, 0.0)], speed=0.28),
@@ -16233,6 +16241,14 @@ def entity_cube_mob_cases():
              "scale": float_bits(1.0)}
             for kind in ("slime", "magma_cube") for size in (1, 2, 4, 127)
             for squish in (-0.5, 0.0, 0.35, 1.0)]
+    rows += [{"label": f"sulfur-cube-{'small-' if baby else ''}size-{size}-fuse-{fuse}",
+              "kind": "sulfur_cube", "baby": baby, "body_rot": float_bits(37.0),
+              "x_rot": float_bits(0.0), "age_in_ticks": float_bits(10.5), "size": size,
+              "squish": float_bits(squish), "fuse_remaining": float_bits(fuse),
+              "feet_x": float_bits(3.5), "feet_y": float_bits(-1.25), "feet_z": float_bits(0.75),
+              "scale": float_bits(1.0)}
+             for baby, size in ((False, 2), (True, 1), (False, 3))
+             for squish in (-0.5, 0.4) for fuse in (0.0, 1.5, 6.25, 9.9, 10.0, 30.0)]
     rows.append({"label": "slime-dying", "kind": "slime", "baby": False,
                  "body_rot": float_bits(-80.0), "x_rot": float_bits(0.0),
                  "age_in_ticks": float_bits(3.0), "size": 3, "squish": float_bits(0.2),

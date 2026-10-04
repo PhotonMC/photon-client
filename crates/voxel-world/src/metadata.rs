@@ -558,8 +558,16 @@ pub(crate) fn cube_mob_size_from_metadata(type_id: i32, metadata: &[u8]) -> Opti
 pub(crate) fn is_cube_mob_type(type_id: i32) -> bool {
     matches!(
         voxel_data::entity_type::name(type_id),
-        Some("minecraft:slime" | "minecraft:magma_cube")
+        Some("minecraft:slime" | "minecraft:magma_cube" | "minecraft:sulfur_cube")
     )
+}
+
+/// A sulfur cube's fuse (`SulfurCube.MAX_FUSE`), when the data holds it.
+pub(crate) fn sulfur_cube_fuse_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:sulfur_cube" {
+        return None;
+    }
+    metadata_int_value(metadata, SULFUR_CUBE_FUSE_DATA_ID)
 }
 
 /// A shulker's attach face (a direction's data value), raw peek and colour, each

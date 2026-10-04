@@ -3929,6 +3929,30 @@ pub struct CubeMobScale {
     pub size: i32,
     pub squish: f32,
     pub downscale: bool,
+    pub sulfur: Option<SulfurCubeScale>,
+}
+
+/// What a sulfur cube's renderer scales the pose by besides the cube mobs'
+/// (`SulfurCubeRenderer.scale`): the swell of a fuse about to run out, and
+/// the fit of the small or the full shell about the model.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SulfurCubeScale {
+    /// `SulfurCubeRenderState.fuseRemainingTicks`: zero while it is not primed.
+    pub fuse_remaining: f32,
+    pub baby: bool,
+}
+
+/// `TntRenderer.getSwellAmount`.
+pub fn tnt_swell_amount(fuse: f32) -> f32 {
+    let mut swell = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+    swell *= swell;
+    swell *= swell;
+    swell * 0.3
+}
+
+/// `TntRenderer.isLit`: the flash of a fuse, every fifth tick.
+pub fn tnt_is_lit(fuse: f32) -> bool {
+    fuse >= 0.0 && (fuse / 5.0) as i32 % 2 == 0
 }
 
 impl CubeMobScale {
@@ -3941,6 +3965,21 @@ impl CubeMobScale {
         let squash = self.squish / (size * 0.5 + 1.0);
         let wide = 1.0 / (squash + 1.0);
         pose.scale(wide * size, 1.0 / wide * size, wide * size);
+        if let Some(sulfur) = self.sulfur {
+            let fuse = sulfur.fuse_remaining;
+            if fuse < 10.0 && fuse > 0.0 {
+                let swell = 1.0 + tnt_swell_amount(fuse);
+                pose.scale(swell, swell, swell);
+            }
+            let (offset, fit) = if sulfur.baby {
+                (1.24, 1.0)
+            } else {
+                (0.98, 0.5)
+            };
+            pose.scale(fit, fit, fit);
+            // One pixel up while it is seen; `translate(-0.0F, ..., -0.0F)`.
+            pose.translate(-0.0, offset - 1.0 / 16.0, -0.0);
+        }
     }
 }
 

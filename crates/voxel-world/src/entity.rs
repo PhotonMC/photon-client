@@ -2570,6 +2570,11 @@ impl ClientEntity {
         crate::metadata::is_cube_mob_type(self.type_id)
     }
 
+    /// `SulfurCube.getFuse`.
+    pub fn sulfur_fuse(&self) -> i32 {
+        self.living.cube.fuse()
+    }
+
     /// `AbstractCubeMob.getSize`.
     pub fn cube_size(&self) -> i32 {
         self.living.cube_size.unwrap_or(1)
@@ -2597,6 +2602,8 @@ impl ClientEntity {
         }
         let magma = voxel_data::entity_type::name(self.type_id) == Some("minecraft:magma_cube");
         let on_ground = self.on_ground;
+        // `SulfurCube.tick` runs its fuse before `AbstractCubeMob.tick`.
+        self.living.cube.tick_fuse();
         self.living
             .cube
             .tick(on_ground, if magma { 0.9 } else { 0.6 });

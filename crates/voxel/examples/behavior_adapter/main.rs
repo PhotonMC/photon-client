@@ -18627,6 +18627,12 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "sulfur_fuse" => {
+                        let mut data = vec![voxel_world::SULFUR_CUBE_FUSE_DATA_ID, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "fuse")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "head_rotation" => {
                         let angle = i32_field(event, "angle")? as i8;
                         world.apply_entity_head_rotation(
@@ -19211,6 +19217,11 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         described["y_rot"] = json!(hex(entity.rotation().0));
                         described["y_body_rot"] = json!(hex(entity.body_y_rotation()));
                         described["on_ground"] = json!(entity.on_ground());
+                        if voxel_data::entity_type::name(entity.type_id)
+                            == Some("minecraft:sulfur_cube")
+                        {
+                            described["fuse"] = json!(entity.sulfur_fuse());
+                        }
                         let area = entity.bounding_box();
                         for (key, value) in [
                             ("min_x", area.min_x),
@@ -21751,11 +21762,28 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     placed.scale = bits("scale")?;
                 }
             }
+            "sulfur_cube" => {
+                placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {
+                    size: i32_field(row, "size")?,
+                    squish: bits("squish")?,
+                    downscale: true,
+                    sulfur: Some(voxel_render::mob_model::SulfurCubeScale {
+                        fuse_remaining: bits("fuse_remaining")?,
+                        baby,
+                    }),
+                });
+                if row.get("feet_x").is_some() {
+                    placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
+                    placed.scale = bits("scale")?;
+                }
+                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
+            }
             kind @ ("slime" | "magma_cube") => {
                 placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {
                     size: i32_field(row, "size")?,
                     squish: bits("squish")?,
                     downscale: kind == "slime",
+                    sulfur: None,
                 });
                 if row.get("death_time").is_some() {
                     placed.death_time = bits("death_time")?;

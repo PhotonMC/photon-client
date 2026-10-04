@@ -870,6 +870,13 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "sulfur_fuse" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.monster.cubemob.SulfurCube.class, "MAX_FUSE",
+                            event.get("fuse").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "head_rotation" -> listener.handleRotateMob(
                         new net.minecraft.network.protocol.game.ClientboundRotateHeadPacket(entity,
                             (byte) event.get("angle").getAsInt()));
@@ -1383,6 +1390,9 @@ public final class MovementOracle {
                             described.addProperty("y_rot", Oracle.bits(cube.getYRot()));
                             described.addProperty("y_body_rot", Oracle.bits(cube.yBodyRot));
                             described.addProperty("on_ground", cube.onGround());
+                            if (cube instanceof net.minecraft.world.entity.monster.cubemob.SulfurCube sulfur) {
+                                described.addProperty("fuse", sulfur.getFuse());
+                            }
                             var box = cube.getBoundingBox();
                             for (var side : new Object[][] {{"min_x", box.minX}, {"min_y", box.minY}, {"min_z", box.minZ},
                                 {"max_x", box.maxX}, {"max_y", box.maxY}, {"max_z", box.maxZ}}) {
