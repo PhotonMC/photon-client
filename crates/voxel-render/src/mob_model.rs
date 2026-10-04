@@ -203,6 +203,16 @@ pub struct FrogRenderState {
     pub swim_idle: voxel_world::animation_state::AnimationState,
 }
 
+/// What a nautilus's model is posed from (`NautilusRenderState`): the look
+/// and stride, and whether it wears body armor (which hides a zombie
+/// nautilus's corals).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NautilusState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub has_body_armor: bool,
+}
+
 /// What a tadpole's model is posed from (`LivingEntityRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TadpoleState {
@@ -1589,6 +1599,37 @@ impl MobModel {
         if let Some(definition) = voxel_data::animation::definition(name) {
             let millis = (running.time_in_millis(age_in_ticks) as f32 * 1.0) as i64;
             self.animate(definition, millis, 1.0);
+        }
+    }
+
+    /// `NautilusModel.setupAnim` (and `ZombieNautilusCoralModel`'s corals):
+    /// the body follows the look within ten degrees, and the swim animation
+    /// runs by the stride and the age, so it never rests.
+    pub fn setup_nautilus(&mut self, state: &NautilusState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(body) = self
+            .root
+            .child_mut("root")
+            .and_then(|root| root.child_mut("body"))
+        {
+            body.y_rot = state.quadruped.head_y_rot.clamp(-10.0, 10.0) * degrees;
+            body.x_rot = state.quadruped.x_rot.clamp(-10.0, 10.0) * degrees;
+        }
+        if let Some(definition) = voxel_data::animation::definition("Nautilus.SWIMMING") {
+            // `applyWalk(pos + age / 5, speed + 0.2, 2.0, 3.0)`.
+            let position = state.quadruped.walk_position + state.age_in_ticks / 5.0;
+            let millis = (position * 50.0 * 2.0) as i64;
+            let scale = ((state.quadruped.walk_speed + 0.2) * 3.0).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        if let Some(corals) = self
+            .root
+            .child_mut("root")
+            .and_then(|root| root.child_mut("shell"))
+            .and_then(|shell| shell.child_mut("corals"))
+        {
+            corals.visible = !state.has_body_armor;
         }
     }
 

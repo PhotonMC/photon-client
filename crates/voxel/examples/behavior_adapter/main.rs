@@ -20316,6 +20316,38 @@ fn frog_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `nautilus_model`: a nautilus's model posed and drawn from the look, the stride, the age and
+/// whether it wears body armor.
+fn nautilus_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, NautilusState, QuadrupedState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_nautilus(&NautilusState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            has_body_armor: row["armored"].as_bool().ok_or("armored")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `dolphin_item_pose`: where a dolphin carries what it holds.
 fn dolphin_item_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -22018,6 +22050,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "dolphin_item_pose" => return dolphin_item_pose_result(request),
         "axolotl_model" => return axolotl_model_result(request),
         "frog_model" => return frog_model_result(request),
+        "nautilus_model" => return nautilus_model_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22067,7 +22100,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
             return Ok(json!({"rows": rows}));
         }
         "entity_variants" => {
-            let rows: Vec<Value> = ["cat", "chicken", "cow", "frog", "pig"]
+            let rows: Vec<Value> = ["cat", "chicken", "cow", "frog", "pig", "zombie_nautilus"]
                 .iter()
                 .flat_map(|kind| voxel_data::entity_type::variants(kind))
                 .map(|variant| {
@@ -22378,6 +22411,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "frog-variant",
                     i64::from(voxel_world::FROG_VARIANT_DATA_ID),
                     i64::from(voxel_world::FROG_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "zombie-nautilus-variant",
+                    i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
+                    i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
                 ),
                 (
                     "axolotl-variant",

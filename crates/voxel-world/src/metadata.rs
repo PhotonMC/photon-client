@@ -139,6 +139,10 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
         "minecraft:wolf" => (WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID),
         "minecraft:cat" => (CAT_VARIANT_DATA_ID, CAT_VARIANT_SERIALIZER_ID),
         "minecraft:frog" => (FROG_VARIANT_DATA_ID, FROG_VARIANT_SERIALIZER_ID),
+        "minecraft:zombie_nautilus" => (
+            ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+            ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID,
+        ),
         _ => return None,
     };
     let (found, mut value) = find_metadata_field(metadata, data_id)?;

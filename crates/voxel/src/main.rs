@@ -23,6 +23,7 @@ mod illagers;
 mod item_layers;
 mod mobs;
 mod monsters;
+mod nautilus;
 mod overlays;
 mod pandas;
 mod play;

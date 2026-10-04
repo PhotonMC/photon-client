@@ -14839,6 +14839,7 @@ def entity_cases():
     yield from entity_sea_animal_cases()
     yield from entity_axolotl_cases()
     yield from entity_frog_cases()
+    yield from entity_nautilus_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15739,6 +15740,33 @@ def entity_frog_cases():
         rows.append({"label": f"tadpole-{label}", "layer": "minecraft:tadpole#main",
                      "age_in_ticks": float_bits(37.5), "in_water": in_water})
     yield {"case_id": "entity/frog-model", "family": "entity", "operation": "frog_model",
+           "rows": rows}
+
+
+def entity_nautilus_cases():
+    """The nautilus models posed by the reference's own `setupAnim`: the body following the look
+    within ten degrees (inside, past, either side), the swim animation by the stride and the age
+    (a stride of nothing still swims, a fast one is capped), a zombie nautilus alike, and its corals
+    shown unless body armor is worn."""
+    def nautilus(layer, label, age=37.5, y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
+                 armored=False):
+        return {"label": f"{layer.split(':')[1].split('#')[0]}-{label}", "layer": layer,
+                "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+                "age_in_ticks": float_bits(age), "armored": armored}
+    rows = []
+    for layer in ("minecraft:nautilus#main", "minecraft:nautilus_baby#main"):
+        rows += [nautilus(layer, "still"), nautilus(layer, "later", age=91.25),
+                 nautilus(layer, "looks-a-little", y_rot=6.5, x_rot=-4.0),
+                 nautilus(layer, "looks-past-the-limit", y_rot=-48.0, x_rot=35.0),
+                 nautilus(layer, "swims", walk_position=4.5, walk_speed=0.3),
+                 nautilus(layer, "swims-fast", age=12.0, walk_position=9.0, walk_speed=1.0)]
+    for layer in ("minecraft:zombie_nautilus#main", "minecraft:zombie_nautilus_coral#main"):
+        rows += [nautilus(layer, "still"),
+                 nautilus(layer, "looks-and-swims", y_rot=-7.0, x_rot=12.0, walk_position=3.0,
+                          walk_speed=0.5),
+                 nautilus(layer, "armored", armored=True)]
+    yield {"case_id": "entity/nautilus-model", "family": "entity", "operation": "nautilus_model",
            "rows": rows}
 
 

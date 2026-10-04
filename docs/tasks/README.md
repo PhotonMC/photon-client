@@ -96,7 +96,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35d](T35d-yunus-aksolotl-kaplumbaga-kurbaga.md) | Yunus, aksolotl, kaplumbağa, iribaş, kurbağa | L | T35b, T43b | bölündü (3df6261d) |
 | [T35f](T35f-aksolotl.md) | Aksolotl | M | T35d, T43b | bitti (0f5cb208) |
 | [T35g](T35g-kurbaga-iribas.md) | Kurbağa ve iribaş | M | T35d, T43b | bitti (3ea8c016) |
-| [T35e](T35e-nautilus-gardiyan.md) | Nautilus, zombi nautilus, gardiyan, elder gardiyan | M | T35b | açık |
+| [T35e](T35e-nautilus-gardiyan.md) | Nautilus ve zombi nautilus | M | T35b | bitti |
+| [T35h](T35h-gardiyan.md) | Gardiyan ve elder gardiyan (model, diken/kuyruk durumu, göz, ışın) | L | T35b | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
 | [T38](T38-araclar.md) | Araçlar: tekneler ve minecart ailesi | M | T24 | açık |

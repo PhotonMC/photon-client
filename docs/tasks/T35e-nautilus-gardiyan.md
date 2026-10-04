@@ -1,19 +1,21 @@
-# T35e — Nautilus, zombi nautilus, gardiyan ve elder gardiyan
+# T35e — Nautilus ve zombi nautilus
 
-**Amaç:** `NautilusModel` (+ kabuk/zırh katmanı, zombi çeşidi), `GuardianModel` (diken ve kuyruk salınımı, göz ışın hedefi, ışın çizimi: `GuardianRenderer`), elder gardiyan ölçeği.
-**Bağımlılık:** T35b. **Boy:** M–L.
+**Amaç:** `NautilusModel` (yetişkin, bebek), zombi nautilus ve mercanlı çeşidi (çeşit sunucudan). Gardiyan ve elder gardiyan T35h'ye ayrıldı.
+**Bağımlılık:** T35b. **Boy:** M.
 
 ## Oku
-- Java: `client/model/animal/nautilus/*.java`, `client/model/monster/guardian/GuardianModel.java`, `client/renderer/entity/{Nautilus,ZombieNautilus,Guardian,ElderGuardian}Renderer.java`, `world/entity/monster/Guardian.java` (`DATA_ID_ATTACK_TARGET`, `clientSideTailAnimation*`, `getAttackAnimationScale`), `world/entity/animal/nautilus/*.java`.
+- Java: `client/model/animal/nautilus/*.java`, `client/model/monster/nautilus/*.java`, `client/renderer/entity/{Nautilus,ZombieNautilus}Renderer.java`, `world/entity/animal/nautilus/*.java`.
 
 ## Oracle
-`squid_model` kalıbı; ışın için yakalayıcı toplayıcı.
+`axolotl_model` kalıbı (gerçek model); çeşit tablosu `entity/variants`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
-Sesler, parçacıklar, saldırı davranışı.
+Sesler, parçacıklar, davranışlar; eyer ve gövde zırhı katmanları; gardiyan (T35h).
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_nautilus` (gövde ±10° bakış, her zaman çalışan yüzme, mercan gizleme), zombi nautilus çeşit tablosu (oracle'dan), çeşit verisi 21, `crates/voxel/src/nautilus.rs`. Kayıt: `docs/client-nautilus-parity-conformance.md`.
+- Bölündü: gardiyan ve elder gardiyan T35h'ye alındı (ışın çizimi ayrı iş).
+- Sapma: eyer ve gövde zırhı katmanları yok (zırh yalnız mercanları gizler); doku yolları oracle'sız. Canlı gözlem yapılmadı.

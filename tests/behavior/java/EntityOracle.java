@@ -1682,6 +1682,36 @@ public final class EntityOracle {
     }
 
     /**
+     * The nautilus models (grown, baby, zombie, zombie with corals) posed by the reference's own
+     * `setupAnim`, drawn, from the look, the stride, the age and whether body armor is worn.
+     */
+    private static JsonObject nautilusModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var state = new net.minecraft.client.renderer.entity.state.NautilusRenderState();
+            state.yRot = Oracle.f32(row, "y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            if (row.get("armored").getAsBoolean()) {
+                state.bodyArmorItem = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_HORSE_ARMOR);
+            }
+            net.minecraft.client.model.animal.nautilus.NautilusModel model = id.contains("coral")
+                ? new net.minecraft.client.model.monster.nautilus.ZombieNautilusCoralModel(root)
+                : new net.minecraft.client.model.animal.nautilus.NautilusModel(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * Where `DolphinCarryingItemLayer` submits what a dolphin carries, from an identity pose and
      * the dolphin's pitch: the matrix of the item.
      */
@@ -3001,7 +3031,7 @@ public final class EntityOracle {
         return result;
     }
 
-    /** The cat, chicken, cow, frog and pig variants the game's data pack holds: their textures and model. */
+    /** The cat, chicken, cow, frog, pig and zombie nautilus variants the game's data pack holds: their textures and model. */
     private static JsonObject entityVariants() {
         var registries = Oracle.vanillaRegistries();
         var rows = new java.util.TreeMap<String, JsonObject>();
@@ -3029,6 +3059,11 @@ public final class EntityOracle {
         // A frog's variant has one texture and no baby (a frog is never one).
         registries.lookupOrThrow(net.minecraft.core.registries.Registries.FROG_VARIANT).listElements().forEach(holder -> {
             variants(rows, "frog", holder.key().identifier().toString(), holder.value().assetInfo().id(), null, "normal");
+        });
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.ZOMBIE_NAUTILUS_VARIANT).listElements().forEach(holder -> {
+            var variant = holder.value();
+            variants(rows, "zombie_nautilus", holder.key().identifier().toString(),
+                variant.modelAndTexture().asset().id(), null, variant.modelAndTexture().model().getSerializedName());
         });
         var list = new JsonArray();
         rows.values().forEach(list::add);
@@ -3148,6 +3183,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
+            {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT", "axolotl-variant"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD", "axolotl-playing-dead"},
             {net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG", "turtle-has-egg"},
@@ -3350,6 +3386,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("nautilus_model")) {
+            return nautilusModel(request);
         }
         if (operation.equals("frog_model")) {
             return frogModel(request);
