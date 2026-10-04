@@ -112,7 +112,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T37b2](T37b2-sulfur-tasidigi-blok.md) | Sulfur cube'un taşıdığı blok | M | T37b, T34d | bitti (181fe13b) |
 | [T37b3](T37b3-blok-kaplamasi.md) | Varlık üstündeki bloğun kaplaması (hasar kırmızısı, fitil beyazı) | M | T37b2 | bitti (73e7be46) |
 | [T37c](T37c-shulker.md) | Shulker | M | T37 | bitti (0e5a3ffc) |
-| [T37c2](T37c2-shulker-konum.md) | Shulker konumu, ışınlanma kayması ve vuruş kutusu | M | T37c | açık |
+| [T37c2](T37c2-shulker-konum.md) | Shulker konumu, ışınlanma kayması ve vuruş kutusu | M | T37c | bitti (97432bae) |
 | [T37d](T37d-warden.md) | Warden | L | T37, T43b | açık |
 | [T37e](T37e-creaking.md) | Creaking | M | T37, T43b | açık |
 | [T37f](T37f-armadillo-sniffer.md) | Armadillo ve sniffer | L | T37, T43b | açık |
