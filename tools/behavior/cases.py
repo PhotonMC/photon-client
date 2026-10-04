@@ -14501,6 +14501,18 @@ def movement_item_cases():
         # A bat hangs (still, snapped to the block above it, one animation) or flies (the other); a
         # vex reads its charging flag; an allay's arms rise to what it holds, and its dance spins
         # and sways on a cycle of fifty-five ticks.
+        # A parrot beats its wings faster in the air (a rider or one on the ground slows them) and
+        # sinks slowly while it falls there; its variant is read from its data.
+        living("parrot-on-the-ground", "parrot", 30, [on_ground(1, True)], extras=["parrot"]),
+        living("parrot-flies", "parrot", 40, [on_ground(1, False)], extras=["parrot"]),
+        living("parrot-lands", "parrot", 40, [on_ground(1, False), on_ground(15, True)],
+               extras=["parrot"]),
+        living("parrot-falls", "parrot", 30,
+               [on_ground(1, False), {"tick": 3, "type": "entity_motion", "x": float_bits(0.0, "f64"),
+                                      "y": float_bits(-0.5, "f64"), "z": float_bits(0.0, "f64")}],
+               extras=["parrot"]),
+        living("parrot-variant", "parrot", 10,
+               [{"tick": 2, "type": "flier_data", "parrot_variant": 3}], extras=["parrot"]),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -14894,6 +14906,7 @@ def entity_cases():
     yield from entity_guardian_beam_cases()
     yield from entity_airborne_cases()
     yield from entity_flier_cases()
+    yield from entity_parrot_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15961,6 +15974,27 @@ def entity_flier_cases():
              allay("dances-holding", dancing=True, holding=1.0, spinning=True, spin=1.0)]
     yield {"case_id": "entity/flier-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
+
+
+def entity_parrot_cases():
+    """The parrot posed by the reference's own `ParrotModel.setupAnim`: each pose (flying, standing
+    with the legs walking and the wings beating, sitting, party swaying, on a shoulder), with the wings
+    at rest and beating, and the texture of each variant (ids past the ends clamp)."""
+    def parrot(label, pose, age=37.5, y_rot=0.0, x_rot=0.0, walk=(0.0, 0.0), flap=0.0):
+        return {"label": f"parrot-{label}", "layer": "minecraft:parrot#main", "pose": pose,
+                "age_in_ticks": float_bits(age), "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk[0]), "walk_speed": float_bits(walk[1]),
+                "flap_angle": float_bits(flap)}
+    rows = []
+    for pose in ("FLYING", "STANDING", "SITTING", "PARTY", "ON_SHOULDER"):
+        name = pose.lower().replace("_", "-")
+        rows += [parrot(f"{name}", pose), parrot(f"{name}-beating", pose, flap=0.8),
+                 parrot(f"{name}-looking", pose, y_rot=35.0, x_rot=-20.0, flap=0.3),
+                 parrot(f"{name}-walking", pose, walk=(4.5, 0.6), flap=0.5, age=91.25)]
+    yield {"case_id": "entity/parrot-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+    yield {"case_id": "entity/parrot-textures", "family": "entity", "operation": "parrot_textures",
+           "rows": [{"label": f"variant-{variant}", "id": variant} for variant in (-3, 0, 1, 2, 3, 4, 5, 9)]}
 
 
 def entity_copper_golem_cases():

@@ -18623,6 +18623,13 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                     }
                     "flier_data" => {
                         let mut data = Vec::new();
+                        if event.get("parrot_variant").is_some() {
+                            data.extend([voxel_world::PARROT_VARIANT_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(
+                                i32_field(event, "parrot_variant")?,
+                                &mut data,
+                            );
+                        }
                         if let Some(flags) = event["bat_flags"].as_i64() {
                             data.extend([voxel_world::BAT_FLAGS_DATA_ID, 0, flags as u8]);
                         }
@@ -18944,6 +18951,16 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 } else {
                                     0
                                 });
+                        }
+                    }
+                    "parrot" => {
+                        let state = entity.parrot().copied().unwrap_or_default();
+                        described["variant"] = json!(entity.parrot_variant());
+                        let (_, motion_y, _) = entity.motion();
+                        described["motion_y"] = json!(format!("{:016x}", motion_y.to_bits()));
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                            described[format!("flap_angle_{key}")] =
+                                json!(hex(state.flap_angle(partial)));
                         }
                     }
                     "vex" => described["charging"] = json!(entity.is_vex_charging()),
@@ -20420,6 +20437,26 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
         let mut model = MobModel::bake(layer);
         if id.contains("blaze") {
             model.setup_blaze(bits("age_in_ticks")?, bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("parrot") {
+            use voxel_render::mob_model::{ParrotPose, ParrotRenderState};
+            let pose = match row["pose"].as_str().ok_or("pose")? {
+                "FLYING" => ParrotPose::Flying,
+                "STANDING" => ParrotPose::Standing,
+                "SITTING" => ParrotPose::Sitting,
+                "PARTY" => ParrotPose::Party,
+                _ => ParrotPose::OnShoulder,
+            };
+            model.setup_parrot(&ParrotRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                flap_angle: bits("flap_angle")?,
+                pose,
+            });
         } else if id.contains("bat") {
             let started = |key: &str| {
                 let mut state = AnimationState::default();
@@ -20464,6 +20501,19 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
             model.setup_phantom(bits("flap_time")?);
         }
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `parrot_textures`: the texture each parrot variant wears.
+fn parrot_textures_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = i32_field(row, "id")?;
+        out.push(json!({
+            "label": row["label"],
+            "texture": format!("minecraft:textures/{}.png", voxel_world::parrot::variant_texture(id)),
+        }));
     }
     Ok(json!({"rows": out}))
 }
@@ -22332,6 +22382,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_model" => return guardian_model_result(request),
         "guardian_beam" => return guardian_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
+        "parrot_textures" => return parrot_textures_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22697,6 +22748,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "zombie-nautilus-variant",
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "parrot-variant",
+                    i64::from(voxel_world::PARROT_VARIANT_DATA_ID),
+                    i64::from(1),
                 ),
                 (
                     "bat-flags",

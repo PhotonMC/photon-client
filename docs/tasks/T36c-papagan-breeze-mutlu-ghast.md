@@ -1,10 +1,10 @@
-# T36c — Papağan, breeze ve mutlu ghast
+# T36c — Papağan
 
-**Amaç:** `ParrotModel` (konumlar: ayakta, uçan, oturan, omuzda; kanat çırpma durumu, dans), `BreezeModel` + `BreezeEyesLayer` + `BreezeWindLayer`, `HappyGhastModel` (+ koşum ve ip katmanı).
-**Bağımlılık:** T36. **Boy:** L (sığmazsa böl).
+**Amaç:** `ParrotModel` (konumlar: ayakta, uçan, oturan, parti, omuzda; kanat çırpma durumu) ve çeşit dokuları. Breeze T36e'ye, mutlu ghast T36f'ye ayrıldı.
+**Bağımlılık:** T36. **Boy:** M.
 
 ## Oku
-- Java: `client/model/animal/parrot/ParrotModel.java`, `client/model/monster/breeze/BreezeModel.java`, `client/model/animal/ghast/HappyGhast*.java`, `client/renderer/entity/{Parrot,Breeze,HappyGhast}Renderer.java`, `client/renderer/entity/layers/{Breeze*,ParrotOnShoulder}Layer.java`, `world/entity/animal/parrot/Parrot.java` (`calculateFlapping`).
+- Java: `client/model/animal/parrot/ParrotModel.java`, `client/renderer/entity/ParrotRenderer.java`, `world/entity/animal/parrot/Parrot.java` (`calculateFlapping`).
 - Rust: `crates/voxel/src/monsters.rs`, `crates/voxel-render/src/mob_model.rs`.
 
 ## Oracle
@@ -14,7 +14,10 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
-Sesler, parçacıklar, omuz papağanı (oyuncu katmanı), davranışlar.
+Sesler, parçacıklar, omuz papağanı (oyuncu katmanı), davranışlar; jukebox (parti pozu).
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_parrot` (beş poz, `prepare` ve düşen `switch` kolları aynen), `voxel-world/parrot.rs` (kanat çırpışı, çeşit dokuları ve kenetleme), çeşit verisi 20, `monsters.rs` tablosuna papağan (çeşit dokusu, oturan/uçan/ayakta poz). Kayıt: `docs/client-parrot-parity-conformance.md`.
+- Bulgu: çeşit verisi 20'dedir (19 değil); `grey` dosyası `gray` çeşidinin dokusu.
+- Bölündü: breeze T36e'de; mutlu ghast T36f'de.
+- Sapma: parti pozu jukebox olayı bağlanana dek seçilmez; omuz katmanı yok. Canlı gözlem yapılmadı.

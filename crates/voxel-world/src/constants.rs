@@ -232,6 +232,8 @@ pub const GUARDIAN_MOVING_DATA_ID: u8 = 16;
 pub const GHAST_CHARGING_DATA_ID: u8 = 16;
 /// Where a bat's flags, a vex's flags (each a byte) and whether an allay dances (a boolean) sit among their data.
 pub const BAT_FLAGS_DATA_ID: u8 = 16;
+/// Where a parrot's variant (an int) sits among its data.
+pub const PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VEX_FLAGS_DATA_ID: u8 = 16;
 pub const ALLAY_DANCING_DATA_ID: u8 = 16;
 pub const PHANTOM_SIZE_DATA_ID: u8 = 16;

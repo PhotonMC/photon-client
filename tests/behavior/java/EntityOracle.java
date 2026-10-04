@@ -1700,6 +1700,18 @@ public final class EntityOracle {
                 var blaze = new net.minecraft.client.model.monster.blaze.BlazeModel(root);
                 blaze.setupAnim(state);
                 model = blaze;
+            } else if (id.contains("parrot")) {
+                var state = new net.minecraft.client.renderer.entity.state.ParrotRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.flapAngle = Oracle.f32(row, "flap_angle");
+                state.pose = net.minecraft.client.model.animal.parrot.ParrotModel.Pose.valueOf(row.get("pose").getAsString());
+                var parrot = new net.minecraft.client.model.animal.parrot.ParrotModel(root);
+                parrot.setupAnim(state);
+                model = parrot;
             } else if (id.contains("bat")) {
                 var state = new net.minecraft.client.renderer.entity.state.BatRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");
@@ -1757,6 +1769,22 @@ public final class EntityOracle {
                 model = phantom;
             }
             rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
+    private static JsonObject parrotTextures(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("texture", net.minecraft.client.renderer.entity.ParrotRenderer.getVariantTexture(
+                net.minecraft.world.entity.animal.parrot.Parrot.Variant.byId(row.get("id").getAsInt())).toString());
+            rows.add(out);
         }
         var result = new JsonObject();
         result.add("rows", rows);
@@ -3445,6 +3473,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
+            {net.minecraft.world.entity.animal.parrot.Parrot.class, "DATA_VARIANT_ID", "parrot-variant"},
             {net.minecraft.world.entity.ambient.Bat.class, "DATA_ID_FLAGS", "bat-flags"},
             {net.minecraft.world.entity.monster.Vex.class, "DATA_FLAGS_ID", "vex-flags"},
             {net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING", "allay-dancing"},
@@ -3654,6 +3683,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("parrot_textures")) {
+            return parrotTextures(request);
         }
         if (operation.equals("airborne_model")) {
             return airborneModel(request);

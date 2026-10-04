@@ -514,6 +514,14 @@ pub(crate) fn flier_data_from_metadata(
     }
 }
 
+/// A parrot's variant id (`Parrot.DATA_VARIANT_ID`), when the data holds it.
+pub(crate) fn parrot_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:parrot" {
+        return None;
+    }
+    metadata_int_value(metadata, PARROT_VARIANT_DATA_ID)
+}
+
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
 pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:phantom" {

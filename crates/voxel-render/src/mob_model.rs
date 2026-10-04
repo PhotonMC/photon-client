@@ -203,6 +203,25 @@ pub struct FrogRenderState {
     pub swim_idle: voxel_world::animation_state::AnimationState,
 }
 
+/// `ParrotModel.Pose`: how a parrot sits, stands or flies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParrotPose {
+    Flying,
+    Standing,
+    Sitting,
+    Party,
+    OnShoulder,
+}
+
+/// What a parrot's model is posed from (`ParrotRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParrotRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub flap_angle: f32,
+    pub pose: ParrotPose,
+}
+
 /// What a bat's model is posed from (`BatRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BatRenderState {
@@ -1663,6 +1682,139 @@ impl MobModel {
         if let Some(definition) = voxel_data::animation::definition(name) {
             let millis = (running.time_in_millis(age_in_ticks) as f32 * 1.0) as i64;
             self.animate(definition, millis, 1.0);
+        }
+    }
+
+    /// `ParrotModel.setupAnim`: the pose's own resting turns first (the reference's
+    /// `prepare`), the head takes the look, then by pose: a standing parrot's
+    /// legs walk and it beats its wings like a flying one (the cases run on
+    /// into each other), a sitting one does neither, a party parrot sways.
+    pub fn setup_parrot(&mut self, state: &ParrotRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let (position, speed) = (state.quadruped.walk_position, state.quadruped.walk_speed);
+        let flap = state.flap_angle;
+        self.parrot_prepare(state.pose);
+        let mut adjust = |name: &str, apply: &dyn Fn(&mut Part)| {
+            if let Some(part) = self.root.child_mut(name) {
+                apply(part);
+            }
+        };
+        adjust("head", &|head| {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        });
+        if state.pose == ParrotPose::Standing {
+            adjust("left_leg", &|leg| {
+                leg.x_rot += cos(position * 0.6662) * 1.4 * speed;
+            });
+            adjust("right_leg", &|leg| {
+                leg.x_rot += cos(position * 0.6662 + pi) * 1.4 * speed;
+            });
+        }
+        match state.pose {
+            ParrotPose::Standing | ParrotPose::Flying | ParrotPose::OnShoulder => {
+                let bob = flap * 0.3;
+                adjust("head", &|part| part.y += bob);
+                adjust("tail", &|part| {
+                    part.x_rot += cos(position * 0.6662) * 0.3 * speed;
+                    part.y += bob;
+                });
+                adjust("body", &|part| part.y += bob);
+                adjust("left_wing", &|part| {
+                    part.z_rot = -0.0873 - flap;
+                    part.y += bob;
+                });
+                adjust("right_wing", &|part| {
+                    part.z_rot = 0.0873 + flap;
+                    part.y += bob;
+                });
+                adjust("left_leg", &|leg| leg.y += bob);
+                adjust("right_leg", &|leg| leg.y += bob);
+            }
+            ParrotPose::Sitting => {}
+            ParrotPose::Party => {
+                let (x, y) = (cos(state.age_in_ticks), sin(state.age_in_ticks));
+                adjust("head", &|head| {
+                    head.x += x;
+                    head.y += y;
+                    head.x_rot = 0.0;
+                    head.y_rot = 0.0;
+                    head.z_rot = sin(state.age_in_ticks) * 0.4;
+                });
+                adjust("body", &|part| {
+                    part.x += x;
+                    part.y += y;
+                });
+                adjust("left_wing", &|part| {
+                    part.z_rot = -0.0873 - flap;
+                    part.x += x;
+                    part.y += y;
+                });
+                adjust("right_wing", &|part| {
+                    part.z_rot = 0.0873 + flap;
+                    part.x += x;
+                    part.y += y;
+                });
+                adjust("tail", &|part| {
+                    part.x += x;
+                    part.y += y;
+                });
+            }
+        }
+    }
+
+    /// `ParrotModel.prepare`: the pose's own resting turns.
+    fn parrot_prepare(&mut self, pose: ParrotPose) {
+        let mut adjust = |name: &str, apply: &dyn Fn(&mut Part)| {
+            if let Some(part) = self.root.child_mut(name) {
+                apply(part);
+            }
+        };
+        match pose {
+            ParrotPose::Flying => {
+                let tuck = (std::f64::consts::PI * 2.0 / 9.0) as f32;
+                adjust("left_leg", &|leg| leg.x_rot += tuck);
+                adjust("right_leg", &|leg| leg.x_rot += tuck);
+            }
+            ParrotPose::Sitting => {
+                const LIFT: f32 = 1.9;
+                let half = (std::f64::consts::PI / 2.0) as f32;
+                adjust("head", &|part| part.y += LIFT);
+                adjust("tail", &|part| {
+                    part.x_rot += (std::f64::consts::PI / 6.0) as f32;
+                    part.y += LIFT;
+                });
+                adjust("body", &|part| part.y += LIFT);
+                adjust("left_wing", &|part| {
+                    part.z_rot = -0.0873;
+                    part.y += LIFT;
+                });
+                adjust("right_wing", &|part| {
+                    part.z_rot = 0.0873;
+                    part.y += LIFT;
+                });
+                adjust("left_leg", &|leg| {
+                    leg.y += LIFT;
+                    leg.x_rot += half;
+                });
+                adjust("right_leg", &|leg| {
+                    leg.y += LIFT;
+                    leg.x_rot += half;
+                });
+            }
+            ParrotPose::Party => {
+                adjust("left_leg", &|leg| {
+                    leg.z_rot = (-std::f64::consts::PI / 9.0) as f32
+                });
+                adjust("right_leg", &|leg| {
+                    leg.z_rot = (std::f64::consts::PI / 9.0) as f32
+                });
+            }
+            ParrotPose::Standing | ParrotPose::OnShoulder => {}
         }
     }
 

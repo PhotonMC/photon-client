@@ -213,6 +213,8 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Parrot.getVariant`'s id.
+    pub(crate) parrot_variant: i32,
     /// `Bat.isResting`, `Vex.isCharging` and `Allay.isDancing`.
     pub(crate) bat_resting: bool,
     pub(crate) vex_charging: bool,
@@ -709,6 +711,8 @@ pub struct ClientEntity {
     pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
     /// A bat's animation states and an allay's progress, made when they first tick.
     pub(crate) bat: Option<Box<crate::bat::BatState>>,
+    /// A parrot's wing beats, made when it first ticks.
+    pub(crate) parrot: Option<Box<crate::parrot::ParrotState>>,
     pub(crate) allay: Option<Box<crate::allay::AllayState>>,
     /// A guardian's animations, made when it first ticks.
     pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
@@ -2041,6 +2045,31 @@ impl ClientEntity {
         self.living.allay_dancing
     }
 
+    /// `Parrot.getVariant`'s id.
+    pub fn parrot_variant(&self) -> i32 {
+        self.living.parrot_variant
+    }
+
+    /// A parrot's wing beats, if it has ticked.
+    pub fn parrot(&self) -> Option<&crate::parrot::ParrotState> {
+        self.parrot.as_deref()
+    }
+
+    /// `Parrot.calculateFlapping` after `super.aiStep`: the wings beat by
+    /// whether the parrot is in the air, and one falling there sinks slowly.
+    pub(crate) fn tick_parrot(&mut self) {
+        if voxel_data::entity_type::name(self.type_id) != Some("minecraft:parrot") {
+            return;
+        }
+        let (on_ground, passenger) = (self.on_ground, self.vehicle_id.is_some());
+        if !on_ground && f64::from_bits(self.motion_y_bits) < 0.0 {
+            self.motion_y_bits = (f64::from_bits(self.motion_y_bits) * 0.6).to_bits();
+        }
+        self.parrot
+            .get_or_insert_with(Default::default)
+            .tick(on_ground, passenger);
+    }
+
     /// A bat's animation states, if it has ticked.
     pub fn bat(&self) -> Option<&crate::bat::BatState> {
         self.bat.as_deref()
@@ -2487,6 +2516,7 @@ impl ClientEntity {
         self.tick_cat(sleeper_near_cat);
         self.tick_panda(thundering);
         self.tick_bat();
+        self.tick_parrot();
         self.tick_allay();
     }
 

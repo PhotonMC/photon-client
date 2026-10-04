@@ -127,6 +127,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
 - [T35e — Nautilus ve zombi nautilus — client-parity](client-nautilus-parity-conformance.md)
 - [T32f — Panda — client-parity](client-panda-parity-conformance.md)
+- [T36c — Papağan — client-parity](client-parrot-parity-conformance.md)
 - [T26b — Orta tık seçimi (`PickItemFrom*`) ve bakılan varlık önerisi — client-parity](client-pick-item-suggestion-parity-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](client-player-apply-input-conformance.md)
 - [P10.f — LocalPlayer movement speed attribute binding — client-parity](client-player-attribute-speed-conformance.md)

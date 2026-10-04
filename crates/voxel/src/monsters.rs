@@ -7,9 +7,9 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    AllayRenderState, BatRenderState, EndermanState, MobModel, MobPlacement, QuadrupedState,
-    VexRenderState, creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_glow,
-    mob_vertices_swirl, placement_pose,
+    AllayRenderState, BatRenderState, EndermanState, MobModel, MobPlacement, ParrotPose,
+    ParrotRenderState, QuadrupedState, VexRenderState, creeper_scale, creeper_white_overlay,
+    mob_vertices, mob_vertices_glow, mob_vertices_swirl, placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
@@ -43,6 +43,8 @@ enum Pose {
     Vex,
     /// `AllayModel`, which a renderer lights fully.
     Allay,
+    /// `ParrotModel`, in the texture of its variant.
+    Parrot,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -55,7 +57,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 12] = [
+const MONSTERS: [Monster; 13] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -140,6 +142,13 @@ const MONSTERS: [Monster; 12] = [
         pose: Pose::Allay,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:parrot",
+        layer: "minecraft:parrot#main",
+        texture: "entity/parrot/parrot_red_blue",
+        pose: Pose::Parrot,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
 
 /// The texture a vex charges in (`VexRenderer.getTextureLocation`).
@@ -160,6 +169,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         })
         .flatten()
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
+        .chain(voxel_world::parrot::VARIANT_TEXTURES)
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -228,6 +238,24 @@ fn pose_monster(
             });
             // `VexRenderer.getBlockLightLevel`.
             placed.light = (placed.light & !0xFFFF) | (15 << 4);
+        }
+        Pose::Parrot => {
+            let own = entity.parrot().copied();
+            // `ParrotModel.getPose`: sitting, else flying in the air (the party
+            // pose needs a jukebox the client does not track yet).
+            let pose = if entity.is_sitting() {
+                ParrotPose::Sitting
+            } else if !entity.on_ground() {
+                ParrotPose::Flying
+            } else {
+                ParrotPose::Standing
+            };
+            model.setup_parrot(&ParrotRenderState {
+                quadruped: look,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                flap_angle: own.map_or(0.0, |own| own.flap_angle(partial)),
+                pose,
+            });
         }
         Pose::Allay => {
             let own = entity.allay().copied().unwrap_or_default();
@@ -300,6 +328,8 @@ pub fn remote_monsters(
             GHAST_SHOOTING_TEXTURE
         } else if monster.pose == Pose::Vex && entity.is_vex_charging() {
             VEX_CHARGING_TEXTURE
+        } else if monster.pose == Pose::Parrot {
+            voxel_world::parrot::variant_texture(entity.parrot_variant())
         } else {
             monster.texture
         };

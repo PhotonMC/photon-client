@@ -52,6 +52,7 @@ pub mod living;
 mod metadata;
 mod paletted;
 pub mod panda;
+pub mod parrot;
 mod pick;
 mod player;
 pub mod polar_bear;
@@ -3136,6 +3137,7 @@ impl ClientWorld {
                 frog: None,
                 guardian: None,
                 bat: None,
+                parrot: None,
                 allay: None,
                 panda: None,
                 ravager: None,
@@ -3589,6 +3591,9 @@ impl ClientWorld {
         }
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
+        }
+        if let Some(variant) = parrot_variant_from_metadata(entity.type_id, metadata) {
+            entity.living.parrot_variant = variant;
         }
         let (bat_flags, vex_flags, allay_dancing) =
             flier_data_from_metadata(entity.type_id, metadata);

@@ -852,6 +852,10 @@ public final class MovementOracle {
                     }
                     case "flier_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("parrot_variant")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.parrot.Parrot.class, "DATA_VARIANT_ID",
+                                event.get("parrot_variant").getAsInt()));
+                        }
                         if (event.has("bat_flags")) {
                             data.add(wolfData(net.minecraft.world.entity.ambient.Bat.class, "DATA_ID_FLAGS",
                                 (byte) event.get("bat_flags").getAsInt()));
@@ -1171,6 +1175,17 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_started", animation.isStarted());
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) bat.tickCount) : 0L);
+                            }
+                        }
+                        case "parrot" -> {
+                            var parrot = (net.minecraft.world.entity.animal.parrot.Parrot) entity;
+                            described.addProperty("variant", parrot.getVariant().getId());
+                            described.addProperty("motion_y", Oracle.bits(parrot.getDeltaMovement().y));
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                float flap = net.minecraft.util.Mth.lerp(partial, parrot.oFlap, parrot.flap);
+                                float speed = net.minecraft.util.Mth.lerp(partial, parrot.oFlapSpeed, parrot.flapSpeed);
+                                described.addProperty("flap_angle_" + partial,
+                                    Oracle.bits((net.minecraft.util.Mth.sin(flap) + 1.0F) * speed));
                             }
                         }
                         case "vex" -> {
