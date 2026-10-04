@@ -109,7 +109,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | bölündü (fcd28dc2) |
 | [T37a](T37a-slime-magma-kupu.md) | Slime ve magma cube (squish, boyut, dış katman) | M | T37 | bitti (fcd28dc2) |
 | [T37b](T37b-sulfur-kupu.md) | Sulfur cube | M | T37a | bitti (7b7468cf) |
-| [T37b2](T37b2-sulfur-tasidigi-blok.md) | Sulfur cube'un taşıdığı blok | M | T37b, T34d | bitti |
+| [T37b2](T37b2-sulfur-tasidigi-blok.md) | Sulfur cube'un taşıdığı blok | M | T37b, T34d | bitti (181fe13b) |
 | [T37b3](T37b3-blok-kaplamasi.md) | Varlık üstündeki bloğun kaplaması (hasar kırmızısı, fitil beyazı) | M | T37b2 | açık |
 | [T37c](T37c-shulker.md) | Shulker | M | T37 | bitti (0e5a3ffc) |
 | [T37c2](T37c2-shulker-konum.md) | Shulker konumu, ışınlanma kayması ve vuruş kutusu | M | T37c | açık |
