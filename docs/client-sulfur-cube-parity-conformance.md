@@ -28,8 +28,20 @@ fitilin sıfıra inmesi, küçük). Katman tabloları (T23) her koşuda karşıl
 
 ## Sapmalar (açık)
 
-- Taşıdığı blok (`getBodyArmorItem`: gövde ekipmanı, blok modeli, squish'in sıfırlanması) ve
-  arketipler T37b2'dedir; bu yüzden squish her zaman uygulanır.
+- Taşıdığı blok T37b2'de eklendi (aşağıda); arketipler hâlâ yok.
 - Görünmezlikte bir piksellik yukarı kaydırma sıfırlanmaz (görünmezlik hiçbir mob'ta gözetilmiyor).
 - Fitil beyaz bloğu (`TntMinecartRenderer.submitWhiteSolidBlock`) bu mob'da yoktur; yalnız iç gövde
   beyazlar. Ses, parçacık, patlama yok.
+
+## Taşıdığı blok (T37b2) — [client-parity]
+
+- `SetEquipment` BODY yuvası (sıra 6) zaten saklanır; çizici bu yuvadaki eşyadan
+  `Block.byItem(item).defaultBlockState()` kurar ve eşyanın `block_state` bileşenini uygular (bakır
+  golemin anteniyle ortak `block_item_state`). Blok eşyası olmayan eşya hava verir, yani boş sayılır.
+- Blok doluysa `applySizeAndSquish` squish'i sıfırlar (`ss = 0`); boyut ölçeği kalır.
+- `SulfurCubeInnerLayer` blok dalı: `XP` 180°, küçükte `0,5` ölçek, sonra `(-0,5, -0,518, -0,5)`;
+  blok varken iç gövde çizilmez. Poz, gerçek katmanın `submitBlockModel`'e verdiği matrisle ve
+  gerçek `scale` kancasının bıraktığı pozdan karşılaştırılır (`cube-mob-rotations`, 8 satır:
+  yetişkin/küçük × fitil 0/6,25).
+- Açık: bloğun üstündeki kaplama (hasar kırmızısı, yanık fitilin beyazı) yerdeki eşya hattında
+  yoktur; T37b3.

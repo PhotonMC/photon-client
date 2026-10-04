@@ -3,12 +3,15 @@
 //! own light.
 
 use voxel_net::connection::PlaySession;
+use voxel_render::entity_block::sulfur_cube_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    CubeMobScale, SulfurCubeScale, mob_vertices, sort_translucent_quads, tnt_is_lit,
+    CubeMobScale, SulfurCubeScale, mob_vertices, placement_pose, sort_translucent_quads, tnt_is_lit,
 };
 use voxel_render::scene::Vertex;
+use voxel_world::EquipmentSlot;
 
+use crate::held_items::{HeldItem, block_item_state};
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -101,12 +104,13 @@ pub fn remote_cube_mobs(
 }
 
 /// `SulfurCubeRenderer` for the sulfur cubes the server added: the inner body
-/// first, then the shell, both translucent.
+/// first, then the shell, both translucent. A cube that holds a block draws
+/// the block (`SulfurCubeInnerLayer`) in place of its inner body.
 pub fn remote_sulfur_cubes(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
-    view: FrameView,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let partial = view.partial as f32;
@@ -129,6 +133,11 @@ pub fn remote_sulfur_cubes(
         } else {
             0.0
         };
+        // `Block.byItem(item).defaultBlockState()` of the body item; an item that is
+        // no block gives air, which draws nothing.
+        let block = entity
+            .equipment(EquipmentSlot::Body)
+            .and_then(block_item_state);
         let mut placed = placement(world, &snapshot, view, entity.scale());
         placed.cube_mob = Some(CubeMobScale {
             size: entity.cube_size(),
@@ -137,6 +146,7 @@ pub fn remote_sulfur_cubes(
             sulfur: Some(SulfurCubeScale {
                 fuse_remaining: fuse,
                 baby: entity.is_baby(),
+                holds_block: block.is_some(),
             }),
         });
         // `SulfurCubeInnerLayer`: a fuse that is lit flashes the body white.
@@ -145,7 +155,10 @@ pub fn remote_sulfur_cubes(
             inner_placed.red_overlay = false;
             inner_placed.white_overlay = 1.0;
         }
-        if let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby]) {
+        if let Some(state) = block {
+            let pose = sulfur_cube_block_pose(&placement_pose(&placed), entity.is_baby());
+            held.push(HeldItem::block(state, pose, placed.light));
+        } else if let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby]) {
             let mut body = mob_vertices(inner, &inner_placed, inner_rect);
             sort_translucent_quads(&mut body, view.camera);
             vertices.extend(body);

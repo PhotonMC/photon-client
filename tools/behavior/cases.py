@@ -16249,6 +16249,14 @@ def entity_cube_mob_cases():
               "scale": float_bits(1.0)}
              for baby, size in ((False, 2), (True, 1), (False, 3))
              for squish in (-0.5, 0.4) for fuse in (0.0, 1.5, 6.25, 9.9, 10.0, 30.0)]
+    # A cube that holds a block: no squish, and the block put where `SulfurCubeInnerLayer` draws it.
+    rows += [{"label": f"sulfur-block-{'baby' if baby else 'grown'}-size-{size}-fuse-{fuse}",
+              "kind": "sulfur_cube", "baby": baby, "body_rot": float_bits(37.0),
+              "x_rot": float_bits(0.0), "age_in_ticks": float_bits(10.5), "size": size,
+              "squish": float_bits(0.4), "fuse_remaining": float_bits(fuse),
+              "contained_block": True, "feet_x": float_bits(3.5), "feet_y": float_bits(-1.25),
+              "feet_z": float_bits(0.75), "scale": float_bits(1.0)}
+             for baby, size in ((False, 2), (True, 1)) for fuse in (0.0, 6.25)]
     rows.append({"label": "slime-dying", "kind": "slime", "baby": False,
                  "body_rot": float_bits(-80.0), "x_rot": float_bits(0.0),
                  "age_in_ticks": float_bits(3.0), "size": 3, "squish": float_bits(0.2),

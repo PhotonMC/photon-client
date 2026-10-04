@@ -17,9 +17,9 @@ use voxel_render::mob_model::{
 };
 use voxel_render::player_model::{Arm, Part};
 use voxel_render::scene::Vertex;
-use voxel_world::{ClientItemStackState, EquipmentSlot};
+use voxel_world::EquipmentSlot;
 
-use crate::held_items::{HeldItem, Place};
+use crate::held_items::{HeldItem, Place, block_item_state};
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -49,30 +49,6 @@ const TEXTURES: [(&str, &str); 4] = [
 /// The paths (under `textures/`) of the textures a copper golem wears.
 pub fn textures() -> impl Iterator<Item = &'static str> {
     TEXTURES.into_iter().flat_map(|(body, eyes)| [body, eyes])
-}
-
-/// The state of the block a stack on the antenna shows
-/// (`BlockItem.getBlock().defaultBlockState()` with the stack's
-/// `BlockItemStateProperties` applied), or none for an item that is not a
-/// block item.
-fn antenna_block_state(stack: &ClientItemStackState) -> Option<u32> {
-    let item = usize::try_from(stack.item_registry_id())
-        .ok()
-        .and_then(|index| voxel_data::item::registry::ITEMS.get(index))?;
-    let block = voxel_data::block::registry::block(item.block?)?;
-    let values =
-        voxel_game::item_values::Values::new(stack.item_registry_id(), stack.patch_bytes());
-    // A value the property cannot hold, or a property the block lacks, leaves
-    // the state as it is.
-    let mut chosen = std::collections::BTreeMap::new();
-    for (name, value) in values.block_state_properties() {
-        let mut attempt = chosen.clone();
-        attempt.insert(name, value);
-        if block.state_id(&attempt).is_some() {
-            chosen = attempt;
-        }
-    }
-    block.state_id(&chosen)
 }
 
 /// `CopperGolemRenderer` for the copper golems the server added.
@@ -172,7 +148,7 @@ fn carried(
     }
     if let Some(state) = entity
         .equipment(EquipmentSlot::Saddle)
-        .and_then(antenna_block_state)
+        .and_then(block_item_state)
     {
         held.push(HeldItem::block(
             state,
@@ -186,6 +162,7 @@ fn carried(
 mod tests {
     use super::*;
     use voxel_game::item_components::{Patch, ids};
+    use voxel_world::ClientItemStackState;
 
     fn with_state(item: &str, properties: &[(&str, &str)]) -> ClientItemStackState {
         let mut value = Vec::new();
@@ -208,7 +185,7 @@ mod tests {
     fn the_antenna_shows_the_block_item_with_its_state_properties() {
         let block = voxel_data::block::registry::block("minecraft:sea_pickle").expect("block");
         let first = block.first_state_id();
-        let state_of = |stack| antenna_block_state(&stack).map(|state| state - first);
+        let state_of = |stack| block_item_state(&stack).map(|state| state - first);
         let default = block.default_state_id() - first;
         let plain = ClientItemStackState::new(
             1,
@@ -227,9 +204,6 @@ mod tests {
         );
         // An item that places no block shows no block.
         let stick = voxel_data::item::registry::index("minecraft:stick").expect("item") as i32;
-        assert_eq!(
-            antenna_block_state(&ClientItemStackState::new(1, stick)),
-            None
-        );
+        assert_eq!(block_item_state(&ClientItemStackState::new(1, stick)), None);
     }
 }

@@ -47,6 +47,18 @@ pub fn iron_golem_flower_pose(entity: &Pose, right_arm: &Part) -> Pose {
     pose
 }
 
+/// `SulfurCubeInnerLayer`'s block: turned upside down (the entity pose is
+/// already flipped), halved on a small cube, and moved to the block's corner.
+pub fn sulfur_cube_block_pose(entity: &Pose, baby: bool) -> Pose {
+    let mut pose = *entity;
+    degrees(&mut pose, Quaternion::rotation_x, 180.0);
+    if baby {
+        pose.scale(0.5, 0.5, 0.5);
+    }
+    pose.translate(-0.5, -0.518, -0.5);
+    pose
+}
+
 /// `MushroomCowMushroomLayer`: three mushrooms on a grown mooshroom, two on
 /// its back and one on its head, each turned its own way.
 pub fn mooshroom_mushroom_poses(entity: &Pose, head: &Part) -> [Pose; 3] {

@@ -2936,6 +2936,9 @@ public final class EntityOracle {
                     : new net.minecraft.client.renderer.entity.state.SlimeRenderState();
                 if (cube instanceof net.minecraft.client.renderer.entity.state.SulfurCubeRenderState sulfur) {
                     sulfur.fuseRemainingTicks = Oracle.f32(row, "fuse_remaining");
+                    if (row.has("contained_block")) {
+                        fillBlock(sulfur.containedBlock);
+                    }
                 }
                 cube.size = row.get("size").getAsInt();
                 cube.squish = Oracle.f32(row, "squish");
@@ -3021,6 +3024,30 @@ public final class EntityOracle {
                     fullDescribed.add(Oracle.bits(value));
                 }
                 out.add("full_pose", fullDescribed);
+            }
+            if (row.has("contained_block")) {
+                // `SulfurCubeInnerLayer` draws the block it holds from the pose the renderer left.
+                var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                    EntityOracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                    (proxy, method2, args) -> {
+                        if (method2.getName().equals("submitBlockModel")) {
+                            var layerMatrix = new float[16];
+                            ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(layerMatrix);
+                            var block = new JsonArray();
+                            for (float value : layerMatrix) {
+                                block.add(Oracle.bits(value));
+                            }
+                            poses.add(block);
+                        }
+                        return null;
+                    });
+                net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+                Oracle.vanillaRegistries();
+                new net.minecraft.client.renderer.entity.layers.SulfurCubeInnerLayer(
+                    parent, new net.minecraft.client.model.geom.EntityModelSet(
+                        net.minecraft.client.model.geom.LayerDefinitions.createRoots()))
+                    .submit(stack, collector, 0, (net.minecraft.client.renderer.entity.state.SulfurCubeRenderState) state, 0.0F, 0.0F);
             }
             if (kind.equals("panda")) {
                 var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(

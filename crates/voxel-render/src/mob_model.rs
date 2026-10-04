@@ -3940,6 +3940,9 @@ pub struct SulfurCubeScale {
     /// `SulfurCubeRenderState.fuseRemainingTicks`: zero while it is not primed.
     pub fuse_remaining: f32,
     pub baby: bool,
+    /// Whether it holds a block that is drawn (`SulfurCubeRenderState.containedBlock`
+    /// is not empty): it then keeps no squish.
+    pub holds_block: bool,
 }
 
 /// `TntRenderer.getSwellAmount`.
@@ -3962,7 +3965,13 @@ impl CubeMobScale {
             pose.translate(0.0, 0.001, 0.0);
         }
         let size = self.size as f32;
-        let squash = self.squish / (size * 0.5 + 1.0);
+        // `SulfurCubeRenderer.applySizeAndSquish`: a held block does not squash.
+        let squish = if self.sulfur.is_some_and(|sulfur| sulfur.holds_block) {
+            0.0
+        } else {
+            self.squish
+        };
+        let squash = squish / (size * 0.5 + 1.0);
         let wide = 1.0 / (squash + 1.0);
         pose.scale(wide * size, 1.0 / wide * size, wide * size);
         if let Some(sulfur) = self.sulfur {

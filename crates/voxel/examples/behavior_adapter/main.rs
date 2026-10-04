@@ -21770,13 +21770,20 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     sulfur: Some(voxel_render::mob_model::SulfurCubeScale {
                         fuse_remaining: bits("fuse_remaining")?,
                         baby,
+                        holds_block: row.get("contained_block").is_some(),
                     }),
                 });
                 if row.get("feet_x").is_some() {
                     placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
                     placed.scale = bits("scale")?;
                 }
-                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
+                let pose = voxel_render::mob_model::placement_pose(&placed);
+                full_pose = Some(matrix_of(&pose));
+                if row.get("contained_block").is_some() {
+                    poses.push(matrix_of(
+                        &voxel_render::entity_block::sulfur_cube_block_pose(&pose, baby),
+                    ));
+                }
             }
             kind @ ("slime" | "magma_cube") => {
                 placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {

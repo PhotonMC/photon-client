@@ -69,6 +69,30 @@ impl HeldItem {
     }
 }
 
+/// The state of the block a stack shows on an entity
+/// (`BlockItem.getBlock().defaultBlockState()` with the stack's
+/// `BlockItemStateProperties` applied), or none for an item that is not a
+/// block item.
+pub fn block_item_state(stack: &ClientItemStackState) -> Option<u32> {
+    let item = usize::try_from(stack.item_registry_id())
+        .ok()
+        .and_then(|index| voxel_data::item::registry::ITEMS.get(index))?;
+    let block = voxel_data::block::registry::block(item.block?)?;
+    let values =
+        voxel_game::item_values::Values::new(stack.item_registry_id(), stack.patch_bytes());
+    // A value the property cannot hold, or a property the block lacks, leaves
+    // the state as it is.
+    let mut chosen = std::collections::BTreeMap::new();
+    for (name, value) in values.block_state_properties() {
+        let mut attempt = chosen.clone();
+        attempt.insert(name, value);
+        if block.state_id(&attempt).is_some() {
+            chosen = attempt;
+        }
+    }
+    block.state_id(&chosen)
+}
+
 /// The posed model a humanoid's hands are found on.
 pub struct Hands<'a> {
     /// The pose the model is drawn from.

@@ -234,7 +234,8 @@ def run_command(args, run_dir, report):
         expected = load_capture(capture, identity, cases)
         adapter = args.adapter.resolve()
         report["adapter_sha256"] = digest(adapter.read_bytes())
-        raw, _ = execute([str(adapter)], run_dir, "adapter", stdin)
+        # The adapter runs every record in one process; a loaded machine needs more than a minute.
+        raw, _ = execute([str(adapter)], run_dir, "adapter", stdin, timeout=600)
         actual = parse_records(raw, cases)
         report["difference"] = compare_records(expected, actual)
         report["status"] = "failed" if report["difference"] else "parity_passed"

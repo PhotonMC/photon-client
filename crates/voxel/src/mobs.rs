@@ -606,12 +606,16 @@ fn remote_hostiles(
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
-    let mut vertices = crate::monsters::remote_monsters(session, models, textures, (view, held));
+    let mut vertices =
+        crate::monsters::remote_monsters(session, models, textures, (view, &mut *held));
     vertices.extend(crate::cube_mobs::remote_cube_mobs(
         session, models, textures, view,
     ));
     vertices.extend(crate::cube_mobs::remote_sulfur_cubes(
-        session, models, textures, view,
+        session,
+        models,
+        textures,
+        (view, held),
     ));
     vertices.extend(crate::shulkers::remote_shulkers(
         session, models, textures, view,
