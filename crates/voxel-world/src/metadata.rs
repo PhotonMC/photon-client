@@ -486,6 +486,24 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8])
     metadata_int_value(metadata, GLOW_SQUID_DARK_TICKS_DATA_ID)
 }
 
+/// Whether a guardian moves and the id of what its beam aims at
+/// (`Guardian.DATA_ID_MOVING`, `DATA_ID_ATTACK_TARGET`), each when the data holds it.
+pub(crate) fn guardian_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<i32>) {
+    if !matches!(
+        voxel_data::entity_type::name(type_id),
+        Some("minecraft:guardian" | "minecraft:elder_guardian")
+    ) {
+        return (None, None);
+    }
+    (
+        metadata_boolean_value(metadata, GUARDIAN_MOVING_DATA_ID),
+        metadata_int_value(metadata, GUARDIAN_ATTACK_TARGET_DATA_ID),
+    )
+}
+
 /// What a salmon, a tropical fish or a pufferfish keeps of its looks in one int
 /// (`Salmon.DATA_TYPE`, `TropicalFish.DATA_ID_TYPE_VARIANT`, `Pufferfish.PUFF_STATE`),
 /// when the data holds it.

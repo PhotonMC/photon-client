@@ -1682,6 +1682,43 @@ public final class EntityOracle {
     }
 
     /**
+     * The guardian models (grown, elder) posed by the reference's own `setupAnim`, drawn, from the
+     * look, the spikes' and the tail's animation and (optionally) what the eye follows.
+     */
+    private static JsonObject guardianModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var root = bakedLayer(row.get("layer").getAsString());
+            var state = new net.minecraft.client.renderer.entity.state.GuardianRenderState();
+            state.yRot = Oracle.f32(row, "y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.spikesAnimation = Oracle.f32(row, "spikes");
+            state.tailAnimation = Oracle.f32(row, "tail");
+            if (row.has("eye")) {
+                var eye = row.getAsJsonObject("eye");
+                state.eyePosition = vec3(eye.getAsJsonArray("eye_position"));
+                state.lookDirection = vec3(eye.getAsJsonArray("look_direction"));
+                state.lookAtPosition = vec3(eye.getAsJsonArray("look_at_position"));
+            }
+            var model = new net.minecraft.client.model.monster.guardian.GuardianModel(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    private static net.minecraft.world.phys.Vec3 vec3(final JsonArray bits) {
+        return new net.minecraft.world.phys.Vec3(
+            Double.longBitsToDouble(Long.parseUnsignedLong(bits.get(0).getAsString(), 16)),
+            Double.longBitsToDouble(Long.parseUnsignedLong(bits.get(1).getAsString(), 16)),
+            Double.longBitsToDouble(Long.parseUnsignedLong(bits.get(2).getAsString(), 16)));
+    }
+
+    /**
      * The nautilus models (grown, baby, zombie, zombie with corals) posed by the reference's own
      * `setupAnim`, drawn, from the look, the stride, the age and whether body armor is worn.
      */
@@ -3184,6 +3221,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
+            {net.minecraft.world.entity.monster.Guardian.class, "DATA_ID_MOVING", "guardian-moving"},
+            {net.minecraft.world.entity.monster.Guardian.class, "DATA_ID_ATTACK_TARGET", "guardian-attack-target"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT", "axolotl-variant"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD", "axolotl-playing-dead"},
             {net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG", "turtle-has-egg"},
@@ -3386,6 +3425,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("guardian_model")) {
+            return guardianModel(request);
         }
         if (operation.equals("nautilus_model")) {
             return nautilusModel(request);

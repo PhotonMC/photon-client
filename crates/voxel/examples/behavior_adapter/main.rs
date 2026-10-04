@@ -18621,6 +18621,32 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "guardian_random" => {
+                        let tail = f32::from_bits(
+                            u32::from_str_radix(
+                                event["tail"].as_str().ok_or("tail must be a string")?,
+                                16,
+                            )
+                            .map_err(|error| error.to_string())?,
+                        );
+                        world.fix_guardian_random(entity_id, tail, i64_field(event, "seed")?);
+                    }
+                    "guardian_data" => {
+                        let mut data = Vec::new();
+                        if let Some(moving) = event["moving"].as_bool() {
+                            data.extend([
+                                voxel_world::GUARDIAN_MOVING_DATA_ID,
+                                8,
+                                u8::from(moving),
+                            ]);
+                        }
+                        if event.get("target").is_some() {
+                            data.extend([voxel_world::GUARDIAN_ATTACK_TARGET_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(i32_field(event, "target")?, &mut data);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "frog_data" => {
                         // `Pose` ids: standing is zero, long jumping six, croaking eight, using
                         // the tongue nine.
@@ -18887,6 +18913,18 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         let area = entity.bounding_box();
                         described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
                         described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
+                    }
+                    "guardian" => {
+                        described["in_water"] = json!(entity.is_in_water());
+                        if let Some(guardian) = entity.guardian() {
+                            for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                                described[format!("tail_{key}")] =
+                                    json!(hex(guardian.tail_animation(partial)));
+                                described[format!("spikes_{key}")] =
+                                    json!(hex(guardian.spikes_animation(partial)));
+                            }
+                            described["attack_time"] = json!(hex(guardian.attack_time() as f32));
+                        }
                     }
                     "frog" => {
                         described["in_water"] = json!(entity.is_in_water());
@@ -20311,6 +20349,55 @@ fn frog_model_result(request: &Value) -> Result<Value, String> {
                 swim_idle: started("swim_idle"),
             });
         }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `guardian_model`: a guardian's model posed and drawn from the look, the spikes' and the tail's
+/// animation and what its eye follows.
+fn guardian_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{GuardianLook, GuardianState, MobModel};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
+            .ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let vector = |value: &Value| -> Result<[f64; 3], String> {
+            let parts = value.as_array().ok_or("vector")?;
+            let mut out = [0.0; 3];
+            for (slot, part) in out.iter_mut().zip(parts) {
+                *slot = f64::from_bits(
+                    u64::from_str_radix(part.as_str().ok_or("vector part")?, 16)
+                        .map_err(|error| error.to_string())?,
+                );
+            }
+            Ok(out)
+        };
+        let look = match row.get("eye") {
+            Some(eye) => Some(GuardianLook {
+                eye_position: vector(&eye["eye_position"])?,
+                look_direction: vector(&eye["look_direction"])?,
+                look_at_position: vector(&eye["look_at_position"])?,
+            }),
+            None => None,
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_guardian(&GuardianState {
+            head_y_rot: bits("y_rot")?,
+            x_rot: bits("x_rot")?,
+            age_in_ticks: bits("age_in_ticks")?,
+            spikes_animation: bits("spikes")?,
+            tail_animation: bits("tail")?,
+            look,
+        });
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
     Ok(json!({"rows": out}))
@@ -22051,6 +22138,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "axolotl_model" => return axolotl_model_result(request),
         "frog_model" => return frog_model_result(request),
         "nautilus_model" => return nautilus_model_result(request),
+        "guardian_model" => return guardian_model_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22416,6 +22504,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "zombie-nautilus-variant",
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "guardian-moving",
+                    i64::from(voxel_world::GUARDIAN_MOVING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "guardian-attack-target",
+                    i64::from(voxel_world::GUARDIAN_ATTACK_TARGET_DATA_ID),
+                    i64::from(1),
                 ),
                 (
                     "axolotl-variant",

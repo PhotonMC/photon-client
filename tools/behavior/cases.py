@@ -14354,6 +14354,8 @@ def movement_item_cases():
                          for y in layers for x in range(4, 13) for z in range(4, 13)]
         return row
 
+    guardian_random = lambda tail, seed: {"tick": 0, "type": "guardian_random",
+                                          "tail": float_bits(tail), "seed": seed}
     fish_data = lambda tick, fish, value: {"tick": tick, "type": "fish_data", "fish": fish,
                                            "value": value}
     motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
@@ -14496,6 +14498,32 @@ def movement_item_cases():
              extras="frog"),
         fish("frog-in-the-pool-jumps", "frog", 30,
              [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"}], extras="frog"),
+        # A guardian's tail sways at a speed that follows whether it moves (and in water or not),
+        # its spikes breathe (out of water drawn at random, from a source fixed here), and its beam
+        # counts up to the attack duration (shorter for the elder), starting over whenever the target
+        # is sent again.
+        fish("guardian-glides", "guardian", 40,
+             [guardian_random(0.37, 11)], extras="guardian"),
+        fish("guardian-swims-and-stops", "guardian", 60,
+             [guardian_random(0.37, 11), {"tick": 5, "type": "guardian_data", "moving": True},
+              {"tick": 30, "type": "guardian_data", "moving": False}], extras="guardian"),
+        fish("guardian-out-of-water", "guardian", 30,
+             [guardian_random(0.82, 23)], water="none", extras="guardian"),
+        fish("guardian-moves-out-of-water", "guardian", 30,
+             [guardian_random(0.82, 23), {"tick": 4, "type": "guardian_data", "moving": True}],
+             water="none", extras="guardian"),
+        fish("guardian-takes-aim", "guardian", 100,
+             [guardian_random(0.37, 11), {"tick": 5, "type": "guardian_data", "target": 999},
+              {"tick": 30, "type": "guardian_data", "target": 999}], extras="guardian"),
+        fish("guardian-stops-aiming", "guardian", 40,
+             [guardian_random(0.37, 11), {"tick": 5, "type": "guardian_data", "target": 999},
+              {"tick": 20, "type": "guardian_data", "target": 0}], extras="guardian"),
+        fish("elder-guardian-takes-aim", "elder_guardian", 100,
+             [guardian_random(0.37, 11), {"tick": 5, "type": "guardian_data", "target": 999}],
+             extras="guardian"),
+        fish("elder-guardian-glides", "elder_guardian", 30,
+             [guardian_random(0.5, 3), {"tick": 5, "type": "guardian_data", "moving": True}],
+             extras="guardian"),
         fish("tadpole-in-water", "tadpole", 10, [], extras="frog"),
         fish("tadpole-out-of-water", "tadpole", 10, [], water="none", extras="frog"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
@@ -14840,6 +14868,7 @@ def entity_cases():
     yield from entity_axolotl_cases()
     yield from entity_frog_cases()
     yield from entity_nautilus_cases()
+    yield from entity_guardian_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15767,6 +15796,40 @@ def entity_nautilus_cases():
                           walk_speed=0.5),
                  nautilus(layer, "armored", armored=True)]
     yield {"case_id": "entity/nautilus-model", "family": "entity", "operation": "nautilus_model",
+           "rows": rows}
+
+
+def entity_guardian_cases():
+    """The guardian posed by the reference's own `GuardianModel.setupAnim`: the head's look, the
+    spikes drawn out as they breathe (and withdrawn), the tail swaying with its animation, and the
+    eye following what it looks at (above or below it, to either side, straight on, or at its own
+    place), for a guardian and an elder (whose scaled layer the spikes' places ignore)."""
+    def guardian(layer, label, age=37.5, y_rot=0.0, x_rot=0.0, spikes=1.0, tail=0.0, eye=None):
+        row = {"label": f"{layer.split(':')[1].split('#')[0]}-{label}", "layer": layer,
+               "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+               "age_in_ticks": float_bits(age), "spikes": float_bits(spikes),
+               "tail": float_bits(tail)}
+        if eye:
+            row["eye"] = {key: [float_bits(part, "f64") for part in value]
+                          for key, value in eye.items()}
+        return row
+
+    def looking(at, direction=(0.0, 0.0, 1.0), eye=(0.0, 1.0, 0.0)):
+        return {"eye_position": eye, "look_direction": direction, "look_at_position": at}
+    rows = []
+    for layer in ("minecraft:guardian#main", "minecraft:elder_guardian#main"):
+        rows += [guardian(layer, "rests"), guardian(layer, "later", age=91.25),
+                 guardian(layer, "withdraws-its-spikes", spikes=0.0),
+                 guardian(layer, "half-withdrawn", age=12.0, spikes=0.4),
+                 guardian(layer, "looks", y_rot=30.0, x_rot=-15.0),
+                 guardian(layer, "tail-sways", tail=1.3), guardian(layer, "tail-sways-back", tail=7.7),
+                 guardian(layer, "eye-above", eye=looking((3.0, 4.0, 5.0))),
+                 guardian(layer, "eye-below", eye=looking((-2.0, -1.5, 4.0))),
+                 guardian(layer, "eye-level", eye=looking((1.0, 1.0, 6.0))),
+                 guardian(layer, "eye-to-the-left", eye=looking((6.0, 2.0, 1.0), (1.0, 0.0, 0.5))),
+                 guardian(layer, "eye-straight-on", eye=looking((0.0, 2.0, 5.0), (0.0, 0.0, 1.0))),
+                 guardian(layer, "eye-at-its-own-place", eye=looking((0.0, 3.0, 0.0)))]
+    yield {"case_id": "entity/guardian-model", "family": "entity", "operation": "guardian_model",
            "rows": rows}
 
 

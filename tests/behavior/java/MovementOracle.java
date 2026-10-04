@@ -850,6 +850,33 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "guardian_random" -> {
+                        // What the constructor draws from an unseeded random source (and what
+                        // the spikes out of water are drawn from): fixed here.
+                        var tail = net.minecraft.world.entity.monster.Guardian.class
+                            .getDeclaredField("clientSideTailAnimation");
+                        tail.setAccessible(true);
+                        tail.setFloat(entity, Oracle.f32(event, "tail"));
+                        var tailOld = net.minecraft.world.entity.monster.Guardian.class
+                            .getDeclaredField("clientSideTailAnimationO");
+                        tailOld.setAccessible(true);
+                        tailOld.setFloat(entity, Oracle.f32(event, "tail"));
+                        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
+                        random.setAccessible(true);
+                        ((net.minecraft.util.RandomSource) random.get(entity)).setSeed(event.get("seed").getAsLong());
+                    }
+                    case "guardian_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var guardianClass = net.minecraft.world.entity.monster.Guardian.class;
+                        if (event.has("moving")) {
+                            data.add(wolfData(guardianClass, "DATA_ID_MOVING", event.get("moving").getAsBoolean()));
+                        }
+                        if (event.has("target")) {
+                            data.add(wolfData(guardianClass, "DATA_ID_ATTACK_TARGET", event.get("target").getAsInt()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "frog_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
@@ -1115,6 +1142,15 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) axolotl.tickCount) : 0L);
                             }
+                        }
+                        case "guardian" -> {
+                            var guardian = (net.minecraft.world.entity.monster.Guardian) entity;
+                            described.addProperty("in_water", guardian.isInWater());
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("tail_" + partial, Oracle.bits(guardian.getTailAnimation(partial)));
+                                described.addProperty("spikes_" + partial, Oracle.bits(guardian.getSpikesAnimation(partial)));
+                            }
+                            described.addProperty("attack_time", Oracle.bits(guardian.getClientSideAttackTime()));
                         }
                         case "frog" -> {
                             described.addProperty("in_water", entity.isInWater());

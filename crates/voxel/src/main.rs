@@ -15,6 +15,7 @@ mod fish;
 mod foxes;
 mod frogs;
 mod golems;
+mod guardians;
 mod gui;
 mod held_items;
 mod hoglins;

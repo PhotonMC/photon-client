@@ -319,6 +319,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::turtles::textures())
         .chain(crate::axolotls::textures())
         .chain(crate::frogs::textures())
+        .chain(crate::guardians::textures())
         .chain(crate::nautilus::textures())
         .chain(crate::copper_golems::textures())
         .chain([crate::armor_stands::TEXTURE])

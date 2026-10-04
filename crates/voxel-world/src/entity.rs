@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Guardian.isMoving` and the id of `getActiveAttackTarget` (zero for none).
+    pub(crate) guardian_moving: bool,
+    pub(crate) guardian_target: i32,
     /// `Axolotl.getVariant`'s id and `Axolotl.isPlayingDead`.
     pub(crate) axolotl_variant: i32,
     pub(crate) axolotl_playing_dead: bool,
@@ -697,6 +700,8 @@ pub struct ClientEntity {
     pub(crate) squid: Option<Box<crate::squid::SquidState>>,
     /// An axolotl's animators and animation states, made when it first ticks.
     pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
+    /// A guardian's animations, made when it first ticks.
+    pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2005,8 +2010,68 @@ impl ClientEntity {
                         | "minecraft:axolotl"
                         | "minecraft:frog"
                         | "minecraft:tadpole"
+                        | "minecraft:guardian"
+                        | "minecraft:elder_guardian"
                 )
             )
+    }
+
+    /// A guardian's animations, if it has ticked.
+    pub fn guardian(&self) -> Option<&crate::guardian::GuardianState> {
+        self.guardian.as_deref()
+    }
+
+    pub(crate) fn is_guardian(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:guardian" | "minecraft:elder_guardian")
+        )
+    }
+
+    /// `Guardian.getActiveAttackTarget`'s id: what the beam aims at, if anything.
+    pub fn guardian_attack_target(&self) -> Option<i32> {
+        (self.living.guardian_target != 0).then_some(self.living.guardian_target)
+    }
+
+    /// `Guardian.isMoving`.
+    pub fn is_guardian_moving(&self) -> bool {
+        self.living.guardian_moving
+    }
+
+    /// `Guardian.onSyncedDataUpdated`: when the data holds the attack target,
+    /// the beam starts over.
+    pub(crate) fn set_guardian_data(&mut self, moving: Option<bool>, target: Option<i32>) {
+        if let Some(moving) = moving {
+            self.living.guardian_moving = moving;
+        }
+        if let Some(target) = target {
+            self.living.guardian_target = target;
+            self.guardian
+                .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
+                .restart_attack();
+        }
+    }
+
+    /// `Guardian.aiStep`'s client half, while the guardian lives.
+    pub(crate) fn tick_guardian(&mut self) {
+        if !self.is_guardian() || !self.alive {
+            return;
+        }
+        let flags = (
+            self.living.in_water,
+            self.living.guardian_moving,
+            self.living.guardian_target != 0,
+        );
+        // `ElderGuardian.getAttackDuration` is shorter.
+        let duration =
+            if voxel_data::entity_type::name(self.type_id) == Some("minecraft:elder_guardian") {
+                60
+            } else {
+                80
+            };
+        self.guardian
+            .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
+            .tick(flags, duration);
     }
 
     /// Whether this is a frog.
@@ -2183,6 +2248,7 @@ impl ClientEntity {
             self.living.in_water = in_water;
         }
         self.tick_axolotl();
+        self.tick_guardian();
         let was_interpolating = self.is_interpolating();
         if living.is_some() {
             self.tick_position_interpolation();

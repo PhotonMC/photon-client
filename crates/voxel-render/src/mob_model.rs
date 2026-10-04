@@ -203,6 +203,37 @@ pub struct FrogRenderState {
     pub swim_idle: voxel_world::animation_state::AnimationState,
 }
 
+/// What a guardian's eye follows (`GuardianRenderState`): its own eye and
+/// look, and the position of what it looks at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GuardianLook {
+    pub eye_position: [f64; 3],
+    pub look_direction: [f64; 3],
+    pub look_at_position: [f64; 3],
+}
+
+/// What a guardian's model is posed from (`GuardianRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GuardianState {
+    pub head_y_rot: f32,
+    pub x_rot: f32,
+    pub age_in_ticks: f32,
+    pub spikes_animation: f32,
+    pub tail_animation: f32,
+    pub look: Option<GuardianLook>,
+}
+
+/// `GuardianModel`'s tables: where each spike sits, before it breathes.
+const SPIKE_X: [f32; 12] = [
+    0.0, 0.0, 8.0, -8.0, -8.0, 8.0, 8.0, -8.0, 0.0, 0.0, 8.0, -8.0,
+];
+const SPIKE_Y: [f32; 12] = [
+    -8.0, -8.0, -8.0, -8.0, 0.0, 0.0, 0.0, 0.0, 8.0, 8.0, 8.0, 8.0,
+];
+const SPIKE_Z: [f32; 12] = [
+    8.0, -8.0, 0.0, 0.0, -8.0, -8.0, 8.0, 8.0, 8.0, -8.0, 0.0, 0.0,
+];
+
 /// What a nautilus's model is posed from (`NautilusRenderState`): the look
 /// and stride, and whether it wears body armor (which hides a zombie
 /// nautilus's corals).
@@ -1599,6 +1630,84 @@ impl MobModel {
         if let Some(definition) = voxel_data::animation::definition(name) {
             let millis = (running.time_in_millis(age_in_ticks) as f32 * 1.0) as i64;
             self.animate(definition, millis, 1.0);
+        }
+    }
+
+    /// `GuardianModel.setupAnim`: the head takes the look, the spikes breathe
+    /// out and in, the eye follows what the guardian looks at, and the tail
+    /// sways, more toward its end.
+    pub fn setup_guardian(&mut self, state: &GuardianState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let Some(head) = self.root.child_mut("head") else {
+            return;
+        };
+        head.y_rot = state.head_y_rot * degrees;
+        head.x_rot = state.x_rot * degrees;
+        let withdrawal = (1.0 - state.spikes_animation) * 0.55;
+        for (index, (x, y, z)) in SPIKE_X
+            .iter()
+            .zip(SPIKE_Y.iter())
+            .zip(SPIKE_Z.iter())
+            .map(|((x, y), z)| (*x, *y, *z))
+            .enumerate()
+        {
+            // `getSpikeOffset`.
+            let offset = 1.0
+                + mth_cos_f64(f64::from(state.age_in_ticks * 1.5 + index as f32)) * 0.01
+                - withdrawal;
+            if let Some(spike) = head.child_mut(&format!("spike{index}")) {
+                spike.x = x * offset;
+                spike.y = 16.0 + y * offset;
+                spike.z = z * offset;
+            }
+        }
+        if let Some(eye) = head.child_mut("eye") {
+            if let Some(look) = state.look {
+                eye.y = if look.look_at_position[1] - look.eye_position[1] > 0.0 {
+                    0.0
+                } else {
+                    1.0
+                };
+                // The way the eye is turned from, a quarter turn about the vertical.
+                let (dx, dz) = (
+                    look.eye_position[0] - look.look_at_position[0],
+                    look.eye_position[2] - look.look_at_position[2],
+                );
+                let length = (dx * dx + dz * dz).sqrt();
+                let (nx, nz) = if length < 1.0E-5 {
+                    (0.0, 0.0)
+                } else {
+                    (dx / length, dz / length)
+                };
+                let angle = (std::f64::consts::PI / 2.0) as f32;
+                let (cos, sin) = (
+                    f64::from(mth_cos_f64(f64::from(angle))),
+                    f64::from(mth_sin_f64(f64::from(angle))),
+                );
+                let (turned_x, turned_z) = (nx * cos + nz * sin, nz * cos - nx * sin);
+                let dot = look.look_direction[0] * turned_x + look.look_direction[2] * turned_z;
+                let signum = if dot > 0.0 {
+                    1.0_f32
+                } else if dot < 0.0 {
+                    -1.0
+                } else {
+                    0.0
+                };
+                eye.x = (dot.abs() as f32).sqrt() * 2.0 * signum;
+            }
+            eye.visible = true;
+        }
+        let sway = mth_sin_f64(f64::from(state.tail_animation));
+        if let Some(tail0) = head.child_mut("tail0") {
+            tail0.y_rot = sway * pi * 0.05;
+            if let Some(tail1) = tail0.child_mut("tail1") {
+                tail1.y_rot = sway * pi * 0.1;
+                if let Some(tail2) = tail1.child_mut("tail2") {
+                    tail2.y_rot = sway * pi * 0.15;
+                }
+            }
         }
     }
 

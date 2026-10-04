@@ -40,6 +40,7 @@ pub mod fish;
 mod fluid;
 pub mod fox;
 pub mod frog;
+pub mod guardian;
 pub mod horse;
 pub mod item_components;
 mod item_physics;
@@ -1154,6 +1155,20 @@ impl ClientWorld {
             return false;
         };
         entity.fix_rabbit_idle(timeout, seed);
+        true
+    }
+
+    /// Fixes where a guardian's tail starts and the source its spikes are drawn
+    /// from out of water (see [`guardian::GuardianState::fix_random`]); false
+    /// for an entity that is not there.
+    pub fn fix_guardian_random(&mut self, entity_id: i32, tail: f32, seed: i64) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        entity
+            .guardian
+            .get_or_insert_with(|| Box::new(guardian::GuardianState::new()))
+            .fix_random(tail, seed);
         true
     }
 
@@ -3117,6 +3132,7 @@ impl ClientWorld {
                 squid: None,
                 axolotl: None,
                 frog: None,
+                guardian: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3569,6 +3585,11 @@ impl ClientWorld {
         }
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
+        }
+        let (guardian_moving, guardian_target) =
+            guardian_data_from_metadata(entity.type_id, metadata);
+        if guardian_moving.is_some() || guardian_target.is_some() {
+            entity.set_guardian_data(guardian_moving, guardian_target);
         }
         let (axolotl_variant, playing_dead) = axolotl_data_from_metadata(entity.type_id, metadata);
         if let Some(variant) = axolotl_variant {
