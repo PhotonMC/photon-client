@@ -105,7 +105,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T36d](T36d-vex-allay-esya.md) | Vex ve allayın elindeki eşya | S | T36b, T41 | açık |
 | [T36c](T36c-papagan-breeze-mutlu-ghast.md) | Papağan | M | T36 | bitti (a0e8b7c1) |
 | [T36e](T36e-breeze.md) | Breeze (model, rüzgâr ve göz katmanı, animasyon durumları) | M | T36 | bitti (57aafdac) |
-| [T36f](T36f-mutlu-ghast.md) | Mutlu ghast | M | T36, T41 | bitti |
+| [T36f](T36f-mutlu-ghast.md) | Mutlu ghast | M | T36, T41 | bitti (360dc83a) |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
 | [T38](T38-araclar.md) | Araçlar: tekneler ve minecart ailesi | M | T24 | açık |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |
