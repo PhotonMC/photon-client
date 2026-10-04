@@ -98,7 +98,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35g](T35g-kurbaga-iribas.md) | Kurbağa ve iribaş | M | T35d, T43b | bitti (3ea8c016) |
 | [T35e](T35e-nautilus-gardiyan.md) | Nautilus ve zombi nautilus | M | T35b | bitti (f2f5ca0c) |
 | [T35h](T35h-gardiyan.md) | Gardiyan ve elder gardiyan (model, diken/kuyruk durumu, göz) | M | T35b | bitti (ed8fa43e) |
-| [T35i](T35i-gardiyan-isini.md) | Gardiyanın ışını | M | T35h | bitti |
+| [T35i](T35i-gardiyan-isini.md) | Gardiyanın ışını | M | T35h | bitti (f82729ab) |
 | [T35j](T35j-gardiyan-hedefe-bakis.md) | Gardiyanın hedefe bakışı ve karadaki çırpınışı | M | T35i | açık |
 | [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
