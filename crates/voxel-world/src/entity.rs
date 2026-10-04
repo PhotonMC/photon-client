@@ -213,6 +213,10 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Bat.isResting`, `Vex.isCharging` and `Allay.isDancing`.
+    pub(crate) bat_resting: bool,
+    pub(crate) vex_charging: bool,
+    pub(crate) allay_dancing: bool,
     /// `Ghast.isCharging` and `Phantom.getPhantomSize`.
     pub(crate) ghast_charging: bool,
     pub(crate) phantom_size: i32,
@@ -703,6 +707,9 @@ pub struct ClientEntity {
     pub(crate) squid: Option<Box<crate::squid::SquidState>>,
     /// An axolotl's animators and animation states, made when it first ticks.
     pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
+    /// A bat's animation states and an allay's progress, made when they first tick.
+    pub(crate) bat: Option<Box<crate::bat::BatState>>,
+    pub(crate) allay: Option<Box<crate::allay::AllayState>>,
     /// A guardian's animations, made when it first ticks.
     pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
@@ -2019,6 +2026,67 @@ impl ClientEntity {
             )
     }
 
+    /// `Bat.isResting`.
+    pub fn is_bat_resting(&self) -> bool {
+        self.living.bat_resting
+    }
+
+    /// `Vex.isCharging`.
+    pub fn is_vex_charging(&self) -> bool {
+        self.living.vex_charging
+    }
+
+    /// `Allay.isDancing`.
+    pub fn is_allay_dancing(&self) -> bool {
+        self.living.allay_dancing
+    }
+
+    /// A bat's animation states, if it has ticked.
+    pub fn bat(&self) -> Option<&crate::bat::BatState> {
+        self.bat.as_deref()
+    }
+
+    /// An allay's progress, if it has ticked.
+    pub fn allay(&self) -> Option<&crate::allay::AllayState> {
+        self.allay.as_deref()
+    }
+
+    /// `Bat.tick` after `super.tick`: a hanging bat does not move and hangs
+    /// from the block above it; one flying slows its fall and climb.
+    pub(crate) fn tick_bat(&mut self) {
+        if voxel_data::entity_type::name(self.type_id) != Some("minecraft:bat") {
+            return;
+        }
+        let resting = self.living.bat_resting;
+        if resting {
+            self.motion_x_bits = 0.0_f64.to_bits();
+            self.motion_y_bits = 0.0_f64.to_bits();
+            self.motion_z_bits = 0.0_f64.to_bits();
+            let height = voxel_data::entity_type::pick(self.type_id)
+                .map_or(0.0, |pick| pick.size.1 * self.scale());
+            let y = f64::from_bits(self.y_bits);
+            self.y_bits = (y.floor() + 1.0 - f64::from(height)).to_bits();
+        } else {
+            self.motion_y_bits = (f64::from_bits(self.motion_y_bits) * 0.6).to_bits();
+        }
+        let tick_count = self.tick_count;
+        self.bat
+            .get_or_insert_with(Default::default)
+            .tick(resting, tick_count);
+    }
+
+    /// `Allay.tick`'s client half, after `super.tick`.
+    pub(crate) fn tick_allay(&mut self) {
+        if voxel_data::entity_type::name(self.type_id) != Some("minecraft:allay") {
+            return;
+        }
+        let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let dancing = self.living.allay_dancing;
+        self.allay
+            .get_or_insert_with(Default::default)
+            .tick(holds, dancing);
+    }
+
     /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
     pub fn is_ghast_charging(&self) -> bool {
         self.living.ghast_charging
@@ -2418,6 +2486,8 @@ impl ClientEntity {
     pub(crate) fn tick_species(&mut self, (sleeper_near_cat, thundering): (bool, bool)) {
         self.tick_cat(sleeper_near_cat);
         self.tick_panda(thundering);
+        self.tick_bat();
+        self.tick_allay();
     }
 
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.

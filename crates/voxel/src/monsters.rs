@@ -1,18 +1,20 @@
-//! The monsters of the arthropod, creeper and enderman kind the frame draws:
-//! spiders, the creeper and the enderman (`SpiderRenderer`, `CreeperRenderer`,
-//! `EndermanRenderer`).
+//! The monsters, and the other mobs that are posed by one model class of their
+//! own, the frame draws: spiders, the creeper, the enderman, silverfish, the
+//! blaze, ghast, phantom, bat, vex and allay (`SpiderRenderer`,
+//! `CreeperRenderer`, `EndermanRenderer` and the like).
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    EndermanState, MobModel, MobPlacement, QuadrupedState, creeper_scale, creeper_white_overlay,
-    mob_vertices, mob_vertices_glow, mob_vertices_swirl, placement_pose,
+    AllayRenderState, BatRenderState, EndermanState, MobModel, MobPlacement, QuadrupedState,
+    VexRenderState, creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_glow,
+    mob_vertices_swirl, placement_pose,
 };
 use voxel_render::player_model::PlayerRenderState;
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
 use voxel_render::scene::Vertex;
-use voxel_world::{ClientEntity, EntitySnapshot};
+use voxel_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
 
 use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
@@ -35,6 +37,12 @@ enum Pose {
     Ghast,
     /// `PhantomModel`, which grows with its size and tips with its pitch.
     Phantom,
+    /// `BatModel`, which hangs or flies by two animations.
+    Bat,
+    /// `VexModel`, which a renderer lights fully and which charges (another texture).
+    Vex,
+    /// `AllayModel`, which a renderer lights fully.
+    Allay,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -47,7 +55,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 9] = [
+const MONSTERS: [Monster; 12] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -111,7 +119,31 @@ const MONSTERS: [Monster; 9] = [
         pose: Pose::Phantom,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:bat",
+        layer: "minecraft:bat#main",
+        texture: "entity/bat/bat",
+        pose: Pose::Bat,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
+    Monster {
+        type_name: "minecraft:vex",
+        layer: "minecraft:vex#main",
+        texture: "entity/illager/vex",
+        pose: Pose::Vex,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
+    Monster {
+        type_name: "minecraft:allay",
+        layer: "minecraft:allay#main",
+        texture: "entity/allay/allay",
+        pose: Pose::Allay,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
+
+/// The texture a vex charges in (`VexRenderer.getTextureLocation`).
+const VEX_CHARGING_TEXTURE: &str = "entity/illager/vex_charging";
 
 /// The texture a ghast opens its mouth in (`GhastRenderer.getTextureLocation`).
 const GHAST_SHOOTING_TEXTURE: &str = "entity/ghast/ghast_shooting";
@@ -127,7 +159,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
             ]
         })
         .flatten()
-        .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE])
+        .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -168,6 +200,48 @@ fn pose_monster(
             placed.light = (placed.light & !0xFFFF) | (15 << 4);
         }
         Pose::Ghast => model.setup_ghast(entity.tick_count() as f32 + partial),
+        Pose::Bat => {
+            let own = entity.bat().copied().unwrap_or_default();
+            model.setup_bat(&BatRenderState {
+                head_y_rot: look.head_y_rot,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                is_resting: entity.is_bat_resting(),
+                fly: own.fly,
+                rest: own.rest,
+            });
+        }
+        Pose::Vex => {
+            // `ArmedEntityRenderState`: the right hand is the main one for a
+            // right-handed mob.
+            let (main, off) = (
+                entity.equipment(EquipmentSlot::MainHand).is_some(),
+                entity.equipment(EquipmentSlot::OffHand).is_some(),
+            );
+            let left_handed = entity.main_arm_is_left();
+            model.setup_vex(&VexRenderState {
+                head_y_rot: look.head_y_rot,
+                x_rot: look.x_rot,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                is_charging: entity.is_vex_charging(),
+                right_hand_item: if left_handed { off } else { main },
+                left_hand_item: if left_handed { main } else { off },
+            });
+            // `VexRenderer.getBlockLightLevel`.
+            placed.light = (placed.light & !0xFFFF) | (15 << 4);
+        }
+        Pose::Allay => {
+            let own = entity.allay().copied().unwrap_or_default();
+            model.setup_allay(&AllayRenderState {
+                quadruped: look,
+                age_in_ticks: entity.tick_count() as f32 + partial,
+                is_dancing: entity.is_allay_dancing(),
+                is_spinning: own.is_spinning(),
+                spinning_progress: own.spinning_progress(partial),
+                holding_animation_progress: own.holding_item_progress(partial),
+            });
+            // `AllayRenderer.getBlockLightLevel`.
+            placed.light = (placed.light & !0xFFFF) | (15 << 4);
+        }
         Pose::Phantom => {
             let age_in_ticks = entity.tick_count() as f32 + partial;
             model.setup_phantom((entity.id() * 3) as f32 + age_in_ticks);
@@ -224,6 +298,8 @@ pub fn remote_monsters(
         });
         let texture = if monster.pose == Pose::Ghast && entity.is_ghast_charging() {
             GHAST_SHOOTING_TEXTURE
+        } else if monster.pose == Pose::Vex && entity.is_vex_charging() {
+            VEX_CHARGING_TEXTURE
         } else {
             monster.texture
         };

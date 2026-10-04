@@ -14498,6 +14498,28 @@ def movement_item_cases():
              extras="frog"),
         fish("frog-in-the-pool-jumps", "frog", 30,
              [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"}], extras="frog"),
+        # A bat hangs (still, snapped to the block above it, one animation) or flies (the other); a
+        # vex reads its charging flag; an allay's arms rise to what it holds, and its dance spins
+        # and sways on a cycle of fifty-five ticks.
+        living("bat-flies", "bat", 30, [], extras=["bat"]),
+        living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
+               extras=["bat"]),
+        living("bat-wakes", "bat", 40, [{"tick": 2, "type": "flier_data", "bat_flags": 1},
+                                        {"tick": 20, "type": "flier_data", "bat_flags": 0}],
+               extras=["bat"]),
+        living("vex-charges", "vex", 10, [{"tick": 2, "type": "flier_data", "vex_flags": 1}],
+               extras=["vex"]),
+        living("allay-hovers", "allay", 20, [], extras=["allay"]),
+        living("allay-takes-an-item", "allay", 30,
+               [{"tick": 3, "type": "equipment", "item": "minecraft:bamboo"}], extras=["allay"]),
+        living("allay-lets-go", "allay", 30,
+               [{"tick": 2, "type": "equipment", "item": "minecraft:bamboo"},
+                {"tick": 12, "type": "equipment", "item": None}], extras=["allay"]),
+        living("allay-dances", "allay", 130,
+               [{"tick": 3, "type": "flier_data", "allay_dancing": True}], extras=["allay"]),
+        living("allay-stops-dancing", "allay", 100,
+               [{"tick": 3, "type": "flier_data", "allay_dancing": True},
+                {"tick": 40, "type": "flier_data", "allay_dancing": False}], extras=["allay"]),
         # A guardian's tail sways at a speed that follows whether it moves (and in water or not),
         # its spikes breathe (out of water drawn at random, from a source fixed here), and its beam
         # counts up to the attack duration (shorter for the elder), starting over whenever the target
@@ -14871,6 +14893,7 @@ def entity_cases():
     yield from entity_guardian_cases()
     yield from entity_guardian_beam_cases()
     yield from entity_airborne_cases()
+    yield from entity_flier_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15890,6 +15913,54 @@ def entity_airborne_cases():
                   "age_in_ticks": float_bits(10.5), "death_time": float_bits(7.5)})
     yield {"case_id": "entity/phantom-rotations", "family": "entity",
            "operation": "setup_rotations", "rows": turns}
+
+
+def entity_flier_cases():
+    """The bat, vex and allay posed by the reference's own `setupAnim`: a bat that hangs turns its head
+    and runs one animation, one that flies runs the other; a vex (leaning, arms bobbing, wings
+    beating, and charging with its arms out, higher with an item in either hand); an allay (wings
+    flapping with the walk, the body tipping as it flies, the arms rising to what it holds, bobbing
+    while it hovers, dancing and spinning)."""
+    rows = []
+
+    def bat(label, age=37.5, y_rot=0.0, resting=False, **started):
+        row = {"label": f"bat-{label}", "layer": "minecraft:bat#main", "age_in_ticks": float_bits(age),
+               "y_rot": float_bits(y_rot), "resting": resting}
+        row.update(started)
+        return row
+    rows += [bat("nothing"), bat("flies", fly=5), bat("flies-later", age=90.0, fly=5),
+             bat("hangs", resting=True, rest=5, y_rot=40.0), bat("hangs-later", age=64.0, resting=True, rest=5),
+             bat("flies-with-a-turned-head", y_rot=-55.0, fly=5),
+             bat("rests-without-hanging", y_rot=25.0, rest=5)]
+
+    def vex(label, age=37.5, y_rot=0.0, x_rot=0.0, charging=False, right=False, left=False):
+        return {"label": f"vex-{label}", "layer": "minecraft:vex#main", "age_in_ticks": float_bits(age),
+                "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot), "charging": charging,
+                "right_item": right, "left_item": left}
+    rows += [vex("hovers"), vex("later", age=91.25), vex("looks", y_rot=30.0, x_rot=-15.0),
+             vex("charges", charging=True), vex("charges-with-a-right-item", charging=True, right=True),
+             vex("charges-with-a-left-item", charging=True, left=True, age=12.0),
+             vex("charges-with-both", charging=True, right=True, left=True, age=60.0),
+             vex("holds-an-item-without-charging", right=True)]
+
+    def allay(label, age=37.5, y_rot=0.0, x_rot=0.0, walk=(0.0, 0.0), dancing=False, spinning=False,
+              spin=0.0, holding=0.0):
+        return {"label": f"allay-{label}", "layer": "minecraft:allay#main", "age_in_ticks": float_bits(age),
+                "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+                "walk_position": float_bits(walk[0]), "walk_speed": float_bits(walk[1]),
+                "dancing": dancing, "spinning": spinning, "spinning_progress": float_bits(spin),
+                "holding_progress": float_bits(holding)}
+    rows += [allay("hovers"), allay("hovers-later", age=91.25),
+             allay("looks", y_rot=-30.0, x_rot=20.0),
+             allay("flies", walk=(3.0, 0.5)), allay("flies-slowly", walk=(1.5, 0.12), age=12.0),
+             allay("holds", holding=1.0), allay("part-holds", holding=0.4, age=60.0),
+             allay("flies-holding", walk=(3.0, 0.5), holding=1.0),
+             allay("dances", dancing=True, age=20.0), allay("dances-later", dancing=True, age=75.5),
+             allay("spins", dancing=True, spinning=True, spin=0.6),
+             allay("dances-flying", dancing=True, walk=(2.0, 0.4), age=44.0),
+             allay("dances-holding", dancing=True, holding=1.0, spinning=True, spin=1.0)]
+    yield {"case_id": "entity/flier-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
 
 
 def entity_copper_golem_cases():

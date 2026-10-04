@@ -18,10 +18,12 @@ use voxel_core::{
     shape::{BooleanOp, Shapes, VoxelShape},
 };
 
+pub mod allay;
 pub mod animal;
 pub mod animation_state;
 pub mod armor_stand;
 pub mod axolotl;
+pub mod bat;
 pub mod block;
 mod block_entity;
 pub mod block_rules;
@@ -3133,6 +3135,8 @@ impl ClientWorld {
                 axolotl: None,
                 frog: None,
                 guardian: None,
+                bat: None,
+                allay: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3585,6 +3589,17 @@ impl ClientWorld {
         }
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
+        }
+        let (bat_flags, vex_flags, allay_dancing) =
+            flier_data_from_metadata(entity.type_id, metadata);
+        if let Some(flags) = bat_flags {
+            entity.living.bat_resting = flags & 1 != 0;
+        }
+        if let Some(flags) = vex_flags {
+            entity.living.vex_charging = flags & 1 != 0;
+        }
+        if let Some(dancing) = allay_dancing {
+            entity.living.allay_dancing = dancing;
         }
         if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
             entity.living.ghast_charging = charging;

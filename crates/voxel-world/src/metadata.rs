@@ -495,6 +495,25 @@ pub(crate) fn ghast_charging_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
     metadata_boolean_value(metadata, GHAST_CHARGING_DATA_ID)
 }
 
+/// A bat's flags (`Bat.DATA_ID_FLAGS`: resting), a vex's (`Vex.DATA_FLAGS_ID`:
+/// charging) and whether an allay dances (`Allay.DATA_DANCING`), each when the
+/// data holds it.
+pub(crate) fn flier_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<u8>, Option<u8>, Option<bool>) {
+    match voxel_data::entity_type::name(type_id) {
+        Some("minecraft:bat") => (metadata_byte_value(metadata, BAT_FLAGS_DATA_ID), None, None),
+        Some("minecraft:vex") => (None, metadata_byte_value(metadata, VEX_FLAGS_DATA_ID), None),
+        Some("minecraft:allay") => (
+            None,
+            None,
+            metadata_boolean_value(metadata, ALLAY_DANCING_DATA_ID),
+        ),
+        _ => (None, None, None),
+    }
+}
+
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
 pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:phantom" {

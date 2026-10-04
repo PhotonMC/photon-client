@@ -203,6 +203,39 @@ pub struct FrogRenderState {
     pub swim_idle: voxel_world::animation_state::AnimationState,
 }
 
+/// What a bat's model is posed from (`BatRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BatRenderState {
+    pub head_y_rot: f32,
+    pub age_in_ticks: f32,
+    pub is_resting: bool,
+    pub fly: voxel_world::animation_state::AnimationState,
+    pub rest: voxel_world::animation_state::AnimationState,
+}
+
+/// What a vex's model is posed from (`VexRenderState`): the look, whether it
+/// is charging, and whether each hand holds anything.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VexRenderState {
+    pub head_y_rot: f32,
+    pub x_rot: f32,
+    pub age_in_ticks: f32,
+    pub is_charging: bool,
+    pub right_hand_item: bool,
+    pub left_hand_item: bool,
+}
+
+/// What an allay's model is posed from (`AllayRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AllayRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub is_dancing: bool,
+    pub is_spinning: bool,
+    pub spinning_progress: f32,
+    pub holding_animation_progress: f32,
+}
+
 /// What a guardian's eye follows (`GuardianRenderState`): its own eye and
 /// look, and the position of what it looks at.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1630,6 +1663,158 @@ impl MobModel {
         if let Some(definition) = voxel_data::animation::definition(name) {
             let millis = (running.time_in_millis(age_in_ticks) as f32 * 1.0) as i64;
             self.animate(definition, millis, 1.0);
+        }
+    }
+
+    /// `BatModel.setupAnim`: a hanging bat's head takes the turn; then the
+    /// flying and the hanging animations, each if started.
+    pub fn setup_bat(&mut self, state: &BatRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if state.is_resting
+            && let Some(head) = self.root.child_mut("head")
+        {
+            head.y_rot = state.head_y_rot * degrees;
+        }
+        self.animate_state("Bat.BAT_FLYING", state.fly, state.age_in_ticks);
+        self.animate_state("Bat.BAT_RESTING", state.rest, state.age_in_ticks);
+    }
+
+    /// `VexModel.setupAnim`: the head takes the look, the arms bob, the body
+    /// leans (unless charging, when the arms reach out, higher with an item),
+    /// and the wings beat.
+    pub fn setup_vex(&mut self, state: &VexRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI;
+        let bob = mth_cos_f64(f64::from(state.age_in_ticks * 5.5 * degrees)) * 0.1;
+        let wing_beat =
+            mth_cos_f64(f64::from(state.age_in_ticks * 45.836_624 * degrees)) * degrees * 16.2;
+        let Some(root) = self.root.child_mut("root") else {
+            return;
+        };
+        if let Some(head) = root.child_mut("head") {
+            head.y_rot = state.head_y_rot * degrees;
+            head.x_rot = state.x_rot * degrees;
+        }
+        let Some(body) = root.child_mut("body") else {
+            return;
+        };
+        let fifth = (pi / 5.0) as f32;
+        let twelfth = (pi / 12.0) as f32;
+        if let Some(arm) = body.child_mut("right_arm") {
+            arm.z_rot = fifth + bob;
+        }
+        if let Some(arm) = body.child_mut("left_arm") {
+            arm.z_rot = -(fifth + bob);
+        }
+        if state.is_charging {
+            body.x_rot = 0.0;
+            let reach = (pi * 7.0 / 6.0) as f32;
+            let (right, left) = (state.right_hand_item, state.left_hand_item);
+            // `setArmsCharging`: with nothing in either hand both arms reach
+            // forward; otherwise only the arm that holds something is raised.
+            let empty_handed = !right && !left;
+            if (right || empty_handed)
+                && let Some(arm) = body.child_mut("right_arm")
+            {
+                arm.x_rot = if empty_handed { -1.221_730_5 } else { reach };
+                arm.y_rot = twelfth;
+                arm.z_rot = -0.471_238_88 - bob;
+            }
+            if (left || empty_handed)
+                && let Some(arm) = body.child_mut("left_arm")
+            {
+                arm.x_rot = if empty_handed { -1.221_730_5 } else { reach };
+                arm.y_rot = -twelfth;
+                arm.z_rot = 0.471_238_88 + bob;
+            }
+        } else {
+            body.x_rot = (pi / 20.0) as f32;
+        }
+        let left_wing_y_rot = 1.099_557_4 + wing_beat;
+        for (side, sign) in [("left_wing", 1.0_f32), ("right_wing", -1.0)] {
+            if let Some(wing) = body.child_mut(side) {
+                wing.y_rot = sign * left_wing_y_rot;
+                wing.x_rot = 0.471_238_88;
+                wing.z_rot = sign * -0.471_238_88;
+            }
+        }
+    }
+
+    /// `AllayModel.setupAnim`: the wings flap with the walk and the age, the
+    /// body tips as the allay flies, the arms rise to what it holds, and it
+    /// bobs while hovering or dances (spinning, then swaying).
+    pub fn setup_allay(&mut self, state: &AllayRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let (animation_speed, animation_pos) =
+            (state.quadruped.walk_speed, state.quadruped.walk_position);
+        let age = state.age_in_ticks;
+        let flap_speed = age * 20.0 * degrees + animation_pos;
+        let flap_amount = cos(flap_speed) * pi * 0.15 + animation_speed;
+        let idle_bob_speed = age * 9.0 * degrees;
+        let flying_factor = (animation_speed / 0.3).min(1.0);
+        let idle_bob_factor = 1.0 - flying_factor;
+        let holding = state.holding_animation_progress;
+        let Some(root) = self.root.child_mut("root") else {
+            return;
+        };
+        if state.is_dancing {
+            let dance_speed = age * 8.0 * degrees + animation_speed;
+            let dance_frequency = cos(dance_speed) * 16.0 * degrees;
+            let spinning = state.spinning_progress;
+            let head_tilt_z = cos(dance_speed) * 14.0 * degrees;
+            let head_tilt_y = cos(dance_speed) * 30.0 * degrees;
+            if state.is_spinning {
+                root.y_rot = (std::f64::consts::PI * 4.0) as f32 * spinning;
+            }
+            root.z_rot = dance_frequency * (1.0 - spinning);
+            if let Some(head) = root.child_mut("head") {
+                head.y_rot = head_tilt_y * (1.0 - spinning);
+                head.z_rot = head_tilt_z * (1.0 - spinning);
+            }
+        } else if let Some(head) = root.child_mut("head") {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        }
+        root.y += (f64::from(idle_bob_speed).cos() as f32) * 0.25 * idle_bob_factor;
+        let Some(body) = root.child_mut("body") else {
+            return;
+        };
+        let wing_tilt = 0.436_332_32 * (1.0 - flying_factor);
+        if let Some(wing) = body.child_mut("right_wing") {
+            wing.x_rot = wing_tilt;
+            wing.y_rot = (-std::f64::consts::PI / 4.0) as f32 + flap_amount;
+        }
+        if let Some(wing) = body.child_mut("left_wing") {
+            wing.x_rot = wing_tilt;
+            wing.y_rot = (std::f64::consts::PI / 4.0) as f32 - flap_amount;
+        }
+        body.x_rot = flying_factor * (std::f64::consts::PI / 4.0) as f32;
+        let arm_flying_rot_x = holding
+            * lerp_f32(
+                flying_factor,
+                (-std::f64::consts::PI / 3.0) as f32,
+                -1.134_464,
+            );
+        let arm_idle_bob_factor = idle_bob_factor * (1.0 - holding);
+        let arm_idle_bob_amount = 0.436_332_32
+            - cos(idle_bob_speed + (std::f64::consts::PI * 3.0 / 2.0) as f32)
+                * pi
+                * 0.075
+                * arm_idle_bob_factor;
+        if let Some(arm) = body.child_mut("right_arm") {
+            arm.x_rot = arm_flying_rot_x;
+            arm.z_rot = arm_idle_bob_amount;
+            arm.y_rot = 0.279_252_68 * holding;
+        }
+        if let Some(arm) = body.child_mut("left_arm") {
+            arm.x_rot = arm_flying_rot_x;
+            arm.z_rot = -arm_idle_bob_amount;
+            arm.y_rot = -0.279_252_68 * holding;
         }
     }
 

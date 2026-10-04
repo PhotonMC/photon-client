@@ -1700,6 +1700,49 @@ public final class EntityOracle {
                 var blaze = new net.minecraft.client.model.monster.blaze.BlazeModel(root);
                 blaze.setupAnim(state);
                 model = blaze;
+            } else if (id.contains("bat")) {
+                var state = new net.minecraft.client.renderer.entity.state.BatRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.isResting = row.get("resting").getAsBoolean();
+                if (row.has("fly")) {
+                    state.flyAnimationState.start(row.get("fly").getAsInt());
+                }
+                if (row.has("rest")) {
+                    state.restAnimationState.start(row.get("rest").getAsInt());
+                }
+                var bat = new net.minecraft.client.model.ambient.BatModel(root);
+                bat.setupAnim(state);
+                model = bat;
+            } else if (id.contains("vex")) {
+                var state = new net.minecraft.client.renderer.entity.state.VexRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.isCharging = row.get("charging").getAsBoolean();
+                if (row.get("right_item").getAsBoolean()) {
+                    state.rightHandItemState.newLayer();
+                }
+                if (row.get("left_item").getAsBoolean()) {
+                    state.leftHandItemState.newLayer();
+                }
+                var vex = new net.minecraft.client.model.monster.vex.VexModel(root);
+                vex.setupAnim(state);
+                model = vex;
+            } else if (id.contains("allay")) {
+                var state = new net.minecraft.client.renderer.entity.state.AllayRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.isDancing = row.get("dancing").getAsBoolean();
+                state.isSpinning = row.get("spinning").getAsBoolean();
+                state.spinningProgress = Oracle.f32(row, "spinning_progress");
+                state.holdingAnimationProgress = Oracle.f32(row, "holding_progress");
+                var allay = new net.minecraft.client.model.animal.allay.AllayModel(root);
+                allay.setupAnim(state);
+                model = allay;
             } else if (id.contains("ghast")) {
                 var state = new net.minecraft.client.renderer.entity.state.GhastRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");
@@ -3402,6 +3445,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
+            {net.minecraft.world.entity.ambient.Bat.class, "DATA_ID_FLAGS", "bat-flags"},
+            {net.minecraft.world.entity.monster.Vex.class, "DATA_FLAGS_ID", "vex-flags"},
+            {net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING", "allay-dancing"},
             {net.minecraft.world.entity.monster.Ghast.class, "DATA_IS_CHARGING", "ghast-charging"},
             {net.minecraft.world.entity.monster.Phantom.class, "ID_SIZE", "phantom-size"},
             {net.minecraft.world.entity.monster.Guardian.class, "DATA_ID_MOVING", "guardian-moving"},

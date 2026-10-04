@@ -18621,6 +18621,20 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "flier_data" => {
+                        let mut data = Vec::new();
+                        if let Some(flags) = event["bat_flags"].as_i64() {
+                            data.extend([voxel_world::BAT_FLAGS_DATA_ID, 0, flags as u8]);
+                        }
+                        if let Some(flags) = event["vex_flags"].as_i64() {
+                            data.extend([voxel_world::VEX_FLAGS_DATA_ID, 0, flags as u8]);
+                        }
+                        if let Some(dancing) = event["allay_dancing"].as_bool() {
+                            data.extend([voxel_world::ALLAY_DANCING_DATA_ID, 8, u8::from(dancing)]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "guardian_random" => {
                         let tail = f32::from_bits(
                             u32::from_str_radix(
@@ -18913,6 +18927,36 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         let area = entity.bounding_box();
                         described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
                         described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
+                    }
+                    "bat" => {
+                        described["resting"] = json!(entity.is_bat_resting());
+                        let (_, y, _) = entity.position();
+                        described["y"] = json!(format!("{:016x}", y.to_bits()));
+                        let (_, motion_y, _) = entity.motion();
+                        described["motion_y"] = json!(format!("{:016x}", motion_y.to_bits()));
+                        let state = entity.bat().copied().unwrap_or_default();
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [("fly", state.fly), ("rest", state.rest)] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                    }
+                    "vex" => described["charging"] = json!(entity.is_vex_charging()),
+                    "allay" => {
+                        let state = entity.allay().copied().unwrap_or_default();
+                        described["dancing"] = json!(entity.is_allay_dancing());
+                        described["spinning"] = json!(state.is_spinning());
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                            described[format!("holding_{key}")] =
+                                json!(hex(state.holding_item_progress(partial)));
+                            described[format!("spin_{key}")] =
+                                json!(hex(state.spinning_progress(partial)));
+                        }
                     }
                     "guardian" => {
                         described["in_water"] = json!(entity.is_in_water());
@@ -20356,7 +20400,10 @@ fn frog_model_result(request: &Value) -> Result<Value, String> {
 
 /// `airborne_model`: a blaze's, ghast's or phantom's model posed and drawn.
 fn airborne_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::mob_model::{
+        AllayRenderState, BatRenderState, MobModel, QuadrupedState, VexRenderState,
+    };
+    use voxel_world::animation_state::AnimationState;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -20369,9 +20416,48 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
             .map(f32::from_bits)
             .map_err(|error| error.to_string())
         };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
         let mut model = MobModel::bake(layer);
         if id.contains("blaze") {
             model.setup_blaze(bits("age_in_ticks")?, bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("bat") {
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_bat(&BatRenderState {
+                head_y_rot: bits("y_rot")?,
+                age_in_ticks: bits("age_in_ticks")?,
+                is_resting: flag("resting")?,
+                fly: started("fly"),
+                rest: started("rest"),
+            });
+        } else if id.contains("vex") {
+            model.setup_vex(&VexRenderState {
+                head_y_rot: bits("y_rot")?,
+                x_rot: bits("x_rot")?,
+                age_in_ticks: bits("age_in_ticks")?,
+                is_charging: flag("charging")?,
+                right_hand_item: flag("right_item")?,
+                left_hand_item: flag("left_item")?,
+            });
+        } else if id.contains("allay") {
+            model.setup_allay(&AllayRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                is_dancing: flag("dancing")?,
+                is_spinning: flag("spinning")?,
+                spinning_progress: bits("spinning_progress")?,
+                holding_animation_progress: bits("holding_progress")?,
+            });
         } else if id.contains("ghast") {
             model.setup_ghast(bits("age_in_ticks")?);
         } else {
@@ -22611,6 +22697,21 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "zombie-nautilus-variant",
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "bat-flags",
+                    i64::from(voxel_world::BAT_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "vex-flags",
+                    i64::from(voxel_world::VEX_FLAGS_DATA_ID),
+                    i64::from(0),
+                ),
+                (
+                    "allay-dancing",
+                    i64::from(voxel_world::ALLAY_DANCING_DATA_ID),
+                    i64::from(8),
                 ),
                 (
                     "ghast-charging",

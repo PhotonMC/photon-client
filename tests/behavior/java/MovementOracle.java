@@ -850,6 +850,23 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "flier_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("bat_flags")) {
+                            data.add(wolfData(net.minecraft.world.entity.ambient.Bat.class, "DATA_ID_FLAGS",
+                                (byte) event.get("bat_flags").getAsInt()));
+                        }
+                        if (event.has("vex_flags")) {
+                            data.add(wolfData(net.minecraft.world.entity.monster.Vex.class, "DATA_FLAGS_ID",
+                                (byte) event.get("vex_flags").getAsInt()));
+                        }
+                        if (event.has("allay_dancing")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.allay.Allay.class, "DATA_DANCING",
+                                event.get("allay_dancing").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "guardian_random" -> {
                         // What the constructor draws from an unseeded random source (and what
                         // the spikes out of water are drawn from): fixed here.
@@ -1141,6 +1158,32 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_started", animation.isStarted());
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) axolotl.tickCount) : 0L);
+                            }
+                        }
+                        case "bat" -> {
+                            var bat = (net.minecraft.world.entity.ambient.Bat) entity;
+                            described.addProperty("resting", bat.isResting());
+                            described.addProperty("y", Oracle.bits(bat.getY()));
+                            described.addProperty("motion_y", Oracle.bits(bat.getDeltaMovement().y));
+                            var states = new Object[][] {{"fly", bat.flyAnimationState}, {"rest", bat.restAnimationState}};
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) bat.tickCount) : 0L);
+                            }
+                        }
+                        case "vex" -> {
+                            described.addProperty("charging",
+                                ((net.minecraft.world.entity.monster.Vex) entity).isCharging());
+                        }
+                        case "allay" -> {
+                            var allay = (net.minecraft.world.entity.animal.allay.Allay) entity;
+                            described.addProperty("dancing", allay.isDancing());
+                            described.addProperty("spinning", allay.isSpinning());
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("holding_" + partial, Oracle.bits(allay.getHoldingItemAnimationProgress(partial)));
+                                described.addProperty("spin_" + partial, Oracle.bits(allay.getSpinningProgress(partial)));
                             }
                         }
                         case "guardian" -> {
