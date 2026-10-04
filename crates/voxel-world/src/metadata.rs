@@ -494,6 +494,21 @@ pub(crate) fn fish_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, data_id)
 }
 
+/// An axolotl's variant and whether it plays dead (`Axolotl.DATA_VARIANT`,
+/// `Axolotl.DATA_PLAYING_DEAD`), each when the data holds it.
+pub(crate) fn axolotl_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<i32>, Option<bool>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:axolotl") {
+        return (None, None);
+    }
+    (
+        metadata_int_value(metadata, AXOLOTL_VARIANT_DATA_ID),
+        metadata_boolean_value(metadata, AXOLOTL_PLAYING_DEAD_DATA_ID),
+    )
+}
+
 /// Whether a turtle carries an egg and is laying it (`Turtle.HAS_EGG`,
 /// `Turtle.LAYING_EGG`), each when the data holds it.
 pub(crate) fn turtle_eggs_from_metadata(

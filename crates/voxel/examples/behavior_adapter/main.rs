@@ -18599,6 +18599,28 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "baby_data" => {
+                        let mut data =
+                            vec![16, 8, u8::from(event["baby"].as_bool().ok_or("baby")?)];
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
+                    "axolotl_data" => {
+                        let mut data = Vec::new();
+                        if event.get("variant").is_some() {
+                            data.extend([voxel_world::AXOLOTL_VARIANT_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(i32_field(event, "variant")?, &mut data);
+                        }
+                        if let Some(playing_dead) = event["playing_dead"].as_bool() {
+                            data.extend([
+                                voxel_world::AXOLOTL_PLAYING_DEAD_DATA_ID,
+                                8,
+                                u8::from(playing_dead),
+                            ]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "turtle_data" => {
                         let mut data = Vec::new();
                         if let Some(has_egg) = event["has_egg"].as_bool() {
@@ -18855,7 +18877,46 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
                         described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
                     }
+                    "axolotl" => {
+                        let state = entity.axolotl().copied().unwrap_or_default();
+                        described["in_water"] = json!(entity.is_in_water());
+                        described["variant"] = json!(entity.axolotl_variant());
+                        for partial in [0.0_f32, 0.5, 1.0] {
+                            for (name, animator) in [
+                                ("playing_dead", state.playing_dead),
+                                ("in_water", state.in_water),
+                                ("on_ground", state.on_ground),
+                                ("moving", state.moving),
+                            ] {
+                                described[format!("{name}_{partial:?}")] =
+                                    json!(hex(animator.factor(partial)));
+                            }
+                        }
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("swim", state.swim),
+                            ("walk", state.walk),
+                            ("walk_under_water", state.walk_under_water),
+                            ("idle_under_water", state.idle_under_water),
+                            (
+                                "idle_under_water_on_ground",
+                                state.idle_under_water_on_ground,
+                            ),
+                            ("idle_on_ground", state.idle_on_ground),
+                            ("play_dead", state.play_dead),
+                        ] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                    }
                     "dolphin" => {
+                        described["max_x"] =
+                            json!(format!("{:016x}", entity.bounding_box().max_x.to_bits()));
                         let (x, _, z) = entity.motion();
                         described["is_moving"] = json!(entity.is_moving_horizontally());
                         described["motion_x"] = json!(format!("{:016x}", x.to_bits()));
@@ -20110,6 +20171,61 @@ fn sea_animal_model_result(request: &Value) -> Result<Value, String> {
                 is_laying_egg: flag("laying_egg")?,
                 has_egg: flag("has_egg")?,
             });
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `axolotl_model`: an axolotl's model posed and drawn, an adult from its blend factors, a baby
+/// from the animation states it runs.
+fn axolotl_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{AxolotlRenderState, MobModel, QuadrupedState};
+    use voxel_world::animation_state::AnimationState;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        // A state that starts at the given tick, or none.
+        let started = |key: &str| -> AnimationState {
+            let mut state = AnimationState::default();
+            if let Some(tick) = row[key].as_i64() {
+                state.start(tick as i32);
+            }
+            state
+        };
+        let state = AxolotlRenderState {
+            quadruped: QuadrupedState {
+                head_y_rot: bits("y_rot")?,
+                x_rot: bits("x_rot")?,
+                walk_position: bits("walk_position")?,
+                walk_speed: bits("walk_speed")?,
+            },
+            age_in_ticks: bits("age_in_ticks")?,
+            playing_dead_factor: bits("playing_dead")?,
+            moving_factor: bits("moving")?,
+            in_water_factor: bits("in_water")?,
+            on_ground_factor: bits("on_ground")?,
+            swim: started("swim"),
+            walk: started("walk"),
+            idle_under_water: started("idle_under_water"),
+            idle_under_water_on_ground: started("idle_under_water_on_ground"),
+            idle_on_ground: started("idle_on_ground"),
+            play_dead: started("play_dead"),
+        };
+        let mut model = MobModel::bake(layer);
+        if id.contains("_baby") {
+            model.setup_axolotl_baby(&state);
+        } else {
+            model.setup_axolotl_adult(&state);
         }
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
@@ -21816,6 +21932,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "squid_model" => return squid_model_result(request),
         "sea_animal_model" => return sea_animal_model_result(request),
         "dolphin_item_pose" => return dolphin_item_pose_result(request),
+        "axolotl_model" => return axolotl_model_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22170,6 +22287,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 (
                     "creeper-ignited",
                     i64::from(CREEPER_IGNITED_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "axolotl-variant",
+                    i64::from(voxel_world::AXOLOTL_VARIANT_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "axolotl-playing-dead",
+                    i64::from(voxel_world::AXOLOTL_PLAYING_DEAD_DATA_ID),
                     i64::from(8),
                 ),
                 (

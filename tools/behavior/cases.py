@@ -14409,6 +14409,54 @@ def movement_item_cases():
         fish("dolphin-glides-to-a-stop", "dolphin", 60, [motion(3, 0.02, 0.0, 0.0)],
              extras="dolphin"),
         fish("dolphin-moves-only-up", "dolphin", 20, [motion(3, 0.0, 0.2, 0.0)], extras="dolphin"),
+        # An axolotl's eased factors and animation states follow where it is (water, ground), whether
+        # it walks (its position changes) and whether it plays dead; a baby runs animation states
+        # instead of factors. A dolphin's baby flag also changes its box.
+        fish("axolotl-in-water", "axolotl", 30, [], extras="axolotl"),
+        fish("axolotl-swims", "axolotl", 40,
+             [{"tick": 3, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 9, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 15, "type": "move", "xa": 0, "ya": 0, "za": 0}], extras="axolotl"),
+        fish("axolotl-on-land", "axolotl", 40, [on_ground(2, True)], water="none", extras="axolotl"),
+        fish("axolotl-crawls", "axolotl", 40,
+             [on_ground(2, True), {"tick": 4, "type": "move", "xa": 500, "ya": 0, "za": 0,
+                                   "on_ground": True},
+              {"tick": 10, "type": "move", "xa": 500, "ya": 0, "za": 0, "on_ground": True}],
+             water="none", extras="axolotl"),
+        fish("axolotl-in-the-air", "axolotl", 30, [on_ground(2, False)], water="none",
+             extras="axolotl"),
+        fish("axolotl-plays-dead", "axolotl", 40,
+             [{"tick": 5, "type": "axolotl_data", "playing_dead": True}], extras="axolotl"),
+        fish("axolotl-gets-up", "axolotl", 50,
+             [{"tick": 5, "type": "axolotl_data", "playing_dead": True},
+              {"tick": 25, "type": "axolotl_data", "playing_dead": False}], extras="axolotl"),
+        fish("axolotl-variants", "axolotl", 10, [{"tick": 2, "type": "axolotl_data", "variant": 4}],
+             extras="axolotl"),
+        fish("axolotl-variant-past-the-last", "axolotl", 10,
+             [{"tick": 2, "type": "axolotl_data", "variant": 9}], extras="axolotl"),
+        fish("baby-axolotl-in-water", "axolotl", 30, [{"tick": 1, "type": "baby_data", "baby": True}],
+             extras="axolotl"),
+        fish("baby-axolotl-swims", "axolotl", 40,
+             [{"tick": 1, "type": "baby_data", "baby": True},
+              {"tick": 3, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 9, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 15, "type": "move", "xa": 0, "ya": 0, "za": 0}], extras="axolotl"),
+        fish("baby-axolotl-on-land", "axolotl", 30,
+             [{"tick": 1, "type": "baby_data", "baby": True}, on_ground(2, True)], water="none",
+             extras="axolotl"),
+        fish("baby-axolotl-crawls", "axolotl", 40,
+             [{"tick": 1, "type": "baby_data", "baby": True}, on_ground(2, True),
+              {"tick": 4, "type": "move", "xa": 500, "ya": 0, "za": 0, "on_ground": True},
+              {"tick": 10, "type": "move", "xa": 500, "ya": 0, "za": 0, "on_ground": True}],
+             water="none", extras="axolotl"),
+        fish("baby-axolotl-on-the-bottom", "axolotl", 30,
+             [{"tick": 1, "type": "baby_data", "baby": True}, on_ground(2, True)],
+             water="shallow", y=63.5, extras="axolotl"),
+        fish("baby-axolotl-plays-dead", "axolotl", 40,
+             [{"tick": 1, "type": "baby_data", "baby": True},
+              {"tick": 5, "type": "axolotl_data", "playing_dead": True}], extras="axolotl"),
+        fish("baby-dolphin-box", "dolphin", 10, [{"tick": 1, "type": "baby_data", "baby": True}],
+             extras="dolphin"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
         living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
         living("zombie-swings-again-too-early", "zombie", 14,
@@ -14748,6 +14796,7 @@ def entity_cases():
     yield from entity_squid_cases()
     yield from entity_fish_cases()
     yield from entity_sea_animal_cases()
+    yield from entity_axolotl_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15571,6 +15620,51 @@ def entity_sea_animal_cases():
                 ("with-an-egg", 3.7, 0.6, True, False, True),
                 ("with-an-egg-swimming", 5.1, 0.3, False, False, True))]
     yield {"case_id": "entity/turtle-model", "family": "entity", "operation": "sea_animal_model",
+           "rows": rows}
+
+
+def entity_axolotl_cases():
+    """The axolotl posed by the reference's own `setupAnim`: an adult from the eased factors of
+    swimming, hovering, crawling, lying still and playing dead (alone and blended, with the legs
+    mirrored by what is left); a baby from the keyframe animations whose states have started
+    (alone, and the walk that also runs the underwater walk)."""
+    def adult(label, age=37.5, y_rot=0.0, x_rot=0.0, **factors):
+        row = {"label": f"adult-{label}", "layer": "minecraft:axolotl#main", "y_rot": float_bits(y_rot),
+               "x_rot": float_bits(x_rot), "walk_position": float_bits(0.0),
+               "walk_speed": float_bits(0.0), "age_in_ticks": float_bits(age)}
+        for name in ("playing_dead", "moving", "in_water", "on_ground"):
+            row[name] = float_bits(factors.get(name, 0.0))
+        return row
+    rows = [adult("still"),
+            adult("swimming", in_water=1.0, moving=1.0),
+            adult("swimming-turned", y_rot=33.0, x_rot=-25.0, in_water=1.0, moving=1.0),
+            adult("hovering", in_water=1.0),
+            adult("crawling", on_ground=1.0, moving=1.0),
+            adult("lying-still", on_ground=1.0),
+            adult("playing-dead", playing_dead=1.0),
+            adult("swimming-half", age=91.25, in_water=0.5, moving=0.5),
+            adult("hovering-into-lying", age=12.0, in_water=0.3, on_ground=0.7),
+            adult("crawling-into-swimming", age=55.5, in_water=0.4, on_ground=0.6, moving=0.8),
+            adult("dead-while-swimming", age=20.0, in_water=0.6, moving=1.0, playing_dead=0.4),
+            adult("a-sliver-of-a-factor", in_water=0.000_005, moving=0.9)]
+
+    def baby(label, age=37.5, walk_position=0.0, walk_speed=0.0, **started):
+        row = {"label": f"baby-{label}", "layer": "minecraft:axolotl_baby#main",
+               "y_rot": float_bits(0.0), "x_rot": float_bits(0.0),
+               "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+               "age_in_ticks": float_bits(age)}
+        for name in ("playing_dead", "moving", "in_water", "on_ground"):
+            row[name] = float_bits(0.0)
+        row.update(started)
+        return row
+    rows += [baby("nothing"),
+             baby("swim", swim=3), baby("swim-later", age=90.0, swim=3),
+             baby("walk", walk_position=4.5, walk_speed=0.4, walk=5),
+             baby("walk-fast", age=71.0, walk_position=9.0, walk_speed=1.0, walk=5),
+             baby("idle-on-ground", idle_on_ground=2), baby("idle-underwater", idle_under_water=2),
+             baby("idle-underwater-on-ground", idle_under_water_on_ground=2),
+             baby("play-dead", play_dead=1), baby("play-dead-later", age=44.0, play_dead=1)]
+    yield {"case_id": "entity/axolotl-model", "family": "entity", "operation": "axolotl_model",
            "rows": rows}
 
 

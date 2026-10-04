@@ -172,6 +172,24 @@ pub struct DolphinState {
     pub is_moving: bool,
 }
 
+/// What an axolotl's models are posed from (`AxolotlRenderState`): the
+/// adult's blend factors and the baby's animation states.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AxolotlRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub playing_dead_factor: f32,
+    pub moving_factor: f32,
+    pub in_water_factor: f32,
+    pub on_ground_factor: f32,
+    pub swim: voxel_world::animation_state::AnimationState,
+    pub walk: voxel_world::animation_state::AnimationState,
+    pub idle_under_water: voxel_world::animation_state::AnimationState,
+    pub idle_under_water_on_ground: voxel_world::animation_state::AnimationState,
+    pub idle_on_ground: voxel_world::animation_state::AnimationState,
+    pub play_dead: voxel_world::animation_state::AnimationState,
+}
+
 /// What a turtle's model is posed from (`TurtleRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TurtleState {
@@ -519,6 +537,170 @@ pub fn panda_item_pose(base: &Pose, age_in_ticks: f32, eating: bool) -> Pose {
     let mut pose = *base;
     pose.translate(0.1, y, z);
     pose
+}
+
+/// A part of an adult axolotl by its path from the root.
+fn at<'a>(root: &'a mut Part, path: &str) -> &'a mut Part {
+    path.split('/').fold(root, |part, name| {
+        part.child_mut(name).expect("the axolotl has this part")
+    })
+}
+
+/// `AdultAxolotlModel.setupSwimmingAnimation`.
+fn axolotl_swimming(root: &mut Part, age_in_ticks: f32, x_rot: f32, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    let degrees = (std::f64::consts::PI / 180.0) as f32;
+    let half_pi = (std::f64::consts::PI / 2.0) as f32;
+    let anim_move_speed = age_in_ticks * 0.33;
+    let sine_sway = mth_sin_f64(f64::from(anim_move_speed));
+    let cosine_sway = mth_cos_f64(f64::from(anim_move_speed));
+    let body_sway = 0.13 * sine_sway;
+    at(root, "body").x_rot += (x_rot * degrees + body_sway) * factor;
+    at(root, "body/head").x_rot -= body_sway * 1.8 * factor;
+    at(root, "body").y -= 0.45 * cosine_sway * factor;
+    at(root, "body/head/top_gills").x_rot += (-0.5 * sine_sway - 0.8) * factor;
+    let gill_y_rot = (0.3 * sine_sway + 0.9) * factor;
+    at(root, "body/head/left_gills").y_rot += gill_y_rot;
+    at(root, "body/head/right_gills").y_rot -= gill_y_rot;
+    let tail = at(root, "body/tail");
+    tail.y_rot += 0.3 * mth_cos_f64(f64::from(anim_move_speed * 0.9)) * factor;
+    let hind = at(root, "body/left_hind_leg");
+    hind.x_rot += 1.884_955_8 * factor;
+    hind.y_rot += -0.4 * sine_sway * factor;
+    hind.z_rot += half_pi * factor;
+    let front = at(root, "body/left_front_leg");
+    front.x_rot += 1.884_955_8 * factor;
+    front.y_rot += (-0.2 * cosine_sway - 0.1) * factor;
+    front.z_rot += half_pi * factor;
+}
+
+/// `AdultAxolotlModel.setupWaterHoveringAnimation`.
+fn axolotl_hovering(root: &mut Part, age_in_ticks: f32, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    let anim_move_speed = age_in_ticks * 0.075;
+    let cosine_sway = mth_cos_f64(f64::from(anim_move_speed));
+    let sine_sway = mth_sin_f64(f64::from(anim_move_speed)) * 0.15;
+    let body_x_rot = (-0.15 + 0.075 * cosine_sway) * factor;
+    let body = at(root, "body");
+    body.x_rot += body_x_rot;
+    body.y -= sine_sway * factor;
+    at(root, "body/head").x_rot -= body_x_rot;
+    at(root, "body/head/top_gills").x_rot += 0.2 * cosine_sway * factor;
+    let gill_y_rot = (-0.3 * cosine_sway - 0.19) * factor;
+    at(root, "body/head/left_gills").y_rot += gill_y_rot;
+    at(root, "body/head/right_gills").y_rot -= gill_y_rot;
+    let hind = at(root, "body/left_hind_leg");
+    hind.x_rot += ((std::f64::consts::PI * 3.0 / 4.0) as f32 - cosine_sway * 0.11) * factor;
+    hind.y_rot += 0.471_238_94 * factor;
+    hind.z_rot += 1.727_876_1 * factor;
+    let front = at(root, "body/left_front_leg");
+    front.x_rot += ((std::f64::consts::PI / 4.0) as f32 - cosine_sway * 0.2) * factor;
+    front.y_rot += 2.042_035 * factor;
+    at(root, "body/tail").y_rot += 0.5 * cosine_sway * factor;
+}
+
+/// `AdultAxolotlModel.setupGroundCrawlingAnimation`.
+fn axolotl_crawling(root: &mut Part, age_in_ticks: f32, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    let half_pi = (std::f64::consts::PI / 2.0) as f32;
+    let anim_move_speed = age_in_ticks * 0.11;
+    let cosine_sway = mth_cos_f64(f64::from(anim_move_speed));
+    let hind_leg_y_rot_sway = (cosine_sway * cosine_sway - 2.0 * cosine_sway) / 5.0;
+    let front_leg_y_rot_sway = 0.7 * cosine_sway;
+    let head_and_tail_y_rot = 0.09 * cosine_sway * factor;
+    at(root, "body/head").y_rot += head_and_tail_y_rot;
+    at(root, "body/tail").y_rot += head_and_tail_y_rot;
+    let sine = mth_sin_f64(f64::from(anim_move_speed));
+    let gill_angle = (0.6 - 0.08 * (cosine_sway * cosine_sway + 2.0 * sine)) * factor;
+    at(root, "body/head/top_gills").x_rot += gill_angle;
+    at(root, "body/head/left_gills").y_rot -= gill_angle;
+    at(root, "body/head/right_gills").y_rot += gill_angle;
+    let hind_leg_x_rot = 0.942_477_9 * factor;
+    let front_leg_x_rot = 1.099_557_4 * factor;
+    let left_hind = at(root, "body/left_hind_leg");
+    left_hind.x_rot += hind_leg_x_rot;
+    left_hind.y_rot += (1.5 - hind_leg_y_rot_sway) * factor;
+    left_hind.z_rot += -0.1 * factor;
+    let left_front = at(root, "body/left_front_leg");
+    left_front.x_rot += front_leg_x_rot;
+    left_front.y_rot += (half_pi - front_leg_y_rot_sway) * factor;
+    let right_hind = at(root, "body/right_hind_leg");
+    right_hind.x_rot += hind_leg_x_rot;
+    right_hind.y_rot += (-1.0 - hind_leg_y_rot_sway) * factor;
+    let right_front = at(root, "body/right_front_leg");
+    right_front.x_rot += front_leg_x_rot;
+    right_front.y_rot += ((-std::f64::consts::PI / 2.0) as f32 - front_leg_y_rot_sway) * factor;
+}
+
+/// `AdultAxolotlModel.setupLayStillOnGroundAnimation`.
+fn axolotl_lying_still(root: &mut Part, age_in_ticks: f32, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    let anim_move_speed = age_in_ticks * 0.09;
+    let sine_sway = mth_sin_f64(f64::from(anim_move_speed));
+    let cosine_sway = mth_cos_f64(f64::from(anim_move_speed));
+    let movement = sine_sway * sine_sway - 2.0 * sine_sway;
+    let movement2 = cosine_sway * cosine_sway - 3.0 * sine_sway;
+    let head = at(root, "body/head");
+    head.x_rot += -0.09 * movement * factor;
+    head.z_rot += -0.2 * factor;
+    at(root, "body/tail").y_rot += (-0.1 + 0.1 * movement) * factor;
+    let gill_angle = (0.6 + 0.05 * movement2) * factor;
+    at(root, "body/head/top_gills").x_rot += gill_angle;
+    at(root, "body/head/left_gills").y_rot -= gill_angle;
+    at(root, "body/head/right_gills").y_rot += gill_angle;
+    let hind = at(root, "body/left_hind_leg");
+    hind.x_rot += 1.1 * factor;
+    hind.y_rot += 1.0 * factor;
+    let front = at(root, "body/left_front_leg");
+    front.x_rot += 0.8 * factor;
+    front.y_rot += 2.3 * factor;
+    front.z_rot -= 0.5 * factor;
+}
+
+/// `AdultAxolotlModel.setupPlayDeadAnimation`.
+fn axolotl_playing_dead(root: &mut Part, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    let hind = at(root, "body/left_hind_leg");
+    hind.x_rot += 1.413_716_7 * factor;
+    hind.y_rot += 1.099_557_4 * factor;
+    hind.z_rot += (std::f64::consts::PI / 4.0) as f32 * factor;
+    let front = at(root, "body/left_front_leg");
+    front.x_rot += (std::f64::consts::PI / 4.0) as f32 * factor;
+    front.y_rot += 2.042_035 * factor;
+    let body = at(root, "body");
+    body.x_rot += -0.15 * factor;
+    body.z_rot += 0.35 * factor;
+}
+
+/// `AdultAxolotlModel.applyMirrorLegRotations`: the right legs add the left
+/// ones, mirrored.
+fn axolotl_mirror_legs(root: &mut Part, factor: f32) {
+    if factor <= 1.0E-5 {
+        return;
+    }
+    for (left, right) in [
+        ("body/left_hind_leg", "body/right_hind_leg"),
+        ("body/left_front_leg", "body/right_front_leg"),
+    ] {
+        let (x, y, z) = {
+            let left = at(root, left);
+            (left.x_rot, left.y_rot, left.z_rot)
+        };
+        let right = at(root, right);
+        right.x_rot += x * factor;
+        right.y_rot += -y * factor;
+        right.z_rot += -z * factor;
+    }
 }
 
 /// `DolphinCarryingItemLayer`: what a dolphin carries is held under its chin,
@@ -1271,6 +1453,70 @@ impl MobModel {
         for index in 0..8 {
             if let Some(tentacle) = self.root.child_mut(&format!("tentacle{index}")) {
                 tentacle.x_rot = tentacle_angle;
+            }
+        }
+    }
+
+    /// `AdultAxolotlModel.setupAnim`: the body turns with the look, then the
+    /// poses of swimming, hovering, crawling, lying still and playing dead
+    /// each blended in by its factor, and the right legs mirroring the left.
+    pub fn setup_axolotl_adult(&mut self, state: &AxolotlRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let (playing_dead, in_water, on_ground, moving) = (
+            state.playing_dead_factor,
+            state.in_water_factor,
+            state.on_ground_factor,
+            state.moving_factor,
+        );
+        let not_moving = 1.0 - moving;
+        let mirrored = 1.0 - on_ground.min(moving);
+        let root = &mut self.root;
+        at(root, "body").y_rot += state.quadruped.head_y_rot * degrees;
+        axolotl_swimming(
+            root,
+            state.age_in_ticks,
+            state.quadruped.x_rot,
+            moving.min(in_water),
+        );
+        axolotl_hovering(root, state.age_in_ticks, not_moving.min(in_water));
+        axolotl_crawling(root, state.age_in_ticks, moving.min(on_ground));
+        axolotl_lying_still(root, state.age_in_ticks, not_moving.min(on_ground));
+        axolotl_playing_dead(root, playing_dead);
+        axolotl_mirror_legs(root, mirrored);
+    }
+
+    /// `BabyAxolotlModel.setupAnim`: the walking animation by the walk, then
+    /// each animation whose state has started. (The underwater walk runs on the
+    /// walking state, as the reference has it.)
+    pub fn setup_axolotl_baby(&mut self, state: &AxolotlRenderState) {
+        self.root.reset();
+        if state.walk.is_started()
+            && let Some(definition) =
+                voxel_data::animation::definition("BabyAxolotl.AXOLOTL_WALK_FLOOR")
+        {
+            // `applyWalk(pos, speed, 15.0, 30.0)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 15.0) as i64;
+            let scale = (state.quadruped.walk_speed * 30.0).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        for (name, running) in [
+            ("BabyAxolotl.BABY_AXOLOTL_SWIM", state.swim),
+            ("BabyAxolotl.WALK_FLOOR_UNDERWATER", state.walk),
+            ("BabyAxolotl.BABY_AXOLOTL_IDLE_FLOOR", state.idle_on_ground),
+            ("BabyAxolotl.IDLE_UNDERWATER", state.idle_under_water),
+            (
+                "BabyAxolotl.IDLE_FLOOR_UNDERWATER",
+                state.idle_under_water_on_ground,
+            ),
+            ("BabyAxolotl.BABY_AXOLOTL_PLAY_DEAD", state.play_dead),
+        ] {
+            if !running.is_started() {
+                continue;
+            }
+            if let Some(definition) = voxel_data::animation::definition(name) {
+                let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
+                self.animate(definition, millis, 1.0);
             }
         }
     }

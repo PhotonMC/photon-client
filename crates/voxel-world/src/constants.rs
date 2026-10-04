@@ -225,6 +225,9 @@ pub const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 pub const SALMON_TYPE_DATA_ID: u8 = 17;
 pub const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
 pub const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
+/// Where an axolotl's variant (an int) and whether it plays dead (a boolean) sit among its data.
+pub const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
+pub const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 /// Where a turtle's egg and its laying of one (each a boolean) sit among its data.
 pub const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 pub const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;

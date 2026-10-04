@@ -3,6 +3,7 @@ mod armor;
 mod armor_stands;
 mod assets;
 mod atmosphere;
+mod axolotls;
 mod bears;
 mod controls;
 mod copper_golems;

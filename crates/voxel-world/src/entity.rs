@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Axolotl.getVariant`'s id and `Axolotl.isPlayingDead`.
+    pub(crate) axolotl_variant: i32,
+    pub(crate) axolotl_playing_dead: bool,
     /// `Turtle.hasEgg` and `Turtle.isLayingEgg`.
     pub(crate) turtle_has_egg: bool,
     pub(crate) turtle_laying_egg: bool,
@@ -692,6 +695,8 @@ pub struct ClientEntity {
     pub(crate) copper_golem: Option<Box<crate::copper_golem::CopperGolemAnimations>>,
     /// A squid's tentacles and body turns, made when it first ticks.
     pub(crate) squid: Option<Box<crate::squid::SquidState>>,
+    /// An axolotl's animators and animation states, made when it first ticks.
+    pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
     /// A panda's data and own client state, once it has any.
     pub(crate) panda: Option<Box<crate::panda::PandaState>>,
     /// A ravager's counters, once it has any.
@@ -1062,7 +1067,7 @@ impl ClientEntity {
                 self.walk
                     .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
             } else {
-                self.walk.follow(moved.0.hypot(moved.1));
+                self.walk.follow(moved.0.hypot(moved.1), self.baby);
             }
         } else {
             self.walk.stop();
@@ -1984,7 +1989,44 @@ impl ClientEntity {
     pub(crate) fn tracks_water(&self) -> bool {
         self.is_squid()
             || self.is_fish()
-            || voxel_data::entity_type::name(self.type_id) == Some("minecraft:turtle")
+            || matches!(
+                voxel_data::entity_type::name(self.type_id),
+                Some("minecraft:turtle" | "minecraft:axolotl")
+            )
+    }
+
+    /// An axolotl's animators and animation states, if it has ticked.
+    pub fn axolotl(&self) -> Option<&crate::axolotl::AxolotlState> {
+        self.axolotl.as_deref()
+    }
+
+    /// `Axolotl.getVariant`: the index of the variant (an id no variant has is the first).
+    pub fn axolotl_variant(&self) -> usize {
+        usize::try_from(self.living.axolotl_variant)
+            .ok()
+            .filter(|id| *id < 5)
+            .unwrap_or(0)
+    }
+
+    /// `Axolotl.baseTick` on the client: the animators and animation states
+    /// follow where the axolotl is and whether it walks. The rotation test of
+    /// the reference never holds here: `LivingEntity.baseTick` has set the old
+    /// turn to the new before it.
+    pub(crate) fn tick_axolotl(&mut self) {
+        if voxel_data::entity_type::name(self.type_id) != Some("minecraft:axolotl") {
+            return;
+        }
+        let input = crate::axolotl::AxolotlInput {
+            baby: self.is_baby(),
+            playing_dead: self.living.axolotl_playing_dead,
+            in_water: self.living.in_water,
+            on_ground: self.on_ground,
+            moving: self.walk.is_moving(),
+            tick_count: self.tick_count,
+        };
+        self.axolotl
+            .get_or_insert_with(|| Box::new(crate::axolotl::AxolotlState::new()))
+            .tick(input);
     }
 
     /// `Turtle.hasEgg`.
@@ -2090,6 +2132,7 @@ impl ClientEntity {
         if let Some(in_water) = in_water {
             self.living.in_water = in_water;
         }
+        self.tick_axolotl();
         let was_interpolating = self.is_interpolating();
         if living.is_some() {
             self.tick_position_interpolation();

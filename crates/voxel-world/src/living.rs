@@ -51,15 +51,24 @@ impl WalkAnimation {
         };
     }
 
-    /// `calculateEntityAnimation` and `updateWalkAnimation` for a grown
-    /// entity on the ground: the distance it moved across it this tick sets
-    /// the target speed.
-    pub fn follow(&mut self, moved: f64) {
-        self.update((moved as f32 * 4.0).min(1.0), 0.4, 1.0);
+    /// `calculateEntityAnimation` and `updateWalkAnimation` on the ground: the
+    /// distance moved across it this tick sets the target speed, and a baby's
+    /// steps count three times as far.
+    pub fn follow(&mut self, moved: f64, baby: bool) {
+        self.update(
+            (moved as f32 * 4.0).min(1.0),
+            0.4,
+            if baby { 3.0 } else { 1.0 },
+        );
     }
 
     pub fn speed(&self) -> f32 {
         self.speed
+    }
+
+    /// `isMoving`.
+    pub fn is_moving(&self) -> bool {
+        self.speed > 1.0E-5
     }
 
     /// `speed(partialTicks)`.

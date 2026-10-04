@@ -830,6 +830,26 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "baby_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.AgeableMob.class, "DATA_BABY_ID",
+                            event.get("baby").getAsBoolean()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "axolotl_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("variant")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT",
+                                event.get("variant").getAsInt()));
+                        }
+                        if (event.has("playing_dead")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD",
+                                event.get("playing_dead").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "turtle_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         if (event.has("has_egg")) {
@@ -1061,7 +1081,33 @@ public final class MovementOracle {
                             described.addProperty("max_y", Oracle.bits(box.maxY));
                             described.addProperty("max_x", Oracle.bits(box.maxX));
                         }
+                        case "axolotl" -> {
+                            var axolotl = (net.minecraft.world.entity.animal.axolotl.Axolotl) entity;
+                            described.addProperty("in_water", axolotl.isInWater());
+                            described.addProperty("variant", axolotl.getVariant().getId());
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("playing_dead_" + partial, Oracle.bits(axolotl.playingDeadAnimator.getFactor(partial)));
+                                described.addProperty("in_water_" + partial, Oracle.bits(axolotl.inWaterAnimator.getFactor(partial)));
+                                described.addProperty("on_ground_" + partial, Oracle.bits(axolotl.onGroundAnimator.getFactor(partial)));
+                                described.addProperty("moving_" + partial, Oracle.bits(axolotl.movingAnimator.getFactor(partial)));
+                            }
+                            var states = new Object[][] {
+                                {"swim", axolotl.swimAnimationState}, {"walk", axolotl.walkAnimationState},
+                                {"walk_under_water", axolotl.walkUnderWaterAnimationState},
+                                {"idle_under_water", axolotl.idleUnderWaterAnimationState},
+                                {"idle_under_water_on_ground", axolotl.idleUnderWaterOnGroundAnimationState},
+                                {"idle_on_ground", axolotl.idleOnGroundAnimationState},
+                                {"play_dead", axolotl.playDeadAnimationState},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) axolotl.tickCount) : 0L);
+                            }
+                        }
                         case "dolphin" -> {
+                            described.addProperty("max_x", Oracle.bits(entity.getBoundingBox().maxX));
                             var motion = entity.getDeltaMovement();
                             described.addProperty("is_moving", motion.horizontalDistanceSqr() > 1.0E-7);
                             described.addProperty("motion_x", Oracle.bits(motion.x));

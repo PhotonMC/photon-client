@@ -1469,7 +1469,7 @@ impl LocalPlayer {
         // moved across the ground this tick.
         let x = self.position.x - self.old_position.x;
         let z = self.position.z - self.old_position.z;
-        self.walk.follow((x * x + z * z).sqrt());
+        self.walk.follow((x * x + z * z).sqrt(), false);
         Ok(())
     }
 

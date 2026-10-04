@@ -21,6 +21,7 @@ use voxel_core::{
 pub mod animal;
 pub mod animation_state;
 pub mod armor_stand;
+pub mod axolotl;
 pub mod block;
 mod block_entity;
 pub mod block_rules;
@@ -3113,6 +3114,7 @@ impl ClientWorld {
                 rabbit: None,
                 copper_golem: None,
                 squid: None,
+                axolotl: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3566,6 +3568,13 @@ impl ClientWorld {
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
         }
+        let (axolotl_variant, playing_dead) = axolotl_data_from_metadata(entity.type_id, metadata);
+        if let Some(variant) = axolotl_variant {
+            entity.living.axolotl_variant = variant;
+        }
+        if let Some(playing_dead) = playing_dead {
+            entity.living.axolotl_playing_dead = playing_dead;
+        }
         let (has_egg, laying_egg) = turtle_eggs_from_metadata(entity.type_id, metadata);
         if let Some(has_egg) = has_egg {
             entity.living.turtle_has_egg = has_egg;
@@ -3662,7 +3671,10 @@ impl ClientWorld {
         // animal and villager (`AgeableMob`).
         if (entity.is_zombie_type()
             || vanilla_passenger_is_animal(entity.type_id)
-            || voxel_data::entity_type::name(entity.type_id) == Some("minecraft:villager"))
+            || matches!(
+                voxel_data::entity_type::name(entity.type_id),
+                Some("minecraft:villager" | "minecraft:dolphin")
+            ))
             && let Some(zombie_baby) = zombie_baby
         {
             entity.baby = zombie_baby;

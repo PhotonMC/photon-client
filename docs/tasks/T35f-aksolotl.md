@@ -17,4 +17,6 @@
 Kova ile tutma, sesler, parçacıklar, davranışlar; kurbağa ve iribaş (T35g).
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-world/axolotl.rs` (`BinaryAnimator` + `in_out_sine`, yedi animasyon durumu, bebek/yetişkin tiki), tür 18 ve ölü taklidi 19, `setup_axolotl_adult` (beş poz + ayna) ve `setup_axolotl_baby` (keyframe), `crates/voxel/src/axolotls.rs`. Kayıt: `docs/client-axolotl-parity-conformance.md`.
+- Bulgular: bebek mob yürüyüş konumu ×3 (`follow(.., baby)`) tüm bebekler için düzeltildi; bebek yunus `DATA_BABY_ID`'yi okumuyordu, düzeltildi.
+- Sapma: doku yolu oracle'sız; ses, parçacık, gölge yok. Canlı gözlem yapılmadı.

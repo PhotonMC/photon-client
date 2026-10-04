@@ -1596,6 +1596,49 @@ public final class EntityOracle {
     }
 
     /**
+     * The axolotl's models posed by the reference's own `setupAnim`, drawn: an adult from its blend
+     * factors, a baby from the animation states it runs (each started at the tick the row names).
+     */
+    private static JsonObject axolotlModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            var state = new net.minecraft.client.renderer.entity.state.AxolotlRenderState();
+            state.yRot = Oracle.f32(row, "y_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.playingDeadFactor = Oracle.f32(row, "playing_dead");
+            state.movingFactor = Oracle.f32(row, "moving");
+            state.inWaterFactor = Oracle.f32(row, "in_water");
+            state.onGroundFactor = Oracle.f32(row, "on_ground");
+            var animations = new Object[][] {
+                {"swim", state.swimAnimation}, {"walk", state.walkAnimationState},
+                {"idle_under_water", state.idleUnderWaterAnimationState},
+                {"idle_under_water_on_ground", state.idleUnderWaterOnGroundAnimationState},
+                {"idle_on_ground", state.idleOnGroundAnimationState}, {"play_dead", state.playDeadAnimationState},
+            };
+            for (var animation : animations) {
+                if (row.has((String) animation[0])) {
+                    ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                }
+            }
+            net.minecraft.client.model.EntityModel<net.minecraft.client.renderer.entity.state.AxolotlRenderState> model =
+                id.contains("_baby")
+                    ? new net.minecraft.client.model.animal.axolotl.BabyAxolotlModel(root)
+                    : new net.minecraft.client.model.animal.axolotl.AdultAxolotlModel(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * Where `DolphinCarryingItemLayer` submits what a dolphin carries, from an identity pose and
      * the dolphin's pitch: the matrix of the item.
      */
@@ -3057,6 +3100,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_POWERED", "creeper-powered"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
+            {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT", "axolotl-variant"},
+            {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD", "axolotl-playing-dead"},
             {net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG", "turtle-has-egg"},
             {net.minecraft.world.entity.animal.turtle.Turtle.class, "LAYING_EGG", "turtle-laying-egg"},
             {net.minecraft.world.entity.animal.fish.Salmon.class, "DATA_TYPE", "salmon-type"},
@@ -3254,6 +3299,9 @@ public final class EntityOracle {
         }
         if (operation.equals("sea_animal_model")) {
             return seaAnimalModel(request);
+        }
+        if (operation.equals("axolotl_model")) {
+            return axolotlModel(request);
         }
         if (operation.equals("dolphin_item_pose")) {
             return dolphinItemPose(request);
