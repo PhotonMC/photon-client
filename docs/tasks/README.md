@@ -93,7 +93,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35](T35-su-canlilari.md) | Su canlıları: kalamar, balıklar, yunus, aksolotl, kaplumbağa, kurbağa, nautilus, gardiyan | L | T24, T43b | bölündü (0369ff69) |
 | [T35b](T35b-kalamar.md) | Kalamar ve ışıklı kalamar (mob suda olma durumu, hareket azalması) | M | T35 | bitti (0369ff69) |
 | [T35c](T35c-baliklar.md) | Morina, somon, tropikal balık, kirpi balığı | M | T35b | bitti (5435e16a) |
-| [T35d](T35d-yunus-aksolotl-kaplumbaga-kurbaga.md) | Yunus, aksolotl, kaplumbağa, iribaş, kurbağa | L | T35b, T43b | bölündü |
+| [T35d](T35d-yunus-aksolotl-kaplumbaga-kurbaga.md) | Yunus, aksolotl, kaplumbağa, iribaş, kurbağa | L | T35b, T43b | bölündü (3df6261d) |
 | [T35f](T35f-aksolotl.md) | Aksolotl | M | T35d, T43b | açık |
 | [T35g](T35g-kurbaga-iribas.md) | Kurbağa ve iribaş | M | T35d, T43b | açık |
 | [T35e](T35e-nautilus-gardiyan.md) | Nautilus, zombi nautilus, gardiyan, elder gardiyan | M | T35b | açık |
