@@ -49,6 +49,9 @@ impl ClientEntity {
     /// `Entity.getBoundingBox`: the box of those dimensions around where the
     /// entity is.
     pub fn bounding_box(&self) -> Aabb {
+        if self.is_shulker() {
+            return self.shulker_bounding_box();
+        }
         let (x, y, z) = self.position();
         self.dimensions().make_bounding_box(Vec3::new(x, y, z))
     }

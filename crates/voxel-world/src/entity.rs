@@ -561,6 +561,11 @@ pub(crate) fn is_vanilla_boat_entity_type(entity_type_id: i32) -> bool {
         .any(|&(type_id, _, _)| type_id == entity_type_id)
 }
 
+/// `Entity.blockPosition`: the block a position is in.
+fn block_of(position: (f64, f64, f64)) -> [i32; 3] {
+    [position.0, position.1, position.2].map(|value| value.floor() as i32)
+}
+
 pub(crate) fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
 }
@@ -948,7 +953,11 @@ impl ClientEntity {
         } else {
             ClientEntityDimensions::scalable(width, height)
         };
-        let bounding_box = dimensions.make_bounding_box(Vec3::new(x, y, z));
+        let bounding_box = if is_vanilla_shulker_entity_type(self.type_id) {
+            self.shulker_bounding_box()
+        } else {
+            dimensions.make_bounding_box(Vec3::new(x, y, z))
+        };
         let can_be_collided_with = if is_vanilla_happy_ghast_entity_type(self.type_id) {
             !self.baby
                 && self.alive
@@ -1177,6 +1186,29 @@ impl ClientEntity {
         self.old_z_bits = position.2.to_bits();
         self.old_y_rot_bits = y_rot.to_bits();
         self.old_x_rot_bits = x_rot.to_bits();
+        if self.is_shulker() {
+            // `Entity.snapTo` sets the old place from the raw one, then
+            // `reapplyPosition` runs `Shulker.setPos` from the raw block.
+            self.shulker_set_pos(position, block_of(position));
+        }
+    }
+
+    /// `Entity.moveOrInterpolateTo`: a shulker has no interpolation
+    /// (`getInterpolation` is null), so it is put at the place, and turned,
+    /// at once; the rest interpolate.
+    pub(crate) fn move_or_interpolate_to(
+        &mut self,
+        position: (f64, f64, f64),
+        y_rot: f32,
+        x_rot: f32,
+    ) {
+        if self.is_shulker() {
+            self.set_position(position);
+            self.y_rot_bits = (y_rot % 360.0).to_bits();
+            self.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+        } else {
+            self.interpolate_to(position, y_rot, x_rot);
+        }
     }
 
     pub(crate) fn tick_position_interpolation(&mut self) {
@@ -1240,17 +1272,17 @@ impl ClientEntity {
                 f64::from(target_rotation.1),
             ) as f32,
         );
-        self.x_bits = new_position.0.to_bits();
-        self.y_bits = new_position.1.to_bits();
-        self.z_bits = new_position.2.to_bits();
-        self.y_rot_bits = (new_rotation.0 % 360.0).to_bits();
-        self.x_rot_bits = (new_rotation.1 % 360.0).clamp(-90.0, 90.0).to_bits();
         interpolation.steps -= 1;
         interpolation.previous_x_bits = new_position.0.to_bits();
         interpolation.previous_y_bits = new_position.1.to_bits();
         interpolation.previous_z_bits = new_position.2.to_bits();
         interpolation.previous_y_rot_bits = new_rotation.0.to_bits();
         interpolation.previous_x_rot_bits = new_rotation.1.to_bits();
+        self.x_bits = new_position.0.to_bits();
+        self.y_bits = new_position.1.to_bits();
+        self.z_bits = new_position.2.to_bits();
+        self.y_rot_bits = (new_rotation.0 % 360.0).to_bits();
+        self.x_rot_bits = (new_rotation.1 % 360.0).clamp(-90.0, 90.0).to_bits();
     }
 
     pub(crate) fn tick_motion_interpolation(&mut self) {
@@ -1511,6 +1543,10 @@ impl ClientEntity {
     }
 
     pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
+        if self.is_shulker() {
+            self.shulker_set_pos(position, block_of(self.position()));
+            return;
+        }
         self.x_bits = position.0.to_bits();
         self.y_bits = position.1.to_bits();
         self.z_bits = position.2.to_bits();
@@ -2562,7 +2598,80 @@ impl ClientEntity {
         if self.is_shulker() {
             let raw = self.living.shulker_raw_peek;
             self.living.shulker.tick(raw);
+            self.living.shulker.tick_teleport();
         }
+    }
+
+    /// `Shulker.makeBoundingBox`: the body and the lid as far open as it is,
+    /// on the side opposite the one it clings to.
+    pub fn shulker_bounding_box(&self) -> Aabb {
+        let physical = crate::shulker::physical_peek(self.living.shulker.current_peek());
+        crate::shulker::progress_delta_aabb(
+            self.shulker_scale(),
+            self.living.shulker_face ^ 1,
+            (-1.0, physical),
+            self.position(),
+        )
+    }
+
+    /// `Shulker.sanitizeScale` of `getScale`.
+    fn shulker_scale(&self) -> f32 {
+        self.scale().min(3.0)
+    }
+
+    /// `Shulker.getRenderPosition`: where the slide to its block draws it,
+    /// relative to the block.
+    pub fn shulker_render_offset(&self, partial_tick: f32) -> Option<[f64; 3]> {
+        self.living.shulker.render_offset(
+            block_of(self.position()),
+            self.shulker_scale(),
+            partial_tick,
+        )
+    }
+
+    /// `Shulker.setPos`: unless it rides, it is held to the middle of its
+    /// block (`floor(y + 0.5)` vertically); having come to another block after
+    /// its first tick it closes its lid, and a shulker that is not riding
+    /// slides there from the old one.
+    fn shulker_set_pos(&mut self, position: (f64, f64, f64), old_block: [i32; 3]) {
+        let riding = self.vehicle_id.is_some();
+        let (x, y, z) = if riding {
+            position
+        } else {
+            (
+                position.0.floor() + 0.5,
+                (position.1 + 0.5).floor(),
+                position.2.floor() + 0.5,
+            )
+        };
+        self.x_bits = x.to_bits();
+        self.y_bits = y.to_bits();
+        self.z_bits = z.to_bits();
+        let block = block_of((x, y, z));
+        if self.tick_count != 0 && block != old_block {
+            self.living.shulker_raw_peek = 0;
+            if !riding && self.living.shulker.start_teleport(old_block, block) {
+                self.old_x_bits = x.to_bits();
+                self.old_y_bits = y.to_bits();
+                self.old_z_bits = z.to_bits();
+            }
+        }
+    }
+
+    /// `Shulker.startRiding` (client side): it stops sliding and clings to
+    /// the floor of its vehicle.
+    pub(crate) fn shulker_starts_riding(&mut self) {
+        self.living.shulker.cancel_teleport();
+        self.living.shulker_face = 0;
+    }
+
+    /// `Shulker.stopRiding` (client side): it slides from where it stands, and
+    /// its body faces south again.
+    pub(crate) fn shulker_stops_riding(&mut self) {
+        let block = block_of(self.position());
+        self.living.shulker.set_old_attach(block);
+        self.y_body_rot_bits = 0.0_f32.to_bits();
+        self.old_y_body_rot_bits = 0.0_f32.to_bits();
     }
 
     /// Whether this is a slime or a magma cube (`AbstractCubeMob`).

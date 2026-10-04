@@ -2338,6 +2338,11 @@ impl ClientWorld {
             entity.set_position(position);
             entity.ticking = entity.always_ticking || ticking;
         }
+        // A shulker is held to its block, so the section is the one it is in.
+        let position = self
+            .entities
+            .get(&entity_id)
+            .map_or(position, ClientEntity::position);
         self.update_entity_section(entity_id, previous_position, position);
         true
     }
@@ -3224,9 +3229,12 @@ impl ClientWorld {
             .get_mut(&entity.entity_id)
             .filter(|entity| entity.is_shulker())
         {
-            // `Shulker.recreateFromPacket`: the body faces south.
+            // `Shulker.recreateFromPacket`: the body faces south; `snapTo`
+            // holds it to the middle of its block.
             shulker.y_body_rot_bits = 0.0_f32.to_bits();
             shulker.old_y_body_rot_bits = 0.0_f32.to_bits();
+            let (position, (y_rot, x_rot, _)) = (shulker.position(), shulker.rotation());
+            shulker.snap_to(position, y_rot, x_rot);
         }
         self.snap_local_player_turn(entity.entity_id, head_rotation_bits, entity.rotation.0);
         true
@@ -3415,6 +3423,13 @@ impl ClientWorld {
 
     fn set_entity_vehicle_id(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
         if let Some(entity) = self.entities.get_mut(&entity_id) {
+            if entity.is_shulker() && entity.vehicle_id != vehicle_id {
+                if vehicle_id.is_some() {
+                    entity.shulker_starts_riding();
+                } else {
+                    entity.shulker_stops_riding();
+                }
+            }
             entity.vehicle_id = vehicle_id;
         } else if let Some(player) = self
             .local_player
@@ -3833,7 +3848,7 @@ impl ClientWorld {
                         x_rot
                     }
                 });
-                entity.interpolate_to(entity.interpolation_position(), y_rot, x_rot);
+                entity.move_or_interpolate_to(entity.interpolation_position(), y_rot, x_rot);
             } else {
                 if let Some(y_rot) = input.y_rot {
                     let current = f32::from_bits(entity.y_rot_bits);
@@ -4008,7 +4023,7 @@ impl ClientWorld {
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
-                entity.interpolate_to(target_position, target_y_rot, target_x_rot);
+                entity.move_or_interpolate_to(target_position, target_y_rot, target_x_rot);
             } else {
                 if input.has_position {
                     let (x, y, z) = new_position.expect("position was requested");
@@ -4132,7 +4147,7 @@ impl ClientWorld {
                     } && delta_x * delta_x + delta_y * delta_y + delta_z * delta_z
                         <= ENTITY_INTERPOLATION_DISTANCE_SQR;
                 if can_interpolate {
-                    entity.interpolate_to(target_position, rotation.0, rotation.1);
+                    entity.move_or_interpolate_to(target_position, rotation.0, rotation.1);
                 } else {
                     entity.snap_to(target_position, rotation.0, rotation.1);
                 }

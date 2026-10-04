@@ -29,8 +29,33 @@ eklendi. `Pose::rotate_around` JOML kaynağındaki sıraya (kaynaşık çarpma-t
 
 ## Sapmalar (açık)
 
-- Konum yakalama (`setPos`'ın blok merkezine oturtması), blok değişince açıklığın sıfırlanması ve
-  6 tiklik ışınlanma kaydırması (`getRenderPosition`) ile açıklığa bağlı vuruş kutusu yok: T37c2.
+- Konum yakalama, kaydırma ve vuruş kutusu T37c2'de eklendi (aşağıda).
 - Render türü `entityCutoutZOffset`'in derinlik kayması yok (kapak ile taban aynı düzlemde değil,
   fakat ofsetli çizim yapılmıyor).
 - Ses, parçacık, mermi (`ShulkerBullet`) yok.
+
+## Konum, kayma ve vuruş kutusu (T37c2) — [client-parity]
+
+Kanıt: `movement/living-entity-animations`'a 9 satır (gerçek `ClientPacketListener` ve `ClientLevel`
+üzerinde gerçek `Shulker`; konum, eski konum, kutu, `getRenderPosition` üç kısmi değerde, sürüş).
+
+- `Shulker.setPos`: biniciyse ham, değilse `(floor x + 0,5, floor(y + 0,5), floor z + 0,5)`. İlk tikten
+  sonra blok değişirse ham açıklık 0 olur; biniciyse değilse ve gelinen blok kaydığı blok değilse
+  eski blok saklanır, 6 tiklik kayma başlar, eski konum yeni konuma eşitlenir. `snapTo` eski konumu
+  ham konumdan kurar, sonra `setPos` ham bloktan çalışır (y'nin yarım blok üstü bir üst bloğa gider).
+- `getInterpolation` null: konum paketleri (`Move`, `PositionSync`, ışınlanma) ara değerlenmez,
+  `setPos` ile hemen uygulanır; çok uzaksa `snapTo`.
+- `tick` sonunda kayma sayacı azalır, bitince eski blok unutulur; `getRenderPosition`
+  `-(blok - eskiBlok)·((sayaç - kısmi)/6)²·ölçek`. Çizici bunu varlık konumuna ekler.
+- `makeBoundingBox`: tutunduğu yüzün tersine açılan `getProgressDeltaAabb` (kapağın fiziksel
+  açıklığı `0,5 - sin((0,5 + açıklık)π)·0,5`, ölçek en çok 3); çarpışma adayı ve hedefleme bunu kullanır.
+- `startRiding`/`stopRiding` (istemci): biniş kaymayı iptal eder ve yüzü aşağı yapar; iniş eski
+  bloğu bulunduğu blok yapar ve gövdeyi güneye çevirir. İnişte `setPos` çalışmadığı için konum
+  yakalanmaz.
+
+Sapmalar (açık):
+- Kapak açılırken üstündeki varlıkları iten `onPeekAmountChange` (`MoverType.SHULKER`) yok.
+- Aynı aracın yolcu listesi yinelenirken `apply_entity_passengers` yolcuyu çıkarıp yeniden bindirir;
+  bu, kalan bir shulker'ın gövdesini sıfırlar (Java dokunmaz).
+- `ShulkerRenderer.shouldRender` kayma kutusuyla görüş genişletmesi yok (çizimde görüş kırpması yok).
+- Başka araçtan araca geçişte `stopRiding` sonrası `startRiding` sıfırlaması bire bir değildir.

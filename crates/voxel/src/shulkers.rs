@@ -75,6 +75,12 @@ pub fn remote_shulkers(
             y_body_rot: entity.body_y_rotation(),
         });
         let mut placed = placement(world, &snapshot, view, entity.scale());
+        // `ShulkerRenderer.getRenderOffset`: where it slides in from.
+        if let Some(offset) = entity.shulker_render_offset(partial) {
+            for (feet, shift) in placed.feet.iter_mut().zip(offset) {
+                *feet += shift as f32;
+            }
+        }
         // `ShulkerRenderer.setupRotations`: half a turn on the body, then the
         // face it is attached to.
         placed.body_rot += 180.0;

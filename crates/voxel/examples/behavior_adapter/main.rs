@@ -18419,6 +18419,21 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "sync" => {
+                        world.apply_entity_position_sync(
+                            entity_id,
+                            (
+                                bits64(event, "x")?,
+                                bits64(event, "y")?,
+                                bits64(event, "z")?,
+                            ),
+                            (0.0, 0.0),
+                        );
+                        world.apply_entity_ground_state(
+                            entity_id,
+                            event["on_ground"].as_bool().unwrap_or(false),
+                        );
+                    }
                     "wolf_data" => {
                         let mut data = Vec::new();
                         if let Some(flags) = event["flags"].as_i64() {
@@ -18610,6 +18625,15 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             y: bits64(event, "y")?,
                             z: bits64(event, "z")?,
                         });
+                    }
+                    "passengers" => {
+                        let riders: Vec<i32> = event["riders"]
+                            .as_array()
+                            .ok_or("riders must be an array")?
+                            .iter()
+                            .filter_map(|id| id.as_i64().map(|id| id as i32))
+                            .collect();
+                        world.apply_entity_passengers(i32_field(event, "vehicle")?, &riders);
                     }
                     "shulker_data" => {
                         let mut data = Vec::new();
@@ -19206,6 +19230,42 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         described["y_body_rot"] = json!(hex(entity.body_y_rotation()));
                         described["y_body_rot_old"] = json!(hex(entity.previous_body_y_rotation()));
                         described["y_head_rot"] = json!(hex(entity.rotation().2));
+                        let (x, y, z) = entity.position();
+                        let (old_x, old_y, old_z) = entity.previous_position();
+                        for (key, value) in [
+                            ("pos_x", x),
+                            ("pos_y", y),
+                            ("pos_z", z),
+                            ("old_x", old_x),
+                            ("old_y", old_y),
+                            ("old_z", old_z),
+                        ] {
+                            described[key] = json!(format!("{:016x}", value.to_bits()));
+                        }
+                        described["riding"] = json!(entity.vehicle_id().is_some());
+                        let area = entity.bounding_box();
+                        for (key, value) in [
+                            ("box_min_x", area.min_x),
+                            ("box_min_y", area.min_y),
+                            ("box_min_z", area.min_z),
+                            ("box_max_x", area.max_x),
+                            ("box_max_y", area.max_y),
+                            ("box_max_z", area.max_z),
+                        ] {
+                            described[key] = json!(format!("{:016x}", value.to_bits()));
+                        }
+                        for (key, partial) in [
+                            ("render_0.0", 0.0_f32),
+                            ("render_0.5", 0.5),
+                            ("render_1.0", 1.0),
+                        ] {
+                            described[key] = json!(match entity.shulker_render_offset(partial) {
+                                None => "none".to_owned(),
+                                Some(offset) => offset
+                                    .map(|value| format!("{:016x}", value.to_bits()))
+                                    .join(","),
+                            });
+                        }
                     }
                     "cube" => {
                         let cube = entity.cube_mob();

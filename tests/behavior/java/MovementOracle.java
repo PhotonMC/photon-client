@@ -667,6 +667,15 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "sync" -> listener.handleEntityPositionSync(
+                        new net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket(entityId,
+                            new net.minecraft.world.entity.PositionMoveRotation(
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"),
+                                    Oracle.f64(event, "y"), Oracle.f64(event, "z")),
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
+                                    Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z")),
+                                0.0F, 0.0F),
+                            !event.has("on_ground") || event.get("on_ground").getAsBoolean()));
                     case "game_time" -> level.setTimeFromServer(event.get("time").getAsLong());
                     case "camel_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
@@ -853,6 +862,19 @@ public final class MovementOracle {
                             "DATA_DARK_TICKS_REMAINING", event.get("dark_ticks").getAsInt()));
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "passengers" -> {
+                        // The packet as the wire carries it: the vehicle and the ids that ride it.
+                        var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+                        buffer.writeVarInt(event.get("vehicle").getAsInt());
+                        var riders = event.getAsJsonArray("riders");
+                        var ids = new int[riders.size()];
+                        for (int i = 0; i < ids.length; i++) {
+                            ids[i] = riders.get(i).getAsInt();
+                        }
+                        buffer.writeVarIntArray(ids);
+                        listener.handleSetEntityPassengersPacket(
+                            net.minecraft.network.protocol.game.ClientboundSetPassengersPacket.STREAM_CODEC.decode(buffer));
                     }
                     case "shulker_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
@@ -1058,7 +1080,8 @@ public final class MovementOracle {
                     default -> throw new IllegalArgumentException("Unknown event " + event);
                 }
             }
-            level.tickNonPassenger(entity);
+            // The level ticks the entities that are not riding; a rider is ticked by its vehicle.
+            level.tickNonPassenger(entity.isPassenger() ? entity.getRootVehicle() : entity);
             var described = new JsonObject();
             described.addProperty("hurt_time", living == null ? 0 : living.hurtTime);
             described.addProperty("death_time", living == null ? 0 : living.deathTime);
@@ -1378,6 +1401,25 @@ public final class MovementOracle {
                             described.addProperty("y_body_rot", Oracle.bits(shulker.yBodyRot));
                             described.addProperty("y_body_rot_old", Oracle.bits(shulker.yBodyRotO));
                             described.addProperty("y_head_rot", Oracle.bits(shulker.yHeadRot));
+                            described.addProperty("pos_x", Oracle.bits(shulker.getX()));
+                            described.addProperty("pos_y", Oracle.bits(shulker.getY()));
+                            described.addProperty("pos_z", Oracle.bits(shulker.getZ()));
+                            described.addProperty("old_x", Oracle.bits(shulker.xOld));
+                            described.addProperty("old_y", Oracle.bits(shulker.yOld));
+                            described.addProperty("old_z", Oracle.bits(shulker.zOld));
+                            described.addProperty("riding", shulker.isPassenger());
+                            var shulkerBox = shulker.getBoundingBox();
+                            for (var side : new Object[][] {{"min_x", shulkerBox.minX}, {"min_y", shulkerBox.minY},
+                                {"min_z", shulkerBox.minZ}, {"max_x", shulkerBox.maxX}, {"max_y", shulkerBox.maxY},
+                                {"max_z", shulkerBox.maxZ}}) {
+                                described.addProperty("box_" + side[0], Oracle.bits((double) side[1]));
+                            }
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                var offset = shulker.getRenderPosition(partial);
+                                described.addProperty("render_" + partial,
+                                    offset == null ? "none"
+                                        : Oracle.bits(offset.x) + "," + Oracle.bits(offset.y) + "," + Oracle.bits(offset.z));
+                            }
                         }
                         case "cube" -> {
                             var cube = (net.minecraft.world.entity.monster.cubemob.AbstractCubeMob) entity;

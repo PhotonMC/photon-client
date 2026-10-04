@@ -14368,6 +14368,23 @@ def movement_item_cases():
     cube_size = lambda tick, size: {"tick": tick, "type": "cube_size", "size": size}
     head_turn = lambda tick, angle: {"tick": tick, "type": "head_rotation", "angle": angle}
     shulker_data = lambda tick, **fields: {"tick": tick, "type": "shulker_data", **fields}
+    move_by = lambda tick, xa, ya, za: {"tick": tick, "type": "move", "xa": xa, "ya": ya, "za": za}
+    sync_to = lambda tick, x, y, z: {"tick": tick, "type": "sync", "x": float_bits(x, "f64"),
+                                     "y": float_bits(y, "f64"), "z": float_bits(z, "f64"),
+                                     "motion_x": float_bits(0.0, "f64"),
+                                     "motion_y": float_bits(0.0, "f64"),
+                                     "motion_z": float_bits(0.0, "f64"), "on_ground": False}
+    passengers = lambda tick, vehicle, riders: {"tick": tick, "type": "passengers",
+                                                "vehicle": vehicle, "riders": riders}
+
+    def shulker_at(label, ticks, events, x, y, z, vehicle=False):
+        """A shulker put where the packet says, not yet held to a block; a boat beside it to ride."""
+        row = living(label, "shulker", ticks, events, extras=["shulker"])
+        row["x"], row["y"], row["z"] = (float_bits(x, "f64"), float_bits(y, "f64"),
+                                        float_bits(z, "f64"))
+        if vehicle:
+            row = beside(row, "oak_boat", 3.5, 64.0, 5.5)
+        return row
     hops = [on_ground(2, True), on_ground(9, False), on_ground(21, True), on_ground(30, False),
             on_ground(33, True)]
     motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
@@ -14403,6 +14420,25 @@ def movement_item_cases():
         living("shulker-no-colour", "shulker", 6, [shulker_data(1, color=16)], extras=["shulker"]),
         living("shulker-looks-around", "shulker", 30,
                [head_turn(2, 64), head_turn(9, -100), shulker_data(12, peek=40)], extras=["shulker"]),
+        # A shulker is held to the middle of its block (a half block up is the next one), closes its
+        # lid when it comes to another block and, if it is not riding, slides there from the old
+        # one over six ticks; its box follows the lid and the side it clings to.
+        shulker_at("shulker-held-to-its-block", 8, [], 3.3, 64.7, 5.8),
+        shulker_at("shulker-held-low", 8, [shulker_data(1, peek=60)], 3.9, 64.2, 5.1),
+        shulker_at("shulker-on-the-ceiling", 30, [shulker_data(1, face=1, peek=100)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-on-a-wall", 30, [shulker_data(1, face=2, peek=70)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-slides-to-the-next-block", 36,
+                   [shulker_data(1, peek=100), move_by(14, 3 * 4096, 0, 0)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-shifts-within-its-block", 24,
+                   [shulker_data(1, peek=100), move_by(10, 1200, 0, 900)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-moves-again-while-sliding", 40,
+                   [shulker_data(1, peek=100), move_by(10, 2 * 4096, 0, 0), move_by(15, 0, 4096, 0),
+                    move_by(18, -2 * 4096, 0, 0)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-synced-far-away", 30,
+                   [shulker_data(1, peek=50), sync_to(8, 6.2, 66.9, 4.1)], 3.5, 64.0, 5.5),
+        shulker_at("shulker-rides-and-steps-off", 40,
+                   [shulker_data(1, peek=100), passengers(6, 41, [40]), passengers(24, 41, [])],
+                   3.5, 64.0, 5.5, vehicle=True),
         # A sulfur cube squashes like the others and, once primed, runs its fuse down to zero and
         # stays there; its small body (a baby's) and a size said again.
         living("sulfur-cube-hops", "sulfur_cube", 44, hops, extras=["cube"]),
