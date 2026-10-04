@@ -2936,6 +2936,7 @@ public final class EntityOracle {
                     : new net.minecraft.client.renderer.entity.state.SlimeRenderState();
                 if (cube instanceof net.minecraft.client.renderer.entity.state.SulfurCubeRenderState sulfur) {
                     sulfur.fuseRemainingTicks = Oracle.f32(row, "fuse_remaining");
+                    sulfur.hasRedOverlay = row.has("red_overlay");
                     if (row.has("contained_block")) {
                         fillBlock(sulfur.containedBlock);
                     }
@@ -3025,6 +3026,7 @@ public final class EntityOracle {
                 }
                 out.add("full_pose", fullDescribed);
             }
+            var blockOverlay = new JsonArray();
             if (row.has("contained_block")) {
                 // `SulfurCubeInnerLayer` draws the block it holds from the pose the renderer left.
                 var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
@@ -3039,6 +3041,7 @@ public final class EntityOracle {
                                 block.add(Oracle.bits(value));
                             }
                             poses.add(block);
+                            blockOverlay.add((Integer) args[5]);
                         }
                         return null;
                     });
@@ -3072,6 +3075,9 @@ public final class EntityOracle {
                     .submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, pandaState, 0.0F, 0.0F);
             }
             out.add("poses", poses);
+            if (!blockOverlay.isEmpty()) {
+                out.add("block_overlay", blockOverlay);
+            }
             rows.add(out);
         }
         var result = new JsonObject();

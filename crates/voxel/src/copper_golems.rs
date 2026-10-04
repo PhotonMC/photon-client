@@ -154,6 +154,7 @@ fn carried(
             state,
             copper_golem_antenna_pose(base, (root, body, head)),
             light,
+            0.0,
         ));
     }
 }

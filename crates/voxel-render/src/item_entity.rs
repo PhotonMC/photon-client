@@ -183,10 +183,20 @@ pub fn item_layer_vertices(
 
 /// A block model drawn on an entity (`BlockModelRenderState.submit`): the
 /// model from `pose`, which the layer that places it has already moved to the
-/// block's corner, with no display transform.
-pub fn entity_block_vertices(layer: &ItemLayer, pose: &Pose, light: i32) -> Vec<Vertex> {
+/// block's corner, with no display transform. `overlay` is the overlay's code
+/// (`mob_model::overlay_code`, zero for none), which rides above the shade.
+pub fn entity_block_vertices(
+    layer: &ItemLayer,
+    pose: &Pose,
+    (light, overlay): (i32, f32),
+) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     push_layer(&mut vertices, layer, pose, light_uv(light));
+    // The shade is below two and the held shader reads what is above as the
+    // overlay.
+    for vertex in &mut vertices {
+        vertex.shade += 2.0 * overlay;
+    }
     vertices
 }
 

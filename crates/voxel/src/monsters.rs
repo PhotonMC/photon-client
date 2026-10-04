@@ -506,6 +506,7 @@ pub fn remote_monsters(
                 state,
                 carried_block_pose(&placement_pose(&placed)),
                 placed.light,
+                0.0,
             ));
         }
     }

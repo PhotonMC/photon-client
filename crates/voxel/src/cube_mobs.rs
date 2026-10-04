@@ -6,7 +6,8 @@ use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::sulfur_cube_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    CubeMobScale, SulfurCubeScale, mob_vertices, placement_pose, sort_translucent_quads, tnt_is_lit,
+    CubeMobScale, SulfurCubeScale, mob_vertices, overlay_code, placement_pose,
+    sort_translucent_quads, sulfur_cube_overlay,
 };
 use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
@@ -151,13 +152,14 @@ pub fn remote_sulfur_cubes(
         });
         // `SulfurCubeInnerLayer`: a fuse that is lit flashes the body white.
         let mut inner_placed = placed;
-        if fuse > 0.0 && tnt_is_lit(fuse) {
-            inner_placed.red_overlay = false;
-            inner_placed.white_overlay = 1.0;
-        }
+        (inner_placed.red_overlay, inner_placed.white_overlay) =
+            sulfur_cube_overlay(fuse, placed.red_overlay);
         if let Some(state) = block {
             let pose = sulfur_cube_block_pose(&placement_pose(&placed), entity.is_baby());
-            held.push(HeldItem::block(state, pose, placed.light));
+            // `SulfurCubeInnerLayer`: the overlay of the inner body's draw, so a lit fuse
+            // flashes the block white.
+            let overlay = overlay_code(inner_placed.red_overlay, inner_placed.white_overlay);
+            held.push(HeldItem::block(state, pose, placed.light, overlay));
         } else if let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby]) {
             let mut body = mob_vertices(inner, &inner_placed, inner_rect);
             sort_translucent_quads(&mut body, view.camera);

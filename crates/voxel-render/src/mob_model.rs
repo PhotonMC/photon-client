@@ -4083,6 +4083,23 @@ impl Default for MobPlacement {
     }
 }
 
+/// `OverlayTexture.pack`: the overlay coordinates of a white flash by
+/// progress and of the hurt overlay.
+pub fn overlay_coords(red: bool, white_progress: f32) -> i32 {
+    (white_progress * 15.0) as i32 | (if red { 3 } else { 10 }) << 16
+}
+
+/// What `SulfurCubeInnerLayer` draws with: a fuse that is lit flashes white,
+/// else the entity's own overlay (`LivingEntityRenderer.getOverlayCoords`
+/// with no white). Whether it is red and the white's progress.
+pub fn sulfur_cube_overlay(fuse_remaining: f32, red: bool) -> (bool, f32) {
+    if fuse_remaining > 0.0 && tnt_is_lit(fuse_remaining) {
+        (false, 1.0)
+    } else {
+        (red, 0.0)
+    }
+}
+
 /// `OverlayTexture`'s row for what a vertex is drawn with over its texel,
 /// as the entity shader reads it: the hurt overlay is one, a white flash is
 /// twice its column (`OverlayTexture.u`).

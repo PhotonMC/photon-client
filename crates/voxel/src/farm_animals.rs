@@ -9,7 +9,7 @@ use voxel_render::entity_block::mooshroom_mushroom_poses;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     BeeState, CamelState, EquineKind, EquineState, GoatState, MobModel, MobPlacement,
-    QuadrupedState, RabbitState, mob_vertices, placement_pose,
+    QuadrupedState, RabbitState, mob_vertices, overlay_code, placement_pose,
 };
 use voxel_render::scene::Vertex;
 use voxel_world::ClientEntity;
@@ -443,7 +443,13 @@ fn mushrooms(
         return;
     };
     for pose in mooshroom_mushroom_poses(&placement_pose(placed), head) {
-        held.push(HeldItem::block(state, pose, placed.light));
+        // `MushroomCowMushroomLayer` takes the entity's overlay.
+        held.push(HeldItem::block(
+            state,
+            pose,
+            placed.light,
+            overlay_code(placed.red_overlay, 0.0),
+        ));
     }
 }
 

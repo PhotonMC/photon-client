@@ -14,4 +14,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: bloğun kaplama kodu (`HeldItem::block(.., overlay)`): sulfur bloğu (fitil beyazı / hasar kırmızısı), kar golemi balkabağı ve mooshroom mantarı hasar kırmızısı; öteki katmanlar `NO_OVERLAY`. Held shader çifti ışığı tint'ten ayırdı (`HELD_VERTEX_SHADER`), kaplama ışıktan önce uygulanır; kod `shade + 2·kod` ile taşınır. Yer/blok hattı entity hattından önce çizilir.
+- Oracle: `cube-mob-rotations`'a 4 satır; gerçek `SulfurCubeInnerLayer`'ın `submitBlockModel` kaplama değeri. Kar golemi ve mooshroom kaplaması oracle'sız (aynı `getOverlayCoords`, bkz. Java katman kaynağı); canlıda sulfur cube + kırmızı yün gözlendi.
+- Java'dan sapma: opak yer hattı ile translucent entity sırası Java'nın tek sıralı submit düzeninin yaklaşığıdır.

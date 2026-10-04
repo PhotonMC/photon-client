@@ -16257,6 +16257,15 @@ def entity_cube_mob_cases():
               "contained_block": True, "feet_x": float_bits(3.5), "feet_y": float_bits(-1.25),
               "feet_z": float_bits(0.75), "scale": float_bits(1.0)}
              for baby, size in ((False, 2), (True, 1)) for fuse in (0.0, 6.25)]
+    # The overlay the block is submitted with: hurt, and a lit fuse (which wins over hurt).
+    rows += [{"label": f"sulfur-block-overlay-{name}", "kind": "sulfur_cube", "baby": False,
+              "body_rot": float_bits(37.0), "x_rot": float_bits(0.0),
+              "age_in_ticks": float_bits(10.5), "size": 2, "squish": float_bits(0.4),
+              "fuse_remaining": float_bits(fuse), "contained_block": True, **extra}
+             for name, fuse, extra in (("hurt", 0.0, {"red_overlay": True}),
+                                       ("lit", 1.5, {}),
+                                       ("lit-and-hurt", 1.5, {"red_overlay": True}),
+                                       ("fuse-between-flashes", 6.25, {"red_overlay": True}))]
     rows.append({"label": "slime-dying", "kind": "slime", "baby": False,
                  "body_rot": float_bits(-80.0), "x_rot": float_bits(0.0),
                  "age_in_ticks": float_bits(3.0), "size": 3, "squish": float_bits(0.2),

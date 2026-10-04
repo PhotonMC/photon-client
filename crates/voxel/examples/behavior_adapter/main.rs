@@ -21705,6 +21705,7 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
         };
         let mut poses = Vec::new();
         let mut full_pose = None;
+        let mut block_overlay = None;
         match row["kind"].as_str().ok_or("kind")? {
             "panda" => {
                 let (sit, scared, eating) = (bits("sit_amount")?, flag("scared")?, flag("eating")?);
@@ -21783,6 +21784,11 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     poses.push(matrix_of(
                         &voxel_render::entity_block::sulfur_cube_block_pose(&pose, baby),
                     ));
+                    let (red, white) = voxel_render::mob_model::sulfur_cube_overlay(
+                        bits("fuse_remaining")?,
+                        row.get("red_overlay").is_some(),
+                    );
+                    block_overlay = Some(voxel_render::mob_model::overlay_coords(red, white));
                 }
             }
             kind @ ("slime" | "magma_cube") => {
@@ -21827,6 +21833,9 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
         });
         if let Some(full_pose) = full_pose {
             described["full_pose"] = json!(full_pose);
+        }
+        if let Some(overlay) = block_overlay {
+            described["block_overlay"] = json!([overlay]);
         }
         out.push(described);
     }

@@ -8,7 +8,7 @@ use voxel_render::entity_block::{iron_golem_flower_pose, snow_golem_head_pose};
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
     Crackiness, IronGolemState, QuadrupedState, golem_crackiness, iron_golem_roll, mob_vertices,
-    placement_pose,
+    overlay_code, placement_pose,
 };
 use voxel_render::scene::Vertex;
 
@@ -139,21 +139,24 @@ pub fn remote_golems(
                 .find(|part| part.name() == name)
         };
         let entity_pose = placement_pose(&placed);
-        let (pose, state) = if is_iron && entity.iron_golem_ticks().1 > 0 {
+        // `SnowGolemHeadLayer` takes the entity's overlay; the flower takes none.
+        let (pose, state, overlay) = if is_iron && entity.iron_golem_ticks().1 > 0 {
             (
                 part("right_arm").map(|arm| iron_golem_flower_pose(&entity_pose, arm)),
                 default_state("minecraft:poppy"),
+                0.0,
             )
         } else if !is_iron && entity.has_pumpkin() && !entity.is_invisible() {
             (
                 part("head").map(|head| snow_golem_head_pose(&entity_pose, head)),
                 default_state("minecraft:carved_pumpkin"),
+                overlay_code(placed.red_overlay, 0.0),
             )
         } else {
-            (None, None)
+            (None, None, 0.0)
         };
         if let (Some(pose), Some(state)) = (pose, state) {
-            held.push(HeldItem::block(state, pose, placed.light));
+            held.push(HeldItem::block(state, pose, placed.light, overlay));
         }
     }
     vertices

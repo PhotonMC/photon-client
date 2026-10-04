@@ -36,7 +36,12 @@ pub enum Carried {
     Stack(ClientItemStackState),
     /// A block state by its id, with the pose its model is drawn from (the
     /// layer has already moved it to the block's corner).
-    Block(u32),
+    Block {
+        state: u32,
+        /// The overlay's code (`overlay_code`): zero where the layer submits
+        /// `NO_OVERLAY`.
+        overlay: f32,
+    },
 }
 
 /// A carried thing with the pose of where it is carried.
@@ -59,9 +64,9 @@ impl HeldItem {
     }
 
     /// A block state drawn on an entity, from the pose its layer leaves.
-    pub fn block(state: u32, pose: Pose, light: i32) -> Self {
+    pub fn block(state: u32, pose: Pose, light: i32, overlay: f32) -> Self {
         Self {
-            stack: Carried::Block(state),
+            stack: Carried::Block { state, overlay },
             pose,
             place: Place::Head,
             light,
@@ -168,12 +173,15 @@ pub fn held_item_vertices(
         let cache = &mut layers[item.place.index()];
         let stack = match &item.stack {
             Carried::Stack(stack) => stack,
-            Carried::Block(state) => {
+            Carried::Block { state, overlay } => {
                 if let Some((layer, block_light)) = cache.block(*state, renderer) {
                     vertices.extend(voxel_render::item_entity::entity_block_vertices(
                         layer,
                         &item.pose,
-                        voxel_render::entity_block::submit_light(item.light, *block_light),
+                        (
+                            voxel_render::entity_block::submit_light(item.light, *block_light),
+                            *overlay,
+                        ),
                     ));
                 }
                 continue;

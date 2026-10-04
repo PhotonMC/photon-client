@@ -104,11 +104,13 @@ layout(location = 3) in uvec2 in_light;
 layout(location = 1) out float out_shade;
 layout(location = 2) out vec4 out_tint;
 layout(location = 3) out vec2 out_fog;
+layout(location = 4) out vec3 out_light;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
     out_shade = 1.0;
-    out_tint = in_colour * vec4(sample_lightmap(vec2(in_light)), 1.0);
+    out_tint = in_colour;
+    out_light = sample_lightmap(vec2(in_light));
     // Fog is measured from the camera: once as a sphere, once as a
     // cylinder whose height counts like its radius.
     vec3 offset = in_position - push.camera.xyz;
@@ -130,6 +132,28 @@ void main() {
     out_tint = in_tint * vec4(sample_lightmap(in_light), 1.0);
     // Fog is measured from the camera: once as a sphere, once as a
     // cylinder whose height counts like its radius.
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The vertex shader of the held and dropped items and of the blocks on
+/// entities: [`VERTEX_SHADER`] with the light kept apart from the tint, so the
+/// fragment can lay the overlay over the colour before the lightmap.
+const HELD_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec2 out_uv;
+layout(location = 1) out float out_shade;
+layout(location = 2) out vec4 out_tint;
+layout(location = 3) out vec2 out_fog;
+layout(location = 4) out vec3 out_light;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_shade = in_shade;
+    out_tint = in_tint;
+    out_light = sample_lightmap(in_light);
     vec3 offset = in_position - push.camera.xyz;
     out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
 }
@@ -566,6 +590,7 @@ layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
 layout(location = 2) in vec4 in_tint;
 layout(location = 3) in vec2 in_fog;
+layout(location = 4) in vec3 in_light;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
@@ -598,7 +623,18 @@ vec4 sample_texel_centred(vec2 uv) {
 }
 void main() {
     vec4 texel = sample_texel_centred(in_uv) * in_tint;
-    texel.rgb *= in_shade;
+    // The shade carries the entity overlay (`OverlayTexture`) above two: the
+    // shade itself is below two, so the whole part of half of it is the
+    // overlay's code, as the entities' shader reads it.
+    float overlay = floor(in_shade / 2.0);
+    texel.rgb *= in_shade - overlay * 2.0;
+    if (mod(overlay, 2.0) > 0.5) {
+        texel.rgb = mix(vec3(1.0, 0.0, 0.0), texel.rgb, 178.0 / 255.0);
+    } else if (overlay > 1.5) {
+        float flash = floor((1.0 - floor(overlay / 2.0) / 15.0 * 0.75) * 255.0) / 255.0;
+        texel.rgb = mix(vec3(1.0), texel.rgb, flash);
+    }
+    texel.rgb *= in_light;
     texel = mix(vec4(push.fog_colour.rgb, texel.a), texel, push.visibility);
     if (texel.a < 0.1) { discard; }
     vec3 colour = texel.rgb;
@@ -703,6 +739,7 @@ layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
 layout(location = 2) in vec4 in_tint;
 layout(location = 3) in vec2 in_fog;
+layout(location = 4) in vec3 in_light;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
@@ -1895,37 +1932,10 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
-            // Entities after the opaque terrain and before the water.
-            if let (Some(buffer), Some(set)) = (self.entity_buffer.as_ref(), scene.entity_set)
-                && self.entity_count > 0
-            {
-                self.device.cmd_bind_pipeline(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline,
-                );
-                self.device.cmd_bind_descriptor_sets(
-                    self.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline_layout,
-                    0,
-                    &[set],
-                    &[],
-                );
-                self.device.cmd_push_constants(
-                    self.command_buffer,
-                    scene.entity_pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                    0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
-                );
-                self.device
-                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
-                self.device
-                    .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
-            }
-            // Dropped items with the entities: the items' quads in the block
-            // atlas, shaded as the held ones are, fully faded in.
+            // Dropped items and the blocks on entities, opaque, before the
+            // entities so that a translucent shell (a sulfur cube's) blends
+            // over the block inside it: the items' quads in the block atlas,
+            // shaded as the held ones are, fully faded in.
             if let Some(buffer) = self.ground_buffer.as_ref()
                 && self.ground_count > 0
             {
@@ -1956,6 +1966,35 @@ impl VulkanBackend {
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
                     .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
+            }
+            // Entities after the opaque terrain and before the water.
+            if let (Some(buffer), Some(set)) = (self.entity_buffer.as_ref(), scene.entity_set)
+                && self.entity_count > 0
+            {
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.entity_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.entity_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
             }
             self.record_flat_shapes(scene, &terrain_push);
             // The aimed block's outline over the solid world.
@@ -2374,7 +2413,7 @@ impl VulkanBackend {
             } else if section {
                 (SECTION_VERTEX_SHADER, FRAGMENT_SHADER)
             } else {
-                (VERTEX_SHADER, FRAGMENT_SHADER)
+                (HELD_VERTEX_SHADER, FRAGMENT_SHADER)
             };
             let vertex_code = compile(vertex_source, shaderc::ShaderKind::Vertex, "scene.vert")?;
             let fragment_code =
@@ -4877,6 +4916,9 @@ mod tests {
         for (source, kind) in [
             (ENTITY_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
             (ENTITY_FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
+            (SECTION_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
+            (HELD_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
+            (FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
         ] {
             compiler
                 .compile_into_spirv(source, kind, "entity", "main", None)
