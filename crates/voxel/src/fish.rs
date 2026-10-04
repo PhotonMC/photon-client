@@ -45,6 +45,8 @@ pub fn remote_water_animals(
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let mut vertices = crate::squids::remote_squids(session, models, textures, view);
+    // The boats afloat on the same water.
+    vertices.extend(crate::boats::remote_boats(session, models, textures, view));
     vertices.extend(remote_fish(session, models, textures, view));
     vertices.extend(crate::dolphins::remote_dolphins(
         session,

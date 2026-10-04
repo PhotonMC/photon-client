@@ -594,19 +594,25 @@ public final class MovementOracle {
         // What an entity adds to the air (a glow squid's sparks) is not drawn here.
         setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
         setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        // A boat asks for the teams of what it could push (no team here).
+        setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
         var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
             net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
-        var entity = (net.minecraft.world.entity.LivingEntity) type.create(level,
+        net.minecraft.world.entity.Entity entity = type.create(level,
             new net.minecraft.world.entity.EntitySpawnRequest(
                 net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+        // What a living entity has beyond an entity's own (a boat is not one).
+        var living = entity instanceof net.minecraft.world.entity.LivingEntity livingEntity ? livingEntity : null;
         int entityId = row.get("entity_id").getAsInt();
         entity.setId(entityId);
         entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), 0.0F, 0.0F);
         // The constructor turns the head at random; the add-entity packet sets it (here: facing south).
-        entity.yBodyRot = 0.0F;
-        entity.yHeadRot = 0.0F;
-        entity.yBodyRotO = 0.0F;
-        entity.yHeadRotO = 0.0F;
+        if (living != null) {
+            living.yBodyRot = 0.0F;
+            living.yHeadRot = 0.0F;
+            living.yBodyRotO = 0.0F;
+            living.yHeadRotO = 0.0F;
+        }
         entity.syncPacketPositionCodec(entity.getX(), entity.getY(), entity.getZ());
         level.addEntity(entity);
         var ticks = new JsonArray();
@@ -621,7 +627,7 @@ public final class MovementOracle {
                         new net.minecraft.network.protocol.game.ClientboundDamageEventPacket(
                             entity, level.damageSources().generic()));
                     case "hurt" -> listener.handleHurtAnimation(
-                        new net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket(entity));
+                        new net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket(living));
                     case "death" -> listener.handleEntityEvent(
                         new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(entity, (byte) 3));
                     case "move" -> listener.handleMoveEntity(
@@ -714,7 +720,7 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                         if (event.has("health")) {
-                            entity.setHealth(Oracle.f32(event, "health"));
+                            living.setHealth(Oracle.f32(event, "health"));
                         }
                     }
                     case "weather" -> {
@@ -846,6 +852,25 @@ public final class MovementOracle {
                         if (event.has("playing_dead")) {
                             data.add(wolfData(net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD",
                                 event.get("playing_dead").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "boat_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var vehicleClass = net.minecraft.world.entity.vehicle.VehicleEntity.class;
+                        var boatClass = net.minecraft.world.entity.vehicle.boat.AbstractBoat.class;
+                        if (event.has("hurt")) {
+                            data.add(wolfData(vehicleClass, "DATA_ID_HURT", event.get("hurt").getAsInt()));
+                        }
+                        if (event.has("hurt_dir")) {
+                            data.add(wolfData(vehicleClass, "DATA_ID_HURTDIR", event.get("hurt_dir").getAsInt()));
+                        }
+                        if (event.has("damage")) {
+                            data.add(wolfData(vehicleClass, "DATA_ID_DAMAGE", (float) event.get("damage").getAsDouble()));
+                        }
+                        if (event.has("bubble_time")) {
+                            data.add(wolfData(boatClass, "DATA_ID_BUBBLE_TIME", event.get("bubble_time").getAsInt()));
                         }
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
@@ -984,21 +1009,21 @@ public final class MovementOracle {
             }
             level.tickNonPassenger(entity);
             var described = new JsonObject();
-            described.addProperty("hurt_time", entity.hurtTime);
-            described.addProperty("death_time", entity.deathTime);
-            described.addProperty("dead", entity.isDeadOrDying());
-            described.addProperty("walk_speed", Oracle.bits(entity.walkAnimation.speed()));
-            described.addProperty("walk_position", Oracle.bits(entity.walkAnimation.position()));
+            described.addProperty("hurt_time", living == null ? 0 : living.hurtTime);
+            described.addProperty("death_time", living == null ? 0 : living.deathTime);
+            described.addProperty("dead", living != null && living.isDeadOrDying());
+            described.addProperty("walk_speed", Oracle.bits(living == null ? 0.0F : living.walkAnimation.speed()));
+            described.addProperty("walk_position", Oracle.bits(living == null ? 0.0F : living.walkAnimation.position()));
             if (row.has("extras")) {
                 for (var extra : row.getAsJsonArray("extras")) {
                     switch (extra.getAsString()) {
                         case "swing" -> {
-                            described.addProperty("swinging", entity.swinging);
-                            described.addProperty("swing_time", entity.swingTime);
+                            described.addProperty("swinging", living.swinging);
+                            described.addProperty("swing_time", living.swingTime);
                             described.addProperty("off_hand",
-                                entity.swingingArm == net.minecraft.world.InteractionHand.OFF_HAND);
+                                living.swingingArm == net.minecraft.world.InteractionHand.OFF_HAND);
                             for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
-                                described.addProperty("attack_anim_" + partial, Oracle.bits(entity.getAttackAnim(partial)));
+                                described.addProperty("attack_anim_" + partial, Oracle.bits(living.getAttackAnim(partial)));
                             }
                         }
                         case "sheep" -> {
@@ -1164,6 +1189,20 @@ public final class MovementOracle {
                                     animation.isStarted() ? animation.getTimeInMillis((float) axolotl.tickCount) : 0L);
                             }
                         }
+                        case "boat" -> {
+                            var boat = (net.minecraft.world.entity.vehicle.boat.AbstractBoat) entity;
+                            described.addProperty("under_water", boat.isUnderWater());
+                            described.addProperty("hurt_time", boat.getHurtTime());
+                            described.addProperty("hurt_dir", boat.getHurtDir());
+                            described.addProperty("damage", Oracle.bits(boat.getDamage()));
+                            for (float partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                                described.addProperty("bubble_angle_" + partial, Oracle.bits(boat.getBubbleAngle(partial)));
+                                for (int side = 0; side < 2; side++) {
+                                    described.addProperty("rowing_" + side + "_" + partial,
+                                        Oracle.bits(boat.getRowingTime(side, partial)));
+                                }
+                            }
+                        }
                         case "bat" -> {
                             var bat = (net.minecraft.world.entity.ambient.Bat) entity;
                             described.addProperty("resting", bat.isResting());
@@ -1297,8 +1336,8 @@ public final class MovementOracle {
                             described.addProperty("weather", golem.getWeatherState().ordinal());
                         }
                         case "attributes" -> {
-                            described.addProperty("max_health", Oracle.bits(entity.getMaxHealth()));
-                            described.addProperty("scale", Oracle.bits(entity.getScale()));
+                            described.addProperty("max_health", Oracle.bits(living.getMaxHealth()));
+                            described.addProperty("scale", Oracle.bits(living.getScale()));
                         }
                         case "goat" -> {
                             var goat = (net.minecraft.world.entity.animal.goat.Goat) entity;

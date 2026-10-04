@@ -14538,6 +14538,19 @@ def movement_item_cases():
         living("breeze-shoots-again", "breeze", 40,
                [{"tick": 5, "type": "frog_data", "pose": "SHOOTING"},
                 {"tick": 12, "type": "frog_data", "pose": "SHOOTING"}], extras=["breeze"]),
+        # A boat's hit (its time and damage) runs down a tick at a time; a bubble column shakes it
+        # (not under water) by a sine of its age, building up and dying away; whether it is under
+        # water is whether the water reaches a thousandth over its box.
+        fish("boat-floats", "oak_boat", 20, [], extras="boat"),
+        fish("boat-is-hit", "oak_boat", 30,
+             [{"tick": 3, "type": "boat_data", "hurt": 10, "hurt_dir": -1, "damage": 25.0}], extras="boat"),
+        fish("boat-shaken-by-bubbles", "oak_boat", 40,
+             [{"tick": 3, "type": "boat_data", "bubble_time": 60},
+              {"tick": 22, "type": "boat_data", "bubble_time": 0}], water="none", extras="boat"),
+        fish("boat-under-water", "oak_chest_boat", 10, [], extras="boat"),
+        fish("boat-in-shallow-water", "birch_boat", 10, [], water="shallow", y=63.5, extras="boat"),
+        fish("boat-above-the-water", "bamboo_raft", 10, [], water="shallow", y=64.6, extras="boat"),
+        fish("boat-on-dry-land", "spruce_boat", 10, [], water="none", extras="boat"),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -14935,6 +14948,7 @@ def entity_cases():
     yield from entity_breeze_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
+    yield from entity_boat_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -16093,6 +16107,39 @@ def entity_flier_item_cases():
             item("allay", "hovering-empty-handed", holds=(False, False))]
     yield {"case_id": "entity/flier-item-pose", "family": "entity", "operation": "flier_item_pose",
            "rows": rows}
+
+
+def entity_boat_cases():
+    """The boat models (a boat, a chest boat, a raft, a chest raft, of some woods) posed by the
+    reference's own `setupAnim` (each paddle by the time it has rowed, the right one mirrored, the
+    time sin-wrapped and clamped), and where `AbstractBoatRenderer.submit` draws
+    a boat: turned, rocked by a hit (by how long since and how hard), shaken by a bubble column
+    (not under water) and flipped."""
+    def state(label, y_rot=0.0, hurt_dir=1, hurt_time=0.0, damage_time=0.0, bubble=0.0,
+              under_water=False, left=0.0, right=0.0, **extra):
+        row = {"label": label, "y_rot": float_bits(y_rot), "hurt_dir": hurt_dir,
+               "hurt_time": float_bits(hurt_time), "damage_time": float_bits(damage_time),
+               "bubble_angle": float_bits(bubble), "under_water": under_water,
+               "rowing_left": float_bits(left), "rowing_right": float_bits(right)}
+        row.update(extra)
+        return row
+    rows = []
+    for layer in ("boat/oak", "chest_boat/oak", "boat/bamboo", "chest_boat/bamboo", "boat/cherry"):
+        name = layer.replace("/", "-")
+        for label, left, right in (("still", 0.0, 0.0), ("rowing", 0.7, 1.9), ("rowed-far", 3.2, 5.5),
+                                   ("rowing-one-side", 2.4, 0.0)):
+            rows.append(state(f"{name}-{label}", left=left, right=right, layer=f"minecraft:{layer}#main"))
+    yield {"case_id": "entity/boat-model", "family": "entity", "operation": "boat_model", "rows": rows}
+    poses = [state("still"), state("turned", y_rot=37.0), state("turned-far", y_rot=-170.5),
+             state("hit", hurt_time=7.5, damage_time=12.0, hurt_dir=1),
+             state("hit-the-other-way", hurt_time=3.25, damage_time=30.0, hurt_dir=-1),
+             state("hit-just-over", hurt_time=0.0, damage_time=12.0),
+             state("shaken-by-bubbles", bubble=6.5), state("shaken-under-water", bubble=6.5, under_water=True),
+             state("shaken-a-little", bubble=0.000_005), state("everything", y_rot=90.0, hurt_time=5.0,
+                                                               damage_time=20.0, hurt_dir=-1, bubble=-8.0)]
+    for row in poses:
+        row.update({"feet_x": float_bits(10.5), "feet_y": float_bits(64.25), "feet_z": float_bits(-3.75)})
+    yield {"case_id": "entity/boat-pose", "family": "entity", "operation": "boat_pose", "rows": poses}
 
 
 def entity_copper_golem_cases():

@@ -234,6 +234,14 @@ pub const GHAST_CHARGING_DATA_ID: u8 = 16;
 pub const BAT_FLAGS_DATA_ID: u8 = 16;
 /// Where a parrot's variant (an int) sits among its data.
 pub const PARROT_VARIANT_DATA_ID: u8 = 20;
+/// Where a boat's hurt time, hurt direction and damage (`VehicleEntity`), its paddles (each a
+/// boolean) and its bubble time (`AbstractBoat`) sit among its data.
+pub const BOAT_HURT_DATA_ID: u8 = 8;
+pub const BOAT_HURT_DIR_DATA_ID: u8 = 9;
+pub const BOAT_DAMAGE_DATA_ID: u8 = 10;
+pub const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+pub const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
+pub const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 pub const VEX_FLAGS_DATA_ID: u8 = 16;
 pub const ALLAY_DANCING_DATA_ID: u8 = 16;
 pub const PHANTOM_SIZE_DATA_ID: u8 = 16;

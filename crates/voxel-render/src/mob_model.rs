@@ -2043,6 +2043,34 @@ impl MobModel {
         }
     }
 
+    /// `AbstractBoatModel.setupAnim`: each paddle swings by the time it has
+    /// rowed (the right one mirrored).
+    pub fn setup_boat(&mut self, state: &crate::boat::BoatRenderState) {
+        self.root.reset();
+        use std::f64::consts::PI;
+        for (name, time, side) in [
+            ("left_paddle", state.rowing_time_left, 0),
+            ("right_paddle", state.rowing_time_right, 1),
+        ] {
+            let Some(paddle) = self.root.child_mut(name) else {
+                continue;
+            };
+            paddle.x_rot = voxel_core::math::clamped_lerp_f32(
+                (mth_sin_f64(f64::from(-time)) + 1.0) / 2.0,
+                (-PI / 3.0) as f32,
+                (-PI / 12.0) as f32,
+            );
+            paddle.y_rot = voxel_core::math::clamped_lerp_f32(
+                (mth_sin_f64(f64::from(-time + 1.0)) + 1.0) / 2.0,
+                (-PI / 4.0) as f32,
+                (PI / 4.0) as f32,
+            );
+            if side == 1 {
+                paddle.y_rot = PI as f32 - paddle.y_rot;
+            }
+        }
+    }
+
     /// `HappyGhastModel.setupAnim`: a body that wears something is squeezed to
     /// fifteen sixteenths, and the nine tentacles (children of the body) sway
     /// as a ghast's.

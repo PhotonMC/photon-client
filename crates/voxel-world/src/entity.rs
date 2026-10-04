@@ -709,6 +709,8 @@ pub struct ClientEntity {
     pub(crate) squid: Option<Box<crate::squid::SquidState>>,
     /// An axolotl's animators and animation states, made when it first ticks.
     pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
+    /// A boat's hit, bubbles and paddles, made when its data first says something or it ticks.
+    pub(crate) boat: Option<Box<crate::boat::BoatState>>,
     /// A bat's animation states and an allay's progress, made when they first tick.
     pub(crate) bat: Option<Box<crate::bat::BatState>>,
     /// A parrot's wing beats, made when it first ticks.
@@ -1683,6 +1685,16 @@ impl ClientEntity {
         )
     }
 
+    /// `Entity.getYRot(partialTick)`: the turn between two ticks, a plain
+    /// lerp (a boat's own, which does not wrap).
+    pub fn y_rot_at(&self, partial_tick: f32) -> f32 {
+        let current = self.rotation().0;
+        if partial_tick == 1.0 {
+            return current;
+        }
+        mth_lerp_f32(partial_tick, self.previous_rotation().0, current)
+    }
+
     /// The limbs' walk animation.
     pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
         &self.walk
@@ -2045,6 +2057,63 @@ impl ClientEntity {
     /// `Allay.isDancing`.
     pub fn is_allay_dancing(&self) -> bool {
         self.living.allay_dancing
+    }
+
+    /// Whether this is a boat, a chest boat or a raft.
+    pub fn is_boat(&self) -> bool {
+        vanilla_boat_max_passengers(self.type_id).is_some()
+    }
+
+    /// A boat's hit, bubbles and paddles, if it has any.
+    pub fn boat(&self) -> Option<&crate::boat::BoatState> {
+        self.boat.as_deref()
+    }
+
+    /// Whether a boat's paddle on a side (zero left, one right) rows
+    /// (`AbstractBoat.getPaddleState`): its data says so and someone rows it.
+    pub fn boat_paddle_rows(&self, side: usize) -> bool {
+        let flag = if side == 0 {
+            self.paddle_left
+        } else {
+            self.paddle_right
+        };
+        flag && !self.passenger_ids.is_empty()
+    }
+
+    /// `AbstractBoat.tick` on the client, at the start of the tick (`under_water` is
+    /// none for an entity that is not a boat).
+    pub(crate) fn tick_boat(&mut self, under_water: Option<bool>) {
+        let Some(under_water) = under_water else {
+            return;
+        };
+        let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
+        let tick_count = self.tick_count;
+        self.boat
+            .get_or_insert_with(Default::default)
+            .tick(under_water, paddling, tick_count);
+    }
+
+    /// A boat's data: its hit, paddles and bubbles.
+    pub(crate) fn set_boat_data(&mut self, data: crate::metadata::BoatData) {
+        let boat = self.boat.get_or_insert_with(Default::default);
+        if let Some(hurt) = data.hurt_time {
+            boat.hurt_time = hurt;
+        }
+        if let Some(dir) = data.hurt_dir {
+            boat.hurt_dir = dir;
+        }
+        if let Some(damage) = data.damage {
+            boat.damage = damage;
+        }
+        if let Some(bubbles) = data.bubble_time {
+            boat.bubble_time = bubbles;
+        }
+        if let Some(left) = data.paddle_left {
+            self.paddle_left = left;
+        }
+        if let Some(right) = data.paddle_right {
+            self.paddle_right = right;
+        }
     }
 
     /// `Parrot.getVariant`'s id.

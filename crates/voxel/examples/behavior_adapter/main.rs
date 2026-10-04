@@ -18621,6 +18621,25 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "boat_data" => {
+                        let mut data = Vec::new();
+                        for (key, id) in [
+                            ("hurt", voxel_world::BOAT_HURT_DATA_ID),
+                            ("hurt_dir", voxel_world::BOAT_HURT_DIR_DATA_ID),
+                            ("bubble_time", voxel_world::BOAT_BUBBLE_TIME_DATA_ID),
+                        ] {
+                            if event.get(key).is_some() {
+                                data.extend([id, 1]);
+                                voxel_core::wire::write_varint(i32_field(event, key)?, &mut data);
+                            }
+                        }
+                        if let Some(damage) = event["damage"].as_f64() {
+                            data.extend([voxel_world::BOAT_DAMAGE_DATA_ID, 3]);
+                            data.extend((damage as f32).to_be_bytes());
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "flier_data" => {
                         let mut data = Vec::new();
                         if event.get("parrot_variant").is_some() {
@@ -18937,6 +18956,22 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         let area = entity.bounding_box();
                         described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
                         described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
+                    }
+                    "boat" => {
+                        let state = entity.boat().copied().unwrap_or_default();
+                        described["under_water"] = json!(state.is_under_water);
+                        described["hurt_time"] = json!(state.hurt_time);
+                        described["hurt_dir"] = json!(state.hurt_dir);
+                        described["damage"] = json!(hex(state.damage));
+                        for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
+                            described[format!("bubble_angle_{key}")] =
+                                json!(hex(state.bubble_angle(partial)));
+                            for side in 0..2 {
+                                described[format!("rowing_{side}_{key}")] = json!(hex(
+                                    state.rowing_time(side, entity.boat_paddle_rows(side), partial)
+                                ));
+                            }
+                        }
                     }
                     "bat" => {
                         described["resting"] = json!(entity.is_bat_resting());
@@ -20633,6 +20668,70 @@ fn flier_item_pose_result(request: &Value) -> Result<Value, String> {
             pose.translate(-0.5, -0.5, -0.5);
             poses.push(matrix_bits(&pose));
         }
+        out.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn boat_state_of(row: &Value) -> Result<voxel_render::boat::BoatRenderState, String> {
+    let bits = |key: &str| -> Result<f32, String> {
+        u32::from_str_radix(
+            row[key].as_str().ok_or(format!("{key} must be a string"))?,
+            16,
+        )
+        .map(f32::from_bits)
+        .map_err(|error| error.to_string())
+    };
+    Ok(voxel_render::boat::BoatRenderState {
+        y_rot: bits("y_rot")?,
+        hurt_dir: i32_field(row, "hurt_dir")?,
+        hurt_time: bits("hurt_time")?,
+        damage_time: bits("damage_time")?,
+        bubble_angle: bits("bubble_angle")?,
+        is_under_water: row["under_water"].as_bool().ok_or("under_water")?,
+        rowing_time_left: bits("rowing_left")?,
+        rowing_time_right: bits("rowing_right")?,
+    })
+}
+
+/// `boat_model`: a boat's, chest boat's or raft's model, or the water patch, posed and drawn.
+fn boat_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        if !id.contains("water_patch") {
+            model.setup_boat(&boat_state_of(row)?);
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `boat_pose`: where a boat's model (and its water patch, above water) is drawn from an
+/// identity pose.
+fn boat_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::boat::boat_pose;
+    use voxel_render::joml::Pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let state = boat_state_of(row)?;
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let pose = boat_pose(&base, &state);
+        // The model, then the water patch (drawn from the same pose) unless under water.
+        let count = if state.is_under_water { 1 } else { 2 };
+        let poses: Vec<Vec<String>> = (0..count).map(|_| matrix_bits(&pose)).collect();
         out.push(json!({"label": row["label"], "poses": poses}));
     }
     Ok(json!({"rows": out}))
@@ -22517,6 +22616,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),
         "flier_item_pose" => return flier_item_pose_result(request),
+        "boat_model" => return boat_model_result(request),
+        "boat_pose" => return boat_pose_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22882,6 +22983,36 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "zombie-nautilus-variant",
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "boat-hurt",
+                    i64::from(voxel_world::BOAT_HURT_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "boat-hurt-dir",
+                    i64::from(voxel_world::BOAT_HURT_DIR_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "boat-damage",
+                    i64::from(voxel_world::BOAT_DAMAGE_DATA_ID),
+                    i64::from(3),
+                ),
+                (
+                    "boat-paddle-left",
+                    i64::from(voxel_world::BOAT_PADDLE_LEFT_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "boat-paddle-right",
+                    i64::from(voxel_world::BOAT_PADDLE_RIGHT_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "boat-bubble-time",
+                    i64::from(voxel_world::BOAT_BUBBLE_TIME_DATA_ID),
+                    i64::from(1),
                 ),
                 (
                     "parrot-variant",

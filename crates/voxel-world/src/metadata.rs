@@ -514,6 +514,30 @@ pub(crate) fn flier_data_from_metadata(
     }
 }
 
+/// What a boat's data holds of its hit, paddles and bubbles.
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct BoatData {
+    pub(crate) hurt_time: Option<i32>,
+    pub(crate) hurt_dir: Option<i32>,
+    pub(crate) damage: Option<f32>,
+    pub(crate) paddle_left: Option<bool>,
+    pub(crate) paddle_right: Option<bool>,
+    pub(crate) bubble_time: Option<i32>,
+}
+
+/// A boat's data (`VehicleEntity.DATA_ID_*`, `AbstractBoat.DATA_ID_*`), each when
+/// the data holds it.
+pub(crate) fn boat_data_from_metadata(metadata: &[u8]) -> BoatData {
+    BoatData {
+        hurt_time: metadata_int_value(metadata, BOAT_HURT_DATA_ID),
+        hurt_dir: metadata_int_value(metadata, BOAT_HURT_DIR_DATA_ID),
+        damage: metadata_float_value(metadata, BOAT_DAMAGE_DATA_ID),
+        paddle_left: metadata_boolean_value(metadata, BOAT_PADDLE_LEFT_DATA_ID),
+        paddle_right: metadata_boolean_value(metadata, BOAT_PADDLE_RIGHT_DATA_ID),
+        bubble_time: metadata_int_value(metadata, BOAT_BUBBLE_TIME_DATA_ID),
+    }
+}
+
 /// A parrot's variant id (`Parrot.DATA_VARIANT_ID`), when the data holds it.
 pub(crate) fn parrot_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:parrot" {

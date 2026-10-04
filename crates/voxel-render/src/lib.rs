@@ -7,6 +7,7 @@ pub mod bake;
 pub mod biome_tint;
 pub mod block_light;
 pub mod blockstate;
+pub mod boat;
 pub mod breaking;
 pub mod camera;
 pub mod clouds;

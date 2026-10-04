@@ -28,6 +28,7 @@ pub mod block;
 mod block_entity;
 pub mod block_rules;
 pub mod block_state;
+pub mod boat;
 mod border;
 pub mod breeze;
 pub mod cat;
@@ -1693,6 +1694,46 @@ impl ClientWorld {
     /// `Entity.updateFluidInteraction`'s answer for the mobs that read it: whether
     /// the water reaches their box (none for the others, whose state is not
     /// tracked). A squid is not pushed by fluids, so no current is gathered.
+    /// `AbstractBoat.isUnderwater`'s answer (the status is under (flowing) water):
+    /// whether the water reaches a thousandth above the top of the boat's box.
+    /// Whether a boat (and only a boat) is under water, as its tick reads it.
+    fn boat_under_water_of(&self, entity_id: i32) -> Option<bool> {
+        let entity = self
+            .entities
+            .get(&entity_id)
+            .filter(|entity| entity.is_boat())?;
+        Some(self.boat_is_under_water(entity))
+    }
+
+    fn boat_is_under_water(&self, entity: &ClientEntity) -> bool {
+        let Some(pick) = voxel_data::entity_type::pick(entity.type_id) else {
+            return false;
+        };
+        let (width, height, _) = pick.size;
+        let (x, y, z) = entity.position();
+        let area = ClientEntityDimensions::scalable(width, height)
+            .scale(entity.scale(), entity.scale())
+            .make_bounding_box(voxel_core::math::Vec3::new(x, y, z));
+        let top = area.max_y + 0.001;
+        let level = local_player::Level { world: self };
+        for bx in voxel_core::math::floor_f64(area.min_x)..voxel_core::math::ceil_f64(area.max_x) {
+            for by in voxel_core::math::floor_f64(area.max_y)..voxel_core::math::ceil_f64(top) {
+                for bz in
+                    voxel_core::math::floor_f64(area.min_z)..voxel_core::math::ceil_f64(area.max_z)
+                {
+                    let pos = voxel_core::binary::BlockPos::new(bx, by, bz);
+                    let info = level.info(pos);
+                    if info.is_water()
+                        && top < f64::from(by) + f64::from(level.fluid_height(pos, &info))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
         let entity = self.entities.get(&entity_id)?;
         if !entity.tracks_water() {
@@ -1773,6 +1814,7 @@ impl ClientWorld {
         let game_time = self.game_time;
         let surroundings = self.species_surroundings(entity_id);
         let in_water = self.mob_in_water(entity_id);
+        let boat_under_water = self.boat_under_water_of(entity_id);
         {
             let entity = self
                 .entities
@@ -1780,6 +1822,7 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
+            entity.tick_boat(boat_under_water);
             let living = entity.living_kind();
             entity.tick_ai_step(living, in_water);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -3048,6 +3091,10 @@ impl ClientWorld {
         true
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "the struct literal names every field of a new entity"
+    )]
     pub fn apply_entity(&mut self, entity: EntityInput) -> bool {
         if self.entities.contains_key(&entity.entity_id) {
             self.remove_entity(entity.entity_id);
@@ -3138,6 +3185,7 @@ impl ClientWorld {
                 frog: None,
                 guardian: None,
                 bat: None,
+                boat: None,
                 breeze: None,
                 parrot: None,
                 allay: None,
@@ -3594,38 +3642,7 @@ impl ClientWorld {
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
         }
-        if let Some(variant) = parrot_variant_from_metadata(entity.type_id, metadata) {
-            entity.living.parrot_variant = variant;
-        }
-        let (bat_flags, vex_flags, allay_dancing) =
-            flier_data_from_metadata(entity.type_id, metadata);
-        if let Some(flags) = bat_flags {
-            entity.living.bat_resting = flags & 1 != 0;
-        }
-        if let Some(flags) = vex_flags {
-            entity.living.vex_charging = flags & 1 != 0;
-        }
-        if let Some(dancing) = allay_dancing {
-            entity.living.allay_dancing = dancing;
-        }
-        if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
-            entity.living.ghast_charging = charging;
-        }
-        if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
-            entity.living.phantom_size = size;
-        }
-        let (guardian_moving, guardian_target) =
-            guardian_data_from_metadata(entity.type_id, metadata);
-        if guardian_moving.is_some() || guardian_target.is_some() {
-            entity.set_guardian_data(guardian_moving, guardian_target);
-        }
-        let (axolotl_variant, playing_dead) = axolotl_data_from_metadata(entity.type_id, metadata);
-        if let Some(variant) = axolotl_variant {
-            entity.living.axolotl_variant = variant;
-        }
-        if let Some(playing_dead) = playing_dead {
-            entity.living.axolotl_playing_dead = playing_dead;
-        }
+        apply_species_data(entity, metadata);
         let (has_egg, laying_egg) = turtle_eggs_from_metadata(entity.type_id, metadata);
         if let Some(has_egg) = has_egg {
             entity.living.turtle_has_egg = has_egg;
@@ -4255,6 +4272,44 @@ enum LightTask {
         chunk_x: i32,
         chunk_z: i32,
     },
+}
+
+/// What the data of a boat, a parrot, a bat, a vex, an allay, a ghast, a phantom, a
+/// guardian or an axolotl says of it (each when it holds that species' fields).
+fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    if entity.is_boat() {
+        entity.set_boat_data(boat_data_from_metadata(metadata));
+    }
+    if let Some(variant) = parrot_variant_from_metadata(entity.type_id, metadata) {
+        entity.living.parrot_variant = variant;
+    }
+    let (bat_flags, vex_flags, allay_dancing) = flier_data_from_metadata(entity.type_id, metadata);
+    if let Some(flags) = bat_flags {
+        entity.living.bat_resting = flags & 1 != 0;
+    }
+    if let Some(flags) = vex_flags {
+        entity.living.vex_charging = flags & 1 != 0;
+    }
+    if let Some(dancing) = allay_dancing {
+        entity.living.allay_dancing = dancing;
+    }
+    if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
+        entity.living.ghast_charging = charging;
+    }
+    if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
+        entity.living.phantom_size = size;
+    }
+    let (guardian_moving, guardian_target) = guardian_data_from_metadata(entity.type_id, metadata);
+    if guardian_moving.is_some() || guardian_target.is_some() {
+        entity.set_guardian_data(guardian_moving, guardian_target);
+    }
+    let (axolotl_variant, playing_dead) = axolotl_data_from_metadata(entity.type_id, metadata);
+    if let Some(variant) = axolotl_variant {
+        entity.living.axolotl_variant = variant;
+    }
+    if let Some(playing_dead) = playing_dead {
+        entity.living.axolotl_playing_dead = playing_dead;
+    }
 }
 
 fn new_light_engine(dimension: DimensionBounds, has_sky_light: bool) -> light::LevelLightEngine {

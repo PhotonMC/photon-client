@@ -99,6 +99,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T41b — Zırh katmanı (insansılar) — client-parity](client-armor-parity-conformance.md)
 - [T40 — Zırh askısı — client-parity](client-armor-stand-parity-conformance.md)
 - [T35f — Aksolotl — client-parity](client-axolotl-parity-conformance.md)
+- [T38 — Tekneler, sandıklı tekneler ve sallar — client-parity](client-boat-parity-conformance.md)
 - [T36e — Breeze — client-parity](client-breeze-parity-conformance.md)
 - [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)
 - [T34e, T34f — Bakır golem — client-parity](client-copper-golem-parity-conformance.md)

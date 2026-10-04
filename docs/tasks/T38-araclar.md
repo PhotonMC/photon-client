@@ -1,7 +1,7 @@
-# T38 — Araçlar: tekneler ve minecart ailesi
+# T38 — Tekneler
 
-**Amaç:** Tekne ve sandıklı tekne (ahşap türleri, bambu salı), minecart ve türevleri (sandık, ocak, huni, TNT, spawner, komut bloğu): model, yönelme, su alma/sallanma, ray eğimi (`MinecartBehavior` istemci tiki).
-**Bağımlılık:** T24. **Boy:** M. **Türler:** *_boat, *_chest_boat, bamboo_raft, bamboo_chest_raft, minecart, chest_minecart, furnace_minecart, hopper_minecart, tnt_minecart, spawner_minecart, command_block_minecart.
+**Amaç:** Tekne ve sandıklı tekne (ahşap türleri, bambu salı): model, çizim duruşu, vuruş sallanması, kabarcık sütunu, kürek çekme, su altı durumu. Minecart ailesi T38b'ye ayrıldı.
+**Bağımlılık:** T24. **Boy:** M. **Türler:** *_boat, *_chest_boat, bamboo_raft, bamboo_chest_raft.
 
 ## Oku
 - Java: `client/model/object/boat/BoatModel.java`, `client/renderer/entity/BoatRenderer.java`, `client/model/object/cart/MinecartModel.java`, `client/renderer/entity/AbstractMinecartRenderer.java`, `client/renderer/entity/MinecartRenderer.java`.
@@ -19,7 +19,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
-Sürüş (T44), ray fiziği sunucu tarafında, sesler.
+Sürüş (T44), ray fiziği sunucu tarafında, sesler; minecart (T38b).
 
 ## Belgeler
 `docs/remaining-work.md` M4 madde 3; yeni `docs/client-*-parity-conformance.md` kaydı ve `docs/index.md` satırı.
@@ -28,4 +28,6 @@ Sürüş (T44), ray fiziği sunucu tarafında, sesler.
 Tekne dalı + minecart dalı; türevler tablo satırı. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_boat`, `voxel-render/boat.rs` (`boat_pose`, `boat_vertices`, `Quaternion::angle_axis`), `voxel-world/boat.rs` (vuruş sönmesi, kabarcık, kürek konumları, su altı durumu), `crates/voxel/src/boats.rs`; oracle sahnesi yaşayan olmayan varlıkları da tikler. Kayıt: `docs/client-boat-parity-conformance.md`.
+- Bulgu: `Quaternionf.setAngleAxis` ekseni normalleştirmez (`(1,0,1)` ekseninde kabarcık dönüşü).
+- Bölündü: minecart T38b'de. Sapma: su yaması çizilmez (derinlik-yalnız çizim yok), yolcu ile kürek çekme oracle'sız. Canlı gözlem yapılmadı.

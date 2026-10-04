@@ -167,6 +167,19 @@ impl Quaternion {
         }
     }
 
+    /// `Quaternionf.setAngleAxis(angle, x, y, z)`: a turn of `angle` about the
+    /// axis, which is used as given (the library does not normalise it).
+    pub fn angle_axis(angle: f32, x: f32, y: f32, z: f32) -> Self {
+        let half = angle * 0.5;
+        let sin = sin(half);
+        Self {
+            x: x * sin,
+            y: y * sin,
+            z: z * sin,
+            w: cos_from_sin(sin, half),
+        }
+    }
+
     /// `Quaternionf.rotateX(angle)`: this turned further about x.
     pub fn rotate_x(self, angle: f32) -> Self {
         let sin = sin(angle * 0.5);

@@ -5,6 +5,7 @@ mod assets;
 mod atmosphere;
 mod axolotls;
 mod bears;
+mod boats;
 mod controls;
 mod copper_golems;
 mod dolphins;

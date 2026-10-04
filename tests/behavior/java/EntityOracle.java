@@ -1880,6 +1880,88 @@ public final class EntityOracle {
         return result;
     }
 
+    private static net.minecraft.client.renderer.entity.state.BoatRenderState boatState(final JsonObject row) {
+        var state = new net.minecraft.client.renderer.entity.state.BoatRenderState();
+        state.yRot = Oracle.f32(row, "y_rot");
+        state.hurtDir = row.get("hurt_dir").getAsInt();
+        state.hurtTime = Oracle.f32(row, "hurt_time");
+        state.damageTime = Oracle.f32(row, "damage_time");
+        state.bubbleAngle = Oracle.f32(row, "bubble_angle");
+        state.isUnderWater = row.get("under_water").getAsBoolean();
+        state.rowingTimeLeft = Oracle.f32(row, "rowing_left");
+        state.rowingTimeRight = Oracle.f32(row, "rowing_right");
+        return state;
+    }
+
+    /**
+     * The boat models (boats, chest boats, rafts) posed by the reference's own `setupAnim`, drawn,
+     * from the time each paddle has rowed, and the water patch.
+     */
+    private static JsonObject boatModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.Model<?> model;
+            if (id.contains("water_patch")) {
+                model = new net.minecraft.client.model.Model.Simple(root, t -> net.minecraft.client.renderer.rendertype.RenderTypes.waterMask());
+            } else {
+                var state = boatState(row);
+                var boat = id.contains("/bamboo")
+                    ? new net.minecraft.client.model.object.boat.RaftModel(root)
+                    : new net.minecraft.client.model.object.boat.BoatModel(root);
+                boat.setupAnim(state);
+                model = boat;
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Where the reference's own `AbstractBoatRenderer.submit` draws a boat's model (and a boat's
+     * water patch): the matrix it submits each with, from the boat's turn, hit, bubbles and
+     * water, from an identity pose.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject boatPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = boatState(row);
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.BoatRenderer.class);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.BoatRenderer) renderer).submit(state, stack, collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -3582,6 +3664,12 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
+            {net.minecraft.world.entity.vehicle.VehicleEntity.class, "DATA_ID_HURT", "boat-hurt"},
+            {net.minecraft.world.entity.vehicle.VehicleEntity.class, "DATA_ID_HURTDIR", "boat-hurt-dir"},
+            {net.minecraft.world.entity.vehicle.VehicleEntity.class, "DATA_ID_DAMAGE", "boat-damage"},
+            {net.minecraft.world.entity.vehicle.boat.AbstractBoat.class, "DATA_ID_PADDLE_LEFT", "boat-paddle-left"},
+            {net.minecraft.world.entity.vehicle.boat.AbstractBoat.class, "DATA_ID_PADDLE_RIGHT", "boat-paddle-right"},
+            {net.minecraft.world.entity.vehicle.boat.AbstractBoat.class, "DATA_ID_BUBBLE_TIME", "boat-bubble-time"},
             {net.minecraft.world.entity.animal.parrot.Parrot.class, "DATA_VARIANT_ID", "parrot-variant"},
             {net.minecraft.world.entity.ambient.Bat.class, "DATA_ID_FLAGS", "bat-flags"},
             {net.minecraft.world.entity.monster.Vex.class, "DATA_FLAGS_ID", "vex-flags"},
@@ -3792,6 +3880,12 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("boat_model")) {
+            return boatModel(request);
+        }
+        if (operation.equals("boat_pose")) {
+            return boatPose(request);
         }
         if (operation.equals("flier_item_pose")) {
             return flierItemPose(request);
