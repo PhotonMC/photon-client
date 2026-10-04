@@ -850,6 +850,16 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "frog_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
+                        pose.setAccessible(true);
+                        data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
+                            (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
+                            net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "turtle_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         if (event.has("has_egg")) {
@@ -1104,6 +1114,22 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_started", animation.isStarted());
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) axolotl.tickCount) : 0L);
+                            }
+                        }
+                        case "frog" -> {
+                            described.addProperty("in_water", entity.isInWater());
+                            if (entity instanceof net.minecraft.world.entity.animal.frog.Frog frog) {
+                                var states = new Object[][] {
+                                    {"jump", frog.jumpAnimationState}, {"croak", frog.croakAnimationState},
+                                    {"tongue", frog.tongueAnimationState},
+                                    {"swim_idle", frog.swimIdleAnimationState},
+                                };
+                                for (var described2 : states) {
+                                    var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                    described.addProperty(described2[0] + "_started", animation.isStarted());
+                                    described.addProperty(described2[0] + "_millis",
+                                        animation.isStarted() ? animation.getTimeInMillis((float) frog.tickCount) : 0L);
+                                }
                             }
                         }
                         case "dolphin" -> {

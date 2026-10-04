@@ -18621,6 +18621,17 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "frog_data" => {
+                        // `Pose` ids: standing is zero, long jumping six, croaking eight, using
+                        // the tongue nine.
+                        let id = match event["pose"].as_str().ok_or("pose")? {
+                            "LONG_JUMPING" => 6,
+                            "CROAKING" => 8,
+                            "USING_TONGUE" => 9,
+                            _ => 0,
+                        };
+                        world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
+                    }
                     "turtle_data" => {
                         let mut data = Vec::new();
                         if let Some(has_egg) = event["has_egg"].as_bool() {
@@ -18876,6 +18887,27 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         let area = entity.bounding_box();
                         described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
                         described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
+                    }
+                    "frog" => {
+                        described["in_water"] = json!(entity.is_in_water());
+                        if let Some(frog) = entity.frog() {
+                            let age = entity.tick_count() as f32;
+                            for (name, animation) in [
+                                ("jump", frog.jump),
+                                ("croak", frog.croak),
+                                ("tongue", frog.tongue),
+                                ("swim_idle", frog.swim_idle),
+                            ] {
+                                described[format!("{name}_started")] =
+                                    json!(animation.is_started());
+                                described[format!("{name}_millis")] =
+                                    json!(if animation.is_started() {
+                                        animation.time_in_millis(age)
+                                    } else {
+                                        0
+                                    });
+                            }
+                        }
                     }
                     "axolotl" => {
                         let state = entity.axolotl().copied().unwrap_or_default();
@@ -20226,6 +20258,58 @@ fn axolotl_model_result(request: &Value) -> Result<Value, String> {
             model.setup_axolotl_baby(&state);
         } else {
             model.setup_axolotl_adult(&state);
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `frog_model`: a frog's model posed and drawn from the animation states it runs, a tadpole's
+/// from its age and whether it is in water.
+fn frog_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{FrogRenderState, MobModel, QuadrupedState, TadpoleState};
+    use voxel_world::animation_state::AnimationState;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        // A state that starts at the given tick, or none.
+        let started = |key: &str| -> AnimationState {
+            let mut state = AnimationState::default();
+            if let Some(tick) = row[key].as_i64() {
+                state.start(tick as i32);
+            }
+            state
+        };
+        let mut model = MobModel::bake(layer);
+        if id.contains("tadpole") {
+            model.setup_tadpole(&TadpoleState {
+                age_in_ticks: bits("age_in_ticks")?,
+                is_in_water: row["in_water"].as_bool().ok_or("in_water")?,
+            });
+        } else {
+            model.setup_frog(&FrogRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: 0.0,
+                    x_rot: 0.0,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                is_swimming: row["swimming"].as_bool().ok_or("swimming")?,
+                jump: started("jump"),
+                croak: started("croak"),
+                tongue: started("tongue"),
+                swim_idle: started("swim_idle"),
+            });
         }
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
@@ -21933,6 +22017,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "sea_animal_model" => return sea_animal_model_result(request),
         "dolphin_item_pose" => return dolphin_item_pose_result(request),
         "axolotl_model" => return axolotl_model_result(request),
+        "frog_model" => return frog_model_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -21982,7 +22067,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
             return Ok(json!({"rows": rows}));
         }
         "entity_variants" => {
-            let rows: Vec<Value> = ["cat", "chicken", "cow", "pig"]
+            let rows: Vec<Value> = ["cat", "chicken", "cow", "frog", "pig"]
                 .iter()
                 .flat_map(|kind| voxel_data::entity_type::variants(kind))
                 .map(|variant| {
@@ -22288,6 +22373,11 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "creeper-ignited",
                     i64::from(CREEPER_IGNITED_DATA_ID),
                     i64::from(8),
+                ),
+                (
+                    "frog-variant",
+                    i64::from(voxel_world::FROG_VARIANT_DATA_ID),
+                    i64::from(voxel_world::FROG_VARIANT_SERIALIZER_ID),
                 ),
                 (
                     "axolotl-variant",

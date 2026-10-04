@@ -203,6 +203,9 @@ pub const WOLF_VARIANT_SERIALIZER_ID: i32 = 25;
 /// relaxed and the dye of its collar sit among its data (it shares the
 /// tamable flags with the wolf).
 pub const CAT_VARIANT_DATA_ID: u8 = 20;
+/// Where a frog's variant sits among its data, and the serializer that carries it.
+pub const FROG_VARIANT_DATA_ID: u8 = 18;
+pub const FROG_VARIANT_SERIALIZER_ID: i32 = 27;
 /// Where a polar bear's standing flag sits among its data.
 pub const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 /// Where a fox's variant (an int) and its flags sit among its data.

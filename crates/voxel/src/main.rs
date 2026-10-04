@@ -13,6 +13,7 @@ mod farm_animals;
 mod felines;
 mod fish;
 mod foxes;
+mod frogs;
 mod golems;
 mod gui;
 mod held_items;

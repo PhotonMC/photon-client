@@ -36,7 +36,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     .chain(patterns)
 }
 
-/// The animals of the water the server added: squids, fish, dolphins, turtles and axolotls.
+/// The animals of the water the server added: squids, fish, dolphins, turtles, axolotls, frogs and tadpoles.
 pub fn remote_water_animals(
     session: &PlaySession,
     models: &mut MobModels,
@@ -57,6 +57,7 @@ pub fn remote_water_animals(
     vertices.extend(crate::axolotls::remote_axolotls(
         session, models, textures, view,
     ));
+    vertices.extend(crate::frogs::remote_frogs(session, models, textures, view));
     vertices
 }
 

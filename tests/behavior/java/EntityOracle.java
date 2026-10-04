@@ -1639,6 +1639,49 @@ public final class EntityOracle {
     }
 
     /**
+     * The frog's and the tadpole's models posed by the reference's own `setupAnim`, drawn: a frog
+     * from the animation states it runs (each started at the tick the row names) and whether it
+     * swims, a tadpole from its age and whether it is in water.
+     */
+    private static JsonObject frogModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            if (id.contains("tadpole")) {
+                var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.isInWater = row.get("in_water").getAsBoolean();
+                var model = new net.minecraft.client.model.animal.frog.TadpoleModel(root);
+                model.setupAnim(state);
+                rows.add(posedQuads(row.get("label").getAsString(), model));
+                continue;
+            }
+            var state = new net.minecraft.client.renderer.entity.state.FrogRenderState();
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isSwimming = row.get("swimming").getAsBoolean();
+            var animations = new Object[][] {
+                {"jump", state.jumpAnimationState}, {"croak", state.croakAnimationState},
+                {"tongue", state.tongueAnimationState}, {"swim_idle", state.swimIdleAnimationState},
+            };
+            for (var animation : animations) {
+                if (row.has((String) animation[0])) {
+                    ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                }
+            }
+            var model = new net.minecraft.client.model.animal.frog.FrogModel(root);
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * Where `DolphinCarryingItemLayer` submits what a dolphin carries, from an identity pose and
      * the dolphin's pitch: the matrix of the item.
      */
@@ -2958,7 +3001,7 @@ public final class EntityOracle {
         return result;
     }
 
-    /** The pig and cow variants the game's data pack holds: their textures and model. */
+    /** The cat, chicken, cow, frog and pig variants the game's data pack holds: their textures and model. */
     private static JsonObject entityVariants() {
         var registries = Oracle.vanillaRegistries();
         var rows = new java.util.TreeMap<String, JsonObject>();
@@ -2982,6 +3025,10 @@ public final class EntityOracle {
             var variant = holder.value();
             variants(rows, "cat", holder.key().identifier().toString(), variant.adultAssetInfo().id(),
                 variant.babyAssetInfo().id(), "normal");
+        });
+        // A frog's variant has one texture and no baby (a frog is never one).
+        registries.lookupOrThrow(net.minecraft.core.registries.Registries.FROG_VARIANT).listElements().forEach(holder -> {
+            variants(rows, "frog", holder.key().identifier().toString(), holder.value().assetInfo().id(), null, "normal");
         });
         var list = new JsonArray();
         rows.values().forEach(list::add);
@@ -3026,7 +3073,7 @@ public final class EntityOracle {
         out.addProperty("kind", kind);
         out.addProperty("name", name);
         out.addProperty("asset", asset.toString());
-        out.addProperty("baby_asset", baby.toString());
+        out.addProperty("baby_asset", baby == null ? "" : baby.toString());
         out.addProperty("model", model.toLowerCase());
         rows.put(kind + ":" + name, out);
     }
@@ -3100,6 +3147,7 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_POWERED", "creeper-powered"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
+            {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT", "axolotl-variant"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_PLAYING_DEAD", "axolotl-playing-dead"},
             {net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG", "turtle-has-egg"},
@@ -3302,6 +3350,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("frog_model")) {
+            return frogModel(request);
         }
         if (operation.equals("dolphin_item_pose")) {
             return dolphinItemPose(request);

@@ -14457,6 +14457,47 @@ def movement_item_cases():
               {"tick": 5, "type": "axolotl_data", "playing_dead": True}], extras="axolotl"),
         fish("baby-dolphin-box", "dolphin", 10, [{"tick": 1, "type": "baby_data", "baby": True}],
              extras="dolphin"),
+        # A frog's pose starts and stops the animation states (a pose sent again starts its state
+        # again); floating without walking runs the idle state; its stride follows a distance
+        # moved twenty-five times over, and none while it jumps. A tadpole is in water or not.
+        fish("frog-floats", "frog", 30, [], extras="frog"),
+        fish("frog-floats-then-swims", "frog", 50,
+             [{"tick": 10, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 16, "type": "move", "xa": 600, "ya": 0, "za": 300},
+              {"tick": 22, "type": "move", "xa": 0, "ya": 0, "za": 0}], extras="frog"),
+        fish("frog-on-land", "frog", 20, [on_ground(2, True)], water="none", extras="frog"),
+        fish("frog-walks", "frog", 40,
+             [on_ground(2, True), {"tick": 4, "type": "move", "xa": 200, "ya": 0, "za": 0,
+                                   "on_ground": True},
+              {"tick": 10, "type": "move", "xa": 200, "ya": 0, "za": 0, "on_ground": True}],
+             water="none", extras="frog"),
+        fish("frog-jumps", "frog", 40,
+             [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"},
+              {"tick": 20, "type": "frog_data", "pose": "STANDING"}], water="none", extras="frog"),
+        fish("frog-jump-restarts", "frog", 30,
+             [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"},
+              {"tick": 11, "type": "frog_data", "pose": "LONG_JUMPING"}], water="none",
+             extras="frog"),
+        fish("frog-jumps-while-moving", "frog", 40,
+             [on_ground(2, True), {"tick": 4, "type": "move", "xa": 200, "ya": 0, "za": 0,
+                                   "on_ground": True},
+              {"tick": 8, "type": "frog_data", "pose": "LONG_JUMPING"},
+              {"tick": 10, "type": "move", "xa": 200, "ya": 0, "za": 0, "on_ground": True}],
+             water="none", extras="frog"),
+        fish("frog-croaks", "frog", 40,
+             [{"tick": 5, "type": "frog_data", "pose": "CROAKING"},
+              {"tick": 25, "type": "frog_data", "pose": "STANDING"}], extras="frog"),
+        fish("frog-uses-its-tongue", "frog", 30,
+             [{"tick": 5, "type": "frog_data", "pose": "USING_TONGUE"},
+              {"tick": 12, "type": "frog_data", "pose": "STANDING"}], water="none", extras="frog"),
+        fish("frog-changes-pose", "frog", 40,
+             [{"tick": 5, "type": "frog_data", "pose": "CROAKING"},
+              {"tick": 9, "type": "frog_data", "pose": "USING_TONGUE"}], water="none",
+             extras="frog"),
+        fish("frog-in-the-pool-jumps", "frog", 30,
+             [{"tick": 5, "type": "frog_data", "pose": "LONG_JUMPING"}], extras="frog"),
+        fish("tadpole-in-water", "tadpole", 10, [], extras="frog"),
+        fish("tadpole-out-of-water", "tadpole", 10, [], water="none", extras="frog"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
         living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
         living("zombie-swings-again-too-early", "zombie", 14,
@@ -14797,6 +14838,7 @@ def entity_cases():
     yield from entity_fish_cases()
     yield from entity_sea_animal_cases()
     yield from entity_axolotl_cases()
+    yield from entity_frog_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15665,6 +15707,38 @@ def entity_axolotl_cases():
              baby("idle-underwater-on-ground", idle_under_water_on_ground=2),
              baby("play-dead", play_dead=1), baby("play-dead-later", age=44.0, play_dead=1)]
     yield {"case_id": "entity/axolotl-model", "family": "entity", "operation": "axolotl_model",
+           "rows": rows}
+
+
+def entity_frog_cases():
+    """The frog and the tadpole posed by the reference's own `setupAnim`: a frog walking (or
+    swimming) by its stride, the speed capped at one and the animations whose states have started
+    (the jump, croak and tongue end, the idle float loops; the throat shows while it croaks); a
+    tadpole's tail swing, wider out of water."""
+    def frog(label, age=37.5, walk_position=0.0, walk_speed=0.0, swimming=False, **started):
+        row = {"label": f"frog-{label}", "layer": "minecraft:frog#main",
+               "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
+               "age_in_ticks": float_bits(age), "swimming": swimming}
+        row.update(started)
+        return row
+    rows = [frog("still"),
+            frog("walking", walk_position=4.5, walk_speed=0.3),
+            frog("walking-fast", walk_position=9.0, walk_speed=1.0),
+            frog("swimming", walk_position=3.0, walk_speed=0.3, swimming=True),
+            frog("swimming-fast", walk_position=7.5, walk_speed=0.9, swimming=True),
+            frog("jump", age=12.5, jump=10), frog("jump-over", age=40.0, jump=10),
+            frog("croak", age=40.0, croak=10), frog("croak-over", age=100.0, croak=10),
+            frog("tongue", age=14.5, tongue=10), frog("tongue-over", age=40.0, tongue=10),
+            frog("floating", age=33.0, swim_idle=10), frog("floating-looped", age=100.0, swim_idle=10),
+            frog("jump-walking", age=12.5, walk_position=4.5, walk_speed=0.3, jump=10),
+            frog("croak-swimming", age=40.0, walk_position=3.0, walk_speed=0.3, swimming=True,
+                 croak=10),
+            frog("floating-swimming", age=33.0, walk_position=3.0, walk_speed=0.0, swimming=True,
+                 swim_idle=10)]
+    for label, in_water in (("in-water", True), ("out-of-water", False)):
+        rows.append({"label": f"tadpole-{label}", "layer": "minecraft:tadpole#main",
+                     "age_in_ticks": float_bits(37.5), "in_water": in_water})
+    yield {"case_id": "entity/frog-model", "family": "entity", "operation": "frog_model",
            "rows": rows}
 
 

@@ -39,6 +39,7 @@ mod entity_random;
 pub mod fish;
 mod fluid;
 pub mod fox;
+pub mod frog;
 pub mod horse;
 pub mod item_components;
 mod item_physics;
@@ -3115,6 +3116,7 @@ impl ClientWorld {
                 copper_golem: None,
                 squid: None,
                 axolotl: None,
+                frog: None,
                 panda: None,
                 ravager: None,
                 horse: None,
@@ -3665,7 +3667,7 @@ impl ClientWorld {
             entity.silent = silent;
         }
         if let Some(pose) = pose {
-            entity.pose = pose;
+            entity.set_pose(pose);
         }
         // `DATA_BABY_ID` is the same field for a zombie and for every
         // animal and villager (`AgeableMob`).

@@ -2,7 +2,7 @@
 
     python3 tools/generate/entity_variants.py .data/captures/behavior/<id>/outputs.jsonl
 
-The cat, chicken, cow and pig variants of the game's data pack, by kind and name:
+The cat, chicken, cow, frog and pig variants of the game's data pack, by kind and name:
 the texture an adult and a baby wear and the model family each asks for (a
 cat's variant has none: its model is the cat's). The
 server names the variant an entity wears by its place in its registry; the
@@ -13,7 +13,7 @@ from common import header, load_rows, run, rust_str, write
 
 def generate(capture):
     rows = load_rows(capture, "entity/variants")
-    out = header("The cat, chicken, cow and pig variants of the game's data pack.", "entity_variants.py") + [
+    out = header("The cat, chicken, cow, frog and pig variants of the game's data pack.", "entity_variants.py") + [
         "use crate::entity_type::EntityVariant;",
         "",
         "#[rustfmt::skip]",

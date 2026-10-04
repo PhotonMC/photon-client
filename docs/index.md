@@ -111,6 +111,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T32b — Kedi ve ocelot — client-parity](client-feline-parity-conformance.md)
 - [T35c — Morina, somon, tropikal balık, kirpi balığı — client-parity](client-fish-parity-conformance.md)
 - [T32e — Tilki — client-parity](client-fox-parity-conformance.md)
+- [T35g — Kurbağa ve iribaş — client-parity](client-frog-parity-conformance.md)
 - [T30b — Keçi ve mantar ineği — client-parity](client-goat-mooshroom-parity-conformance.md)
 - [T34c — Golemler, enderman ve zombi köylü — client-parity](client-golem-enderman-parity-conformance.md)
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](client-held-item-parity-conformance.md)

@@ -190,6 +190,26 @@ pub struct AxolotlRenderState {
     pub play_dead: voxel_world::animation_state::AnimationState,
 }
 
+/// What a frog's model is posed from (`FrogRenderState`): the animation
+/// states its pose and floating run, and whether it swims.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FrogRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub is_swimming: bool,
+    pub jump: voxel_world::animation_state::AnimationState,
+    pub croak: voxel_world::animation_state::AnimationState,
+    pub tongue: voxel_world::animation_state::AnimationState,
+    pub swim_idle: voxel_world::animation_state::AnimationState,
+}
+
+/// What a tadpole's model is posed from (`LivingEntityRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TadpoleState {
+    pub age_in_ticks: f32,
+    pub is_in_water: bool,
+}
+
 /// What a turtle's model is posed from (`TurtleRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TurtleState {
@@ -1518,6 +1538,66 @@ impl MobModel {
                 let millis = (running.time_in_millis(state.age_in_ticks) as f32 * 1.0) as i64;
                 self.animate(definition, millis, 1.0);
             }
+        }
+    }
+
+    /// `FrogModel.setupAnim`: the jump, croak and tongue animations each if
+    /// started, then the walk (a swim while in water) by the stride, then the
+    /// idle float; the croaking throat shows while the croak runs.
+    pub fn setup_frog(&mut self, state: &FrogRenderState) {
+        self.root.reset();
+        for (name, running) in [
+            ("Frog.FROG_JUMP", state.jump),
+            ("Frog.FROG_CROAK", state.croak),
+            ("Frog.FROG_TONGUE", state.tongue),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
+        }
+        let (name, speed_factor) = if state.is_swimming {
+            ("Frog.FROG_SWIM", 1.0_f32)
+        } else {
+            ("Frog.FROG_WALK", 1.5)
+        };
+        if let Some(definition) = voxel_data::animation::definition(name) {
+            // `applyWalk(pos, speed, speedFactor, 2.5)`.
+            let millis = (state.quadruped.walk_position * 50.0 * speed_factor) as i64;
+            let scale = (state.quadruped.walk_speed * 2.5).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        self.animate_state("Frog.FROG_IDLE_WATER", state.swim_idle, state.age_in_ticks);
+        if let Some(croaking_body) = self
+            .root
+            .child_mut("root")
+            .and_then(|root| root.child_mut("body"))
+            .and_then(|body| body.child_mut("croaking_body"))
+        {
+            croaking_body.visible = state.croak.is_started();
+        }
+    }
+
+    /// `KeyframeAnimation.apply(animationState, ageInTicks)`: the animation
+    /// runs if its state has started.
+    fn animate_state(
+        &mut self,
+        name: &str,
+        running: voxel_world::animation_state::AnimationState,
+        age_in_ticks: f32,
+    ) {
+        if !running.is_started() {
+            return;
+        }
+        if let Some(definition) = voxel_data::animation::definition(name) {
+            let millis = (running.time_in_millis(age_in_ticks) as f32 * 1.0) as i64;
+            self.animate(definition, millis, 1.0);
+        }
+    }
+
+    /// `TadpoleModel.setupAnim`: the tail swings, wider out of water.
+    pub fn setup_tadpole(&mut self, state: &TadpoleState) {
+        self.root.reset();
+        let amplitude = if state.is_in_water { 1.0_f32 } else { 1.5 };
+        if let Some(tail) = self.root.child_mut("tail") {
+            tail.y_rot = -amplitude * 0.25 * mth_sin_f64(f64::from(0.3 * state.age_in_ticks));
         }
     }
 

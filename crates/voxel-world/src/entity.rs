@@ -697,6 +697,8 @@ pub struct ClientEntity {
     pub(crate) squid: Option<Box<crate::squid::SquidState>>,
     /// An axolotl's animators and animation states, made when it first ticks.
     pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
+    /// A frog's animation states, made when its pose first changes or it first ticks.
+    pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
     pub(crate) panda: Option<Box<crate::panda::PandaState>>,
     /// A ravager's counters, once it has any.
@@ -1066,6 +1068,13 @@ impl ClientEntity {
                 };
                 self.walk
                     .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
+            } else if self.is_frog() {
+                let target = self.frog.as_ref().map_or_else(
+                    || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
+                    |frog| frog.walk_target(moved.0.hypot(moved.1)),
+                );
+                self.walk
+                    .update(target, 0.4, if self.baby { 3.0 } else { 1.0 });
             } else {
                 self.walk.follow(moved.0.hypot(moved.1), self.baby);
             }
@@ -1991,8 +2000,48 @@ impl ClientEntity {
             || self.is_fish()
             || matches!(
                 voxel_data::entity_type::name(self.type_id),
-                Some("minecraft:turtle" | "minecraft:axolotl")
+                Some(
+                    "minecraft:turtle"
+                        | "minecraft:axolotl"
+                        | "minecraft:frog"
+                        | "minecraft:tadpole"
+                )
             )
+    }
+
+    /// Whether this is a frog.
+    pub(crate) fn is_frog(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:frog")
+    }
+
+    /// A frog's animation states, if it has any.
+    pub fn frog(&self) -> Option<&crate::frog::FrogState> {
+        self.frog.as_deref()
+    }
+
+    /// `Frog.onSyncedDataUpdated(DATA_POSE)`: the pose the data names starts
+    /// or stops the frog's animations.
+    pub(crate) fn set_pose(&mut self, pose: ClientEntityPose) {
+        self.pose = pose;
+        if self.is_frog() {
+            let tick_count = self.tick_count;
+            self.frog
+                .get_or_insert_with(Default::default)
+                .set_pose(pose, tick_count);
+        }
+    }
+
+    /// `Frog.tick`'s client half, which runs before the rest of the tick and
+    /// so sees where the last one left the frog.
+    pub(crate) fn tick_frog(&mut self) {
+        if !self.is_frog() {
+            return;
+        }
+        let (in_water, moving, tick_count) =
+            (self.living.in_water, self.walk.is_moving(), self.tick_count);
+        self.frog
+            .get_or_insert_with(Default::default)
+            .tick(in_water, moving, tick_count);
     }
 
     /// An axolotl's animators and animation states, if it has ticked.
@@ -2129,6 +2178,7 @@ impl ClientEntity {
     /// eases to the position and turn its last packet gave and its head to the head
     /// turn, and a mob's motion fades; then what a species does of its own there.
     pub(crate) fn tick_ai_step(&mut self, living: Option<LivingKind>, in_water: Option<bool>) {
+        self.tick_frog();
         if let Some(in_water) = in_water {
             self.living.in_water = in_water;
         }
