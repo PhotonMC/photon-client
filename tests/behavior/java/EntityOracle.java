@@ -2316,6 +2316,27 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The shulker's model posed by the reference's own `ShulkerModel.setupAnim`, drawn. */
+    private static JsonObject shulkerModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.shulker.ShulkerModel(
+                bakedLayer(row.get("layer").getAsString()));
+            var state = new net.minecraft.client.renderer.entity.state.ShulkerRenderState();
+            state.peekAmount = Oracle.f32(row, "peek_amount");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.yHeadRot = Oracle.f32(row, "y_head_rot");
+            state.yBodyRot = Oracle.f32(row, "y_body_rot");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The magma cube's model posed by the reference's own `MagmaCubeModel.setupAnim`, drawn. */
     private static JsonObject magmaCubeModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -2899,6 +2920,11 @@ public final class EntityOracle {
                 squid.xBodyRot = Oracle.f32(row, "x_body_rot");
                 squid.zBodyRot = Oracle.f32(row, "z_body_rot");
                 state = squid;
+            } else if (kind.equals("shulker")) {
+                rendererClass = net.minecraft.client.renderer.entity.ShulkerRenderer.class;
+                var shulker = new net.minecraft.client.renderer.entity.state.ShulkerRenderState();
+                shulker.attachFace = net.minecraft.core.Direction.from3DDataValue(row.get("attach_face").getAsInt());
+                state = shulker;
             } else if (kind.equals("slime") || kind.equals("magma_cube")) {
                 rendererClass = kind.equals("slime")
                     ? net.minecraft.client.renderer.entity.SlimeRenderer.class
@@ -3906,6 +3932,9 @@ public final class EntityOracle {
         }
         if (operation.equals("squid_model")) {
             return squidModel(request);
+        }
+        if (operation.equals("shulker_model")) {
+            return shulkerModel(request);
         }
         if (operation.equals("magma_cube_model")) {
             return magmaCubeModel(request);

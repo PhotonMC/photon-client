@@ -18611,6 +18611,22 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             z: bits64(event, "z")?,
                         });
                     }
+                    "shulker_data" => {
+                        let mut data = Vec::new();
+                        if let Some(face) = event["face"].as_i64() {
+                            data.extend([voxel_world::SHULKER_ATTACH_FACE_DATA_ID, 12, face as u8]);
+                        }
+                        for (key, id) in [
+                            ("peek", voxel_world::SHULKER_PEEK_DATA_ID),
+                            ("color", voxel_world::SHULKER_COLOR_DATA_ID),
+                        ] {
+                            if let Some(value) = event[key].as_i64() {
+                                data.extend([id, 0, value as u8]);
+                            }
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "head_rotation" => {
                         let angle = i32_field(event, "angle")? as i8;
                         world.apply_entity_head_rotation(
@@ -19172,6 +19188,18 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         ] {
                             described[key] = json!(format!("{:016x}", value.to_bits()));
                         }
+                    }
+                    "shulker" => {
+                        let shulker = entity.shulker();
+                        described["face"] = json!(entity.shulker_attach_face());
+                        described["color"] = json!(entity.shulker_color().map_or(16, i32::from));
+                        described["peek_half"] = json!(hex(shulker.peek(0.5)));
+                        described["peek_start"] = json!(hex(shulker.peek(0.0)));
+                        described["peek_end"] = json!(hex(shulker.peek(1.0)));
+                        described["y_rot"] = json!(hex(entity.rotation().0));
+                        described["y_body_rot"] = json!(hex(entity.body_y_rotation()));
+                        described["y_body_rot_old"] = json!(hex(entity.previous_body_y_rotation()));
+                        described["y_head_rot"] = json!(hex(entity.rotation().2));
                     }
                     "cube" => {
                         let cube = entity.cube_mob();
@@ -21040,6 +21068,34 @@ fn fish_textures_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `shulker_model`: a shulker's model posed and drawn.
+fn shulker_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{MobModel, ShulkerRenderState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        model.setup_shulker(&ShulkerRenderState {
+            peek_amount: bits("peek_amount")?,
+            age_in_ticks: bits("age_in_ticks")?,
+            x_rot: bits("x_rot")?,
+            y_head_rot: bits("y_head_rot")?,
+            y_body_rot: bits("y_body_rot")?,
+        });
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `magma_cube_model`: a magma cube's model posed and drawn.
 fn magma_cube_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::MobModel;
@@ -21675,6 +21731,18 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     "tropical_fish" => tropical_fish_turns(age, in_water),
                     _ => pufferfish_turns(age),
                 });
+                if row.get("death_time").is_some() {
+                    placed.death_time = bits("death_time")?;
+                }
+                if row.get("feet_x").is_some() {
+                    placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
+                    placed.scale = bits("scale")?;
+                }
+            }
+            "shulker" => {
+                // `ShulkerRenderer.setupRotations` turns the body half way round first.
+                placed.body_rot += 180.0;
+                placed.attach_face = Some(i32_field(row, "attach_face")?);
                 if row.get("death_time").is_some() {
                     placed.death_time = bits("death_time")?;
                 }
@@ -22710,6 +22778,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "copper_golem_model" => return copper_golem_model_result(request),
         "squid_model" => return squid_model_result(request),
         "magma_cube_model" => return magma_cube_model_result(request),
+        "shulker_model" => return shulker_model_result(request),
         "sea_animal_model" => return sea_animal_model_result(request),
         "dolphin_item_pose" => return dolphin_item_pose_result(request),
         "axolotl_model" => return axolotl_model_result(request),

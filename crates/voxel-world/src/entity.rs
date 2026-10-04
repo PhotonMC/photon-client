@@ -216,6 +216,12 @@ pub(crate) struct EntityState {
     /// `AbstractCubeMob.getSize` once the data has said (one before), and its squish.
     pub(crate) cube_size: Option<i32>,
     pub(crate) cube: crate::cube_mob::CubeMobState,
+    /// A shulker's attach face (a direction's data value, down at first), raw
+    /// peek and colour (`None` for the default), and its lid.
+    pub(crate) shulker_face: i32,
+    pub(crate) shulker_raw_peek: i8,
+    pub(crate) shulker_color: Option<u8>,
+    pub(crate) shulker: crate::shulker::ShulkerState,
     /// `Parrot.getVariant`'s id.
     pub(crate) parrot_variant: i32,
     /// `Bat.isResting`, `Vex.isCharging` and `Allay.isDancing`.
@@ -1047,7 +1053,10 @@ impl ClientEntity {
         let mut body_old = f32::from_bits(self.old_y_body_rot_bits);
         let mut head = f32::from_bits(self.y_head_rot_bits);
         let mut head_old = f32::from_bits(self.old_y_head_rot_bits);
-        if kind == LivingKind::Mob {
+        if kind == LivingKind::Mob && self.is_shulker() {
+            // `Shulker.ShulkerBodyRotationControl`: the body does not follow.
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+        } else if kind == LivingKind::Mob {
             let mut control = crate::living::MobBodyControl {
                 head_stable_time: self.head_stable_time,
                 last_stable_y_head_rot: f32::from_bits(self.last_stable_y_head_rot_bits),
@@ -2501,6 +2510,7 @@ impl ClientEntity {
             self.tick_mob_motion(was_interpolating);
             self.tick_squid();
             self.tick_cube_mob();
+            self.tick_shulker();
         }
     }
 
@@ -2525,6 +2535,33 @@ impl ClientEntity {
         // `GlowSquid.aiStep`: the dark ticks a hurt glow squid was given run out.
         if self.living.glow_dark_ticks > 0 {
             self.living.glow_dark_ticks -= 1;
+        }
+    }
+
+    pub(crate) fn is_shulker(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:shulker")
+    }
+
+    /// `Shulker.getAttachFace`'s data value (down 0, up 1, north 2, south 3, west 4, east 5).
+    pub fn shulker_attach_face(&self) -> i32 {
+        self.living.shulker_face
+    }
+
+    /// `Shulker.getColor`'s dye id, none for the default.
+    pub fn shulker_color(&self) -> Option<u8> {
+        self.living.shulker_color
+    }
+
+    /// A shulker's lid between two ticks.
+    pub fn shulker(&self) -> &crate::shulker::ShulkerState {
+        &self.living.shulker
+    }
+
+    /// `Shulker.tick`'s lid.
+    pub(crate) fn tick_shulker(&mut self) {
+        if self.is_shulker() {
+            let raw = self.living.shulker_raw_peek;
+            self.living.shulker.tick(raw);
         }
     }
 

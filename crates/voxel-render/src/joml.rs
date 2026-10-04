@@ -336,30 +336,21 @@ impl Matrix4 {
             self.properties & AFFINE != 0 && self.properties & IDENTITY == 0,
             "only affine matrices are rotated about a point"
         );
+        // `rotateAroundAffine`: plain products and sums, no fused multiply-add.
         let r = quat.expand();
         let m = self.m;
         let mut out = [[0.0_f32; 4]; 4];
-        for (column, (a, b, c)) in [(r[6], r[7], r[8]), (r[0], r[1], r[2]), (r[3], r[4], r[5])]
-            .into_iter()
-            .enumerate()
-        {
-            // The third column is written first, then the first, then the second.
-            let target = [2, 0, 1][column];
-            for row in 0..3 {
-                out[target][row] = fma(m[0][row], a, fma(m[1][row], b, m[2][row] * c));
+        let column_of =
+            |rm: [f32; 3], row: usize| m[0][row] * rm[0] + m[1][row] * rm[1] + m[2][row] * rm[2];
+        let columns = [[r[0], r[1], r[2]], [r[3], r[4], r[5]], [r[6], r[7], r[8]]];
+        for row in 0..3 {
+            for (index, rm) in columns.into_iter().enumerate() {
+                out[index][row] = column_of(rm, row);
             }
         }
         for row in 0..3 {
-            let moved = fma(
-                m[0][row],
-                ox,
-                fma(m[1][row], oy, fma(m[2][row], oz, m[3][row])),
-            );
-            out[3][row] = fma(
-                -out[0][row],
-                ox,
-                fma(-out[1][row], oy, fma(-out[2][row], oz, moved)),
-            );
+            let moved = m[0][row] * ox + m[1][row] * oy + m[2][row] * oz + m[3][row];
+            out[3][row] = -out[0][row] * ox - out[1][row] * oy - m[2][row] * oz + moved;
         }
         out[3][3] = 1.0;
         self.m = out;
@@ -635,6 +626,12 @@ impl Pose {
 
     pub fn rotate(&mut self, quat: &Quaternion) {
         self.pose.rotate(quat);
+        self.normal.rotate(quat);
+    }
+
+    /// `PoseStack.rotateAround`.
+    pub fn rotate_around(&mut self, quat: &Quaternion, point: (f32, f32, f32)) {
+        self.pose.rotate_around(quat, point);
         self.normal.rotate(quat);
     }
 

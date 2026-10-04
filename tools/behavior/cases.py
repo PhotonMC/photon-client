@@ -14367,6 +14367,7 @@ def movement_item_cases():
                                            "value": value}
     cube_size = lambda tick, size: {"tick": tick, "type": "cube_size", "size": size}
     head_turn = lambda tick, angle: {"tick": tick, "type": "head_rotation", "angle": angle}
+    shulker_data = lambda tick, **fields: {"tick": tick, "type": "shulker_data", **fields}
     hops = [on_ground(2, True), on_ground(9, False), on_ground(21, True), on_ground(30, False),
             on_ground(33, True)]
     motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
@@ -14389,6 +14390,19 @@ def movement_item_cases():
         living("magma-cube-size-three", "magma_cube", 20,
                [head_turn(1, 90), cube_size(3, 3), on_ground(5, True), on_ground(12, False)],
                extras=["cube"]),
+        # A shulker's lid moves a twentieth a tick towards the peek (hundredths) the data says, and
+        # its body stays facing south wherever its head turns.
+        living("shulker-opens", "shulker", 40, [shulker_data(2, peek=100)], extras=["shulker"]),
+        living("shulker-opens-part-way", "shulker", 30, [shulker_data(1, peek=30)],
+               extras=["shulker"]),
+        living("shulker-opens-and-closes", "shulker", 70,
+               [shulker_data(1, peek=100), shulker_data(26, peek=0), shulker_data(45, peek=60)],
+               extras=["shulker"]),
+        living("shulker-on-a-wall-in-a-colour", "shulker", 12,
+               [shulker_data(1, face=4, color=14)], extras=["shulker"]),
+        living("shulker-no-colour", "shulker", 6, [shulker_data(1, color=16)], extras=["shulker"]),
+        living("shulker-looks-around", "shulker", 30,
+               [head_turn(2, 64), head_turn(9, -100), shulker_data(12, peek=40)], extras=["shulker"]),
         squid("squid-at-rest-in-water", 40, []),
         squid("squid-glides-in-water", 70, [motion(3, 0.12, -0.04, 0.07), motion(30, -0.1, 0.06, 0.02)]),
         squid("squid-fast-tentacles", 60, [motion(3, 0.0, 0.1, 0.0)], speed=0.28),
@@ -14996,6 +15010,7 @@ def entity_cases():
     yield from entity_shaking_cases()
     yield from entity_squid_cases()
     yield from entity_cube_mob_cases()
+    yield from entity_shulker_cases()
     yield from entity_fish_cases()
     yield from entity_sea_animal_cases()
     yield from entity_axolotl_cases()
@@ -16224,6 +16239,33 @@ def entity_cube_mob_cases():
                  "death_time": float_bits(7.5)})
     yield {"case_id": "entity/cube-mob-rotations", "family": "entity",
            "operation": "setup_rotations", "rows": rows}
+
+
+def entity_shulker_cases():
+    """The shulker posed by the reference's own `ShulkerModel.setupAnim` (the lid's rise, its twist
+    past a third open, its bob once the lid is more than open, and the head's turn from the body),
+    and the turns its renderer leaves for each face it can be attached to."""
+    rows = [{"label": f"shulker-peek-{peek}-head-{head}", "layer": "minecraft:shulker#main",
+             "peek_amount": float_bits(peek), "age_in_ticks": float_bits(37.25),
+             "x_rot": float_bits(-12.5), "y_head_rot": float_bits(head),
+             "y_body_rot": float_bits(0.0)}
+            for peek in (0.0, 0.15, 0.3, 0.31, 0.5, 0.75, 1.0) for head in (0.0, 90.0, -137.5)]
+    yield {"case_id": "entity/shulker-model", "family": "entity", "operation": "shulker_model",
+           "rows": rows}
+    turns = [{"label": f"shulker-face-{face}-body-{body_rot}", "kind": "shulker", "baby": False,
+              "body_rot": float_bits(body_rot), "x_rot": float_bits(0.0),
+              "age_in_ticks": float_bits(10.5), "attach_face": face,
+              "feet_x": float_bits(3.5), "feet_y": float_bits(-1.25), "feet_z": float_bits(0.75),
+              "scale": float_bits(1.0)}
+             for face in range(6) for body_rot in (0.0, 37.0)]
+    turns.append({"label": "shulker-dying", "kind": "shulker", "baby": False,
+                  "body_rot": float_bits(20.0), "x_rot": float_bits(0.0),
+                  "age_in_ticks": float_bits(3.0), "attach_face": 4,
+                  "death_time": float_bits(7.5), "feet_x": float_bits(3.5),
+                  "feet_y": float_bits(-1.25), "feet_z": float_bits(0.75),
+                  "scale": float_bits(1.0)})
+    yield {"case_id": "entity/shulker-rotations", "family": "entity",
+           "operation": "setup_rotations", "rows": turns}
 
 
 def entity_copper_golem_cases():

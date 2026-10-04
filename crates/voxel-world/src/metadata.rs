@@ -562,6 +562,25 @@ pub(crate) fn is_cube_mob_type(type_id: i32) -> bool {
     )
 }
 
+/// A shulker's attach face (a direction's data value), raw peek and colour, each
+/// when the data holds it.
+pub(crate) fn shulker_data_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<i32>, Option<u8>, Option<u8>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:shulker") {
+        return (None, None, None);
+    }
+    let face = find_metadata_field(metadata, SHULKER_ATTACH_FACE_DATA_ID)
+        .filter(|(serializer, _)| *serializer == DIRECTION_SERIALIZER_ID)
+        .and_then(|(_, mut value)| voxel_core::wire::read_varint(&mut value).ok());
+    (
+        face,
+        metadata_byte_value(metadata, SHULKER_PEEK_DATA_ID),
+        metadata_byte_value(metadata, SHULKER_COLOR_DATA_ID),
+    )
+}
+
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
 pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:phantom" {

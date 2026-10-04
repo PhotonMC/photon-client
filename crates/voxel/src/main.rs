@@ -38,6 +38,7 @@ mod screens;
 mod script;
 mod sections;
 mod sheep;
+mod shulkers;
 mod sky;
 mod squids;
 mod striders;

@@ -315,6 +315,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::striders::textures())
         .chain(crate::squids::textures())
         .chain(crate::cube_mobs::textures())
+        .chain(crate::shulkers::textures())
         .chain(crate::fish::textures())
         .chain(crate::dolphins::textures())
         .chain(crate::turtles::textures())
@@ -598,7 +599,7 @@ fn remote_families(
 }
 
 /// The hostile mobs that are not humanoids: the spiders, creepers and endermen,
-/// then the slimes and the magma cubes.
+/// then the slimes, the magma cubes and the shulkers.
 fn remote_hostiles(
     session: &PlaySession,
     models: &mut MobModels,
@@ -607,6 +608,9 @@ fn remote_hostiles(
 ) -> Vec<Vertex> {
     let mut vertices = crate::monsters::remote_monsters(session, models, textures, (view, held));
     vertices.extend(crate::cube_mobs::remote_cube_mobs(
+        session, models, textures, view,
+    ));
+    vertices.extend(crate::shulkers::remote_shulkers(
         session, models, textures, view,
     ));
     vertices

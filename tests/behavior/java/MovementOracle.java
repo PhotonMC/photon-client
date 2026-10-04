@@ -854,6 +854,22 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "shulker_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var shulkerClass = net.minecraft.world.entity.monster.Shulker.class;
+                        if (event.has("face")) {
+                            data.add(wolfData(shulkerClass, "DATA_ATTACH_FACE_ID",
+                                net.minecraft.core.Direction.from3DDataValue(event.get("face").getAsInt())));
+                        }
+                        if (event.has("peek")) {
+                            data.add(wolfData(shulkerClass, "DATA_PEEK_ID", (byte) event.get("peek").getAsInt()));
+                        }
+                        if (event.has("color")) {
+                            data.add(wolfData(shulkerClass, "DATA_COLOR_ID", (byte) event.get("color").getAsInt()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "head_rotation" -> listener.handleRotateMob(
                         new net.minecraft.network.protocol.game.ClientboundRotateHeadPacket(entity,
                             (byte) event.get("angle").getAsInt()));
@@ -1342,6 +1358,19 @@ public final class MovementOracle {
                             described.addProperty("max_x", Oracle.bits(box.maxX));
                             described.addProperty("max_y", Oracle.bits(box.maxY));
                             described.addProperty("max_z", Oracle.bits(box.maxZ));
+                        }
+                        case "shulker" -> {
+                            var shulker = (net.minecraft.world.entity.monster.Shulker) entity;
+                            described.addProperty("face", shulker.getAttachFace().get3DDataValue());
+                            described.addProperty("color",
+                                shulker.getColor() == null ? 16 : shulker.getColor().getId());
+                            described.addProperty("peek_half", Oracle.bits(shulker.getClientPeekAmount(0.5F)));
+                            described.addProperty("peek_start", Oracle.bits(shulker.getClientPeekAmount(0.0F)));
+                            described.addProperty("peek_end", Oracle.bits(shulker.getClientPeekAmount(1.0F)));
+                            described.addProperty("y_rot", Oracle.bits(shulker.getYRot()));
+                            described.addProperty("y_body_rot", Oracle.bits(shulker.yBodyRot));
+                            described.addProperty("y_body_rot_old", Oracle.bits(shulker.yBodyRotO));
+                            described.addProperty("y_head_rot", Oracle.bits(shulker.yHeadRot));
                         }
                         case "cube" -> {
                             var cube = (net.minecraft.world.entity.monster.cubemob.AbstractCubeMob) entity;

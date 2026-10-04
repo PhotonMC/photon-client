@@ -65,6 +65,7 @@ pub mod ravager;
 mod recipes;
 mod region_copy;
 mod shadow;
+pub mod shulker;
 pub mod squid;
 pub mod wolf;
 
@@ -3218,6 +3219,15 @@ impl ClientWorld {
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
+        if let Some(shulker) = self
+            .entities
+            .get_mut(&entity.entity_id)
+            .filter(|entity| entity.is_shulker())
+        {
+            // `Shulker.recreateFromPacket`: the body faces south.
+            shulker.y_body_rot_bits = 0.0_f32.to_bits();
+            shulker.old_y_body_rot_bits = 0.0_f32.to_bits();
+        }
         self.snap_local_player_turn(entity.entity_id, head_rotation_bits, entity.rotation.0);
         true
     }
@@ -4324,6 +4334,17 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = cube_mob_size_from_metadata(entity.type_id, metadata) {
         entity.set_cube_size(size);
+    }
+    let (shulker_face, shulker_peek, shulker_color) =
+        shulker_data_from_metadata(entity.type_id, metadata);
+    if let Some(face) = shulker_face {
+        entity.living.shulker_face = face;
+    }
+    if let Some(peek) = shulker_peek {
+        entity.living.shulker_raw_peek = peek as i8;
+    }
+    if let Some(color) = shulker_color {
+        entity.living.shulker_color = (color <= 15).then_some(color);
     }
     let (guardian_moving, guardian_target) = guardian_data_from_metadata(entity.type_id, metadata);
     if guardian_moving.is_some() || guardian_target.is_some() {

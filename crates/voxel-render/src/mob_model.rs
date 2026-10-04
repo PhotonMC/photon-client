@@ -20,6 +20,17 @@ pub struct QuadrupedState {
     pub walk_speed: f32,
 }
 
+/// What a shulker's model is posed from (`ShulkerRenderState`): the lid's
+/// peek, the age, the pitch, and the head's and the body's own turns.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ShulkerRenderState {
+    pub peek_amount: f32,
+    pub age_in_ticks: f32,
+    pub x_rot: f32,
+    pub y_head_rot: f32,
+    pub y_body_rot: f32,
+}
+
 /// What a villager's (or a wandering trader's) model is posed from.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct VillagerState {
@@ -1580,6 +1591,36 @@ impl MobModel {
             if let Some(tentacle) = self.root.child_mut(&format!("tentacle{index}")) {
                 tentacle.x_rot = tentacle_angle;
             }
+        }
+    }
+
+    /// `ShulkerModel.setupAnim`: the lid rises and, past a third open, twists;
+    /// with the lid more than fully open it also bobs; the head turns from the
+    /// body to where the entity looks.
+    pub fn setup_shulker(&mut self, state: &ShulkerRenderState) {
+        self.root.reset();
+        let pi = std::f32::consts::PI;
+        let bs = (0.5 + state.peek_amount) * pi;
+        let sine = mth_sin_f64(f64::from(bs));
+        let q = -1.0 + sine;
+        let mut extra = 0.0;
+        if bs > pi {
+            extra = mth_sin_f64(f64::from(state.age_in_ticks * 0.1)) * 0.7;
+        }
+        if let Some(lid) = self.root.child_mut("lid") {
+            lid.x = 0.0;
+            lid.y = 16.0 + sine * 8.0 + extra;
+            lid.z = 0.0;
+            lid.y_rot = if state.peek_amount > 0.3 {
+                q * q * q * q * pi * 0.125
+            } else {
+                0.0
+            };
+        }
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(head) = self.root.child_mut("head") {
+            head.x_rot = state.x_rot * degrees;
+            head.y_rot = (state.y_head_rot - 180.0 - state.y_body_rot) * degrees;
         }
     }
 
@@ -3855,6 +3896,29 @@ pub struct MobPlacement {
     pub fish: Option<FishTurns>,
     /// `AbstractCubeMobRenderer.scale`, which comes before the hooks above.
     pub cube_mob: Option<CubeMobScale>,
+    /// `ShulkerRenderer.setupRotations`: the data value of the face the shulker
+    /// is attached to, which turns the pose about the middle of its box.
+    pub attach_face: Option<i32>,
+}
+
+/// `Direction.getRotation` of the direction with a data value (down 0, up 1,
+/// north 2, south 3, west 4, east 5).
+pub fn direction_rotation(data_value: i32) -> Quaternion {
+    let half = std::f32::consts::PI / 2.0;
+    let pi = std::f32::consts::PI;
+    match data_value {
+        0 => Quaternion::rotation_x(pi),
+        2 => Quaternion::rotation_xyz(half, 0.0, pi),
+        3 => Quaternion::rotation_x(half),
+        4 => Quaternion::rotation_xyz(half, 0.0, half),
+        5 => Quaternion::rotation_xyz(half, 0.0, -half),
+        _ => Quaternion::identity(),
+    }
+}
+
+/// `Direction.getOpposite`, on data values.
+pub fn opposite_direction(data_value: i32) -> i32 {
+    data_value ^ 1
 }
 
 /// What a slime's or a magma cube's renderer scales the pose by
@@ -3966,6 +4030,7 @@ impl Default for MobPlacement {
             squid: None,
             fish: None,
             cube_mob: None,
+            attach_face: None,
         }
     }
 }
@@ -4102,6 +4167,12 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
     }
     if let Some(panda) = placement.panda {
         panda_rotate(&mut pose, &panda);
+    }
+    if let Some(face) = placement.attach_face {
+        pose.rotate_around(
+            &direction_rotation(opposite_direction(face)),
+            (0.0, 0.5, 0.0),
+        );
     }
     pose
 }
