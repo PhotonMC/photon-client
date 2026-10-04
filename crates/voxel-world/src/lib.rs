@@ -37,6 +37,7 @@ mod collision;
 mod constants;
 mod container;
 pub mod copper_golem;
+pub mod cube_mob;
 mod dimension;
 mod entity;
 mod entity_random;
@@ -4320,6 +4321,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
+    }
+    if let Some(size) = cube_mob_size_from_metadata(entity.type_id, metadata) {
+        entity.set_cube_size(size);
     }
     let (guardian_moving, guardian_target) = guardian_data_from_metadata(entity.type_id, metadata);
     if guardian_moving.is_some() || guardian_target.is_some() {

@@ -14365,12 +14365,30 @@ def movement_item_cases():
                                           "tail": float_bits(tail), "seed": seed}
     fish_data = lambda tick, fish, value: {"tick": tick, "type": "fish_data", "fish": fish,
                                            "value": value}
+    cube_size = lambda tick, size: {"tick": tick, "type": "cube_size", "size": size}
+    head_turn = lambda tick, angle: {"tick": tick, "type": "head_rotation", "angle": angle}
+    hops = [on_ground(2, True), on_ground(9, False), on_ground(21, True), on_ground(30, False),
+            on_ground(33, True)]
     motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
                                     "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
     animation_rows = [
         # A squid beats its tentacles, and turns with its motion while it is in water; out of it
         # the tentacles flap and it tips head down. Its motion fades (a fiftieth a tick, and
         # under three thousandths is dropped) unless a position interpolation runs.
+        # A slime or a magma cube squashes as it lands and stretches as it leaves the ground, its
+        # target fading faster for the slime; each time its size is said it turns its body to where
+        # the head looks (the same size again too) and scales its box.
+        living("slime-lands", "slime", 24, [on_ground(2, True)], extras=["cube"]),
+        living("slime-hops", "slime", 44, hops, extras=["cube"]),
+        living("magma-cube-hops", "magma_cube", 44, hops, extras=["cube"]),
+        living("slime-grows-and-turns", "slime", 30,
+               [head_turn(2, 64), cube_size(4, 4), on_ground(6, True)], extras=["cube"]),
+        living("slime-size-said-again", "slime", 36,
+               [head_turn(1, -50), cube_size(2, 4), head_turn(8, 30), cube_size(10, 4),
+                head_turn(14, 100), cube_size(18, 2)], extras=["cube"]),
+        living("magma-cube-size-three", "magma_cube", 20,
+               [head_turn(1, 90), cube_size(3, 3), on_ground(5, True), on_ground(12, False)],
+               extras=["cube"]),
         squid("squid-at-rest-in-water", 40, []),
         squid("squid-glides-in-water", 70, [motion(3, 0.12, -0.04, 0.07), motion(30, -0.1, 0.06, 0.02)]),
         squid("squid-fast-tentacles", 60, [motion(3, 0.0, 0.1, 0.0)], speed=0.28),
@@ -14977,6 +14995,7 @@ def entity_cases():
     yield from entity_strider_cases()
     yield from entity_shaking_cases()
     yield from entity_squid_cases()
+    yield from entity_cube_mob_cases()
     yield from entity_fish_cases()
     yield from entity_sea_animal_cases()
     yield from entity_axolotl_cases()
@@ -16182,6 +16201,29 @@ def entity_boat_cases():
     for row in poses:
         row.update({"feet_x": float_bits(10.5), "feet_y": float_bits(64.25), "feet_z": float_bits(-3.75)})
     yield {"case_id": "entity/boat-pose", "family": "entity", "operation": "boat_pose", "rows": poses}
+
+
+def entity_cube_mob_cases():
+    """The magma cube posed by the reference's own `MagmaCubeModel.setupAnim` (its slices lift apart
+    by the squish, none while it is squashed), and the pose both cube mobs' renderers leave: their
+    size and squish scale it (the slime's drawn a hair smaller first)."""
+    squishes = (-0.5, -0.1, 0.0, 0.3, 1.0, 1.7)
+    yield {"case_id": "entity/magma-cube-model", "family": "entity", "operation": "magma_cube_model",
+           "rows": [{"label": f"magma-cube-{squish}", "layer": "minecraft:magma_cube#main",
+                     "squish": float_bits(squish)} for squish in squishes]}
+    rows = [{"label": f"{kind}-size-{size}-squish-{squish}", "kind": kind, "baby": False,
+             "body_rot": float_bits(37.0), "x_rot": float_bits(0.0),
+             "age_in_ticks": float_bits(10.5), "size": size, "squish": float_bits(squish),
+             "feet_x": float_bits(3.5), "feet_y": float_bits(-1.25), "feet_z": float_bits(0.75),
+             "scale": float_bits(1.0)}
+            for kind in ("slime", "magma_cube") for size in (1, 2, 4, 127)
+            for squish in (-0.5, 0.0, 0.35, 1.0)]
+    rows.append({"label": "slime-dying", "kind": "slime", "baby": False,
+                 "body_rot": float_bits(-80.0), "x_rot": float_bits(0.0),
+                 "age_in_ticks": float_bits(3.0), "size": 3, "squish": float_bits(0.2),
+                 "death_time": float_bits(7.5)})
+    yield {"case_id": "entity/cube-mob-rotations", "family": "entity",
+           "operation": "setup_rotations", "rows": rows}
 
 
 def entity_copper_golem_cases():

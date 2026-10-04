@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `AbstractCubeMob.getSize` once the data has said (one before), and its squish.
+    pub(crate) cube_size: Option<i32>,
+    pub(crate) cube: crate::cube_mob::CubeMobState,
     /// `Parrot.getVariant`'s id.
     pub(crate) parrot_variant: i32,
     /// `Bat.isResting`, `Vex.isCharging` and `Allay.isDancing`.
@@ -2497,6 +2500,7 @@ impl ClientEntity {
         if living == Some(LivingKind::Mob) {
             self.tick_mob_motion(was_interpolating);
             self.tick_squid();
+            self.tick_cube_mob();
         }
     }
 
@@ -2522,6 +2526,43 @@ impl ClientEntity {
         if self.living.glow_dark_ticks > 0 {
             self.living.glow_dark_ticks -= 1;
         }
+    }
+
+    /// Whether this is a slime or a magma cube (`AbstractCubeMob`).
+    pub fn is_cube_mob(&self) -> bool {
+        crate::metadata::is_cube_mob_type(self.type_id)
+    }
+
+    /// `AbstractCubeMob.getSize`.
+    pub fn cube_size(&self) -> i32 {
+        self.living.cube_size.unwrap_or(1)
+    }
+
+    /// A slime's or a magma cube's squish and what it eases to.
+    pub fn cube_mob(&self) -> &crate::cube_mob::CubeMobState {
+        &self.living.cube
+    }
+
+    /// `AbstractCubeMob.onSyncedDataUpdated` for the size: each time the data
+    /// says it (the same size too), the body and the entity turn to where the
+    /// head looks.
+    pub(crate) fn set_cube_size(&mut self, size: i32) {
+        self.y_rot_bits = self.y_head_rot_bits;
+        self.y_body_rot_bits = self.y_head_rot_bits;
+        self.living.cube_size = Some(size);
+    }
+
+    /// `AbstractCubeMob.tick`'s squish (`decreaseSquish`: a magma cube's target
+    /// fades slower).
+    pub(crate) fn tick_cube_mob(&mut self) {
+        if !self.is_cube_mob() {
+            return;
+        }
+        let magma = voxel_data::entity_type::name(self.type_id) == Some("minecraft:magma_cube");
+        let on_ground = self.on_ground;
+        self.living
+            .cube
+            .tick(on_ground, if magma { 0.9 } else { 0.6 });
     }
 
     /// `GlowSquid.getDarkTicksRemaining`.

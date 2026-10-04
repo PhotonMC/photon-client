@@ -30,6 +30,8 @@ pub struct FrameView {
     pub partial: f64,
     pub light: i32,
     pub origin: [i32; 3],
+    /// Where the camera is, from that origin.
+    pub camera: [f32; 3],
     /// Where the skin the local player wears is in the entity textures.
     pub skin: voxel_render::entity_textures::TextureRect,
 }
@@ -617,6 +619,9 @@ pub fn entity_shadows(
             (0.5, 1.0)
         } else if type_id == pig || type_id == cow {
             (if entity.is_baby() { 0.35 } else { 0.7 }, 1.0)
+        } else if entity.is_cube_mob() {
+            // `AbstractCubeMobRenderer.getShadowRadius`.
+            (entity.cube_size() as f32 * 0.25, 1.0)
         } else if type_id == item || type_id == orb {
             (0.15, 0.75)
         } else {

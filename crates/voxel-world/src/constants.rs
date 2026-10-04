@@ -218,6 +218,8 @@ pub const FOX_VARIANT_DATA_ID: u8 = 18;
 /// Where a strider's suffocating flag sits among its data (the boost time, an
 /// int, is before it).
 pub const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
+/// Where a slime's or a magma cube's size (`AbstractCubeMob.ID_SIZE`, an int) sits among its data.
+pub const CUBE_MOB_SIZE_DATA_ID: u8 = 17;
 /// Where a copper golem's weathering and its action sit among its data, and
 /// the serializers that carry them (`WEATHERING_COPPER_STATE`, `COPPER_GOLEM_STATE`).
 pub const COPPER_GOLEM_WEATHER_DATA_ID: u8 = 16;

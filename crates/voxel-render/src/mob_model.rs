@@ -1583,6 +1583,18 @@ impl MobModel {
         }
     }
 
+    /// `MagmaCubeModel.setupAnim`: the eight slices lift apart by the squish
+    /// (none while it is squashed), the lowest staying where it is.
+    pub fn setup_magma_cube(&mut self, squish: f32) {
+        self.root.reset();
+        let squish = squish.max(0.0);
+        for index in 0..8_i32 {
+            if let Some(slice) = self.root.child_mut(&format!("cube{index}")) {
+                slice.y = -((4 - index) as f32) * squish * 1.7;
+            }
+        }
+    }
+
     /// `AdultAxolotlModel.setupAnim`: the body turns with the look, then the
     /// poses of swimming, hovering, crawling, lying still and playing dead
     /// each blended in by its factor, and the right legs mirroring the left.
@@ -3841,6 +3853,31 @@ pub struct MobPlacement {
     pub squid: Option<SquidTurns>,
     /// What the fish renderers' `setupRotations` add to the pose.
     pub fish: Option<FishTurns>,
+    /// `AbstractCubeMobRenderer.scale`, which comes before the hooks above.
+    pub cube_mob: Option<CubeMobScale>,
+}
+
+/// What a slime's or a magma cube's renderer scales the pose by
+/// (`AbstractCubeMobRenderer.applySizeAndSquish`, and for a slime
+/// `downscaleSlightly` before it).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CubeMobScale {
+    pub size: i32,
+    pub squish: f32,
+    pub downscale: bool,
+}
+
+impl CubeMobScale {
+    fn apply(&self, pose: &mut Pose) {
+        if self.downscale {
+            pose.scale(0.999, 0.999, 0.999);
+            pose.translate(0.0, 0.001, 0.0);
+        }
+        let size = self.size as f32;
+        let squash = self.squish / (size * 0.5 + 1.0);
+        let wide = 1.0 / (squash + 1.0);
+        pose.scale(wide * size, 1.0 / wide * size, wide * size);
+    }
 }
 
 /// What a fish renderer's `setupRotations` does besides the common turns: the
@@ -3928,6 +3965,7 @@ impl Default for MobPlacement {
             shaking: None,
             squid: None,
             fish: None,
+            cube_mob: None,
         }
     }
 }
@@ -3985,6 +4023,9 @@ pub fn death_roll(death_time: f32, flip_degrees: f32) -> Option<f32> {
 pub fn placement_pose(placement: &MobPlacement) -> Pose {
     let mut pose = placement_rotations(placement);
     pose.scale(-1.0, -1.0, 1.0);
+    if let Some(cube) = placement.cube_mob {
+        cube.apply(&mut pose);
+    }
     if let Some([x, y, z]) = placement.hook_scale {
         pose.scale(x, y, z);
     }
@@ -4074,6 +4115,34 @@ pub fn mob_vertices(
     texture: TextureRect,
 ) -> Vec<Vertex> {
     mob_vertices_coloured(model, placement, texture, None)
+}
+
+/// `RenderTypes.entityTranslucent` sorts the quads of what it draws far to near
+/// (`VertexSorting.DISTANCE_TO_ORIGIN` over each quad's centre, the midpoint of
+/// its first and third corner), so a blended model shows its far faces
+/// through its near ones. `vertices` are the six triangle corners of each quad
+/// [`mob_vertices`] makes, and `camera` is where the eye is among them.
+pub fn sort_translucent_quads(vertices: &mut [Vertex], camera: [f32; 3]) {
+    let key = |quad: &[Vertex]| -> f32 {
+        let centre =
+            |axis: usize| (quad[0].position[axis] + quad[2].position[axis]) / 2.0 - camera[axis];
+        let (x, y, z) = (centre(0), centre(1), centre(2));
+        x * x + y * y + z * z
+    };
+    let mut quads: Vec<(f32, [Vertex; 6])> = vertices
+        .chunks_exact(6)
+        .map(|quad| {
+            (
+                key(quad),
+                [quad[0], quad[1], quad[2], quad[3], quad[4], quad[5]],
+            )
+        })
+        .collect();
+    // A stable sort, as the reference's merge sort is.
+    quads.sort_by(|a, b| b.0.total_cmp(&a.0));
+    for (slot, (_, quad)) in vertices.chunks_exact_mut(6).zip(quads) {
+        slot.copy_from_slice(&quad);
+    }
 }
 
 /// A glowing layer's triangles (`EyesLayer`, `RenderTypes.eyes`): the same
@@ -4281,6 +4350,27 @@ mod tests {
         }
         assert!((area(&still) - area(&scrolled)).abs() < 1e-3);
         assert!(scrolled.len() > still.len());
+    }
+
+    #[test]
+    fn a_translucent_models_far_faces_are_drawn_before_its_near_ones() {
+        let outer = MobModel::bake(layer("minecraft:slime#outer").expect("the slime's shell"));
+        let placement = MobPlacement {
+            feet: [0.0, 0.0, 5.0],
+            ..MobPlacement::default()
+        };
+        let mut shell = mob_vertices(&outer, &placement, [0.0, 0.0, 1.0, 1.0]);
+        sort_translucent_quads(&mut shell, [0.0; 3]);
+        let distance = |quad: &[Vertex]| -> f32 {
+            let centre = |axis: usize| (quad[0].position[axis] + quad[2].position[axis]) / 2.0;
+            centre(0).powi(2) + centre(1).powi(2) + centre(2).powi(2)
+        };
+        let distances: Vec<f32> = shell.chunks_exact(6).map(distance).collect();
+        assert_eq!(distances.len(), 6);
+        assert!(
+            distances.windows(2).all(|pair| pair[0] >= pair[1]),
+            "{distances:?}"
+        );
     }
 
     fn pig() -> MobModel {

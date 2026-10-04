@@ -18611,6 +18611,19 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             z: bits64(event, "z")?,
                         });
                     }
+                    "head_rotation" => {
+                        let angle = i32_field(event, "angle")? as i8;
+                        world.apply_entity_head_rotation(
+                            entity_id,
+                            voxel_core::math::unpack_degrees_i8(angle),
+                        );
+                    }
+                    "cube_size" => {
+                        let mut data = vec![voxel_world::CUBE_MOB_SIZE_DATA_ID, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "size")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "glow_squid_data" => {
                         let mut data = vec![voxel_world::GLOW_SQUID_DARK_TICKS_DATA_ID, 1];
                         voxel_core::wire::write_varint(i32_field(event, "dark_ticks")?, &mut data);
@@ -19158,6 +19171,29 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             ("max_z", area.max_z),
                         ] {
                             described[key] = json!(format!("{:016x}", value.to_bits()));
+                        }
+                    }
+                    "cube" => {
+                        let cube = entity.cube_mob();
+                        described["size"] = json!(entity.cube_size());
+                        described["squish"] = json!(hex(cube.current_squish()));
+                        described["old_squish"] = json!(hex(cube.old_squish()));
+                        described["target_squish"] = json!(hex(cube.target_squish()));
+                        described["squish_half"] = json!(hex(cube.squish(0.5)));
+                        described["y_rot"] = json!(hex(entity.rotation().0));
+                        described["y_body_rot"] = json!(hex(entity.body_y_rotation()));
+                        described["on_ground"] = json!(entity.on_ground());
+                        let area = entity.bounding_box();
+                        for (key, value) in [
+                            ("min_x", area.min_x),
+                            ("min_y", area.min_y),
+                            ("min_z", area.min_z),
+                            ("max_x", area.max_x),
+                            ("max_y", area.max_y),
+                            ("max_z", area.max_z),
+                        ] {
+                            described[format!("box_{key}")] =
+                                json!(format!("{:016x}", value.to_bits()));
                         }
                     }
                     "squid" => {
@@ -21004,6 +21040,23 @@ fn fish_textures_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `magma_cube_model`: a magma cube's model posed and drawn.
+fn magma_cube_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let squish = u32::from_str_radix(row["squish"].as_str().ok_or("squish")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut model = MobModel::bake(layer);
+        model.setup_magma_cube(squish);
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `glow_squid_light`: the block light a glow squid is drawn with.
 fn glow_squid_light_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -21629,6 +21682,21 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
                     placed.scale = bits("scale")?;
                 }
+            }
+            kind @ ("slime" | "magma_cube") => {
+                placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {
+                    size: i32_field(row, "size")?,
+                    squish: bits("squish")?,
+                    downscale: kind == "slime",
+                });
+                if row.get("death_time").is_some() {
+                    placed.death_time = bits("death_time")?;
+                }
+                if row.get("feet_x").is_some() {
+                    placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
+                    placed.scale = bits("scale")?;
+                }
+                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
             }
             "phantom" => {
                 let scale =
@@ -22641,6 +22709,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "hoglin_model" => return hoglin_model_result(request),
         "copper_golem_model" => return copper_golem_model_result(request),
         "squid_model" => return squid_model_result(request),
+        "magma_cube_model" => return magma_cube_model_result(request),
         "sea_animal_model" => return sea_animal_model_result(request),
         "dolphin_item_pose" => return dolphin_item_pose_result(request),
         "axolotl_model" => return axolotl_model_result(request),

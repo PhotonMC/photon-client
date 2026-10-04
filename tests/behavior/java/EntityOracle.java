@@ -2316,6 +2316,23 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The magma cube's model posed by the reference's own `MagmaCubeModel.setupAnim`, drawn. */
+    private static JsonObject magmaCubeModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.monster.slime.MagmaCubeModel(
+                bakedLayer(row.get("layer").getAsString()));
+            var state = new net.minecraft.client.renderer.entity.state.SlimeRenderState();
+            state.squish = Oracle.f32(row, "squish");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * What `GlowSquidRenderer.getBlockLightLevel` makes of the dark ticks and the light around: the
      * glow comes from the reference's own `Mth.clampedLerp`, cut to a whole level.
@@ -2882,6 +2899,14 @@ public final class EntityOracle {
                 squid.xBodyRot = Oracle.f32(row, "x_body_rot");
                 squid.zBodyRot = Oracle.f32(row, "z_body_rot");
                 state = squid;
+            } else if (kind.equals("slime") || kind.equals("magma_cube")) {
+                rendererClass = kind.equals("slime")
+                    ? net.minecraft.client.renderer.entity.SlimeRenderer.class
+                    : net.minecraft.client.renderer.entity.MagmaCubeRenderer.class;
+                var cube = new net.minecraft.client.renderer.entity.state.SlimeRenderState();
+                cube.size = row.get("size").getAsInt();
+                cube.squish = Oracle.f32(row, "squish");
+                state = cube;
             } else if (kind.equals("cod")) {
                 rendererClass = net.minecraft.client.renderer.entity.CodRenderer.class;
                 state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
@@ -2920,8 +2945,12 @@ public final class EntityOracle {
                 state.deathTime = Oracle.f32(row, "death_time");
             }
             var renderer = UNSAFE.allocateInstance(rendererClass);
-            var method = rendererClass.getDeclaredMethod("setupRotations", state.getClass(),
-                com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
+            boolean cubeMob = kind.equals("slime") || kind.equals("magma_cube");
+            // The cube mobs' renderers take the common turns of `LivingEntityRenderer`.
+            var method = (cubeMob ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class : rendererClass)
+                .getDeclaredMethod("setupRotations",
+                    cubeMob ? net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class : state.getClass(),
+                    com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
             method.setAccessible(true);
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             if (row.has("feet_x")) {
@@ -2940,12 +2969,15 @@ public final class EntityOracle {
                 described.add(Oracle.bits(value));
             }
             out.add("pose", described);
-            if (kind.equals("phantom")) {
+            if (kind.equals("phantom") || cubeMob) {
                 // What `submit` does after `setupRotations`: the flip, the renderer's own scale
-                // and the model's lift.
+                // and the model's lift. (The magma cube takes its scale from the cube mobs' base.)
                 stack.scale(-1.0F, -1.0F, 1.0F);
-                var hook = rendererClass.getDeclaredMethod("scale", state.getClass(),
-                    com.mojang.blaze3d.vertex.PoseStack.class);
+                var hook = (kind.equals("magma_cube")
+                        ? net.minecraft.client.renderer.entity.AbstractCubeMobRenderer.class : rendererClass)
+                    .getDeclaredMethod("scale", cubeMob
+                        ? net.minecraft.client.renderer.entity.state.SlimeRenderState.class : state.getClass(),
+                        com.mojang.blaze3d.vertex.PoseStack.class);
                 hook.setAccessible(true);
                 hook.invoke(renderer, state, stack);
                 stack.translate(0.0F, -1.501F, 0.0F);
@@ -3874,6 +3906,9 @@ public final class EntityOracle {
         }
         if (operation.equals("squid_model")) {
             return squidModel(request);
+        }
+        if (operation.equals("magma_cube_model")) {
+            return magmaCubeModel(request);
         }
         if (operation.equals("sea_animal_model")) {
             return seaAnimalModel(request);

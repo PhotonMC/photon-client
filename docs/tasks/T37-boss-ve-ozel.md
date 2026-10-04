@@ -28,4 +28,5 @@ Ender ejderhası savaş yapıları, boss çubuğu (var), sesler.
 Büyük; uygulamaya başlarken tür başına alt görev dosyası aç. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Bölündü. Yapıldı: T37a (slime, magma cube). Kalan, tür başına: T37b sulfur cube, T37c shulker, T37d warden, T37e creaking, T37f armadillo ve sniffer, T37g wither, T37h ender ejderhası (görev dosyaları açıldı).
+- Sıra önerisi: T37c (en küçük), T37b, T37e, T37g, T37f, T37d, T37h.

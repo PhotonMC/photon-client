@@ -544,6 +544,7 @@ impl Play {
             partial: frame.partial,
             light: packed_light(self.session.world(), frame.eye),
             origin: self.origin,
+            camera: frame.relative,
             skin: self.skin_rect,
         };
         let first_person = self.controls.camera_type == CameraType::FirstPerson;

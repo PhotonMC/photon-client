@@ -33,7 +33,12 @@ impl ClientEntity {
                     Some(baby) if self.baby => baby,
                     _ => pick.size,
                 };
-                let scale = self.fish_dimension_scale();
+                let scale = if self.is_cube_mob() {
+                    // `AbstractCubeMob.getDefaultDimensions`.
+                    self.cube_size() as f32
+                } else {
+                    self.fish_dimension_scale()
+                };
                 ClientEntityDimensions::from_values(width, height, eye_height, false)
                     .scale(scale, scale)
             }

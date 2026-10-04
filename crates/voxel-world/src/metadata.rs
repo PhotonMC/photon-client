@@ -546,6 +546,22 @@ pub(crate) fn parrot_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
     metadata_int_value(metadata, PARROT_VARIANT_DATA_ID)
 }
 
+/// A slime's or a magma cube's size (`AbstractCubeMob.ID_SIZE`), when the data holds it.
+pub(crate) fn cube_mob_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if !is_cube_mob_type(type_id) {
+        return None;
+    }
+    metadata_int_value(metadata, CUBE_MOB_SIZE_DATA_ID)
+}
+
+/// Whether the type is a slime or a magma cube.
+pub(crate) fn is_cube_mob_type(type_id: i32) -> bool {
+    matches!(
+        voxel_data::entity_type::name(type_id),
+        Some("minecraft:slime" | "minecraft:magma_cube")
+    )
+}
+
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
 pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     if voxel_data::entity_type::name(type_id)? != "minecraft:phantom" {

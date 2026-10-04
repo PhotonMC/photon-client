@@ -8,6 +8,7 @@ mod bears;
 mod boats;
 mod controls;
 mod copper_golems;
+mod cube_mobs;
 mod dolphins;
 mod dropped_items;
 mod farm_animals;

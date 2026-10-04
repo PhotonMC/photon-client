@@ -854,6 +854,16 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "head_rotation" -> listener.handleRotateMob(
+                        new net.minecraft.network.protocol.game.ClientboundRotateHeadPacket(entity,
+                            (byte) event.get("angle").getAsInt()));
+                    case "cube_size" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.monster.cubemob.AbstractCubeMob.class, "ID_SIZE",
+                            event.get("size").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "baby_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.AgeableMob.class, "DATA_BABY_ID",
@@ -1332,6 +1342,23 @@ public final class MovementOracle {
                             described.addProperty("max_x", Oracle.bits(box.maxX));
                             described.addProperty("max_y", Oracle.bits(box.maxY));
                             described.addProperty("max_z", Oracle.bits(box.maxZ));
+                        }
+                        case "cube" -> {
+                            var cube = (net.minecraft.world.entity.monster.cubemob.AbstractCubeMob) entity;
+                            described.addProperty("size", cube.getSize());
+                            described.addProperty("squish", Oracle.bits(cube.squish));
+                            described.addProperty("old_squish", Oracle.bits(cube.oSquish));
+                            described.addProperty("target_squish", Oracle.bits(cube.targetSquish));
+                            described.addProperty("squish_half",
+                                Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, cube.oSquish, cube.squish)));
+                            described.addProperty("y_rot", Oracle.bits(cube.getYRot()));
+                            described.addProperty("y_body_rot", Oracle.bits(cube.yBodyRot));
+                            described.addProperty("on_ground", cube.onGround());
+                            var box = cube.getBoundingBox();
+                            for (var side : new Object[][] {{"min_x", box.minX}, {"min_y", box.minY}, {"min_z", box.minZ},
+                                {"max_x", box.maxX}, {"max_y", box.maxY}, {"max_z", box.maxZ}}) {
+                                described.addProperty("box_" + side[0], Oracle.bits((double) side[1]));
+                            }
                         }
                         case "squid" -> {
                             var squid = (net.minecraft.world.entity.animal.squid.Squid) entity;
