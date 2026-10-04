@@ -18599,6 +18599,25 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "turtle_data" => {
+                        let mut data = Vec::new();
+                        if let Some(has_egg) = event["has_egg"].as_bool() {
+                            data.extend([
+                                voxel_world::TURTLE_HAS_EGG_DATA_ID,
+                                8,
+                                u8::from(has_egg),
+                            ]);
+                        }
+                        if let Some(laying) = event["laying_egg"].as_bool() {
+                            data.extend([
+                                voxel_world::TURTLE_LAYING_EGG_DATA_ID,
+                                8,
+                                u8::from(laying),
+                            ]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "fish_data" => {
                         let data_id = match string(event, "fish")? {
                             "salmon" => voxel_world::SALMON_TYPE_DATA_ID,
@@ -18824,6 +18843,23 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 json!(rabbit.idle_head_tilt.time_in_millis(tick));
                             described["jump_completion"] = json!(hex(rabbit.jump_completion(0.5)));
                         }
+                    }
+                    "turtle" => {
+                        described["in_water"] = json!(entity.is_in_water());
+                        described["on_ground"] = json!(entity.on_ground());
+                        described["has_egg"] = json!(entity.turtle_has_egg());
+                        described["laying_egg"] = json!(entity.turtle_laying_egg());
+                        described["is_on_land"] =
+                            json!(!entity.is_in_water() && entity.on_ground());
+                        let area = entity.bounding_box();
+                        described["max_y"] = json!(format!("{:016x}", area.max_y.to_bits()));
+                        described["max_x"] = json!(format!("{:016x}", area.max_x.to_bits()));
+                    }
+                    "dolphin" => {
+                        let (x, _, z) = entity.motion();
+                        described["is_moving"] = json!(entity.is_moving_horizontally());
+                        described["motion_x"] = json!(format!("{:016x}", x.to_bits()));
+                        described["motion_z"] = json!(format!("{:016x}", z.to_bits()));
                     }
                     "fish" => {
                         described["in_water"] = json!(entity.is_in_water());
@@ -20034,6 +20070,64 @@ fn squid_model_result(request: &Value) -> Result<Value, String> {
         let mut model = MobModel::bake(layer);
         model.setup_squid(angle);
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `sea_animal_model`: a dolphin's or a turtle's model posed and drawn.
+fn sea_animal_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::{DolphinState, MobModel, QuadrupedState, TurtleState};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let mut model = MobModel::bake(layer);
+        if id.starts_with("minecraft:dolphin") {
+            model.setup_dolphin(&DolphinState {
+                y_rot: bits("y_rot")?,
+                x_rot: bits("x_rot")?,
+                age_in_ticks: bits("age_in_ticks")?,
+                is_moving: flag("is_moving")?,
+            });
+        } else {
+            model.setup_turtle(&TurtleState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("head_y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                is_on_land: flag("on_land")?,
+                is_laying_egg: flag("laying_egg")?,
+                has_egg: flag("has_egg")?,
+            });
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `dolphin_item_pose`: where a dolphin carries what it holds.
+fn dolphin_item_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let x_rot = u32::from_str_radix(row["x_rot"].as_str().ok_or("x_rot")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let mut pose = voxel_render::mob_model::dolphin_item_pose(&Pose::default(), x_rot);
+        // The stack's own display transform is none: the model is moved to its corner.
+        pose.translate(-0.5, -0.5, -0.5);
+        out.push(json!({"label": row["label"], "pose": matrix_bits(&pose)}));
     }
     Ok(json!({"rows": out}))
 }
@@ -21720,6 +21814,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "hoglin_model" => return hoglin_model_result(request),
         "copper_golem_model" => return copper_golem_model_result(request),
         "squid_model" => return squid_model_result(request),
+        "sea_animal_model" => return sea_animal_model_result(request),
+        "dolphin_item_pose" => return dolphin_item_pose_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22074,6 +22170,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                 (
                     "creeper-ignited",
                     i64::from(CREEPER_IGNITED_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "turtle-has-egg",
+                    i64::from(voxel_world::TURTLE_HAS_EGG_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "turtle-laying-egg",
+                    i64::from(voxel_world::TURTLE_LAYING_EGG_DATA_ID),
                     i64::from(8),
                 ),
                 (

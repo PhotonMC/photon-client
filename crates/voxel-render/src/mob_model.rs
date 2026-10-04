@@ -162,6 +162,26 @@ pub struct RabbitState {
     pub baby: bool,
 }
 
+/// What a dolphin's model is posed from (`DolphinRenderState`): the head's
+/// turn and pitch, which turn the whole body, the age, and whether it moves.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DolphinState {
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub age_in_ticks: f32,
+    pub is_moving: bool,
+}
+
+/// What a turtle's model is posed from (`TurtleRenderState`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct TurtleState {
+    pub quadruped: QuadrupedState,
+    pub is_on_land: bool,
+    pub is_laying_egg: bool,
+    /// Whether the egg shows on the belly (never on a baby).
+    pub has_egg: bool,
+}
+
 /// `GlowSquidRenderer.getBlockLightLevel`: a glow squid lights itself, less
 /// while it is dark (after a hurt), but never below the light around it.
 pub fn glow_squid_block_light(dark_ticks: i32, block_light: i32) -> i32 {
@@ -498,6 +518,27 @@ pub fn panda_item_pose(base: &Pose, age_in_ticks: f32, eating: bool) -> Pose {
     }
     let mut pose = *base;
     pose.translate(0.1, y, z);
+    pose
+}
+
+/// `DolphinCarryingItemLayer`: what a dolphin carries is held under its chin,
+/// lower and further forward the more its head is pitched.
+pub fn dolphin_item_pose(base: &Pose, x_rot: f32) -> Pose {
+    let angle_x_percent = x_rot.abs() / 60.0;
+    let mut pose = *base;
+    if x_rot < 0.0 {
+        pose.translate(
+            0.0,
+            1.0 - angle_x_percent * 0.5,
+            -1.0 + angle_x_percent * 0.5,
+        );
+    } else {
+        pose.translate(
+            0.0,
+            1.0 + angle_x_percent * 0.8,
+            -1.0 + angle_x_percent * 0.2,
+        );
+    }
     pose
 }
 
@@ -1230,6 +1271,69 @@ impl MobModel {
         for index in 0..8 {
             if let Some(tentacle) = self.root.child_mut(&format!("tentacle{index}")) {
                 tentacle.x_rot = tentacle_angle;
+            }
+        }
+    }
+
+    /// `DolphinModel.setupAnim`: the body takes the turn and pitch; while it
+    /// moves it undulates, the tail and its fin following.
+    pub fn setup_dolphin(&mut self, state: &DolphinState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let wave = mth_cos_f64(f64::from(state.age_in_ticks * 0.3));
+        let Some(body) = self.root.child_mut("body") else {
+            return;
+        };
+        body.x_rot = state.x_rot * degrees;
+        body.y_rot = state.y_rot * degrees;
+        if state.is_moving {
+            body.x_rot += -0.05 - 0.05 * wave;
+            if let Some(tail) = body.child_mut("tail") {
+                tail.x_rot = -0.1 * wave;
+                if let Some(fin) = tail.child_mut("tail_fin") {
+                    fin.x_rot = -0.2 * wave;
+                }
+            }
+        }
+    }
+
+    /// `TurtleModel.setupAnim` (and `AdultTurtleModel`'s belly): the walk of
+    /// the quadruped, then the flippers rowing on land (faster when laying)
+    /// or paddling in water; the egg shows, and lowers the model a sixteenth.
+    pub fn setup_turtle(&mut self, state: &TurtleState) {
+        self.setup_quadruped(&state.quadruped);
+        let (position, speed) = (state.quadruped.walk_position, state.quadruped.walk_speed);
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let mut set = |name: &str, apply: &dyn Fn(&mut Part)| {
+            if let Some(part) = self.root.child_mut(name) {
+                apply(part);
+            }
+        };
+        if state.is_on_land {
+            let lay_egg = if state.is_laying_egg { 4.0_f32 } else { 1.0 };
+            let amplitude = if state.is_laying_egg { 2.0_f32 } else { 1.0 };
+            let swing_pos = position * 5.0;
+            let front = cos(lay_egg * swing_pos);
+            let hind = cos(swing_pos);
+            set("right_front_leg", &|leg| {
+                leg.y_rot = -front * 8.0 * speed * amplitude;
+            });
+            set("left_front_leg", &|leg| {
+                leg.y_rot = front * 8.0 * speed * amplitude;
+            });
+            set("right_hind_leg", &|leg| leg.y_rot = -hind * 3.0 * speed);
+            set("left_hind_leg", &|leg| leg.y_rot = hind * 3.0 * speed);
+        } else {
+            let swing = cos(position * 0.6662 * 0.6) * (0.5 * speed);
+            set("right_hind_leg", &|leg| leg.x_rot = swing);
+            set("left_hind_leg", &|leg| leg.x_rot = -swing);
+            set("right_front_leg", &|leg| leg.z_rot = -swing);
+            set("left_front_leg", &|leg| leg.z_rot = swing);
+        }
+        if let Some(belly) = self.root.child_mut("egg_belly") {
+            belly.visible = state.has_egg;
+            if state.has_egg {
+                self.root.y -= 1.0;
             }
         }
     }

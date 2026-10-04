@@ -3566,6 +3566,13 @@ impl ClientWorld {
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
         }
+        let (has_egg, laying_egg) = turtle_eggs_from_metadata(entity.type_id, metadata);
+        if let Some(has_egg) = has_egg {
+            entity.living.turtle_has_egg = has_egg;
+        }
+        if let Some(laying_egg) = laying_egg {
+            entity.living.turtle_laying_egg = laying_egg;
+        }
         if let Some(immune) = hoglin_immune_from_metadata(entity.type_id, metadata) {
             entity.living.hoglin_immune = immune;
         }

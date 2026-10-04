@@ -144,6 +144,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T32c — Kutup ayısı — client-parity](client-polar-bear-parity-conformance.md)
 - [T32g — Ravager — client-parity](client-ravager-parity-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](client-runtime-conformance.md)
+- [T35d — Yunus ve kaplumbağa — client-parity](client-sea-animals-parity-conformance.md)
 - [T30 — Koyun ve tavuk — client-parity](client-sheep-chicken-parity-conformance.md)
 - [T29 — İskelet ve piglin aileleri modeli — client-parity](client-skeleton-piglin-parity-conformance.md)
 - [T33 — Örümcek, mağara örümceği ve creeper — client-parity](client-spider-creeper-parity-conformance.md)

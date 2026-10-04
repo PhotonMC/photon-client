@@ -1551,6 +1551,90 @@ public final class EntityOracle {
     }
 
     /**
+     * The dolphin's and the turtle's models posed by the reference's own `setupAnim`, drawn: the
+     * dolphin from the head's turn and pitch, the age and whether it moves; the turtle from the
+     * walk, whether it is on land, laying an egg, and carrying one.
+     */
+    private static JsonObject seaAnimalModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.EntityModel<?> model;
+            if (id.startsWith("minecraft:dolphin")) {
+                var state = new net.minecraft.client.renderer.entity.state.DolphinRenderState();
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.isMoving = row.get("is_moving").getAsBoolean();
+                var dolphin = id.contains("_baby")
+                    ? new net.minecraft.client.model.animal.dolphin.BabyDolphinModel(root)
+                    : new net.minecraft.client.model.animal.dolphin.DolphinModel(root);
+                dolphin.setupAnim(state);
+                model = dolphin;
+            } else {
+                var state = new net.minecraft.client.renderer.entity.state.TurtleRenderState();
+                state.yRot = Oracle.f32(row, "head_y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.isOnLand = row.get("on_land").getAsBoolean();
+                state.isLayingEgg = row.get("laying_egg").getAsBoolean();
+                state.hasEgg = row.get("has_egg").getAsBoolean();
+                net.minecraft.client.model.animal.turtle.TurtleModel turtle = id.contains("_baby")
+                    ? new net.minecraft.client.model.animal.turtle.BabyTurtleModel(root)
+                    : new net.minecraft.client.model.animal.turtle.AdultTurtleModel(root);
+                turtle.setupAnim(state);
+                model = turtle;
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Where `DolphinCarryingItemLayer` submits what a dolphin carries, from an identity pose and
+     * the dolphin's pitch: the matrix of the item.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject dolphinItemPose(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        for (float value : matrix) {
+                            poses.add(Oracle.bits(value));
+                        }
+                    }
+                    return null;
+                });
+            var state = new net.minecraft.client.renderer.entity.state.DolphinRenderState();
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.heldItem.newLayer();
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
+            new net.minecraft.client.renderer.entity.layers.DolphinCarryingItemLayer(parent)
+                .submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, state, 0.0F, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("pose", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The fish's models posed by the reference's own `setupAnim`, drawn: each layer by its class,
      * with the age and whether it is in water.
      */
@@ -2973,6 +3057,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_POWERED", "creeper-powered"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
+            {net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG", "turtle-has-egg"},
+            {net.minecraft.world.entity.animal.turtle.Turtle.class, "LAYING_EGG", "turtle-laying-egg"},
             {net.minecraft.world.entity.animal.fish.Salmon.class, "DATA_TYPE", "salmon-type"},
             {net.minecraft.world.entity.animal.fish.TropicalFish.class, "DATA_ID_TYPE_VARIANT", "tropical-fish-variant"},
             {net.minecraft.world.entity.animal.fish.Pufferfish.class, "PUFF_STATE", "pufferfish-puff-state"},
@@ -3165,6 +3251,12 @@ public final class EntityOracle {
         }
         if (operation.equals("squid_model")) {
             return squidModel(request);
+        }
+        if (operation.equals("sea_animal_model")) {
+            return seaAnimalModel(request);
+        }
+        if (operation.equals("dolphin_item_pose")) {
+            return dolphinItemPose(request);
         }
         if (operation.equals("fish_model")) {
             return fishModel(request);

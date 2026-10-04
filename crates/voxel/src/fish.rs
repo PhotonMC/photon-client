@@ -16,6 +16,7 @@ use voxel_world::fish::{
     tropical_pattern_dye,
 };
 
+use crate::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -35,8 +36,29 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     .chain(patterns)
 }
 
+/// The animals of the water the server added: squids, fish, dolphins and turtles.
+pub fn remote_water_animals(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
+) -> Vec<Vertex> {
+    let mut vertices = crate::squids::remote_squids(session, models, textures, view);
+    vertices.extend(remote_fish(session, models, textures, view));
+    vertices.extend(crate::dolphins::remote_dolphins(
+        session,
+        models,
+        textures,
+        (view, held),
+    ));
+    vertices.extend(crate::turtles::remote_turtles(
+        session, models, textures, view,
+    ));
+    vertices
+}
+
 /// The fish the server added, each posed from where it is between two ticks.
-pub fn remote_fish(
+fn remote_fish(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,

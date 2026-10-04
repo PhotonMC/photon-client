@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Turtle.hasEgg` and `Turtle.isLayingEgg`.
+    pub(crate) turtle_has_egg: bool,
+    pub(crate) turtle_laying_egg: bool,
     /// A salmon's size, a tropical fish's packed variant or a pufferfish's puff
     /// state, once the data has said.
     pub(crate) fish_variant: Option<i32>,
@@ -1979,7 +1982,26 @@ impl ClientEntity {
     /// Whether the entity's water state is tracked (`Entity.isInWater`): the
     /// mobs that draw differently in water.
     pub(crate) fn tracks_water(&self) -> bool {
-        self.is_squid() || self.is_fish()
+        self.is_squid()
+            || self.is_fish()
+            || voxel_data::entity_type::name(self.type_id) == Some("minecraft:turtle")
+    }
+
+    /// `Turtle.hasEgg`.
+    pub fn turtle_has_egg(&self) -> bool {
+        self.living.turtle_has_egg
+    }
+
+    /// `Turtle.isLayingEgg`.
+    pub fn turtle_laying_egg(&self) -> bool {
+        self.living.turtle_laying_egg
+    }
+
+    /// What `DolphinRenderer.extractRenderState` calls moving: the motion the
+    /// server gave it covers more than a ten-millionth of a block squared in a tick.
+    pub fn is_moving_horizontally(&self) -> bool {
+        let (x, _, z) = self.motion();
+        x * x + z * z > 1.0E-7
     }
 
     /// Whether this is one of the fish `AbstractFish` makes.

@@ -14342,11 +14342,11 @@ def movement_item_cases():
                          for y in layers for x in range(4, 13) for z in range(4, 13)]
         return row
 
-    def fish(label, entity, ticks, events, water="deep", y=64.0):
-        """A fish at the middle of the scene's only loaded chunk, in a pool of water, a layer of it
+    def fish(label, entity, ticks, events, water="deep", y=64.0, extras="fish"):
+        """A swimmer at the middle of the scene's only loaded chunk, in a pool of water, a layer of it
         that reaches only part of its box, or none; `y` is its feet."""
         layers = {"deep": range(60, 70), "shallow": range(64, 65), "none": range(0)}[water]
-        row = living(label, entity, ticks, events, extras=["fish"])
+        row = living(label, entity, ticks, events, extras=[extras])
         row["x"] = float_bits(8.5, "f64")
         row["y"] = float_bits(y, "f64")
         row["z"] = float_bits(8.5, "f64")
@@ -14390,6 +14390,25 @@ def movement_item_cases():
              y=63.4),
         fish("pufferfish-full", "pufferfish", 10, [fish_data(2, "pufferfish", 2)], water="shallow",
              y=63.4),
+        # A turtle is on land when it is out of the water and on the ground; it carries an egg
+        # and lays it as the data says. A dolphin moves while its motion covers ground.
+        fish("turtle-in-water", "turtle", 10, [on_ground(2, False)], extras="turtle"),
+        fish("turtle-on-land", "turtle", 10, [on_ground(2, True)], water="none", extras="turtle"),
+        fish("turtle-on-the-ground-in-water", "turtle", 10, [on_ground(2, True)],
+             water="shallow", y=63.5, extras="turtle"),
+        fish("turtle-in-the-air", "turtle", 10, [on_ground(2, False)], water="none",
+             extras="turtle"),
+        fish("turtle-with-an-egg", "turtle", 12,
+             [on_ground(1, True), {"tick": 3, "type": "turtle_data", "has_egg": True}],
+             water="none", extras="turtle"),
+        fish("turtle-lays-its-egg", "turtle", 12,
+             [on_ground(1, True), {"tick": 3, "type": "turtle_data", "has_egg": True,
+                                   "laying_egg": True}], water="none", extras="turtle"),
+        fish("dolphin-at-rest", "dolphin", 10, [], extras="dolphin"),
+        fish("dolphin-swims", "dolphin", 30, [motion(3, 0.1, 0.0, 0.05)], extras="dolphin"),
+        fish("dolphin-glides-to-a-stop", "dolphin", 60, [motion(3, 0.02, 0.0, 0.0)],
+             extras="dolphin"),
+        fish("dolphin-moves-only-up", "dolphin", 20, [motion(3, 0.0, 0.2, 0.0)], extras="dolphin"),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
         living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
         living("zombie-swings-again-too-early", "zombie", 14,
@@ -14728,6 +14747,7 @@ def entity_cases():
     yield from entity_shaking_cases()
     yield from entity_squid_cases()
     yield from entity_fish_cases()
+    yield from entity_sea_animal_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15517,6 +15537,41 @@ def entity_fish_cases():
     yield {"case_id": "entity/fish-textures", "family": "entity", "operation": "fish_textures",
            "rows": [{"label": name} for name in ("cod", "salmon", "pufferfish")]
            + [{"label": f"packed-{value & 0xFFFFFFFF:x}", "packed_id": value} for value in packed]}
+
+
+def entity_sea_animal_cases():
+    """The dolphin, grown and baby, posed by the reference's own `DolphinModel.setupAnim` (the body
+    takes the turn and pitch; while it moves it undulates), and where its layer carries an item;
+    the turtle, grown and baby, posed by `TurtleModel.setupAnim` (rowing on land, faster when
+    laying; paddling in water; the egg on an adult's belly)."""
+    rows = [{"label": f"{layer}-{label}", "layer": f"minecraft:{layer}#main",
+             "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+             "age_in_ticks": float_bits(age), "is_moving": moving}
+            for layer in ("dolphin", "dolphin_baby")
+            for label, y_rot, x_rot, age, moving in (
+                ("still", 0.0, 0.0, 12.5, False), ("turned", 33.5, -17.25, 12.5, False),
+                ("swimming", 33.5, -17.25, 12.5, True), ("swimming-later", -80.0, 41.0, 77.75, True))]
+    yield {"case_id": "entity/dolphin-model", "family": "entity", "operation": "sea_animal_model",
+           "rows": rows}
+    yield {"case_id": "entity/dolphin-item-pose", "family": "entity",
+           "operation": "dolphin_item_pose",
+           "rows": [{"label": f"pitch-{x_rot}", "x_rot": float_bits(x_rot)}
+                    for x_rot in (0.0, -0.0, 10.0, -10.0, 60.0, -60.0, 90.0, -90.0, 33.3)]}
+    rows = [{"label": f"{layer}-{label}", "layer": f"minecraft:{layer}#main",
+             "head_y_rot": float_bits(25.0), "x_rot": float_bits(-12.5),
+             "walk_position": float_bits(position), "walk_speed": float_bits(speed),
+             "on_land": on_land, "laying_egg": laying, "has_egg": egg}
+            for layer in ("turtle", "turtle_baby")
+            for label, position, speed, on_land, laying, egg in (
+                ("standing", 0.0, 0.0, True, False, False),
+                ("walking", 3.7, 0.6, True, False, False),
+                ("laying", 3.7, 0.6, True, True, False),
+                ("swimming", 3.7, 0.6, False, False, False),
+                ("swimming-faster", 11.2, 1.0, False, False, False),
+                ("with-an-egg", 3.7, 0.6, True, False, True),
+                ("with-an-egg-swimming", 5.1, 0.3, False, False, True))]
+    yield {"case_id": "entity/turtle-model", "family": "entity", "operation": "sea_animal_model",
+           "rows": rows}
 
 
 def entity_copper_golem_cases():

@@ -494,6 +494,21 @@ pub(crate) fn fish_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, data_id)
 }
 
+/// Whether a turtle carries an egg and is laying it (`Turtle.HAS_EGG`,
+/// `Turtle.LAYING_EGG`), each when the data holds it.
+pub(crate) fn turtle_eggs_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> (Option<bool>, Option<bool>) {
+    if voxel_data::entity_type::name(type_id) != Some("minecraft:turtle") {
+        return (None, None);
+    }
+    (
+        metadata_boolean_value(metadata, TURTLE_HAS_EGG_DATA_ID),
+        metadata_boolean_value(metadata, TURTLE_LAYING_EGG_DATA_ID),
+    )
+}
+
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
 pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {

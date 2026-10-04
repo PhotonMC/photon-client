@@ -830,6 +830,19 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "turtle_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("has_egg")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.turtle.Turtle.class, "HAS_EGG",
+                                event.get("has_egg").getAsBoolean()));
+                        }
+                        if (event.has("laying_egg")) {
+                            data.add(wolfData(net.minecraft.world.entity.animal.turtle.Turtle.class, "LAYING_EGG",
+                                event.get("laying_egg").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "fish_data" -> {
                         // A salmon's size or a pufferfish's puff state, which also resize its box.
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
@@ -1036,6 +1049,23 @@ public final class MovementOracle {
                             described.addProperty("idle_millis",
                                 rabbit.idleHeadTiltAnimationState.getTimeInMillis(rabbit.tickCount));
                             described.addProperty("jump_completion", Oracle.bits(rabbit.getJumpCompletion(0.5F)));
+                        }
+                        case "turtle" -> {
+                            var turtle = (net.minecraft.world.entity.animal.turtle.Turtle) entity;
+                            described.addProperty("in_water", turtle.isInWater());
+                            described.addProperty("on_ground", turtle.onGround());
+                            described.addProperty("has_egg", turtle.hasEgg());
+                            described.addProperty("laying_egg", turtle.isLayingEgg());
+                            described.addProperty("is_on_land", !turtle.isInWater() && turtle.onGround());
+                            var box = turtle.getBoundingBox();
+                            described.addProperty("max_y", Oracle.bits(box.maxY));
+                            described.addProperty("max_x", Oracle.bits(box.maxX));
+                        }
+                        case "dolphin" -> {
+                            var motion = entity.getDeltaMovement();
+                            described.addProperty("is_moving", motion.horizontalDistanceSqr() > 1.0E-7);
+                            described.addProperty("motion_x", Oracle.bits(motion.x));
+                            described.addProperty("motion_z", Oracle.bits(motion.z));
                         }
                         case "fish" -> {
                             described.addProperty("in_water", entity.isInWater());
