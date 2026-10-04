@@ -118,6 +118,11 @@ impl GuardianState {
         )
     }
 
+    /// `getAttackAnimationScale`: how far the beam has charged, from zero to one.
+    pub fn attack_animation_scale(&self, partial_tick: f32, attack_duration: i32) -> f32 {
+        (self.attack_time as f32 + partial_tick) / attack_duration as f32
+    }
+
     /// `getClientSideAttackTime`.
     pub fn attack_time(&self) -> i32 {
         self.attack_time

@@ -114,6 +114,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T35g — Kurbağa ve iribaş — client-parity](client-frog-parity-conformance.md)
 - [T30b — Keçi ve mantar ineği — client-parity](client-goat-mooshroom-parity-conformance.md)
 - [T34c — Golemler, enderman ve zombi köylü — client-parity](client-golem-enderman-parity-conformance.md)
+- [T35i — Gardiyanın ışını — client-parity](client-guardian-beam-parity-conformance.md)
 - [T35h — Gardiyan ve elder gardiyan — client-parity](client-guardian-parity-conformance.md)
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](client-held-item-parity-conformance.md)
 - [T32d — Hoglin ve zoglin — client-parity](client-hoglin-parity-conformance.md)

@@ -20354,6 +20354,67 @@ fn frog_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `guardian_beam`: the vertices of a guardian's beam from the pose its eye leaves.
+fn guardian_beam_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::guardian_beam::{BEAM_LIGHT, guardian_beam};
+    use voxel_render::joml::Pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut vector = [0.0_f64; 3];
+        for (slot, part) in vector
+            .iter_mut()
+            .zip(row["vector"].as_array().ok_or("vector")?)
+        {
+            *slot = f64::from_bits(
+                u64::from_str_radix(part.as_str().ok_or("vector part")?, 16)
+                    .map_err(|error| error.to_string())?,
+            );
+        }
+        let mut pose = Pose::default();
+        pose.translate(bits("x")?, bits("y")?, bits("z")?);
+        let beam = guardian_beam(
+            pose,
+            vector,
+            bits("time")?,
+            bits("scale")?,
+            bits("tex_v_off")?,
+        );
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let color = (0xFF_u32 << 24)
+            | ((beam.colour[0] as u32) << 16)
+            | ((beam.colour[1] as u32) << 8)
+            | beam.colour[2] as u32;
+        let vertices: Vec<String> = beam
+            .vertices
+            .iter()
+            .map(|vertex| {
+                format!(
+                    "{}{}{}{}{}{color:08x}{:08x}{}{}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    hex(vertex.uv[0]),
+                    hex(vertex.uv[1]),
+                    BEAM_LIGHT,
+                    hex(beam.normal[0]),
+                    hex(beam.normal[1]),
+                    hex(beam.normal[2]),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `guardian_model`: a guardian's model posed and drawn from the look, the spikes' and the tail's
 /// animation and what its eye follows.
 fn guardian_model_result(request: &Value) -> Result<Value, String> {
@@ -22139,6 +22200,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "frog_model" => return frog_model_result(request),
         "nautilus_model" => return nautilus_model_result(request),
         "guardian_model" => return guardian_model_result(request),
+        "guardian_beam" => return guardian_beam_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),

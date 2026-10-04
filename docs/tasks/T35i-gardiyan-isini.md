@@ -1,20 +1,23 @@
-# T35i — Gardiyanın ışını ve hedefe bakışı
+# T35i — Gardiyanın ışını
 
-**Amaç:** `GuardianRenderer.renderBeam` (özel geometri: dönen dört yüz ve uç, dokulu, tam aydınlık), hedef alınınca `Guardian.aiStep` dalları: `LookControl` ile başın hedefe dönmesi, `setYRot(yHeadRot)`, kabarcık parçacıklarının rastgele tüketimi, karada çırpınış (`onGround` dalı).
+**Amaç:** `GuardianRenderer.renderBeam` (özel geometri: dönen dört yüz ve uç, dokulu, tam aydınlık). Hedefe bakış denetimi, parçacık çekilişleri ve karadaki çırpınış T35j'ye ayrıldı.
 **Bağımlılık:** T35h. **Boy:** M.
 
 ## Oku
-- Java: `client/renderer/entity/GuardianRenderer.java` (`submit`, `renderBeam`, `shouldRender`), `world/entity/monster/Guardian.java` (`aiStep`), `world/entity/ai/control/LookControl.java`.
-- Rust: `crates/voxel/src/guardians.rs`, `crates/voxel-world/src/guardian.rs` (tüketilmeyen çekilişler başlıkta), `crates/voxel-render/src/mob_model.rs` (`setup_guardian`).
+- Java: `client/renderer/entity/GuardianRenderer.java` (`submit`, `renderBeam`, `extractRenderState`).
+- Rust: `crates/voxel/src/guardians.rs`, `crates/voxel-render/src/{joml,mob_model}.rs`.
 
 ## Oracle
-Işın için yakalayıcı toplayıcı (`submitCustomGeometry`; bkz. `GuiOracle`/`EntityOracle` yakalayıcıları); gerçek `Guardian` tiki için `living-entity-animations` (hedef varlığı oracle sahnesinde bulunan satırlar).
+Gerçek `renderBeam`, `submitCustomGeometry` ile verilen köşe tüketicisinden yakalanır (`guardian_beam`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
-Sesler, parçacık çizimi (yalnız rastgele tüketimi), saldırı davranışı.
+Sesler, parçacık çizimi, saldırı davranışı; hedefe bakış ve çırpınış (T35j).
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel-render/guardian_beam.rs` (`guardian_beam`: gerçek köşeler; `beam_triangles`: doku tekrarını keserek entity boru hattına), `ışın` çizimi `crates/voxel/src/guardians.rs`, saldırı ölçeği. Kayıt: `docs/client-guardian-beam-parity-conformance.md`.
+- Bulgu yok; geometri 14 satırda ilk denemede eşleşti (`acos`/`atan2` Rust `f64`).
+- Bölündü: hedefe bakış, parçacık çekilişleri ve karadaki çırpınış T35j'de.
+- Sapma: görüş alanı elemesi yok; yerel oyuncunun boyu kutudan. Canlı gözlem yapılmadı.

@@ -1711,6 +1711,126 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A guardian's beam as the reference's own `renderBeam` submits it from the pose the entity's
+     * eye leaves: every vertex it hands the vertex consumer (placed, with its texture coordinate,
+     * colour, light and normal).
+     */
+    private static JsonObject guardianBeam(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var render = net.minecraft.client.renderer.entity.GuardianRenderer.class.getDeclaredMethod("renderBeam",
+            com.mojang.blaze3d.vertex.PoseStack.class, net.minecraft.client.renderer.SubmitNodeCollector.class,
+            net.minecraft.world.phys.Vec3.class, float.class, float.class, float.class);
+        render.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var vertices = new JsonArray();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            render.invoke(null, stack, collector, vec3(row.getAsJsonArray("vector")),
+                Oracle.f32(row, "time"), Oracle.f32(row, "scale"), Oracle.f32(row, "tex_v_off"));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** Takes each vertex a beam's geometry builds, one chained call at a time. */
+    static final class BeamCapture implements com.mojang.blaze3d.vertex.VertexConsumer {
+        private final JsonArray out;
+        private float[] position;
+        private float u;
+        private float v;
+        private int color;
+        private int light;
+        private float[] normal;
+
+        BeamCapture(final JsonArray out) {
+            this.out = out;
+        }
+
+        void flush() {
+            if (this.position == null) {
+                return;
+            }
+            this.out.add(Oracle.bits(this.position[0]) + Oracle.bits(this.position[1]) + Oracle.bits(this.position[2])
+                + Oracle.bits(this.u) + Oracle.bits(this.v) + String.format("%08x%08x", this.color, this.light)
+                + Oracle.bits(this.normal[0]) + Oracle.bits(this.normal[1]) + Oracle.bits(this.normal[2]));
+            this.position = null;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.flush();
+            this.position = new float[] {x, y, z};
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            this.color = (a << 24) | (r << 16) | (g << 8) | b;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            this.color = color;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            this.u = u;
+            this.v = v;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            this.light = (v << 16) | (u & 0xFFFF);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float x, final float y, final float z) {
+            this.normal = new float[] {x, y, z};
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            return this;
+        }
+
+        @Override
+        public void addVertex(
+            final float x, final float y, final float z, final int color, final float u, final float v,
+            final int overlayCoords, final int lightCoords, final float nx, final float ny, final float nz) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     private static net.minecraft.world.phys.Vec3 vec3(final JsonArray bits) {
         return new net.minecraft.world.phys.Vec3(
             Double.longBitsToDouble(Long.parseUnsignedLong(bits.get(0).getAsString(), 16)),
@@ -3425,6 +3545,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("guardian_beam")) {
+            return guardianBeam(request);
         }
         if (operation.equals("guardian_model")) {
             return guardianModel(request);

@@ -14869,6 +14869,7 @@ def entity_cases():
     yield from entity_frog_cases()
     yield from entity_nautilus_cases()
     yield from entity_guardian_cases()
+    yield from entity_guardian_beam_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15830,6 +15831,29 @@ def entity_guardian_cases():
                  guardian(layer, "eye-straight-on", eye=looking((0.0, 2.0, 5.0), (0.0, 0.0, 1.0))),
                  guardian(layer, "eye-at-its-own-place", eye=looking((0.0, 3.0, 0.0)))]
     yield {"case_id": "entity/guardian-model", "family": "entity", "operation": "guardian_model",
+           "rows": rows}
+
+
+def entity_guardian_beam_cases():
+    """A guardian's beam as the reference's own `renderBeam` builds it from the pose its eye leaves:
+    along each axis and slantwise, short and long (the texture repeating along it), across the
+    attack charging (the colour, the spin and the cap's texture swapping on even and odd ticks) and
+    from an offset eye."""
+    def beam(label, vector, time=12.5, scale=0.3, at=(0.0, 0.0, 0.0)):
+        return {"label": label, "x": float_bits(at[0]), "y": float_bits(at[1]), "z": float_bits(at[2]),
+                "vector": [float_bits(part, "f64") for part in vector], "time": float_bits(time),
+                "scale": float_bits(scale), "tex_v_off": float_bits(time * 0.5 % 1.0)}
+    rows = [beam("along-z", (0.0, 0.0, 6.0)), beam("along-x", (5.0, 0.0, 0.0)),
+            beam("straight-up", (0.0, 4.0, 0.0)), beam("straight-down", (0.0, -4.0, 0.0)),
+            beam("slantwise", (3.0, -1.5, 4.5)), beam("behind", (-2.0, 0.5, -7.0)),
+            beam("short", (0.2, 0.1, 0.3)), beam("on-the-eye", (0.0, 0.0, 0.0)),
+            beam("just-started", (0.0, 0.0, 6.0), time=0.5, scale=0.006),
+            beam("odd-tick", (1.0, 2.0, 3.0), time=7.25, scale=0.09),
+            beam("charged", (1.0, 2.0, 3.0), time=80.0, scale=1.0),
+            beam("elder-charged", (1.0, 2.0, 3.0), time=60.0, scale=1.0),
+            beam("from-the-eye", (2.0, -1.0, 3.0), at=(10.5, 64.9, -3.25)),
+            beam("far", (20.0, 6.0, -30.0), time=33.75, scale=0.17)]
+    yield {"case_id": "entity/guardian-beam", "family": "entity", "operation": "guardian_beam",
            "rows": rows}
 
 

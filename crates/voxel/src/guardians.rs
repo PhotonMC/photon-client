@@ -5,6 +5,8 @@
 
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
+use voxel_render::guardian_beam::{beam_triangles, guardian_beam};
+use voxel_render::joml::Pose;
 use voxel_render::mob_model::{GuardianLook, GuardianState, mob_vertices};
 use voxel_render::scene::Vertex;
 
@@ -13,10 +15,11 @@ use crate::overlays::FrameView;
 
 const TEXTURE: &str = "entity/guardian/guardian";
 const ELDER_TEXTURE: &str = "entity/guardian/guardian_elder";
+const BEAM_TEXTURE: &str = "entity/guardian/guardian_beam";
 
 /// The paths (under `textures/`) of the textures guardians wear.
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    [TEXTURE, ELDER_TEXTURE].into_iter()
+    [TEXTURE, ELDER_TEXTURE, BEAM_TEXTURE].into_iter()
 }
 
 /// `Entity.calculateViewVector`: where a turn and a pitch (in degrees) point.
@@ -53,6 +56,67 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
     let (_, _, eye) = voxel_data::entity_type::pick(entity.type_id)?.size;
     let (x, y, z) = snapshot.position;
     Some([x, y + f64::from(eye * entity.scale()), z])
+}
+
+/// `GuardianRenderer.getPosition(target, bbHeight * 0.5, partial)`: the middle
+/// of what the beam aims at, if it is in the world.
+fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64; 3]> {
+    let world = session.world();
+    let player = session.player()?;
+    if id == player.entity_id() {
+        let position = player.interpolated_position(f64::from(partial));
+        let box_ = player.bounding_box();
+        return Some([
+            position.x,
+            position.y + (box_.max_y - box_.min_y) * 0.5,
+            position.z,
+        ]);
+    }
+    let entity = world.entity_at(id)?;
+    let snapshot = world.entity_snapshot(id, partial)?;
+    let pick = voxel_data::entity_type::pick(entity.type_id)?;
+    let (_, height, _) = match pick.baby {
+        Some(baby) if entity.is_baby() => baby,
+        _ => pick.size,
+    };
+    let (x, y, z) = snapshot.position;
+    Some([x, y + f64::from(height * entity.scale()) * 0.5, z])
+}
+
+/// `GuardianRenderer.submit`'s beam, drawn from the eye to what the guardian
+/// aims at: its colour and spin follow how far the attack has charged.
+fn beam(
+    session: &PlaySession,
+    (entity, partial): (&voxel_world::ClientEntity, f32),
+    (feet, eye_height, eye_position): ([f32; 3], f32, [f64; 3]),
+    textures: &EntityTextures,
+) -> Vec<Vertex> {
+    let Some(target) = entity.guardian_attack_target() else {
+        return Vec::new();
+    };
+    let (Some(own), Some(target), Some(rect)) = (
+        entity.guardian(),
+        target_position(session, target, partial),
+        textures.rect(BEAM_TEXTURE),
+    ) else {
+        return Vec::new();
+    };
+    let attack_time = own.attack_time() as f32 + partial;
+    let mut pose = Pose::default();
+    pose.translate(feet[0], feet[1], feet[2]);
+    pose.translate(0.0, eye_height, 0.0);
+    let beam = guardian_beam(
+        pose,
+        [
+            target[0] - eye_position[0],
+            target[1] - eye_position[1],
+            target[2] - eye_position[2],
+        ],
+        attack_time,
+        own.attack_animation_scale(partial, entity.guardian_attack_duration()),
+        attack_time * 0.5 % 1.0,
+    );
+    beam_triangles(&beam, rect)
 }
 
 /// `GuardianRenderer` and `ElderGuardianRenderer` for the ones the server added.
@@ -106,6 +170,12 @@ pub fn remote_guardians(
         });
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(beam(
+            session,
+            (entity, partial),
+            (placed.feet, eye_height * entity.scale(), eye_position),
+            textures,
+        ));
     }
     vertices
 }

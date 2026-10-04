@@ -2062,16 +2062,19 @@ impl ClientEntity {
             self.living.guardian_moving,
             self.living.guardian_target != 0,
         );
-        // `ElderGuardian.getAttackDuration` is shorter.
-        let duration =
-            if voxel_data::entity_type::name(self.type_id) == Some("minecraft:elder_guardian") {
-                60
-            } else {
-                80
-            };
+        let duration = self.guardian_attack_duration();
         self.guardian
             .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
             .tick(flags, duration);
+    }
+
+    /// `Guardian.getAttackDuration`, shorter for the elder.
+    pub fn guardian_attack_duration(&self) -> i32 {
+        if voxel_data::entity_type::name(self.type_id) == Some("minecraft:elder_guardian") {
+            60
+        } else {
+            80
+        }
     }
 
     /// Whether this is a frog.

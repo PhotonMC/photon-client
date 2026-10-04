@@ -14,6 +14,7 @@ pub mod entity_block;
 pub mod entity_textures;
 pub mod equipment;
 pub mod geometry;
+pub mod guardian_beam;
 pub mod gui;
 pub mod held_item;
 pub mod item_entity;
