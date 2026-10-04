@@ -1806,6 +1806,80 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A vex's or an allay's model posed by the reference's own `setupAnim`, and where its own
+     * `ItemInHandLayer` puts what each hand holds: the pose (a matrix) each held item is
+     * submitted with, before its own display transform, the right hand's first.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static JsonObject flierItemPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            boolean vex = row.get("kind").getAsString().equals("vex");
+            net.minecraft.client.renderer.entity.state.ArmedEntityRenderState state;
+            net.minecraft.client.model.EntityModel model;
+            if (vex) {
+                var vexState = new net.minecraft.client.renderer.entity.state.VexRenderState();
+                vexState.isCharging = row.get("charging").getAsBoolean();
+                state = vexState;
+            } else {
+                var allayState = new net.minecraft.client.renderer.entity.state.AllayRenderState();
+                allayState.holdingAnimationProgress = Oracle.f32(row, "holding_progress");
+                state = allayState;
+            }
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.walkAnimationPos = Oracle.f32(row, "walk_position");
+            state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+            state.mainArm = row.get("main_arm").getAsString().equals("left")
+                ? net.minecraft.world.entity.HumanoidArm.LEFT
+                : net.minecraft.world.entity.HumanoidArm.RIGHT;
+            if (row.get("holds_right").getAsBoolean()) {
+                state.rightHandItemState.newLayer();
+            }
+            if (row.get("holds_left").getAsBoolean()) {
+                state.leftHandItemState.newLayer();
+            }
+            var root = bakedLayer(vex ? "minecraft:vex#main" : "minecraft:allay#main");
+            if (vex) {
+                var vexModel = new net.minecraft.client.model.monster.vex.VexModel(root);
+                vexModel.setupAnim((net.minecraft.client.renderer.entity.state.VexRenderState) state);
+                model = vexModel;
+            } else {
+                var allayModel = new net.minecraft.client.model.animal.allay.AllayModel(root);
+                allayModel.setupAnim((net.minecraft.client.renderer.entity.state.AllayRenderState) state);
+                model = allayModel;
+            }
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var finalModel = model;
+            net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> finalModel;
+            new net.minecraft.client.renderer.entity.layers.ItemInHandLayer(parent)
+                .submit(new com.mojang.blaze3d.vertex.PoseStack(), collector, 0, state, 0.0F, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -3718,6 +3792,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("flier_item_pose")) {
+            return flierItemPose(request);
         }
         if (operation.equals("parrot_textures")) {
             return parrotTextures(request);

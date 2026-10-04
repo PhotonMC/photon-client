@@ -17,4 +17,6 @@
 Sesler, parçacıklar.
 
 ## Devir notu
-(boş)
+- Yapıldı: `vex_hand_pose` ve `allay_hand_pose` (`voxel-render/held_item.rs`), `monsters.rs`'te vex ve allayın her eli için `HeldItem` (solak mobda ana el solda). Kayıt: `docs/client-flier-item-parity-conformance.md`.
+- Bulgu: oracle matrisi eşya modelinin köşeye çekilmesini (−0,5 her eksende) içerir; ilk karşılaştırma bu yüzden `0,5`'lik farkla düştü, adaptör `translate(−0,5…)` ekledi (panda ile aynı).
+- Sapma: kullanım ve mızrak duruşları yok. Canlı gözlem yapılmadı.

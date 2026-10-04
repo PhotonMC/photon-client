@@ -20552,6 +20552,92 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `flier_item_pose`: where a vex's or an allay's hands carry what they hold.
+fn flier_item_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::{AllayRenderState, MobModel, QuadrupedState, VexRenderState};
+    use voxel_render::player_model::Arm;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
+        let vex = row["kind"].as_str().ok_or("kind")? == "vex";
+        let layer = voxel_data::entity_model::layer(if vex {
+            "minecraft:vex#main"
+        } else {
+            "minecraft:allay#main"
+        })
+        .ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        let (holds_right, holds_left) = (flag("holds_right")?, flag("holds_left")?);
+        // The row says what the state's right and left hands hold (which hand is the main one
+        // only decides that at extraction, not in the layer).
+        if vex {
+            model.setup_vex(&VexRenderState {
+                head_y_rot: 0.0,
+                x_rot: 0.0,
+                age_in_ticks: bits("age_in_ticks")?,
+                is_charging: flag("charging")?,
+                right_hand_item: holds_right,
+                left_hand_item: holds_left,
+            });
+        } else {
+            model.setup_allay(&AllayRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: 0.0,
+                    x_rot: 0.0,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                is_dancing: false,
+                is_spinning: false,
+                spinning_progress: 0.0,
+                holding_animation_progress: bits("holding_progress")?,
+            });
+        }
+        let child = |part: &voxel_render::player_model::Part, name: &str| {
+            part.children()
+                .iter()
+                .find(|child| child.name() == name)
+                .cloned()
+        };
+        let inner = child(model.root(), "root").ok_or("root")?;
+        let body = child(&inner, "body").ok_or("body")?;
+        let base = Pose::default();
+        let mut poses = Vec::new();
+        for (side, name, holds) in [
+            (Arm::Right, "right_arm", holds_right),
+            (Arm::Left, "left_arm", holds_left),
+        ] {
+            if !holds {
+                continue;
+            }
+            let arm = child(&body, name).ok_or("arm")?;
+            let pose = if vex {
+                vex_hand_pose(&base, (&inner, &body, &arm), side)
+            } else {
+                let right = child(&body, "right_arm").ok_or("arm")?;
+                allay_hand_pose(&base, (&inner, &body, &right), side)
+            };
+            // The stack's own display transform is none: the model is moved to its corner.
+            let mut pose = pose;
+            pose.translate(-0.5, -0.5, -0.5);
+            poses.push(matrix_bits(&pose));
+        }
+        out.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -22430,6 +22516,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_beam" => return guardian_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),
+        "flier_item_pose" => return flier_item_pose_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),

@@ -14934,6 +14934,7 @@ def entity_cases():
     yield from entity_parrot_cases()
     yield from entity_breeze_cases()
     yield from entity_happy_ghast_cases()
+    yield from entity_flier_item_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -16067,6 +16068,30 @@ def entity_happy_ghast_cases():
                          "layer": f"minecraft:{layer}#main", "age_in_ticks": float_bits(0.0),
                          "body_item": True, "ridden": ridden})
     yield {"case_id": "entity/happy-ghast-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_flier_item_cases():
+    """Where a vex's and an allay's `ItemInHandLayer` puts what each hand holds (from an identity
+    pose): in the right hand, the left, both, a left-handed mob's, a vex charging (arms out) or not,
+    an allay hovering, flying and holding (the arm's tilt carries the item)."""
+    def item(kind, label, holds=(True, False), age=37.5, charging=False, walk=(0.0, 0.0), holding=0.0,
+             main_arm="right"):
+        return {"label": f"{kind}-{label}", "kind": kind, "holds_right": holds[0], "holds_left": holds[1],
+                "age_in_ticks": float_bits(age), "charging": charging, "main_arm": main_arm,
+                "walk_position": float_bits(walk[0]), "walk_speed": float_bits(walk[1]),
+                "holding_progress": float_bits(holding)}
+    rows = [item("vex", "right"), item("vex", "left", holds=(False, True)),
+            item("vex", "both", holds=(True, True), age=91.25),
+            item("vex", "charging-right", charging=True), item("vex", "charging-left", charging=True,
+                                                                  holds=(False, True)),
+            item("vex", "charging-both", charging=True, holds=(True, True), age=12.0),
+            item("allay", "right", holding=1.0), item("allay", "left", holds=(False, True), holding=1.0),
+            item("allay", "both", holds=(True, True), holding=1.0, age=60.0),
+            item("allay", "flying", holding=1.0, walk=(3.0, 0.5)),
+            item("allay", "part-holding", holding=0.4, walk=(1.5, 0.12), age=12.0),
+            item("allay", "hovering-empty-handed", holds=(False, False))]
+    yield {"case_id": "entity/flier-item-pose", "family": "entity", "operation": "flier_item_pose",
            "rows": rows}
 
 

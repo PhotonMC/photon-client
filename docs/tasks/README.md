@@ -102,7 +102,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35j](T35j-gardiyan-hedefe-bakis.md) | Gardiyanın hedefe bakışı ve karadaki çırpınışı | M | T35i | açık |
 | [T36](T36-ucanlar.md) | Blaze, ghast ve phantom | M | T24 | bitti (7ba07997) |
 | [T36b](T36b-yarasa-vex-allay.md) | Yarasa, vex ve allay | M | T36 | bitti (23ecb288) |
-| [T36d](T36d-vex-allay-esya.md) | Vex ve allayın elindeki eşya | S | T36b, T41 | açık |
+| [T36d](T36d-vex-allay-esya.md) | Vex ve allayın elindeki eşya | S | T36b, T41 | bitti |
 | [T36c](T36c-papagan-breeze-mutlu-ghast.md) | Papağan | M | T36 | bitti (a0e8b7c1) |
 | [T36e](T36e-breeze.md) | Breeze (model, rüzgâr ve göz katmanı, animasyon durumları) | M | T36 | bitti (57aafdac) |
 | [T36f](T36f-mutlu-ghast.md) | Mutlu ghast | M | T36, T41 | bitti (360dc83a) |

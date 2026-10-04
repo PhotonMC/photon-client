@@ -6,18 +6,19 @@
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
+use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
 use voxel_render::mob_model::{
     AllayRenderState, BatRenderState, BreezeRenderState, EndermanState, MobModel, MobPlacement,
     ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState, creeper_scale,
     creeper_white_overlay, mob_vertices, mob_vertices_emissive, mob_vertices_glow,
     mob_vertices_scrolled, mob_vertices_swirl, placement_pose,
 };
-use voxel_render::player_model::PlayerRenderState;
+use voxel_render::player_model::{Arm, Part, PlayerRenderState};
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
 use voxel_render::scene::Vertex;
 use voxel_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
 
-use crate::held_items::HeldItem;
+use crate::held_items::{HeldItem, Place};
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
@@ -186,6 +187,65 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
         .chain(voxel_world::parrot::VARIANT_TEXTURES)
         .chain([BREEZE_WIND.1, BREEZE_EYES.1])
+}
+
+/// The texture a monster wears now: a ghast's mouth open to charge, a vex charging,
+/// a parrot's variant, else its own.
+fn texture_of(monster: &Monster, entity: &ClientEntity) -> &'static str {
+    match monster.pose {
+        Pose::Ghast if entity.is_ghast_charging() => GHAST_SHOOTING_TEXTURE,
+        Pose::Vex if entity.is_vex_charging() => VEX_CHARGING_TEXTURE,
+        Pose::Parrot => voxel_world::parrot::variant_texture(entity.parrot_variant()),
+        _ => monster.texture,
+    }
+}
+
+/// `ItemInHandLayer` for a vex or an allay: each hand's stack, the right hand's
+/// first, with the pose its model's `translateToHand` leaves (a left-handed mob's
+/// main hand is its left).
+fn flier_hand_items(
+    root: &Part,
+    (monster, entity): (&Monster, &ClientEntity),
+    placed: &MobPlacement,
+    held: &mut Vec<HeldItem>,
+) {
+    fn child<'a>(part: &'a Part, name: &str) -> Option<&'a Part> {
+        part.children().iter().find(|child| child.name() == name)
+    }
+    let base = placement_pose(placed);
+    let Some(inner) = child(root, "root") else {
+        return;
+    };
+    let Some(body) = child(inner, "body") else {
+        return;
+    };
+    let (main, off) = (
+        entity.equipment(EquipmentSlot::MainHand),
+        entity.equipment(EquipmentSlot::OffHand),
+    );
+    let (right, left) = if entity.main_arm_is_left() {
+        (off, main)
+    } else {
+        (main, off)
+    };
+    for (side, place, name, stack) in [
+        (Arm::Right, Place::Right, "right_arm", right),
+        (Arm::Left, Place::Left, "left_arm", left),
+    ] {
+        let (Some(stack), Some(arm)) = (stack, child(body, name)) else {
+            continue;
+        };
+        let pose = if monster.pose == Pose::Vex {
+            vex_hand_pose(&base, (inner, body, arm), side)
+        } else {
+            // The allay tilts the item as its right arm is, whichever hand holds it.
+            let Some(right_arm) = child(body, "right_arm") else {
+                continue;
+            };
+            allay_hand_pose(&base, (inner, body, right_arm), side)
+        };
+        held.push(HeldItem::stack(stack, pose, place, placed.light));
+    }
 }
 
 /// `BreezeRenderer.extractRenderState`: the animation states the breeze runs.
@@ -381,15 +441,7 @@ pub fn remote_monsters(
                 models.shake.next_gaussian() * spread,
             ]
         });
-        let texture = if monster.pose == Pose::Ghast && entity.is_ghast_charging() {
-            GHAST_SHOOTING_TEXTURE
-        } else if monster.pose == Pose::Vex && entity.is_vex_charging() {
-            VEX_CHARGING_TEXTURE
-        } else if monster.pose == Pose::Parrot {
-            voxel_world::parrot::variant_texture(entity.parrot_variant())
-        } else {
-            monster.texture
-        };
+        let texture = texture_of(monster, entity);
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(texture),
@@ -417,6 +469,9 @@ pub fn remote_monsters(
             &mut placed,
         );
         vertices.extend(mob_vertices(model, &placed, rect));
+        if matches!(monster.pose, Pose::Vex | Pose::Allay) {
+            flier_hand_items(model.root(), (monster, entity), &placed, held);
+        }
         // The eyes, over the model as it is posed, after the other layers.
         if let Some(eyes) = voxel_render::render_types::eyes_texture(monster.type_name)
             .and_then(|eyes| textures.rect(eyes))

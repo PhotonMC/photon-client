@@ -112,6 +112,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T33c — Parlayan göz katmanı (örümcek, mağara örümceği, enderman) — client-parity](client-eyes-layer-parity-conformance.md)
 - [T32b — Kedi ve ocelot — client-parity](client-feline-parity-conformance.md)
 - [T35c — Morina, somon, tropikal balık, kirpi balığı — client-parity](client-fish-parity-conformance.md)
+- [T36d — Vex ve allayın elindeki eşya — client-parity](client-flier-item-parity-conformance.md)
 - [T36b — Yarasa, vex ve allay — client-parity](client-flier-parity-conformance.md)
 - [T32e — Tilki — client-parity](client-fox-parity-conformance.md)
 - [T35g — Kurbağa ve iribaş — client-parity](client-frog-parity-conformance.md)

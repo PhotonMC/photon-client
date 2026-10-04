@@ -49,6 +49,40 @@ fn in_hand(pose: &mut Pose, left: bool, baby: bool) {
     );
 }
 
+/// `VexModel.translateToHand` and the item layer after it: the root, the body
+/// and the arm, the item shrunk to a little over half and moved in toward the
+/// middle and forward, a side to each hand.
+pub fn vex_hand_pose(base: &Pose, (root, body, arm): (&Part, &Part, &Part), side: Arm) -> Pose {
+    let mut pose = *base;
+    let left = side == Arm::Left;
+    root.translate_and_rotate(&mut pose);
+    body.translate_and_rotate(&mut pose);
+    arm.translate_and_rotate(&mut pose);
+    pose.scale(0.55, 0.55, 0.55);
+    pose.translate(if left { -0.046875 } else { 0.046875 }, -0.15625, 0.078125);
+    in_hand(&mut pose, left, false);
+    pose
+}
+
+/// `AllayModel.translateToHand` and the item layer after it: the root and the
+/// body, the item moved up and forward, tilted as the right arm is (for either
+/// hand), shrunk to seven tenths and moved a little out.
+pub fn allay_hand_pose(
+    base: &Pose,
+    (root, body, right_arm): (&Part, &Part, &Part),
+    side: Arm,
+) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    body.translate_and_rotate(&mut pose);
+    pose.translate(0.0, 0.0625, 0.1875);
+    pose.rotate(&Quaternion::rotation_x(right_arm.x_rot));
+    pose.scale(0.7, 0.7, 0.7);
+    pose.translate(0.0625, 0.0, 0.0);
+    in_hand(&mut pose, side == Arm::Left, false);
+    pose
+}
+
 /// `CopperGolemModel.translateToHand` and the item layer after it: the body
 /// and the arm, then, while the golem idles, the hand turned to face along
 /// the arm and moved forward; otherwise the item shrunk and moved up and in.
