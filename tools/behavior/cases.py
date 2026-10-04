@@ -14870,6 +14870,7 @@ def entity_cases():
     yield from entity_nautilus_cases()
     yield from entity_guardian_cases()
     yield from entity_guardian_beam_cases()
+    yield from entity_airborne_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15855,6 +15856,40 @@ def entity_guardian_beam_cases():
             beam("far", (20.0, 6.0, -30.0), time=33.75, scale=0.17)]
     yield {"case_id": "entity/guardian-beam", "family": "entity", "operation": "guardian_beam",
            "rows": rows}
+
+
+def entity_airborne_cases():
+    """The blaze, ghast and phantom posed by the reference's own `setupAnim` (the blaze's three rings
+    of rods turning and bobbing with the age, and its head's look; the ghast's tentacles swaying out
+    of step; the phantom's wings and tail beating by the flap time), and what a phantom's renderer
+    does to the pose: its size's scale and lift, and its pitch's tip."""
+    rows = []
+    for age in (0.0, 1.5, 37.25, 211.75):
+        rows.append({"label": f"blaze-{age}", "layer": "minecraft:blaze#main",
+                     "age_in_ticks": float_bits(age), "y_rot": float_bits(0.0),
+                     "x_rot": float_bits(0.0)})
+        rows.append({"label": f"ghast-{age}", "layer": "minecraft:ghast#main",
+                     "age_in_ticks": float_bits(age)})
+        rows.append({"label": f"phantom-{age}", "layer": "minecraft:phantom#main",
+                     "flap_time": float_bits(age + 9.0)})
+    rows += [{"label": "blaze-looks", "layer": "minecraft:blaze#main",
+              "age_in_ticks": float_bits(12.5), "y_rot": float_bits(-47.0),
+              "x_rot": float_bits(23.5)},
+             {"label": "phantom-flap-offset", "layer": "minecraft:phantom#main",
+              "flap_time": float_bits(1234.5)}]
+    yield {"case_id": "entity/airborne-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+    turns = []
+    for label, size, x_rot, body_rot in (("small", 0, 0.0, 0.0), ("grown", 3, 25.0, 37.0),
+                                         ("full-size", 64, -40.0, -120.0), ("tipped", 10, 80.5, 12.0)):
+        turns.append({"label": f"phantom-{label}", "kind": "phantom", "baby": False, "size": size,
+                      "x_rot": float_bits(x_rot), "body_rot": float_bits(body_rot),
+                      "age_in_ticks": float_bits(10.5)})
+    turns.append({"label": "phantom-dying", "kind": "phantom", "baby": False, "size": 4,
+                  "x_rot": float_bits(-15.0), "body_rot": float_bits(60.0),
+                  "age_in_ticks": float_bits(10.5), "death_time": float_bits(7.5)})
+    yield {"case_id": "entity/phantom-rotations", "family": "entity",
+           "operation": "setup_rotations", "rows": turns}
 
 
 def entity_copper_golem_cases():

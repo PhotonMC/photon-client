@@ -94,6 +94,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P01.c — ChunkPos temsil ve hash sözleşmesi — client-parity birleşik kayıt](chunkpos-representation-conformance.md)
 - [P01.c — ChunkPos validity sözleşmesi — client-parity birleşik kayıt](chunkpos-validity-conformance.md)
 - [P05.a — OptionInstance ClampingLazyMaxIntRange sözleşmesi — client-parity birleşik kayıt](clamping-lazy-max-int-range-conformance.md)
+- [T36 — Blaze, ghast ve phantom — client-parity](client-airborne-parity-conformance.md)
 - [T43 — `Animate` paketi, kol sallaması ve `EntityEvent` durumları — client-parity](client-animate-swing-parity-conformance.md)
 - [T41b — Zırh katmanı (insansılar) — client-parity](client-armor-parity-conformance.md)
 - [T40 — Zırh askısı — client-parity](client-armor-stand-parity-conformance.md)

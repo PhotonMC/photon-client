@@ -40,11 +40,12 @@ pub const EYES_ORDER: i32 = 1;
 pub const NO_OVERLAY: i32 = 655_360;
 
 /// The texture (under `textures/`) of the glowing eyes drawn over an entity of
-/// this type: `SpiderEyesLayer` and `EnderEyesLayer`.
+/// this type: `SpiderEyesLayer`, `EnderEyesLayer` and `PhantomEyesLayer`.
 pub fn eyes_texture(entity_type: &str) -> Option<&'static str> {
     match entity_type {
         "minecraft:spider" | "minecraft:cave_spider" => Some("entity/spider/spider_eyes"),
         "minecraft:enderman" => Some("entity/enderman/enderman_eyes"),
+        "minecraft:phantom" => Some("entity/phantom/phantom_eyes"),
         _ => None,
     }
 }

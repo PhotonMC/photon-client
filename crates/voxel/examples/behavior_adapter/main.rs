@@ -20354,6 +20354,34 @@ fn frog_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `airborne_model`: a blaze's, ghast's or phantom's model posed and drawn.
+fn airborne_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut model = MobModel::bake(layer);
+        if id.contains("blaze") {
+            model.setup_blaze(bits("age_in_ticks")?, bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("ghast") {
+            model.setup_ghast(bits("age_in_ticks")?);
+        } else {
+            model.setup_phantom(bits("flap_time")?);
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `guardian_beam`: the vertices of a guardian's beam from the pose its eye leaves.
 fn guardian_beam_result(request: &Value) -> Result<Value, String> {
     use voxel_render::guardian_beam::{BEAM_LIGHT, guardian_beam};
@@ -21153,6 +21181,7 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
             ..MobPlacement::default()
         };
         let mut poses = Vec::new();
+        let mut full_pose = None;
         match row["kind"].as_str().ok_or("kind")? {
             "panda" => {
                 let (sit, scared, eating) = (bits("sit_amount")?, flag("scared")?, flag("eating")?);
@@ -21198,6 +21227,17 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     placed.scale = bits("scale")?;
                 }
             }
+            "phantom" => {
+                let scale =
+                    1.0 + 0.15 * row["size"].as_i64().ok_or("size must be a number")? as f32;
+                placed.hook_scale = Some([scale; 3]);
+                placed.hook_translate = Some([0.0, 1.3125, 0.1875]);
+                placed.pitch = Some(x_rot);
+                if row.get("death_time").is_some() {
+                    placed.death_time = bits("death_time")?;
+                }
+                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
+            }
             "cat" => placed.cat_lying(bits("lie_down_amount")?, flag("on_sleeping_player")?),
             "fox" => {
                 if flag("pouncing")? || flag("faceplanted")? {
@@ -21206,11 +21246,15 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
             }
             _ => return Err("unknown kind".into()),
         }
-        out.push(json!({
+        let mut described = json!({
             "label": row["label"],
             "pose": matrix_of(&placement_rotations(&placed)),
             "poses": poses,
-        }));
+        });
+        if let Some(full_pose) = full_pose {
+            described["full_pose"] = json!(full_pose);
+        }
+        out.push(described);
     }
     Ok(json!({"rows": out}))
 }
@@ -22201,6 +22245,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "nautilus_model" => return nautilus_model_result(request),
         "guardian_model" => return guardian_model_result(request),
         "guardian_beam" => return guardian_beam_result(request),
+        "airborne_model" => return airborne_model_result(request),
         "fish_model" => return fish_model_result(request),
         "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
@@ -22566,6 +22611,16 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "zombie-nautilus-variant",
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_DATA_ID),
                     i64::from(voxel_world::ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID),
+                ),
+                (
+                    "ghast-charging",
+                    i64::from(voxel_world::GHAST_CHARGING_DATA_ID),
+                    i64::from(8),
+                ),
+                (
+                    "phantom-size",
+                    i64::from(voxel_world::PHANTOM_SIZE_DATA_ID),
+                    i64::from(1),
                 ),
                 (
                     "guardian-moving",

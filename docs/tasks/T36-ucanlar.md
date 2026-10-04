@@ -1,7 +1,7 @@
-# T36 — Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze
+# T36 — Blaze, ghast ve phantom
 
-**Amaç:** Havada duran/uçan mobların kanat/gövde animasyonları ve parlak (emissive) katmanları: yarasa (asılı/uçan), papağan (omuzda, dans), allay, vex, phantom, blaze (çubuklar), ghast (gözler/ağız), breeze.
-**Bağımlılık:** T24. **Boy:** M. **Türler:** bat, parrot, allay, vex, phantom, blaze, ghast, happy_ghast, breeze.
+**Amaç:** Blaze (çubuk halkaları), ghast (dokunaçlar, yükleme dokusu) ve phantom (kanat, kuyruk, boyut ölçeği, ışıksız gözler). Yarasa, vex ve allay T36b'ye; papağan, breeze ve mutlu ghast T36c'ye ayrıldı.
+**Bağımlılık:** T24. **Boy:** M. **Türler:** blaze, ghast, phantom.
 
 ## Oku
 - Java: `client/model/ambient/BatModel.java`, `client/model/animal/parrot/ParrotModel.java`, `client/model/animal/allay/AllayModel.java`, `client/model/monster/vex/VexModel.java`, `client/model/monster/phantom/PhantomModel.java`, `client/model/monster/blaze/BlazeModel.java`, `client/model/monster/ghast/GhastModel.java`, `client/renderer/entity/BreezeRenderer.java`, `client/renderer/entity/layers/EyesLayer.java`.
@@ -28,4 +28,7 @@ Parçacıklar (blaze/ghast ateş topu T39), sesler.
 Emissive katmanı ortak altyapıdır; sonraki görevler (T37) kullanır. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_blaze`, `setup_ghast`, `setup_phantom`; `MobPlacement.hook_translate` (phantom'un kaldırması); `monsters.rs` tablosuna üç tür (blaze'de blok ışığı 15, ghast'ta yükleme dokusu, phantom'da ölçek, eğim ve gözler); veriler 16/16. Kayıt: `docs/client-airborne-parity-conformance.md`.
+- Karar: ışıksız göz katmanı için yeni boru hattı gerekmedi; T33c'nin `mob_vertices_glow` yolu kullanıldı (`eyes_texture` tablosuna phantom eklendi).
+- Bölündü: yarasa/vex/allay T36b'de; papağan/breeze/mutlu ghast T36c'de.
+- Sapma: blaze ışığı ve doku yolları oracle'sız; phantom'un kutusu büyümez. Canlı gözlem yapılmadı.

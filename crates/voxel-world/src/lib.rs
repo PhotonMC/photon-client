@@ -3586,6 +3586,12 @@ impl ClientWorld {
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
         }
+        if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
+            entity.living.ghast_charging = charging;
+        }
+        if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
+            entity.living.phantom_size = size;
+        }
         let (guardian_moving, guardian_target) =
             guardian_data_from_metadata(entity.type_id, metadata);
         if guardian_moving.is_some() || guardian_target.is_some() {

@@ -228,6 +228,9 @@ pub(crate) const COPPER_GOLEM_STATE_SERIALIZER_ID: i32 = 37;
 pub const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 /// Where a guardian's moving flag (a boolean) and the id of what its beam aims at (an int) sit among its data.
 pub const GUARDIAN_MOVING_DATA_ID: u8 = 16;
+/// Where a ghast's charging flag (a boolean) and a phantom's size (an int) sit among their data.
+pub const GHAST_CHARGING_DATA_ID: u8 = 16;
+pub const PHANTOM_SIZE_DATA_ID: u8 = 16;
 pub const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 /// Where a salmon's size, a tropical fish's packed variant and a pufferfish's
 /// puff state (each an int) sit among their data.

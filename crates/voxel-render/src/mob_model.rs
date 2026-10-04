@@ -1633,6 +1633,86 @@ impl MobModel {
         }
     }
 
+    /// `BlazeModel.setupAnim`: three rings of rods turn about the head, each
+    /// bobbing, and the head takes the look.
+    pub fn setup_blaze(&mut self, age_in_ticks: f32, head_y_rot: f32, x_rot: f32) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let quarter_turn = (std::f64::consts::PI / 2.0) as f32;
+        // Each ring: its first rod's angle, and per rod the bob's phase and
+        // the rod's height and radius.
+        let rings: [(f32, std::ops::Range<usize>, f32, f32); 3] = [
+            (age_in_ticks * pi * -0.1, 0..4, -2.0, 9.0),
+            (
+                (std::f64::consts::PI / 4.0) as f32 + age_in_ticks * pi * 0.03,
+                4..8,
+                2.0,
+                7.0,
+            ),
+            (0.471_238_94 + age_in_ticks * pi * -0.05, 8..12, 11.0, 5.0),
+        ];
+        for (start, indices, height, radius) in rings {
+            let mut angle = start;
+            for i in indices {
+                let bob = if i < 8 {
+                    cos((i as f32 * 2.0 + age_in_ticks) * 0.25)
+                } else {
+                    cos((i as f32 * 1.5 + age_in_ticks) * 0.5)
+                };
+                if let Some(rod) = self.root.child_mut(&format!("part{i}")) {
+                    rod.y = height + bob;
+                    rod.x = cos(angle) * radius;
+                    rod.z = sin(angle) * radius;
+                }
+                angle += quarter_turn;
+            }
+        }
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = head_y_rot * degrees;
+            head.x_rot = x_rot * degrees;
+        }
+    }
+
+    /// `GhastModel.setupAnim`: the nine tentacles sway out of step.
+    pub fn setup_ghast(&mut self, age_in_ticks: f32) {
+        self.root.reset();
+        for i in 0..9 {
+            if let Some(tentacle) = self.root.child_mut(&format!("tentacle{i}")) {
+                tentacle.x_rot = 0.2 * mth_sin_f64(f64::from(age_in_ticks * 0.3 + i as f32)) + 0.4;
+            }
+        }
+    }
+
+    /// `PhantomModel.setupAnim`: the wings beat together (the right ones
+    /// against the left) and the tail follows at twice the pace.
+    pub fn setup_phantom(&mut self, flap_time: f32) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let anim = flap_time * 7.448_451 * degrees;
+        let wing = mth_cos_f64(f64::from(anim)) * 16.0 * degrees;
+        let tail = -(5.0 + mth_cos_f64(f64::from(anim * 2.0)) * 5.0) * degrees;
+        let Some(body) = self.root.child_mut("body") else {
+            return;
+        };
+        for (side, sign) in [("left", 1.0_f32), ("right", -1.0)] {
+            if let Some(base) = body.child_mut(&format!("{side}_wing_base")) {
+                base.z_rot = sign * wing;
+                if let Some(tip) = base.child_mut(&format!("{side}_wing_tip")) {
+                    tip.z_rot = sign * wing;
+                }
+            }
+        }
+        if let Some(base) = body.child_mut("tail_base") {
+            base.x_rot = tail;
+            if let Some(tip) = base.child_mut("tail_tip") {
+                tip.x_rot = tail;
+            }
+        }
+    }
+
     /// `GuardianModel.setupAnim`: the head takes the look, the spikes breathe
     /// out and in, the eye follows what the guardian looks at, and the tail
     /// sways, more toward its end.
@@ -3310,6 +3390,8 @@ pub struct MobPlacement {
     /// What the renderer's own `scale` hook scales the pose by, after the
     /// flip (a creeper's swelling), or none.
     pub hook_scale: Option<[f32; 3]>,
+    /// What the renderer's `scale` hook then moves the pose by (a phantom's lift), or none.
+    pub hook_translate: Option<[f32; 3]>,
     /// A roll about z the renderer's own `setupRotations` adds after the
     /// fall of a dead mob, in degrees (the walking iron golem's sway).
     pub roll: Option<f32>,
@@ -3407,6 +3489,7 @@ impl Default for MobPlacement {
             red_overlay: false,
             white_overlay: 0.0,
             hook_scale: None,
+            hook_translate: None,
             roll: None,
             shift: None,
             roll_shift: None,
@@ -3474,6 +3557,9 @@ pub fn placement_pose(placement: &MobPlacement) -> Pose {
     pose.scale(-1.0, -1.0, 1.0);
     if let Some([x, y, z]) = placement.hook_scale {
         pose.scale(x, y, z);
+    }
+    if let Some([x, y, z]) = placement.hook_translate {
+        pose.translate(x, y, z);
     }
     pose.translate(0.0, -1.501, 0.0);
     pose

@@ -100,7 +100,9 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T35h](T35h-gardiyan.md) | Gardiyan ve elder gardiyan (model, diken/kuyruk durumu, göz) | M | T35b | bitti (ed8fa43e) |
 | [T35i](T35i-gardiyan-isini.md) | Gardiyanın ışını | M | T35h | bitti (f82729ab) |
 | [T35j](T35j-gardiyan-hedefe-bakis.md) | Gardiyanın hedefe bakışı ve karadaki çırpınışı | M | T35i | açık |
-| [T36](T36-ucanlar.md) | Uçanlar ve hayaletler: yarasa, papağan, allay, vex, phantom, blaze, ghast, breeze | M | T24 | açık |
+| [T36](T36-ucanlar.md) | Blaze, ghast ve phantom | M | T24 | bitti |
+| [T36b](T36b-yarasa-vex-allay.md) | Yarasa, vex ve allay | M | T36 | açık |
+| [T36c](T36c-papagan-breeze-mutlu-ghast.md) | Papağan, breeze ve mutlu ghast | L | T36 | açık |
 | [T37](T37-boss-ve-ozel.md) | Boss ve özel mobların çizimi: wither, ender ejderhası, warden, shulker, creaking, balçıklar, armadillo, sniffer | L | T43b, T36 | açık |
 | [T38](T38-araclar.md) | Araçlar: tekneler ve minecart ailesi | M | T24 | açık |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |

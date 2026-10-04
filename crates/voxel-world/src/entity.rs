@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// `Ghast.isCharging` and `Phantom.getPhantomSize`.
+    pub(crate) ghast_charging: bool,
+    pub(crate) phantom_size: i32,
     /// `Guardian.isMoving` and the id of `getActiveAttackTarget` (zero for none).
     pub(crate) guardian_moving: bool,
     pub(crate) guardian_target: i32,
@@ -2014,6 +2017,16 @@ impl ClientEntity {
                         | "minecraft:elder_guardian"
                 )
             )
+    }
+
+    /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
+    pub fn is_ghast_charging(&self) -> bool {
+        self.living.ghast_charging
+    }
+
+    /// `Phantom.getPhantomSize`.
+    pub fn phantom_size(&self) -> i32 {
+        self.living.phantom_size
     }
 
     /// A guardian's animations, if it has ticked.

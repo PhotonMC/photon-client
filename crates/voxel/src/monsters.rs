@@ -29,6 +29,12 @@ enum Pose {
     Enderman,
     /// `SilverfishModel`, `EndermiteModel`: the segments' wave (true for the silverfish).
     Segmented(bool),
+    /// `BlazeModel`, which a renderer lights fully by its blocks.
+    Blaze,
+    /// `GhastModel`, which opens its mouth (another texture) to charge.
+    Ghast,
+    /// `PhantomModel`, which grows with its size and tips with its pitch.
+    Phantom,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -41,7 +47,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 6] = [
+const MONSTERS: [Monster; 9] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -84,7 +90,31 @@ const MONSTERS: [Monster; 6] = [
         pose: Pose::Enderman,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:blaze",
+        layer: "minecraft:blaze#main",
+        texture: "entity/blaze/blaze",
+        pose: Pose::Blaze,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
+    Monster {
+        type_name: "minecraft:ghast",
+        layer: "minecraft:ghast#main",
+        texture: "entity/ghast/ghast",
+        pose: Pose::Ghast,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
+    Monster {
+        type_name: "minecraft:phantom",
+        layer: "minecraft:phantom#main",
+        texture: "entity/phantom/phantom",
+        pose: Pose::Phantom,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
+
+/// The texture a ghast opens its mouth in (`GhastRenderer.getTextureLocation`).
+const GHAST_SHOOTING_TEXTURE: &str = "entity/ghast/ghast_shooting";
 
 /// The paths (under `textures/`) of the textures the monsters wear.
 pub fn textures() -> impl Iterator<Item = &'static str> {
@@ -97,7 +127,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
             ]
         })
         .flatten()
-        .chain([POWER_TEXTURE])
+        .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE])
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -128,6 +158,26 @@ fn pose_monster(
             carrying: entity.is_carrying_block(),
             creepy: entity.is_creepy(),
         }),
+        Pose::Blaze => {
+            model.setup_blaze(
+                entity.tick_count() as f32 + partial,
+                look.head_y_rot,
+                look.x_rot,
+            );
+            // `BlazeRenderer.getBlockLightLevel`: fifteen, whatever the blocks say.
+            placed.light = (placed.light & !0xFFFF) | (15 << 4);
+        }
+        Pose::Ghast => model.setup_ghast(entity.tick_count() as f32 + partial),
+        Pose::Phantom => {
+            let age_in_ticks = entity.tick_count() as f32 + partial;
+            model.setup_phantom((entity.id() * 3) as f32 + age_in_ticks);
+            // `PhantomRenderer.scale` and `setupRotations`: it grows with its size,
+            // is lifted, and tips with its pitch.
+            let scale = 1.0 + 0.15 * entity.phantom_size() as f32;
+            placed.hook_scale = Some([scale; 3]);
+            placed.hook_translate = Some([0.0, 1.3125, 0.1875]);
+            placed.pitch = Some(snapshot.pitch);
+        }
         Pose::Creeper => {
             let swelling = entity.creeper_swelling(partial);
             model.setup_creeper(&look);
@@ -172,9 +222,14 @@ pub fn remote_monsters(
                 models.shake.next_gaussian() * spread,
             ]
         });
+        let texture = if monster.pose == Pose::Ghast && entity.is_ghast_charging() {
+            GHAST_SHOOTING_TEXTURE
+        } else {
+            monster.texture
+        };
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
-            textures.rect(monster.texture),
+            textures.rect(texture),
             models.model(monster.layer),
         ) else {
             continue;

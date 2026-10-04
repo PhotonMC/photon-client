@@ -1682,6 +1682,45 @@ public final class EntityOracle {
     }
 
     /**
+     * The blaze, ghast and phantom models posed by the reference's own `setupAnim`, drawn, from the
+     * age (and the look, for a blaze; the flap time, for a phantom).
+     */
+    private static JsonObject airborneModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            net.minecraft.client.model.EntityModel<?> model;
+            if (id.contains("blaze")) {
+                var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                var blaze = new net.minecraft.client.model.monster.blaze.BlazeModel(root);
+                blaze.setupAnim(state);
+                model = blaze;
+            } else if (id.contains("ghast")) {
+                var state = new net.minecraft.client.renderer.entity.state.GhastRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                var ghast = new net.minecraft.client.model.monster.ghast.GhastModel(root);
+                ghast.setupAnim(state);
+                model = ghast;
+            } else {
+                var state = new net.minecraft.client.renderer.entity.state.PhantomRenderState();
+                state.flapTime = Oracle.f32(row, "flap_time");
+                var phantom = new net.minecraft.client.model.monster.phantom.PhantomModel(root);
+                phantom.setupAnim(state);
+                model = phantom;
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The guardian models (grown, elder) posed by the reference's own `setupAnim`, drawn, from the
      * look, the spikes' and the tail's animation and (optionally) what the eye follows.
      */
@@ -2593,6 +2632,11 @@ public final class EntityOracle {
             } else if (kind.equals("pufferfish")) {
                 rendererClass = net.minecraft.client.renderer.entity.PufferfishRenderer.class;
                 state = new net.minecraft.client.renderer.entity.state.PufferfishRenderState();
+            } else if (kind.equals("phantom")) {
+                rendererClass = net.minecraft.client.renderer.entity.PhantomRenderer.class;
+                var phantom = new net.minecraft.client.renderer.entity.state.PhantomRenderState();
+                phantom.size = row.get("size").getAsInt();
+                state = phantom;
             } else if (kind.equals("cat")) {
                 rendererClass = net.minecraft.client.renderer.entity.CatRenderer.class;
                 var cat = new net.minecraft.client.renderer.entity.state.CatRenderState();
@@ -2634,6 +2678,23 @@ public final class EntityOracle {
                 described.add(Oracle.bits(value));
             }
             out.add("pose", described);
+            if (kind.equals("phantom")) {
+                // What `submit` does after `setupRotations`: the flip, the renderer's own scale
+                // and the model's lift.
+                stack.scale(-1.0F, -1.0F, 1.0F);
+                var hook = rendererClass.getDeclaredMethod("scale", state.getClass(),
+                    com.mojang.blaze3d.vertex.PoseStack.class);
+                hook.setAccessible(true);
+                hook.invoke(renderer, state, stack);
+                stack.translate(0.0F, -1.501F, 0.0F);
+                var full = new float[16];
+                stack.last().pose().get(full);
+                var fullDescribed = new JsonArray();
+                for (float value : full) {
+                    fullDescribed.add(Oracle.bits(value));
+                }
+                out.add("full_pose", fullDescribed);
+            }
             if (kind.equals("panda")) {
                 var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
                     EntityOracle.class.getClassLoader(),
@@ -3341,6 +3402,8 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
             {net.minecraft.world.entity.animal.frog.Frog.class, "DATA_VARIANT_ID", "frog-variant"},
             {net.minecraft.world.entity.animal.nautilus.ZombieNautilus.class, "DATA_VARIANT_ID", "zombie-nautilus-variant"},
+            {net.minecraft.world.entity.monster.Ghast.class, "DATA_IS_CHARGING", "ghast-charging"},
+            {net.minecraft.world.entity.monster.Phantom.class, "ID_SIZE", "phantom-size"},
             {net.minecraft.world.entity.monster.Guardian.class, "DATA_ID_MOVING", "guardian-moving"},
             {net.minecraft.world.entity.monster.Guardian.class, "DATA_ID_ATTACK_TARGET", "guardian-attack-target"},
             {net.minecraft.world.entity.animal.axolotl.Axolotl.class, "DATA_VARIANT", "axolotl-variant"},
@@ -3545,6 +3608,9 @@ public final class EntityOracle {
         }
         if (operation.equals("axolotl_model")) {
             return axolotlModel(request);
+        }
+        if (operation.equals("airborne_model")) {
+            return airborneModel(request);
         }
         if (operation.equals("guardian_beam")) {
             return guardianBeam(request);

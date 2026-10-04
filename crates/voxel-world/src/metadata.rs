@@ -486,6 +486,23 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8])
     metadata_int_value(metadata, GLOW_SQUID_DARK_TICKS_DATA_ID)
 }
 
+/// Whether a ghast is charging a fireball (`Ghast.DATA_IS_CHARGING`), when the
+/// data holds it.
+pub(crate) fn ghast_charging_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:ghast" {
+        return None;
+    }
+    metadata_boolean_value(metadata, GHAST_CHARGING_DATA_ID)
+}
+
+/// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
+pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:phantom" {
+        return None;
+    }
+    metadata_int_value(metadata, PHANTOM_SIZE_DATA_ID)
+}
+
 /// Whether a guardian moves and the id of what its beam aims at
 /// (`Guardian.DATA_ID_MOVING`, `DATA_ID_ATTACK_TARGET`), each when the data holds it.
 pub(crate) fn guardian_data_from_metadata(
