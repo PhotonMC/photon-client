@@ -18599,6 +18599,16 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "fish_data" => {
+                        let data_id = match string(event, "fish")? {
+                            "salmon" => voxel_world::SALMON_TYPE_DATA_ID,
+                            _ => voxel_world::PUFFERFISH_PUFF_STATE_DATA_ID,
+                        };
+                        let mut data = vec![data_id, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "value")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "squid_speed" => {
                         let speed = u32::from_str_radix(string(event, "speed")?, 16)
                             .map(f32::from_bits)
@@ -18813,6 +18823,20 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described["idle_millis"] =
                                 json!(rabbit.idle_head_tilt.time_in_millis(tick));
                             described["jump_completion"] = json!(hex(rabbit.jump_completion(0.5)));
+                        }
+                    }
+                    "fish" => {
+                        described["in_water"] = json!(entity.is_in_water());
+                        let area = entity.bounding_box();
+                        for (key, value) in [
+                            ("min_x", area.min_x),
+                            ("min_y", area.min_y),
+                            ("min_z", area.min_z),
+                            ("max_x", area.max_x),
+                            ("max_y", area.max_y),
+                            ("max_z", area.max_z),
+                        ] {
+                            described[key] = json!(format!("{:016x}", value.to_bits()));
                         }
                     }
                     "squid" => {
@@ -20014,6 +20038,67 @@ fn squid_model_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `fish_model`: a fish's model posed and drawn, by its layer.
+fn fish_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let age = u32::from_str_radix(row["age_in_ticks"].as_str().ok_or("age")?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())?;
+        let in_water = row["in_water"].as_bool().ok_or("in_water")?;
+        let mut model = MobModel::bake(layer);
+        if id.starts_with("minecraft:cod#") {
+            model.setup_tail_fish("tail_fin", age, in_water);
+        } else if id.starts_with("minecraft:salmon") {
+            model.setup_salmon(age, in_water);
+        } else if id.starts_with("minecraft:tropical_fish") {
+            model.setup_tail_fish("tail", age, in_water);
+        } else if id.starts_with("minecraft:pufferfish_small") {
+            model.setup_pufferfish(["right_fin", "left_fin"], age);
+        } else {
+            model.setup_pufferfish(["right_blue_fin", "left_blue_fin"], age);
+        }
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `fish_textures`: the textures the fish wear, and a tropical fish's by its
+/// packed variant.
+fn fish_textures_result(request: &Value) -> Result<Value, String> {
+    use voxel_world::fish::{
+        COD_TEXTURE, PUFFERFISH_TEXTURE, SALMON_TEXTURE, TropicalPattern, tropical_base_dye,
+        tropical_pattern_dye,
+    };
+    let path = |texture: &str| format!("minecraft:textures/{texture}.png");
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        if row.get("packed_id").is_none() {
+            let texture = match string(row, "label")? {
+                "cod" => COD_TEXTURE,
+                "salmon" => SALMON_TEXTURE,
+                _ => PUFFERFISH_TEXTURE,
+            };
+            out.push(json!({"label": row["label"], "texture": path(texture)}));
+            continue;
+        }
+        let packed = i32_field(row, "packed_id")?;
+        let pattern = TropicalPattern::from_packed(packed);
+        out.push(json!({
+            "label": row["label"],
+            "packed_id": packed,
+            "texture": path(pattern.base_texture()),
+            "pattern_texture": path(pattern.pattern_texture()),
+            "base_dye": tropical_base_dye(packed),
+            "pattern_dye": tropical_pattern_dye(packed),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `glow_squid_light`: the block light a glow squid is drawn with.
 fn glow_squid_light_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -20619,6 +20704,25 @@ fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     z_body_rot: bits("z_body_rot")?,
                     baby,
                 });
+            }
+            kind @ ("cod" | "salmon" | "tropical_fish" | "pufferfish") => {
+                use voxel_render::mob_model::{
+                    cod_turns, pufferfish_turns, salmon_turns, tropical_fish_turns,
+                };
+                let in_water = flag("in_water")?;
+                placed.fish = Some(match kind {
+                    "cod" => cod_turns(age, in_water),
+                    "salmon" => salmon_turns(age, in_water),
+                    "tropical_fish" => tropical_fish_turns(age, in_water),
+                    _ => pufferfish_turns(age),
+                });
+                if row.get("death_time").is_some() {
+                    placed.death_time = bits("death_time")?;
+                }
+                if row.get("feet_x").is_some() {
+                    placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
+                    placed.scale = bits("scale")?;
+                }
             }
             "cat" => placed.cat_lying(bits("lie_down_amount")?, flag("on_sleeping_player")?),
             "fox" => {
@@ -21616,6 +21720,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "hoglin_model" => return hoglin_model_result(request),
         "copper_golem_model" => return copper_golem_model_result(request),
         "squid_model" => return squid_model_result(request),
+        "fish_model" => return fish_model_result(request),
+        "fish_textures" => return fish_textures_result(request),
         "glow_squid_light" => return glow_squid_light_result(request),
         "copper_golem_layers" => return copper_golem_layers_result(request),
         "fox_model" => return fox_model_result(request),
@@ -21969,6 +22075,21 @@ fn entity_result(request: &Value) -> Result<Value, String> {
                     "creeper-ignited",
                     i64::from(CREEPER_IGNITED_DATA_ID),
                     i64::from(8),
+                ),
+                (
+                    "salmon-type",
+                    i64::from(voxel_world::SALMON_TYPE_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "tropical-fish-variant",
+                    i64::from(voxel_world::TROPICAL_FISH_VARIANT_DATA_ID),
+                    i64::from(1),
+                ),
+                (
+                    "pufferfish-puff-state",
+                    i64::from(voxel_world::PUFFERFISH_PUFF_STATE_DATA_ID),
+                    i64::from(1),
                 ),
             ];
             return Ok(json!({"rows": fields

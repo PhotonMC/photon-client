@@ -314,6 +314,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::ravagers::textures())
         .chain(crate::striders::textures())
         .chain(crate::squids::textures())
+        .chain(crate::fish::textures())
         .chain(crate::copper_golems::textures())
         .chain([crate::armor_stands::TEXTURE])
 }
@@ -563,6 +564,7 @@ fn remote_families(
     vertices.extend(crate::squids::remote_squids(
         session, models, textures, view,
     ));
+    vertices.extend(crate::fish::remote_fish(session, models, textures, view));
     vertices.extend(crate::copper_golems::remote_copper_golems(
         session,
         models,

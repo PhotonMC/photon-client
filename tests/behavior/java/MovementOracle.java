@@ -830,6 +830,16 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "fish_data" -> {
+                        // A salmon's size or a pufferfish's puff state, which also resize its box.
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        boolean salmon = event.get("fish").getAsString().equals("salmon");
+                        data.add(wolfData(salmon ? net.minecraft.world.entity.animal.fish.Salmon.class
+                                : net.minecraft.world.entity.animal.fish.Pufferfish.class,
+                            salmon ? "DATA_TYPE" : "PUFF_STATE", event.get("value").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "squid_speed" -> {
                         // What the constructor draws from an unseeded random source: fixed here.
                         var speed = net.minecraft.world.entity.animal.squid.Squid.class
@@ -1026,6 +1036,16 @@ public final class MovementOracle {
                             described.addProperty("idle_millis",
                                 rabbit.idleHeadTiltAnimationState.getTimeInMillis(rabbit.tickCount));
                             described.addProperty("jump_completion", Oracle.bits(rabbit.getJumpCompletion(0.5F)));
+                        }
+                        case "fish" -> {
+                            described.addProperty("in_water", entity.isInWater());
+                            var box = entity.getBoundingBox();
+                            described.addProperty("min_x", Oracle.bits(box.minX));
+                            described.addProperty("min_y", Oracle.bits(box.minY));
+                            described.addProperty("min_z", Oracle.bits(box.minZ));
+                            described.addProperty("max_x", Oracle.bits(box.maxX));
+                            described.addProperty("max_y", Oracle.bits(box.maxY));
+                            described.addProperty("max_z", Oracle.bits(box.maxZ));
                         }
                         case "squid" -> {
                             var squid = (net.minecraft.world.entity.animal.squid.Squid) entity;

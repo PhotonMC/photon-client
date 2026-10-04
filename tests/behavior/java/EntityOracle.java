@@ -1551,6 +1551,114 @@ public final class EntityOracle {
     }
 
     /**
+     * The fish's models posed by the reference's own `setupAnim`, drawn: each layer by its class,
+     * with the age and whether it is in water.
+     */
+    private static JsonObject fishModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            String id = row.get("layer").getAsString();
+            var root = bakedLayer(id);
+            float age = Oracle.f32(row, "age_in_ticks");
+            boolean inWater = row.get("in_water").getAsBoolean();
+            net.minecraft.client.model.EntityModel<?> model;
+            if (id.startsWith("minecraft:cod#")) {
+                var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+                state.ageInTicks = age;
+                state.isInWater = inWater;
+                var cod = new net.minecraft.client.model.animal.fish.CodModel(root);
+                cod.setupAnim(state);
+                model = cod;
+            } else if (id.startsWith("minecraft:salmon")) {
+                var state = new net.minecraft.client.renderer.entity.state.SalmonRenderState();
+                state.ageInTicks = age;
+                state.isInWater = inWater;
+                var salmon = new net.minecraft.client.model.animal.fish.SalmonModel(root);
+                salmon.setupAnim(state);
+                model = salmon;
+            } else if (id.startsWith("minecraft:tropical_fish")) {
+                var state = new net.minecraft.client.renderer.entity.state.TropicalFishRenderState();
+                state.ageInTicks = age;
+                state.isInWater = inWater;
+                if (id.startsWith("minecraft:tropical_fish_large")) {
+                    var fish = new net.minecraft.client.model.animal.fish.TropicalFishLargeModel(root);
+                    fish.setupAnim(state);
+                    model = fish;
+                } else {
+                    var fish = new net.minecraft.client.model.animal.fish.TropicalFishSmallModel(root);
+                    fish.setupAnim(state);
+                    model = fish;
+                }
+            } else {
+                var state = new net.minecraft.client.renderer.entity.state.EntityRenderState();
+                state.ageInTicks = age;
+                if (id.startsWith("minecraft:pufferfish_small")) {
+                    var fish = new net.minecraft.client.model.animal.fish.PufferfishSmallModel(root);
+                    fish.setupAnim(state);
+                    model = fish;
+                } else if (id.startsWith("minecraft:pufferfish_medium")) {
+                    var fish = new net.minecraft.client.model.animal.fish.PufferfishMidModel(root);
+                    fish.setupAnim(state);
+                    model = fish;
+                } else {
+                    var fish = new net.minecraft.client.model.animal.fish.PufferfishBigModel(root);
+                    fish.setupAnim(state);
+                    model = fish;
+                }
+            }
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Which textures the fish wear: the cod's, the salmon's and the pufferfish's, and for each
+     * tropical fish pattern its packed id, the texture of its base and the texture of its pattern,
+     * from the renderer's and the layer's own constants.
+     */
+    private static JsonObject fishTextures(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (!row.has("packed_id")) {
+                var described = switch (row.get("label").getAsString()) {
+                    case "cod" -> new Object[] {net.minecraft.client.renderer.entity.CodRenderer.class, "COD_LOCATION"};
+                    case "salmon" -> new Object[] {net.minecraft.client.renderer.entity.SalmonRenderer.class, "SALMON_LOCATION"};
+                    default -> new Object[] {net.minecraft.client.renderer.entity.PufferfishRenderer.class, "PUFFER_LOCATION"};
+                };
+                var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
+                field.setAccessible(true);
+                out.addProperty("texture", field.get(null).toString());
+                rows.add(out);
+                continue;
+            }
+            int packed = row.get("packed_id").getAsInt();
+            var pattern = net.minecraft.world.entity.animal.fish.TropicalFish.getPattern(packed);
+            boolean large = pattern.base() == net.minecraft.world.entity.animal.fish.TropicalFish.Base.LARGE;
+            var base = net.minecraft.client.renderer.entity.TropicalFishRenderer.class
+                .getDeclaredField(large ? "LARGE_TEXTURE" : "SMALL_TEXTURE");
+            base.setAccessible(true);
+            var layer = net.minecraft.client.renderer.entity.layers.TropicalFishPatternLayer.class
+                .getDeclaredField(pattern.name() + "_TEXTURE");
+            layer.setAccessible(true);
+            out.addProperty("packed_id", packed);
+            out.addProperty("texture", base.get(null).toString());
+            out.addProperty("pattern_texture", layer.get(null).toString());
+            out.addProperty("base_dye", net.minecraft.world.entity.animal.fish.TropicalFish.getBaseColor(packed).getId());
+            out.addProperty("pattern_dye", net.minecraft.world.entity.animal.fish.TropicalFish.getPatternColor(packed).getId());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What `GlowSquidRenderer.getBlockLightLevel` makes of the dark ticks and the light around: the
      * glow comes from the reference's own `Mth.clampedLerp`, cut to a whole level.
      */
@@ -2116,6 +2224,18 @@ public final class EntityOracle {
                 squid.xBodyRot = Oracle.f32(row, "x_body_rot");
                 squid.zBodyRot = Oracle.f32(row, "z_body_rot");
                 state = squid;
+            } else if (kind.equals("cod")) {
+                rendererClass = net.minecraft.client.renderer.entity.CodRenderer.class;
+                state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+            } else if (kind.equals("salmon")) {
+                rendererClass = net.minecraft.client.renderer.entity.SalmonRenderer.class;
+                state = new net.minecraft.client.renderer.entity.state.SalmonRenderState();
+            } else if (kind.equals("tropical_fish")) {
+                rendererClass = net.minecraft.client.renderer.entity.TropicalFishRenderer.class;
+                state = new net.minecraft.client.renderer.entity.state.TropicalFishRenderState();
+            } else if (kind.equals("pufferfish")) {
+                rendererClass = net.minecraft.client.renderer.entity.PufferfishRenderer.class;
+                state = new net.minecraft.client.renderer.entity.state.PufferfishRenderState();
             } else if (kind.equals("cat")) {
                 rendererClass = net.minecraft.client.renderer.entity.CatRenderer.class;
                 var cat = new net.minecraft.client.renderer.entity.state.CatRenderState();
@@ -2132,11 +2252,21 @@ public final class EntityOracle {
             state.isBaby = row.get("baby").getAsBoolean();
             state.xRot = Oracle.f32(row, "x_rot");
             state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            state.isInWater = row.has("in_water") && row.get("in_water").getAsBoolean();
+            if (row.has("death_time")) {
+                state.deathTime = Oracle.f32(row, "death_time");
+            }
             var renderer = UNSAFE.allocateInstance(rendererClass);
             var method = rendererClass.getDeclaredMethod("setupRotations", state.getClass(),
                 com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
             method.setAccessible(true);
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            if (row.has("feet_x")) {
+                // What `submit` does before `setupRotations`: to the entity's place, then its scale.
+                stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+                float scale = Oracle.f32(row, "scale");
+                stack.scale(scale, scale, scale);
+            }
             method.invoke(renderer, state, stack, Oracle.f32(row, "body_rot"), 1.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
@@ -2843,6 +2973,9 @@ public final class EntityOracle {
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_POWERED", "creeper-powered"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_SWELL_DIR", "creeper-swell-dir"},
             {net.minecraft.world.entity.monster.Creeper.class, "DATA_IS_IGNITED", "creeper-ignited"},
+            {net.minecraft.world.entity.animal.fish.Salmon.class, "DATA_TYPE", "salmon-type"},
+            {net.minecraft.world.entity.animal.fish.TropicalFish.class, "DATA_ID_TYPE_VARIANT", "tropical-fish-variant"},
+            {net.minecraft.world.entity.animal.fish.Pufferfish.class, "PUFF_STATE", "pufferfish-puff-state"},
         };
         for (var described : fields) {
             var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
@@ -3032,6 +3165,12 @@ public final class EntityOracle {
         }
         if (operation.equals("squid_model")) {
             return squidModel(request);
+        }
+        if (operation.equals("fish_model")) {
+            return fishModel(request);
+        }
+        if (operation.equals("fish_textures")) {
+            return fishTextures(request);
         }
         if (operation.equals("glow_squid_light")) {
             return glowSquidLight(request);

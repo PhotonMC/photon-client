@@ -213,6 +213,9 @@ pub(crate) struct EntityState {
     pub(crate) in_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
+    /// A salmon's size, a tropical fish's packed variant or a pufferfish's puff
+    /// state, once the data has said.
+    pub(crate) fish_variant: Option<i32>,
     /// A copper golem's `CopperGolemState` and its weathering (0 to 3).
     pub(crate) copper_golem_action: crate::copper_golem::GolemAction,
     pub(crate) copper_golem_weather: u8,
@@ -1973,9 +1976,52 @@ impl ClientEntity {
         )
     }
 
-    /// Whether the entity's water state is tracked (`Entity.isInWater`).
+    /// Whether the entity's water state is tracked (`Entity.isInWater`): the
+    /// mobs that draw differently in water.
     pub(crate) fn tracks_water(&self) -> bool {
-        self.is_squid()
+        self.is_squid() || self.is_fish()
+    }
+
+    /// Whether this is one of the fish `AbstractFish` makes.
+    pub fn is_fish(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some(
+                "minecraft:cod"
+                    | "minecraft:salmon"
+                    | "minecraft:tropical_fish"
+                    | "minecraft:pufferfish"
+            )
+        )
+    }
+
+    /// `Salmon.getVariant`: medium until the data says.
+    pub fn salmon_size(&self) -> crate::fish::SalmonSize {
+        crate::fish::SalmonSize::from_id(self.living.fish_variant.unwrap_or(1))
+    }
+
+    /// `TropicalFish.getPackedVariant`: a white kob until the data says.
+    pub fn tropical_fish_variant(&self) -> i32 {
+        self.living.fish_variant.unwrap_or(0)
+    }
+
+    /// `Pufferfish.getPuffState`.
+    pub fn puff_state(&self) -> i32 {
+        self.living.fish_variant.unwrap_or(0)
+    }
+
+    /// What `getDefaultDimensions` scales a fish's box by, from the size the
+    /// type's table holds (that of a new one: a medium salmon, an unpuffed
+    /// pufferfish, whose half is undone by doubling): a salmon by its size, a
+    /// pufferfish by how puffed it is.
+    pub(crate) fn fish_dimension_scale(&self) -> f32 {
+        match voxel_data::entity_type::name(self.type_id) {
+            Some("minecraft:salmon") => self.salmon_size().bounding_box_scale(),
+            Some("minecraft:pufferfish") => {
+                crate::fish::pufferfish_bounding_box_scale(self.puff_state()) * 2.0
+            }
+            _ => 1.0,
+        }
     }
 
     /// `Entity.isInWater` for a mob that tracks it.

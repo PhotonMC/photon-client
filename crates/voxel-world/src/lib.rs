@@ -35,6 +35,7 @@ pub mod copper_golem;
 mod dimension;
 mod entity;
 mod entity_random;
+pub mod fish;
 mod fluid;
 pub mod fox;
 pub mod horse;
@@ -1683,6 +1684,7 @@ impl ClientWorld {
         };
         let dimensions = ClientEntityDimensions::scalable(width, height)
             .with_eye_height(eye)
+            .scale(entity.fish_dimension_scale(), entity.fish_dimension_scale())
             .scale(entity.scale(), entity.scale());
         let (x, y, z) = entity.position();
         let position = voxel_core::math::Vec3::new(x, y, z);
@@ -3560,6 +3562,9 @@ impl ClientWorld {
         }
         if let Some(ticks) = glow_squid_dark_ticks_from_metadata(entity.type_id, metadata) {
             entity.living.glow_dark_ticks = ticks;
+        }
+        if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
+            entity.living.fish_variant = Some(variant);
         }
         if let Some(immune) = hoglin_immune_from_metadata(entity.type_id, metadata) {
             entity.living.hoglin_immune = immune;

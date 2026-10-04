@@ -481,6 +481,19 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8])
     metadata_int_value(metadata, GLOW_SQUID_DARK_TICKS_DATA_ID)
 }
 
+/// What a salmon, a tropical fish or a pufferfish keeps of its looks in one int
+/// (`Salmon.DATA_TYPE`, `TropicalFish.DATA_ID_TYPE_VARIANT`, `Pufferfish.PUFF_STATE`),
+/// when the data holds it.
+pub(crate) fn fish_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+    let data_id = match voxel_data::entity_type::name(type_id)? {
+        "minecraft:salmon" => SALMON_TYPE_DATA_ID,
+        "minecraft:tropical_fish" => TROPICAL_FISH_VARIANT_DATA_ID,
+        "minecraft:pufferfish" => PUFFERFISH_PUFF_STATE_DATA_ID,
+        _ => return None,
+    };
+    metadata_int_value(metadata, data_id)
+}
+
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
 pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {

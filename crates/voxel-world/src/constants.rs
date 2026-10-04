@@ -220,6 +220,11 @@ pub(crate) const COPPER_GOLEM_WEATHER_SERIALIZER_ID: i32 = 38;
 pub(crate) const COPPER_GOLEM_STATE_SERIALIZER_ID: i32 = 37;
 /// Where a glow squid's dark ticks (an int) sit among its data.
 pub const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
+/// Where a salmon's size, a tropical fish's packed variant and a pufferfish's
+/// puff state (each an int) sit among their data.
+pub const SALMON_TYPE_DATA_ID: u8 = 17;
+pub const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
+pub const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 /// Where a hoglin's immunity to zombification sits among its data.
 pub const HOGLIN_IMMUNE_DATA_ID: u8 = 18;
 pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;

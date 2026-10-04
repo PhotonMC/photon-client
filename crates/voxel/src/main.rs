@@ -9,6 +9,7 @@ mod copper_golems;
 mod dropped_items;
 mod farm_animals;
 mod felines;
+mod fish;
 mod foxes;
 mod golems;
 mod gui;

@@ -14342,6 +14342,20 @@ def movement_item_cases():
                          for y in layers for x in range(4, 13) for z in range(4, 13)]
         return row
 
+    def fish(label, entity, ticks, events, water="deep", y=64.0):
+        """A fish at the middle of the scene's only loaded chunk, in a pool of water, a layer of it
+        that reaches only part of its box, or none; `y` is its feet."""
+        layers = {"deep": range(60, 70), "shallow": range(64, 65), "none": range(0)}[water]
+        row = living(label, entity, ticks, events, extras=["fish"])
+        row["x"] = float_bits(8.5, "f64")
+        row["y"] = float_bits(y, "f64")
+        row["z"] = float_bits(8.5, "f64")
+        row["blocks"] = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
+                         for y in layers for x in range(4, 13) for z in range(4, 13)]
+        return row
+
+    fish_data = lambda tick, fish, value: {"tick": tick, "type": "fish_data", "fish": fish,
+                                           "value": value}
     motion = lambda tick, x, y, z: {"tick": tick, "type": "entity_motion", "x": float_bits(x, "f64"),
                                     "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
     animation_rows = [
@@ -14361,6 +14375,21 @@ def movement_item_cases():
         squid("glow-squid-in-water", 40, [motion(3, 0.05, 0.05, -0.1)], entity="glow_squid"),
         squid("glow-squid-dark-ticks-run-out", 30,
               [{"tick": 2, "type": "glow_squid_data", "dark_ticks": 12}], entity="glow_squid"),
+        # A fish is in water when the water reaches its box, which a salmon's size and a
+        # pufferfish's puff state change: the water here lifts only the top of the larger ones.
+        fish("cod-in-water", "cod", 10, []),
+        fish("cod-out-of-water", "cod", 10, [], water="none"),
+        fish("tropical-fish-in-water", "tropical_fish", 10, []),
+        fish("salmon-default-size", "salmon", 10, [], water="shallow", y=63.5),
+        fish("salmon-small", "salmon", 10, [fish_data(2, "salmon", 0)], water="shallow", y=63.5),
+        fish("salmon-large", "salmon", 10, [fish_data(2, "salmon", 2)], water="shallow", y=63.5),
+        fish("salmon-size-past-the-last", "salmon", 10, [fish_data(2, "salmon", 7)],
+             water="shallow", y=63.5),
+        fish("pufferfish-small", "pufferfish", 10, [], water="shallow", y=63.4),
+        fish("pufferfish-mid", "pufferfish", 10, [fish_data(2, "pufferfish", 1)], water="shallow",
+             y=63.4),
+        fish("pufferfish-full", "pufferfish", 10, [fish_data(2, "pufferfish", 2)], water="shallow",
+             y=63.4),
         living("zombie-swings", "zombie", 14, [animate(1, 0)], extras=swing),
         living("zombie-swings-the-off-hand", "zombie", 14, [animate(1, 3)], extras=swing),
         living("zombie-swings-again-too-early", "zombie", 14,
@@ -14698,6 +14727,7 @@ def entity_cases():
     yield from entity_strider_cases()
     yield from entity_shaking_cases()
     yield from entity_squid_cases()
+    yield from entity_fish_cases()
     yield from entity_copper_golem_cases()
     yield from entity_copper_golem_layer_cases()
     yield {"case_id": "entity/attributes", "family": "entity", "operation": "entity_attributes",
@@ -15453,6 +15483,40 @@ def entity_squid_cases():
            "operation": "glow_squid_light",
            "rows": [{"label": f"dark-{dark}-light-{light}", "dark_ticks": dark, "block_light": light}
                     for dark in (0, 1, 3, 5, 9, 10, 11, 100) for light in (0, 7, 15)]}
+
+
+def entity_fish_cases():
+    """The fish, posed by the reference's own `setupAnim` of each model (the tail's, the back
+    half's or the fins' swing, wider out of water); how their renderers turn the pose (the swing
+    about y, the lying on the side out of water, the pufferfish's bob, each also once dead);
+    the textures they wear and a tropical fish's by its packed variant."""
+    layers = ["cod#main", "salmon#main", "salmon_small#main", "salmon_large#main",
+              "tropical_fish_small#main", "tropical_fish_small#pattern",
+              "tropical_fish_large#main", "tropical_fish_large#pattern",
+              "pufferfish_small#main", "pufferfish_medium#main", "pufferfish_big#main"]
+    rows = [{"label": f"{layer}-{age}-{'water' if in_water else 'land'}",
+             "layer": f"minecraft:{layer}", "age_in_ticks": float_bits(age), "in_water": in_water}
+            for layer in layers for age in (0.0, 3.5, 17.25, 101.0) for in_water in (True, False)]
+    yield {"case_id": "entity/fish-model", "family": "entity", "operation": "fish_model",
+           "rows": rows}
+    turns = [{"label": f"{kind}-{label}", "kind": kind, "baby": False,
+              "body_rot": float_bits(body_rot), "x_rot": float_bits(0.0),
+              "age_in_ticks": float_bits(age), "in_water": in_water,
+              "feet_x": float_bits(1.25), "feet_y": float_bits(64.5), "feet_z": float_bits(-3.75),
+              "scale": float_bits(1.0),
+              **({"death_time": float_bits(death)} if death else {})}
+             for kind in ("cod", "salmon", "tropical_fish", "pufferfish")
+             for label, body_rot, age, in_water, death in (
+                 ("swimming", 37.0, 10.5, True, 0.0), ("swimming-later", -120.0, 61.25, True, 0.0),
+                 ("on-land", 37.0, 10.5, False, 0.0), ("on-land-later", 200.0, 33.75, False, 0.0),
+                 ("dying", 12.0, 21.5, True, 9.0), ("dying-on-land", 90.0, 21.5, False, 25.0))]
+    yield {"case_id": "entity/fish-rotations", "family": "entity", "operation": "setup_rotations",
+           "rows": turns}
+    packed = [base | index << 8 for base in (0, 1) for index in range(6)]
+    packed += [0x0600, 0x0002, 0x0101, 0xFFFF, 0x10100, 0x0E030500, 0x11C80000, -1]
+    yield {"case_id": "entity/fish-textures", "family": "entity", "operation": "fish_textures",
+           "rows": [{"label": name} for name in ("cod", "salmon", "pufferfish")]
+           + [{"label": f"packed-{value & 0xFFFFFFFF:x}", "packed_id": value} for value in packed]}
 
 
 def entity_copper_golem_cases():
