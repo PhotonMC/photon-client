@@ -167,6 +167,11 @@ impl Sound {
         Self::file("minecraft:empty")
     }
 
+    /// `SoundManager.INTENTIONALLY_EMPTY_SOUND`: a sound that is meant to be silence.
+    pub fn intentionally_empty() -> Self {
+        Self::file("minecraft:intentionally_empty")
+    }
+
     fn file(name: &str) -> Self {
         Self {
             location: Identifier::parse(name).expect("a fixed name"),

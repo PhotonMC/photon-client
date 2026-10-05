@@ -46,6 +46,9 @@ public final class SoundOracle {
                 case "decode" -> {
                     return decode(request);
                 }
+                case "engine" -> {
+                    return engine(request);
+                }
                 default -> {
                 }
             }
@@ -189,6 +192,287 @@ public final class SoundOracle {
         Field field = owner.getDeclaredField(name);
         field.setAccessible(true);
         return field.get(target);
+    }
+
+    /** `SoundManager.prepare` on one text: the registry it makes (nothing, if the file is not valid). */
+    private static Map<Identifier, WeighedSoundEvents> registryOf(String text, java.util.List<String> fileNames)
+        throws Exception {
+        var files = new HashMap<Identifier, Resource>();
+        for (var file : fileNames) {
+            files.put(Identifier.fromNamespaceAndPath("minecraft", file), (Resource) UNSAFE.allocateInstance(Resource.class));
+        }
+        var preparationsClass = Class.forName("net.minecraft.client.sounds.SoundManager$Preparations");
+        var constructor = preparationsClass.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        var preparations = constructor.newInstance();
+        var cache = preparationsClass.getDeclaredField("soundCache");
+        cache.setAccessible(true);
+        cache.set(preparations, files);
+        var handle = preparationsClass.getDeclaredMethod("handleRegistration", Identifier.class,
+            net.minecraft.client.resources.sounds.SoundEventRegistration.class);
+        handle.setAccessible(true);
+        var gson = get(null, SoundManager.class, "GSON");
+        var type = get(null, SoundManager.class, "SOUND_EVENT_REGISTRATION_TYPE");
+        try (var reader = new java.io.StringReader(text)) {
+            @SuppressWarnings("unchecked")
+            Map<String, net.minecraft.client.resources.sounds.SoundEventRegistration> parsed = net.minecraft.util.GsonHelper.fromJson(
+                (com.google.gson.Gson) gson, reader,
+                (com.google.gson.reflect.TypeToken<Map<String, net.minecraft.client.resources.sounds.SoundEventRegistration>>) type);
+            for (var entry : parsed.entrySet()) {
+                handle.invoke(preparations, Identifier.fromNamespaceAndPath("minecraft", entry.getKey()), entry.getValue());
+            }
+        }
+        @SuppressWarnings("unchecked")
+        var registry = (Map<Identifier, WeighedSoundEvents>) get(preparations, preparationsClass, "registry");
+        return registry;
+    }
+
+    /** A sound instance a scenario describes: a sound at a place, scripted to move and stop if it ticks. */
+    static class Instance extends net.minecraft.client.resources.sounds.AbstractSoundInstance {
+        final boolean startSilent;
+        final boolean canPlay;
+
+        Instance(JsonObject step) {
+            super(Identifier.parse(step.get("event").getAsString()),
+                net.minecraft.sounds.SoundSource.valueOf(step.get("source").getAsString()),
+                RandomSource.create(Long.parseLong(step.get("seed").getAsString())));
+            this.volume = Oracle.f32(step, "volume");
+            this.pitch = Oracle.f32(step, "pitch");
+            this.looping = step.get("looping").getAsBoolean();
+            this.delay = step.get("delay").getAsInt();
+            this.attenuation = step.get("attenuation").getAsString().equals("none")
+                ? net.minecraft.client.resources.sounds.SoundInstance.Attenuation.NONE
+                : net.minecraft.client.resources.sounds.SoundInstance.Attenuation.LINEAR;
+            this.relative = step.get("relative").getAsBoolean();
+            var position = step.getAsJsonArray("pos");
+            this.x = position.get(0).getAsDouble();
+            this.y = position.get(1).getAsDouble();
+            this.z = position.get(2).getAsDouble();
+            this.startSilent = step.get("start_silent").getAsBoolean();
+            this.canPlay = step.get("can_play").getAsBoolean();
+        }
+
+        @Override
+        public boolean canStartSilent() {
+            return this.startSilent;
+        }
+
+        @Override
+        public boolean canPlaySound() {
+            return this.canPlay;
+        }
+    }
+
+    /** An instance that ticks: it moves, changes its volume and pitch and stops as its script says. */
+    static final class TickingInstance extends Instance
+        implements net.minecraft.client.resources.sounds.TickableSoundInstance {
+        private final JsonObject script;
+        private int ticks;
+        private boolean stopped;
+
+        TickingInstance(JsonObject step) {
+            super(step);
+            this.script = step.getAsJsonObject("tickable");
+        }
+
+        @Override
+        public boolean isStopped() {
+            return this.stopped;
+        }
+
+        @Override
+        public void tick() {
+            this.ticks++;
+            var moves = this.script.getAsJsonArray("moves");
+            if (this.ticks <= moves.size()) {
+                var to = moves.get(this.ticks - 1).getAsJsonArray();
+                this.x = to.get(0).getAsDouble();
+                this.y = to.get(1).getAsDouble();
+                this.z = to.get(2).getAsDouble();
+                this.volume = (float) this.script.getAsJsonArray("volumes").get(this.ticks - 1).getAsDouble();
+                this.pitch = (float) this.script.getAsJsonArray("pitches").get(this.ticks - 1).getAsDouble();
+            }
+            if (this.ticks >= this.script.get("stop_at").getAsInt()) {
+                this.stopped = true;
+                this.looping = false;
+            }
+        }
+    }
+
+    private static void setField(Object target, Class<?> owner, String name, Object value) throws Exception {
+        Field field = owner.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    /**
+     * Scenarios for the reference's own `SoundEngine`, with the sound device replaced by a channel that writes
+     * its calls down: sounds played, stopped, ticked and finishing, and the calls each made of its channel.
+     */
+    private static JsonObject engine(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            com.mojang.blaze3d.audio.Channel.reset();
+            var files = new java.util.ArrayList<String>();
+            for (var file : row.getAsJsonArray("files")) {
+                files.add(file.getAsString());
+            }
+            var registry = registryOf(row.get("json").getAsString(), files);
+            var manager = (SoundManager) UNSAFE.allocateInstance(SoundManager.class);
+            setField(manager, SoundManager.class, "registry", registry);
+
+            // The volume sliders.
+            var options = (net.minecraft.client.Options) UNSAFE.allocateInstance(net.minecraft.client.Options.class);
+            var volumes = new java.util.EnumMap<net.minecraft.sounds.SoundSource, net.minecraft.client.OptionInstance<Double>>(
+                net.minecraft.sounds.SoundSource.class);
+            for (var source : net.minecraft.sounds.SoundSource.values()) {
+                @SuppressWarnings("unchecked")
+                var option = (net.minecraft.client.OptionInstance<Double>) UNSAFE.allocateInstance(
+                    net.minecraft.client.OptionInstance.class);
+                setField(option, net.minecraft.client.OptionInstance.class, "value",
+                    row.getAsJsonObject("volumes").has(source.name())
+                        ? row.getAsJsonObject("volumes").get(source.name()).getAsDouble() : 1.0);
+                volumes.put(source, option);
+            }
+            setField(options, net.minecraft.client.Options.class, "soundSourceVolumes", volumes);
+
+            // The device: pools of channels, and buffers that are never loaded.
+            var library = new com.mojang.blaze3d.audio.Library();
+            library.setPools(row.get("static_channels").getAsInt(), row.get("streaming_channels").getAsInt());
+            var buffers = new net.minecraft.client.sounds.SoundBufferLibrary(null) {
+                @Override
+                public java.util.concurrent.CompletableFuture<com.mojang.blaze3d.audio.SoundBuffer> getCompleteBuffer(
+                    final Identifier location) {
+                    com.mojang.blaze3d.audio.Channel.LOG.add("buffer " + location);
+                    return java.util.concurrent.CompletableFuture.completedFuture(null);
+                }
+
+                @Override
+                public java.util.concurrent.CompletableFuture<net.minecraft.client.sounds.AudioStream> getStream(
+                    final Identifier location, final boolean looping) {
+                    com.mojang.blaze3d.audio.Channel.LOG.add("stream " + location + " looping " + looping);
+                    return java.util.concurrent.CompletableFuture.completedFuture(null);
+                }
+            };
+
+            var engine = UNSAFE.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
+            var engineClass = net.minecraft.client.sounds.SoundEngine.class;
+            setField(engine, engineClass, "soundManager", manager);
+            setField(engine, engineClass, "options", options);
+            setField(engine, engineClass, "loaded", true);
+            setField(engine, engineClass, "library", library);
+            setField(engine, engineClass, "soundBuffers", buffers);
+            setField(engine, engineClass, "executor", new net.minecraft.client.sounds.SoundEngineExecutor());
+            var access = new net.minecraft.client.sounds.ChannelAccess(library, Runnable::run);
+            setField(engine, engineClass, "channelAccess", access);
+            setField(engine, engineClass, "instanceToChannel", new HashMap<>());
+            setField(engine, engineClass, "instanceBySource", com.google.common.collect.HashMultimap.create());
+            var gains = new it.unimi.dsi.fastutil.objects.Object2FloatOpenHashMap<net.minecraft.sounds.SoundSource>();
+            gains.defaultReturnValue(1.0F);
+            setField(engine, engineClass, "gainBySource", gains);
+            setField(engine, engineClass, "tickingSounds", new java.util.ArrayList<>());
+            setField(engine, engineClass, "queuedSounds", new HashMap<>());
+            setField(engine, engineClass, "soundDeleteTime", new HashMap<>());
+            setField(engine, engineClass, "listeners", new java.util.ArrayList<>());
+            setField(engine, engineClass, "queuedTickableSounds", new java.util.ArrayList<>());
+            setField(engine, engineClass, "preloadQueue", new java.util.ArrayList<>());
+
+            var instances = new HashMap<Integer, Instance>();
+            var steps = new JsonArray();
+            int logged = 0;
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                var result = new JsonObject();
+                switch (step.get("op").getAsString()) {
+                    case "play", "play_delayed", "queue_ticking" -> {
+                        var instance = step.get("tickable").isJsonNull() ? new Instance(step) : new TickingInstance(step);
+                        instances.put(step.get("id").getAsInt(), instance);
+                        switch (step.get("op").getAsString()) {
+                            case "play" -> result.addProperty("result", engine.getClass()
+                                .getMethod("play", net.minecraft.client.resources.sounds.SoundInstance.class)
+                                .invoke(engine, instance).toString());
+                            case "play_delayed" -> engine.getClass().getMethod("playDelayed",
+                                net.minecraft.client.resources.sounds.SoundInstance.class, int.class)
+                                .invoke(engine, instance, step.get("delay_ticks").getAsInt());
+                            default -> engine.getClass().getMethod("queueTickingSound",
+                                net.minecraft.client.resources.sounds.TickableSoundInstance.class).invoke(engine, instance);
+                        }
+                    }
+                    case "stop" -> engine.getClass().getMethod("stop", net.minecraft.client.resources.sounds.SoundInstance.class)
+                        .invoke(engine, instances.get(step.get("id").getAsInt()));
+                    case "stop_named" -> engine.getClass().getMethod("stop", Identifier.class, net.minecraft.sounds.SoundSource.class)
+                        .invoke(engine, step.get("event").isJsonNull() ? null : Identifier.parse(step.get("event").getAsString()),
+                            step.get("source").isJsonNull() ? null
+                                : net.minecraft.sounds.SoundSource.valueOf(step.get("source").getAsString()));
+                    case "tick" -> {
+                        var method = engineClass.getDeclaredMethod(step.get("paused").getAsBoolean()
+                            ? "tickMusicWhenPaused" : "tickInGameSound");
+                        method.setAccessible(true);
+                        method.invoke(engine);
+                        access.scheduleTick();
+                    }
+                    case "finish" -> {
+                        @SuppressWarnings("unchecked")
+                        var handles = (Map<Object, Object>) get(engine, engineClass, "instanceToChannel");
+                        var handle = handles.get(instances.get(step.get("id").getAsInt()));
+                        if (handle != null) {
+                            var channel = (com.mojang.blaze3d.audio.Channel) get(handle, handle.getClass(), "channel");
+                            if (channel != null) {
+                                channel.finish();
+                            }
+                        }
+                    }
+                    case "category_volume" -> engine.getClass().getMethod("updateCategoryVolume",
+                        net.minecraft.sounds.SoundSource.class, float.class)
+                        .invoke(engine, net.minecraft.sounds.SoundSource.valueOf(step.get("source").getAsString()),
+                            Oracle.f32(step, "value"));
+                    case "slider" -> {
+                        var source = net.minecraft.sounds.SoundSource.valueOf(step.get("source").getAsString());
+                        setField(volumes.get(source), net.minecraft.client.OptionInstance.class, "value",
+                            step.get("value").getAsDouble());
+                        engine.getClass().getMethod("refreshCategoryVolume", net.minecraft.sounds.SoundSource.class)
+                            .invoke(engine, source);
+                    }
+                    case "pause_all_except" -> {
+                        var sources = new java.util.ArrayList<net.minecraft.sounds.SoundSource>();
+                        for (var name : step.getAsJsonArray("sources")) {
+                            sources.add(net.minecraft.sounds.SoundSource.valueOf(name.getAsString()));
+                        }
+                        engine.getClass().getMethod("pauseAllExcept", net.minecraft.sounds.SoundSource[].class)
+                            .invoke(engine, (Object) sources.toArray(new net.minecraft.sounds.SoundSource[0]));
+                    }
+                    case "resume" -> engine.getClass().getMethod("resume").invoke(engine);
+                    case "active" -> result.addProperty("active", (boolean) engine.getClass()
+                        .getMethod("isActive", net.minecraft.client.resources.sounds.SoundInstance.class)
+                        .invoke(engine, instances.get(step.get("id").getAsInt())));
+                    default -> throw new IllegalArgumentException("Unknown engine step");
+                }
+                // The reference walks its channels in the order of their instances' identity hashes, which
+                // changes from one run to the next: what each channel is asked is kept, in order, and the
+                // channels are put in their own order. A line that names no channel belongs to the one before.
+                var byChannel = new java.util.TreeMap<Integer, java.util.List<String>>();
+                int current = -1;
+                for (; logged < com.mojang.blaze3d.audio.Channel.LOG.size(); logged++) {
+                    var line = com.mojang.blaze3d.audio.Channel.LOG.get(logged);
+                    if (line.startsWith("channel")) {
+                        current = Integer.parseInt(line.substring(7, line.indexOf(' ')));
+                    }
+                    byChannel.computeIfAbsent(current, key -> new java.util.ArrayList<>()).add(line);
+                }
+                var calls = new JsonArray();
+                byChannel.values().forEach(lines -> lines.forEach(calls::add));
+                result.add("calls", calls);
+                steps.add(result);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("steps", steps);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
     }
 
     /** `sounds.json` text, the files that exist, and what the registry says of the events named. */

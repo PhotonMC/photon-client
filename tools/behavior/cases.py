@@ -17830,6 +17830,95 @@ def sound_cases():
     yield from sound_registry_cases()
     yield from sound_packet_cases()
     yield from sound_decode_cases()
+    yield from sound_engine_cases()
+
+
+def sound_engine_cases():
+    """The reference's own sound engine, with the sound device replaced by channels that write down their calls:
+    sounds played with every kind of parameter, refused for zero volume, no channel or no sound, stopped by
+    instance, event and source, ticked through their life, delayed, looping by hand, scripted to move, paused and
+    resumed, and followed through the player's volume sliders."""
+    registry = ('{"a": {"sounds": [{"name": "x", "volume": 0.5, "pitch": 2.0, "attenuation_distance": 32}]}, '
+                '"s": {"sounds": [{"name": "mus", "stream": true, "volume": 0.8}]}, '
+                '"wrap": {"sounds": [{"name": "a", "type": "event", "volume": 0.5, "pitch": 0.5}]}, '
+                '"multi": {"sounds": ["x", "y", {"name": "z", "weight": 2}]}, '
+                '"gone": {"sounds": ["nothing"]}, "intentionally_empty": {"sounds": ["x"]}}')
+    files = ["sounds/x.ogg", "sounds/y.ogg", "sounds/z.ogg", "sounds/mus.ogg"]
+    counter = [0]
+
+    def play(event="minecraft:a", op="play", id=None, source="BLOCKS", volume=1.0, pitch=1.0, seed=1, looping=False,
+             delay=0, attenuation="linear", relative=False, pos=(10.5, 64.0, -3.25), start_silent=False, can_play=True,
+             tickable=None, delay_ticks=0):
+        counter[0] += 1
+        step = {"op": op, "id": counter[0] if id is None else id, "event": event, "source": source,
+                "volume": float_bits(volume), "pitch": float_bits(pitch), "seed": str(seed), "looping": looping,
+                "delay": delay, "attenuation": attenuation, "relative": relative, "pos": list(pos),
+                "start_silent": start_silent, "can_play": can_play, "tickable": tickable}
+        if op == "play_delayed":
+            step["delay_ticks"] = delay_ticks
+        return step
+
+    def scenario(label, steps, volumes=None, static=8, streaming=2):
+        counter[0] = 0
+        return {"label": label, "json": registry, "files": files, "volumes": volumes or {},
+                "static_channels": static, "streaming_channels": streaming, "steps": steps}
+    tick = {"op": "tick", "paused": False}
+    rows = []
+    counter[0] = 0
+    rows.append(scenario("plain-sounds", [
+        play(), play("minecraft:multi", seed=7, volume=0.75, pitch=1.5), play("minecraft:wrap", seed=3),
+        play("minecraft:s", source="MUSIC", seed=9), play("minecraft:s", source="MUSIC", looping=True, seed=9),
+        play("minecraft:a", looping=True, seed=2), play("minecraft:a", attenuation="none"),
+        play("minecraft:a", relative=True), play("minecraft:a", volume=3.5, pitch=9.0, pos=(-100.5, 5.0, 1e6)),
+        play("minecraft:a", volume=0.1, pitch=0.01),
+    ]))
+    rows.append(scenario("refusals", [
+        play("minecraft:unknown"), play("minecraft:gone"), play("minecraft:intentionally_empty"), play(can_play=False),
+        play(volume=0.0), play(volume=0.0, start_silent=True), play("minecraft:s", source="MUSIC", volume=0.0),
+        play(source="MASTER", volume=0.5), play(volume=-1.0),
+    ]))
+    rows.append(scenario("volume-sliders", [
+        play(source="MUSIC", volume=0.9), play(source="HOSTILE"), play(source="MASTER"),
+        {"op": "slider", "source": "MUSIC", "value": 0.4}, {"op": "slider", "source": "MASTER", "value": 0.5},
+        {"op": "category_volume", "source": "HOSTILE", "value": float_bits(0.25)}, {"op": "category_volume", "source": "MASTER", "value": float_bits(2.0)},
+        play(source="HOSTILE"), play(source="MUSIC"), {"op": "slider", "source": "BLOCKS", "value": 0.0},
+    ], volumes={"MASTER": 0.8, "MUSIC": 0.6, "HOSTILE": 0.7, "BLOCKS": 1.0}))
+    rows.append(scenario("pools-run-out", [
+        play(), play(), play(), play(), play("minecraft:s", source="MUSIC"), play("minecraft:s", source="MUSIC"),
+        play("minecraft:s", source="MUSIC"),
+    ], static=3, streaming=2))
+    rows.append(scenario("stop-by-instance-event-and-source", [
+        play(id=1), play("minecraft:multi", id=2, source="HOSTILE"), play("minecraft:wrap", id=3, source="HOSTILE"),
+        play("minecraft:s", id=4, source="MUSIC"), {"op": "stop", "id": 1}, {"op": "stop", "id": 1},
+        {"op": "stop_named", "event": "minecraft:multi", "source": "HOSTILE"},
+        {"op": "stop_named", "event": "minecraft:a", "source": "HOSTILE"}, {"op": "stop_named", "event": "minecraft:wrap", "source": None},
+        {"op": "stop_named", "event": None, "source": "MUSIC"}, play(id=5), {"op": "stop_named", "event": None, "source": None},
+        {"op": "active", "id": 5}, play(id=6),
+    ]))
+    rows.append(scenario("lives-end-after-twenty-ticks", [
+        play(id=1), {"op": "active", "id": 1}, tick, {"op": "finish", "id": 1}, tick, tick, {"op": "active", "id": 1},
+        *[tick] * 20, {"op": "active", "id": 1}, play(id=2), {"op": "stop", "id": 2}, tick, tick,
+    ], static=1))
+    rows.append(scenario("delay-and-looping-by-hand", [
+        play(id=1, op="play_delayed", delay_ticks=3), tick, tick, tick, tick,
+        play(id=2, looping=True, delay=5), {"op": "finish", "id": 2}, *[tick] * 24, {"op": "stop", "id": 2},
+        {"op": "finish", "id": 2}, *[tick] * 24,
+    ]))
+    rows.append(scenario("ticking-sounds", [
+        play(id=1, tickable={"stop_at": 4, "moves": [[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]], "volumes": [0.9, 0.8], "pitches": [1.1, 1.2]}),
+        tick, tick, tick, tick, tick,
+        play(id=2, op="queue_ticking", tickable={"stop_at": 2, "moves": [[0.0, 0.0, 0.0]], "volumes": [0.5], "pitches": [0.5]}),
+        tick, tick, tick, {"op": "active", "id": 2},
+        play(id=3, op="play_delayed", delay_ticks=2, tickable={"stop_at": 9, "moves": [], "volumes": [], "pitches": []}), tick, tick, tick,
+    ]))
+    rows.append(scenario("pause-and-resume", [
+        play(id=1), play("minecraft:s", id=2, source="MUSIC"), play(id=3, source="HOSTILE"),
+        {"op": "pause_all_except", "sources": ["MUSIC"]}, {"op": "resume"}, {"op": "pause_all_except", "sources": []},
+        {"op": "pause_all_except", "sources": ["MUSIC", "BLOCKS"]}, {"op": "resume"},
+        {"op": "finish", "id": 2}, {"op": "tick", "paused": True}, {"op": "finish", "id": 1}, {"op": "tick", "paused": True},
+        {"op": "active", "id": 2}, {"op": "active", "id": 1},
+    ]))
+    yield {"case_id": "sound/engine", "family": "sound", "operation": "engine", "rows": rows}
 
 
 def sound_decode_cases():

@@ -497,6 +497,15 @@
         "org.jspecify:jspecify",
         "com.jcraft:jorbis",
         "org.lwjgl:lwjgl"
+      ],
+      "extra_sources": [
+        "com/mojang/blaze3d/audio/Channel.java",
+        "com/mojang/blaze3d/audio/Library.java",
+        "com/mojang/blaze3d/audio/SoundBuffer.java",
+        "com/mojang/blaze3d/audio/Listener.java",
+        "com/mojang/blaze3d/audio/ListenerTransform.java",
+        "com/mojang/blaze3d/audio/DeviceList.java",
+        "com/mojang/blaze3d/audio/DeviceTracker.java"
       ]
     }
   }

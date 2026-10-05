@@ -24,6 +24,7 @@ pub mod recipe_book;
 pub mod registries;
 pub mod scoreboard;
 pub mod scroll;
+pub mod sound_engine;
 pub mod sounds;
 pub mod text;
 pub mod tooltip;
