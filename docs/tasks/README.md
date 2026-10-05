@@ -139,7 +139,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40d](T40d-dusen-blok.md) | Düşen blok (moving block mesh'i) | M | T40 | açık |
 | [T40e](T40e-yildirim.md) | Yıldırım | S | T40 | bitti (1749897d) |
 | [T40j](T40j-gokyuzu-cakmasi.md) | Yıldırımın gökyüzü çakması (`skyFlashTime`) | S | T40e | açık |
-| [T40f](T40f-bag-dugumu.md) | Bağ düğümü ve bağ çizgisi | M | T40 | açık |
+| [T40f](T40f-bag-dugumu.md) | Bağ düğümü (yalnız düğüm; çizgi T40k) | S | T40 | bitti (HASH) |
+| [T40k](T40k-bag-cizgisi.md) | Bağ çizgisi (`SetEntityLink`, `LeashFeatureRenderer`) | M | T40f | açık |
 | [T40g](T40g-esya-cercevesi.md) | Eşya çerçevesi | L | T40 | açık |
 | [T40h](T40h-tablo.md) | Tablo | M | T40 | açık |
 | [T40i](T40i-display.md) | Display entity'leri | L | T40 | açık |

@@ -1744,6 +1744,10 @@ public final class EntityOracle {
                 var bullet = new net.minecraft.client.model.object.projectile.ShulkerBulletModel(root);
                 bullet.setupAnim(state);
                 model = bullet;
+            } else if (id.contains("leash_knot")) {
+                var knot = new net.minecraft.client.model.object.leash.LeashKnotModel(root);
+                knot.setupAnim(new net.minecraft.client.renderer.entity.state.EntityRenderState());
+                model = knot;
             } else if (id.contains("llama_spit")) {
                 var spit = new net.minecraft.client.model.animal.llama.LlamaSpitModel(root);
                 spit.setupAnim(new net.minecraft.client.renderer.entity.state.EntityRenderState());
@@ -2246,6 +2250,11 @@ public final class EntityOracle {
                     state.ageInTicks = Oracle.f32(row, "age_in_ticks");
                     var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ShulkerBulletRenderer.class);
                     ((net.minecraft.client.renderer.entity.ShulkerBulletRenderer) renderer).submit(state, stack, collector, null);
+                }
+                case "leash_knot" -> {
+                    var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.LeashKnotRenderer.class);
+                    ((net.minecraft.client.renderer.entity.LeashKnotRenderer) renderer).submit(
+                        new net.minecraft.client.renderer.entity.state.EntityRenderState(), stack, collector, null);
                 }
                 case "llama_spit" -> {
                     var state = new net.minecraft.client.renderer.entity.state.LlamaSpitRenderState();

@@ -184,3 +184,10 @@ pub fn evoker_fangs_pose(base: &Pose, y_rot: f32) -> Pose {
     pose.translate(0.0, -1.501, 0.0);
     pose
 }
+
+/// `LeashKnotRenderer.submit` up to the model: flipped, as a mob's model is.
+pub fn leash_knot_pose(base: &Pose) -> Pose {
+    let mut pose = *base;
+    pose.scale(-1.0, -1.0, 1.0);
+    pose
+}

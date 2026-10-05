@@ -2411,6 +2411,11 @@ impl MobModel {
         self.root.reset();
     }
 
+    /// `LeashKnotModel` has no animation: its part stays where the mesh puts it.
+    pub fn setup_leash_knot(&mut self) {
+        self.root.reset();
+    }
+
     /// `ShulkerBulletModel.setupAnim`: the bullet is turned the way it flies.
     pub fn setup_shulker_bullet(&mut self, y_rot: f32, x_rot: f32) {
         self.root.reset();

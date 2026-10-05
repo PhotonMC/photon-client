@@ -1,4 +1,4 @@
-# T40f — Bağ düğümü
+# T40f — Bağ düğümü (yalnız düğüm)
 
 **Amaç:** `LeashFenceKnotEntity` (`LeashKnotRenderer`, `LeashKnotModel`) ve `SetEntityLink` ile bağ çizgisi (`EntityRenderer.renderLeash`).
 **Bağımlılık:** T40. **Boy:** M.
@@ -19,4 +19,4 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-(boş)
+- Yapıldı: düğümün modeli ve pose'u (`bullets.rs`). Kayıt: `docs/client-leash-knot-parity-conformance.md`. Bağ çizgisi ve `SetEntityLink` T40k'ye ayrıldı.

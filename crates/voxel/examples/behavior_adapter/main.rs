@@ -21068,6 +21068,8 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
             model.setup_wind_charge(bits("age_in_ticks")?);
         } else if id.contains("shulker_bullet") {
             model.setup_shulker_bullet(bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("leash_knot") {
+            model.setup_leash_knot();
         } else if id.contains("llama_spit") {
             model.setup_llama_spit();
         } else if id.contains("evoker_fangs") {
@@ -21626,6 +21628,7 @@ fn small_projectile_pose_result(request: &Value) -> Result<Value, String> {
         base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
         let poses: Vec<Pose> = match row["kind"].as_str().ok_or("kind")? {
             "shulker_bullet" => shulker_bullet_poses(&base, bits("age_in_ticks")?).to_vec(),
+            "leash_knot" => vec![voxel_render::projectile::leash_knot_pose(&base)],
             "llama_spit" => vec![llama_spit_pose(&base, bits("y_rot")?, bits("x_rot")?)],
             // Fangs are not drawn until they bite.
             _ if bits("bite_progress")? == 0.0 => Vec::new(),

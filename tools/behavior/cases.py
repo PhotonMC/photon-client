@@ -16978,6 +16978,10 @@ def entity_small_projectile_cases():
     rows += [pose("evoker_fangs", f"{label}", y_rot=y, bite_progress=progress)
              for label, y, progress in (("waiting", 40.0, 0.0), ("biting", 40.0, 0.4), ("late", -130.0, 0.95),
                                         ("done", 0.0, 1.0), ("turned", 400.0, 0.3))]
+    rows.append(pose("leash_knot", "fence"))
+    rows.append(pose("leash_knot", "far-off", at=(-100.25, 70.5, 33.75)))
+    yield {"case_id": "entity/leash-knot-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": "knot", "layer": "minecraft:leash_knot#main"}]}
     yield {"case_id": "entity/small-projectile-pose", "family": "entity", "operation": "small_projectile_pose",
            "rows": rows}
 
