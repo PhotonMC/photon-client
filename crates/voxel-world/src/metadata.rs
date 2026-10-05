@@ -605,6 +605,31 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// An end crystal's synced data (`EndCrystal.DATA_BEAM_TARGET`, `DATA_SHOW_BOTTOM`), each
+/// when the data holds it: the block its beam reaches (none inside), and whether it shows its base.
+pub(crate) fn end_crystal_data_from_metadata(
+    metadata: &[u8],
+) -> (Option<Option<voxel_core::binary::BlockPos>>, Option<bool>) {
+    use crate::end_crystal::{BEAM_TARGET_DATA_ID, SHOW_BOTTOM_DATA_ID};
+    let beam_target = find_metadata_field(metadata, BEAM_TARGET_DATA_ID).and_then(
+        |(serializer_id, value_input)| {
+            if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID {
+                return None;
+            }
+            let (&present, mut rest) = value_input.split_first()?;
+            if present == 0 {
+                return Some(None);
+            }
+            let value = voxel_core::binary::read_blockpos(&mut rest).ok()?;
+            Some(Some(value))
+        },
+    );
+    (
+        beam_target,
+        metadata_boolean_value(metadata, SHOW_BOTTOM_DATA_ID),
+    )
+}
+
 /// A wither's synced data, each field when the data holds it.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct WitherData {

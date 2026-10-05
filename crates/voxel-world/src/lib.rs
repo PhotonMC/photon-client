@@ -41,6 +41,7 @@ pub mod copper_golem;
 pub mod creaking;
 pub mod cube_mob;
 mod dimension;
+pub mod end_crystal;
 pub mod ender_dragon;
 mod entity;
 mod entity_random;
@@ -1783,6 +1784,59 @@ impl ClientWorld {
         entity::EntityTargets {
             guardian: self.guardian_target_of(entity_id),
             wither: self.wither_targets_of(entity_id),
+            dragon: self.dragon_crystals_of(entity_id),
+        }
+    }
+
+    /// `EnderDragon.checkCrystals`' look at the world: the nearest end crystal whose box
+    /// meets the dragon's box made 32 blocks wider (by the distance between the two
+    /// entities' places), and whether the crystal the dragon holds is still there.
+    fn dragon_crystals_of(&self, entity_id: i32) -> ender_dragon::DragonCrystals {
+        let Some(dragon) = self
+            .entities
+            .get(&entity_id)
+            .filter(|e| e.is_ender_dragon())
+        else {
+            return ender_dragon::DragonCrystals::default();
+        };
+        let current = dragon.ender_dragon().and_then(|own| own.nearest_crystal());
+        let current_exists = current.is_some_and(|id| {
+            self.entities
+                .get(&id)
+                .is_some_and(ClientEntity::is_end_crystal)
+        });
+        let (x, y, z) = dragon.position();
+        let size = dragon.dimensions();
+        let half = f64::from(size.width()) / 2.0 + 32.0;
+        let (low, high) = (
+            [x - half, y - 32.0, z - half],
+            [x + half, y + f64::from(size.height()) + 32.0, z + half],
+        );
+        let mut nearest = None;
+        let mut distance = f64::MAX;
+        for crystal in self.entities.values().filter(|e| e.is_end_crystal()) {
+            let (cx, cy, cz) = crystal.position();
+            let crystal_size = crystal.dimensions();
+            let reach = f64::from(crystal_size.width()) / 2.0;
+            let height = f64::from(crystal_size.height());
+            let meets = low[0] < cx + reach
+                && high[0] > cx - reach
+                && low[1] < cy + height
+                && high[1] > cy
+                && low[2] < cz + reach
+                && high[2] > cz - reach;
+            if !meets {
+                continue;
+            }
+            let squared = (cx - x).powi(2) + (cy - y).powi(2) + (cz - z).powi(2);
+            if squared < distance {
+                distance = squared;
+                nearest = Some(crystal.id());
+            }
+        }
+        ender_dragon::DragonCrystals {
+            nearest,
+            current_exists,
         }
     }
 
@@ -3311,6 +3365,7 @@ impl ClientWorld {
                 sniffer: None,
                 wither: None,
                 ender_dragon: None,
+                end_crystal: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4459,6 +4514,12 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if entity.is_wither() {
         wither_data_from_metadata(metadata).apply(entity.wither_mut());
+    }
+    if entity.is_end_crystal() {
+        let (beam_target, show_bottom) = end_crystal_data_from_metadata(metadata);
+        let state = entity.end_crystal_mut();
+        state.beam_target = beam_target.unwrap_or(state.beam_target);
+        state.show_bottom = show_bottom.unwrap_or(state.show_bottom);
     }
     if entity.is_ender_dragon()
         && let Some(id) = metadata_int_value(metadata, ender_dragon::PHASE_DATA_ID)

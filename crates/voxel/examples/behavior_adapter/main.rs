@@ -18782,6 +18782,35 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "crystal_data" => {
+                        // `EndCrystal`'s data: the beam's block (optional) and whether the base shows.
+                        let mut data = Vec::new();
+                        if let Some(target) = event["target"].as_array() {
+                            let coordinate =
+                                |index: usize| target[index].as_i64().unwrap_or(0) as i32;
+                            data.extend([voxel_world::end_crystal::BEAM_TARGET_DATA_ID, 11, 1]);
+                            voxel_core::binary::write_blockpos(
+                                voxel_core::binary::BlockPos {
+                                    x: coordinate(0),
+                                    y: coordinate(1),
+                                    z: coordinate(2),
+                                },
+                                &mut data,
+                            );
+                        }
+                        if event["no_target"].as_bool() == Some(true) {
+                            data.extend([voxel_world::end_crystal::BEAM_TARGET_DATA_ID, 11, 0]);
+                        }
+                        if let Some(bottom) = event["bottom"].as_bool() {
+                            data.extend([
+                                voxel_world::end_crystal::SHOW_BOTTOM_DATA_ID,
+                                8,
+                                u8::from(bottom),
+                            ]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "dragon_data" => {
                         // `EnderDragon.DATA_PHASE`, an int.
                         let mut data = vec![voxel_world::ender_dragon::PHASE_DATA_ID, 1];
@@ -19174,8 +19203,29 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 });
                         }
                     }
+                    "end_crystal" => {
+                        let state = entity.end_crystal().copied();
+                        described["beam_target"] =
+                            json!(state.and_then(|state| state.beam_target()).map_or_else(
+                                || "none".to_string(),
+                                |target| format!("{},{},{}", target.x, target.y, target.z)
+                            ));
+                        described["shows_bottom"] =
+                            json!(state.is_none_or(|state| state.shows_bottom()));
+                    }
                     "ender_dragon" => {
-                        let state = entity.ender_dragon().cloned().unwrap_or_default();
+                        let state = entity
+                            .ender_dragon()
+                            .cloned()
+                            .unwrap_or_else(|| voxel_world::ender_dragon::EnderDragonState::new(0));
+                        // Which crystal and when it is found rests on the entity's own random
+                        // source (a tick in ten): only the last tick says, by then it is found.
+                        described["nearest_crystal"] =
+                            json!(if tick + 1 == i32_field(row, "tick_count")? {
+                                state.nearest_crystal().unwrap_or(0)
+                            } else {
+                                -1
+                            });
                         described["flap_time"] = json!(hex(state.flap_time()));
                         described["old_flap_time"] = json!(hex(state.old_flap_time()));
                         let samples: Vec<Value> = (0..64)
@@ -20888,6 +20938,12 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
             });
+        } else if id.contains("end_crystal") {
+            use voxel_render::mob_model::EndCrystalRenderState;
+            model.setup_end_crystal(&EndCrystalRenderState {
+                age_in_ticks: bits("age_in_ticks")?,
+                shows_bottom: flag("shows_bottom")?,
+            });
         } else if id.contains("ender_dragon") {
             use voxel_render::mob_model::EnderDragonRenderState;
             use voxel_world::ender_dragon::FlightHistory;
@@ -21302,6 +21358,52 @@ fn guardian_beam_result(request: &Value) -> Result<Value, String> {
                     hex(vertex.uv[0]),
                     hex(vertex.uv[1]),
                     BEAM_LIGHT,
+                    hex(beam.normal[0]),
+                    hex(beam.normal[1]),
+                    hex(beam.normal[2]),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `crystal_beam`: the vertices of an end crystal's beam from the pose it is submitted at.
+fn crystal_beam_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::crystal_beam::crystal_beam;
+    use voxel_render::joml::Pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut pose = Pose::default();
+        pose.translate(bits("x")?, bits("y")?, bits("z")?);
+        let beam = crystal_beam(pose, [bits("dx")?, bits("dy")?, bits("dz")?], bits("time")?);
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let light = i32_field(row, "light")?;
+        let vertices: Vec<String> = beam
+            .vertices
+            .iter()
+            .map(|vertex| {
+                let colour: u32 = if vertex.white {
+                    0xFFFF_FFFF
+                } else {
+                    0xFF00_0000
+                };
+                format!(
+                    "{}{}{}{}{}{colour:08x}{light:08x}{}{}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    hex(vertex.uv[0]),
+                    hex(vertex.uv[1]),
                     hex(beam.normal[0]),
                     hex(beam.normal[1]),
                     hex(beam.normal[2]),
@@ -23262,6 +23364,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_model" => return guardian_model_result(request),
         "guardian_beam" => return guardian_beam_result(request),
         "dragon_rays" => return dragon_rays_result(request),
+        "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),
         "flier_item_pose" => return flier_item_pose_result(request),

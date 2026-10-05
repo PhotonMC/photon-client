@@ -8,7 +8,7 @@
 //! and moves parts the way the reference's humanoid model does for a walking,
 //! crouching, swimming or swinging player.
 
-use crate::joml::{Pose, Quaternion};
+use crate::joml::{Matrix3, Pose, Quaternion};
 use voxel_core::direction::Direction;
 use voxel_core::math::{mth_cos_f64, mth_sin_f64};
 
@@ -320,6 +320,15 @@ impl Part {
             .iter_mut()
             .find(|child| child.name == name)
             .expect("the player model has this part")
+    }
+
+    /// `ModelPart.rotateBy`: this part's rotation turned further by a quaternion,
+    /// through the matrix and back to the three angles.
+    pub fn rotate_by(&mut self, rotation: &Quaternion) {
+        let mut matrix = Matrix3::rotation_zyx(self.z_rot, self.y_rot, self.x_rot);
+        matrix.rotate(rotation);
+        let [x, y, z] = matrix.euler_angles_zyx();
+        (self.x_rot, self.y_rot, self.z_rot) = (x, y, z);
     }
 
     /// `ModelPart.translateAndRotate`.

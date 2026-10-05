@@ -746,6 +746,8 @@ pub struct ClientEntity {
     pub(crate) wither: Option<crate::wither::WitherState>,
     /// An ender dragon's flight history, wing beat and phase, made when its data or ticks first reach it.
     pub(crate) ender_dragon: Option<Box<crate::ender_dragon::EnderDragonState>>,
+    /// An end crystal's age and data, made when its data or ticks first reach it.
+    pub(crate) end_crystal: Option<crate::end_crystal::EndCrystalState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2409,6 +2411,21 @@ impl ClientEntity {
             .set_mode(mode, tick_count);
     }
 
+    pub(crate) fn is_end_crystal(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:end_crystal")
+    }
+
+    /// An end crystal's age and data, if it has any.
+    pub fn end_crystal(&self) -> Option<&crate::end_crystal::EndCrystalState> {
+        self.end_crystal.as_ref()
+    }
+
+    pub(crate) fn end_crystal_mut(&mut self) -> &mut crate::end_crystal::EndCrystalState {
+        let seed = i64::from(self.id);
+        self.end_crystal
+            .get_or_insert_with(|| crate::end_crystal::EndCrystalState::new(seed))
+    }
+
     pub(crate) fn is_ender_dragon(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:ender_dragon")
     }
@@ -2419,17 +2436,28 @@ impl ClientEntity {
     }
 
     pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::ender_dragon::EnderDragonState {
-        self.ender_dragon.get_or_insert_with(Default::default)
+        let seed = i64::from(self.id);
+        self.ender_dragon
+            .get_or_insert_with(|| Box::new(crate::ender_dragon::EnderDragonState::new(seed)))
     }
 
     /// `EnderDragon.aiStep` on the client, which replaces `LivingEntity.aiStep`: the wing
     /// beat and the flight history, then the position eases to the last packet's. Nothing
-    /// fades its motion and its head does not turn after anything.
-    pub(crate) fn tick_ender_dragon(&mut self) {
+    /// fades its motion and its head does not turn after anything; while it dies, none of it.
+    pub(crate) fn tick_ender_dragon(&mut self, targets: &EntityTargets) {
         self.ender_dragon_mut().begin_ai_step();
         if self.is_dead_or_dying() {
-            self.tick_position_interpolation();
             return;
+        }
+        let tick_count = self.tick_count;
+        let heals = self
+            .ender_dragon_mut()
+            .check_crystals(targets.dragon, tick_count);
+        if heals
+            && let (Some(health), Some(max)) = (self.health(), self.max_health())
+            && health < max
+        {
+            self.health_bits = Some((health + 1.0).to_bits());
         }
         let y_rot = voxel_core::math::wrap_degrees_f32(f32::from_bits(self.y_rot_bits));
         self.y_rot_bits = y_rot.to_bits();
@@ -2747,7 +2775,7 @@ impl ClientEntity {
         targets: EntityTargets,
     ) {
         if self.is_ender_dragon() {
-            self.tick_ender_dragon();
+            self.tick_ender_dragon(&targets);
             return;
         }
         self.tick_frog();
@@ -3064,6 +3092,9 @@ impl ClientEntity {
         self.tick_warden();
         self.tick_creaking();
         self.tick_armadillo();
+        if self.is_end_crystal() {
+            self.end_crystal_mut().tick();
+        }
     }
 
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.
@@ -3400,6 +3431,7 @@ impl ClientEntity {
 pub(crate) struct EntityTargets {
     pub guardian: Option<crate::guardian::GuardianTarget>,
     pub wither: [Option<crate::guardian::GuardianTarget>; 2],
+    pub dragon: crate::ender_dragon::DragonCrystals,
 }
 
 pub struct EntityInput {

@@ -189,7 +189,10 @@ void main() {
     // and one with a negative light is not lit by the lightmap (`EMISSIVE`).
     bool shaded = dot(in_tint.xyz, in_tint.xyz) > 0.0;
     out_front = vec3(shaded ? mix_light(light) : 1.0);
-    out_back = vec3(shaded ? mix_light(-light) : 1.0);
+    // A negative shade is a pipeline without per-face lighting (`END_CRYSTAL_BEAM`):
+    // the one side's light, whichever face shows, and no overlay.
+    bool one_sided = in_shade < 0.0;
+    out_back = one_sided ? out_front : vec3(shaded ? mix_light(-light) : 1.0);
     out_light = in_light.x < 0.0 ? vec3(1.0) : sample_lightmap(in_light);
     // An emissive vertex whose second light is not negative carries the
     // alpha its colour is blended with (`ARGB.white(alpha)`).
@@ -197,9 +200,10 @@ void main() {
     // The vertex's shade says whether the hurt overlay is on, and the fourth
     // component of its tint the colour its texel is multiplied by, as
     // 0xRRGGBB (exact in a float), or zero for none.
-    out_hurt = in_shade;
+    out_hurt = one_sided ? 0.0 : in_shade;
     float packed_colour = in_tint.w;
-    out_colour = packed_colour == 0.0 ? vec3(1.0) : vec3(
+    // Zero is no colour (white), a negative one black.
+    out_colour = packed_colour == 0.0 ? vec3(1.0) : packed_colour < 0.0 ? vec3(0.0) : vec3(
         mod(floor(packed_colour / 65536.0), 256.0),
         mod(floor(packed_colour / 256.0), 256.0),
         mod(packed_colour, 256.0)) / 255.0;

@@ -129,6 +129,37 @@ impl Quaternion {
         };
     }
 
+    /// `Quaternionf.setAngleAxis(angle, x, y, z)` on a new quaternion.
+    pub fn set_angle_axis(angle: f32, x: f32, y: f32, z: f32) -> Self {
+        let s = sin(angle * 0.5);
+        Self {
+            x: x * s,
+            y: y * s,
+            z: z * s,
+            w: cos_from_sin(s, angle * 0.5),
+        }
+    }
+
+    /// `Quaternionf.rotateAxis(angle, x, y, z)`: this turned further about an axis.
+    pub fn rotate_axis(self, angle: f32, axis_x: f32, axis_y: f32, axis_z: f32) -> Self {
+        let half = angle / 2.0;
+        let sin_angle = sin(half);
+        let inverse_length = 1.0
+            / f64::from(fma(axis_x, axis_x, fma(axis_y, axis_y, axis_z * axis_z))).sqrt() as f32;
+        let (rx, ry, rz) = (
+            axis_x * inverse_length * sin_angle,
+            axis_y * inverse_length * sin_angle,
+            axis_z * inverse_length * sin_angle,
+        );
+        let rw = cos_from_sin(sin_angle, half);
+        Self {
+            x: fma(self.w, rx, fma(self.x, rw, fma(self.y, rz, -self.z * ry))),
+            y: fma(self.w, ry, fma(-self.x, rz, fma(self.y, rw, self.z * rx))),
+            z: fma(self.w, rz, fma(self.x, ry, fma(-self.y, rx, self.z * rw))),
+            w: fma(self.w, rw, fma(-self.x, rx, fma(-self.y, ry, -self.z * rz))),
+        }
+    }
+
     /// `Quaternionf.rotationX`.
     pub fn rotation_x(angle: f32) -> Self {
         let sin = sin(angle * 0.5);
@@ -592,6 +623,45 @@ impl Matrix3 {
                 self.m[column][row] = m[0][row] * a + m[1][row] * b + m[2][row] * c;
             }
         }
+    }
+
+    /// `Matrix3f.rotationZYX(angleZ, angleY, angleX)`.
+    pub fn rotation_zyx(angle_z: f32, angle_y: f32, angle_x: f32) -> Self {
+        let sin_x = sin(angle_x);
+        let cos_x = cos_from_sin(sin_x, angle_x);
+        let sin_y = sin(angle_y);
+        let cos_y = cos_from_sin(sin_y, angle_y);
+        let sin_z = sin(angle_z);
+        let cos_z = cos_from_sin(sin_z, angle_z);
+        let (m_sin_z, m_sin_y, m_sin_x) = (-sin_z, -sin_y, -sin_x);
+        let (nm00, nm01, nm10, nm11) = (cos_z, sin_z, m_sin_z, cos_z);
+        let (nm20, nm21, nm22) = (nm00 * sin_y, nm01 * sin_y, cos_y);
+        Self {
+            m: [
+                [nm00 * cos_y, nm01 * cos_y, m_sin_y],
+                [
+                    nm10 * cos_x + nm20 * sin_x,
+                    nm11 * cos_x + nm21 * sin_x,
+                    nm22 * sin_x,
+                ],
+                [
+                    nm10 * m_sin_x + nm20 * cos_x,
+                    nm11 * m_sin_x + nm21 * cos_x,
+                    nm22 * cos_x,
+                ],
+            ],
+        }
+    }
+
+    /// `Matrix3f.getEulerAnglesZYX`: the angles about x, y and z.
+    pub fn euler_angles_zyx(&self) -> [f32; 3] {
+        let m = &self.m;
+        [
+            f64::from(m[1][2]).atan2(f64::from(m[2][2])) as f32,
+            f64::from(-m[0][2]).atan2(f64::from(f64::from(1.0 - m[0][2] * m[0][2]).sqrt() as f32))
+                as f32,
+            f64::from(m[0][1]).atan2(f64::from(m[0][0])) as f32,
+        ]
     }
 
     /// `Matrix3f.scale(x, y, z)`.

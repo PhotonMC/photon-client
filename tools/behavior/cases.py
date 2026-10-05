@@ -14748,6 +14748,25 @@ def movement_item_cases():
         # it sit (the phase it starts in), and records its height and turn each tick into its flight
         # history (sixty-four samples) before its position eases to the last packet's; a dying
         # one does neither.
+        # An end crystal holds the block its beam reaches and whether it shows its base; a dragon
+        # looks for the nearest crystal whose box meets its own made 32 blocks wider (one tick in
+        # ten, so long enough in these rows), and lets go of one that is gone or out of reach.
+        living("crystal-defaults", "end_crystal", 6, [], extras=["end_crystal"], player_x=30.5),
+        living("crystal-beam-and-base", "end_crystal", 10,
+               [{"tick": 2, "type": "crystal_data", "target": [3, 70, -4], "bottom": False}],
+               extras=["end_crystal"], player_x=30.5),
+        living("crystal-loses-its-beam", "end_crystal", 10,
+               [{"tick": 2, "type": "crystal_data", "target": [3, 70, -4]},
+                {"tick": 6, "type": "crystal_data", "no_target": True, "bottom": True}],
+               extras=["end_crystal"], player_x=30.5),
+        beside(living("dragon-finds-a-crystal", "ender_dragon", 220,
+                      [{"tick": 2, "type": "dragon_data", "phase": 0}],
+                      extras=["ender_dragon"], player_x=30.5), "end_crystal", 14.5, 64.0, 3.5),
+        beside(living("dragon-does-not-find-a-far-crystal", "ender_dragon", 220,
+                      [{"tick": 2, "type": "dragon_data", "phase": 0}],
+                      extras=["ender_dragon"], player_x=30.5), "end_crystal", 90.5, 64.0, 3.5),
+        beside(living("dragon-finds-a-crystal-just-in-reach", "ender_dragon", 220,
+                      [], extras=["ender_dragon"], player_x=30.5), "end_crystal", 39.9, 64.0, 0.5),
         living("dragon-hovers", "ender_dragon", 30, [], extras=["ender_dragon"], player_x=30.5),
         living("dragon-flies", "ender_dragon", 50,
                [{"tick": 2, "type": "dragon_data", "phase": 0},
@@ -15209,6 +15228,8 @@ def entity_cases():
     yield from entity_wither_cases()
     yield from entity_ender_dragon_cases()
     yield from entity_dragon_rays_cases()
+    yield from entity_end_crystal_cases()
+    yield from entity_crystal_beam_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16693,6 +16714,39 @@ def entity_dragon_rays_cases():
             rays("overdriving", 0.9), rays("nearly-done", 0.99), rays("done", 1.0),
             rays("over", 1.04), rays("from-an-offset", 0.33, at=(10.5, 64.9, -3.25))]
     yield {"case_id": "entity/dragon-rays", "family": "entity", "operation": "dragon_rays",
+           "rows": rows}
+
+
+def entity_end_crystal_cases():
+    """The end crystal's model posed by the reference's own `EndCrystalModel.setupAnim`: at ages
+    through the first beats and far on (the glass bobs, the three cubes turn about a tilted axis),
+    with its base and without."""
+    rows = []
+    for age in (0.0, 0.5, 3.25, 10.0, 17.7, 31.4, 100.125, 1234.5, 98765.25):
+        for bottom in (True, False):
+            rows.append({"label": f"crystal-{age}-{'base' if bottom else 'no-base'}",
+                         "layer": "minecraft:end_crystal#main", "age_in_ticks": float_bits(age),
+                         "shows_bottom": bottom})
+    yield {"case_id": "entity/end-crystal-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_crystal_beam_cases():
+    """An end crystal's beam as the reference's own `submitCrystalBeams` builds it from the pose it is
+    submitted at: along each axis and slantwise, short and long (the texture running along it),
+    over the ticks (the texture scrolling) and from an offset pose, with some light."""
+    def beam(label, delta, time=12.5, at=(0.0, 0.0, 0.0), light=15728880):
+        return {"label": label, "x": float_bits(at[0]), "y": float_bits(at[1]), "z": float_bits(at[2]),
+                "dx": float_bits(delta[0]), "dy": float_bits(delta[1]), "dz": float_bits(delta[2]),
+                "time": float_bits(time), "light": light}
+    rows = [beam("along-z", (0.0, 0.0, 6.0)), beam("along-x", (5.0, 0.0, 0.0)),
+            beam("straight-up", (0.0, 9.0, 0.0)), beam("straight-down", (0.0, -4.0, 0.0)),
+            beam("slantwise", (3.0, -1.5, 4.5)), beam("behind", (-2.0, 0.5, -7.0)),
+            beam("short", (0.2, 0.1, 0.3)), beam("at-the-start", (0.0, 0.0, 0.0)),
+            beam("long", (20.0, 30.0, -40.0), time=3.0), beam("just-started", (4.0, 8.0, 1.0), time=0.0),
+            beam("later", (4.0, 8.0, 1.0), time=1234.5), beam("lit", (4.0, 8.0, 1.0), light=240),
+            beam("from-an-offset", (2.0, 5.0, -3.0), at=(10.5, 64.9, -3.25))]
+    yield {"case_id": "entity/crystal-beam", "family": "entity", "operation": "crystal_beam",
            "rows": rows}
 
 

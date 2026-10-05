@@ -3,6 +3,7 @@
 //! the phase the server syncs (`EnderDragon.aiStep`, `onSyncedDataUpdated`).
 
 use voxel_core::math::{mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
+use voxel_core::random::RandomSource;
 
 /// `EnderDragon.DATA_PHASE`'s data id: `Mob` ends at 15.
 pub const PHASE_DATA_ID: u8 = 16;
@@ -114,13 +115,52 @@ impl DragonPhase {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+/// What a dragon's tick looks up of the end crystals in the world.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct DragonCrystals {
+    /// The nearest crystal whose box meets the dragon's, 32 blocks wider.
+    pub nearest: Option<i32>,
+    /// Whether the crystal the dragon holds is still in the world.
+    pub current_exists: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct EnderDragonState {
     pub history: FlightHistory,
     flap_time: f32,
     old_flap_time: f32,
     phase: DragonPhase,
     dragon_death_time: i32,
+    /// `EnderDragon.nearestCrystal`, by its id: the crystal whose beam it is healed by.
+    nearest_crystal: Option<i32>,
+    /// The entity's own random source, which the reference does not seed.
+    random: RandomSource,
+}
+
+impl EnderDragonState {
+    pub fn new(seed: i64) -> Self {
+        Self {
+            history: FlightHistory::default(),
+            flap_time: 0.0,
+            old_flap_time: 0.0,
+            phase: DragonPhase::default(),
+            dragon_death_time: 0,
+            nearest_crystal: None,
+            random: RandomSource::create(seed),
+        }
+    }
+}
+
+impl PartialEq for EnderDragonState {
+    fn eq(&self, other: &Self) -> bool {
+        self.history == other.history
+            && self.flap_time == other.flap_time
+            && self.old_flap_time == other.old_flap_time
+            && self.phase == other.phase
+            && self.dragon_death_time == other.dragon_death_time
+            && self.nearest_crystal == other.nearest_crystal
+            && self.random.state() == other.random.state()
+    }
 }
 
 impl EnderDragonState {
@@ -131,6 +171,29 @@ impl EnderDragonState {
     /// `onSyncedDataUpdated(DATA_PHASE)`.
     pub(crate) fn set_phase(&mut self, phase: DragonPhase) {
         self.phase = phase;
+    }
+
+    /// `EnderDragon.nearestCrystal`: the id of the end crystal whose beam reaches it.
+    pub fn nearest_crystal(&self) -> Option<i32> {
+        self.nearest_crystal
+    }
+
+    /// `EnderDragon.checkCrystals`: a crystal that is gone is let go and one still there
+    /// heals the dragon a health every ten ticks (the answer says whether it does), and
+    /// one time in ten the nearest crystal is looked for again.
+    pub(crate) fn check_crystals(&mut self, crystals: DragonCrystals, tick_count: i32) -> bool {
+        let mut heal = false;
+        if self.nearest_crystal.is_some() {
+            if !crystals.current_exists {
+                self.nearest_crystal = None;
+            } else if tick_count % 10 == 0 {
+                heal = true;
+            }
+        }
+        if self.random.next_int_bound(10) == Ok(0) {
+            self.nearest_crystal = crystals.nearest;
+        }
+        heal
     }
 
     /// `EnderDragon.dragonDeathTime`: the ticks it has been dying.

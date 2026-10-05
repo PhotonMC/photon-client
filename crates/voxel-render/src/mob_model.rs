@@ -329,6 +329,21 @@ impl EnderDragonRenderState {
     }
 }
 
+/// What an end crystal's model is posed from (`EndCrystalRenderState`): its age
+/// (which turns and bobs its glass) and whether it shows its base.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EndCrystalRenderState {
+    pub age_in_ticks: f32,
+    pub shows_bottom: bool,
+}
+
+/// `EndCrystalRenderer.getY`: how high the crystal's glass floats, in blocks, at an age.
+pub fn end_crystal_y(time_in_ticks: f32) -> f32 {
+    let mut height = mth_sin_f64(f64::from(time_in_ticks * 0.2)) / 2.0 + 0.5;
+    height = (height * height + height) * 0.4;
+    height - 1.4
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -2335,6 +2350,37 @@ impl MobModel {
                 yy += sin(tail.x_rot) * 10.0;
                 zz -= cos(tail.y_rot) * cos(tail.x_rot) * 10.0;
                 xx -= sin(tail.y_rot) * cos(tail.x_rot) * 10.0;
+            }
+        }
+    }
+
+    /// `EndCrystalModel.setupAnim`: the base shows or not, the glass floats up and
+    /// down, and each of the three nested cubes is turned about a tilted axis, the
+    /// outer one, the inner one and the core by the same turn, within the other.
+    pub fn setup_end_crystal(&mut self, state: &EndCrystalRenderState) {
+        use crate::joml::Quaternion;
+        self.root.reset();
+        let sin_45 = (std::f64::consts::PI / 4.0).sin() as f32;
+        let third_turn = (std::f64::consts::PI / 3.0) as f32;
+        let speed = state.age_in_ticks * 3.0;
+        let crystal_y = end_crystal_y(state.age_in_ticks) * 16.0;
+        if let Some(base) = self.root.child_mut("base") {
+            base.visible = state.shows_bottom;
+        }
+        let Some(outer) = self.root.child_mut("outer_glass") else {
+            return;
+        };
+        outer.y += crystal_y / 2.0;
+        outer.rotate_by(
+            &Quaternion::rotation_y(Quaternion::degrees_to_radians(speed))
+                .rotate_axis(third_turn, sin_45, 0.0, sin_45),
+        );
+        let tilted = Quaternion::set_angle_axis(third_turn, sin_45, 0.0, sin_45)
+            .rotate_y(speed * (std::f64::consts::PI / 180.0) as f32);
+        if let Some(inner) = outer.child_mut("inner_glass") {
+            inner.rotate_by(&tilted);
+            if let Some(core) = inner.child_mut("cube") {
+                core.rotate_by(&tilted);
             }
         }
     }

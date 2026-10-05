@@ -1731,6 +1731,13 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("end_crystal")) {
+                var state = new net.minecraft.client.renderer.entity.state.EndCrystalRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.showsBottom = row.get("shows_bottom").getAsBoolean();
+                var crystal = new net.minecraft.client.model.object.crystal.EndCrystalModel(root);
+                crystal.setupAnim(state);
+                model = crystal;
             } else if (id.contains("ender_dragon")) {
                 var state = new net.minecraft.client.renderer.entity.state.EnderDragonRenderState();
                 state.flapTime = Oracle.f32(row, "flap_time");
@@ -2150,6 +2157,39 @@ public final class EntityOracle {
                 });
             render.invoke(null, stack, collector, vec3(row.getAsJsonArray("vector")),
                 Oracle.f32(row, "time"), Oracle.f32(row, "scale"), Oracle.f32(row, "tex_v_off"));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The beam of an end crystal, as the reference's own `submitCrystalBeams` builds it. */
+    private static JsonObject crystalBeam(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var vertices = new JsonArray();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            net.minecraft.client.renderer.entity.EnderDragonRenderer.submitCrystalBeams(
+                Oracle.f32(row, "dx"), Oracle.f32(row, "dy"), Oracle.f32(row, "dz"), Oracle.f32(row, "time"),
+                stack, collector, row.get("light").getAsInt());
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("vertices", vertices);
@@ -4154,6 +4194,9 @@ public final class EntityOracle {
         }
         if (operation.equals("dragon_rays")) {
             return dragonRays(request);
+        }
+        if (operation.equals("crystal_beam")) {
+            return crystalBeam(request);
         }
         if (operation.equals("guardian_model")) {
             return guardianModel(request);

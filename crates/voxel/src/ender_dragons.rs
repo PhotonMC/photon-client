@@ -3,11 +3,14 @@
 
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
+use voxel_render::block_light::light_uv;
+use voxel_render::crystal_beam::{crystal_beam, crystal_beam_triangles};
 use voxel_render::dragon_rays::dragon_rays;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::joml::{Pose, Quaternion};
 use voxel_render::mob_model::{
-    EnderDragonRenderState, mob_vertices_dissolving, mob_vertices_glow_posed, mob_vertices_posed,
+    EnderDragonRenderState, end_crystal_y, mob_vertices_dissolving, mob_vertices_glow_posed,
+    mob_vertices_posed,
 };
 use voxel_render::scene::Vertex;
 
@@ -78,6 +81,7 @@ pub fn remote_ender_dragons(
     };
     let mut vertices = Vec::new();
     let (mut glow, mut dissolving, mut rays) = (Vec::new(), Vec::new(), Vec::new());
+    let mut beams = Vec::new();
     let mut mask_offset = None;
     for entity in world.entities().filter(|entity| entity.type_id == dragon) {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
@@ -130,7 +134,13 @@ pub fn remote_ender_dragons(
             ));
         }
         glow.extend(mob_vertices_glow_posed(model, &pose, eyes));
+        // `EnderDragonRenderer.submitCrystalBeams`: the beam from the end crystal that heals
+        // it, from where the dragon is, not turned with it.
+        if let Some(beam) = crystal_beam_vertices(world, entity, (feet, partial, light), textures) {
+            beams.extend(beam);
+        }
     }
+    vertices.extend(beams);
     models.glow.extend(glow);
     models.dissolve.extend(dissolving);
     models.rays.extend(rays);
@@ -138,6 +148,39 @@ pub fn remote_ender_dragons(
         models.dissolve_mask_offset = offset;
     }
     vertices
+}
+
+/// The beam from the end crystal a dragon holds: from where the dragon is to the crystal
+/// (and its glass's height), the texture scrolling with the dragon's age.
+fn crystal_beam_vertices(
+    world: &voxel_world::ClientWorld,
+    entity: &voxel_world::ClientEntity,
+    (feet, partial, light): ([f32; 3], f32, i32),
+    textures: &EntityTextures,
+) -> Option<Vec<Vertex>> {
+    let id = entity.ender_dragon()?.nearest_crystal()?;
+    let crystal = world.entity_at(id)?;
+    let rect = textures.rect(crate::end_crystals::BEAM_TEXTURE)?;
+    let (own, at) = (
+        world.entity_snapshot(entity.id(), partial)?,
+        world.entity_snapshot(id, partial)?,
+    );
+    let time = crystal.end_crystal().map_or(0, |state| state.time()) as f32;
+    // `EnderDragonRenderState.beamOffset`: the crystal, at the height of its glass, from the dragon.
+    let offset = (
+        at.position.0 - own.position.0,
+        at.position.1 + f64::from(end_crystal_y(time + partial)) - own.position.1,
+        at.position.2 - own.position.2,
+    );
+    let mut pose = Pose::default();
+    pose.translate(feet[0], feet[1], feet[2]);
+    let age = entity.tick_count() as f32 + partial;
+    let beam = crystal_beam(
+        pose,
+        [offset.0 as f32, offset.1 as f32, offset.2 as f32],
+        age,
+    );
+    Some(crystal_beam_triangles(&beam, rect, light_uv(light)))
 }
 
 /// A ray's vertex for the renderer: its colour (`0xAARRGGBB`) in the tint.

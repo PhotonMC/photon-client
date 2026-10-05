@@ -1006,6 +1006,24 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "crystal_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var crystalClass = net.minecraft.world.entity.boss.enderdragon.EndCrystal.class;
+                        if (event.has("target")) {
+                            var target = event.getAsJsonArray("target");
+                            data.add(wolfData(crystalClass, "DATA_BEAM_TARGET", java.util.Optional.of(
+                                new net.minecraft.core.BlockPos(target.get(0).getAsInt(), target.get(1).getAsInt(),
+                                    target.get(2).getAsInt()))));
+                        }
+                        if (event.has("no_target")) {
+                            data.add(wolfData(crystalClass, "DATA_BEAM_TARGET", java.util.Optional.empty()));
+                        }
+                        if (event.has("bottom")) {
+                            data.add(wolfData(crystalClass, "DATA_SHOW_BOTTOM", event.get("bottom").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "dragon_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.boss.enderdragon.EnderDragon.class, "DATA_PHASE",
@@ -1365,8 +1383,18 @@ public final class MovementOracle {
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
                         }
+                        case "end_crystal" -> {
+                            var crystal = (net.minecraft.world.entity.boss.enderdragon.EndCrystal) entity;
+                            var target = crystal.getBeamTarget();
+                            described.addProperty("beam_target", target == null ? "none"
+                                : target.getX() + "," + target.getY() + "," + target.getZ());
+                            described.addProperty("shows_bottom", crystal.showsBottom());
+                        }
                         case "ender_dragon" -> {
                             var dragon = (net.minecraft.world.entity.boss.enderdragon.EnderDragon) entity;
+                            // Found a tick in ten, by the entity's own random source: only the last tick says.
+                            described.addProperty("nearest_crystal", tick + 1 == row.get("tick_count").getAsInt()
+                                ? (dragon.nearestCrystal == null ? 0 : dragon.nearestCrystal.getId()) : -1);
                             described.addProperty("flap_time", Oracle.bits(dragon.flapTime));
                             described.addProperty("old_flap_time", Oracle.bits(dragon.oFlapTime));
                             var samples = new JsonArray();
