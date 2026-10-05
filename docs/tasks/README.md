@@ -127,7 +127,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T38c](T38c-minecart-yeni-davranis.md) | Minecart'ın yeni (deneysel) davranışı | M | T38b | açık |
 | [T38d](T38d-minecart-tnt-spawner.md) | TNT ve spawner minecart | M | T38b | bitti (cf92963b) |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | bölündü (690ac67a) |
-| [T39b](T39b-trident.md) | Trident | M | T39 | bitti (HASH) |
+| [T39b](T39b-trident.md) | Trident | M | T39 | bitti (c78306ac) |
 | [T39c](T39c-firlatilan-esya.md) | Fırlatılan eşyalar ve havai fişek (ateş topları dahil) | M | T39 | bitti (9148b3ec) |
 | [T39d](T39d-atesler-ruzgar-yukleri.md) | Ejderha topu ve rüzgâr yükleri | M | T39 | açık |
 | [T39e](T39e-shulker-mermisi-tukuruk-disler.md) | Shulker mermisi, lama tükürüğü, evoker dişleri | M | T39 | açık |
