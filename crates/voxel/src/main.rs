@@ -8,6 +8,7 @@ mod atmosphere;
 mod axolotls;
 mod bears;
 mod boats;
+mod charges;
 mod controls;
 mod copper_golems;
 mod cube_mobs;

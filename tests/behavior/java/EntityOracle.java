@@ -1731,6 +1731,12 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("wind_charge")) {
+                var state = new net.minecraft.client.renderer.entity.state.EntityRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                var charge = new net.minecraft.client.model.object.projectile.WindChargeModel(root);
+                charge.setupAnim(state);
+                model = charge;
             } else if (id.contains("trident")) {
                 var trident = new net.minecraft.client.model.object.projectile.TridentModel(root);
                 trident.setupAnim(net.minecraft.util.Unit.INSTANCE);
@@ -2141,6 +2147,46 @@ public final class EntityOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The quad the reference's own dragon fireball renderer submits, seen by a camera. */
+    private static JsonObject dragonFireballQuad(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            float yaw = Oracle.f32(row, "camera_y_rot");
+            float pitch = Oracle.f32(row, "camera_x_rot");
+            // `Camera.setRotation`.
+            camera.orientation.rotationYXZ((float) Math.PI - yaw * (float) (Math.PI / 180.0),
+                -pitch * (float) (Math.PI / 180.0), 0.0F);
+            var vertices = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            var state = new net.minecraft.client.renderer.entity.state.EntityRenderState();
+            state.lightCoords = row.get("light").getAsInt();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.DragonFireballRenderer.class);
+            ((net.minecraft.client.renderer.entity.DragonFireballRenderer) renderer).submit(state, stack, collector, camera);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -4384,6 +4430,9 @@ public final class EntityOracle {
         }
         if (operation.equals("arrow_pose")) {
             return arrowPose(request);
+        }
+        if (operation.equals("dragon_fireball_quad")) {
+            return dragonFireballQuad(request);
         }
         if (operation.equals("thrown_item_pose")) {
             return thrownItemPose(request);

@@ -21064,6 +21064,8 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
             });
+        } else if id.contains("wind_charge") {
+            model.setup_wind_charge(bits("age_in_ticks")?);
         } else if id.contains("trident") {
             model.setup_trident();
         } else if id.contains("arrow") {
@@ -21459,6 +21461,50 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
         // (`ItemTransform.NO_TRANSFORM`), which only moves the model's corner to the middle.
         pose.translate(-0.5, -0.5, -0.5);
         out.push(json!({"label": row["label"], "poses": [matrix_bits(&pose)]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `dragon_fireball_quad`: the quad a dragon's fireball is drawn as, seen by a camera.
+fn dragon_fireball_quad_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::name_tag::camera_orientation;
+    use voxel_render::projectile::dragon_fireball_quad;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let orientation = camera_orientation(bits("camera_y_rot")?, bits("camera_x_rot")?);
+        let quad = dragon_fireball_quad(&base, &orientation);
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let light = i32_field(row, "light")?;
+        let vertices: Vec<String> = quad
+            .corners
+            .iter()
+            .map(|(position, uv)| {
+                format!(
+                    "{}{}{}{}{}{:08x}{light:08x}{}{}{}",
+                    hex(position[0]),
+                    hex(position[1]),
+                    hex(position[2]),
+                    hex(uv[0]),
+                    hex(uv[1]),
+                    0xFFFF_FFFF_u32,
+                    hex(quad.normal[0]),
+                    hex(quad.normal[1]),
+                    hex(quad.normal[2]),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
     }
     Ok(json!({"rows": out}))
 }
@@ -23633,6 +23679,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "minecart_pose" => return minecart_pose_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
+        "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),

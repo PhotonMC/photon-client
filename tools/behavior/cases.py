@@ -15313,6 +15313,7 @@ def entity_cases():
     yield from entity_minecart_pose_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
+    yield from entity_charge_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16923,6 +16924,25 @@ def entity_thrown_item_cases():
             seen("rocket", (20.0, 10.0), firework=True), seen("rocket-at-an-angle", (20.0, 10.0), firework=True, angled=True),
             seen("rocket-at-an-angle-looked-down-on", (-70.0, 80.0), firework=True, angled=True)]
     yield {"case_id": "entity/thrown-item-pose", "family": "entity", "operation": "thrown_item_pose", "rows": rows}
+
+
+def entity_charge_cases():
+    """The wind charge's model posed by the reference's own `WindChargeModel.setupAnim` (the charge and
+    the wind spinning opposite ways with the age) and the quad the reference's own dragon fireball
+    renderer submits, seen by a camera that looks along each way and slantwise."""
+    yield {"case_id": "entity/wind-charge-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": f"wind-charge-age-{age}", "layer": "minecraft:wind_charge#main",
+                     "age_in_ticks": float_bits(age)} for age in (0.0, 0.5, 1.0, 3.25, 11.75, 22.5, 100.1)]}
+
+    def seen(label, camera=(0.0, 0.0), at=(10.5, 64.0, -3.5), light=0x00F000F0):
+        return {"label": f"fireball-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2]), "camera_y_rot": float_bits(camera[0]),
+                "camera_x_rot": float_bits(camera[1]), "light": light}
+    rows = [seen("south"), seen("west", (90.0, 0.0)), seen("north", (180.0, 0.0)),
+            seen("down-on-it", (0.0, 90.0)), seen("up-at-it", (45.0, -60.0)), seen("slantwise", (-130.0, 33.5)),
+            seen("far-off", (30.0, 5.0), at=(-100.25, 70.5, 33.75), light=0x00F00000)]
+    yield {"case_id": "entity/dragon-fireball-quad", "family": "entity", "operation": "dragon_fireball_quad",
+           "rows": rows}
 
 
 def entity_copper_golem_cases():

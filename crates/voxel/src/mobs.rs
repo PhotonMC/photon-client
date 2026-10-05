@@ -314,6 +314,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::end_crystals::textures())
         .chain(crate::minecarts::textures())
         .chain(crate::arrows::textures())
+        .chain(crate::charges::textures())
         .chain(crate::hoglins::textures())
         .chain(crate::foxes::textures())
         .chain(crate::pandas::textures())
@@ -548,7 +549,7 @@ fn remote_wild_animals(
     vertices
 }
 
-/// The arrows and minecarts the server added.
+/// The arrows, wind charges and minecarts the server added.
 fn remote_projectiles_and_vehicles(
     session: &PlaySession,
     models: &mut MobModels,
@@ -556,6 +557,9 @@ fn remote_projectiles_and_vehicles(
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let mut vertices = crate::arrows::remote_arrows(session, models, textures, view);
+    vertices.extend(crate::charges::remote_charges(
+        session, models, textures, view,
+    ));
     vertices.extend(crate::minecarts::remote_minecarts(
         session,
         models,

@@ -2391,6 +2391,21 @@ impl MobModel {
         }
     }
 
+    /// `WindChargeModel.setupAnim`: the charge and the wind about it spin opposite ways.
+    pub fn setup_wind_charge(&mut self, age_in_ticks: f32) {
+        self.root.reset();
+        let spin = age_in_ticks * 16.0 * (std::f64::consts::PI / 180.0) as f32;
+        let Some(bone) = self.root.child_mut("bone") else {
+            return;
+        };
+        if let Some(charge) = bone.child_mut("wind_charge") {
+            charge.y_rot = -spin;
+        }
+        if let Some(wind) = bone.child_mut("wind") {
+            wind.y_rot = spin;
+        }
+    }
+
     /// `TridentModel` has no animation: its parts stay where the mesh puts them.
     pub fn setup_trident(&mut self) {
         self.root.reset();
@@ -4967,10 +4982,24 @@ pub fn mob_vertices_scrolled(
     texture: TextureRect,
     u_offset: f32,
 ) -> Vec<Vertex> {
-    let pose = placement_pose(placement);
-    let light = crate::block_light::light_uv(placement.light);
+    mob_vertices_scrolled_posed(
+        model,
+        &placement_pose(placement),
+        placement.light,
+        (texture, u_offset),
+    )
+}
+
+/// [`mob_vertices_scrolled`] for a model the renderer has already placed (a wind charge's).
+pub fn mob_vertices_scrolled_posed(
+    model: &MobModel,
+    pose: &Pose,
+    packed_light: i32,
+    (texture, u_offset): (TextureRect, f32),
+) -> Vec<Vertex> {
+    let light = crate::block_light::light_uv(packed_light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for (_, corners) in model.render(pose) {
         let scrolled: Vec<([f32; 3], [f32; 2])> = corners
             .iter()
             .map(|corner| (corner.position, [corner.uv[0] + u_offset, corner.uv[1]]))

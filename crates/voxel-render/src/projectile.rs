@@ -2,6 +2,7 @@
 //! renderers like it): from the pose the entity's place leaves, turned after
 //! the way it flies.
 
+use crate::entity_textures::{TextureRect, uv};
 use crate::joml::{Pose, Quaternion};
 use crate::scene::Vertex;
 
@@ -70,4 +71,58 @@ pub fn firework_pose(base: &Pose, orientation: &Quaternion, shot_at_angle: bool)
         pose.rotate(&Quaternion::rotation_x(degrees(90.0)));
     }
     pose
+}
+
+/// The quad a dragon's fireball is drawn as (`DragonFireballRenderer.submit`): placed, with the
+/// texture coordinate each corner has and the one normal they share.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FireballQuad {
+    pub corners: [([f32; 3], [f32; 2]); 4],
+    /// `Pose.transformNormal(0, 1, 0)`.
+    pub normal: [f32; 3],
+}
+
+/// `DragonFireballRenderer.submit`: twice the size, turned to face the camera, a quad about
+/// its middle (a quarter lower than the entity's position, as the reference builds it).
+pub fn dragon_fireball_quad(base: &Pose, orientation: &Quaternion) -> FireballQuad {
+    let mut pose = *base;
+    pose.scale(2.0, 2.0, 2.0);
+    pose.rotate(orientation);
+    let corner = |x: f32, y: i32, u: i32, v: i32| {
+        (
+            pose.pose.transform_position(x - 0.5, y as f32 - 0.25, 0.0),
+            [u as f32, v as f32],
+        )
+    };
+    FireballQuad {
+        corners: [
+            corner(0.0, 0, 0, 1),
+            corner(1.0, 0, 1, 1),
+            corner(1.0, 1, 1, 0),
+            corner(0.0, 1, 0, 0),
+        ],
+        normal: pose.transform_normal([0.0, 1.0, 0.0]),
+    }
+}
+
+/// The fireball's quad as triangles for the entity shader (`entityCutout`: lit by the world and
+/// by its normal, whichever face shows, no overlay).
+pub fn dragon_fireball_triangles(
+    quad: &FireballQuad,
+    texture: TextureRect,
+    light: [f32; 2],
+) -> Vec<Vertex> {
+    [0, 1, 2, 0, 2, 3]
+        .into_iter()
+        .map(|index| {
+            let (position, coordinate) = quad.corners[index];
+            Vertex {
+                position,
+                uv: uv(texture, coordinate),
+                shade: 0.0,
+                tint: [quad.normal[0], quad.normal[1], quad.normal[2], 0.0],
+                light,
+            }
+        })
+        .collect()
 }
