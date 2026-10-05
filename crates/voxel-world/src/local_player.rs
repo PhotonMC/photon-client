@@ -1150,6 +1150,11 @@ impl LocalPlayer {
         )
     }
 
+    /// `yBodyRotO` and `yBodyRot`: the body's turn at the last tick and now.
+    pub fn body_rotations(&self) -> (f32, f32) {
+        (self.y_body_rot_old, self.y_body_rot)
+    }
+
     pub fn interpolated_position(&self, partial_tick: f64) -> Vec3 {
         self.old_position.lerp(self.position, partial_tick)
     }

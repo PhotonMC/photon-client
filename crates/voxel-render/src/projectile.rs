@@ -75,8 +75,9 @@ pub fn firework_pose(base: &Pose, orientation: &Quaternion, shot_at_angle: bool)
     pose
 }
 
-/// The quad a dragon's fireball is drawn as (`DragonFireballRenderer.submit`): placed, with the
-/// texture coordinate each corner has and the one normal they share.
+/// The quad a projectile drawn as a sprite is submitted as (`DragonFireballRenderer.submit`,
+/// `FishingHookRenderer.submit`): placed, with the texture coordinate each corner has and the one
+/// normal they share.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FireballQuad {
     pub corners: [([f32; 3], [f32; 2]); 4],
@@ -84,15 +85,14 @@ pub struct FireballQuad {
     pub normal: [f32; 3],
 }
 
-/// `DragonFireballRenderer.submit`: twice the size, turned to face the camera, a quad about
-/// its middle (a quarter lower than the entity's position, as the reference builds it).
-pub fn dragon_fireball_quad(base: &Pose, orientation: &Quaternion) -> FireballQuad {
+/// A quad about its middle (a part `lower` below the entity's position), scaled and turned to face the camera.
+fn facing_quad(base: &Pose, orientation: &Quaternion, (scale, lower): (f32, f32)) -> FireballQuad {
     let mut pose = *base;
-    pose.scale(2.0, 2.0, 2.0);
+    pose.scale(scale, scale, scale);
     pose.rotate(orientation);
     let corner = |x: f32, y: i32, u: i32, v: i32| {
         (
-            pose.pose.transform_position(x - 0.5, y as f32 - 0.25, 0.0),
+            pose.pose.transform_position(x - 0.5, y as f32 - lower, 0.0),
             [u as f32, v as f32],
         )
     };
@@ -107,9 +107,19 @@ pub fn dragon_fireball_quad(base: &Pose, orientation: &Quaternion) -> FireballQu
     }
 }
 
-/// The fireball's quad as triangles for the entity shader (`entityCutout`: lit by the world and
+/// `DragonFireballRenderer.submit`: twice the size, a quarter lower than the entity's position.
+pub fn dragon_fireball_quad(base: &Pose, orientation: &Quaternion) -> FireballQuad {
+    facing_quad(base, orientation, (2.0, 0.25))
+}
+
+/// `FishingHookRenderer.submit`: half the size, centred on the entity's position.
+pub fn fishing_hook_quad(base: &Pose, orientation: &Quaternion) -> FireballQuad {
+    facing_quad(base, orientation, (0.5, 0.5))
+}
+
+/// A sprite quad as triangles for the entity shader (`entityCutout`: lit by the world and
 /// by its normal, whichever face shows, no overlay).
-pub fn dragon_fireball_triangles(
+pub fn sprite_quad_triangles(
     quad: &FireballQuad,
     texture: TextureRect,
     light: [f32; 2],

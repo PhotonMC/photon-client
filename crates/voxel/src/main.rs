@@ -20,6 +20,7 @@ mod ender_dragons;
 mod farm_animals;
 mod felines;
 mod fish;
+mod fishing_hooks;
 mod foxes;
 mod frogs;
 mod golems;

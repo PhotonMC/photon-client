@@ -21471,6 +21471,70 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `fishing_hook`: a bobber's quad and its line's vertices.
+fn fishing_hook_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::fishing::string_vertices;
+    use voxel_render::joml::Pose;
+    use voxel_render::name_tag::camera_orientation;
+    use voxel_render::projectile::fishing_hook_quad;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let orientation = camera_orientation(bits("camera_y_rot")?, bits("camera_x_rot")?);
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let light = i32_field(row, "light")?;
+        let quad = fishing_hook_quad(&base, &orientation);
+        let quad_vertices: Vec<String> = quad
+            .corners
+            .iter()
+            .map(|(position, uv)| {
+                format!(
+                    "{}{}{}{}{}{:08x}{light:08x}{}{}{}",
+                    hex(position[0]),
+                    hex(position[1]),
+                    hex(position[2]),
+                    hex(uv[0]),
+                    hex(uv[1]),
+                    0xFFFF_FFFF_u32,
+                    hex(quad.normal[0]),
+                    hex(quad.normal[1]),
+                    hex(quad.normal[2]),
+                )
+            })
+            .collect();
+        let offset = [bits("offset_x")?, bits("offset_y")?, bits("offset_z")?];
+        let string: Vec<String> = string_vertices(&base, offset)
+            .iter()
+            .map(|vertex| {
+                format!(
+                    "{}{}{}{}{}{:08x}{:08x}{}{}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    hex(0.0),
+                    hex(0.0),
+                    0xFF00_0000_u32,
+                    0,
+                    hex(vertex.normal[0]),
+                    hex(vertex.normal[1]),
+                    hex(vertex.normal[2]),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "quad": quad_vertices, "string": string}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `small_projectile_pose`: the poses a shulker bullet's, llama spit's or evoker fangs' models are drawn from.
 fn small_projectile_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -23715,6 +23779,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
+        "fishing_hook" => return fishing_hook_result(request),
         "small_projectile_pose" => return small_projectile_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),

@@ -17,6 +17,7 @@ use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
 use crate::controls::Controls;
 use crate::dropped_items::world_items;
+use crate::fishing_hooks::{HookView, fishing_hooks};
 use crate::gui::Gui;
 use crate::held_items::held_item_vertices;
 use crate::item_layers::ItemLayerCache;
@@ -569,13 +570,10 @@ impl Play {
             self.backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
         }
         let line_width = voxel_render::outline::appropriate_line_width(self.backend.extent().0);
-        self.backend.set_outline(&outline(
-            &self.session,
-            player,
-            view,
-            frame.relative,
-            line_width,
-        ))?;
+        let (hook_sprites, hook_lines) = self.fishing_hooks(player, view, line_width);
+        let mut lines = outline(&self.session, player, view, frame.relative, line_width);
+        lines.extend(hook_lines);
+        self.backend.set_outline(&lines)?;
         self.backend.set_breaking(&cracks(
             &self.session,
             &self.block_renderer,
@@ -597,6 +595,7 @@ impl Play {
             &self.entity_textures,
             (view, &mut held),
         ));
+        models.extend(hook_sprites);
         if !first_person {
             // What the local player holds: the selected hotbar slot and the
             // off hand, the main arm being the right.
@@ -635,6 +634,37 @@ impl Play {
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
         self.backend.set_ground_items(&items)?;
         Ok(())
+    }
+
+    /// The fishing bobbers' sprites and lines for the frame.
+    fn fishing_hooks(
+        &self,
+        player: &voxel_world::local_player::LocalPlayer,
+        view: overlays::FrameView,
+        line_width: f32,
+    ) -> (
+        Vec<voxel_render::scene::Vertex>,
+        Vec<voxel_render::outline::LineVertex>,
+    ) {
+        let selected = self.session.status().selected_slot as i16;
+        let main_hand = self
+            .session
+            .world()
+            .local_player()
+            .and_then(|state| state.inventory_slot(36 + selected))
+            .filter(|stack| stack.item_count() > 0);
+        fishing_hooks(
+            &self.session,
+            (player, &self.entity_textures),
+            &HookView {
+                view,
+                camera_type: self.controls.camera_type,
+                option_fov: self.controls.options.fov,
+                aspect: self.aspect,
+                line_width,
+                main_hand,
+            },
+        )
     }
 
     /// What the world draws as flat shapes over the entities: the shadows

@@ -9,7 +9,7 @@ use voxel_render::entity_textures::EntityTextures;
 use voxel_render::joml::Pose;
 use voxel_render::mob_model::mob_vertices_scrolled_posed;
 use voxel_render::name_tag::camera_orientation;
-use voxel_render::projectile::{dragon_fireball_quad, dragon_fireball_triangles};
+use voxel_render::projectile::{dragon_fireball_quad, sprite_quad_triangles};
 use voxel_render::scene::Vertex;
 
 use crate::mobs::MobModels;
@@ -65,7 +65,7 @@ pub fn remote_charges(
             // `DragonFireballRenderer.getBlockLightLevel`: fifteen.
             let light = light_uv(full_block_light(light));
             let quad = dragon_fireball_quad(&base, &orientation);
-            vertices.extend(dragon_fireball_triangles(&quad, rect, light));
+            vertices.extend(sprite_quad_triangles(&quad, rect, light));
             continue;
         }
         let (Some(rect), Some(model)) =

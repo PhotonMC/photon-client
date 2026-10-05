@@ -34,6 +34,12 @@ pub const OUTLINE_COLOUR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 /// transform, then the line shader's own.
 const VIEW_SHRINK: f32 = (1.0 - 1.0 / 4096.0) * (1.0 - 1.0 / 256.0);
 
+/// A line's point pulled towards the camera (both in mesh units), as the reference's line
+/// layering does.
+pub fn pull_towards(position: [f32; 3], camera: [f32; 3]) -> [f32; 3] {
+    std::array::from_fn(|axis| camera[axis] + (position[axis] - camera[axis]) * VIEW_SHRINK)
+}
+
 /// The strips for every edge of `shape` placed at `block` (mesh units), seen
 /// from `camera` (mesh units).
 pub fn outline_vertices(
@@ -50,7 +56,7 @@ pub fn outline_vertices(
             block[1] + y as f32,
             block[2] + z as f32,
         ];
-        std::array::from_fn(|axis| camera[axis] + (world[axis] - camera[axis]) * VIEW_SHRINK)
+        pull_towards(world, camera)
     };
     shape.for_all_edges(|x1, y1, z1, x2, y2, z2| {
         let delta = [(x2 - x1) as f32, (y2 - y1) as f32, (z2 - z1) as f32];

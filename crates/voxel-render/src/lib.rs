@@ -16,6 +16,7 @@ pub mod dragon_rays;
 pub mod entity_block;
 pub mod entity_textures;
 pub mod equipment;
+pub mod fishing;
 pub mod geometry;
 pub mod guardian_beam;
 pub mod gui;

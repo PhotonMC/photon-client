@@ -15315,6 +15315,7 @@ def entity_cases():
     yield from entity_thrown_item_cases()
     yield from entity_charge_cases()
     yield from entity_small_projectile_cases()
+    yield from entity_fishing_hook_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16977,6 +16978,25 @@ def entity_small_projectile_cases():
                                         ("done", 0.0, 1.0), ("turned", 400.0, 0.3))]
     yield {"case_id": "entity/small-projectile-pose", "family": "entity", "operation": "small_projectile_pose",
            "rows": rows}
+
+
+def entity_fishing_hook_cases():
+    """A fishing bobber as the reference's own renderer submits it: the quad facing a camera that looks
+    along each way and slantwise, and the line's sixteen segments (from its own `stringVertex`) toward
+    a hand in each direction, near and far."""
+    def seen(label, camera=(0.0, 0.0), offset=(0.0, 1.0, 2.0), at=(10.5, 64.0, -3.5), light=0x00F000F0):
+        return {"label": f"hook-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2]), "camera_y_rot": float_bits(camera[0]),
+                "camera_x_rot": float_bits(camera[1]), "offset_x": float_bits(offset[0]),
+                "offset_y": float_bits(offset[1]), "offset_z": float_bits(offset[2]), "light": light}
+    rows = [seen("south"), seen("west", (90.0, 0.0), offset=(-3.5, 0.5, 0.25)),
+            seen("north", (180.0, 0.0), offset=(2.0, -0.3, -4.75)),
+            seen("down-on-it", (0.0, 90.0), offset=(0.1, 3.0, 0.1)),
+            seen("up-at-it", (45.0, -60.0), offset=(-1.25, 2.5, 7.0)),
+            seen("slantwise", (-130.0, 33.5), offset=(5.5, -2.25, -6.125)),
+            seen("far-off", (30.0, 5.0), offset=(0.0, 0.0, 0.5), at=(-100.25, 70.5, 33.75), light=0x00F00000),
+            seen("hand-on-the-bobber", offset=(0.0, 0.0, 0.0))]
+    yield {"case_id": "entity/fishing-hook", "family": "entity", "operation": "fishing_hook", "rows": rows}
 
 
 def entity_copper_golem_cases():

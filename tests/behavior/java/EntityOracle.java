@@ -2272,6 +2272,75 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A fishing bobber as the reference's own renderer submits it: the quad (the first custom geometry
+     * its `submit` hands over, before it asks the running game for the line width) and the line's
+     * vertices from its own `stringVertex`, through the line's sixteen steps.
+     */
+    private static JsonObject fishingHook(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var stringVertex = net.minecraft.client.renderer.entity.FishingHookRenderer.class.getDeclaredMethod("stringVertex",
+            float.class, float.class, float.class, com.mojang.blaze3d.vertex.VertexConsumer.class,
+            com.mojang.blaze3d.vertex.PoseStack.Pose.class, float.class, float.class, float.class);
+        stringVertex.setAccessible(true);
+        var fraction = net.minecraft.client.renderer.entity.FishingHookRenderer.class.getDeclaredMethod("fraction", int.class, int.class);
+        fraction.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            float yaw = Oracle.f32(row, "camera_y_rot");
+            float pitch = Oracle.f32(row, "camera_x_rot");
+            // `Camera.setRotation`.
+            camera.orientation.rotationYXZ((float) Math.PI - yaw * (float) (Math.PI / 180.0),
+                -pitch * (float) (Math.PI / 180.0), 0.0F);
+            var quad = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry") && quad.isEmpty()) {
+                        var capture = new BeamCapture(quad);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            var state = new net.minecraft.client.renderer.entity.state.FishingHookRenderState();
+            state.lightCoords = row.get("light").getAsInt();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.FishingHookRenderer.class);
+            try {
+                ((net.minecraft.client.renderer.entity.FishingHookRenderer) renderer).submit(state, stack, collector, camera);
+            } catch (NullPointerException expected) {
+                // The line width is the running game's: the quad has been submitted by then.
+            }
+            var string = new JsonArray();
+            var capture = new BeamCapture(string);
+            float xa = Oracle.f32(row, "offset_x");
+            float ya = Oracle.f32(row, "offset_y");
+            float za = Oracle.f32(row, "offset_z");
+            var linePose = new com.mojang.blaze3d.vertex.PoseStack();
+            linePose.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            for (int i = 0; i < 16; i++) {
+                float a0 = (float) fraction.invoke(null, i, 16);
+                float a1 = (float) fraction.invoke(null, i + 1, 16);
+                stringVertex.invoke(null, xa, ya, za, capture, linePose.last(), a0, a1, 1.0F);
+                stringVertex.invoke(null, xa, ya, za, capture, linePose.last(), a1, a0, 1.0F);
+            }
+            capture.flush();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("quad", quad);
+            out.add("string", string);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Where the reference's own arrow renderer draws an arrow from the turns it was sent. */
     private static JsonObject arrowPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4511,6 +4580,9 @@ public final class EntityOracle {
         }
         if (operation.equals("small_projectile_pose")) {
             return smallProjectilePose(request);
+        }
+        if (operation.equals("fishing_hook")) {
+            return fishingHook(request);
         }
         if (operation.equals("dragon_fireball_quad")) {
             return dragonFireballQuad(request);
