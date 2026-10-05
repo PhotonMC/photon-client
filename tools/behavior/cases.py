@@ -17829,6 +17829,20 @@ def entity_walk_animation_cases():
 def sound_cases():
     yield from sound_registry_cases()
     yield from sound_packet_cases()
+    yield from sound_decode_cases()
+
+
+def sound_decode_cases():
+    """Real sound files decoded by the reference's own Ogg/Vorbis stream and 16-bit conversion: short and long, the
+    kinds of sound the game plays (a click, steps, a pig, a cave ambience, a voice, a track of music)."""
+    objects = [
+        ("click", "random/click"), ("dig-stone", "dig/stone1"), ("step-stone", "step/stone1"),
+        ("pig", "mob/pig/say1"), ("cave", "ambient/cave/cave1"), ("villager", "mob/villager/idle1"),
+        ("tiny-chicken-step", "mob/chicken/baby_chicken/step"), ("suspicious-gravel", "block/suspicious_gravel/break1"),
+        ("music", "music/game/creative/dreiton"),
+    ]
+    yield {"case_id": "sound/decode", "family": "sound", "operation": "decode",
+           "rows": [{"label": label, "object": f"minecraft/sounds/{name}.ogg"} for label, name in objects]}
 
 
 def sound_registry_cases():

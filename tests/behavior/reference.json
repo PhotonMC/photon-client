@@ -164,6 +164,10 @@
     "org.lwjgl:lwjgl-glfw-natives-windows-x86": {
       "file": "lwjgl-glfw-3.4.1-natives-windows-x86.jar",
       "sha1": "a48bbdd544f00c88f8906e9d09e3f31bc1c17fac"
+    },
+    "com.jcraft:jorbis": {
+      "file": "jorbis-0.0.17.jar",
+      "sha1": "8872d22b293e8f5d7d56ff92be966e6dc28ebdc6"
     }
   },
   "families": {
@@ -490,7 +494,9 @@
         "org.joml:joml",
         "org.apache.commons:commons-lang3",
         "com.mojang:authlib",
-        "org.jspecify:jspecify"
+        "org.jspecify:jspecify",
+        "com.jcraft:jorbis",
+        "org.lwjgl:lwjgl"
       ]
     }
   }

@@ -13,6 +13,7 @@ voxel-world = { path = "crates/voxel-world" }
 voxel-game = { path = "crates/voxel-game" }
 voxel-net = { path = "crates/voxel-net" }
 voxel-render = { path = "crates/voxel-render" }
+voxel-audio = { path = "crates/voxel-audio" }
 ash = "0.38.0"
 ash-window = "0.13.0"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }

@@ -43,6 +43,9 @@ public final class SoundOracle {
                 case "packets" -> {
                     return packets(request);
                 }
+                case "decode" -> {
+                    return decode(request);
+                }
                 default -> {
                 }
             }
@@ -56,6 +59,45 @@ public final class SoundOracle {
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }
+    }
+
+    /**
+     * Sound files decoded by the reference's own `JOrbisAudioStream` and `ChunkedSampleByteBuf`: the
+     * format and how many samples came out. The samples themselves are written next to the assets
+     * (`reference-pcm/<label>.pcm`, 16-bit little-endian, never tracked) for the Rust decoder to be
+     * held against, one sample at a time, within a least significant bit: the two decoders are not the
+     * same code, and a float calculation done in another order rounds differently now and then.
+     */
+    private static JsonObject decode(JsonObject request) throws Exception {
+        var assets = Path.of(System.getenv("VOXEL_ASSETS")).getParent().getParent();
+        var index = com.google.gson.JsonParser.parseString(Files.readString(assets.resolve("indexes/32.json")))
+            .getAsJsonObject().getAsJsonObject("objects");
+        var reference = assets.getParent().resolve("reference-pcm");
+        Files.createDirectories(reference);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var hash = index.getAsJsonObject(row.get("object").getAsString()).get("hash").getAsString();
+            var data = Files.readAllBytes(assets.resolve("objects").resolve(hash.substring(0, 2)).resolve(hash));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            try (var stream = new net.minecraft.client.sounds.JOrbisAudioStream(new java.io.ByteArrayInputStream(data))) {
+                var format = stream.getFormat();
+                var pcm = stream.readAll();
+                var bytes = new byte[pcm.remaining()];
+                pcm.get(bytes);
+                Files.write(reference.resolve(row.get("label").getAsString() + ".pcm"), bytes);
+                out.addProperty("channels", format.getChannels());
+                out.addProperty("rate", (int) format.getSampleRate());
+                out.addProperty("samples", bytes.length / 2);
+                // Itself, sample for sample, within a least significant bit.
+                out.addProperty("within_one_lsb", true);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
     }
 
     /** The built-in sound event registry in id order. */

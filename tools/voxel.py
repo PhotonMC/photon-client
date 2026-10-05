@@ -406,7 +406,7 @@ def rcon(args):
 
 # Every behavior family except `math` (which only runs on x86-64 Linux).
 PARITY_FAMILIES = ["atlas", "binary", "block", "entity", "gui", "image", "json", "model",
-                   "movement", "nbt", "resources", "timer", "utf8", "window", "wire"]
+                   "movement", "nbt", "resources", "sound", "timer", "utf8", "window", "wire"]
 NOISE = ("block v0.1.6", "future-incompat")
 
 

@@ -21682,6 +21682,47 @@ fn sound_registry_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `decode` (the sound family): sound files decoded, held against the reference's own samples
+/// (written by its row) one at a time, within a least significant bit.
+fn sound_decode_result(request: &Value) -> Result<Value, String> {
+    let assets =
+        std::path::Path::new(&std::env::var("VOXEL_ASSETS").map_err(|error| error.to_string())?)
+            .parent()
+            .and_then(std::path::Path::parent)
+            .ok_or("assets")?
+            .to_path_buf();
+    let index = voxel_core::json::read_object(&assets.join("indexes/32.json")).ok_or("index")?;
+    let objects = index.object("objects").ok_or("objects")?;
+    let reference = assets.parent().ok_or("assets")?.join("reference-pcm");
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let hash = objects
+            .object(row["object"].as_str().ok_or("object")?)
+            .and_then(|entry| entry.text("hash"))
+            .ok_or("no such object")?;
+        let data = std::fs::read(assets.join("objects").join(&hash[..2]).join(&hash))
+            .map_err(|error| error.to_string())?;
+        let pcm = voxel_audio::decode::decode_ogg(&data).map_err(|error| error.0)?;
+        let label = row["label"].as_str().ok_or("label")?;
+        let expected = std::fs::read(reference.join(format!("{label}.pcm"))).map_err(|error| {
+            format!("{label}: the reference's samples are missing ({error}); capture first")
+        })?;
+        let within = expected.len() == pcm.samples.len() * 2
+            && expected
+                .chunks_exact(2)
+                .zip(&pcm.samples)
+                .all(|(bytes, sample)| {
+                    (i32::from(i16::from_le_bytes([bytes[0], bytes[1]])) - i32::from(*sample)).abs()
+                        <= 1
+                });
+        out.push(
+            json!({"label": label, "channels": pcm.channels, "rate": pcm.rate,
+            "samples": pcm.samples.len(), "within_one_lsb": within}),
+        );
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `packets` (the sound family): the three sound packets read from the bytes a scenario gives.
 fn sound_packets_result(request: &Value) -> Result<Value, String> {
     use voxel_game::sounds::SoundHolder;
@@ -24820,6 +24861,7 @@ fn respond(request: Value) -> Result<Value, String> {
                 json!({"rows": rows})
             }
             "packets" => sound_packets_result(&request)?,
+            "decode" => sound_decode_result(&request)?,
             _ => sound_registry_result(&request)?,
         },
         _ => return Err("unknown behavior family".into()),

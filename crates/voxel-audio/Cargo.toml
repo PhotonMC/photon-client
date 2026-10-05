@@ -1,0 +1,13 @@
+[package]
+name = "voxel-audio"
+description = "Sound decoding and output."
+version.workspace = true
+edition.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+lewton = "0.10.2"
+
+[lints]
+workspace = true
