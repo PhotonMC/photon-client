@@ -18782,6 +18782,13 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "sniffer_data" => {
+                        // `Sniffer.DATA_STATE`: serializer 35, then the state's id.
+                        let mut data = vec![voxel_world::sniffer::STATE_DATA_ID, 35];
+                        voxel_core::wire::write_varint(i32_field(event, "state")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "armadillo_data" => {
                         // `Armadillo.ARMADILLO_STATE`: serializer 36, then the state's id.
                         let mut data = vec![voxel_world::armadillo::STATE_DATA_ID, 36];
@@ -19128,6 +19135,26 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "sniffer" => {
+                        let state = entity.sniffer().copied().unwrap_or_default();
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("digging", state.digging),
+                            ("sniffing", state.sniffing),
+                            ("rising", state.rising),
+                            ("happy", state.feeling_happy),
+                            ("scenting", state.scenting),
+                        ] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                        described["searching"] = json!(state.is_searching());
                     }
                     "armadillo" => {
                         let state = entity.armadillo().copied().unwrap_or_default();
@@ -20797,6 +20824,30 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 slide_back: started("slide_back"),
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
+            });
+        } else if id.contains("sniffer") {
+            use voxel_render::mob_model::SnifferRenderState;
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_sniffer(&SnifferRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                is_searching: flag("searching")?,
+                digging: started("digging"),
+                sniffing: started("sniffing"),
+                rising: started("rising"),
+                feeling_happy: started("happy"),
+                scenting: started("scenting"),
             });
         } else if id.contains("armadillo") {
             use voxel_render::mob_model::ArmadilloRenderState;

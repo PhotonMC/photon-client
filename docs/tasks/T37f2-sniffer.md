@@ -11,4 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_sniffer` (iki model aynı sınıf), `voxel-world/sniffer.rs` (`DATA_STATE` 17/35, animasyon durumları), `sniffers.rs` çizici. Kayıt: `docs/client-sniffer-parity-conformance.md`.
+- Sapma: kazarken vuruş kutusu küçülmesi (`DIGGING_DIMENSIONS`), ses, parçacık, tohum bırakma yok; canlı gözlem yapılmadı.

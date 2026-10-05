@@ -1731,6 +1731,28 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("sniffer")) {
+                var state = new net.minecraft.client.renderer.entity.state.SnifferRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.isSearching = row.get("searching").getAsBoolean();
+                var animations = new Object[][] {
+                    {"digging", state.diggingAnimationState}, {"sniffing", state.sniffingAnimationState},
+                    {"rising", state.risingAnimationState}, {"happy", state.feelingHappyAnimationState},
+                    {"scenting", state.scentingAnimationState},
+                };
+                for (var animation : animations) {
+                    if (row.has((String) animation[0])) {
+                        ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                    }
+                }
+                // The renderer makes the baby's model from the same class as the adult's.
+                var sniffer = new net.minecraft.client.model.animal.sniffer.SnifferModel(root);
+                sniffer.setupAnim(state);
+                model = sniffer;
             } else if (id.contains("armadillo")) {
                 var state = new net.minecraft.client.renderer.entity.state.ArmadilloRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

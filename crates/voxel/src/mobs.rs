@@ -309,6 +309,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::felines::textures())
         .chain(crate::bears::textures())
         .chain(crate::armadillos::textures())
+        .chain(crate::sniffers::textures())
         .chain(crate::hoglins::textures())
         .chain(crate::foxes::textures())
         .chain(crate::pandas::textures())
@@ -488,7 +489,7 @@ pub fn remote_mobs(
     vertices
 }
 
-/// The felines, bears, armadillos and hoglins the server added.
+/// The felines, bears, armadillos, hoglins and sniffers the server added.
 fn remote_wild_animals(
     session: &PlaySession,
     models: &mut MobModels,
@@ -501,6 +502,9 @@ fn remote_wild_animals(
         session, models, textures, view,
     ));
     vertices.extend(crate::hoglins::remote_hoglins(
+        session, models, textures, view,
+    ));
+    vertices.extend(crate::sniffers::remote_sniffers(
         session, models, textures, view,
     ));
     vertices

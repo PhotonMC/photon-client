@@ -41,6 +41,7 @@ mod sections;
 mod sheep;
 mod shulkers;
 mod sky;
+mod sniffers;
 mod squids;
 mod striders;
 mod turtles;

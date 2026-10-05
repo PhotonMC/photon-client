@@ -605,6 +605,28 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// A sniffer's synced state (`Sniffer.DATA_STATE`), when the data holds it.
+pub(crate) fn sniffer_state_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> Option<crate::sniffer::SnifferMode> {
+    /// `EntityDataSerializers.SNIFFER_STATE`'s place in the registry of serializers.
+    const SNIFFER_STATE_SERIALIZER_ID: i32 = 35;
+    if voxel_data::entity_type::name(type_id)? != "minecraft:sniffer" {
+        return None;
+    }
+    let (serializer_id, mut value_input) =
+        find_metadata_field(metadata, crate::sniffer::STATE_DATA_ID)?;
+    if serializer_id != SNIFFER_STATE_SERIALIZER_ID {
+        return None;
+    }
+    let id = voxel_core::wire::read_varint(&mut value_input).ok()?;
+    if value_input.is_empty() {
+        return None;
+    }
+    Some(crate::sniffer::SnifferMode::from_id(id))
+}
+
 /// An armadillo's synced state (`Armadillo.ARMADILLO_STATE`), when the data holds it.
 pub(crate) fn armadillo_state_from_metadata(
     type_id: i32,

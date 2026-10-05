@@ -14703,6 +14703,24 @@ def movement_item_cases():
         living("armadillo-state-resent", "armadillo", 40,
                [{"tick": 4, "type": "armadillo_data", "state": 2},
                 {"tick": 20, "type": "armadillo_data", "state": 2}], extras=["armadillo"]),
+        # A sniffer's synced state stops every animation and starts its own (happy, scenting,
+        # sniffing, digging, rising; searching has none) even when it is sent again.
+        living("sniffer-idle", "sniffer", 20, [], extras=["sniffer"]),
+        living("sniffer-states", "sniffer", 70,
+               [{"tick": 4, "type": "sniffer_data", "state": 1},
+                {"tick": 12, "type": "sniffer_data", "state": 2},
+                {"tick": 20, "type": "sniffer_data", "state": 3},
+                {"tick": 28, "type": "sniffer_data", "state": 4},
+                {"tick": 36, "type": "sniffer_data", "state": 5},
+                {"tick": 44, "type": "sniffer_data", "state": 6},
+                {"tick": 52, "type": "sniffer_data", "state": 0}], extras=["sniffer"]),
+        living("sniffer-digs", "sniffer", 40, [{"tick": 4, "type": "sniffer_data", "state": 5}],
+               extras=["sniffer"]),
+        living("sniffer-state-resent", "sniffer", 40,
+               [{"tick": 4, "type": "sniffer_data", "state": 5},
+                {"tick": 20, "type": "sniffer_data", "state": 5}], extras=["sniffer"]),
+        living("sniffer-searches", "sniffer", 30, [{"tick": 4, "type": "sniffer_data", "state": 4}],
+               extras=["sniffer"]),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15138,6 +15156,7 @@ def entity_cases():
     yield from entity_warden_cases()
     yield from entity_creaking_cases()
     yield from entity_armadillo_cases()
+    yield from entity_sniffer_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16516,6 +16535,39 @@ def entity_armadillo_cases():
                  armadillo(layer, "roll-out-late", age=100.0, roll_out=60),
                  armadillo(layer, "rolling-out-walking", age=70.0, walk=(8.1, 0.5), roll_out=60)]
     yield {"case_id": "entity/armadillo-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_sniffer_cases():
+    """The sniffer's two models (adult, snifflet) posed by the reference's own `SnifferModel.setupAnim`:
+    the look, the walk and the searching walk, and each of the five animations alone (early, late and
+    run out) and with the walk."""
+    def sniffer(layer, label, age=37.5, look=(0.0, 0.0), walk=(0.0, 0.0), searching=False, **started):
+        row = {"label": f"sniffer-{layer}-{label}", "layer": f"minecraft:{layer}#main",
+               "age_in_ticks": float_bits(age), "y_rot": float_bits(look[0]),
+               "x_rot": float_bits(look[1]), "walk_position": float_bits(walk[0]),
+               "walk_speed": float_bits(walk[1]), "searching": searching}
+        row.update(started)
+        return row
+    rows = []
+    for layer in ("sniffer", "sniffer_baby"):
+        rows += [sniffer(layer, "nothing"),
+                 sniffer(layer, "look", look=(20.0, -10.0)),
+                 sniffer(layer, "walk", walk=(6.3, 0.02)),
+                 sniffer(layer, "fast-walk", walk=(11.9, 0.3)),
+                 sniffer(layer, "searching", walk=(6.3, 0.02), searching=True),
+                 sniffer(layer, "searching-still", age=44.0, searching=True),
+                 sniffer(layer, "dig", age=60.0, digging=40),
+                 sniffer(layer, "dig-late", age=240.0, digging=40),
+                 sniffer(layer, "sniff", age=52.0, sniffing=40),
+                 sniffer(layer, "sniff-over", age=100.0, sniffing=40),
+                 sniffer(layer, "rise", age=70.0, rising=40),
+                 sniffer(layer, "rise-over", age=140.0, rising=40),
+                 sniffer(layer, "happy", age=70.0, happy=40),
+                 sniffer(layer, "scenting", age=70.0, scenting=40),
+                 sniffer(layer, "scenting-late", age=260.0, scenting=40),
+                 sniffer(layer, "digging-walking", age=70.0, walk=(8.1, 0.05), digging=40)]
+    yield {"case_id": "entity/sniffer-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

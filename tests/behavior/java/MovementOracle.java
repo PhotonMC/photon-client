@@ -1006,6 +1006,13 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "sniffer_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.animal.sniffer.Sniffer.class, "DATA_STATE",
+                            net.minecraft.world.entity.animal.sniffer.Sniffer.State.values()[event.get("state").getAsInt()]));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "armadillo_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.animal.armadillo.Armadillo.class, "ARMADILLO_STATE",
@@ -1333,6 +1340,21 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "sniffer" -> {
+                            var sniffer = (net.minecraft.world.entity.animal.sniffer.Sniffer) entity;
+                            var states = new Object[][] {
+                                {"digging", sniffer.diggingAnimationState}, {"sniffing", sniffer.sniffingAnimationState},
+                                {"rising", sniffer.risingAnimationState}, {"happy", sniffer.feelingHappyAnimationState},
+                                {"scenting", sniffer.scentingAnimationState},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) sniffer.tickCount) : 0L);
+                            }
+                            described.addProperty("searching", sniffer.isSearching());
                         }
                         case "armadillo" -> {
                             var armadillo = (net.minecraft.world.entity.animal.armadillo.Armadillo) entity;

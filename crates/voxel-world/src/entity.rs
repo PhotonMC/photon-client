@@ -740,6 +740,8 @@ pub struct ClientEntity {
     pub(crate) creaking: Option<Box<crate::creaking::CreakingState>>,
     /// An armadillo's state and animation states, made when its data, events or ticks first reach it.
     pub(crate) armadillo: Option<crate::armadillo::ArmadilloState>,
+    /// A sniffer's state and animation states, made when its data first reaches it.
+    pub(crate) sniffer: Option<crate::sniffer::SnifferState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2377,6 +2379,19 @@ impl ClientEntity {
                 .get_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
+    }
+
+    /// A sniffer's state and animation states, if it has any.
+    pub fn sniffer(&self) -> Option<&crate::sniffer::SnifferState> {
+        self.sniffer.as_ref()
+    }
+
+    /// `Sniffer.onSyncedDataUpdated(DATA_STATE)`.
+    pub(crate) fn set_sniffer_mode(&mut self, mode: crate::sniffer::SnifferMode) {
+        let tick_count = self.tick_count;
+        self.sniffer
+            .get_or_insert_with(Default::default)
+            .set_mode(mode, tick_count);
     }
 
     pub(crate) fn is_armadillo(&self) -> bool {

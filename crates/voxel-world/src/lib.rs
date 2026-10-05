@@ -68,6 +68,7 @@ mod recipes;
 mod region_copy;
 mod shadow;
 pub mod shulker;
+pub mod sniffer;
 pub mod squid;
 pub mod warden;
 pub mod wolf;
@@ -3239,6 +3240,7 @@ impl ClientWorld {
                 warden: None,
                 creaking: None,
                 armadillo: None,
+                sniffer: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4378,6 +4380,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
+    }
+    if let Some(mode) = sniffer_state_from_metadata(entity.type_id, metadata) {
+        entity.set_sniffer_mode(mode);
     }
     if let Some(mode) = armadillo_state_from_metadata(entity.type_id, metadata) {
         entity.armadillo_mut().set_mode(mode);

@@ -268,6 +268,20 @@ pub struct ArmadilloRenderState {
     pub peek: voxel_world::animation_state::AnimationState,
 }
 
+/// What a sniffer's model is posed from (`SnifferRenderState`): the look, the
+/// walk, whether it is searching, and its animation states.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SnifferRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub is_searching: bool,
+    pub digging: voxel_world::animation_state::AnimationState,
+    pub sniffing: voxel_world::animation_state::AnimationState,
+    pub rising: voxel_world::animation_state::AnimationState,
+    pub feeling_happy: voxel_world::animation_state::AnimationState,
+    pub scenting: voxel_world::animation_state::AnimationState,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -2055,6 +2069,43 @@ impl MobModel {
             (roll_out, state.roll_out),
             (roll_up, state.roll_up),
             (peek, state.peek),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
+        }
+    }
+
+    /// `SnifferModel.setupAnim` (the baby's layer has the same parts and uses
+    /// the same model): the head takes the look, the walk (the searching one
+    /// while it searches) runs, then the animations that have started.
+    pub fn setup_sniffer(&mut self, state: &SnifferRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(head) = self
+            .root
+            .child_mut("bone")
+            .and_then(|bone| bone.child_mut("body"))
+            .and_then(|body| body.child_mut("head"))
+        {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        }
+        let walk = if state.is_searching {
+            "Sniffer.SNIFFER_SNIFF_SEARCH"
+        } else {
+            "Sniffer.SNIFFER_WALK"
+        };
+        if let Some(definition) = voxel_data::animation::definition(walk) {
+            // `applyWalk(pos, speed, 9, 100)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 9.0) as i64;
+            let scale = (state.quadruped.walk_speed * 100.0).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        for (name, running) in [
+            ("Sniffer.SNIFFER_DIG", state.digging),
+            ("Sniffer.SNIFFER_LONGSNIFF", state.sniffing),
+            ("Sniffer.SNIFFER_STAND_UP", state.rising),
+            ("Sniffer.SNIFFER_HAPPY", state.feeling_happy),
+            ("Sniffer.SNIFFER_SNIFFSNIFF", state.scenting),
         ] {
             self.animate_state(name, running, state.age_in_ticks);
         }
