@@ -2087,6 +2087,63 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the reference's own thrown item renderer, and its firework rocket's, draw an item from
+     * the camera it is seen by: the pose each leaves the item's single layer at.
+     */
+    private static JsonObject thrownItemPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            float yaw = Oracle.f32(row, "camera_y_rot");
+            float pitch = Oracle.f32(row, "camera_x_rot");
+            // `Camera.setRotation`.
+            camera.orientation.rotationYXZ((float) Math.PI - yaw * (float) (Math.PI / 180.0),
+                -pitch * (float) (Math.PI / 180.0), 0.0F);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            if (row.get("firework").getAsBoolean()) {
+                var state = new net.minecraft.client.renderer.entity.state.FireworkRocketRenderState();
+                state.isShotAtAngle = row.get("shot_at_angle").getAsBoolean();
+                state.item.newLayer();
+                var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.FireworkEntityRenderer.class);
+                ((net.minecraft.client.renderer.entity.FireworkEntityRenderer) renderer).submit(state, stack, collector, camera);
+            } else {
+                var state = new net.minecraft.client.renderer.entity.state.ThrownItemRenderState();
+                state.item.newLayer();
+                var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ThrownItemRenderer.class);
+                var scale = net.minecraft.client.renderer.entity.ThrownItemRenderer.class.getDeclaredField("scale");
+                scale.setAccessible(true);
+                scale.setFloat(renderer, Oracle.f32(row, "scale"));
+                ((net.minecraft.client.renderer.entity.ThrownItemRenderer) renderer).submit(state, stack, collector, camera);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Where the reference's own arrow renderer draws an arrow from the turns it was sent. */
     private static JsonObject arrowPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4294,6 +4351,9 @@ public final class EntityOracle {
         }
         if (operation.equals("arrow_pose")) {
             return arrowPose(request);
+        }
+        if (operation.equals("thrown_item_pose")) {
+            return thrownItemPose(request);
         }
         if (operation.equals("flier_item_pose")) {
             return flierItemPose(request);

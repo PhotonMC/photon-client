@@ -81,8 +81,11 @@ const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 /// `handleSetEntityData`, and for a dropped item the stack it holds.
 pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
     let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
+    // A dropped item, a thrown item or a firework rocket keeps its stack in the same data.
     let is_item = world.entity_at(packet.entity_id).is_some_and(|entity| {
         voxel_data::entity_type::id("minecraft:item") == Some(entity.type_id)
+            || entity.thrown_item_look().is_some()
+            || voxel_data::entity_type::id("minecraft:firework_rocket") == Some(entity.type_id)
     });
     if applied
         && is_item

@@ -175,6 +175,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T35b — Kalamar ve ışıklı kalamar — client-parity](client-squid-parity-conformance.md)
 - [T32h — Strider — client-parity](client-strider-parity-conformance.md)
 - [T37b — Sulfur cube — client-parity](client-sulfur-cube-parity-conformance.md)
+- [T39c — Fırlatılan eşyalar ve havai fişek — client-parity](client-thrown-item-parity-conformance.md)
 - [T41g — Köylü, tüccar ve cadının tuttuğu ve taktığı eşya — client-parity](client-villager-held-parity-conformance.md)
 - [T34 — Köylü ve gezgin tüccar — client-parity](client-villager-parity-conformance.md)
 - [T37d — Warden — client-parity](client-warden-parity-conformance.md)

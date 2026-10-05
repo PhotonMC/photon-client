@@ -35,3 +35,26 @@ pub fn cull_back_faces(vertices: Vec<Vertex>, camera: [f32; 3]) -> Vec<Vertex> {
         .copied()
         .collect()
 }
+
+/// `ThrownItemRenderer.submit` up to the item: scaled, then turned to face the camera
+/// (`camera.orientation`, so the item's flat side looks at the eye).
+pub fn thrown_item_pose(base: &Pose, scale: f32, orientation: &Quaternion) -> Pose {
+    let mut pose = *base;
+    pose.scale(scale, scale, scale);
+    pose.rotate(orientation);
+    pose
+}
+
+/// `FireworkEntityRenderer.submit` up to the item: turned to face the camera, and a rocket
+/// shot at an angle (from a crossbow) laid on its side the way it flies.
+pub fn firework_pose(base: &Pose, orientation: &Quaternion, shot_at_angle: bool) -> Pose {
+    let mut pose = *base;
+    pose.rotate(orientation);
+    if shot_at_angle {
+        let degrees = Quaternion::degrees_to_radians;
+        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+        pose.rotate(&Quaternion::rotation_y(degrees(180.0)));
+        pose.rotate(&Quaternion::rotation_x(degrees(90.0)));
+    }
+    pose
+}

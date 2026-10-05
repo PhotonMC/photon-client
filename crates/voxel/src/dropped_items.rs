@@ -63,3 +63,18 @@ pub fn dropped_items(
     }
     vertices
 }
+
+/// The triangles of every item in the world as the ground shows it: those lying about and those
+/// thrown or shot through the air.
+pub fn world_items(
+    session: &PlaySession,
+    layers: &mut ItemLayerCache,
+    tints: (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+) -> Vec<Vertex> {
+    let mut items = dropped_items(session, layers, tints, view);
+    items.extend(crate::thrown_items::thrown_items(
+        session, layers, tints, view,
+    ));
+    items
+}

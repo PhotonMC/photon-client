@@ -32,6 +32,8 @@ pub struct FrameView {
     pub origin: [i32; 3],
     /// Where the camera is, from that origin.
     pub camera: [f32; 3],
+    /// The camera's yaw and pitch, in degrees.
+    pub rotation: (f32, f32),
     /// Where the skin the local player wears is in the entity textures.
     pub skin: voxel_render::entity_textures::TextureRect,
 }

@@ -48,6 +48,7 @@ mod sky;
 mod sniffers;
 mod squids;
 mod striders;
+mod thrown_items;
 mod turtles;
 mod view;
 mod villagers;

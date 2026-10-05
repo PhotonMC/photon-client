@@ -3384,6 +3384,7 @@ impl ClientWorld {
                 end_crystal: None,
                 minecart: None,
                 arrow: None,
+                shot_at_angle: false,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4501,9 +4502,17 @@ enum LightTask {
     },
 }
 
+/// `FireworkRocketEntity.DATA_SHOT_AT_ANGLE`'s data id: the item and the attached target come first.
+pub const FIREWORK_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
+
 /// What the data of a sniffer, an armadillo, an arrow, a minecart, an end crystal, a wither, a
 /// creaking and an ender dragon says of it (each when it holds that kind's fields).
 fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
+        && let Some(angled) = metadata_boolean_value(metadata, FIREWORK_SHOT_AT_ANGLE_DATA_ID)
+    {
+        entity.shot_at_angle = angled;
+    }
     if let Some(mode) = sniffer_state_from_metadata(entity.type_id, metadata) {
         entity.set_sniffer_mode(mode);
     }

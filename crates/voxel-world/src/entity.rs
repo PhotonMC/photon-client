@@ -752,6 +752,8 @@ pub struct ClientEntity {
     pub(crate) minecart: Option<crate::minecart::MinecartState>,
     /// An arrow's shake and data, made when its data or ticks first reach it.
     pub(crate) arrow: Option<crate::arrow::ArrowState>,
+    /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
+    pub(crate) shot_at_angle: bool,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2425,6 +2427,28 @@ impl ClientEntity {
         self.sniffer
             .get_or_insert_with(Default::default)
             .set_mode(mode, tick_count);
+    }
+
+    /// `FireworkRocketEntity.isShotAtAngle`.
+    pub fn is_shot_at_angle(&self) -> bool {
+        self.shot_at_angle
+    }
+
+    /// Whether the type draws as an item facing the camera (`ThrownItemRenderer`, with its
+    /// scale and whether it is fully lit), and so has its item among its data.
+    pub fn thrown_item_look(&self) -> Option<(f32, bool)> {
+        match voxel_data::entity_type::name(self.type_id)? {
+            "minecraft:egg"
+            | "minecraft:ender_pearl"
+            | "minecraft:experience_bottle"
+            | "minecraft:lingering_potion"
+            | "minecraft:snowball"
+            | "minecraft:splash_potion" => Some((1.0, false)),
+            "minecraft:eye_of_ender" => Some((1.0, true)),
+            "minecraft:fireball" => Some((3.0, true)),
+            "minecraft:small_fireball" => Some((0.75, true)),
+            _ => None,
+        }
     }
 
     /// Whether this is an arrow, a spectral arrow or a trident (`AbstractArrow`).

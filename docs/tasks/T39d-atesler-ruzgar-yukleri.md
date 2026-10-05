@@ -1,6 +1,6 @@
-# T39d — Ateş topları ve rüzgâr yükleri
+# T39d — Ejderha topu ve rüzgâr yükleri
 
-**Amaç:** `fireball`, `small_fireball`, `dragon_fireball` (ve `breeze_wind_charge`, `wind_charge`): `ItemSupplier` sprite'ı, `DragonFireballRenderer`, `WindChargeRenderer` (kayan doku).
+**Amaç:** `dragon_fireball` ve `breeze_wind_charge`, `wind_charge` (`fireball` ve `small_fireball` T39c'de çözüldü): `ItemSupplier` sprite'ı, `DragonFireballRenderer`, `WindChargeRenderer` (kayan doku).
 **Bağımlılık:** T39. **Boy:** M.
 
 ## Oku

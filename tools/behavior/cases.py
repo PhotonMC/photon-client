@@ -15305,6 +15305,7 @@ def entity_cases():
     yield from entity_crystal_beam_cases()
     yield from entity_minecart_pose_cases()
     yield from entity_arrow_cases()
+    yield from entity_thrown_item_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16879,6 +16880,24 @@ def entity_arrow_cases():
                  pose("up", 30.0, 60.0), pose("down", 150.0, -75.0), pose("wrapped", 400.0, 10.0),
                  pose("offset", 12.5, -33.3, at=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/arrow-pose", "family": "entity", "operation": "arrow_pose", "rows": pose_rows}
+
+
+def entity_thrown_item_cases():
+    """Where the reference's own thrown item renderer (and its firework rocket's) puts an item: scaled
+    by the type's (the fireballs' three, the small one's three quarters), turned to face a camera that
+    looks along each way and slantwise, and a rocket shot at an angle laid on its side."""
+    def seen(label, camera=(0.0, 0.0), scale=1.0, firework=False, angled=False, at=(10.5, 64.0, -3.5)):
+        return {"label": f"thrown-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2]), "camera_y_rot": float_bits(camera[0]),
+                "camera_x_rot": float_bits(camera[1]), "scale": float_bits(scale), "firework": firework,
+                "shot_at_angle": angled}
+    rows = [seen("south", (0.0, 0.0)), seen("west", (90.0, 0.0)), seen("north", (180.0, 0.0)),
+            seen("down-on-it", (0.0, 90.0)), seen("up-at-it", (45.0, -60.0)), seen("slantwise", (-130.0, 33.5)),
+            seen("fireball", (20.0, 10.0), scale=3.0), seen("small-fireball", (20.0, 10.0), scale=0.75),
+            seen("far-off", (30.0, 5.0), at=(-100.25, 70.5, 33.75)),
+            seen("rocket", (20.0, 10.0), firework=True), seen("rocket-at-an-angle", (20.0, 10.0), firework=True, angled=True),
+            seen("rocket-at-an-angle-looked-down-on", (-70.0, 80.0), firework=True, angled=True)]
+    yield {"case_id": "entity/thrown-item-pose", "family": "entity", "operation": "thrown_item_pose", "rows": rows}
 
 
 def entity_copper_golem_cases():

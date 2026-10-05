@@ -21425,6 +21425,41 @@ fn boat_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `thrown_item_pose`: the pose a thrown item (or a firework rocket) is drawn from, seen by a camera.
+fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::name_tag::camera_orientation;
+    use voxel_render::projectile::{firework_pose, thrown_item_pose};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let orientation = camera_orientation(bits("camera_y_rot")?, bits("camera_x_rot")?);
+        let mut pose = if row["firework"].as_bool() == Some(true) {
+            firework_pose(
+                &base,
+                &orientation,
+                row["shot_at_angle"].as_bool() == Some(true),
+            )
+        } else {
+            thrown_item_pose(&base, bits("scale")?, &orientation)
+        };
+        // The layer the reference's state makes here has no display transform of its own
+        // (`ItemTransform.NO_TRANSFORM`), which only moves the model's corner to the middle.
+        pose.translate(-0.5, -0.5, -0.5);
+        out.push(json!({"label": row["label"], "poses": [matrix_bits(&pose)]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `arrow_pose`: the pose an arrow's model is drawn from.
 fn arrow_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -23578,6 +23613,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "dragon_rays" => return dragon_rays_result(request),
         "minecart_pose" => return minecart_pose_result(request),
         "arrow_pose" => return arrow_pose_result(request),
+        "thrown_item_pose" => return thrown_item_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),
