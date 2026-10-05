@@ -136,7 +136,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | bölündü (bde91dfc) |
 | [T40b](T40b-cerceve-tablo-dekor.md) | Çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T40 | bölündü (T40c–T40i) |
 | [T40c](T40c-tnt.md) | Yanan TNT | M | T40, T38d | bitti (4541b0f3) |
-| [T40d](T40d-dusen-blok.md) | Düşen blok (moving block mesh'i) | M | T40 | bitti (HASH) |
+| [T40d](T40d-dusen-blok.md) | Düşen blok (moving block mesh'i) | M | T40 | bitti (63f1928e) |
 | [T40e](T40e-yildirim.md) | Yıldırım | S | T40 | bitti (1749897d) |
 | [T40j](T40j-gokyuzu-cakmasi.md) | Yıldırımın gökyüzü çakması (`skyFlashTime`) | S | T40e | açık |
 | [T40f](T40f-bag-dugumu.md) | Bağ düğümü (yalnız düğüm; çizgi T40k) | S | T40 | bitti (de557daf) |
