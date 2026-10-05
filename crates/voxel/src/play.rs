@@ -29,6 +29,7 @@ use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
 use crate::sections::SectionMeshes;
 use crate::sky::{Sky, SkyCamera};
+use crate::sound::SoundSystem;
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
 use crate::{mobs, villagers};
 use voxel_game::pick::pick;
@@ -135,6 +136,8 @@ struct Play {
     ticks: u64,
     /// The sound packets that have arrived.
     sounds_heard: usize,
+    /// The sound engine, if there is a device to play on.
+    sound: Option<SoundSystem>,
     frames: u64,
     profile: Option<FrameProfile>,
 }
@@ -240,6 +243,7 @@ impl Play {
             _ => CameraType::FirstPerson,
         };
         let controls = Controls::new(camera_type, script.is_none());
+        let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
         let language = &controls.options.language_code;
         let mut gui = Gui::load(
             std::path::Path::new(&root),
@@ -295,6 +299,7 @@ impl Play {
             last_frame: Instant::now(),
             ticks: 0,
             sounds_heard: 0,
+            sound,
             frames: 0,
             profile: FrameProfile::from_env(),
         })
@@ -355,8 +360,11 @@ impl Play {
                 self.sections.clear();
                 self.sky.reset();
             }
-            // The sound engine is not built yet: the sounds the server asks for are counted.
-            self.sounds_heard += self.session.take_sounds().len();
+            let commands = self.session.take_sounds();
+            self.sounds_heard += commands.len();
+            if let Some(sound) = self.sound.as_mut() {
+                sound.handle(commands, self.session.world());
+            }
             let script_done = self.run_ticks()?;
             let ticked = Instant::now();
             if let Flow::Stop = self.draw([frame_start, ticked], frame_ticks, script_done)? {
@@ -432,6 +440,9 @@ impl Play {
 
     /// One client tick.
     fn tick(&mut self, held: HeldKeys) -> Result<()> {
+        if let Some(sound) = self.sound.as_mut() {
+            sound.tick(self.session.world(), false);
+        }
         let session = &mut self.session;
         // `Minecraft.handleKeybinds`: the attack key is spent before the
         // player moves, aiming the way `GameRenderer.pick` aims.
@@ -556,6 +567,10 @@ impl Play {
             rotation: frame.rotation,
             skin: self.skin_rect,
         };
+        if let Some(sound) = &self.sound {
+            let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
+            sound.set_listener(frame.camera, forward, up);
+        }
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         if first_person && !player.spectating() {
             let (hand, held) = hands(

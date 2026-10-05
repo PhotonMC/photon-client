@@ -379,6 +379,18 @@ impl Options {
 
     /// `Options.save`: the version, then the lines as they were read with
     /// the values this holds, then the options the file did not have.
+    /// `Options.getSoundSourceVolume`: what the file holds for a sound category (`soundCategory_<name>`),
+    /// a full volume if it holds nothing.
+    pub fn sound_category_volume(&self, name: &str) -> f64 {
+        let key = format!("soundCategory_{name}");
+        self.lines
+            .iter()
+            .rev()
+            .find(|(line, _)| *line == key)
+            .and_then(|(_, value)| value.parse::<f64>().ok())
+            .unwrap_or(1.0)
+    }
+
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let mut text = format!("version:{DATA_VERSION}\n");
         let mut written = Vec::new();

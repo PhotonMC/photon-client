@@ -138,6 +138,19 @@ pub fn camera_position(
     )
 }
 
+/// The three vectors the camera looks along (`Camera.setRotation`): forwards, left and up.
+pub fn camera_vectors(rotation: (f32, f32)) -> ([f32; 3], [f32; 3], [f32; 3]) {
+    let mut pose = voxel_render::joml::Pose::default();
+    pose.rotate(&voxel_render::name_tag::camera_orientation(
+        rotation.0, rotation.1,
+    ));
+    (
+        pose.pose.transform_direction(0.0, 0.0, -1.0),
+        pose.pose.transform_direction(-1.0, 0.0, 0.0),
+        pose.pose.transform_direction(0.0, 1.0, 0.0),
+    )
+}
+
 #[cfg(test)]
 mod culling_tests {
     use voxel_render::visibility::{Frustum, culling_projection};

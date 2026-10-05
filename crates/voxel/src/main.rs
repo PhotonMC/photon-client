@@ -52,6 +52,7 @@ mod sheep;
 mod shulkers;
 mod sky;
 mod sniffers;
+mod sound;
 mod squids;
 mod striders;
 mod thrown_items;

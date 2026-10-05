@@ -63,17 +63,6 @@ fn swing_sine(attack_anim: f32) -> f32 {
     mth_sin_f64(f64::from(root * std::f64::consts::PI as f32))
 }
 
-/// The three vectors the camera looks along (`Camera.setRotation`): forwards, left and up.
-fn camera_vectors(rotation: (f32, f32)) -> ([f32; 3], [f32; 3], [f32; 3]) {
-    let mut pose = Pose::default();
-    pose.rotate(&camera_orientation(rotation.0, rotation.1));
-    (
-        pose.pose.transform_direction(0.0, 0.0, -1.0),
-        pose.pose.transform_direction(-1.0, 0.0, 0.0),
-        pose.pose.transform_direction(0.0, 1.0, 0.0),
-    )
-}
-
 /// The bobbers and their lines: the sprites for the entity shader, and the lines for the line shader.
 pub fn fishing_hooks(
     session: &PlaySession,
@@ -157,7 +146,7 @@ fn local_hand(player: &LocalPlayer, hook_view: &HookView) -> [f64; 3] {
     if hook_view.camera_type == CameraType::FirstPerson {
         let fov = hook_view.option_fov as f32;
         let plane = near_plane(
-            camera_vectors(hook_view.view.rotation),
+            crate::view::camera_vectors(hook_view.view.rotation),
             fov,
             f64::from(hook_view.aspect),
         );

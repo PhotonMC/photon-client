@@ -181,6 +181,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T39e — Shulker mermisi, lama tükürüğü ve evoker dişleri — client-parity](client-small-projectiles-parity-conformance.md)
 - [T37f2 — Sniffer — client-parity](client-sniffer-parity-conformance.md)
 - [T61b — `SoundEngine` mantığı ve kanal parametreleri — client-parity](client-sound-engine-parity-conformance.md)
+- [T63 — Ses çıkışı (`cpal`) ve miks — server-conformance](client-sound-output-conformance.md)
 - [T61 — Ses paketleri ve ses olayı kayıt defteri — client-parity](client-sound-packets-parity-conformance.md)
 - [T60 — `sounds.json` çözümü ve ağırlıklı ses seçimi — client-parity](client-sound-registry-parity-conformance.md)
 - [T33 — Örümcek, mağara örümceği ve creeper — client-parity](client-spider-creeper-parity-conformance.md)
