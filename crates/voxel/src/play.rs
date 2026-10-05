@@ -629,6 +629,12 @@ impl Play {
             .set_entity_glow(&std::mem::take(&mut self.mob_models.glow))?;
         self.backend
             .set_entity_swirl(&std::mem::take(&mut self.mob_models.swirl))?;
+        self.backend.set_entity_dissolve(
+            &std::mem::take(&mut self.mob_models.dissolve),
+            self.mob_models.dissolve_mask_offset,
+        )?;
+        self.backend
+            .set_dragon_rays(&std::mem::take(&mut self.mob_models.rays))?;
         let local = (!first_person && !player.spectating())
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;

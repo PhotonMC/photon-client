@@ -11,4 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: çözünme (`PipelineKind::Dissolve`, `mob_vertices_dissolving`, maske atlasta itme sabitiyle) ve ışınlar (`dragon_rays.rs` + `Quaternion::rotate_xyz`, `PipelineKind::Rays`), `ender_dragons.rs`'te ölüm dalı. İtme sabiti aralığı 164'ten 176 bayta çıktı. Kayıt: `docs/client-ender-dragon-death-parity-conformance.md`.
+- Sapma: çözünme ve ışın boru hattı oracle'sız; ölen ejderha canlı görülemedi (oyun açılıp ejderha çizildi, ölüm karesi yakalanamadı).
+- Açık: `EXPLOSION` parçacıkları ve sesler.

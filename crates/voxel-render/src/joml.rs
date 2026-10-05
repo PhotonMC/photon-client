@@ -116,6 +116,19 @@ impl Quaternion {
         }
     }
 
+    /// `Quaternionf.rotateXYZ`: this rotation, then about x, then y, then z.
+    pub fn rotate_xyz(&mut self, angle_x: f32, angle_y: f32, angle_z: f32) {
+        let turn = Self::rotation_xyz(angle_x, angle_y, angle_z);
+        let (w, x, y, z) = (turn.w, turn.x, turn.y, turn.z);
+        let this = *self;
+        *self = Self {
+            x: fma(this.w, x, fma(this.x, w, fma(this.y, z, -this.z * y))),
+            y: fma(this.w, y, fma(-this.x, z, fma(this.y, w, this.z * x))),
+            z: fma(this.w, z, fma(this.x, y, fma(-this.y, x, this.z * w))),
+            w: fma(this.w, w, fma(-this.x, x, fma(-this.y, y, -this.z * z))),
+        };
+    }
+
     /// `Quaternionf.rotationX`.
     pub fn rotation_x(angle: f32) -> Self {
         let sin = sin(angle * 0.5);

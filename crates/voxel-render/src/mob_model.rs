@@ -4981,6 +4981,23 @@ pub fn mob_vertices_posed(
     vertices
 }
 
+/// [`mob_vertices_posed`] for an entity that dissolves (`entityCutoutDissolve`): no hurt
+/// overlay, and each vertex's shade carries the alpha (a whole 255th, as
+/// `ARGB.white` makes it) the entity's mask is held against.
+pub fn mob_vertices_dissolving(
+    model: &MobModel,
+    pose: &Pose,
+    texture: TextureRect,
+    (packed_light, alpha): (i32, f32),
+) -> Vec<Vertex> {
+    let alpha = (alpha * 255.0).floor() / 255.0;
+    let mut vertices = mob_vertices_posed(model, pose, texture, (packed_light, false));
+    for vertex in &mut vertices {
+        vertex.shade = alpha;
+    }
+    vertices
+}
+
 /// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a
 /// sheep's wool.
 pub fn mob_vertices_coloured(

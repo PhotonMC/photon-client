@@ -15208,6 +15208,7 @@ def entity_cases():
     yield from entity_sniffer_cases()
     yield from entity_wither_cases()
     yield from entity_ender_dragon_cases()
+    yield from entity_dragon_rays_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16677,6 +16678,21 @@ def entity_ender_dragon_cases():
             dragon("sits", history(45, 0.0, 0.0), sitting=True, flap=0.9),
             dragon("sits-and-turns", history(45, 0.0, 5.0), sitting=True)]
     yield {"case_id": "entity/ender-dragon-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_dragon_rays_cases():
+    """The rays of a dying ender dragon as the reference's own `submitRays` builds them: few rays and
+    many (the count grows with the square of the death time), through the last fifth of it (the
+    rays lengthen and widen, the middle fades) and past the end, from an offset pose."""
+    def rays(label, death_time, at=(0.0, -1.0, -2.0)):
+        return {"label": label, "x": float_bits(at[0]), "y": float_bits(at[1]),
+                "z": float_bits(at[2]), "death_time": float_bits(death_time)}
+    rows = [rays("none", 0.0), rays("barely", 0.02), rays("few", 0.1), rays("some", 0.4),
+            rays("half", 0.5), rays("three-quarters", 0.75), rays("at-the-edge", 0.8),
+            rays("overdriving", 0.9), rays("nearly-done", 0.99), rays("done", 1.0),
+            rays("over", 1.04), rays("from-an-offset", 0.33, at=(10.5, 64.9, -3.25))]
+    yield {"case_id": "entity/dragon-rays", "family": "entity", "operation": "dragon_rays",
            "rows": rows}
 
 

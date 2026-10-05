@@ -2160,6 +2160,42 @@ public final class EntityOracle {
         return result;
     }
 
+    /** The rays of a dying ender dragon, as the reference's own `submitRays` builds them. */
+    private static JsonObject dragonRays(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var render = net.minecraft.client.renderer.entity.EnderDragonRenderer.class.getDeclaredMethod("submitRays",
+            com.mojang.blaze3d.vertex.PoseStack.class, float.class,
+            net.minecraft.client.renderer.SubmitNodeCollector.class,
+            net.minecraft.client.renderer.rendertype.RenderType.class);
+        render.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var vertices = new JsonArray();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            render.invoke(null, stack, Oracle.f32(row, "death_time"), collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Takes each vertex a beam's geometry builds, one chained call at a time. */
     static final class BeamCapture implements com.mojang.blaze3d.vertex.VertexConsumer {
         private final JsonArray out;
@@ -2180,7 +2216,8 @@ public final class EntityOracle {
             }
             this.out.add(Oracle.bits(this.position[0]) + Oracle.bits(this.position[1]) + Oracle.bits(this.position[2])
                 + Oracle.bits(this.u) + Oracle.bits(this.v) + String.format("%08x%08x", this.color, this.light)
-                + Oracle.bits(this.normal[0]) + Oracle.bits(this.normal[1]) + Oracle.bits(this.normal[2]));
+                + (this.normal == null ? "000000000000000000000000"
+                    : Oracle.bits(this.normal[0]) + Oracle.bits(this.normal[1]) + Oracle.bits(this.normal[2])));
             this.position = null;
         }
 
@@ -4114,6 +4151,9 @@ public final class EntityOracle {
         }
         if (operation.equals("guardian_beam")) {
             return guardianBeam(request);
+        }
+        if (operation.equals("dragon_rays")) {
+            return dragonRays(request);
         }
         if (operation.equals("guardian_model")) {
             return guardianModel(request);

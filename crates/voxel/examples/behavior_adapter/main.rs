@@ -21313,6 +21313,45 @@ fn guardian_beam_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `dragon_rays`: the vertices of a dying ender dragon's rays from the pose its death leaves.
+fn dragon_rays_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::dragon_rays::dragon_rays;
+    use voxel_render::joml::Pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut pose = Pose::default();
+        pose.translate(bits("x")?, bits("y")?, bits("z")?);
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let vertices: Vec<String> = dragon_rays(pose, bits("death_time")?)
+            .iter()
+            .map(|vertex| {
+                // The consumer takes no texture, light or normal of a ray: zeros.
+                format!(
+                    "{}{}{}{}{}{:08x}{:08x}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    "00000000",
+                    "00000000",
+                    vertex.colour,
+                    0,
+                    "000000000000000000000000",
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `guardian_model`: a guardian's model posed and drawn from the look, the spikes' and the tail's
 /// animation and what its eye follows.
 fn guardian_model_result(request: &Value) -> Result<Value, String> {
@@ -23222,6 +23261,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "nautilus_model" => return nautilus_model_result(request),
         "guardian_model" => return guardian_model_result(request),
         "guardian_beam" => return guardian_beam_result(request),
+        "dragon_rays" => return dragon_rays_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),
         "flier_item_pose" => return flier_item_pose_result(request),

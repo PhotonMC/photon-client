@@ -342,6 +342,12 @@ pub struct MobModels {
     pub(crate) glow: Vec<Vertex>,
     /// What the energy swirls drew this frame (a charged creeper's).
     pub(crate) swirl: Vec<Vertex>,
+    /// What the dissolving entities drew this frame (a dying dragon's body), and where a
+    /// texel's mask is from it in the packed image.
+    pub(crate) dissolve: Vec<Vertex>,
+    pub(crate) dissolve_mask_offset: [f32; 2],
+    /// A dying dragon's rays this frame.
+    pub(crate) rays: Vec<Vertex>,
     /// What shakes a creepy enderman: the renderer's own random source, which
     /// the reference does not seed.
     pub(crate) shake: voxel_core::random::RandomSource,
@@ -361,6 +367,9 @@ impl MobModels {
             models: HashMap::new(),
             glow: Vec::new(),
             swirl: Vec::new(),
+            dissolve: Vec::new(),
+            dissolve_mask_offset: [0.0; 2],
+            rays: Vec::new(),
             shake: voxel_core::random::RandomSource::create(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -422,6 +431,8 @@ pub fn remote_mobs(
     let mut vertices = Vec::new();
     models.glow.clear();
     models.swirl.clear();
+    models.dissolve.clear();
+    models.rays.clear();
     for entity in world.entities() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;

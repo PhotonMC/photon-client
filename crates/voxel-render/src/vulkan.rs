@@ -330,6 +330,81 @@ void main() {
 }
 ";
 
+/// The dissolving entity's fragment shader (`ENTITY_CUTOUT_DISSOLVE`): the entity's, with
+/// no overlay, and each texel dropped where the vertex's alpha (the shade, which
+/// carries it) is below the mask's. The mask is another texture of the packed
+/// image, at the same place in it moved by the push constant's offset.
+const DISSOLVE_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D skin;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec3 in_front;
+layout(location = 2) in vec3 in_back;
+layout(location = 3) in vec3 in_light;
+layout(location = 4) in vec2 in_fog;
+layout(location = 5) in float in_alpha_mask;
+layout(location = 6) in vec3 in_colour;
+layout(location = 7) in float in_unused;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+    vec4 dissolve;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec4 colour = texture(skin, in_uv);
+    if (colour.a < 0.1) { discard; }
+    if (in_alpha_mask < texture(skin, in_uv + push.dissolve.xy).a) { discard; }
+    colour.rgb *= in_colour * (gl_FrontFacing ? in_front : in_back);
+    colour.rgb *= in_light;
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
+/// The dying dragon's rays' vertex shader (`DRAGON_RAYS`, the lightning's shaders): the
+/// colour as it is, and the distances fog reads.
+const RAYS_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"layout(location = 0) out vec4 out_colour;
+layout(location = 1) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_colour = in_tint;
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The rays' fragment shader: the colour, less what fog takes of it.
+const RAYS_FRAGMENT_SHADER: &str = r"#version 450
+layout(location = 0) in vec4 in_colour;
+layout(location = 1) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = in_colour * (1.0 - fog);
+}
+";
+
 /// The shadow's vertex shader (`rendertype_entity_shadow`): the colour as it
 /// is, with no light, and the distances fog reads.
 const SHADOW_VERTEX_SHADER: &str = concat!(
@@ -827,6 +902,11 @@ enum PipelineKind {
     /// An energy swirl (`ENERGY_SWIRL`): the entity textures moved and wrapped,
     /// added to what is behind, written to the depth.
     Swirl,
+    /// A dissolving entity (`ENTITY_CUTOUT_DISSOLVE`): the entity's shaders, each
+    /// texel dropped by a mask.
+    Dissolve,
+    /// The dying dragon's rays (`DRAGON_RAYS`): coloured triangles added to what is behind.
+    Rays,
 }
 
 /// Instance API version the reference asks for.
@@ -958,6 +1038,10 @@ struct SceneResources {
     shadow_pipeline: vk::Pipeline,
     swirl_pipeline_layout: vk::PipelineLayout,
     swirl_pipeline: vk::Pipeline,
+    dissolve_pipeline_layout: vk::PipelineLayout,
+    dissolve_pipeline: vk::Pipeline,
+    rays_pipeline_layout: vk::PipelineLayout,
+    rays_pipeline: vk::Pipeline,
     crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     crack_sampler: Option<vk::Sampler>,
     crack_set: Option<vk::DescriptorSet>,
@@ -1180,6 +1264,14 @@ pub struct VulkanBackend {
     /// The energy swirls' triangles (`RenderTypes.energySwirl`).
     swirl_buffer: Option<SkyBuffer>,
     swirl_count: u32,
+    /// What the dissolving entities draw (a dying dragon's body), and where
+    /// each texel's mask is from it in the packed image (in texture units).
+    dissolve_buffer: Option<SkyBuffer>,
+    dissolve_count: u32,
+    dissolve_mask_offset: [f32; 2],
+    /// The dying dragon's rays.
+    rays_buffer: Option<SkyBuffer>,
+    rays_count: u32,
     name_tag_buffer: Option<SkyBuffer>,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
@@ -1488,6 +1580,11 @@ impl VulkanBackend {
                 glow_count: 0,
                 swirl_buffer: None,
                 swirl_count: 0,
+                dissolve_buffer: None,
+                dissolve_count: 0,
+                dissolve_mask_offset: [0.0; 2],
+                rays_buffer: None,
+                rays_count: 0,
                 name_tag_buffer: None,
                 name_tag_count: 0,
                 hand_buffer: None,
@@ -1705,6 +1802,40 @@ impl VulkanBackend {
                     terrain_push,
                 );
             }
+            // Dissolving entities (a dying dragon's body), over the entities'
+            // own draw: its push constants carry where the masks are.
+            if let (Some(buffer), Some(set)) = (self.dissolve_buffer.as_ref(), scene.entity_set)
+                && self.dissolve_count > 0
+            {
+                let mut push = [0.0_f32; 44];
+                push[..40].copy_from_slice(&terrain_push[..40]);
+                push[40] = self.dissolve_mask_offset[0];
+                push[41] = self.dissolve_mask_offset[1];
+                self.device.cmd_bind_pipeline(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.dissolve_pipeline,
+                );
+                self.device.cmd_bind_descriptor_sets(
+                    self.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    scene.dissolve_pipeline_layout,
+                    0,
+                    &[set],
+                    &[],
+                );
+                self.device.cmd_push_constants(
+                    self.command_buffer,
+                    scene.dissolve_pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 176),
+                );
+                self.device
+                    .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+                self.device
+                    .cmd_draw(self.command_buffer, self.dissolve_count, 1, 0, 0);
+            }
             // The glowing layers (the eyes of spiders and endermen): the
             // `EYES` pipeline is the shadow's shaders and state, the texel
             // times the colour with no light and no cut-out, then fog.
@@ -1722,6 +1853,15 @@ impl VulkanBackend {
                     (scene.swirl_pipeline, scene.swirl_pipeline_layout),
                     set,
                     (buffer, self.swirl_count),
+                    terrain_push,
+                );
+            }
+            // A dying dragon's rays: added by their alpha over what is behind.
+            if let (Some(buffer), Some(set)) = (self.rays_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (scene.rays_pipeline, scene.rays_pipeline_layout),
+                    set,
+                    (buffer, self.rays_count),
                     terrain_push,
                 );
             }
@@ -2370,7 +2510,9 @@ impl VulkanBackend {
         let translucent = kind == PipelineKind::Translucent;
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
-        let entity = kind == PipelineKind::Entity;
+        let dissolve = kind == PipelineKind::Dissolve;
+        let rays = kind == PipelineKind::Rays;
+        let entity = kind == PipelineKind::Entity || dissolve;
         let shadow = kind == PipelineKind::Shadow;
         let swirl = kind == PipelineKind::Swirl;
         let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
@@ -2395,6 +2537,10 @@ impl VulkanBackend {
                 (CLOUD_VERTEX_SHADER, CLOUD_FRAGMENT_SHADER)
             } else if weather {
                 (VERTEX_SHADER, WEATHER_FRAGMENT_SHADER)
+            } else if dissolve {
+                (ENTITY_VERTEX_SHADER, DISSOLVE_FRAGMENT_SHADER)
+            } else if rays {
+                (RAYS_VERTEX_SHADER, RAYS_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else if swirl {
@@ -2637,6 +2783,7 @@ impl VulkanBackend {
                         || weather
                         || entity
                         || swirl
+                        || rays
                         || text
                         || text_see_through
                         || gui
@@ -2670,6 +2817,8 @@ impl VulkanBackend {
                     PipelineKind::Terrain
                         | PipelineKind::Clouds
                         | PipelineKind::Entity
+                        | PipelineKind::Dissolve
+                        | PipelineKind::Rays
                         | PipelineKind::Swirl
                         | PipelineKind::Text
                         | PipelineKind::Lines
@@ -2697,7 +2846,8 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::SkyOverlay {
+            } else if kind == PipelineKind::SkyOverlay || rays {
+                // Added by its alpha (`BlendFunction.LIGHTNING`).
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
@@ -2756,7 +2906,7 @@ impl VulkanBackend {
                 } else {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
-                        .size(164)
+                        .size(176)
                 },
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::FRAGMENT)
@@ -3421,6 +3571,10 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Shadow)?;
             let (swirl_pipeline_layout, swirl_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Swirl)?;
+            let (dissolve_pipeline_layout, dissolve_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Dissolve)?;
+            let (rays_pipeline_layout, rays_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Rays)?;
             let (gui_invert_pipeline_layout, gui_invert_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::GuiInvert)?;
             let (gui_item_pipeline_layout, gui_item_pipeline) =
@@ -3467,6 +3621,10 @@ impl VulkanBackend {
                 shadow_pipeline,
                 swirl_pipeline_layout,
                 swirl_pipeline,
+                dissolve_pipeline_layout,
+                dissolve_pipeline,
+                rays_pipeline_layout,
+                rays_pipeline,
                 crack_texture: None,
                 crack_sampler: None,
                 crack_set: None,
@@ -3790,6 +3948,8 @@ impl VulkanBackend {
                     ),
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     (scene.swirl_pipeline, scene.swirl_pipeline_layout),
+                    (scene.dissolve_pipeline, scene.dissolve_pipeline_layout),
+                    (scene.rays_pipeline, scene.rays_pipeline_layout),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
                     (scene.gui_invert_pipeline, scene.gui_invert_pipeline_layout),
                     (scene.gui_item_pipeline, scene.gui_item_pipeline_layout),
@@ -4107,6 +4267,31 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.swirl_buffer = buffer;
         self.swirl_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's dissolving entities (a dying dragon's body): the
+    /// entity textures' triangles, each vertex's shade its alpha, and the offset
+    /// from a texel of the texture to the same texel of its mask in the packed image.
+    pub fn set_entity_dissolve(
+        &mut self,
+        vertices: &[Vertex],
+        mask_offset: [f32; 2],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.dissolve_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.dissolve_buffer = buffer;
+        self.dissolve_count = vertices.len() as u32;
+        self.dissolve_mask_offset = mask_offset;
+        Ok(())
+    }
+
+    /// Hand over the next frame's dragon rays: each vertex's tint its colour.
+    pub fn set_dragon_rays(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.rays_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.rays_buffer = buffer;
+        self.rays_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -4720,6 +4905,8 @@ impl Drop for VulkanBackend {
                 self.shadow_buffer.take(),
                 self.glow_buffer.take(),
                 self.swirl_buffer.take(),
+                self.dissolve_buffer.take(),
+                self.rays_buffer.take(),
                 self.name_tag_buffer.take(),
                 self.hand_buffer.take(),
                 self.outline_buffer.take(),
@@ -4922,6 +5109,9 @@ mod tests {
         for (source, kind) in [
             (ENTITY_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
             (ENTITY_FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
+            (DISSOLVE_FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
+            (RAYS_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
+            (RAYS_FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
             (SECTION_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
             (HELD_VERTEX_SHADER, shaderc::ShaderKind::Vertex),
             (FRAGMENT_SHADER, shaderc::ShaderKind::Fragment),
