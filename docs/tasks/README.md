@@ -117,7 +117,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T37e](T37e-creaking.md) | Creaking | M | T37, T43b | bitti (fc4791cb) |
 | [T37f](T37f-armadillo-sniffer.md) | Armadillo ve sniffer | L | T37, T43b | bölündü (3eeab92a) |
 | [T37f2](T37f2-sniffer.md) | Sniffer ve yavrusu | M | T37f | bitti (2bb2d981) |
-| [T37g](T37g-wither.md) | Wither | M | T37, T33d | açık |
+| [T37g](T37g-wither.md) | Wither | M | T37, T33d | bitti (573cb415) |
 | [T37h](T37h-ender-ejderhasi.md) | Ender ejderhası | L | T37 | açık |
 | [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti (21875028) |
 | [T38b](T38b-minecart.md) | Minecart ailesi | M | T38 | açık |
