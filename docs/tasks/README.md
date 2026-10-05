@@ -164,7 +164,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | PLAN-M7 | Ses: bağımlılık kararı ([karar](../audio-backend-decision.md): çıkış `cpal`, çözücü `lewton`) ve görevlere bölme | S | – | bitti |
 | [T60](T60-sounds-json-secim.md) | `sounds.json` çözümü ve ağırlıklı ses seçimi | M | – | bitti (bcbec5b0) |
 | [T61](T61-ses-paketleri-kanal.md) | `Sound`/`SoundEntity`/`StopSound` paketleri ve `SoundEngine` kanal parametreleri | M | T60 | bölündü (ba2f3f4e) |
-| [T61b](T61b-ses-motoru.md) | `SoundEngine` mantığı ve kanal parametreleri (Channel gölgesiyle oracle) | L | T61 | bitti (HASH) |
+| [T61b](T61b-ses-motoru.md) | `SoundEngine` mantığı ve kanal parametreleri (Channel gölgesiyle oracle) | L | T61 | bitti (19323b90) |
 | [T62](T62-ogg-vorbis-cozumu.md) | Ogg/Vorbis çözümü (`lewton`, JOrbis ile PCM karşılaştırması) | M | – | bitti (16260689) |
 | [T63](T63-ses-cikisi-cpal.md) | Ses çıkışı (`cpal`): kanal havuzu, sönüm, perde, miks | L | T61b, T62 | açık |
 | [T64](T64-ses-tetikleri-muzik.md) | Oyun ses tetikleri (adım, kırma, hasar, ortam) ve müzik | L | T63 | açık |
