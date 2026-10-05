@@ -10,6 +10,9 @@ pub const DAMAGE_DATA_ID: u8 = 10;
 pub const CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
 pub const DISPLAY_OFFSET_DATA_ID: u8 = 12;
 pub const FUEL_DATA_ID: u8 = 13;
+/// The event that lights a tnt minecart's fuse, and how long the fuse is.
+pub const PRIME_FUSE_EVENT: i8 = 70;
+const PRIMED_FUSE: i32 = 80;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MinecartState {
@@ -23,6 +26,8 @@ pub struct MinecartState {
     pub(crate) display_offset: Option<i32>,
     /// `MinecartFurnace.hasFuel`.
     pub(crate) fuel: bool,
+    /// `MinecartTNT.getFuse`: ticks to the blast, minus one while it is not lit.
+    pub(crate) fuse: i32,
 }
 
 // The damage is a sum of finite steps: never NaN.
@@ -37,6 +42,7 @@ impl Default for MinecartState {
             custom_display: None,
             display_offset: None,
             fuel: false,
+            fuse: -1,
         }
     }
 }
@@ -50,6 +56,23 @@ impl MinecartState {
         if self.damage > 0.0 {
             self.damage -= 1.0;
         }
+    }
+
+    /// `MinecartTNT.tick`'s client half: the fuse burns down (the blast is the server's).
+    pub(crate) fn burn_fuse(&mut self) {
+        if self.fuse > 0 {
+            self.fuse -= 1;
+        }
+    }
+
+    /// `MinecartTNT.getFuse`.
+    pub fn fuse(&self) -> i32 {
+        self.fuse
+    }
+
+    /// `MinecartTNT.handleEntityEvent(70)`: the fuse is lit (`primeFuse`).
+    pub(crate) fn prime_fuse(&mut self) {
+        self.fuse = PRIMED_FUSE;
     }
 
     /// `AbstractMinecart.getDisplayOffset`: what the server said, else the type's default.

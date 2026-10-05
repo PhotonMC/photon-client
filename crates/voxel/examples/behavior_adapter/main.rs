@@ -19270,6 +19270,7 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         described["display_block"] =
                             json!(entity.minecart_display_block().map_or(0, i64::from));
                         described["display_offset"] = json!(entity.minecart_display_offset());
+                        described["fuse"] = json!(state.fuse());
                         let position = entity.position();
                         let (y_rot, x_rot, _) = entity.rotation();
                         for (key, value) in
@@ -21485,7 +21486,9 @@ fn arrow_pose_result(request: &Value) -> Result<Value, String> {
 /// `minecart_pose`: the poses a minecart's model and its carried block are drawn from.
 fn minecart_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::minecart::{MinecartRenderState, RailPlace, minecart_poses};
+    use voxel_render::minecart::{
+        MinecartRenderState, RailPlace, minecart_poses, tnt_is_lit, tnt_swell_amount,
+    };
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -21526,6 +21529,12 @@ fn minecart_pose_result(request: &Value) -> Result<Value, String> {
             hurt_time: bits("hurt_time")?,
             damage_time: bits("damage_time")?,
             display_offset: i32_field(row, "display_offset")?,
+            block_swell: if row.get("tnt_fuse").is_some() {
+                let fuse = bits("tnt_fuse")?;
+                (fuse > -1.0 && fuse < 10.0).then(|| tnt_swell_amount(fuse))
+            } else {
+                None
+            },
             rail,
         };
         let mut base = Pose::default();
@@ -21533,11 +21542,15 @@ fn minecart_pose_result(request: &Value) -> Result<Value, String> {
         let poses = minecart_poses(&base, &state);
         // The block first, if it carries one, then the model.
         let mut described = Vec::new();
+        let mut overlays = Vec::new();
         if row["block"].as_bool() == Some(true) {
             described.push(matrix_bits(&poses.block));
+            // `OverlayTexture.pack(u, v)`: no overlay is `(0, 10)`, a white flash `(15, 10)`.
+            let white = row.get("tnt_fuse").is_some() && tnt_is_lit(bits("tnt_fuse")?);
+            overlays.push(if white { (10 << 16) | 15 } else { 10 << 16 });
         }
         described.push(matrix_bits(&poses.model));
-        out.push(json!({"label": row["label"], "poses": described}));
+        out.push(json!({"label": row["label"], "poses": described, "overlays": overlays}));
     }
     Ok(json!({"rows": out}))
 }

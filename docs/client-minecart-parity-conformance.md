@@ -29,9 +29,18 @@ vuruş bitmiş, başka kimlik, bloklu üç kayma; her satırda modelin ve bloğu
 vuruş, her tür, ocak yakıtı, bloğu adlandırma ve geri alma, taşıma, hareket, hareket ve dönüş, ışınlanma ve 19 yerde ray sorgusu:
 düz, yokuş, köşe, hepsi dört ray türünde).
 
+## TNT minecart (T38d)
+
+- `MinecartTNT`: olay 70 fitili 80 tike kurar (`primeFuse`), istemcide her tik bir azalır (0'da kalır; patlama sunucunun).
+  `TntMinecartRenderer`: kalan fitil `fitil − kısmiTik + 1` (yanık değilse −1); `−1 < f < 10` iken blok `getSwellAmount(f)`
+  kadar şişer (`(−0.5·şişme, 0, −0.5·şişme)` kayması ve `1 + şişme` ölçeği, blok yerleşiminden sonra); `isLit(f)` (`(int)(f/5)` çift)
+  iken blok tam beyaz bindirmeyle çizilir (`OverlayTexture.pack(15, 10)`, yoksa `NO_OVERLAY`). Kayıt, `entity/minecart-pose`'a 11
+  satırla (fitilin her aralığı, kısmi değerler, rayda ve vuruşlu) ve bloğa verilen bindirmenin karşılaştırılmasıyla genişledi;
+  `living-entity-animations`'a 2 satır (olay 70, yeniden kurma). Spawner minecart istemcide yaratık göstermez (sunucu doğurma
+  verisini göndermez): düz spawner bloğudur.
+
 ## Sapmalar (açık)
 
-- Yeni (deneysel) davranış, TNT minecart'ın fitil beyazı ve spawner minecart'ın içindeki yaratık yok
-  ([T38c](tasks/T38c-minecart-yeni-davranis.md), [T38d](tasks/T38d-minecart-tnt-spawner.md)). Sandık minecart'ın sandığı
+- Yeni (deneysel) davranış yok ([T38c](tasks/T38c-minecart-yeni-davranis.md)). Sandık minecart'ın sandığı
   blok varlık (özel) modeliyle çizildiğinden henüz görünmez; diğer bloklar normal blok modelidir.
 - Taşınan bloğun ışığı ve ışığın çizimi oracle'sızdır; gölge ve ses yok. Doku yolu elle yazıldı.

@@ -2191,7 +2191,13 @@ public final class EntityOracle {
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
-            var state = new net.minecraft.client.renderer.entity.state.MinecartRenderState();
+            var tnt = row.has("tnt_fuse");
+            var state = tnt ? new net.minecraft.client.renderer.entity.state.MinecartTntRenderState()
+                : new net.minecraft.client.renderer.entity.state.MinecartRenderState();
+            if (tnt) {
+                ((net.minecraft.client.renderer.entity.state.MinecartTntRenderState) state).fuseRemainingInTicks =
+                    Oracle.f32(row, "tnt_fuse");
+            }
             state.x = Oracle.f64(row, "x");
             state.y = Oracle.f64(row, "y");
             state.z = Oracle.f64(row, "z");
@@ -2216,8 +2222,10 @@ public final class EntityOracle {
                         new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
                         (proxy, method, args) -> null));
             }
-            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.MinecartRenderer.class);
+            var renderer = UNSAFE.allocateInstance(tnt ? net.minecraft.client.renderer.entity.TntMinecartRenderer.class
+                : net.minecraft.client.renderer.entity.MinecartRenderer.class);
             var poses = new JsonArray();
+            var overlays = new JsonArray();
             var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
                 EntityOracle.class.getClassLoader(),
                 new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
@@ -2231,15 +2239,24 @@ public final class EntityOracle {
                             described.add(Oracle.bits(value));
                         }
                         poses.add(described);
+                        if (method.getName().equals("submitBlockModel")) {
+                            overlays.add((int) args[5]);
+                        }
                     }
                     return null;
                 });
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
-            ((net.minecraft.client.renderer.entity.MinecartRenderer) renderer).submit(state, stack, collector, null);
+            if (tnt) {
+                ((net.minecraft.client.renderer.entity.TntMinecartRenderer) renderer).submit(
+                    (net.minecraft.client.renderer.entity.state.MinecartTntRenderState) state, stack, collector, null);
+            } else {
+                ((net.minecraft.client.renderer.entity.MinecartRenderer) renderer).submit(state, stack, collector, null);
+            }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("poses", poses);
+            out.add("overlays", overlays);
             rows.add(out);
         }
         var result = new JsonObject();

@@ -14764,6 +14764,13 @@ def movement_item_cases():
                [{"tick": 4, "type": "minecart_data", "fuel": True},
                 {"tick": 8, "type": "minecart_data", "fuel": False}], extras=["minecart"], player_x=30.5), chunk_radius=1),
         dict(living("minecart-spawner-command", "spawner_minecart", 6, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-tnt-is-lit", "tnt_minecart", 100,
+                    [{"tick": 3, "type": "entity_event", "event": 70}], extras=["minecart"], player_x=30.5),
+             chunk_radius=1),
+        dict(living("minecart-tnt-is-lit-twice", "tnt_minecart", 40,
+                    [{"tick": 3, "type": "entity_event", "event": 70},
+                     {"tick": 20, "type": "entity_event", "event": 70}], extras=["minecart"], player_x=30.5),
+             chunk_radius=1),
         dict(living("minecart-names-its-block", "minecart", 12,
                [{"tick": 2, "type": "minecart_data", "display": 1, "offset": 3},
                 {"tick": 7, "type": "minecart_data", "no_display": True}], extras=["minecart"], player_x=30.5), chunk_radius=1),
@@ -16847,6 +16854,10 @@ def entity_minecart_pose_cases():
         if rail:
             row["rail"] = {"pos": vec(*rail[0]), "front": vec(*rail[1]), "back": vec(*rail[2])}
         return row
+    def tnt(label, fuse, **kwargs):
+        row = cart(label, block=True, **kwargs)
+        row["tnt_fuse"] = float_bits(fuse)
+        return row
     rows = [cart("off-rail"), cart("off-rail-turned", y_rot=123.0, x_rot=11.0),
             cart("flat-along-x", rail=((10.5, 64.0625, -3.5), (10.8, 64.0625, -3.5), (10.2, 64.0625, -3.5))),
             cart("flat-along-z", rail=((10.5, 64.0625, -3.5), (10.5, 64.0625, -3.2), (10.5, 64.0625, -3.8))),
@@ -16858,6 +16869,10 @@ def entity_minecart_pose_cases():
             cart("hit-over", hurt=(1, -0.5, 12.0)), cart("another-id", entity_id=123456),
             cart("with-a-block", block=True), cart("with-a-block-low", block=True, offset=8),
             cart("with-a-block-high", block=True, offset=1),
+            tnt("tnt-unlit", -1.0), tnt("tnt-long-fuse", 40.0), tnt("tnt-fuse-ten", 10.0), tnt("tnt-fuse-nine", 9.0),
+            tnt("tnt-fuse-five-lit", 5.0), tnt("tnt-fuse-four-lit", 4.99), tnt("tnt-fuse-three", 3.0),
+            tnt("tnt-fuse-one", 1.0), tnt("tnt-about-to-blow", 0.25), tnt("tnt-at-zero", 0.0),
+            tnt("tnt-lit-on-a-rail", 7.5, rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(1, 4.0, 10.0)),
             cart("everything", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(-1, 5.0, 20.0),
                  block=True, entity_id=99, x_rot=4.0, y_rot=-50.0, at=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/minecart-pose", "family": "entity", "operation": "minecart_pose", "rows": rows}

@@ -2352,6 +2352,10 @@ impl ClientWorld {
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
             }
+            Some("minecraft:tnt_minecart") if event == minecart::PRIME_FUSE_EVENT => {
+                entity.minecart_mut().prime_fuse();
+                return true;
+            }
             Some("minecraft:armadillo") if event == armadillo::PEEK_EVENT => {
                 return entity.armadillo_mut().event(event);
             }

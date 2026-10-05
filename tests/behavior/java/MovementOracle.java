@@ -1443,6 +1443,8 @@ public final class MovementOracle {
                             described.addProperty("display_block", net.minecraft.world.level.block.Block.getId(
                                 cart.getDisplayBlockState()));
                             described.addProperty("display_offset", cart.getDisplayOffset());
+                            described.addProperty("fuse", cart instanceof net.minecraft.world.entity.vehicle.minecart.MinecartTNT tntCart
+                                ? tntCart.getFuse() : -1);
                             described.addProperty("x", Oracle.bits(cart.getX()));
                             described.addProperty("y", Oracle.bits(cart.getY()));
                             described.addProperty("z", Oracle.bits(cart.getZ()));

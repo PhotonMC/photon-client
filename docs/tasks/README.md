@@ -125,7 +125,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti (21875028) |
 | [T38b](T38b-minecart.md) | Minecart ailesi | M | T38 | bölündü (2a1f94cc) |
 | [T38c](T38c-minecart-yeni-davranis.md) | Minecart'ın yeni (deneysel) davranışı | M | T38b | açık |
-| [T38d](T38d-minecart-tnt-spawner.md) | TNT ve spawner minecart | M | T38b | açık |
+| [T38d](T38d-minecart-tnt-spawner.md) | TNT ve spawner minecart | M | T38b | bitti (HASH) |
 | [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | bölündü (690ac67a) |
 | [T39b](T39b-trident.md) | Trident | M | T39 | açık |
 | [T39c](T39c-firlatilan-esya.md) | Fırlatılan eşyalar ve havai fişek (ateş topları dahil) | M | T39 | bitti (9148b3ec) |

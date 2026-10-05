@@ -18,6 +18,9 @@ pub struct MinecartRenderState {
     pub hurt_time: f32,
     pub damage_time: f32,
     pub display_offset: i32,
+    /// How far a lit tnt minecart's block swells (`TntRenderer.getSwellAmount`), while its fuse is
+    /// short; none for the others.
+    pub block_swell: Option<f32>,
     /// Where the rail puts it, and the rail's two ends a little ahead and behind it,
     /// when it is on one.
     pub rail: Option<RailPlace>,
@@ -92,6 +95,25 @@ pub fn minecart_poses(base: &Pose, state: &MinecartRenderState) -> MinecartPoses
     block.scale(0.75, 0.75, 0.75);
     block.translate(-0.5, (state.display_offset - 8) as f32 / 16.0, 0.5);
     block.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    if let Some(swell) = state.block_swell {
+        // `TntMinecartRenderer.submitMinecartContents`.
+        block.translate(-swell * 0.5, 0.0, -swell * 0.5);
+        let scale = 1.0 + swell;
+        block.scale(scale, scale, scale);
+    }
     pose.scale(-1.0, -1.0, 1.0);
     MinecartPoses { block, model: pose }
+}
+
+/// `TntRenderer.getSwellAmount`: how far a block of primed tnt has swollen, at this long to its blast.
+pub fn tnt_swell_amount(fuse: f32) -> f32 {
+    let mut g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+    g *= g;
+    g *= g;
+    g * 0.3
+}
+
+/// `TntRenderer.isLit`: whether the flash of a block of primed tnt is white now.
+pub fn tnt_is_lit(fuse: f32) -> bool {
+    fuse >= 0.0 && ((fuse / 5.0) as i32) % 2 == 0
 }

@@ -2507,6 +2507,9 @@ impl ClientEntity {
     /// else the turns are kept under a whole turn.
     pub(crate) fn tick_minecart(&mut self) {
         self.minecart_mut().tick();
+        if voxel_data::entity_type::name(self.type_id) == Some("minecraft:tnt_minecart") {
+            self.minecart_mut().burn_fuse();
+        }
         if self.is_interpolating() {
             self.tick_position_interpolation();
         } else {

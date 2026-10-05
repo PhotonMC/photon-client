@@ -6,7 +6,10 @@ use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::boat::boat_vertices;
 use voxel_render::entity_textures::EntityTextures;
-use voxel_render::minecart::{MinecartRenderState, RailPlace, minecart_poses, offset_seed};
+use voxel_render::minecart::{
+    MinecartRenderState, RailPlace, minecart_poses, offset_seed, tnt_is_lit, tnt_swell_amount,
+};
+use voxel_render::mob_model::overlay_code;
 use voxel_render::scene::Vertex;
 
 use crate::held_items::HeldItem;
@@ -61,6 +64,14 @@ pub fn remote_minecarts(
             continue;
         };
         let own = entity.minecart().copied().unwrap_or_default();
+        // `TntMinecartRenderer.extractRenderState`: the fuse left, less the part tick (plus one), if lit.
+        let tnt_fuse = (name == "minecraft:tnt_minecart").then(|| {
+            if own.fuse() > -1 {
+                own.fuse() as f32 - partial + 1.0
+            } else {
+                -1.0
+            }
+        });
         let (x, y, z) = snapshot.position;
         let state = MinecartRenderState {
             position: (x, y, z),
@@ -71,6 +82,9 @@ pub fn remote_minecarts(
             hurt_time: own.hurt_time as f32 - partial,
             damage_time: (own.damage - partial).max(0.0),
             display_offset: entity.minecart_display_offset(),
+            block_swell: tnt_fuse
+                .filter(|fuse| *fuse > -1.0 && *fuse < 10.0)
+                .map(tnt_swell_amount),
             rail: rail_place(world, (x, y, z)),
         };
         let feet = [
@@ -85,7 +99,10 @@ pub fn remote_minecarts(
         let poses = minecart_poses(&base, &state);
         vertices.extend(boat_vertices(model, &poses.model, light, rect));
         if let Some(block) = entity.minecart_display_block() {
-            held.push(HeldItem::block(block, poses.block, light, 0.0));
+            // A tnt minecart's block flashes white while it is lit (`submitWhiteSolidBlock`).
+            let white = tnt_fuse.is_some_and(tnt_is_lit);
+            let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
+            held.push(HeldItem::block(block, poses.block, light, overlay));
         }
     }
     vertices
