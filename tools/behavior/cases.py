@@ -17826,6 +17826,56 @@ def entity_walk_animation_cases():
     }
 
 
+def sound_cases():
+    """The reference's own sound registry: small `sounds.json` texts (weights, borrowed events, missing
+    files, the things a file can get wrong), picked from with seeded random sources, and the game's real
+    `sounds.json` with its real file list."""
+    files = ["a", "b", "c", "dir/d"]
+
+    def small(label, text, picks=(), events=None, listed=files):
+        row = {"label": label, "json": text, "files": [f"sounds/{name}.ogg" for name in listed]}
+        row["picks"] = [{"event": event, "seed": str(seed), "count": count} for event, seed, count in picks]
+        if events is not None:
+            row["events"] = events
+        return row
+    rows = [
+        small("plain-names", '{"one": {"sounds": ["a", "b", "c"]}}', [("minecraft:one", 7, 12)]),
+        small("weights", '{"w": {"sounds": [{"name": "a", "weight": 5}, {"name": "b"}, {"name": "c", "weight": 2}]}}',
+              [("minecraft:w", 1, 30), ("minecraft:w", -42, 30), ("minecraft:w", 123456789, 30)]),
+        small("fields", '{"f": {"subtitle": "subtitles.f", "sounds": [{"name": "a", "volume": 0.75, "pitch": 1.5, '
+              '"stream": true, "preload": true, "attenuation_distance": 48}, {"name": "dir/d", "volume": 0.3}]}}',
+              [("minecraft:f", 3, 10)]),
+        small("event-entries", '{"base": {"sounds": [{"name": "a", "volume": 0.5, "weight": 3}, {"name": "b", "pitch": 2.0}]}, '
+              '"wrap": {"sounds": [{"name": "base", "type": "event", "volume": 0.5, "pitch": 0.5, "weight": 9}, "c"]}, '
+              '"wrap2": {"sounds": [{"name": "wrap", "type": "event", "stream": true}]}}',
+              [("minecraft:wrap", 5, 24), ("minecraft:wrap2", 11, 24)]),
+        small("missing-event-entry", '{"w": {"sounds": [{"name": "nowhere", "type": "event"}, "a"]}}',
+              [("minecraft:w", 2, 12)]),
+        small("missing-files", '{"m": {"sounds": ["gone", "a", {"name": "also/gone"}]}}', [("minecraft:m", 4, 8)]),
+        small("empty-event", '{"e": {"sounds": []}, "n": {}}', [("minecraft:e", 1, 3), ("minecraft:n", 1, 3)]),
+        small("replace", '{"r": {"sounds": ["a"], "replace": true}, "s": {"subtitle": "x"}}', [("minecraft:r", 1, 4)]),
+        small("namespaced-names", '{"n": {"sounds": [{"name": "minecraft:a"}, "other:thing"]}}', [("minecraft:n", 9, 6)],
+              listed=files + ["thing"]),
+        small("zero-volume", '{"good": {"sounds": ["a"]}, "bad": {"sounds": [{"name": "a", "volume": 0}]}}'),
+        small("negative-pitch", '{"bad": {"sounds": [{"name": "a", "pitch": -1.0}]}}'),
+        small("zero-weight", '{"bad": {"sounds": [{"name": "a", "weight": 0}]}}'),
+        small("bad-type", '{"bad": {"sounds": [{"name": "a", "type": "loop"}]}}'),
+        small("no-name", '{"bad": {"sounds": [{"volume": 1.0}]}}'),
+        small("not-an-object", '{"bad": ["a"]}'),
+        small("sounds-not-array", '{"bad": {"sounds": "a"}}'),
+        small("subtitle-not-string", '{"bad": {"subtitle": 3, "sounds": ["a"]}}'),
+        small("bad-bool", '{"bad": {"replace": 1, "sounds": ["a"]}}'),
+        small("float-weight", '{"w": {"sounds": [{"name": "a", "weight": 2.9}, "b"]}}', [("minecraft:w", 6, 12)]),
+        small("big-volume", '{"v": {"sounds": [{"name": "a", "volume": 3.5}]}}', [("minecraft:v", 1, 2)]),
+    ]
+    real = {"label": "real", "real": True, "picks": []}
+    for event, seeds in (("minecraft:block.stone.break", (1, 2, 3)), ("minecraft:entity.pig.ambient", (4, 5)),
+                         ("minecraft:ambient.cave", (6, 7)), ("minecraft:entity.cow.step", (8,)),
+                         ("minecraft:block.note_block.harp", (9,)), ("minecraft:ui.button.click", (10,))):
+        real["picks"] += [{"event": event, "seed": str(seed), "count": 40} for seed in seeds]
+    yield {"case_id": "sound/registry", "family": "sound", "operation": "registry", "rows": rows + [real]}
+
+
 def build_cases(families):
     generators = {"wire": wire_cases, "math": math_cases, "timer": timer_cases, "utf8": utf8_cases,
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
@@ -17837,6 +17887,7 @@ def build_cases(families):
                   "block": block_cases,
                   "movement": movement_cases,
                   "entity": entity_cases,
+                  "sound": sound_cases,
                   "gui": None}
     from cases_gui import gui_generators
     generators["gui"] = gui_generators

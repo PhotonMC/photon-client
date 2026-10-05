@@ -472,6 +472,26 @@
       "extra_sources": [
         "MovementOracle.java"
       ]
+    },
+    "sound": {
+      "source": "SoundOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "io.netty:netty-buffer",
+        "io.netty:netty-common",
+        "io.netty:netty-codec-base",
+        "com.mojang:datafixerupper",
+        "com.google.guava:guava",
+        "com.google.guava:failureaccess",
+        "it.unimi.dsi:fastutil",
+        "com.mojang:logging",
+        "com.mojang:brigadier",
+        "org.slf4j:slf4j-api",
+        "org.joml:joml",
+        "org.apache.commons:commons-lang3",
+        "com.mojang:authlib",
+        "org.jspecify:jspecify"
+      ]
     }
   }
 }

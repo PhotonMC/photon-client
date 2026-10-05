@@ -21575,6 +21575,113 @@ fn lightning_bolt_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `registry` (the sound family): `sounds.json` registered and dumped, and picked from.
+fn sound_registry_result(request: &Value) -> Result<Value, String> {
+    use voxel_core::random::RandomSource;
+    use voxel_game::sounds::{Entry, SoundRegistry};
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let (text, files): (String, std::collections::HashSet<String>) =
+            if row.get("real").is_some() {
+                let assets = std::path::Path::new(
+                    &std::env::var("VOXEL_ASSETS").map_err(|error| error.to_string())?,
+                )
+                .parent()
+                .and_then(std::path::Path::parent)
+                .ok_or("assets")?
+                .to_path_buf();
+                let index = voxel_core::json::read_object(&assets.join("indexes/32.json"))
+                    .ok_or("index")?;
+                let objects = index.object("objects").ok_or("objects")?;
+                let hash = objects
+                    .object("minecraft/sounds.json")
+                    .and_then(|entry| entry.text("hash"))
+                    .ok_or("sounds.json")?;
+                let text =
+                    std::fs::read_to_string(assets.join("objects").join(&hash[..2]).join(&hash))
+                        .map_err(|error| error.to_string())?;
+                let files = objects
+                    .entries()
+                    .filter_map(|(key, _)| String::from_utf16(key).ok())
+                    .filter(|key| key.starts_with("minecraft/sounds/") && key.ends_with(".ogg"))
+                    .map(|key| format!("minecraft:{}", &key["minecraft/".len()..]))
+                    .collect();
+                (text, files)
+            } else {
+                let files = row["files"]
+                    .as_array()
+                    .ok_or("files")?
+                    .iter()
+                    .filter_map(|file| file.as_str().map(|file| format!("minecraft:{file}")))
+                    .collect();
+                (row["json"].as_str().ok_or("json")?.to_owned(), files)
+            };
+        let mut registry = SoundRegistry::default();
+        let valid = registry
+            .register_file("minecraft", &text, &|path| files.contains(path))
+            .is_ok();
+        let mut names: Vec<&str> = registry.names().collect();
+        names.sort_unstable();
+        let wanted: Option<Vec<&str>> = row["events"]
+            .as_array()
+            .map(|events| events.iter().filter_map(Value::as_str).collect());
+        let events: Vec<Value> = names
+            .iter()
+            .filter(|name| wanted.as_ref().is_none_or(|wanted| wanted.contains(name)))
+            .map(|name| {
+                let event = registry.event(name).expect("named");
+                let entries: Vec<Value> = event
+                    .entries
+                    .iter()
+                    .map(|entry| match entry {
+                        Entry::File(sound) => json!({
+                            "kind": "file", "name": sound.location.as_string(),
+                            "weight": sound.weight, "volume": bits(sound.volume.sample()),
+                            "pitch": bits(sound.pitch.sample()), "stream": sound.stream,
+                            "preload": sound.preload,
+                            "attenuation_distance": sound.attenuation_distance,
+                        }),
+                        Entry::Event(_) => {
+                            json!({"kind": "event", "weight": registry.entry_weight(entry)})
+                        }
+                    })
+                    .collect();
+                let mut described = json!({"name": name, "weight": registry.weight(event),
+                    "entries": entries});
+                // The reference's writer leaves a null out.
+                if let Some(subtitle) = &event.subtitle {
+                    described["subtitle"] = json!(subtitle);
+                }
+                described
+            })
+            .collect();
+        let mut picks = Vec::new();
+        for pick in row["picks"].as_array().ok_or("picks")? {
+            let name = pick["event"].as_str().ok_or("event")?;
+            let seed: i64 = pick["seed"]
+                .as_str()
+                .ok_or("seed")?
+                .parse()
+                .map_err(|_| "seed")?;
+            let event = registry.event(name).ok_or("no such event")?;
+            let mut random = RandomSource::create(seed);
+            let sequence: Vec<Value> = (0..pick["count"].as_i64().ok_or("count")?)
+                .map(|_| {
+                    let sound = registry.pick(event, &mut random);
+                    json!({"location": sound.location.as_string(),
+                        "volume": bits(sound.volume.sample()), "pitch": bits(sound.pitch.sample()),
+                        "stream": sound.stream, "preload": sound.preload,
+                        "attenuation_distance": sound.attenuation_distance})
+                })
+                .collect();
+            picks.push(json!({"event": name, "seed": pick["seed"], "sequence": sequence}));
+        }
+        out.push(json!({"label": row["label"], "valid": valid, "events": events, "picks": picks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `primed_tnt_pose`: the pose and overlay a block of primed tnt is drawn with.
 fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -24637,6 +24744,7 @@ fn respond(request: Value) -> Result<Value, String> {
         "movement" => movement_result(&request)?,
         "entity" => entity_result(&request)?,
         "gui" => gui::gui_result(&request)?,
+        "sound" => sound_registry_result(&request)?,
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
