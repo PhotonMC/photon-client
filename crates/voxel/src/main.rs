@@ -28,6 +28,7 @@ mod hoglins;
 mod hud_input;
 mod illagers;
 mod item_layers;
+mod minecarts;
 mod mobs;
 mod monsters;
 mod nautilus;

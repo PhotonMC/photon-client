@@ -17,4 +17,6 @@
 Sürüş (T44), ray fiziği sunucu tarafında, sesler.
 
 ## Devir notu
-(boş)
+- Yapıldı: eski davranışla minecart ailesinin çizimi (`voxel-render/minecart.rs`: pose, `voxel-world/minecart.rs`: vuruş, blok, kayma, ray sorguları), konum-dönüş yaklaşması (minecart de hareket/ışınlanma paketlerinde aradeğerlenir), `minecarts.rs` çizici; `x_rot_at`. Kayıt: `docs/client-minecart-parity-conformance.md`.
+- Bölündü: yeni (deneysel) davranış [T38c](T38c-minecart-yeni-davranis.md), TNT fitili ve spawner [T38d](T38d-minecart-tnt-spawner.md).
+- Sapma: sandık minecart'ın sandığı (blok varlık modeli) görünmez; oracle'da blok ışığı yok.

@@ -1006,6 +1006,36 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "minecart_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        var vehicle = net.minecraft.world.entity.vehicle.VehicleEntity.class;
+                        var cart = net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.class;
+                        if (event.has("hurt")) {
+                            data.add(wolfData(vehicle, "DATA_ID_HURT", event.get("hurt").getAsInt()));
+                        }
+                        if (event.has("hurt_dir")) {
+                            data.add(wolfData(vehicle, "DATA_ID_HURTDIR", event.get("hurt_dir").getAsInt()));
+                        }
+                        if (event.has("damage")) {
+                            data.add(wolfData(vehicle, "DATA_ID_DAMAGE", (float) event.get("damage").getAsDouble()));
+                        }
+                        if (event.has("display")) {
+                            data.add(wolfData(cart, "DATA_ID_CUSTOM_DISPLAY_BLOCK", java.util.Optional.of(
+                                net.minecraft.world.level.block.Block.stateById(event.get("display").getAsInt()))));
+                        }
+                        if (event.has("no_display")) {
+                            data.add(wolfData(cart, "DATA_ID_CUSTOM_DISPLAY_BLOCK", java.util.Optional.empty()));
+                        }
+                        if (event.has("offset")) {
+                            data.add(wolfData(cart, "DATA_ID_DISPLAY_OFFSET", event.get("offset").getAsInt()));
+                        }
+                        if (event.has("fuel")) {
+                            data.add(wolfData(net.minecraft.world.entity.vehicle.minecart.MinecartFurnace.class,
+                                "DATA_ID_FUEL", event.get("fuel").getAsBoolean()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "crystal_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var crystalClass = net.minecraft.world.entity.boss.enderdragon.EndCrystal.class;
@@ -1382,6 +1412,40 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "minecart" -> {
+                            var cart = (net.minecraft.world.entity.vehicle.minecart.AbstractMinecart) entity;
+                            described.addProperty("hurt_time", cart.getHurtTime());
+                            described.addProperty("hurt_dir", cart.getHurtDir());
+                            described.addProperty("damage", Oracle.bits(cart.getDamage()));
+                            described.addProperty("display_block", net.minecraft.world.level.block.Block.getId(
+                                cart.getDisplayBlockState()));
+                            described.addProperty("display_offset", cart.getDisplayOffset());
+                            described.addProperty("x", Oracle.bits(cart.getX()));
+                            described.addProperty("y", Oracle.bits(cart.getY()));
+                            described.addProperty("z", Oracle.bits(cart.getZ()));
+                            described.addProperty("y_rot", Oracle.bits(cart.getYRot()));
+                            described.addProperty("x_rot", Oracle.bits(cart.getXRot()));
+                            // Where the rail puts it, and a little ahead and behind it, at some places
+                            // (asked on the last tick only: it is the world that answers).
+                            var probes = new JsonArray();
+                            if (tick + 1 == row.get("tick_count").getAsInt() && row.has("rail_probes")
+                                && cart.getBehavior() instanceof net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior behavior) {
+                                for (var probe : row.getAsJsonArray("rail_probes")) {
+                                    var at = probe.getAsJsonArray();
+                                    double px = Double.longBitsToDouble(Long.parseUnsignedLong(at.get(0).getAsString(), 16));
+                                    double py = Double.longBitsToDouble(Long.parseUnsignedLong(at.get(1).getAsString(), 16));
+                                    double pz = Double.longBitsToDouble(Long.parseUnsignedLong(at.get(2).getAsString(), 16));
+                                    var found = new JsonArray();
+                                    for (var place : new net.minecraft.world.phys.Vec3[] {
+                                            behavior.getPos(px, py, pz), behavior.getPosOffs(px, py, pz, 0.3F),
+                                            behavior.getPosOffs(px, py, pz, -0.3F)}) {
+                                        found.add(place == null ? "none" : Oracle.bits(place.x) + Oracle.bits(place.y) + Oracle.bits(place.z));
+                                    }
+                                    probes.add(found);
+                                }
+                            }
+                            described.add("rail", probes);
                         }
                         case "end_crystal" -> {
                             var crystal = (net.minecraft.world.entity.boss.enderdragon.EndCrystal) entity;

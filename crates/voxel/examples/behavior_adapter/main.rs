@@ -18782,6 +18782,42 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "minecart_data" => {
+                        // `VehicleEntity`'s hit and `AbstractMinecart`'s block, its offset, a furnace's fuel.
+                        let mut data = Vec::new();
+                        if let Some(value) = event["hurt"].as_i64() {
+                            data.extend([voxel_world::minecart::HURT_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(value as i32, &mut data);
+                        }
+                        if let Some(value) = event["hurt_dir"].as_i64() {
+                            data.extend([voxel_world::minecart::HURT_DIR_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(value as i32, &mut data);
+                        }
+                        if let Some(value) = event["damage"].as_f64() {
+                            data.extend([voxel_world::minecart::DAMAGE_DATA_ID, 3]);
+                            data.extend((value as f32).to_be_bytes());
+                        }
+                        if let Some(value) = event["display"].as_i64() {
+                            data.extend([voxel_world::minecart::CUSTOM_DISPLAY_BLOCK_DATA_ID, 15]);
+                            voxel_core::wire::write_varint(value as i32, &mut data);
+                        }
+                        if event["no_display"].as_bool() == Some(true) {
+                            data.extend([
+                                voxel_world::minecart::CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                                15,
+                                0,
+                            ]);
+                        }
+                        if let Some(value) = event["offset"].as_i64() {
+                            data.extend([voxel_world::minecart::DISPLAY_OFFSET_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(value as i32, &mut data);
+                        }
+                        if let Some(value) = event["fuel"].as_bool() {
+                            data.extend([voxel_world::minecart::FUEL_DATA_ID, 8, u8::from(value)]);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "crystal_data" => {
                         // `EndCrystal`'s data: the beam's block (optional) and whether the base shows.
                         let mut data = Vec::new();
@@ -19202,6 +19238,59 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "minecart" => {
+                        let state = entity.minecart().copied().unwrap_or_default();
+                        described["hurt_time"] = json!(state.hurt_time);
+                        described["hurt_dir"] = json!(state.hurt_dir);
+                        described["damage"] = json!(hex(state.damage));
+                        described["display_block"] =
+                            json!(entity.minecart_display_block().map_or(0, i64::from));
+                        described["display_offset"] = json!(entity.minecart_display_offset());
+                        let position = entity.position();
+                        let (y_rot, x_rot, _) = entity.rotation();
+                        for (key, value) in
+                            [("x", position.0), ("y", position.1), ("z", position.2)]
+                        {
+                            described[key] = json!(format!("{:016x}", value.to_bits()));
+                        }
+                        described["y_rot"] = json!(hex(y_rot));
+                        described["x_rot"] = json!(hex(x_rot));
+                        let mut probes = Vec::new();
+                        if tick + 1 == i32_field(row, "tick_count")? {
+                            for probe in row["rail_probes"].as_array().into_iter().flatten() {
+                                let parts = probe.as_array().ok_or("a probe is an array")?;
+                                let double = |index: usize| -> Result<f64, String> {
+                                    u64::from_str_radix(
+                                        parts[index].as_str().ok_or("a double")?,
+                                        16,
+                                    )
+                                    .map(f64::from_bits)
+                                    .map_err(|error| error.to_string())
+                                };
+                                let at = (double(0)?, double(1)?, double(2)?);
+                                let text = |place: Option<(f64, f64, f64)>| {
+                                    place.map_or_else(
+                                        || "none".to_string(),
+                                        |place| {
+                                            format!(
+                                                "{:016x}{:016x}{:016x}",
+                                                place.0.to_bits(),
+                                                place.1.to_bits(),
+                                                place.2.to_bits()
+                                            )
+                                        },
+                                    )
+                                };
+                                let half = f64::from(0.3_f32);
+                                probes.push(json!([
+                                    text(world.minecart_rail_pos(at)),
+                                    text(world.minecart_rail_pos_offset(at, half)),
+                                    text(world.minecart_rail_pos_offset(at, -half)),
+                                ]));
+                            }
+                        }
+                        described["rail"] = json!(probes);
                     }
                     "end_crystal" => {
                         let state = entity.end_crystal().copied();
@@ -21308,6 +21397,66 @@ fn boat_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `minecart_pose`: the poses a minecart's model and its carried block are drawn from.
+fn minecart_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::minecart::{MinecartRenderState, RailPlace, minecart_poses};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let double = |value: &Value| -> Result<f64, String> {
+            u64::from_str_radix(value.as_str().ok_or("a double must be a string")?, 16)
+                .map(f64::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let vec3 = |value: &Value| -> Result<(f64, f64, f64), String> {
+            let parts = value.as_array().ok_or("a vector must be an array")?;
+            Ok((double(&parts[0])?, double(&parts[1])?, double(&parts[2])?))
+        };
+        let rail = match row.get("rail") {
+            Some(rail) => Some(RailPlace {
+                pos_on_rail: vec3(&rail["pos"])?,
+                front: vec3(&rail["front"])?,
+                back: vec3(&rail["back"])?,
+            }),
+            None => None,
+        };
+        let state = MinecartRenderState {
+            position: (double(&row["x"])?, double(&row["y"])?, double(&row["z"])?),
+            x_rot: bits("x_rot")?,
+            y_rot: bits("y_rot")?,
+            offset_seed: row["offset_seed"]
+                .as_str()
+                .ok_or("offset_seed")?
+                .parse()
+                .map_err(|error: std::num::ParseIntError| error.to_string())?,
+            hurt_dir: i32_field(row, "hurt_dir")?,
+            hurt_time: bits("hurt_time")?,
+            damage_time: bits("damage_time")?,
+            display_offset: i32_field(row, "display_offset")?,
+            rail,
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let poses = minecart_poses(&base, &state);
+        // The block first, if it carries one, then the model.
+        let mut described = Vec::new();
+        if row["block"].as_bool() == Some(true) {
+            described.push(matrix_bits(&poses.block));
+        }
+        described.push(matrix_bits(&poses.model));
+        out.push(json!({"label": row["label"], "poses": described}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -23377,6 +23526,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_model" => return guardian_model_result(request),
         "guardian_beam" => return guardian_beam_result(request),
         "dragon_rays" => return dragon_rays_result(request),
+        "minecart_pose" => return minecart_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),

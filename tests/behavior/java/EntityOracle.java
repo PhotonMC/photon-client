@@ -2081,6 +2081,70 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the reference's own minecart renderer draws a minecart (and the block it carries) from
+     * the state its old behaviour extracts: the pose each of its two submissions leaves.
+     */
+    private static JsonObject minecartPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.MinecartRenderState();
+            state.x = Oracle.f64(row, "x");
+            state.y = Oracle.f64(row, "y");
+            state.z = Oracle.f64(row, "z");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.yRot = Oracle.f32(row, "y_rot");
+            state.offsetSeed = Long.parseLong(row.get("offset_seed").getAsString());
+            state.hurtDir = row.get("hurt_dir").getAsInt();
+            state.hurtTime = Oracle.f32(row, "hurt_time");
+            state.damageTime = Oracle.f32(row, "damage_time");
+            state.displayOffset = row.get("display_offset").getAsInt();
+            state.isNewRender = false;
+            if (row.has("rail")) {
+                var rail = row.getAsJsonObject("rail");
+                state.posOnRail = vec3(rail.getAsJsonArray("pos"));
+                state.frontPos = vec3(rail.getAsJsonArray("front"));
+                state.backPos = vec3(rail.getAsJsonArray("back"));
+            }
+            if (row.get("block").getAsBoolean()) {
+                var parts = state.displayBlockModel.setupModel(new org.joml.Matrix4f(), false);
+                parts.add((net.minecraft.client.renderer.block.dispatch.BlockStateModelPart)
+                    java.lang.reflect.Proxy.newProxyInstance(EntityOracle.class.getClassLoader(),
+                        new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
+                        (proxy, method, args) -> null));
+            }
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.MinecartRenderer.class);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel") || method.getName().equals("submitBlockModel")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) (method.getName().equals("submitModel") ? args[2] : args[0]);
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.MinecartRenderer) renderer).submit(state, stack, collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -4179,6 +4243,9 @@ public final class EntityOracle {
         }
         if (operation.equals("boat_pose")) {
             return boatPose(request);
+        }
+        if (operation.equals("minecart_pose")) {
+            return minecartPose(request);
         }
         if (operation.equals("flier_item_pose")) {
             return flierItemPose(request);

@@ -14748,6 +14748,61 @@ def movement_item_cases():
         # it sit (the phase it starts in), and records its height and turn each tick into its flight
         # history (sixty-four samples) before its position eases to the last packet's; a dying
         # one does neither.
+        # A minecart's hit and damage run down a tick at a time; the block it carries is the one the
+        # server named or its type's own (a furnace's lit while it has fuel), lowered by the offset
+        # the server said or the type's own; its position and turn ease to the last packet's over three
+        # ticks (a move, a move with a turn, a teleport), else its turns are kept under a whole turn;
+        # and the rail under a place (and a little ahead and behind it) puts it where the rail leads.
+        dict(living("minecart-idle", "minecart", 20, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-hit", "minecart", 20,
+               [{"tick": 2, "type": "minecart_data", "hurt": 10, "hurt_dir": -1, "damage": 25.5}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-chest", "chest_minecart", 6, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-hopper", "hopper_minecart", 6, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-tnt", "tnt_minecart", 6, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-furnace", "furnace_minecart", 12,
+               [{"tick": 4, "type": "minecart_data", "fuel": True},
+                {"tick": 8, "type": "minecart_data", "fuel": False}], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-spawner-command", "spawner_minecart", 6, [], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-names-its-block", "minecart", 12,
+               [{"tick": 2, "type": "minecart_data", "display": 1, "offset": 3},
+                {"tick": 7, "type": "minecart_data", "no_display": True}], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-chest-offset-and-block", "chest_minecart", 8,
+               [{"tick": 2, "type": "minecart_data", "display": 1}], extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-moves", "minecart", 24,
+               [{"tick": 2, "type": "move", "xa": 4096, "ya": 0, "za": 0},
+                {"tick": 8, "type": "move", "xa": 1000, "ya": 2000, "za": -3000},
+                {"tick": 9, "type": "move", "xa": 500, "ya": 0, "za": 500}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-moves-and-turns", "minecart", 30,
+               [{"tick": 2, "type": "move_rot", "xa": 4096, "ya": 0, "za": 0, "y_rot": 64, "x_rot": 0},
+                {"tick": 8, "type": "move_rot", "xa": 1000, "ya": 0, "za": -3000, "y_rot": 200, "x_rot": 10},
+                {"tick": 14, "type": "move_rot", "xa": 0, "ya": 0, "za": 0, "y_rot": 250, "x_rot": -10}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-is-teleported", "minecart", 12,
+               [{"tick": 2, "type": "sync", "x": float_bits(5.5, "f64"), "y": float_bits(65.0, "f64"),
+                 "z": float_bits(-2.5, "f64"), "motion_x": float_bits(0.0, "f64"),
+                 "motion_y": float_bits(0.0, "f64"), "motion_z": float_bits(0.0, "f64")}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1),
+        dict(living("minecart-rails", "minecart", 4, [], extras=["minecart"], player_x=30.5), chunk_radius=1,
+             blocks=[{"x": x, "y": 63, "z": z, "block": "minecraft:stone"} for x in range(-2, 6) for z in range(-2, 4)]
+             + [{"x": 0, "y": 64, "z": 0, "block": "minecraft:rail", "properties": {"shape": "east_west"}},
+                {"x": 1, "y": 64, "z": 0, "block": "minecraft:rail", "properties": {"shape": "ascending_east"}},
+                {"x": 2, "y": 65, "z": 0, "block": "minecraft:powered_rail", "properties": {"shape": "east_west", "powered": "true"}},
+                {"x": 0, "y": 64, "z": 1, "block": "minecraft:detector_rail", "properties": {"shape": "north_south"}},
+                {"x": 0, "y": 64, "z": 2, "block": "minecraft:activator_rail", "properties": {"shape": "ascending_south"}},
+                {"x": 3, "y": 64, "z": 1, "block": "minecraft:rail", "properties": {"shape": "south_east"}},
+                {"x": 4, "y": 64, "z": 1, "block": "minecraft:rail", "properties": {"shape": "north_west"}},
+                {"x": 3, "y": 64, "z": 2, "block": "minecraft:rail", "properties": {"shape": "north_east"}},
+                {"x": 4, "y": 64, "z": 2, "block": "minecraft:rail", "properties": {"shape": "south_west"}},
+                {"x": 4, "y": 64, "z": 0, "block": "minecraft:rail", "properties": {"shape": "ascending_west"}},
+                {"x": 5, "y": 64, "z": 0, "block": "minecraft:rail", "properties": {"shape": "ascending_north"}}],
+             rail_probes=[[float_bits(x, "f64"), float_bits(y, "f64"), float_bits(z, "f64")]
+                          for (x, y, z) in [(0.5, 64.0, 0.5), (0.2, 64.1, 0.5), (0.9, 64.0, 0.5), (1.5, 64.2, 0.5),
+                                            (1.1, 64.0, 0.5), (2.5, 65.0, 0.5), (0.5, 64.0, 1.5), (0.5, 64.0, 2.2),
+                                            (0.5, 64.0, 2.9), (3.4, 64.0, 1.6), (4.6, 64.0, 1.4), (3.2, 64.0, 2.8),
+                                            (4.1, 64.0, 2.2), (4.5, 64.0, 0.5), (5.5, 64.0, 0.4), (0.5, 65.0, 0.5),
+                                            (-1.5, 64.0, 0.5), (0.5, 66.5, 0.5), (3.5, 65.0, 1.5)]]),
         # An end crystal holds the block its beam reaches and whether it shows its base; a dragon
         # looks for the nearest crystal whose box meets its own made 32 blocks wider (one tick in
         # ten, so long enough in these rows), and lets go of one that is gone or out of reach.
@@ -15230,6 +15285,7 @@ def entity_cases():
     yield from entity_dragon_rays_cases()
     yield from entity_end_crystal_cases()
     yield from entity_crystal_beam_cases()
+    yield from entity_minecart_pose_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16748,6 +16804,43 @@ def entity_crystal_beam_cases():
             beam("from-an-offset", (2.0, 5.0, -3.0), at=(10.5, 64.9, -3.25))]
     yield {"case_id": "entity/crystal-beam", "family": "entity", "operation": "crystal_beam",
            "rows": rows}
+
+
+def entity_minecart_pose_cases():
+    """Where the reference's own minecart renderer draws a minecart and the block it carries, from the
+    state its old behaviour extracts: off a rail (the turn it was sent), along a rail (flat, along
+    each axis, sloping up and down, the two ends differing in height, at a corner), with the
+    rocking of a hit, with and without a block, for some ids (the shift that keeps two apart)."""
+    def vec(x, y, z):
+        return [float_bits(x, "f64"), float_bits(y, "f64"), float_bits(z, "f64")]
+
+    def cart(label, rail=None, at=(10.5, 64.0, -3.5), x_rot=0.0, y_rot=0.0, entity_id=7, hurt=(0, 0.0, 0.0),
+             block=False, offset=6):
+        seed = entity_id * 493286711
+        seed = ((seed * seed * 4392167121) + (seed * 98761))
+        seed = ((seed + 2 ** 63) % 2 ** 64) - 2 ** 63
+        row = {"label": f"minecart-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+               "feet_z": float_bits(at[2]), "x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+               "z": float_bits(at[2], "f64"), "x_rot": float_bits(x_rot), "y_rot": float_bits(y_rot),
+               "offset_seed": str(seed), "hurt_dir": hurt[0], "hurt_time": float_bits(hurt[1]),
+               "damage_time": float_bits(hurt[2]), "display_offset": offset, "block": block}
+        if rail:
+            row["rail"] = {"pos": vec(*rail[0]), "front": vec(*rail[1]), "back": vec(*rail[2])}
+        return row
+    rows = [cart("off-rail"), cart("off-rail-turned", y_rot=123.0, x_rot=11.0),
+            cart("flat-along-x", rail=((10.5, 64.0625, -3.5), (10.8, 64.0625, -3.5), (10.2, 64.0625, -3.5))),
+            cart("flat-along-z", rail=((10.5, 64.0625, -3.5), (10.5, 64.0625, -3.2), (10.5, 64.0625, -3.8))),
+            cart("sloping-up", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.5), (10.2, 64.2, -3.5))),
+            cart("sloping-down", rail=((10.5, 64.5, -3.5), (10.2, 64.8, -3.5), (10.8, 64.2, -3.5))),
+            cart("corner", rail=((10.4, 64.0625, -3.4), (10.7, 64.0625, -3.5), (10.4, 64.0625, -3.1))),
+            cart("ends-meet", rail=((10.5, 64.0625, -3.5), (10.5, 64.0625, -3.5), (10.5, 64.0625, -3.5))),
+            cart("hit", hurt=(1, 7.5, 12.0)), cart("hit-the-other-way", hurt=(-1, 3.25, 40.0)),
+            cart("hit-over", hurt=(1, -0.5, 12.0)), cart("another-id", entity_id=123456),
+            cart("with-a-block", block=True), cart("with-a-block-low", block=True, offset=8),
+            cart("with-a-block-high", block=True, offset=1),
+            cart("everything", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(-1, 5.0, 20.0),
+                 block=True, entity_id=99, x_rot=4.0, y_rot=-50.0, at=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/minecart-pose", "family": "entity", "operation": "minecart_pose", "rows": rows}
 
 
 def entity_copper_golem_cases():

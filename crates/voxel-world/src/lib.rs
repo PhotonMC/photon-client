@@ -57,6 +57,7 @@ mod java_math;
 pub mod light;
 pub mod living;
 mod metadata;
+pub mod minecart;
 mod paletted;
 pub mod panda;
 pub mod parrot;
@@ -2773,6 +2774,20 @@ impl ClientWorld {
         bottom
     }
 
+    /// `OldMinecartBehavior.getPos`: where the rail puts a minecart that is at this place.
+    pub fn minecart_rail_pos(&self, at: (f64, f64, f64)) -> Option<(f64, f64, f64)> {
+        minecart::rail_pos(&|x, y, z| self.block_state_at(x, y, z), at)
+    }
+
+    /// `OldMinecartBehavior.getPosOffs`: the same this far along the rail from here.
+    pub fn minecart_rail_pos_offset(
+        &self,
+        at: (f64, f64, f64),
+        offset: f64,
+    ) -> Option<(f64, f64, f64)> {
+        minecart::rail_pos_offset(&|x, y, z| self.block_state_at(x, y, z), at, offset)
+    }
+
     /// How far the dragon egg's place on the End's podium is from a point
     /// (`BlockPos.distToCenterSqr`), as `EnderDragonRenderer` measures it: the
     /// podium stands at the origin, on the highest block there that is not a leaf.
@@ -3366,6 +3381,7 @@ impl ClientWorld {
                 wither: None,
                 ender_dragon: None,
                 end_crystal: None,
+                minecart: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -3991,7 +4007,9 @@ impl ClientWorld {
             let Some(entity) = self.entities.get_mut(&input.entity_id) else {
                 return false;
             };
-            if entity.living_kind().is_some() && (input.y_rot.is_some() || input.x_rot.is_some()) {
+            if (entity.living_kind().is_some() || entity.is_minecart())
+                && (input.y_rot.is_some() || input.x_rot.is_some())
+            {
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
                 let y_rot = input.y_rot.map_or(current_y_rot, |y_rot| {
                     if input.relative_y_rot {
@@ -4176,7 +4194,7 @@ impl ClientWorld {
             if let Some(position) = new_position {
                 entity.set_packet_base(position);
             }
-            if entity.living_kind().is_some() {
+            if entity.living_kind().is_some() || entity.is_minecart() {
                 let target_position =
                     new_position.unwrap_or_else(|| entity.interpolation_position());
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
@@ -4290,7 +4308,7 @@ impl ClientWorld {
             if mode == EntityPositionUpdateMode::PositionSync {
                 entity.set_packet_base(target_position);
             }
-            if entity.living_kind().is_some() {
+            if entity.living_kind().is_some() || entity.is_minecart() {
                 let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
                 let distance_position = match mode {
                     EntityPositionUpdateMode::PositionSync => entity.position(),
@@ -4514,6 +4532,17 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if entity.is_wither() {
         wither_data_from_metadata(metadata).apply(entity.wither_mut());
+    }
+    if entity.is_minecart() {
+        let (data, hurt) = (
+            minecart_data_from_metadata(metadata),
+            boat_data_from_metadata(metadata),
+        );
+        let state = entity.minecart_mut();
+        state.hurt_time = hurt.hurt_time.unwrap_or(state.hurt_time);
+        state.hurt_dir = hurt.hurt_dir.unwrap_or(state.hurt_dir);
+        state.damage = hurt.damage.unwrap_or(state.damage);
+        data.apply(state);
     }
     if entity.is_end_crystal() {
         let (beam_target, show_bottom) = end_crystal_data_from_metadata(metadata);

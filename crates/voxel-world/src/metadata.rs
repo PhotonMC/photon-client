@@ -605,6 +605,38 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// A minecart's own synced data (`AbstractMinecart.DATA_ID_CUSTOM_DISPLAY_BLOCK`,
+/// `DATA_ID_DISPLAY_OFFSET`, `MinecartFurnace.DATA_ID_FUEL`), each when the data holds it.
+/// The custom block is a block state number, none inside when the server names none.
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct MinecartData {
+    custom_display: Option<Option<u32>>,
+    display_offset: Option<i32>,
+    fuel: Option<bool>,
+}
+
+impl MinecartData {
+    pub(crate) fn apply(self, state: &mut crate::minecart::MinecartState) {
+        state.custom_display = self.custom_display.unwrap_or(state.custom_display);
+        state.display_offset = self.display_offset.or(state.display_offset);
+        state.fuel = self.fuel.unwrap_or(state.fuel);
+    }
+}
+
+pub(crate) fn minecart_data_from_metadata(metadata: &[u8]) -> MinecartData {
+    use crate::minecart::{CUSTOM_DISPLAY_BLOCK_DATA_ID, DISPLAY_OFFSET_DATA_ID, FUEL_DATA_ID};
+    // `OPTIONAL_BLOCK_STATE`: the state's number, or zero for none.
+    let custom_display = find_metadata_field(metadata, CUSTOM_DISPLAY_BLOCK_DATA_ID)
+        .filter(|(serializer, _)| *serializer == OPTIONAL_BLOCK_STATE_SERIALIZER_ID)
+        .and_then(|(_, mut value)| voxel_core::wire::read_varint(&mut value).ok())
+        .map(|id| u32::try_from(id).ok().filter(|id| *id != 0));
+    MinecartData {
+        custom_display,
+        display_offset: metadata_int_value(metadata, DISPLAY_OFFSET_DATA_ID),
+        fuel: metadata_boolean_value(metadata, FUEL_DATA_ID),
+    }
+}
+
 /// An end crystal's synced data (`EndCrystal.DATA_BEAM_TARGET`, `DATA_SHOW_BOTTOM`), each
 /// when the data holds it: the block its beam reaches (none inside), and whether it shows its base.
 pub(crate) fn end_crystal_data_from_metadata(

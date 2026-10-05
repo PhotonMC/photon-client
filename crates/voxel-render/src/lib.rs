@@ -24,6 +24,7 @@ pub mod item_entity;
 pub mod item_model;
 pub mod joml;
 pub mod keyframe;
+pub mod minecart;
 pub mod mipmap;
 pub mod mob_model;
 pub mod model;

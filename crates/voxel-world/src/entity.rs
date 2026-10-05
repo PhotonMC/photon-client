@@ -748,6 +748,8 @@ pub struct ClientEntity {
     pub(crate) ender_dragon: Option<Box<crate::ender_dragon::EnderDragonState>>,
     /// An end crystal's age and data, made when its data or ticks first reach it.
     pub(crate) end_crystal: Option<crate::end_crystal::EndCrystalState>,
+    /// A minecart's hit, carried block and fuel, made when its data or ticks first reach it.
+    pub(crate) minecart: Option<crate::minecart::MinecartState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -1772,6 +1774,15 @@ impl ClientEntity {
         mth_lerp_f32(partial_tick, self.previous_rotation().0, current)
     }
 
+    /// `Entity.getXRot(partialTick)`: the pitch between two ticks, a plain lerp.
+    pub fn x_rot_at(&self, partial_tick: f32) -> f32 {
+        let current = self.rotation().1;
+        if partial_tick == 1.0 {
+            return current;
+        }
+        mth_lerp_f32(partial_tick, self.previous_rotation().1, current)
+    }
+
     /// The limbs' walk animation.
     pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
         &self.walk
@@ -2414,6 +2425,57 @@ impl ClientEntity {
             .set_mode(mode, tick_count);
     }
 
+    /// Whether this is one of the minecarts (`AbstractMinecart`).
+    pub fn is_minecart(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id)
+            .and_then(crate::minecart::default_display_offset)
+            .is_some()
+    }
+
+    /// A minecart's hit, carried block and fuel, if it has any.
+    pub fn minecart(&self) -> Option<&crate::minecart::MinecartState> {
+        self.minecart.as_ref()
+    }
+
+    pub(crate) fn minecart_mut(&mut self) -> &mut crate::minecart::MinecartState {
+        self.minecart.get_or_insert_with(Default::default)
+    }
+
+    /// `AbstractMinecart.getDisplayBlockState`: the block state the server named, else the
+    /// type's own (the plain minecart shows none).
+    pub fn minecart_display_block(&self) -> Option<u32> {
+        let state = self.minecart.unwrap_or_default();
+        state.custom_display.or_else(|| {
+            voxel_data::entity_type::name(self.type_id)
+                .and_then(|name| crate::minecart::default_display_block(name, state.fuel))
+        })
+    }
+
+    /// `AbstractMinecart.getDisplayOffset`, in sixteenths of a block.
+    pub fn minecart_display_offset(&self) -> i32 {
+        let default = voxel_data::entity_type::name(self.type_id)
+            .and_then(crate::minecart::default_display_offset)
+            .unwrap_or(6);
+        self.minecart.unwrap_or_default().display_offset(default)
+    }
+
+    /// `AbstractMinecart.tick` on the client, with `OldMinecartBehavior.tick`'s client half: the
+    /// hit runs down, then the position and turn ease to the last packet's while that lasts,
+    /// else the turns are kept under a whole turn.
+    pub(crate) fn tick_minecart(&mut self) {
+        self.minecart_mut().tick();
+        if self.is_interpolating() {
+            self.tick_position_interpolation();
+        } else {
+            let (y_rot, x_rot) = (
+                f32::from_bits(self.y_rot_bits),
+                f32::from_bits(self.x_rot_bits),
+            );
+            self.x_rot_bits = (x_rot % 360.0).to_bits();
+            self.y_rot_bits = (y_rot % 360.0).to_bits();
+        }
+    }
+
     pub(crate) fn is_end_crystal(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:end_crystal")
     }
@@ -2781,6 +2843,10 @@ impl ClientEntity {
     ) {
         if self.is_ender_dragon() {
             self.tick_ender_dragon(&targets);
+            return;
+        }
+        if self.is_minecart() {
+            self.tick_minecart();
             return;
         }
         self.tick_frog();
