@@ -243,6 +243,19 @@ pub struct WardenRenderState {
     pub sonic_boom: voxel_world::animation_state::AnimationState,
 }
 
+/// What a creaking's models (the body and its eyes) are posed from
+/// (`CreakingRenderState`): the look, the walk (which only a creaking that can
+/// move shows), and the animation states its ticks run.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CreakingRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub can_move: bool,
+    pub attack: voxel_world::animation_state::AnimationState,
+    pub invulnerable: voxel_world::animation_state::AnimationState,
+    pub death: voxel_world::animation_state::AnimationState,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -1941,6 +1954,38 @@ impl MobModel {
             ("Warden.WARDEN_EMERGE", state.emerge),
             ("Warden.WARDEN_ROAR", state.roar),
             ("Warden.WARDEN_SNIFF", state.sniff),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
+        }
+    }
+
+    /// `CreakingModel.setupAnim`: the head takes the look, the walk runs if the
+    /// creaking can move, then the attack, the sway and the death animations
+    /// that have started. The eyes' layer shares the parts' names.
+    pub fn setup_creaking(&mut self, state: &CreakingRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(head) = self
+            .root
+            .child_mut("root")
+            .and_then(|root| root.child_mut("upper_body"))
+            .and_then(|upper| upper.child_mut("head"))
+        {
+            head.x_rot = state.quadruped.x_rot * degrees;
+            head.y_rot = state.quadruped.head_y_rot * degrees;
+        }
+        if state.can_move
+            && let Some(definition) = voxel_data::animation::definition("Creaking.CREAKING_WALK")
+        {
+            // `applyWalk(pos, speed, 1, 1)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 1.0) as i64;
+            let scale = (state.quadruped.walk_speed * 1.0).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        for (name, running) in [
+            ("Creaking.CREAKING_ATTACK", state.attack),
+            ("Creaking.CREAKING_INVULNERABLE", state.invulnerable),
+            ("Creaking.CREAKING_DEATH", state.death),
         ] {
             self.animate_state(name, running, state.age_in_ticks);
         }

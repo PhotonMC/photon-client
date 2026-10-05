@@ -736,6 +736,8 @@ pub struct ClientEntity {
     pub(crate) breeze: Option<Box<crate::breeze::BreezeState>>,
     /// A warden's animation states and pulses, made when its pose, data or events first reach it.
     pub(crate) warden: Option<Box<crate::warden::WardenState>>,
+    /// A creaking's animation states and flags, made when its data, events or ticks first reach it.
+    pub(crate) creaking: Option<Box<crate::creaking::CreakingState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -1114,6 +1116,10 @@ impl ClientEntity {
                 };
                 self.walk
                     .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
+            } else if self.is_creaking() {
+                // `Creaking.updateWalkAnimation`: a quicker stride, capped at three.
+                let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
+                self.walk.update(target, 0.4, 1.0);
             } else if self.is_frog() {
                 let target = self.frog.as_ref().map_or_else(
                     || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
@@ -2366,6 +2372,30 @@ impl ClientEntity {
         }
     }
 
+    pub(crate) fn is_creaking(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:creaking")
+    }
+
+    /// A creaking's animation states and flags, if it has any.
+    pub fn creaking(&self) -> Option<&crate::creaking::CreakingState> {
+        self.creaking.as_deref()
+    }
+
+    /// The creaking's state, made if it has none yet.
+    pub(crate) fn creaking_mut(&mut self) -> &mut crate::creaking::CreakingState {
+        let seed = i64::from(self.id);
+        self.creaking
+            .get_or_insert_with(|| Box::new(crate::creaking::CreakingState::new(seed)))
+    }
+
+    /// `Creaking.tick`'s client half, after the rest of the tick.
+    pub(crate) fn tick_creaking(&mut self) {
+        if self.is_creaking() {
+            let (tick_count, death_time) = (self.tick_count, self.living.death_time);
+            self.creaking_mut().tick(tick_count, death_time);
+        }
+    }
+
     pub(crate) fn is_warden(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:warden")
     }
@@ -2870,6 +2900,7 @@ impl ClientEntity {
         self.tick_parrot();
         self.tick_allay();
         self.tick_warden();
+        self.tick_creaking();
     }
 
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.

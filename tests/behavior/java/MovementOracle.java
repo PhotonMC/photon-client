@@ -1006,6 +1006,22 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "creaking_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        for (var field : new String[][] {{"can_move", "CAN_MOVE"}, {"active", "IS_ACTIVE"},
+                                {"tearing_down", "IS_TEARING_DOWN"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(net.minecraft.world.entity.monster.creaking.Creaking.class, field[1],
+                                    event.get(field[0]).getAsBoolean()));
+                            }
+                        }
+                        if (event.has("home")) {
+                            data.add(wolfData(net.minecraft.world.entity.monster.creaking.Creaking.class, "HOME_POS",
+                                java.util.Optional.of(new net.minecraft.core.BlockPos(0, 0, 0))));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "warden_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.monster.warden.Warden.class, "CLIENT_ANGER_LEVEL",
@@ -1310,6 +1326,24 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "creaking" -> {
+                            var creaking = (net.minecraft.world.entity.monster.creaking.Creaking) entity;
+                            var states = new Object[][] {
+                                {"attack", creaking.attackAnimationState},
+                                {"invulnerable", creaking.invulnerabilityAnimationState},
+                                {"death", creaking.deathAnimationState},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) creaking.tickCount) : 0L);
+                            }
+                            described.addProperty("can_move", creaking.canMove());
+                            described.addProperty("active", creaking.isActive());
+                            described.addProperty("tearing_down", creaking.isTearingDown());
+                            described.addProperty("heart_bound", creaking.isHeartBound());
                         }
                         case "warden" -> {
                             var warden = (net.minecraft.world.entity.monster.warden.Warden) entity;

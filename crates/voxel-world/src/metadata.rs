@@ -605,6 +605,43 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// A creaking's synced data, each field when the data holds it.
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct CreakingData {
+    can_move: Option<bool>,
+    active: Option<bool>,
+    tearing_down: Option<bool>,
+    heart_bound: Option<bool>,
+}
+
+impl CreakingData {
+    pub(crate) fn apply(self, state: &mut crate::creaking::CreakingState) {
+        state.can_move = self.can_move.unwrap_or(state.can_move);
+        state.active = self.active.unwrap_or(state.active);
+        state.tearing_down = self.tearing_down.unwrap_or(state.tearing_down);
+        state.heart_bound = self.heart_bound.unwrap_or(state.heart_bound);
+    }
+}
+
+/// `Creaking.CAN_MOVE`, `IS_ACTIVE`, `IS_TEARING_DOWN` and whether `HOME_POS` holds a position.
+pub(crate) fn creaking_data_from_metadata(metadata: &[u8]) -> CreakingData {
+    use crate::creaking::{
+        CAN_MOVE_DATA_ID, HOME_POS_DATA_ID, IS_ACTIVE_DATA_ID, IS_TEARING_DOWN_DATA_ID,
+    };
+    let heart_bound =
+        find_metadata_field(metadata, HOME_POS_DATA_ID).and_then(|(serializer_id, value_input)| {
+            (serializer_id == ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID)
+                .then(|| value_input.first().map(|&present| present != 0))
+                .flatten()
+        });
+    CreakingData {
+        can_move: metadata_boolean_value(metadata, CAN_MOVE_DATA_ID),
+        active: metadata_boolean_value(metadata, IS_ACTIVE_DATA_ID),
+        tearing_down: metadata_boolean_value(metadata, IS_TEARING_DOWN_DATA_ID),
+        heart_bound,
+    }
+}
+
 /// Whether a guardian moves and the id of what its beam aims at
 /// (`Guardian.DATA_ID_MOVING`, `DATA_ID_ATTACK_TARGET`), each when the data holds it.
 pub(crate) fn guardian_data_from_metadata(

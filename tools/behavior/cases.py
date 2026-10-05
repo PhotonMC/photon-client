@@ -14656,6 +14656,33 @@ def movement_item_cases():
                extras=["warden"]),
         living("warden-furious", "warden", 40, [{"tick": 1, "type": "warden_data", "anger": 150}],
                extras=["warden"]),
+        # A creaking's attack event runs its attack for fifteen ticks and its sway event its
+        # invulnerable animation for eight; a torn-down one (heart bound) starts its death animation
+        # and counts death time; its stride is quicker and capped at three. The player stands off, as the
+        # reference's own player here has no connection to look pushers up in.
+        living("creaking-idle", "creaking", 30, [], extras=["creaking"], player_x=30.5),
+        living("creaking-attacks", "creaking", 40, [{"tick": 5, "type": "entity_event", "event": 4}],
+               extras=["creaking"], player_x=30.5),
+        living("creaking-attacks-twice", "creaking", 50,
+               [{"tick": 5, "type": "entity_event", "event": 4},
+                {"tick": 12, "type": "entity_event", "event": 4}], extras=["creaking"], player_x=30.5),
+        living("creaking-sways", "creaking", 30, [{"tick": 5, "type": "entity_event", "event": 66}],
+               extras=["creaking"], player_x=30.5),
+        living("creaking-walks", "creaking", 20,
+               [{"tick": t, "type": "move", "xa": 800, "ya": 0, "za": 0} for t in range(1, 15)],
+               extras=["creaking"], player_x=30.5),
+        living("creaking-sprints", "creaking", 20,
+               [{"tick": t, "type": "move", "xa": 4000, "ya": 0, "za": 0} for t in range(1, 15)],
+               extras=["creaking"], player_x=30.5),
+        living("creaking-frozen", "creaking", 20,
+               [{"tick": 2, "type": "creaking_data", "can_move": False, "active": True}],
+               extras=["creaking"], player_x=30.5),
+        living("creaking-tears-down", "creaking", 60,
+               [{"tick": 2, "type": "creaking_data", "home": True},
+                {"tick": 5, "type": "creaking_data", "tearing_down": True},
+                {"tick": 6, "type": "death"}], extras=["creaking"], player_x=30.5),
+        living("creaking-dies-unbound", "creaking", 40, [{"tick": 3, "type": "death"}],
+               extras=["creaking"], player_x=30.5),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15089,6 +15116,7 @@ def entity_cases():
     yield from entity_parrot_cases()
     yield from entity_breeze_cases()
     yield from entity_warden_cases()
+    yield from entity_creaking_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16400,6 +16428,41 @@ def entity_warden_cases():
                  warden(layer, "roar-then-attack", age=70.0, look=(10.0, 5.0), roar=40, attack=65),
                  warden(layer, "walking-roar", age=55.0, walk=(8.1, 0.2), roar=40)]
     yield {"case_id": "entity/warden-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_creaking_cases():
+    """The creaking's two models (the body, the eyes) posed by the reference's own
+    `CreakingModel.setupAnim`: the look, the walk (shown only while it can move, so with it
+    frozen as well), each of the three animations alone (early, late and run out), and some
+    together."""
+    def creaking(layer, label, age=37.5, look=(0.0, 0.0), walk=(0.0, 0.0), can_move=True, **started):
+        row = {"label": f"creaking-{layer}-{label}", "layer": f"minecraft:creaking#{layer}",
+               "age_in_ticks": float_bits(age), "y_rot": float_bits(look[0]),
+               "x_rot": float_bits(look[1]), "walk_position": float_bits(walk[0]),
+               "walk_speed": float_bits(walk[1]), "can_move": can_move}
+        row.update(started)
+        return row
+    rows = []
+    for layer in ("main", "eyes"):
+        rows += [creaking(layer, "nothing"),
+                 creaking(layer, "look-walk", age=91.25, look=(23.5, -14.0), walk=(6.3, 0.62)),
+                 creaking(layer, "attack", age=45.0, attack=40)]
+        if layer != "main":
+            continue
+        rows += [creaking(layer, "look", look=(-31.0, 17.5)),
+                 creaking(layer, "slow-walk", walk=(2.7, 0.1)),
+                 creaking(layer, "fast-walk", walk=(11.9, 0.9)),
+                 creaking(layer, "fastest-walk", walk=(30.1, 3.0)),
+                 creaking(layer, "frozen-walk", walk=(11.9, 0.9), can_move=False),
+                 creaking(layer, "attack-over", age=120.0, attack=40),
+                 creaking(layer, "invulnerable", age=62.0, invulnerable=60),
+                 creaking(layer, "invulnerable-over", age=90.0, invulnerable=60),
+                 creaking(layer, "death", age=70.0, death=50),
+                 creaking(layer, "death-late", age=150.0, death=50),
+                 creaking(layer, "walking-attack", age=55.0, walk=(8.1, 0.5), attack=50),
+                 creaking(layer, "frozen-death", age=80.0, can_move=False, death=50, attack=70)]
+    yield {"case_id": "entity/creaking-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

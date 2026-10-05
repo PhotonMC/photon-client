@@ -1731,6 +1731,26 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("creaking")) {
+                var state = new net.minecraft.client.renderer.entity.state.CreakingRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.canMove = row.get("can_move").getAsBoolean();
+                var animations = new Object[][] {
+                    {"attack", state.attackAnimationState}, {"invulnerable", state.invulnerabilityAnimationState},
+                    {"death", state.deathAnimationState},
+                };
+                for (var animation : animations) {
+                    if (row.has((String) animation[0])) {
+                        ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                    }
+                }
+                var creaking = new net.minecraft.client.model.monster.creaking.CreakingModel(root);
+                creaking.setupAnim(state);
+                model = creaking;
             } else if (id.contains("warden")) {
                 var state = new net.minecraft.client.renderer.entity.state.WardenRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

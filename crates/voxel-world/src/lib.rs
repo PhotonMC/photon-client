@@ -37,6 +37,7 @@ mod collision;
 mod constants;
 mod container;
 pub mod copper_golem;
+pub mod creaking;
 pub mod cube_mob;
 mod dimension;
 mod entity;
@@ -2269,6 +2270,11 @@ impl ClientWorld {
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
             }
+            Some("minecraft:creaking")
+                if matches!(event, creaking::ATTACK_EVENT | creaking::INVULNERABLE_EVENT) =>
+            {
+                return entity.creaking_mut().event(event);
+            }
             Some("minecraft:warden")
                 if matches!(
                     event,
@@ -3227,6 +3233,7 @@ impl ClientWorld {
                 boat: None,
                 breeze: None,
                 warden: None,
+                creaking: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4366,6 +4373,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
+    }
+    if entity.is_creaking() {
+        creaking_data_from_metadata(metadata).apply(entity.creaking_mut());
     }
     if let Some(anger) = warden_anger_from_metadata(entity.type_id, metadata) {
         entity.warden_mut().anger = anger;

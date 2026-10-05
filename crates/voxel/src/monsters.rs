@@ -8,15 +8,16 @@ use voxel_render::entity_block::carried_block_pose;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
 use voxel_render::mob_model::{
-    AllayRenderState, BatRenderState, BreezeRenderState, EndermanState, MobModel, MobPlacement,
-    ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState, WardenRenderState,
-    creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_emissive,
+    AllayRenderState, BatRenderState, BreezeRenderState, CreakingRenderState, EndermanState,
+    MobModel, MobPlacement, ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState,
+    WardenRenderState, creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_emissive,
     mob_vertices_emissive_faded, mob_vertices_glow, mob_vertices_scrolled, mob_vertices_swirl,
     placement_pose,
 };
 use voxel_render::player_model::{Arm, Part, PlayerRenderState};
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
 use voxel_render::scene::Vertex;
+use voxel_world::creaking::CreakingState;
 use voxel_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
 
 use crate::held_items::{HeldItem, Place};
@@ -52,6 +53,8 @@ enum Pose {
     Breeze,
     /// `WardenModel`, with its four glowing layers drawn over it.
     Warden,
+    /// `CreakingModel`, with its eyes lit while it is active.
+    Creaking,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -64,7 +67,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 15] = [
+const MONSTERS: [Monster; 16] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -170,6 +173,13 @@ const MONSTERS: [Monster; 15] = [
         pose: Pose::Warden,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:creaking",
+        layer: "minecraft:creaking#main",
+        texture: "entity/creaking/creaking",
+        pose: Pose::Creaking,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
 
 /// The wind and the eyes of a breeze (`BreezeWindLayer`, `BreezeEyesLayer`): their
@@ -188,6 +198,9 @@ const WARDEN_SPOTS_1: &str = "entity/warden/warden_pulsating_spots_1";
 const WARDEN_SPOTS_2: &str = "entity/warden/warden_pulsating_spots_2";
 const WARDEN_TENDRILS: (&str, &str) = ("minecraft:warden#tendrils", "entity/warden/warden");
 const WARDEN_HEART: (&str, &str) = ("minecraft:warden#heart", "entity/warden/warden_heart");
+
+/// A creaking's eyes (`CreakingRenderer`): their model layer and texture.
+const CREAKING_EYES: (&str, &str) = ("minecraft:creaking#eyes", "entity/creaking/creaking_eyes");
 
 /// The texture a vex charges in (`VexRenderer.getTextureLocation`).
 const VEX_CHARGING_TEXTURE: &str = "entity/illager/vex_charging";
@@ -209,6 +222,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
         .chain(voxel_world::parrot::VARIANT_TEXTURES)
         .chain([BREEZE_WIND.1, BREEZE_EYES.1])
+        .chain([CREAKING_EYES.1])
         .chain([
             WARDEN_BIOLUMINESCENT.1,
             WARDEN_SPOTS_1,
@@ -349,15 +363,70 @@ fn warden_layers(
     vertices
 }
 
+/// `CreakingRenderer.extractRenderState`: the look, the walk, and the animation
+/// states the creaking runs; what a torn-down one does to the renderer's own
+/// state is in [`creaking_tear_down`].
+fn creaking_state(
+    entity: &ClientEntity,
+    look: QuadrupedState,
+    partial: f32,
+) -> CreakingRenderState {
+    let own = entity.creaking();
+    CreakingRenderState {
+        quadruped: look,
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        can_move: own.is_none_or(|own| own.can_move()),
+        attack: own.map(|own| own.attack).unwrap_or_default(),
+        invulnerable: own.map(|own| own.invulnerable).unwrap_or_default(),
+        death: own.map(|own| own.death).unwrap_or_default(),
+    }
+}
+
+/// A torn-down creaking does not fall over or flash red.
+fn creaking_tear_down(entity: &ClientEntity, placed: &mut MobPlacement) {
+    if entity
+        .creaking()
+        .is_some_and(CreakingState::is_tearing_down)
+    {
+        placed.death_time = 0.0;
+        placed.red_overlay = false;
+    }
+}
+
+/// Whether a creaking's eyes are lit: the blink of a torn-down one
+/// (`hasGlowingEyes`), else while it is active.
+fn creaking_eyes_glow(entity: &ClientEntity) -> bool {
+    entity.creaking().is_some_and(|own| {
+        if own.is_tearing_down() {
+            own.has_glowing_eyes()
+        } else {
+            own.is_active()
+        }
+    })
+}
+
 /// The layers some monsters draw over their body: a breeze's wind and eyes, a
 /// warden's glowing parts.
 fn glowing_layers(
     models: &mut MobModels,
     textures: &EntityTextures,
     (pose, entity, look, partial): (Pose, &ClientEntity, QuadrupedState, f32),
-    placed: &MobPlacement,
+    (placed, glow): (&MobPlacement, &mut Vec<Vertex>),
 ) -> Vec<Vertex> {
     match pose {
+        Pose::Creaking => {
+            // The eyes: the same posed model, drawn unlit when they glow.
+            let state = creaking_state(entity, look, partial);
+            if let (true, Some(rect), Some(model)) = (
+                creaking_eyes_glow(entity),
+                textures.rect(CREAKING_EYES.1),
+                models.model(CREAKING_EYES.0),
+            ) {
+                model.setup_creaking(&state);
+                glow.extend(mob_vertices_glow(model, placed, rect));
+            }
+            Vec::new()
+        }
         Pose::Breeze => breeze_layers(models, textures, (entity, partial), placed),
         Pose::Warden => {
             let state = warden_state(entity, look, partial);
@@ -391,6 +460,26 @@ fn breeze_layers(
         });
     }
     vertices
+}
+
+/// `ParrotModel.setupAnim`, posed by what the parrot is doing.
+fn pose_parrot(model: &mut MobModel, entity: &ClientEntity, look: QuadrupedState, partial: f32) {
+    let own = entity.parrot().copied();
+    // `ParrotModel.getPose`: sitting, else flying in the air (the party
+    // pose needs a jukebox the client does not track yet).
+    let pose = if entity.is_sitting() {
+        ParrotPose::Sitting
+    } else if !entity.on_ground() {
+        ParrotPose::Flying
+    } else {
+        ParrotPose::Standing
+    };
+    model.setup_parrot(&ParrotRenderState {
+        quadruped: look,
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        flap_angle: own.map_or(0.0, |own| own.flap_angle(partial)),
+        pose,
+    });
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -462,24 +551,11 @@ fn pose_monster(
         }
         Pose::Breeze => model.setup_breeze(&breeze_state(entity, partial)),
         Pose::Warden => model.setup_warden(&warden_state(entity, look, partial)),
-        Pose::Parrot => {
-            let own = entity.parrot().copied();
-            // `ParrotModel.getPose`: sitting, else flying in the air (the party
-            // pose needs a jukebox the client does not track yet).
-            let pose = if entity.is_sitting() {
-                ParrotPose::Sitting
-            } else if !entity.on_ground() {
-                ParrotPose::Flying
-            } else {
-                ParrotPose::Standing
-            };
-            model.setup_parrot(&ParrotRenderState {
-                quadruped: look,
-                age_in_ticks: entity.tick_count() as f32 + partial,
-                flap_angle: own.map_or(0.0, |own| own.flap_angle(partial)),
-                pose,
-            });
+        Pose::Creaking => {
+            model.setup_creaking(&creaking_state(entity, look, partial));
+            creaking_tear_down(entity, placed);
         }
+        Pose::Parrot => pose_parrot(model, entity, look, partial),
         Pose::Allay => {
             let own = entity.allay().copied().unwrap_or_default();
             model.setup_allay(&AllayRenderState {
@@ -588,7 +664,7 @@ pub fn remote_monsters(
             models,
             textures,
             (monster.pose, entity, look, partial),
-            &placed,
+            (&placed, &mut glow),
         ));
         // A charged creeper's swirl: the armor model, posed as the creeper is.
         if monster.pose == Pose::Creeper

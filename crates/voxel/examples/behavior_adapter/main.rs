@@ -18782,6 +18782,29 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "creaking_data" => {
+                        // The booleans `Creaking` defines, each when the event names it.
+                        let mut data = Vec::new();
+                        for (key, id) in [
+                            ("can_move", voxel_world::creaking::CAN_MOVE_DATA_ID),
+                            ("active", voxel_world::creaking::IS_ACTIVE_DATA_ID),
+                            (
+                                "tearing_down",
+                                voxel_world::creaking::IS_TEARING_DOWN_DATA_ID,
+                            ),
+                        ] {
+                            if let Some(value) = event[key].as_bool() {
+                                data.extend([id, 8, u8::from(value)]);
+                            }
+                        }
+                        if event["home"].as_bool() == Some(true) {
+                            // An optional block position: present, then the packed position.
+                            data.extend([voxel_world::creaking::HOME_POS_DATA_ID, 11, 1]);
+                            data.extend(0_i64.to_be_bytes());
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "warden_data" => {
                         // `Warden.CLIENT_ANGER_LEVEL`, an int.
                         let mut data = vec![voxel_world::warden::CLIENT_ANGER_DATA_ID, 1];
@@ -19098,6 +19121,30 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "creaking" => {
+                        let state = entity
+                            .creaking()
+                            .cloned()
+                            .unwrap_or_else(|| voxel_world::creaking::CreakingState::new(0));
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("attack", state.attack),
+                            ("invulnerable", state.invulnerable),
+                            ("death", state.death),
+                        ] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                        described["can_move"] = json!(state.can_move());
+                        described["active"] = json!(state.is_active());
+                        described["tearing_down"] = json!(state.is_tearing_down());
+                        described["heart_bound"] = json!(state.is_heart_bound());
                     }
                     "warden" => {
                         let state = entity.warden().copied().unwrap_or_default();
@@ -20723,6 +20770,28 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 slide_back: started("slide_back"),
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
+            });
+        } else if id.contains("creaking") {
+            use voxel_render::mob_model::CreakingRenderState;
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_creaking(&CreakingRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                can_move: flag("can_move")?,
+                attack: started("attack"),
+                invulnerable: started("invulnerable"),
+                death: started("death"),
             });
         } else if id.contains("warden") {
             use voxel_render::mob_model::WardenRenderState;
