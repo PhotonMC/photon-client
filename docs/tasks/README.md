@@ -166,7 +166,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T61](T61-ses-paketleri-kanal.md) | `Sound`/`SoundEntity`/`StopSound` paketleri ve `SoundEngine` kanal parametreleri | M | T60 | bölündü (ba2f3f4e) |
 | [T61b](T61b-ses-motoru.md) | `SoundEngine` mantığı ve kanal parametreleri (Channel gölgesiyle oracle) | L | T61 | bitti (19323b90) |
 | [T62](T62-ogg-vorbis-cozumu.md) | Ogg/Vorbis çözümü (`lewton`, JOrbis ile PCM karşılaştırması) | M | – | bitti (16260689) |
-| [T63](T63-ses-cikisi-cpal.md) | Ses çıkışı (`cpal`): kanal havuzu, sönüm, perde, miks | L | T61b, T62 | bitti (HASH) |
+| [T63](T63-ses-cikisi-cpal.md) | Ses çıkışı (`cpal`): kanal havuzu, sönüm, perde, miks | L | T61b, T62 | bitti (f4381a44) |
 | [T64](T64-ses-tetikleri-muzik.md) | Oyun ses tetikleri (adım, kırma, hasar, ortam) ve müzik | L | T63 | açık |
 | [T65](T65-ses-ayarlari-ekrani.md) | Ses ayarları ekranı | M | T63, T06 | açık |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
