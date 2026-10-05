@@ -418,7 +418,8 @@ impl BiomeTints {
         }
     }
 
-    fn colour(&self, kind: TintKind, biome: usize, x: i32, z: i32) -> u32 {
+    /// `ColorResolver.getColor(biome, x, z)`: the biome's own colour, without blending.
+    pub fn colour(&self, kind: TintKind, biome: usize, x: i32, z: i32) -> u32 {
         let biome = &self.biomes[biome];
         let temperature = f64::from(biome.temperature.clamp(0.0, 1.0));
         let downfall = f64::from(biome.downfall.clamp(0.0, 1.0));

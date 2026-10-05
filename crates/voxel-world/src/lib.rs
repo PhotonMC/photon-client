@@ -3332,6 +3332,11 @@ impl ClientWorld {
                 type_id: entity.type_id,
                 tick_count: 0,
                 first_tick: true,
+                start_block: (
+                    voxel_core::math::floor_f64(entity.x),
+                    voxel_core::math::floor_f64(entity.y),
+                    voxel_core::math::floor_f64(entity.z),
+                ),
                 x_bits: entity.x.to_bits(),
                 y_bits: entity.y.to_bits(),
                 z_bits: entity.z.to_bits(),

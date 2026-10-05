@@ -1304,6 +1304,8 @@ pub struct VulkanBackend {
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     /// The sections in view this frame; `None` draws every section.
     visible_sections: Option<Vec<(i32, i32, i32)>>,
+    /// The falling blocks' meshes for the frame, drawn with the sections.
+    moving_sections: Vec<SectionBuffers>,
     arena: Vec<ArenaBlock>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
     /// frame, and the ones the frame in flight still copies from.
@@ -1608,6 +1610,7 @@ impl VulkanBackend {
                 gui_item_buffer: None,
                 sections: std::collections::BTreeMap::new(),
                 visible_sections: None,
+                moving_sections: Vec::new(),
                 arena: Vec::new(),
                 staging: Vec::new(),
                 staging_filling: Vec::new(),
@@ -2994,8 +2997,23 @@ impl VulkanBackend {
             if let Some(old) = self.sections.remove(&key) {
                 self.retired.push(old);
             }
+            if let Some(section) = self.upload_section(mesh, centre, fade)? {
+                self.sections.insert(key, section);
+            }
+            Ok(())
+        }
+    }
+
+    /// Give the arena a section's mesh, or nothing for an empty one.
+    unsafe fn upload_section(
+        &mut self,
+        mesh: &Mesh,
+        centre: [f32; 3],
+        fade: SectionFade,
+    ) -> Result<Option<SectionBuffers>, VulkanError> {
+        unsafe {
             if mesh.indices.is_empty() && mesh.translucent_indices.is_empty() {
-                return Ok(());
+                return Ok(None);
             }
             let vertex_bytes = std::slice::from_raw_parts(
                 mesh.vertices.as_ptr().cast::<u8>(),
@@ -3013,17 +3031,29 @@ impl VulkanBackend {
                 std::mem::size_of_val(all_indices.as_slice()),
             );
             let indices = self.arena_upload(index_bytes)?;
-            self.sections.insert(
-                key,
-                SectionBuffers {
-                    vertices,
-                    indices,
-                    index_count: mesh.indices.len() as u32,
-                    translucent_index_count: mesh.translucent_indices.len() as u32,
-                    centre,
-                    fade,
-                },
-            );
+            Ok(Some(SectionBuffers {
+                vertices,
+                indices,
+                index_count: mesh.indices.len() as u32,
+                translucent_index_count: mesh.translucent_indices.len() as u32,
+                centre,
+                fade,
+            }))
+        }
+    }
+
+    /// Hand over the next frame's moving blocks (the falling blocks): each a mesh with the place
+    /// it is sorted from, drawn with the terrain.
+    pub fn set_moving_blocks(&mut self, blocks: &[(&Mesh, [f32; 3])]) -> Result<(), VulkanError> {
+        unsafe {
+            // The frame in flight may still read the old meshes.
+            let old = std::mem::take(&mut self.moving_sections);
+            self.retired.extend(old);
+            for (mesh, centre) in blocks {
+                if let Some(section) = self.upload_section(mesh, *centre, SectionFade::none())? {
+                    self.moving_sections.push(section);
+                }
+            }
             Ok(())
         }
     }
@@ -3150,13 +3180,15 @@ impl VulkanBackend {
 
     /// The sections drawn this frame: the ones in view, or all of them.
     fn drawn_sections(&self) -> Vec<&SectionBuffers> {
-        match &self.visible_sections {
+        let mut drawn: Vec<&SectionBuffers> = match &self.visible_sections {
             Some(visible) => visible
                 .iter()
                 .filter_map(|key| self.sections.get(key))
                 .collect(),
             None => self.sections.values().collect(),
-        }
+        };
+        drawn.extend(&self.moving_sections);
+        drawn
     }
 
     /// Drop every section mesh.
@@ -3166,6 +3198,9 @@ impl VulkanBackend {
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
             for (_, section) in std::mem::take(&mut self.sections) {
+                self.destroy_section(section);
+            }
+            for section in std::mem::take(&mut self.moving_sections) {
                 self.destroy_section(section);
             }
             for section in std::mem::take(&mut self.retired) {
@@ -3986,6 +4021,9 @@ impl VulkanBackend {
                 self.device.free_memory(scene.texture_memory, None);
             }
             for (_, section) in std::mem::take(&mut self.sections) {
+                self.destroy_section(section);
+            }
+            for section in std::mem::take(&mut self.moving_sections) {
                 self.destroy_section(section);
             }
             for section in std::mem::take(&mut self.retired) {

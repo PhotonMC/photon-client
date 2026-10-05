@@ -692,16 +692,54 @@ impl BlockRenderer {
     /// chunk is loaded, which reads as air. Neighbours outside the box are
     /// read from the world too, so a region's faces cull exactly as the
     /// whole world's would.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub fn mesh_region<R, L, T>(
         &self,
         world: &MeshWorld<'_, R, L, T>,
         origin: [i32; 3],
         size: [i32; 3],
         mesh_origin: [i32; 3],
+    ) -> RegionMesh
+    where
+        R: Fn(i32, i32, i32) -> Option<i32>,
+        L: Fn(i32, i32, i32) -> (u8, u8),
+        T: Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
+    {
+        self.mesh_blocks(world, origin, size, mesh_origin, None)
+    }
+
+    /// `MovingBlockFeatureRenderer`'s tessellation of one block: the model's quads lit by what
+    /// the world holds around `block` (which `read` should answer as the block alone, with air
+    /// all about it), with the variants the model picks by `seed_position` (the entity's start
+    /// position) rather than by where it is drawn, and no fluid. The vertices are in the block's
+    /// own unit cube.
+    pub fn mesh_moving_block<R, L, T>(
+        &self,
+        world: &MeshWorld<'_, R, L, T>,
+        block: [i32; 3],
+        seed_position: [i32; 3],
+    ) -> crate::scene::Mesh
+    where
+        R: Fn(i32, i32, i32) -> Option<i32>,
+        L: Fn(i32, i32, i32) -> (u8, u8),
+        T: Fn(crate::biome_tint::TintKind, [i32; 3]) -> u32,
+    {
+        self.mesh_blocks(world, block, [1, 1, 1], block, Some(seed_position))
+            .mesh
+    }
+
+    /// [`Self::mesh_region`] and [`Self::mesh_moving_block`]: with a seed position, the
+    /// blocks are those of a moving block (no fluids, variants picked from that position).
+    #[expect(
+        clippy::too_many_lines,
+        reason = "kept whole to read against the reference method line by line"
+    )]
+    fn mesh_blocks<R, L, T>(
+        &self,
+        world: &MeshWorld<'_, R, L, T>,
+        origin: [i32; 3],
+        size: [i32; 3],
+        mesh_origin: [i32; 3],
+        seed_position: Option<[i32; 3]>,
     ) -> RegionMesh
     where
         R: Fn(i32, i32, i32) -> Option<i32>,
@@ -765,7 +803,7 @@ impl BlockRenderer {
                     }
                     let info = voxel_world::block::state_or_air(i64::from(state_id));
                     let mut random = voxel_core::random::RandomSource::create(
-                        voxel_world::block::seed(info, position),
+                        voxel_world::block::seed(info, seed_position.unwrap_or(position)),
                     );
                     let mut picked = Vec::new();
                     pick_variants(&drawn.lists, &mut random, |model| picked.push(model));
@@ -822,9 +860,15 @@ impl BlockRenderer {
             atlas,
             origin: mesh_origin,
         };
-        for offset_x in 0..size[0] {
-            for offset_y in 0..size[1] {
-                for offset_z in 0..size[2] {
+        // A moving block draws no fluid (`tesselateBlock` alone).
+        let fluid_size = if seed_position.is_some() {
+            [0; 3]
+        } else {
+            size
+        };
+        for offset_x in 0..fluid_size[0] {
+            for offset_y in 0..fluid_size[1] {
+                for offset_z in 0..fluid_size[2] {
                     fluids.tesselate(
                         [
                             origin[0] + offset_x,

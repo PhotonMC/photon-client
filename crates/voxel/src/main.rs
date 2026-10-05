@@ -17,6 +17,7 @@ mod dolphins;
 mod dropped_items;
 mod end_crystals;
 mod ender_dragons;
+mod falling_blocks;
 mod farm_animals;
 mod felines;
 mod fish;

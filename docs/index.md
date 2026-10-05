@@ -120,6 +120,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](client-entity-metadata-variants-parity-conformance.md)
 - [T42 — Entity gölgesi — client-parity](client-entity-shadow-parity-conformance.md)
 - [T33c — Parlayan göz katmanı (örümcek, mağara örümceği, enderman) — client-parity](client-eyes-layer-parity-conformance.md)
+- [T40d — Düşen blok — server-conformance](client-falling-block-parity-conformance.md)
 - [T32b — Kedi ve ocelot — client-parity](client-feline-parity-conformance.md)
 - [T35c — Morina, somon, tropikal balık, kirpi balığı — client-parity](client-fish-parity-conformance.md)
 - [T39f — Olta şamandırası — client-parity](client-fishing-hook-parity-conformance.md)

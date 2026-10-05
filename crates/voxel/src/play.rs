@@ -17,6 +17,7 @@ use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
 use crate::controls::Controls;
 use crate::dropped_items::world_items;
+use crate::falling_blocks::falling_blocks;
 use crate::fishing_hooks::{HookView, fishing_hooks};
 use crate::gui::Gui;
 use crate::held_items::held_item_vertices;
@@ -633,6 +634,12 @@ impl Play {
         let mut items = world_items(&self.session, &mut self.ground_layers, tints, view);
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
         self.backend.set_ground_items(&items)?;
+        let moving = falling_blocks(&self.session, tints, view);
+        let moving: Vec<_> = moving
+            .iter()
+            .map(|(mesh, centre)| (mesh, *centre))
+            .collect();
+        self.backend.set_moving_blocks(&moving)?;
         Ok(())
     }
 

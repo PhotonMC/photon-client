@@ -639,6 +639,8 @@ pub struct ClientEntity {
     pub type_id: i32,
     pub(crate) tick_count: i32,
     pub(crate) first_tick: bool,
+    /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
+    pub(crate) start_block: (i32, i32, i32),
     pub(crate) x_bits: u64,
     pub(crate) y_bits: u64,
     pub(crate) z_bits: u64,
@@ -2465,6 +2467,11 @@ impl ClientEntity {
             voxel_data::entity_type::name(self.type_id),
             Some("minecraft:arrow" | "minecraft:spectral_arrow" | "minecraft:trident")
         )
+    }
+
+    /// The block the entity was added in (`FallingBlockEntity.getStartPos`).
+    pub fn start_block(&self) -> (i32, i32, i32) {
+        self.start_block
     }
 
     /// Whether this is a lightning bolt (`LightningBolt`).

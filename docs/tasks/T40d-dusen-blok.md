@@ -20,4 +20,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-(boş)
+- Yapıldı: `mesh_moving_block`, `set_moving_blocks`, `falling_blocks.rs`, entity `start_block`. Kayıt: `docs/client-falling-block-parity-conformance.md` (server-conformance).
+- Sapma: Java karşılaştırması yok; `cutoutLeaves`/`forceOpaque` yok; gölge yok.
