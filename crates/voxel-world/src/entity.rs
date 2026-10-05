@@ -742,6 +742,8 @@ pub struct ClientEntity {
     pub(crate) armadillo: Option<crate::armadillo::ArmadilloState>,
     /// A sniffer's state and animation states, made when its data first reaches it.
     pub(crate) sniffer: Option<crate::sniffer::SnifferState>,
+    /// A wither's head turns, targets and invulnerable ticks, made when its data first reaches it.
+    pub(crate) wither: Option<crate::wither::WitherState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -1651,6 +1653,11 @@ impl ClientEntity {
         )
     }
 
+    /// `yBodyRot`.
+    pub fn y_body_rot(&self) -> f32 {
+        f32::from_bits(self.y_body_rot_bits)
+    }
+
     /// `getYHeadRot`.
     pub fn y_head_rot(&self) -> f32 {
         f32::from_bits(self.y_head_rot_bits)
@@ -2394,6 +2401,56 @@ impl ClientEntity {
             .set_mode(mode, tick_count);
     }
 
+    pub(crate) fn is_wither(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:wither")
+    }
+
+    /// A wither's head turns, targets and invulnerable ticks, if it has any.
+    pub fn wither(&self) -> Option<&crate::wither::WitherState> {
+        self.wither.as_ref()
+    }
+
+    pub(crate) fn wither_mut(&mut self) -> &mut crate::wither::WitherState {
+        self.wither.get_or_insert_with(Default::default)
+    }
+
+    /// The ids of the entities a wither's side heads look at, zero for none.
+    pub(crate) fn wither_targets(&self) -> [i32; 2] {
+        self.wither.map_or([0; 2], |wither| wither.targets)
+    }
+
+    /// `WitherBoss.aiStep` before `super.aiStep`: the motion's height settles by
+    /// a factor of 0.6, and a body moving faster than that turns to face where it goes.
+    pub(crate) fn tick_wither_motion(&mut self) {
+        if !self.is_wither() {
+            return;
+        }
+        let (x, y, z) = self.motion();
+        self.motion_y_bits = (y * 0.6).to_bits();
+        if x * x + z * z > 0.05 {
+            let turn = voxel_core::math::mth_atan2(z, x) as f32
+                * (180.0_f32 / std::f64::consts::PI as f32)
+                - 90.0;
+            self.y_rot_bits = turn.to_bits();
+        }
+    }
+
+    /// `WitherBoss.aiStep` after `super.aiStep`: the side heads turn.
+    pub(crate) fn tick_wither_heads(
+        &mut self,
+        targets: [Option<crate::guardian::GuardianTarget>; 2],
+    ) {
+        if !self.is_wither() {
+            return;
+        }
+        let place = crate::wither::WitherPlace {
+            position: self.position(),
+            body_rot: f32::from_bits(self.y_body_rot_bits),
+            scale: self.scale(),
+        };
+        self.wither_mut().tick_heads(place, targets);
+    }
+
     pub(crate) fn is_armadillo(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:armadillo")
     }
@@ -2647,15 +2704,16 @@ impl ClientEntity {
         &mut self,
         living: Option<LivingKind>,
         in_water: Option<bool>,
-        guardian_target: Option<crate::guardian::GuardianTarget>,
+        targets: EntityTargets,
     ) {
         self.tick_frog();
         self.tick_breeze();
+        self.tick_wither_motion();
         if let Some(in_water) = in_water {
             self.living.in_water = in_water;
         }
         self.tick_axolotl();
-        self.tick_guardian(guardian_target);
+        self.tick_guardian(targets.guardian);
         let was_interpolating = self.is_interpolating();
         if living.is_some() {
             self.tick_position_interpolation();
@@ -2667,6 +2725,7 @@ impl ClientEntity {
             self.tick_cube_mob();
             self.tick_shulker();
         }
+        self.tick_wither_heads(targets.wither);
     }
 
     /// `Squid.aiStep`, which turns the body (and with it the entity) in water.
@@ -3289,6 +3348,14 @@ impl ClientEntity {
     pub fn is_fall_flying(&self) -> bool {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
+}
+
+/// The entities a tick looks up in the world: what a guardian's beam aims at and
+/// what a wither's side heads look at.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct EntityTargets {
+    pub guardian: Option<crate::guardian::GuardianTarget>,
+    pub wither: [Option<crate::guardian::GuardianTarget>; 2],
 }
 
 pub struct EntityInput {

@@ -71,6 +71,7 @@ pub mod shulker;
 pub mod sniffer;
 pub mod squid;
 pub mod warden;
+pub mod wither;
 pub mod wolf;
 
 pub use block_entity::*;
@@ -1773,6 +1774,28 @@ impl ClientWorld {
     /// beam's id names, the local player among them.
     fn guardian_target_of(&self, entity_id: i32) -> Option<guardian::GuardianTarget> {
         let id = self.entities.get(&entity_id)?.guardian_attack_target()?;
+        self.living_target(id)
+    }
+
+    /// What a tick of the entity looks up in the world.
+    fn targets_of(&self, entity_id: i32) -> entity::EntityTargets {
+        entity::EntityTargets {
+            guardian: self.guardian_target_of(entity_id),
+            wither: self.wither_targets_of(entity_id),
+        }
+    }
+
+    /// The two entities a wither's side heads look at, by the ids it holds.
+    fn wither_targets_of(&self, entity_id: i32) -> [Option<guardian::GuardianTarget>; 2] {
+        let ids = self
+            .entities
+            .get(&entity_id)
+            .map_or([0; 2], ClientEntity::wither_targets);
+        ids.map(|id| (id > 0).then(|| self.living_target(id)).flatten())
+    }
+
+    /// Where the living entity of an id is and how tall its eyes are, if the world holds one.
+    fn living_target(&self, id: i32) -> Option<guardian::GuardianTarget> {
         if let Some(player) = self.local_player.as_ref().filter(|p| p.id() == id) {
             let dimensions = player.player_dimensions();
             return Some(guardian::GuardianTarget {
@@ -1841,7 +1864,7 @@ impl ClientWorld {
             .is_some_and(|entity| self.should_tick_death(entity));
         let surroundings = self.species_surroundings(entity_id);
         let in_water = self.mob_in_water(entity_id);
-        let guardian_target = self.guardian_target_of(entity_id);
+        let targets = self.targets_of(entity_id);
         let boat_under_water = self.boat_under_water_of(entity_id);
         {
             let entity = self
@@ -1852,7 +1875,7 @@ impl ClientWorld {
             entity.tick_count = entity.tick_count.wrapping_add(1);
             entity.tick_boat(boat_under_water);
             let living = entity.living_kind();
-            entity.tick_ai_step(living, in_water, guardian_target);
+            entity.tick_ai_step(living, in_water, targets);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
             }
@@ -3241,6 +3264,7 @@ impl ClientWorld {
                 creaking: None,
                 armadillo: None,
                 sniffer: None,
+                wither: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4386,6 +4410,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(mode) = armadillo_state_from_metadata(entity.type_id, metadata) {
         entity.armadillo_mut().set_mode(mode);
+    }
+    if entity.is_wither() {
+        wither_data_from_metadata(metadata).apply(entity.wither_mut());
     }
     if entity.is_creaking() {
         creaking_data_from_metadata(metadata).apply(entity.creaking_mut());

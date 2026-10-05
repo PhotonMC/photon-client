@@ -1731,6 +1731,19 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("wither")) {
+                var state = new net.minecraft.client.renderer.entity.state.WitherRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.bodyRot = Oracle.f32(row, "body_rot");
+                state.xHeadRots[0] = Oracle.f32(row, "x_head_0");
+                state.xHeadRots[1] = Oracle.f32(row, "x_head_1");
+                state.yHeadRots[0] = Oracle.f32(row, "y_head_0");
+                state.yHeadRots[1] = Oracle.f32(row, "y_head_1");
+                var wither = new net.minecraft.client.model.monster.wither.WitherBossModel(root);
+                wither.setupAnim(state);
+                model = wither;
             } else if (id.contains("sniffer")) {
                 var state = new net.minecraft.client.renderer.entity.state.SnifferRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

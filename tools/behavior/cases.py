@@ -14721,6 +14721,29 @@ def movement_item_cases():
                 {"tick": 20, "type": "sniffer_data", "state": 5}], extras=["sniffer"]),
         living("sniffer-searches", "sniffer", 30, [{"tick": 4, "type": "sniffer_data", "state": 4}],
                extras=["sniffer"]),
+        # A wither's side heads turn after the entities its data names (at most 40 degrees up or down
+        # and 10 sideways a tick) or after its body; it settles its upward motion and turns to face
+        # fast horizontal motion; the invulnerable ticks come from the data.
+        living("wither-idle", "wither", 20, [], extras=["wither"], player_x=30.5),
+        beside(living("wither-looks-at-a-target", "wither", 40,
+                      [{"tick": 2, "type": "wither_data", "target_b": 41, "target_c": 41,
+                        "invulnerable": 150}], extras=["wither"], player_x=30.5),
+               "pig", 11.5, 66.0, 5.5),
+        beside(living("wither-loses-its-target", "wither", 40,
+                      [{"tick": 2, "type": "wither_data", "target_b": 41},
+                       {"tick": 14, "type": "wither_data", "target_b": 0}],
+                      extras=["wither"], player_x=30.5), "pig", -9.5, 60.0, -7.5),
+        beside(living("wither-target-above", "wither", 30,
+                      [{"tick": 2, "type": "wither_data", "target_c": 41}], extras=["wither"],
+                      player_x=30.5), "pig", 0.5, 74.0, 0.5),
+        living("wither-turns-with-its-motion", "wither", 30,
+               [{"tick": 3, "type": "entity_motion", "x": float_bits(0.4, "f64"),
+                 "y": float_bits(0.5, "f64"), "z": float_bits(-0.3, "f64")}],
+               extras=["wither"], player_x=30.5),
+        living("wither-slow-motion", "wither", 30,
+               [{"tick": 3, "type": "entity_motion", "x": float_bits(0.1, "f64"),
+                 "y": float_bits(0.5, "f64"), "z": float_bits(0.1, "f64")}],
+               extras=["wither"], player_x=30.5),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15157,6 +15180,7 @@ def entity_cases():
     yield from entity_creaking_cases()
     yield from entity_armadillo_cases()
     yield from entity_sniffer_cases()
+    yield from entity_wither_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16568,6 +16592,28 @@ def entity_sniffer_cases():
                  sniffer(layer, "scenting-late", age=260.0, scenting=40),
                  sniffer(layer, "digging-walking", age=70.0, walk=(8.1, 0.05), digging=40)]
     yield {"case_id": "entity/sniffer-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_wither_cases():
+    """The wither's two models (the body, the armor) posed by the reference's own
+    `WitherBossModel.setupAnim`: the middle head's look, the side heads' turns relative to the body,
+    and the ribcage's and the tail's sway over the age."""
+    def wither(layer, label, age=37.5, look=(0.0, 0.0), body=0.0, heads=((0.0, 0.0), (0.0, 0.0))):
+        return {"label": f"wither-{layer}-{label}", "layer": f"minecraft:wither#{layer}",
+                "age_in_ticks": float_bits(age), "y_rot": float_bits(look[0]),
+                "x_rot": float_bits(look[1]), "body_rot": float_bits(body),
+                "x_head_0": float_bits(heads[0][0]), "y_head_0": float_bits(heads[0][1]),
+                "x_head_1": float_bits(heads[1][0]), "y_head_1": float_bits(heads[1][1])}
+    rows = []
+    for layer in ("main", "armor"):
+        rows += [wither(layer, "nothing"),
+                 wither(layer, "later", age=201.75),
+                 wither(layer, "look", look=(23.5, -14.0)),
+                 wither(layer, "heads", body=40.0, heads=((12.0, 70.0), (-25.0, 10.0))),
+                 wither(layer, "everything", age=91.25, look=(-31.0, 17.5), body=-120.0,
+                        heads=((30.0, -100.0), (-5.0, 45.5)))]
+    yield {"case_id": "entity/wither-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

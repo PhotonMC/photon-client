@@ -605,6 +605,34 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// A wither's synced data, each field when the data holds it.
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct WitherData {
+    targets: [Option<i32>; 2],
+    invulnerable_ticks: Option<i32>,
+}
+
+impl WitherData {
+    pub(crate) fn apply(self, state: &mut crate::wither::WitherState) {
+        for (target, new) in state.targets.iter_mut().zip(self.targets) {
+            *target = new.unwrap_or(*target);
+        }
+        state.invulnerable_ticks = self.invulnerable_ticks.unwrap_or(state.invulnerable_ticks);
+    }
+}
+
+/// `WitherBoss.DATA_TARGET_B`, `DATA_TARGET_C` and `DATA_ID_INV`.
+pub(crate) fn wither_data_from_metadata(metadata: &[u8]) -> WitherData {
+    use crate::wither::{INVULNERABLE_DATA_ID, TARGET_B_DATA_ID, TARGET_C_DATA_ID};
+    WitherData {
+        targets: [
+            metadata_int_value(metadata, TARGET_B_DATA_ID),
+            metadata_int_value(metadata, TARGET_C_DATA_ID),
+        ],
+        invulnerable_ticks: metadata_int_value(metadata, INVULNERABLE_DATA_ID),
+    }
+}
+
 /// A sniffer's synced state (`Sniffer.DATA_STATE`), when the data holds it.
 pub(crate) fn sniffer_state_from_metadata(
     type_id: i32,

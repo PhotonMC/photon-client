@@ -10,9 +10,9 @@ use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
 use voxel_render::mob_model::{
     AllayRenderState, BatRenderState, BreezeRenderState, CreakingRenderState, EndermanState,
     MobModel, MobPlacement, ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState,
-    WardenRenderState, creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_emissive,
-    mob_vertices_emissive_faded, mob_vertices_glow, mob_vertices_scrolled, mob_vertices_swirl,
-    placement_pose,
+    WardenRenderState, WitherRenderState, creeper_scale, creeper_white_overlay, mob_vertices,
+    mob_vertices_emissive, mob_vertices_emissive_faded, mob_vertices_glow, mob_vertices_scrolled,
+    mob_vertices_swirl, placement_pose,
 };
 use voxel_render::player_model::{Arm, Part, PlayerRenderState};
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
@@ -55,6 +55,8 @@ enum Pose {
     Warden,
     /// `CreakingModel`, with its eyes lit while it is active.
     Creaking,
+    /// `WitherBossModel`, scaled, lit fully, with its armor's swirl while it is hurt.
+    Wither,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -67,7 +69,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 16] = [
+const MONSTERS: [Monster; 17] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -180,6 +182,13 @@ const MONSTERS: [Monster; 16] = [
         pose: Pose::Creaking,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:wither",
+        layer: "minecraft:wither#main",
+        texture: "entity/wither/wither",
+        pose: Pose::Wither,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
 
 /// The wind and the eyes of a breeze (`BreezeWindLayer`, `BreezeEyesLayer`): their
@@ -202,6 +211,11 @@ const WARDEN_HEART: (&str, &str) = ("minecraft:warden#heart", "entity/warden/war
 /// A creaking's eyes (`CreakingRenderer`): their model layer and texture.
 const CREAKING_EYES: (&str, &str) = ("minecraft:creaking#eyes", "entity/creaking/creaking_eyes");
 
+/// A wither's armor (`WitherArmorLayer`) and the texture it wears while it is
+/// invulnerable (`WitherBossRenderer.getTextureLocation`).
+const WITHER_ARMOR: (&str, &str) = ("minecraft:wither#armor", "entity/wither/wither_armor");
+const WITHER_INVULNERABLE_TEXTURE: &str = "entity/wither/wither_invulnerable";
+
 /// The texture a vex charges in (`VexRenderer.getTextureLocation`).
 const VEX_CHARGING_TEXTURE: &str = "entity/illager/vex_charging";
 
@@ -222,7 +236,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
         .chain(voxel_world::parrot::VARIANT_TEXTURES)
         .chain([BREEZE_WIND.1, BREEZE_EYES.1])
-        .chain([CREAKING_EYES.1])
+        .chain([CREAKING_EYES.1, WITHER_ARMOR.1, WITHER_INVULNERABLE_TEXTURE])
         .chain([
             WARDEN_BIOLUMINESCENT.1,
             WARDEN_SPOTS_1,
@@ -233,10 +247,13 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 
 /// The texture a monster wears now: a ghast's mouth open to charge, a vex charging,
 /// a parrot's variant, else its own.
-fn texture_of(monster: &Monster, entity: &ClientEntity) -> &'static str {
+fn texture_of(monster: &Monster, entity: &ClientEntity, partial: f32) -> &'static str {
     match monster.pose {
         Pose::Ghast if entity.is_ghast_charging() => GHAST_SHOOTING_TEXTURE,
         Pose::Vex if entity.is_vex_charging() => VEX_CHARGING_TEXTURE,
+        Pose::Wither if wither_is_invulnerable_texture(entity, partial) => {
+            WITHER_INVULNERABLE_TEXTURE
+        }
         Pose::Parrot => voxel_world::parrot::variant_texture(entity.parrot_variant()),
         _ => monster.texture,
     }
@@ -363,6 +380,32 @@ fn warden_layers(
     vertices
 }
 
+/// `WitherBossRenderer.extractRenderState`: what is left of the invulnerable
+/// time, less the partial tick, or zero.
+fn wither_invulnerable_ticks(entity: &ClientEntity, partial: f32) -> f32 {
+    let ticks = entity.wither().map_or(0, |own| own.invulnerable_ticks());
+    if ticks > 0 {
+        ticks as f32 - partial
+    } else {
+        0.0
+    }
+}
+
+/// `WitherBossRenderer.getTextureLocation`: the pale texture while it is
+/// invulnerable, flashing the other for a tick in five over the last 80.
+fn wither_is_invulnerable_texture(entity: &ClientEntity, partial: f32) -> bool {
+    let ticks = wither_invulnerable_ticks(entity, partial).floor() as i32;
+    ticks > 0 && (ticks > 80 || ticks / 5 % 2 != 1)
+}
+
+/// `WitherBoss.isPowered`: half its health or less.
+fn wither_is_powered(entity: &ClientEntity) -> bool {
+    match (entity.health(), entity.max_health()) {
+        (Some(health), Some(max)) => health <= max / 2.0,
+        _ => false,
+    }
+}
+
 /// `CreakingRenderer.extractRenderState`: the look, the walk, and the animation
 /// states the creaking runs; what a torn-down one does to the renderer's own
 /// state is in [`creaking_tear_down`].
@@ -411,9 +454,37 @@ fn glowing_layers(
     models: &mut MobModels,
     textures: &EntityTextures,
     (pose, entity, look, partial): (Pose, &ClientEntity, QuadrupedState, f32),
-    (placed, glow): (&MobPlacement, &mut Vec<Vertex>),
+    (placed, glow, swirl): (&MobPlacement, &mut Vec<Vertex>, &mut Vec<Vertex>),
 ) -> Vec<Vertex> {
     match pose {
+        Pose::Wither => {
+            // `WitherArmorLayer`: the armor's swirl while it is hurt, posed as the body is.
+            if wither_is_powered(entity)
+                && let (Some(rect), Some(armor)) =
+                    (textures.rect(WITHER_ARMOR.1), models.model(WITHER_ARMOR.0))
+            {
+                let age = entity.tick_count() as f32 + partial;
+                let own = entity.wither().copied().unwrap_or_default();
+                armor.setup_wither(&WitherRenderState {
+                    age_in_ticks: age,
+                    y_rot: look.head_y_rot,
+                    x_rot: look.x_rot,
+                    body_rot: placed.body_rot,
+                    x_head_rots: own.x_rot_heads(),
+                    y_head_rots: own.y_rot_heads(),
+                });
+                // `WitherArmorLayer.xOffset`.
+                let x = voxel_core::math::mth_cos_f64(f64::from(age * 0.02)) * 3.0 % 1.0;
+                swirl.extend(mob_vertices_swirl(
+                    armor,
+                    placed,
+                    rect,
+                    [x, age * 0.01 % 1.0],
+                    POWER_COLOUR as u32,
+                ));
+            }
+            Vec::new()
+        }
         Pose::Creaking => {
             // The eyes: the same posed model, drawn unlit when they glow.
             let state = creaking_state(entity, look, partial);
@@ -480,6 +551,35 @@ fn pose_parrot(model: &mut MobModel, entity: &ClientEntity, look: QuadrupedState
         flap_angle: own.map_or(0.0, |own| own.flap_angle(partial)),
         pose,
     });
+}
+
+/// `WitherBossModel.setupAnim`, and what `WitherBossRenderer` adds to the pose: twice the
+/// size (less while it is invulnerable), and a block light of fifteen.
+fn pose_wither(
+    model: &mut MobModel,
+    entity: &ClientEntity,
+    (look, snapshot, partial): (QuadrupedState, &EntitySnapshot, f32),
+    placed: &mut MobPlacement,
+) {
+    let invulnerable = wither_invulnerable_ticks(entity, partial);
+    let own = entity.wither().copied().unwrap_or_default();
+    model.setup_wither(&WitherRenderState {
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        y_rot: look.head_y_rot,
+        x_rot: look.x_rot,
+        body_rot: snapshot.body_yaw,
+        x_head_rots: own.x_rot_heads(),
+        y_head_rots: own.y_rot_heads(),
+    });
+    // `WitherBossRenderer.scale` and `getBlockLightLevel`.
+    let scale = 2.0
+        - if invulnerable > 0.0 {
+            invulnerable / 220.0 * 0.5
+        } else {
+            0.0
+        };
+    placed.hook_scale = Some([scale; 3]);
+    placed.light = (placed.light & !0xFFFF) | (15 << 4);
 }
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
@@ -551,6 +651,7 @@ fn pose_monster(
         }
         Pose::Breeze => model.setup_breeze(&breeze_state(entity, partial)),
         Pose::Warden => model.setup_warden(&warden_state(entity, look, partial)),
+        Pose::Wither => pose_wither(model, entity, (look, snapshot, partial), placed),
         Pose::Creaking => {
             model.setup_creaking(&creaking_state(entity, look, partial));
             creaking_tear_down(entity, placed);
@@ -623,7 +724,7 @@ pub fn remote_monsters(
                 models.shake.next_gaussian() * spread,
             ]
         });
-        let texture = texture_of(monster, entity);
+        let texture = texture_of(monster, entity, partial);
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(texture),
@@ -664,7 +765,7 @@ pub fn remote_monsters(
             models,
             textures,
             (monster.pose, entity, look, partial),
-            (&placed, &mut glow),
+            (&placed, &mut glow, &mut swirl),
         ));
         // A charged creeper's swirl: the armor model, posed as the creeper is.
         if monster.pose == Pose::Creeper

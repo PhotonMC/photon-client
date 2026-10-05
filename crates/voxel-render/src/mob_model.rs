@@ -282,6 +282,19 @@ pub struct SnifferRenderState {
     pub scenting: voxel_world::animation_state::AnimationState,
 }
 
+/// What a wither's models (the body and its armor) are posed from
+/// (`WitherRenderState`): the middle head's look, the body's turn, and the side
+/// heads' turns, all in degrees.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WitherRenderState {
+    pub age_in_ticks: f32,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub body_rot: f32,
+    pub x_head_rots: [f32; 2],
+    pub y_head_rots: [f32; 2],
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -2108,6 +2121,36 @@ impl MobModel {
             ("Sniffer.SNIFFER_SNIFFSNIFF", state.scenting),
         ] {
             self.animate_state(name, running, state.age_in_ticks);
+        }
+    }
+
+    /// `WitherBossModel.setupAnim`: the side heads turn after their own targets
+    /// (relative to the body), the ribcage and the tail sway, and the middle
+    /// head takes the look. The armor's layer has the same parts.
+    pub fn setup_wither(&mut self, state: &WitherRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        for (name, index) in [("right_head", 0), ("left_head", 1)] {
+            if let Some(head) = self.root.child_mut(name) {
+                head.y_rot = (state.y_head_rots[index] - state.body_rot) * degrees;
+                head.x_rot = state.x_head_rots[index] * degrees;
+            }
+        }
+        let anim = mth_cos_f64(f64::from(state.age_in_ticks * 0.1));
+        let ribcage_x_rot = (0.065 + 0.05 * anim) * pi;
+        if let Some(ribcage) = self.root.child_mut("ribcage") {
+            ribcage.x_rot = ribcage_x_rot;
+        }
+        if let Some(tail) = self.root.child_mut("tail") {
+            tail.x = -2.0;
+            tail.y = 6.9 + mth_cos_f64(f64::from(ribcage_x_rot)) * 10.0;
+            tail.z = -0.5 + mth_sin_f64(f64::from(ribcage_x_rot)) * 10.0;
+            tail.x_rot = (0.265 + 0.1 * anim) * pi;
+        }
+        if let Some(head) = self.root.child_mut("center_head") {
+            head.y_rot = state.y_rot * degrees;
+            head.x_rot = state.x_rot * degrees;
         }
     }
 

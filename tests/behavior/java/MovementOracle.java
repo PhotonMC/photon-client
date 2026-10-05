@@ -1006,6 +1006,18 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "wither_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        for (var field : new String[][] {{"target_b", "DATA_TARGET_B"}, {"target_c", "DATA_TARGET_C"},
+                                {"invulnerable", "DATA_ID_INV"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(net.minecraft.world.entity.boss.wither.WitherBoss.class, field[1],
+                                    event.get(field[0]).getAsInt()));
+                            }
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "sniffer_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         data.add(wolfData(net.minecraft.world.entity.animal.sniffer.Sniffer.class, "DATA_STATE",
@@ -1340,6 +1352,16 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "wither" -> {
+                            var wither = (net.minecraft.world.entity.boss.wither.WitherBoss) entity;
+                            described.addProperty("invulnerable", wither.getInvulnerableTicks());
+                            for (int i = 0; i < 2; i++) {
+                                described.addProperty("x_head_" + i, Oracle.bits(wither.getHeadXRots()[i]));
+                                described.addProperty("y_head_" + i, Oracle.bits(wither.getHeadYRots()[i]));
+                            }
+                            described.addProperty("y_rot", Oracle.bits(wither.getYRot()));
+                            described.addProperty("y_body_rot", Oracle.bits(wither.yBodyRot));
                         }
                         case "sniffer" -> {
                             var sniffer = (net.minecraft.world.entity.animal.sniffer.Sniffer) entity;

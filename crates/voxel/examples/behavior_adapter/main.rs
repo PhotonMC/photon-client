@@ -18782,6 +18782,22 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "wither_data" => {
+                        // `WitherBoss`'s int data: the side heads' targets and the invulnerable ticks.
+                        let mut data = Vec::new();
+                        for (key, id) in [
+                            ("target_b", voxel_world::wither::TARGET_B_DATA_ID),
+                            ("target_c", voxel_world::wither::TARGET_C_DATA_ID),
+                            ("invulnerable", voxel_world::wither::INVULNERABLE_DATA_ID),
+                        ] {
+                            if event[key].is_i64() {
+                                data.extend([id, 1]);
+                                voxel_core::wire::write_varint(i32_field(event, key)?, &mut data);
+                            }
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "sniffer_data" => {
                         // `Sniffer.DATA_STATE`: serializer 35, then the state's id.
                         let mut data = vec![voxel_world::sniffer::STATE_DATA_ID, 35];
@@ -19135,6 +19151,16 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "wither" => {
+                        let state = entity.wither().copied().unwrap_or_default();
+                        described["invulnerable"] = json!(state.invulnerable_ticks());
+                        for i in 0..2 {
+                            described[format!("x_head_{i}")] = json!(hex(state.x_rot_heads()[i]));
+                            described[format!("y_head_{i}")] = json!(hex(state.y_rot_heads()[i]));
+                        }
+                        described["y_rot"] = json!(hex(entity.rotation().0));
+                        described["y_body_rot"] = json!(hex(entity.y_body_rot()));
                     }
                     "sniffer" => {
                         let state = entity.sniffer().copied().unwrap_or_default();
@@ -20824,6 +20850,16 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 slide_back: started("slide_back"),
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
+            });
+        } else if id.contains("wither") {
+            use voxel_render::mob_model::WitherRenderState;
+            model.setup_wither(&WitherRenderState {
+                age_in_ticks: bits("age_in_ticks")?,
+                y_rot: bits("y_rot")?,
+                x_rot: bits("x_rot")?,
+                body_rot: bits("body_rot")?,
+                x_head_rots: [bits("x_head_0")?, bits("x_head_1")?],
+                y_head_rots: [bits("y_head_0")?, bits("y_head_1")?],
             });
         } else if id.contains("sniffer") {
             use voxel_render::mob_model::SnifferRenderState;

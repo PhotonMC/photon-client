@@ -11,4 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `setup_wither` (gövde ve zırh katmanı), `voxel-world/wither.rs` (veri 16–19, yan başların hedefe dönüşü, `rotlerp`), `tick_wither_motion` (hareketle yüz çevirme), `monsters.rs`'e wither (ölçek, ışık 15, dokunulmazlık dokusu, can yarıya inince zırh kaydırması). Kayıt: `docs/client-wither-parity-conformance.md`.
+- Hata dersi: `atan2·180F/(float)PI` javac'ta tek float sabitine katlanır; kaynak gruplaması yanıltır (1 ulp).
+- Sapma: parçacık, ses, davranış yok; hedef yalnız canlı varlıklar; canlı gözlem yapılmadı.
