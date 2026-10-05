@@ -1691,7 +1691,7 @@ public final class EntityOracle {
             var row = element.getAsJsonObject();
             String id = row.get("layer").getAsString();
             var root = bakedLayer(id);
-            net.minecraft.client.model.EntityModel<?> model;
+            net.minecraft.client.model.Model<?> model;
             if (id.contains("blaze")) {
                 var state = new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");
@@ -1731,6 +1731,10 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("trident")) {
+                var trident = new net.minecraft.client.model.object.projectile.TridentModel(root);
+                trident.setupAnim(net.minecraft.util.Unit.INSTANCE);
+                model = trident;
             } else if (id.contains("arrow")) {
                 var state = new net.minecraft.client.renderer.entity.state.ArrowRenderState();
                 state.shake = Oracle.f32(row, "shake");
@@ -2153,12 +2157,20 @@ public final class EntityOracle {
             state.xRot = Oracle.f32(row, "x_rot");
             state.yRot = Oracle.f32(row, "y_rot");
             state.shake = Oracle.f32(row, "shake");
-            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.SpectralArrowRenderer.class);
+            boolean trident = row.has("trident");
+            var tridentState = new net.minecraft.client.renderer.entity.state.ThrownTridentRenderState();
+            tridentState.xRot = state.xRot;
+            tridentState.yRot = state.yRot;
+            var renderer = UNSAFE.allocateInstance(trident ? net.minecraft.client.renderer.entity.ThrownTridentRenderer.class
+                : net.minecraft.client.renderer.entity.SpectralArrowRenderer.class);
             var poses = new JsonArray();
             var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
                 EntityOracle.class.getClassLoader(),
                 new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
                 (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        return proxy;
+                    }
                     if (method.getName().equals("submitModel")) {
                         var matrix = new float[16];
                         ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
@@ -2172,7 +2184,11 @@ public final class EntityOracle {
                 });
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
-            ((net.minecraft.client.renderer.entity.SpectralArrowRenderer) renderer).submit(state, stack, collector, null);
+            if (trident) {
+                ((net.minecraft.client.renderer.entity.ThrownTridentRenderer) renderer).submit(tridentState, stack, collector, null);
+            } else {
+                ((net.minecraft.client.renderer.entity.SpectralArrowRenderer) renderer).submit(state, stack, collector, null);
+            }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("poses", poses);

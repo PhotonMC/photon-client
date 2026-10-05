@@ -18,6 +18,19 @@ pub fn arrow_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
     pose
 }
 
+/// `ThrownTridentRenderer.submit` up to the model: turned about the vertical to point where it
+/// goes, then tipped to stand along its flight (the model stands upright, an arrow's lies down).
+pub fn trident_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
+    let mut pose = *base;
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        y_rot - 90.0,
+    )));
+    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+        x_rot + 90.0,
+    )));
+    pose
+}
+
 /// The triangles a pipeline that culls back faces (`entityCutoutCull`) draws: those whose
 /// face looks toward the camera. `vertices` are the six triangle corners of each quad that
 /// the models make, each carrying its normal in its tint; a model of flat planes (an arrow's)

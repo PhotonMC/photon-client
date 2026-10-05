@@ -16895,6 +16895,16 @@ def entity_arrow_cases():
                  pose("up", 30.0, 60.0), pose("down", 150.0, -75.0), pose("wrapped", 400.0, 10.0),
                  pose("offset", 12.5, -33.3, at=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/arrow-pose", "family": "entity", "operation": "arrow_pose", "rows": pose_rows}
+    # The trident: its model (nothing moves it) and where its renderer draws it from the turns it was sent.
+    yield {"case_id": "entity/trident-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": "trident", "layer": "minecraft:trident#main"}]}
+    trident_rows = []
+    for row in pose_rows:
+        copy = dict(row)
+        copy["label"] = row["label"].replace("arrow-", "trident-", 1)
+        copy["trident"] = True
+        trident_rows.append(copy)
+    yield {"case_id": "entity/trident-pose", "family": "entity", "operation": "arrow_pose", "rows": trident_rows}
 
 
 def entity_thrown_item_cases():

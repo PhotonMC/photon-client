@@ -2391,6 +2391,11 @@ impl MobModel {
         }
     }
 
+    /// `TridentModel` has no animation: its parts stay where the mesh puts them.
+    pub fn setup_trident(&mut self) {
+        self.root.reset();
+    }
+
     /// `ArrowModel.setupAnim`: a stuck arrow shakes about its length for a few ticks.
     pub fn setup_arrow(&mut self, state: &ArrowRenderState) {
         self.root.reset();

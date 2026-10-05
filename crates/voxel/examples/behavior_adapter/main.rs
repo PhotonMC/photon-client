@@ -21064,6 +21064,8 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
             });
+        } else if id.contains("trident") {
+            model.setup_trident();
         } else if id.contains("arrow") {
             use voxel_render::mob_model::ArrowRenderState;
             model.setup_arrow(&ArrowRenderState {
@@ -21477,7 +21479,11 @@ fn arrow_pose_result(request: &Value) -> Result<Value, String> {
         };
         let mut base = Pose::default();
         base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
-        let pose = arrow_pose(&base, bits("y_rot")?, bits("x_rot")?);
+        let pose = if row.get("trident").is_some() {
+            voxel_render::projectile::trident_pose(&base, bits("y_rot")?, bits("x_rot")?)
+        } else {
+            arrow_pose(&base, bits("y_rot")?, bits("x_rot")?)
+        };
         out.push(json!({"label": row["label"], "poses": [matrix_bits(&pose)]}));
     }
     Ok(json!({"rows": out}))
