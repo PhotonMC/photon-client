@@ -162,7 +162,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | açık |
 | [PLAN-M6](PLAN-M3d.md) | Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl | S | – | açık |
 | PLAN-M7 | Ses: bağımlılık kararı ([karar](../audio-backend-decision.md): çıkış `cpal`, çözücü `lewton`) ve görevlere bölme | S | – | bitti |
-| [T60](T60-sounds-json-secim.md) | `sounds.json` çözümü ve ağırlıklı ses seçimi | M | – | bitti (HASH) |
+| [T60](T60-sounds-json-secim.md) | `sounds.json` çözümü ve ağırlıklı ses seçimi | M | – | bitti (bcbec5b0) |
 | [T61](T61-ses-paketleri-kanal.md) | `Sound`/`SoundEntity`/`StopSound` paketleri ve `SoundEngine` kanal parametreleri | M | T60 | açık |
 | [T62](T62-ogg-vorbis-cozumu.md) | Ogg/Vorbis çözümü (`lewton`, JOrbis ile PCM karşılaştırması) | M | – | açık |
 | [T63](T63-ses-cikisi-cpal.md) | Ses çıkışı (`cpal`): kanal havuzu, sönüm, perde, miks | L | T61, T62 | açık |
