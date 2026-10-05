@@ -119,7 +119,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T37f2](T37f2-sniffer.md) | Sniffer ve yavrusu | M | T37f | bitti (2bb2d981) |
 | [T37g](T37g-wither.md) | Wither | M | T37, T33d | bitti (573cb415) |
 | [T37h](T37h-ender-ejderhasi.md) | Ender ejderhası | L | T37 | bölündü (84b757f8) |
-| [T37h2](T37h2-ejderha-olumu.md) | Ender ejderhasının ölüm çizimi (çözünme, ışınlar) | M | T37h | açık |
+| [T37h2](T37h2-ejderha-olumu.md) | Ender ejderhasının ölüm çizimi (çözünme, ışınlar) | M | T37h | bitti (1ae37eaf) |
 | [T37h3](T37h3-ejderha-kristal-isini.md) | Ender kristali ve ejderhanın kristal ışını | M | T37h | açık |
 | [T37h4](T37h4-ejderha-parcalari.md) | Ender ejderhasının parçaları (vuruş kutuları, seçilebilirlik) | M | T37h | açık |
 | [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti (21875028) |
