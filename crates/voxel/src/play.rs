@@ -133,6 +133,8 @@ struct Play {
     accumulated: Duration,
     last_frame: Instant,
     ticks: u64,
+    /// The sound packets that have arrived.
+    sounds_heard: usize,
     frames: u64,
     profile: Option<FrameProfile>,
 }
@@ -292,6 +294,7 @@ impl Play {
             accumulated: Duration::ZERO,
             last_frame: Instant::now(),
             ticks: 0,
+            sounds_heard: 0,
             frames: 0,
             profile: FrameProfile::from_env(),
         })
@@ -352,6 +355,8 @@ impl Play {
                 self.sections.clear();
                 self.sky.reset();
             }
+            // The sound engine is not built yet: the sounds the server asks for are counted.
+            self.sounds_heard += self.session.take_sounds().len();
             let script_done = self.run_ticks()?;
             let ticked = Instant::now();
             if let Flow::Stop = self.draw([frame_start, ticked], frame_ticks, script_done)? {
@@ -359,11 +364,12 @@ impl Play {
             }
         }
         println!(
-            "play_frames={} play_ticks={} entities={} ticking={}",
+            "play_frames={} play_ticks={} entities={} ticking={} sounds={}",
             self.frames,
             self.ticks,
             self.session.entity_count(),
-            self.session.ticking_entity_count()
+            self.session.ticking_entity_count(),
+            self.sounds_heard
         );
         Ok(())
     }

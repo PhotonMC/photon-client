@@ -21682,6 +21682,73 @@ fn sound_registry_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `packets` (the sound family): the three sound packets read from the bytes a scenario gives.
+fn sound_packets_result(request: &Value) -> Result<Value, String> {
+    use voxel_game::sounds::SoundHolder;
+    use voxel_net::connection::{
+        read_sound_entity_packet, read_sound_packet, read_stop_sound_packet,
+    };
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let wide = |value: f64| format!("{:016x}", value.to_bits());
+    let holder = |out: &mut Value, sound: &SoundHolder| match sound {
+        SoundHolder::Registered(id) => out["registered"] = json!(id),
+        SoundHolder::Direct {
+            location,
+            fixed_range,
+        } => {
+            out["direct"] = json!(location);
+            if let Some(range) = fixed_range {
+                out["range"] = json!(bits(*range));
+            }
+        }
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let hex = row["hex"].as_str().ok_or("hex")?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|index| u8::from_str_radix(&hex[2 * index..2 * index + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| error.to_string())?;
+        let mut input = bytes.as_slice();
+        let mut described = json!({"label": row["label"]});
+        let read = match row["kind"].as_str().ok_or("kind")? {
+            "sound" => read_sound_packet(&mut input).map(|packet| {
+                holder(&mut described, &packet.sound);
+                described["source"] = json!(packet.source.ordinal());
+                described["x"] = json!(wide(packet.position.0));
+                described["y"] = json!(wide(packet.position.1));
+                described["z"] = json!(wide(packet.position.2));
+                described["volume"] = json!(bits(packet.volume));
+                described["pitch"] = json!(bits(packet.pitch));
+                described["seed"] = json!(packet.seed.to_string());
+            }),
+            "sound_entity" => read_sound_entity_packet(&mut input).map(|packet| {
+                holder(&mut described, &packet.sound);
+                described["source"] = json!(packet.source.ordinal());
+                described["entity"] = json!(packet.entity_id);
+                described["volume"] = json!(bits(packet.volume));
+                described["pitch"] = json!(bits(packet.pitch));
+                described["seed"] = json!(packet.seed.to_string());
+            }),
+            _ => read_stop_sound_packet(&mut input).map(|packet| {
+                if let Some(name) = &packet.name {
+                    described["name"] = json!(name);
+                }
+                if let Some(source) = packet.source {
+                    described["source"] = json!(source.ordinal());
+                }
+            }),
+        };
+        if read.is_ok() {
+            described["trailing"] = json!(input.len());
+        } else {
+            described = json!({"label": row["label"], "error": true});
+        }
+        out.push(described);
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `primed_tnt_pose`: the pose and overlay a block of primed tnt is drawn with.
 fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -24744,7 +24811,17 @@ fn respond(request: Value) -> Result<Value, String> {
         "movement" => movement_result(&request)?,
         "entity" => entity_result(&request)?,
         "gui" => gui::gui_result(&request)?,
-        "sound" => sound_registry_result(&request)?,
+        "sound" => match string(&request, "operation")? {
+            "sound_events" => {
+                let rows: Vec<Value> = (0..)
+                    .map_while(|id| voxel_data::sound_event::name(id).map(|name| (id, name)))
+                    .map(|(id, name)| json!({"label": name, "id": id}))
+                    .collect();
+                json!({"rows": rows})
+            }
+            "packets" => sound_packets_result(&request)?,
+            _ => sound_registry_result(&request)?,
+        },
         _ => return Err("unknown behavior family".into()),
     };
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))

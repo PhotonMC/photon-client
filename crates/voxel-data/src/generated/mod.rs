@@ -13,5 +13,6 @@ pub mod entity_variants;
 pub mod item;
 pub mod painting_variants;
 pub mod sheep_colors;
+pub mod sound_events;
 pub mod villager_registries;
 pub mod wolf_variants;

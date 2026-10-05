@@ -95,6 +95,8 @@ pub struct PlaySession {
     death: Option<voxel_game::text::Component>,
     /// Swing packets sent, for scripted runs to report.
     swings: u32,
+    /// The sound packets since the last [`Self::take_sounds`].
+    sounds: Vec<voxel_game::sounds::SoundCommand>,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
     aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.
@@ -207,6 +209,7 @@ impl PlaySession {
             disconnect: None,
             death: None,
             swings: 0,
+            sounds: Vec::new(),
             aimed_entity: None,
             hardcore: false,
             health_received: false,
@@ -385,6 +388,12 @@ impl PlaySession {
     /// The player's game mode, as the server last set it.
     pub fn game_mode(&self) -> ClientPlayerGameMode {
         self.game_mode
+    }
+
+    /// The sound packets that arrived since the last call, in order (`handleSoundEvent`,
+    /// `handleSoundEntityEvent`, `handleStopSoundEvent`): the sound engine's to carry out.
+    pub fn take_sounds(&mut self) -> Vec<voxel_game::sounds::SoundCommand> {
+        std::mem::take(&mut self.sounds)
     }
 
     /// How many swings the session has sent.
@@ -1643,6 +1652,28 @@ impl PlaySession {
                 self.status.health = packet.health;
                 self.status.food = packet.food;
                 self.status.saturation = packet.saturation;
+            }
+            PLAY_CLIENTBOUND_SOUND_PACKET_ID
+            | PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID
+            | PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID => {
+                let mut input = payload;
+                let command = match packet_id {
+                    PLAY_CLIENTBOUND_SOUND_PACKET_ID => {
+                        voxel_game::sounds::SoundCommand::At(read_sound_packet(&mut input)?)
+                    }
+                    PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID => {
+                        voxel_game::sounds::SoundCommand::FollowingEntity(read_sound_entity_packet(
+                            &mut input,
+                        )?)
+                    }
+                    _ => {
+                        voxel_game::sounds::SoundCommand::Stop(read_stop_sound_packet(&mut input)?)
+                    }
+                };
+                if !input.is_empty() {
+                    return Err(ConnectionError::Codec("sound packet trailing payload"));
+                }
+                self.sounds.push(command);
             }
             PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID => {
                 let (id, message) = parse_player_combat_kill_packet(payload)?;

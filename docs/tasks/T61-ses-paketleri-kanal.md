@@ -24,3 +24,5 @@ Gerçek çıkış (T63), çözme (T62), oyun tetikleri (T64).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Yapıldı: üç paketin çözümü ve ses olayı tablosu (oracle'da gerçek codec'ler, `sound` ailesi), oturum `take_sounds`. Kayıt: `docs/client-sound-packets-parity-conformance.md`.
+- Kalan: `SoundEngine.play/stop/tick` mantığı ve kanal parametreleri → [T61b](T61b-ses-motoru.md) (Channel gölgesiyle oracle).

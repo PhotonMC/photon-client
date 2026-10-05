@@ -17827,6 +17827,11 @@ def entity_walk_animation_cases():
 
 
 def sound_cases():
+    yield from sound_registry_cases()
+    yield from sound_packet_cases()
+
+
+def sound_registry_cases():
     """The reference's own sound registry: small `sounds.json` texts (weights, borrowed events, missing
     files, the things a file can get wrong), picked from with seeded random sources, and the game's real
     `sounds.json` with its real file list."""
@@ -17874,6 +17879,65 @@ def sound_cases():
                          ("minecraft:block.note_block.harp", (9,)), ("minecraft:ui.button.click", (10,))):
         real["picks"] += [{"event": event, "seed": str(seed), "count": 40} for seed in seeds]
     yield {"case_id": "sound/registry", "family": "sound", "operation": "registry", "rows": rows + [real]}
+
+
+def sound_packet_cases():
+    """The sound event registry in id order, and the three sound packets decoded by the reference's own codecs."""
+    yield {"case_id": "sound/events", "family": "sound", "operation": "sound_events", "rows": [{"label": "all"}]}
+
+    def varint(value):
+        out = bytearray()
+        value &= 0xFFFFFFFF
+        while True:
+            part = value & 0x7F
+            value >>= 7
+            out.append(part | (0x80 if value else 0))
+            if not value:
+                return bytes(out)
+
+    def identifier(text):
+        data = text.encode()
+        return varint(len(data)) + data
+
+    def holder(registered=None, direct=None, range_=None):
+        if registered is not None:
+            return varint(registered + 1)
+        out = varint(0) + identifier(direct)
+        return out + (bytes([1]) + struct.pack(">f", range_) if range_ is not None else bytes([0]))
+
+    def sound(label, sound_holder, source, at, volume, pitch, seed, extra=b"", cut=None):
+        data = (sound_holder + varint(source) + b"".join(struct.pack(">i", int(v)) for v in at)
+                + struct.pack(">f", volume) + struct.pack(">f", pitch) + struct.pack(">q", seed) + extra)
+        return {"label": f"sound-{label}", "kind": "sound", "hex": (data[:cut] if cut is not None else data).hex()}
+
+    def entity(label, sound_holder, source, entity_id, volume, pitch, seed):
+        data = (sound_holder + varint(source) + varint(entity_id) + struct.pack(">f", volume)
+                + struct.pack(">f", pitch) + struct.pack(">q", seed))
+        return {"label": f"entity-{label}", "kind": "sound_entity", "hex": data.hex()}
+
+    def stop(label, flags, source=None, name=None, extra=b""):
+        data = bytes([flags]) + (varint(source) if source is not None else b"") + (identifier(name) if name else b"") + extra
+        return {"label": f"stop-{label}", "kind": "stop_sound", "hex": data.hex()}
+    rows = [
+        sound("registered-first", holder(registered=0), 4, (80, 520, -24), 1.0, 1.0, 0),
+        sound("registered-later", holder(registered=1234), 0, (1, 2, 3), 0.5, 1.25, 123456789012345),
+        sound("every-source", holder(registered=7), 10, (0, 0, 0), 2.0, 0.5, -1),
+        sound("direct", holder(direct="my:sound.custom"), 2, (-8, 8, 80000), 1.5, 2.0, 9),
+        sound("direct-range", holder(direct="minecraft:block.stone.break", range_=24.5), 1, (3, -5, 7), 1.0, 1.0, 5),
+        sound("big-coordinates", holder(registered=3), 4, (2147483647, -2147483648, 16777217), 1.0, 1.0, 1),
+        sound("source-too-big", holder(registered=3), 11, (0, 0, 0), 1.0, 1.0, 1),
+        sound("registered-too-big", holder(registered=99999), 4, (0, 0, 0), 1.0, 1.0, 1),
+        sound("truncated", holder(registered=3), 4, (0, 0, 0), 1.0, 1.0, 1, cut=20),
+        sound("trailing", holder(registered=3), 4, (0, 0, 0), 1.0, 1.0, 1, extra=b"\x00\x01"),
+        sound("nan-volume", holder(registered=3), 4, (0, 0, 0), float("nan"), -0.0, 1),
+        entity("registered", holder(registered=15), 5, 77, 0.8, 1.1, 42),
+        entity("direct", holder(direct="a:b", range_=0.0), 8, 100000, 1.0, 1.0, -77),
+        entity("bad-source", holder(registered=15), 12, 1, 1.0, 1.0, 1),
+        stop("everything", 0), stop("source", 1, source=4), stop("name", 2, name="minecraft:ui.button.click"),
+        stop("both", 3, source=9, name="minecraft:block.anvil.land"), stop("bad-source", 1, source=11),
+        stop("trailing", 0, extra=b"\x00"), stop("ignored-bits", 4),
+    ]
+    yield {"case_id": "sound/packets", "family": "sound", "operation": "packets", "rows": rows}
 
 
 def build_cases(families):

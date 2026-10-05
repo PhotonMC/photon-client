@@ -36,6 +36,16 @@ public final class SoundOracle {
     public static JsonObject run(JsonObject request) {
         try {
             Oracle.vanillaRegistries();
+            switch (request.get("operation").getAsString()) {
+                case "sound_events" -> {
+                    return soundEvents();
+                }
+                case "packets" -> {
+                    return packets(request);
+                }
+                default -> {
+                }
+            }
             var rows = new JsonArray();
             for (var element : request.getAsJsonArray("rows")) {
                 rows.add(row(element.getAsJsonObject()));
@@ -45,6 +55,91 @@ public final class SoundOracle {
             return result;
         } catch (Exception error) {
             throw new IllegalStateException(error);
+        }
+    }
+
+    /** The built-in sound event registry in id order. */
+    private static JsonObject soundEvents() {
+        var registry = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT;
+        var rows = new JsonArray();
+        for (var event : registry) {
+            var out = new JsonObject();
+            out.addProperty("label", registry.getKey(event).toString());
+            out.addProperty("id", registry.getId(event));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The three sound packets decoded by the reference's own codecs from bytes a scenario gives. */
+    private static JsonObject packets(JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var hex = row.get("hex").getAsString();
+            var bytes = new byte[hex.length() / 2];
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Oracle.vanillaRegistries());
+            try {
+                switch (row.get("kind").getAsString()) {
+                    case "sound" -> {
+                        var packet = net.minecraft.network.protocol.game.ClientboundSoundPacket.STREAM_CODEC.decode(buffer);
+                        holder(out, packet.getSound());
+                        out.addProperty("source", packet.getSource().ordinal());
+                        out.addProperty("x", Oracle.bits(packet.getX()));
+                        out.addProperty("y", Oracle.bits(packet.getY()));
+                        out.addProperty("z", Oracle.bits(packet.getZ()));
+                        out.addProperty("volume", Oracle.bits(packet.getVolume()));
+                        out.addProperty("pitch", Oracle.bits(packet.getPitch()));
+                        out.addProperty("seed", Long.toString(packet.getSeed()));
+                    }
+                    case "sound_entity" -> {
+                        var packet = net.minecraft.network.protocol.game.ClientboundSoundEntityPacket.STREAM_CODEC.decode(buffer);
+                        holder(out, packet.getSound());
+                        out.addProperty("source", packet.getSource().ordinal());
+                        out.addProperty("entity", packet.getId());
+                        out.addProperty("volume", Oracle.bits(packet.getVolume()));
+                        out.addProperty("pitch", Oracle.bits(packet.getPitch()));
+                        out.addProperty("seed", Long.toString(packet.getSeed()));
+                    }
+                    default -> {
+                        var packet = net.minecraft.network.protocol.game.ClientboundStopSoundPacket.STREAM_CODEC.decode(buffer);
+                        if (packet.getName() != null) {
+                            out.addProperty("name", packet.getName().toString());
+                        }
+                        if (packet.getSource() != null) {
+                            out.addProperty("source", packet.getSource().ordinal());
+                        }
+                    }
+                }
+                out.addProperty("trailing", buffer.readableBytes());
+            } catch (RuntimeException error) {
+                out = new JsonObject();
+                out.addProperty("label", row.get("label").getAsString());
+                out.addProperty("error", true);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A sound event holder: its place in the registry, or what a packet sent whole says. */
+    private static void holder(JsonObject out, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent> holder) {
+        var key = holder.unwrapKey();
+        if (key.isPresent()) {
+            out.addProperty("registered", net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getId(holder.value()));
+        } else {
+            out.addProperty("direct", holder.value().location().toString());
+            holder.value().fixedRange().ifPresent(range -> out.addProperty("range", Oracle.bits(range)));
         }
     }
 
