@@ -109,6 +109,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T37h3 — Ender kristali ve kristal ışını — client-parity](client-end-crystal-parity-conformance.md)
 - [T37h2 — Ender ejderhasının ölümü — client-parity](client-ender-dragon-death-parity-conformance.md)
 - [T37h — Ender ejderhası (canlı hâl) — client-parity](client-ender-dragon-parity-conformance.md)
+- [T37h4 — Ender ejderhasının parçaları — client-parity](client-ender-dragon-parts-parity-conformance.md)
 - [T33d — Enerji girdabı ve şarjlı creeper — client-parity](client-energy-swirl-parity-conformance.md)
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](client-entity-aim-parity-conformance.md)
 - [T46 — Varlık öznitelikleri — client-parity](client-entity-attributes-parity-conformance.md)

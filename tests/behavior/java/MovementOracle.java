@@ -1408,6 +1408,11 @@ public final class MovementOracle {
                             described.add("history", samples);
                             described.addProperty("y_rot", Oracle.bits(dragon.getYRot()));
                             described.addProperty("dragon_death_time", dragon.dragonDeathTime);
+                            var parts = new JsonArray();
+                            for (var part : dragon.getSubEntities()) {
+                                parts.add(Oracle.bits(part.getX()) + Oracle.bits(part.getY()) + Oracle.bits(part.getZ()));
+                            }
+                            described.add("parts", parts);
                         }
                         case "wither" -> {
                             var wither = (net.minecraft.world.entity.boss.wither.WitherBoss) entity;

@@ -1902,8 +1902,11 @@ impl ClientEntity {
         }
         if self.is_dead_or_dying() && tick_death {
             if self.is_ender_dragon() {
-                // `EnderDragon.tickDeath` keeps its own count, not `deathTime`.
-                self.ender_dragon_mut().tick_death();
+                // `EnderDragon.tickDeath` keeps its own count, not `deathTime`, and
+                // lifts the dragon and its parts a tenth of a block.
+                let lift = f64::from(0.1_f32);
+                self.ender_dragon_mut().tick_death(lift);
+                self.y_bits = (f64::from_bits(self.y_bits) + lift).to_bits();
             } else {
                 self.living.death_time += 1;
             }
@@ -2466,6 +2469,8 @@ impl ClientEntity {
         if !no_ai {
             self.tick_position_interpolation();
             self.y_body_rot_bits = self.y_rot_bits;
+            let (at, y_rot) = (self.position(), f32::from_bits(self.y_rot_bits));
+            self.ender_dragon_mut().tick_parts(at, y_rot);
         }
     }
 

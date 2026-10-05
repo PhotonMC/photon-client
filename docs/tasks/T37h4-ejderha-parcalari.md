@@ -11,4 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `DragonPart` (sekiz parça, boyut, kimlik kuralı), `tick_parts` (`tickPart`), ölürken 0.1 yükseliş (ejderha ve parçalar), `entity_hit_result`'ta parçalar (`EntityHit` artık konum ve kutu taşır, `voxel-game/pick.rs` `entity_at`'a bağlı değil). Kayıt: `docs/client-ender-dragon-parts-parity-conformance.md`.
+- Sapma: nişan oracle'sız (birim test); parça kimlik kuralı kaynaktan; aynı mesafede eşitlik sırası.
+- Açık: ejderhaya `Attack`/`Interact` paketlerinin sunucuyla canlı denemesi.

@@ -60,23 +60,21 @@ pub fn pick(world: &ClientWorld, player: &LocalPlayer, eye: Vec3) -> Aim {
         if hit.location.distance_to_sqr(eye) >= entity_range * entity_range {
             return Aim::Miss;
         }
-        if let Some(entity) = world.entity_at(hit.entity_id) {
-            let (x, y, z) = entity.position();
-            let bounds = entity.bounding_box();
-            return Aim::Entity {
-                id: hit.entity_id,
-                location: [hit.location.x, hit.location.y, hit.location.z],
-                position: [x, y, z],
-                bounds: [
-                    bounds.min_x,
-                    bounds.min_y,
-                    bounds.min_z,
-                    bounds.max_x,
-                    bounds.max_y,
-                    bounds.max_z,
-                ],
-            };
-        }
+        let (x, y, z) = hit.position;
+        let bounds = hit.bounds;
+        return Aim::Entity {
+            id: hit.entity_id,
+            location: [hit.location.x, hit.location.y, hit.location.z],
+            position: [x, y, z],
+            bounds: [
+                bounds.min_x,
+                bounds.min_y,
+                bounds.min_z,
+                bounds.max_x,
+                bounds.max_y,
+                bounds.max_z,
+            ],
+        };
     }
     match block_hit {
         Some(hit) if hit.location.distance_to_sqr(eye) < block_range * block_range => Aim::Block {

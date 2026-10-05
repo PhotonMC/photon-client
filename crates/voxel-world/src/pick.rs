@@ -4,8 +4,9 @@
 //!
 //! The per-type answers are a table captured from the reference
 //! (`tools/generate/entity_picks.py`). Not carried: an armor stand's marker
-//! flag (a marker would still be picked), a sulfur cube's body item, the
-//! dragon's parts (not entities here) and the scale attribute.
+//! flag (a marker would still be picked), a sulfur cube's body item and the
+//! scale attribute. An ender dragon is not pickable itself; its parts are
+//! (`EnderDragonPart.isPickable`), each with the id after the dragon's.
 
 use voxel_core::aabb::Aabb;
 use voxel_core::math::Vec3;
@@ -72,11 +73,14 @@ impl ClientEntity {
     }
 }
 
-/// An entity the aim lands on, and where.
+/// An entity the aim lands on (a dragon's part, by its own id), where, and
+/// where it stands and what box it has.
 #[derive(Debug, Clone, Copy)]
 pub struct EntityHit {
     pub entity_id: i32,
     pub location: Vec3,
+    pub position: (f64, f64, f64),
+    pub bounds: Aabb,
 }
 
 impl ClientWorld {
@@ -94,45 +98,152 @@ impl ClientWorld {
         let mut nearest = max_value;
         let mut hovered: Option<EntityHit> = None;
         let except_root = self.root_vehicle_id(except);
-        for entity in self.entities.values() {
-            if entity.id == except
-                || !entity.is_pickable()
-                || !entity.bounding_box().intersects(search)
-            {
+        // The candidates the world's entities give, then the dragons' parts
+        // (`Level.getEntities` lists those last): the id, where it stands, its box,
+        // how far its box is inflated by the aim, and whether it is picked from inside.
+        let parts = self
+            .entities
+            .values()
+            .filter(|entity| entity.is_ender_dragon() && entity.id != except)
+            .flat_map(|dragon| {
+                dragon
+                    .ender_dragon()
+                    .into_iter()
+                    .flat_map(|state| state.parts().iter().enumerate())
+                    .map(|(index, part)| {
+                        let size = ClientEntityDimensions::from_values(
+                            part.width,
+                            part.height,
+                            part.height * 0.85,
+                            false,
+                        );
+                        let (x, y, z) = part.position;
+                        (
+                            dragon.id + 1 + index as i32,
+                            part.position,
+                            size.make_bounding_box(Vec3::new(x, y, z)),
+                            0.0_f32,
+                            true,
+                        )
+                    })
+            });
+        let others = self
+            .entities
+            .values()
+            .filter(|entity| entity.id != except && entity.is_pickable())
+            .map(|entity| {
+                (
+                    entity.id,
+                    entity.position(),
+                    entity.bounding_box(),
+                    entity.pick_radius(),
+                    entity.can_be_picked_from_inside(),
+                )
+            });
+        for (id, position, bounds, pick_radius, from_inside) in others.chain(parts) {
+            if !bounds.intersects(search) {
                 continue;
             }
-            let bb = entity
-                .bounding_box()
-                .inflate_all(f64::from(entity.pick_radius()));
+            let bb = bounds.inflate_all(f64::from(pick_radius));
             let clip_point = bb.clip(from, to);
+            let hit = |location| EntityHit {
+                entity_id: id,
+                location,
+                position,
+                bounds,
+            };
             if bb.contains_vec3(from) {
-                if nearest >= 0.0 && entity.can_be_picked_from_inside() {
-                    hovered = Some(EntityHit {
-                        entity_id: entity.id,
-                        location: clip_point.unwrap_or(from),
-                    });
+                if nearest >= 0.0 && from_inside {
+                    hovered = Some(hit(clip_point.unwrap_or(from)));
                     nearest = 0.0;
                 }
             } else if let Some(location) = clip_point {
                 let distance = from.distance_to_sqr(location);
                 if distance < nearest || nearest == 0.0 {
-                    if self.root_vehicle_id(entity.id) == except_root {
+                    // A part is its own root vehicle; so is an entity that rides nothing.
+                    if self.root_vehicle_id(id) == except_root {
                         if nearest == 0.0 {
-                            hovered = Some(EntityHit {
-                                entity_id: entity.id,
-                                location,
-                            });
+                            hovered = Some(hit(location));
                         }
                     } else {
-                        hovered = Some(EntityHit {
-                            entity_id: entity.id,
-                            location,
-                        });
+                        hovered = Some(hit(location));
                         nearest = distance;
                     }
                 }
             }
         }
         hovered
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{DimensionBounds, EntityInput};
+    use voxel_core::binary::Uuid;
+
+    fn world_with_dragon() -> ClientWorld {
+        let mut world = ClientWorld::new(DimensionBounds::default());
+        let dragon = voxel_data::entity_type::id("minecraft:ender_dragon").expect("a dragon");
+        assert!(world.apply_entity(EntityInput {
+            entity_id: 100,
+            uuid: Uuid::new(0, 100),
+            type_id: dragon,
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        // No chunk is loaded here to tick it in: it ticks all the same.
+        world.entities.get_mut(&100).expect("the dragon").ticking = true;
+        world.tick_entities();
+        world
+    }
+
+    /// The dragon itself is not pickable, its parts are: an aim at its head lands on the
+    /// head's id (the dragon's, plus its place, plus one), and an aim at where it has no
+    /// part lands on nothing.
+    #[test]
+    fn the_aim_lands_on_a_dragons_part_and_not_on_the_dragon() {
+        let world = world_with_dragon();
+        let head = world
+            .entity_at(100)
+            .and_then(|dragon| dragon.ender_dragon())
+            .map(|state| state.parts()[0].position)
+            .expect("a head");
+        // From in front of the dragon (the head is the part farthest ahead), towards it.
+        let from = Vec3::new(head.0, head.1 + 0.5, head.2 - 10.0);
+        let to = Vec3::new(head.0, head.1 + 0.5, head.2 + 10.0);
+        let search = Aabb::new(
+            from.x - 1.0,
+            from.y - 1.0,
+            from.z - 1.0,
+            to.x + 1.0,
+            to.y + 1.0,
+            to.z + 1.0,
+        );
+        let hit = world
+            .entity_hit_result(1, from, to, search, 400.0)
+            .expect("a hit");
+        assert_eq!(hit.entity_id, 101);
+        // A box the size of the head, round where it stands.
+        assert!((hit.bounds.max_x - hit.bounds.min_x - 1.0).abs() < 1e-6);
+        let away = Vec3::new(head.0 + 60.0, head.1, head.2 - 10.0);
+        let away_to = Vec3::new(head.0 + 60.0, head.1, head.2 + 10.0);
+        let far = Aabb::new(
+            away.x - 1.0,
+            away.y - 1.0,
+            away.z - 1.0,
+            away_to.x + 1.0,
+            away_to.y + 1.0,
+            away_to.z + 1.0,
+        );
+        assert!(
+            world
+                .entity_hit_result(1, away, away_to, far, 400.0)
+                .is_none()
+        );
     }
 }

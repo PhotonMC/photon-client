@@ -19238,6 +19238,19 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         described["history"] = json!(samples);
                         described["y_rot"] = json!(hex(entity.rotation().0));
                         described["dragon_death_time"] = json!(state.dragon_death_time());
+                        let parts: Vec<String> = state
+                            .parts()
+                            .iter()
+                            .map(|part| {
+                                format!(
+                                    "{:016x}{:016x}{:016x}",
+                                    part.position.0.to_bits(),
+                                    part.position.1.to_bits(),
+                                    part.position.2.to_bits()
+                                )
+                            })
+                            .collect();
+                        described["parts"] = json!(parts);
                     }
                     "wither" => {
                         let state = entity.wither().copied().unwrap_or_default();
