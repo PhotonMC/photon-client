@@ -21471,6 +21471,49 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `lightning_bolt`: the vertices a bolt of this seed is drawn with.
+fn lightning_bolt_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::lightning::lightning_bolt;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let seed: i64 = row["seed"]
+            .as_str()
+            .ok_or("seed")?
+            .parse()
+            .map_err(|_| "seed")?;
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let vertices: Vec<String> = lightning_bolt(&base, seed)
+            .iter()
+            .map(|vertex| {
+                format!(
+                    "{}{}{}{}{}{:08x}{:08x}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    hex(0.0),
+                    hex(0.0),
+                    vertex.colour,
+                    0,
+                    "0".repeat(24),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `primed_tnt_pose`: the pose and overlay a block of primed tnt is drawn with.
 fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -23811,6 +23854,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
         "fishing_hook" => return fishing_hook_result(request),
         "primed_tnt_pose" => return primed_tnt_pose_result(request),
+        "lightning_bolt" => return lightning_bolt_result(request),
         "small_projectile_pose" => return small_projectile_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),

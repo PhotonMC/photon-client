@@ -19,4 +19,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-(boş)
+- Yapıldı: `lightning_bolt` (geometri, oracle'da köşe köşe), `voxel-world::lightning` (tohum, parlama, silinme), `lightning_bolts.rs` (eklemeli hat). Kayıt: `docs/client-lightning-bolt-parity-conformance.md`.
+- Sapma: tohum entity kimliğinden; sayaç gerçek tike karşı karşılaştırılmadı; gökyüzü çakması yok → T40j.

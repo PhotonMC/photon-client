@@ -756,6 +756,10 @@ pub struct ClientEntity {
     pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
+    /// A lightning bolt's shape and flashes, made when it first ticks.
+    pub(crate) lightning: Option<crate::lightning::LightningState>,
+    /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
+    pub(crate) lightning_done: bool,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
     /// A frog's animation states, made when its pose first changes or it first ticks.
@@ -2463,6 +2467,20 @@ impl ClientEntity {
         )
     }
 
+    /// Whether this is a lightning bolt (`LightningBolt`).
+    pub fn is_lightning_bolt(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:lightning_bolt")
+    }
+
+    /// A lightning bolt's shape and flashes, if it has begun to tick.
+    pub fn lightning(&self) -> Option<&crate::lightning::LightningState> {
+        self.lightning.as_ref()
+    }
+
+    pub(crate) fn lightning_finished(&self) -> bool {
+        self.lightning_done
+    }
+
     /// Whether this is a block of primed tnt (`PrimedTnt`).
     pub fn is_primed_tnt(&self) -> bool {
         self.type_id == VANILLA_PRIMED_TNT_ENTITY_TYPE_ID
@@ -3252,6 +3270,13 @@ impl ClientEntity {
         }
         if self.is_primed_tnt() {
             self.primed_tnt_mut().tick();
+        }
+        if self.is_lightning_bolt() {
+            let seed = i64::from(self.id);
+            self.lightning_done = self
+                .lightning
+                .get_or_insert_with(|| crate::lightning::LightningState::new(seed))
+                .tick();
         }
     }
 

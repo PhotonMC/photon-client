@@ -57,6 +57,7 @@ pub mod item_components;
 mod item_physics;
 mod java_math;
 pub mod light;
+pub mod lightning;
 pub mod living;
 mod metadata;
 pub mod minecart;
@@ -1973,7 +1974,7 @@ impl ClientWorld {
                 entity.move_by_motion();
             }
         }
-        if self.discard_spent_primed_tnt(entity_id) {
+        if self.discard_spent_entity(entity_id) {
             return;
         }
         self.tick_item_entity(entity_id);
@@ -1986,13 +1987,15 @@ impl ClientWorld {
         self.update_ticking_flag(entity_id, position);
     }
 
-    /// `PrimedTnt.tick`: a spent fuse discards the block.
-    fn discard_spent_primed_tnt(&mut self, entity_id: i32) -> bool {
-        let spent = self
-            .entities
-            .get(&entity_id)
-            .and_then(ClientEntity::primed_tnt)
-            .is_some_and(primed_tnt::PrimedTntState::is_spent);
+    /// `PrimedTnt.tick` and `LightningBolt.tick`: a spent fuse, or a bolt with no flashes left,
+    /// discards the entity.
+    fn discard_spent_entity(&mut self, entity_id: i32) -> bool {
+        let spent = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity
+                .primed_tnt()
+                .is_some_and(primed_tnt::PrimedTntState::is_spent)
+                || entity.lightning_finished()
+        });
         if spent {
             self.remove_entity(entity_id);
         }
@@ -3416,6 +3419,8 @@ impl ClientWorld {
                 arrow: None,
                 evoker_fangs: None,
                 primed_tnt: None,
+                lightning: None,
+                lightning_done: false,
                 shot_at_angle: false,
                 parrot: None,
                 allay: None,

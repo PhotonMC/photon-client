@@ -17,7 +17,7 @@ pub struct RayVertex {
 const OUTER_COLOUR: u32 = 16_711_935;
 
 /// `ARGB.as8BitChannel`.
-fn channel(value: f32) -> u32 {
+pub(crate) fn channel(value: f32) -> u32 {
     (value * 255.0).floor() as u32
 }
 

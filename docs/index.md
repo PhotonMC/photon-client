@@ -140,6 +140,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](client-insects-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](client-keyframe-animation-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
+- [T40e — Yıldırım — client-parity](client-lightning-bolt-parity-conformance.md)
 - [T38b — Minecart ailesi (eski davranış) — client-parity](client-minecart-parity-conformance.md)
 - [T35e — Nautilus ve zombi nautilus — client-parity](client-nautilus-parity-conformance.md)
 - [T32f — Panda — client-parity](client-panda-parity-conformance.md)

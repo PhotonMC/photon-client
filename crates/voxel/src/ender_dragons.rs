@@ -184,7 +184,7 @@ fn crystal_beam_vertices(
 }
 
 /// A ray's vertex for the renderer: its colour (`0xAARRGGBB`) in the tint.
-fn ray_vertex(vertex: voxel_render::dragon_rays::RayVertex) -> Vertex {
+pub(crate) fn ray_vertex(vertex: voxel_render::dragon_rays::RayVertex) -> Vertex {
     let channel = |shift: u32| ((vertex.colour >> shift) & 0xFF) as f32 / 255.0;
     Vertex {
         position: vertex.position,

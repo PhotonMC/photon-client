@@ -15317,6 +15317,7 @@ def entity_cases():
     yield from entity_small_projectile_cases()
     yield from entity_fishing_hook_cases()
     yield from entity_primed_tnt_cases()
+    yield from entity_lightning_bolt_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -17009,6 +17010,17 @@ def entity_primed_tnt_cases():
     rows = [at(f"fuse-{fuse}", fuse) for fuse in (81.0, 80.5, 40.0, 11.0, 10.0, 9.5, 9.0, 7.25, 5.0, 4.99, 3.0, 1.5, 1.0, 0.5, 0.0, -0.5)]
     rows.append(at("far-off", 6.0, place=(-100.25, 70.5, 33.75)))
     yield {"case_id": "entity/primed-tnt-pose", "family": "entity", "operation": "primed_tnt_pose", "rows": rows}
+
+
+def entity_lightning_bolt_cases():
+    """The vertices the reference's own lightning renderer hands the vertex consumer for several seeds (zero,
+    negative, large, a few ordinary ones) and places."""
+    def bolt(label, seed, at=(10.5, 64.0, -3.5)):
+        return {"label": f"bolt-{label}", "seed": str(seed), "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2])}
+    rows = [bolt("zero", 0), bolt("one", 1), bolt("ordinary", 123456789), bolt("negative", -987654321),
+            bolt("large", 9223372036854775807), bolt("small", -9223372036854775808), bolt("far-off", 42, at=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/lightning-bolt", "family": "entity", "operation": "lightning_bolt", "rows": rows}
 
 
 def entity_copper_golem_cases():

@@ -566,6 +566,7 @@ fn remote_projectiles_and_vehicles(
         session, models, textures, view,
     ));
     crate::minecarts::remote_primed_tnt(session, (view, &mut *held));
+    crate::lightning_bolts::remote_lightning(session, models, view);
     vertices.extend(crate::minecarts::remote_minecarts(
         session,
         models,
