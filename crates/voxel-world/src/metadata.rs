@@ -133,6 +133,15 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
 /// data holds one (the default is not sent).
 pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
     let (data_id, serializer) = match voxel_data::entity_type::name(type_id)? {
+        // A painting's variant is a holder: its registry id plus one, or zero for one sent whole.
+        "minecraft:painting" => {
+            let (found, mut value) = find_metadata_field(metadata, PAINTING_VARIANT_DATA_ID)?;
+            if found != PAINTING_VARIANT_SERIALIZER_ID {
+                return None;
+            }
+            let holder = voxel_core::wire::read_varint(&mut value).ok()?;
+            return holder.checked_sub(1).filter(|id| *id >= 0);
+        }
         "minecraft:pig" => (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID),
         "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
         "minecraft:chicken" => (CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID),

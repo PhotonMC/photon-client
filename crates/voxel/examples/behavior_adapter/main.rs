@@ -21473,6 +21473,65 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `painting_geometry`: the vertices a painting of this size and facing is drawn with.
+fn painting_geometry_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::painting::{SpriteUv, painting_pose, painting_vertices};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let sprite = |name: &str| -> Result<SpriteUv, String> {
+            Ok(SpriteUv {
+                u0: bits(&format!("{name}_u0"))?,
+                u1: bits(&format!("{name}_u1"))?,
+                v0: bits(&format!("{name}_v0"))?,
+                v1: bits(&format!("{name}_v1"))?,
+            })
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let pose = painting_pose(&base, i32_field(row, "direction_2d")?);
+        let lights: Vec<i32> = row["lights"]
+            .as_array()
+            .ok_or("lights")?
+            .iter()
+            .map(|light| light.as_i64().map(|light| light as i32).ok_or("light"))
+            .collect::<Result<_, _>>()?;
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let vertices: Vec<String> = painting_vertices(
+            &pose,
+            (i32_field(row, "width")?, i32_field(row, "height")?),
+            &lights,
+            (sprite("front")?, sprite("back")?),
+        )
+        .iter()
+        .map(|vertex| {
+            format!(
+                "{}{}{}{}{}ffffffff{:08x}{}{}{}",
+                hex(vertex.position[0]),
+                hex(vertex.position[1]),
+                hex(vertex.position[2]),
+                hex(vertex.uv[0]),
+                hex(vertex.uv[1]),
+                vertex.light,
+                hex(vertex.normal[0]),
+                hex(vertex.normal[1]),
+                hex(vertex.normal[2]),
+            )
+        })
+        .collect();
+        out.push(json!({"label": row["label"], "vertices": vertices}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `lightning_bolt`: the vertices a bolt of this seed is drawn with.
 fn lightning_bolt_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -23858,6 +23917,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "fishing_hook" => return fishing_hook_result(request),
         "primed_tnt_pose" => return primed_tnt_pose_result(request),
         "lightning_bolt" => return lightning_bolt_result(request),
+        "painting_geometry" => return painting_geometry_result(request),
         "small_projectile_pose" => return small_projectile_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
@@ -23902,6 +23962,15 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "skeleton_model" => return skeleton_model_result(request),
         "piglin_model" => return piglin_model_result(request),
         "experience_orb" => return experience_orb_result(request),
+        "painting_variants" => {
+            let rows: Vec<Value> = voxel_data::entity_type::painting_variants()
+                .map(|variant| {
+                    json!({"label": variant.name, "name": variant.name, "asset": variant.asset,
+                        "width": variant.width, "height": variant.height})
+                })
+                .collect();
+            return Ok(json!({"rows": rows}));
+        }
         "wolf_variants" => {
             let rows: Vec<Value> = voxel_data::entity_type::wolf_variants()
                 .map(|variant| {

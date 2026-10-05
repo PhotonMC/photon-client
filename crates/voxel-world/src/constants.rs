@@ -342,3 +342,8 @@ pub(crate) const SHARED_FLAG_SWIMMING: u8 = 4;
 pub(crate) const SHARED_FLAG_INVISIBLE: u8 = 5;
 pub(crate) const SHARED_FLAG_GLOWING: u8 = 6;
 pub(crate) const SHARED_FLAG_FALL_FLYING: u8 = 7;
+
+/// Where a painting's variant (a holder) sits among its data (`HangingEntity` has the
+/// direction before it), and the serializer that carries it.
+pub const PAINTING_VARIANT_DATA_ID: u8 = 9;
+pub const PAINTING_VARIANT_SERIALIZER_ID: i32 = 34;

@@ -3316,7 +3316,9 @@ impl ClientWorld {
         clippy::too_many_lines,
         reason = "the struct literal names every field of a new entity"
     )]
-    pub fn apply_entity(&mut self, entity: EntityInput) -> bool {
+    pub fn apply_entity(&mut self, mut entity: EntityInput) -> bool {
+        (entity.x, entity.y, entity.z) =
+            block_attached_position(entity.type_id, (entity.x, entity.y, entity.z));
         if self.entities.contains_key(&entity.entity_id) {
             self.remove_entity(entity.entity_id);
         }
@@ -4715,5 +4717,21 @@ impl light::LightChunks for LightView<'_> {
 
     fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&light::ChunkSkyLightSources> {
         self.chunk(chunk_x, chunk_z)?.sky_sources.as_ref()
+    }
+}
+
+/// `BlockAttachedEntity.setPos` and the `recalculateBoundingBox` of what hangs on a block: the
+/// packet carries the block, and the entity stands where its kind puts it (a leash knot,
+/// above the middle of a fence). The others (paintings, item frames) depend on their size and
+/// turn, and are placed where they are drawn.
+fn block_attached_position(type_id: i32, (x, y, z): (f64, f64, f64)) -> (f64, f64, f64) {
+    if voxel_data::entity_type::name(type_id) == Some("minecraft:leash_knot") {
+        (
+            voxel_core::math::floor_f64(x) as f64 + 0.5,
+            voxel_core::math::floor_f64(y) as f64 + 0.375,
+            voxel_core::math::floor_f64(z) as f64 + 0.5,
+        )
+    } else {
+        (x, y, z)
     }
 }

@@ -7102,3 +7102,18 @@ fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
     world.tick_entities();
     assert_eq!(world.entity_at(1).unwrap().rotation(), looked);
 }
+
+#[test]
+fn a_leash_knot_stands_above_the_middle_of_the_block_the_packet_names() {
+    let knot = voxel_data::entity_type::id("minecraft:leash_knot").expect("leash knot");
+    assert_eq!(
+        crate::block_attached_position(knot, (10.0, 64.0, -3.0)),
+        (10.5, 64.375, -2.5)
+    );
+    // What does not hang on a block keeps the position it was sent.
+    let pig = voxel_data::entity_type::id("minecraft:pig").expect("pig");
+    assert_eq!(
+        crate::block_attached_position(pig, (10.25, 64.0, -3.75)),
+        (10.25, 64.0, -3.75)
+    );
+}

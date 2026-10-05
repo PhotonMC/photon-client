@@ -11,6 +11,7 @@ pub mod entity_serializers;
 pub mod entity_types;
 pub mod entity_variants;
 pub mod item;
+pub mod painting_variants;
 pub mod sheep_colors;
 pub mod villager_registries;
 pub mod wolf_variants;

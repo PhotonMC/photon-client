@@ -142,7 +142,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40f](T40f-bag-dugumu.md) | Bağ düğümü (yalnız düğüm; çizgi T40k) | S | T40 | bitti (de557daf) |
 | [T40k](T40k-bag-cizgisi.md) | Bağ çizgisi (`SetEntityLink`, `LeashFeatureRenderer`) | M | T40f | açık |
 | [T40g](T40g-esya-cercevesi.md) | Eşya çerçevesi | L | T40 | açık |
-| [T40h](T40h-tablo.md) | Tablo | M | T40 | açık |
+| [T40h](T40h-tablo.md) | Tablo | M | T40 | bitti (HASH) |
 | [T40i](T40i-display.md) | Display entity'leri | L | T40 | açık |
 | [T41](T41-ekipman-katmanlari.md) | Ekipman katmanları: `SetEquipment`, elde eşya, zırh, kafa eşyası, pelerin/elytra | L | T28, T22 | bölündü (d20fb045) |
 | [T41b](T41b-zirh-katmani.md) | Zırh katmanı (`HumanoidArmorLayer`, boya, süs, parıltı) | L | T41 | bitti (c2bf0545) |

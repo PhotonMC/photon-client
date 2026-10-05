@@ -102,6 +102,30 @@ pub fn panda_texture(gene: u8, baby: bool) -> &'static str {
     TEXTURES[usize::from(gene).min(6)][usize::from(baby)]
 }
 
+/// A painting variant of the data pack: the texture it wears (`minecraft:kebab`, under
+/// `textures/painting`) and its size in blocks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PaintingVariant {
+    pub name: &'static str,
+    pub asset: &'static str,
+    /// The texture's path under `textures/` (`painting/kebab`).
+    pub texture: &'static str,
+    pub width: i32,
+    pub height: i32,
+}
+
+/// Every painting variant, by name.
+pub fn painting_variants() -> impl Iterator<Item = &'static PaintingVariant> {
+    crate::generated::painting_variants::PAINTING_VARIANTS.iter()
+}
+
+/// The painting variant with this name (`minecraft:kebab`).
+pub fn painting_variant(name: &str) -> Option<&'static PaintingVariant> {
+    crate::generated::painting_variants::PAINTING_VARIANTS
+        .iter()
+        .find(|variant| variant.name == name)
+}
+
 /// Every wolf variant, by name.
 pub fn wolf_variants() -> impl Iterator<Item = &'static WolfVariant> {
     crate::generated::wolf_variants::WOLF_VARIANTS.iter()

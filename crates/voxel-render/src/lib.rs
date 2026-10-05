@@ -32,6 +32,7 @@ pub mod mob_model;
 pub mod model;
 pub mod name_tag;
 pub mod outline;
+pub mod painting;
 pub mod player_model;
 pub mod player_renderer;
 pub mod png;

@@ -15255,6 +15255,7 @@ def entity_cases():
     yield from entity_variant_field_cases()
     yield from entity_variant_cases()
     yield from entity_wolf_variant_cases()
+    yield from entity_painting_variant_cases()
     yield from entity_zombie_cases()
     yield from entity_skeleton_cases()
     yield from entity_piglin_cases()
@@ -15318,6 +15319,7 @@ def entity_cases():
     yield from entity_fishing_hook_cases()
     yield from entity_primed_tnt_cases()
     yield from entity_lightning_bolt_cases()
+    yield from entity_painting_geometry_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -17027,6 +17029,25 @@ def entity_lightning_bolt_cases():
     yield {"case_id": "entity/lightning-bolt", "family": "entity", "operation": "lightning_bolt", "rows": rows}
 
 
+def entity_painting_geometry_cases():
+    """The vertices the reference's own painting renderer hands the vertex consumer: paintings of several sizes
+    (one block, a wide one, a tall one, a big one) facing each way, each block lit differently."""
+    def painting(label, size, direction, at=(10.5, 64.5, -3.5)):
+        width, height = size
+        sprites = {"front_u0": 0.125, "front_u1": 0.875, "front_v0": 0.0625, "front_v1": 0.5625,
+                   "back_u0": 0.5, "back_u1": 0.75, "back_v0": 0.25, "back_v1": 0.375}
+        row = {"label": f"painting-{label}", "width": width, "height": height, "direction_2d": direction,
+               "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]), "feet_z": float_bits(at[2]),
+               "lights": [(0x00F00000 | (index * 16 + 3) << 4) & 0x00F000F0 for index in range(width * height)]}
+        row.update({key: float_bits(value) for key, value in sprites.items()})
+        return row
+    rows = [painting("one-south", (1, 1), 0), painting("one-west", (1, 1), 1), painting("one-north", (1, 1), 2),
+            painting("one-east", (1, 1), 3), painting("wide", (3, 1), 0), painting("tall", (1, 2), 1),
+            painting("two-by-two", (2, 2), 2), painting("big", (4, 3), 3), painting("backyard", (3, 4), 0),
+            painting("far-off", (2, 1), 1, at=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/painting-geometry", "family": "entity", "operation": "painting_geometry", "rows": rows}
+
+
 def entity_copper_golem_cases():
     """The copper golem posed by the reference's own `CopperGolemModel.setupAnim`: the look, the
     walk (with arms raised while an item is held, the arms never lower than that), the idle spin and
@@ -17685,6 +17706,16 @@ def entity_wolf_variant_cases():
         "case_id": "entity/wolf-variants",
         "family": "entity",
         "operation": "wolf_variants",
+        "rows": [{"label": "all"}],
+    }
+
+
+def entity_painting_variant_cases():
+    """The painting variants of the game's data pack: the texture each wears and its size."""
+    yield {
+        "case_id": "entity/painting-variants",
+        "family": "entity",
+        "operation": "painting_variants",
         "rows": [{"label": "all"}],
     }
 

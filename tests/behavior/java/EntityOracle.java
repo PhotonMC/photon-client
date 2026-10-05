@@ -2401,6 +2401,67 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The vertices the reference's own painting renderer hands the vertex consumer for a size, a facing and
+     * the light of each block, with stand-in sprites (their own corners, to see which is used where).
+     */
+    private static JsonObject paintingGeometry(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var render = net.minecraft.client.renderer.entity.PaintingRenderer.class.getDeclaredMethod("renderPainting",
+            com.mojang.blaze3d.vertex.PoseStack.class, net.minecraft.client.renderer.SubmitNodeCollector.class,
+            net.minecraft.client.renderer.rendertype.RenderType.class, int[].class, int.class, int.class,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite.class,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+        render.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var vertices = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            // `PaintingRenderer.submit`: turned to the way it hangs.
+            stack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180 - row.get("direction_2d").getAsInt() * 90));
+            var lights = row.getAsJsonArray("lights");
+            var lightMap = new int[lights.size()];
+            for (int i = 0; i < lightMap.length; i++) {
+                lightMap[i] = lights.get(i).getAsInt();
+            }
+            var sprites = new net.minecraft.client.renderer.texture.TextureAtlasSprite[2];
+            var names = new String[] {"front", "back"};
+            for (int s = 0; s < 2; s++) {
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
+                    UNSAFE.allocateInstance(net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                for (var corner : new String[] {"u0", "u1", "v0", "v1"}) {
+                    var field = net.minecraft.client.renderer.texture.TextureAtlasSprite.class.getDeclaredField(corner);
+                    field.setAccessible(true);
+                    field.setFloat(sprite, Oracle.f32(row, names[s] + "_" + corner));
+                }
+                sprites[s] = sprite;
+            }
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.PaintingRenderer.class);
+            render.invoke(renderer, stack, collector, null, lightMap, row.get("width").getAsInt(),
+                row.get("height").getAsInt(), sprites[0], sprites[1]);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The vertices the reference's own lightning renderer hands the vertex consumer for a bolt's seed. */
     private static JsonObject lightningBolt(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4346,6 +4407,27 @@ public final class EntityOracle {
         return result;
     }
 
+    private static JsonObject paintingVariants() {
+        var rows = new java.util.TreeMap<String, JsonObject>();
+        Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT)
+            .listElements().forEach(holder -> {
+                var variant = holder.value();
+                var out = new JsonObject();
+                String name = holder.key().identifier().toString();
+                out.addProperty("label", name);
+                out.addProperty("name", name);
+                out.addProperty("asset", variant.assetId().toString());
+                out.addProperty("width", variant.width());
+                out.addProperty("height", variant.height());
+                rows.put(name, out);
+            });
+        var list = new JsonArray();
+        rows.values().forEach(list::add);
+        var result = new JsonObject();
+        result.add("rows", list);
+        return result;
+    }
+
     private static void variants(
         final java.util.Map<String, JsonObject> rows, final String kind, final String name,
         final net.minecraft.resources.Identifier asset, final net.minecraft.resources.Identifier baby,
@@ -4540,6 +4622,9 @@ public final class EntityOracle {
         if (operation.equals("experience_orb")) {
             return experienceOrb(request);
         }
+        if (operation.equals("painting_variants")) {
+            return paintingVariants();
+        }
         if (operation.equals("wolf_variants")) {
             return wolfVariants();
         }
@@ -4668,6 +4753,9 @@ public final class EntityOracle {
         }
         if (operation.equals("small_projectile_pose")) {
             return smallProjectilePose(request);
+        }
+        if (operation.equals("painting_geometry")) {
+            return paintingGeometry(request);
         }
         if (operation.equals("lightning_bolt")) {
             return lightningBolt(request);

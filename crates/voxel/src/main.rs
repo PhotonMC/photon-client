@@ -38,6 +38,7 @@ mod mobs;
 mod monsters;
 mod nautilus;
 mod overlays;
+mod paintings;
 mod pandas;
 mod play;
 mod ppm;

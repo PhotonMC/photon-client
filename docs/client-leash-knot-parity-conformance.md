@@ -5,7 +5,7 @@ Bu kayıt çitin üstündeki bağ düğümünün (`LeashFenceKnotEntity`, `Leash
 ## Java kaynak incelemesi
 
 - `LeashKnotModel`: tek parça (`knot`, 6×8×6, doku 32×32), animasyonsuz. `LeashKnotRenderer.submit`: yalnız `(-1, -1, 1)` ölçek (bir mob modeli gibi çevrilir), `entity/lead_knot/lead_knot` dokusu, `NO_OVERLAY`.
-- Entity konumu sunucunun gönderdiğidir (`blok + (0,5; 0,375; 0,5)`); `shouldRenderAtSqrDistance` 1024'ten uzağı çizmez (çizim mesafesi genelinde karşılanır).
+- Paket bloğu taşır; istemci `BlockAttachedEntity.setPos` ile konumu `blok + (0,5; 0,375; 0,5)` yapar (T40h'de düzeltildi); `shouldRenderAtSqrDistance` 1024'ten uzağı çizmez (çizim mesafesi genelinde karşılanır).
 
 ## Kapsam
 

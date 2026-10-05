@@ -19,4 +19,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-(boş)
+- Yapıldı: çeşit tablosu (`painting_variants.py`, kayıttan), `painting` geometrisi (oracle'da gerçek `renderPainting`), `paintings.rs`; bağ düğümü konumu da blok merkezine düzeltildi. Kayıt: `docs/client-painting-parity-conformance.md`.
+- Sapma: asılma konumu render anında, oracle'sız; entity konumu/vuruş kutusu hâlâ blok köşesi; ışık kuralı oracle'sız; z-ofset yok.
