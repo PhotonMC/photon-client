@@ -315,6 +315,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::minecarts::textures())
         .chain(crate::arrows::textures())
         .chain(crate::charges::textures())
+        .chain(crate::bullets::textures())
         .chain(crate::hoglins::textures())
         .chain(crate::foxes::textures())
         .chain(crate::pandas::textures())
@@ -558,6 +559,9 @@ fn remote_projectiles_and_vehicles(
 ) -> Vec<Vertex> {
     let mut vertices = crate::arrows::remote_arrows(session, models, textures, view);
     vertices.extend(crate::charges::remote_charges(
+        session, models, textures, view,
+    ));
+    vertices.extend(crate::bullets::remote_bullets(
         session, models, textures, view,
     ));
     vertices.extend(crate::minecarts::remote_minecarts(

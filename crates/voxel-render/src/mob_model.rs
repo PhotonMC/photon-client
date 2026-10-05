@@ -2406,6 +2406,45 @@ impl MobModel {
         }
     }
 
+    /// `LlamaSpitModel` has no animation: its part stays where the mesh puts it.
+    pub fn setup_llama_spit(&mut self) {
+        self.root.reset();
+    }
+
+    /// `ShulkerBulletModel.setupAnim`: the bullet is turned the way it flies.
+    pub fn setup_shulker_bullet(&mut self, y_rot: f32, x_rot: f32) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(main) = self.root.child_mut("main") {
+            main.y_rot = y_rot * degrees;
+            main.x_rot = x_rot * degrees;
+        }
+    }
+
+    /// `EvokerFangsModel.setupAnim`: the jaws close as the bite goes on, the fangs sink and
+    /// then shrink away at its end.
+    pub fn setup_evoker_fangs(&mut self, bite_progress: f32) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let mut bite_amount = (bite_progress * 2.0).min(1.0);
+        bite_amount = 1.0 - bite_amount * bite_amount * bite_amount;
+        if let Some(base) = self.root.child_mut("base") {
+            if let Some(jaw) = base.child_mut("upper_jaw") {
+                jaw.z_rot = pi - bite_amount * 0.35 * pi;
+            }
+            if let Some(jaw) = base.child_mut("lower_jaw") {
+                jaw.z_rot = pi + bite_amount * 0.35 * pi;
+            }
+            base.y -= (bite_progress + mth_sin_f64(f64::from(bite_progress * 2.7))) * 7.2;
+        }
+        let mut pre_scale = 1.0_f32;
+        if bite_progress > 0.9 {
+            pre_scale *= (1.0 - bite_progress) / 0.1;
+        }
+        self.root.y = 24.0 - 20.0 * pre_scale;
+        self.root.scale = [pre_scale; 3];
+    }
+
     /// `TridentModel` has no animation: its parts stay where the mesh puts them.
     pub fn setup_trident(&mut self) {
         self.root.reset();
@@ -5059,6 +5098,44 @@ pub fn mob_vertices_posed(
     texture: TextureRect,
     (packed_light, red_overlay): (i32, bool),
 ) -> Vec<Vertex> {
+    posed_vertices(
+        model,
+        pose,
+        texture,
+        (packed_light, overlay_code(red_overlay, 0.0)),
+    )
+}
+
+/// What the entity shader reads as the alpha of a vertex lit by the world and blended
+/// (`RenderTypes.entityTranslucent` with a colour whose alpha is not full): the shade, past
+/// every code the overlay uses, plus the alpha in 255ths.
+pub const BLENDED_SHADE: f32 = 64.0;
+
+/// [`mob_vertices_posed`] for a model blended by a colour of this alpha (a whole 255th, the
+/// colour's own byte), sorted far to near as the reference's translucent pipeline sorts it.
+pub fn mob_vertices_blended(
+    model: &MobModel,
+    pose: &Pose,
+    texture: TextureRect,
+    (packed_light, alpha): (i32, u8),
+    camera: [f32; 3],
+) -> Vec<Vertex> {
+    let mut vertices = posed_vertices(
+        model,
+        pose,
+        texture,
+        (packed_light, BLENDED_SHADE + f32::from(alpha)),
+    );
+    sort_translucent_quads(&mut vertices, camera);
+    vertices
+}
+
+fn posed_vertices(
+    model: &MobModel,
+    pose: &Pose,
+    texture: TextureRect,
+    (packed_light, shade): (i32, f32),
+) -> Vec<Vertex> {
     let light = crate::block_light::light_uv(packed_light);
     let mut vertices = Vec::new();
     for (_, corners) in model.render(pose) {
@@ -5067,7 +5144,7 @@ pub fn mob_vertices_posed(
             vertices.push(Vertex {
                 position: corner.position,
                 uv: uv(texture, corner.uv),
-                shade: overlay_code(red_overlay, 0.0),
+                shade,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
                 light,
             });

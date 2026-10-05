@@ -197,10 +197,13 @@ void main() {
     // An emissive vertex whose second light is not negative carries the
     // alpha its colour is blended with (`ARGB.white(alpha)`).
     out_alpha = (in_light.x < 0.0 && in_light.y >= 0.0) ? in_light.y : 1.0;
+    // A shade of 64 and over is a blended vertex lit by the world: its alpha in 255ths, no overlay.
+    bool blended = in_shade >= 64.0;
+    if (blended) { out_alpha = (in_shade - 64.0) / 255.0; }
     // The vertex's shade says whether the hurt overlay is on, and the fourth
     // component of its tint the colour its texel is multiplied by, as
     // 0xRRGGBB (exact in a float), or zero for none.
-    out_hurt = one_sided ? 0.0 : in_shade;
+    out_hurt = (one_sided || blended) ? 0.0 : in_shade;
     float packed_colour = in_tint.w;
     // Zero is no colour (white), a negative one black.
     out_colour = packed_colour == 0.0 ? vec3(1.0) : packed_colour < 0.0 ? vec3(0.0) : vec3(

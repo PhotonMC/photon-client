@@ -171,6 +171,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T30 — Koyun ve tavuk — client-parity](client-sheep-chicken-parity-conformance.md)
 - [T37c — Shulker — client-parity](client-shulker-parity-conformance.md)
 - [T29 — İskelet ve piglin aileleri modeli — client-parity](client-skeleton-piglin-parity-conformance.md)
+- [T39e — Shulker mermisi, lama tükürüğü ve evoker dişleri — client-parity](client-small-projectiles-parity-conformance.md)
 - [T37f2 — Sniffer — client-parity](client-sniffer-parity-conformance.md)
 - [T33 — Örümcek, mağara örümceği ve creeper — client-parity](client-spider-creeper-parity-conformance.md)
 - [T35b — Kalamar ve ışıklı kalamar — client-parity](client-squid-parity-conformance.md)

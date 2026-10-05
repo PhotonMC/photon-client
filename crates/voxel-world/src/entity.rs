@@ -752,6 +752,8 @@ pub struct ClientEntity {
     pub(crate) minecart: Option<crate::minecart::MinecartState>,
     /// An arrow's shake and data, made when its data or ticks first reach it.
     pub(crate) arrow: Option<crate::arrow::ArrowState>,
+    /// Evoker fangs' bite, made when the server first says they bite or they first tick.
+    pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
     /// A frog's animation states, made when its pose first changes or it first ticks.
@@ -2459,6 +2461,20 @@ impl ClientEntity {
         )
     }
 
+    /// Whether this is a pair of evoker fangs.
+    pub fn is_evoker_fangs(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:evoker_fangs")
+    }
+
+    /// Evoker fangs' bite, if it has begun to be told of.
+    pub fn evoker_fangs(&self) -> Option<&crate::evoker_fangs::FangsState> {
+        self.evoker_fangs.as_ref()
+    }
+
+    pub(crate) fn evoker_fangs_mut(&mut self) -> &mut crate::evoker_fangs::FangsState {
+        self.evoker_fangs.get_or_insert_with(Default::default)
+    }
+
     /// An arrow's shake and data, if it has any.
     pub fn arrow(&self) -> Option<&crate::arrow::ArrowState> {
         self.arrow.as_ref()
@@ -3214,6 +3230,9 @@ impl ClientEntity {
         }
         if self.is_abstract_arrow() {
             self.arrow_mut().tick();
+        }
+        if self.is_evoker_fangs() {
+            self.evoker_fangs_mut().tick();
         }
     }
 

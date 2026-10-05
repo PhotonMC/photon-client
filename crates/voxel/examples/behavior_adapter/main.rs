@@ -21066,6 +21066,12 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
             });
         } else if id.contains("wind_charge") {
             model.setup_wind_charge(bits("age_in_ticks")?);
+        } else if id.contains("shulker_bullet") {
+            model.setup_shulker_bullet(bits("y_rot")?, bits("x_rot")?);
+        } else if id.contains("llama_spit") {
+            model.setup_llama_spit();
+        } else if id.contains("evoker_fangs") {
+            model.setup_evoker_fangs(bits("bite_progress")?);
         } else if id.contains("trident") {
             model.setup_trident();
         } else if id.contains("arrow") {
@@ -21461,6 +21467,35 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
         // (`ItemTransform.NO_TRANSFORM`), which only moves the model's corner to the middle.
         pose.translate(-0.5, -0.5, -0.5);
         out.push(json!({"label": row["label"], "poses": [matrix_bits(&pose)]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `small_projectile_pose`: the poses a shulker bullet's, llama spit's or evoker fangs' models are drawn from.
+fn small_projectile_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::projectile::{evoker_fangs_pose, llama_spit_pose, shulker_bullet_poses};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let poses: Vec<Pose> = match row["kind"].as_str().ok_or("kind")? {
+            "shulker_bullet" => shulker_bullet_poses(&base, bits("age_in_ticks")?).to_vec(),
+            "llama_spit" => vec![llama_spit_pose(&base, bits("y_rot")?, bits("x_rot")?)],
+            // Fangs are not drawn until they bite.
+            _ if bits("bite_progress")? == 0.0 => Vec::new(),
+            _ => vec![evoker_fangs_pose(&base, bits("y_rot")?)],
+        };
+        let described: Vec<Value> = poses.iter().map(|pose| json!(matrix_bits(pose))).collect();
+        out.push(json!({"label": row["label"], "poses": described}));
     }
     Ok(json!({"rows": out}))
 }
@@ -23680,6 +23715,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
+        "small_projectile_pose" => return small_projectile_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),

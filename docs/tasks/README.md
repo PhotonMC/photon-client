@@ -130,7 +130,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T39b](T39b-trident.md) | Trident | M | T39 | bitti (c78306ac) |
 | [T39c](T39c-firlatilan-esya.md) | Fırlatılan eşyalar ve havai fişek (ateş topları dahil) | M | T39 | bitti (9148b3ec) |
 | [T39d](T39d-atesler-ruzgar-yukleri.md) | Ejderha topu ve rüzgâr yükleri | M | T39 | bitti (0fc44108) |
-| [T39e](T39e-shulker-mermisi-tukuruk-disler.md) | Shulker mermisi, lama tükürüğü, evoker dişleri | M | T39 | açık |
+| [T39e](T39e-shulker-mermisi-tukuruk-disler.md) | Shulker mermisi, lama tükürüğü, evoker dişleri | M | T39 | bitti (HASH) |
+| [T39g](T39g-mermi-hareketi.md) | Zarar veren mermilerin istemci hareketi (shulker mermisi, tükürük, ejderha topu, rüzgâr yükleri) | M | T39d, T39e | açık |
 | [T39f](T39f-olta-samandirasi.md) | Olta şamandırası | M | T39 | açık |
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | bölündü (bde91dfc) |
 | [T40b](T40b-cerceve-tablo-dekor.md) | Çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T40 | açık |

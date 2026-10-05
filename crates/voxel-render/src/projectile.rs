@@ -3,6 +3,8 @@
 //! the way it flies.
 
 use crate::entity_textures::{TextureRect, uv};
+use voxel_core::math::{mth_cos_f64, mth_sin_f64};
+
 use crate::joml::{Pose, Quaternion};
 use crate::scene::Vertex;
 
@@ -125,4 +127,50 @@ pub fn dragon_fireball_triangles(
             }
         })
         .collect()
+}
+
+/// `ShulkerBulletRenderer.submit` up to each model: lifted a little, tumbling with the age, and
+/// flipped; the second (the translucent shell) is half as big again.
+pub fn shulker_bullet_poses(base: &Pose, age_in_ticks: f32) -> [Pose; 2] {
+    let degrees = Quaternion::degrees_to_radians;
+    let mut pose = *base;
+    pose.translate(0.0, 0.15, 0.0);
+    pose.rotate(&Quaternion::rotation_y(degrees(
+        mth_sin_f64(f64::from(age_in_ticks * 0.1)) * 180.0,
+    )));
+    pose.rotate(&Quaternion::rotation_x(degrees(
+        mth_cos_f64(f64::from(age_in_ticks * 0.1)) * 180.0,
+    )));
+    pose.rotate(&Quaternion::rotation_z(degrees(
+        mth_sin_f64(f64::from(age_in_ticks * 0.15)) * 360.0,
+    )));
+    pose.scale(-0.5, -0.5, 0.5);
+    let core = pose;
+    pose.scale(1.5, 1.5, 1.5);
+    [core, pose]
+}
+
+/// `LlamaSpitRenderer.submit` up to the model: lifted a little and turned the way it flies.
+pub fn llama_spit_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
+    let mut pose = *base;
+    pose.translate(0.0, 0.15, 0.0);
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        y_rot - 90.0,
+    )));
+    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+        x_rot,
+    )));
+    pose
+}
+
+/// `EvokerFangsRenderer.submit` up to the model (drawn only once the bite has begun): turned to
+/// the way the fangs face, then flipped and set on the ground as a mob is.
+pub fn evoker_fangs_pose(base: &Pose, y_rot: f32) -> Pose {
+    let mut pose = *base;
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        90.0 - y_rot,
+    )));
+    pose.scale(-1.0, -1.0, 1.0);
+    pose.translate(0.0, -1.501, 0.0);
+    pose
 }

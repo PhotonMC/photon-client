@@ -46,6 +46,7 @@ pub mod end_crystal;
 pub mod ender_dragon;
 mod entity;
 mod entity_random;
+pub mod evoker_fangs;
 pub mod fish;
 mod fluid;
 pub mod fox;
@@ -2356,6 +2357,10 @@ impl ClientWorld {
                 entity.minecart_mut().prime_fuse();
                 return true;
             }
+            Some("minecraft:evoker_fangs") if event == evoker_fangs::ATTACK_EVENT => {
+                entity.evoker_fangs_mut().start_attack();
+                return true;
+            }
             Some("minecraft:armadillo") if event == armadillo::PEEK_EVENT => {
                 return entity.armadillo_mut().event(event);
             }
@@ -3388,6 +3393,7 @@ impl ClientWorld {
                 end_crystal: None,
                 minecart: None,
                 arrow: None,
+                evoker_fangs: None,
                 shot_at_angle: false,
                 parrot: None,
                 allay: None,

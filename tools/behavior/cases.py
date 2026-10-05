@@ -15314,6 +15314,7 @@ def entity_cases():
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
     yield from entity_charge_cases()
+    yield from entity_small_projectile_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16942,6 +16943,39 @@ def entity_charge_cases():
             seen("down-on-it", (0.0, 90.0)), seen("up-at-it", (45.0, -60.0)), seen("slantwise", (-130.0, 33.5)),
             seen("far-off", (30.0, 5.0), at=(-100.25, 70.5, 33.75), light=0x00F00000)]
     yield {"case_id": "entity/dragon-fireball-quad", "family": "entity", "operation": "dragon_fireball_quad",
+           "rows": rows}
+
+
+def entity_small_projectile_cases():
+    """The shulker bullet's, llama spit's and evoker fangs' models posed by the reference's own model
+    code (the bullet turned the way it flies, the fangs through their bite and its end) and where
+    their own renderers draw them from (the bullet tumbling with its age, in its core and its shell;
+    fangs not at all before they bite)."""
+    yield {"case_id": "entity/shulker-bullet-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": f"bullet-{label}", "layer": "minecraft:shulker_bullet#main",
+                     "y_rot": float_bits(y), "x_rot": float_bits(x)}
+                    for label, y, x in (("still", 0.0, 0.0), ("turned", 45.0, 30.0), ("wrapped", 400.0, -75.5),
+                                        ("down", -120.0, 90.0))]}
+    yield {"case_id": "entity/llama-spit-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": "spit", "layer": "minecraft:llama_spit#main"}]}
+    progresses = (0.0, 0.05, 0.25, 0.5, 0.6, 0.85, 0.9, 0.93, 0.99, 1.0)
+    yield {"case_id": "entity/evoker-fangs-model", "family": "entity", "operation": "airborne_model",
+           "rows": [{"label": f"fangs-{progress}", "layer": "minecraft:evoker_fangs#main",
+                     "bite_progress": float_bits(progress)} for progress in progresses]}
+
+    def pose(kind, label, at=(10.5, 64.0, -3.5), **values):
+        row = {"label": f"{kind}-{label}", "kind": kind, "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+               "feet_z": float_bits(at[2])}
+        row.update({key: float_bits(value) for key, value in values.items()})
+        return row
+    rows = [pose("shulker_bullet", f"age-{age}", age_in_ticks=age) for age in (0.0, 1.5, 7.25, 31.0, 99.75)]
+    rows.append(pose("shulker_bullet", "far-off", at=(-100.25, 70.5, 33.75), age_in_ticks=12.5))
+    rows += [pose("llama_spit", label, y_rot=y, x_rot=x)
+             for label, y, x in (("south", 0.0, 0.0), ("west", -90.0, 0.0), ("up", 30.0, 60.0), ("wrapped", 400.0, 10.0))]
+    rows += [pose("evoker_fangs", f"{label}", y_rot=y, bite_progress=progress)
+             for label, y, progress in (("waiting", 40.0, 0.0), ("biting", 40.0, 0.4), ("late", -130.0, 0.95),
+                                        ("done", 0.0, 1.0), ("turned", 400.0, 0.3))]
+    yield {"case_id": "entity/small-projectile-pose", "family": "entity", "operation": "small_projectile_pose",
            "rows": rows}
 
 

@@ -1737,6 +1737,23 @@ public final class EntityOracle {
                 var charge = new net.minecraft.client.model.object.projectile.WindChargeModel(root);
                 charge.setupAnim(state);
                 model = charge;
+            } else if (id.contains("shulker_bullet")) {
+                var state = new net.minecraft.client.renderer.entity.state.ShulkerBulletRenderState();
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                var bullet = new net.minecraft.client.model.object.projectile.ShulkerBulletModel(root);
+                bullet.setupAnim(state);
+                model = bullet;
+            } else if (id.contains("llama_spit")) {
+                var spit = new net.minecraft.client.model.animal.llama.LlamaSpitModel(root);
+                spit.setupAnim(new net.minecraft.client.renderer.entity.state.EntityRenderState());
+                model = spit;
+            } else if (id.contains("evoker_fangs")) {
+                var state = new net.minecraft.client.renderer.entity.state.EvokerFangsRenderState();
+                state.biteProgress = Oracle.f32(row, "bite_progress");
+                var fangs = new net.minecraft.client.model.effects.EvokerFangsModel(root);
+                fangs.setupAnim(state);
+                model = fangs;
             } else if (id.contains("trident")) {
                 var trident = new net.minecraft.client.model.object.projectile.TridentModel(root);
                 trident.setupAnim(net.minecraft.util.Unit.INSTANCE);
@@ -2187,6 +2204,67 @@ public final class EntityOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * Where the reference's own shulker bullet, llama spit and evoker fangs renderers draw their
+     * models from: the pose each submission leaves (none while fangs have not begun to bite).
+     */
+    private static JsonObject smallProjectilePose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        return proxy;
+                    }
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            switch (row.get("kind").getAsString()) {
+                case "shulker_bullet" -> {
+                    var state = new net.minecraft.client.renderer.entity.state.ShulkerBulletRenderState();
+                    state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                    var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ShulkerBulletRenderer.class);
+                    ((net.minecraft.client.renderer.entity.ShulkerBulletRenderer) renderer).submit(state, stack, collector, null);
+                }
+                case "llama_spit" -> {
+                    var state = new net.minecraft.client.renderer.entity.state.LlamaSpitRenderState();
+                    state.yRot = Oracle.f32(row, "y_rot");
+                    state.xRot = Oracle.f32(row, "x_rot");
+                    var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.LlamaSpitRenderer.class);
+                    ((net.minecraft.client.renderer.entity.LlamaSpitRenderer) renderer).submit(state, stack, collector, null);
+                }
+                default -> {
+                    var state = new net.minecraft.client.renderer.entity.state.EvokerFangsRenderState();
+                    state.yRot = Oracle.f32(row, "y_rot");
+                    state.biteProgress = Oracle.f32(row, "bite_progress");
+                    var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.EvokerFangsRenderer.class);
+                    ((net.minecraft.client.renderer.entity.EvokerFangsRenderer) renderer).submit(state, stack, collector, null);
+                }
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -4430,6 +4508,9 @@ public final class EntityOracle {
         }
         if (operation.equals("arrow_pose")) {
             return arrowPose(request);
+        }
+        if (operation.equals("small_projectile_pose")) {
+            return smallProjectilePose(request);
         }
         if (operation.equals("dragon_fireball_quad")) {
             return dragonFireballQuad(request);

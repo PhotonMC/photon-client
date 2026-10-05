@@ -69,6 +69,12 @@ pub fn tick_hands(item_in_hand: &mut ItemInHand, session: &PlaySession, renderer
     });
 }
 
+/// A packed light with its block light raised to fifteen (what an entity whose `getBlockLightLevel`
+/// is fifteen is lit by), its sky light kept.
+pub fn full_block_light(light: i32) -> i32 {
+    (light & !0xFFFF) | (15 << 4)
+}
+
 /// Packed block and sky light at a point.
 pub fn packed_light(world: &voxel_world::ClientWorld, at: Vec3) -> i32 {
     let [x, y, z] = [at.x, at.y, at.z].map(|value| value.floor() as i32);

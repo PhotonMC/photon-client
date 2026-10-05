@@ -13,7 +13,7 @@ use voxel_render::projectile::{dragon_fireball_quad, dragon_fireball_triangles};
 use voxel_render::scene::Vertex;
 
 use crate::mobs::MobModels;
-use crate::overlays::{FrameView, packed_light};
+use crate::overlays::{FrameView, full_block_light, packed_light};
 
 const WIND_CHARGE_LAYER: &str = "minecraft:wind_charge#main";
 const WIND_CHARGE: &str = "entity/projectiles/wind_charge";
@@ -63,7 +63,7 @@ pub fn remote_charges(
                 continue;
             };
             // `DragonFireballRenderer.getBlockLightLevel`: fifteen.
-            let light = light_uv((light & !0xFFFF) | (15 << 4));
+            let light = light_uv(full_block_light(light));
             let quad = dragon_fireball_quad(&base, &orientation);
             vertices.extend(dragon_fireball_triangles(&quad, rect, light));
             continue;

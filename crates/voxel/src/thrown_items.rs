@@ -13,7 +13,7 @@ use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
 
 use crate::item_layers::ItemLayerCache;
-use crate::overlays::{FrameView, packed_light};
+use crate::overlays::{FrameView, full_block_light, packed_light};
 
 /// The items of the entities that draw as an item facing the camera, as the ground shows them
 /// (`ItemDisplayContext.GROUND`), each lit by where it is (fully, for those the renderer lights so).
@@ -56,7 +56,7 @@ pub fn thrown_items(
         // `Entity.getLightProbePosition`: the eyes; a fireball's block light is fifteen.
         let mut light = packed_light(world, Vec3::new(x, y + f64::from(entity.eye_height()), z));
         if look.is_some_and(|(_, full)| full) {
-            light = (light & !0xFFFF) | (15 << 4);
+            light = full_block_light(light);
         }
         let item_layers = layers.get(stack, renderer, tints);
         vertices.extend(item_entity_vertices(item_layers, &[pose], light));
