@@ -67,6 +67,7 @@ mod pick;
 mod player;
 pub mod polar_bear;
 mod prediction;
+pub mod primed_tnt;
 pub mod rabbit;
 pub mod ravager;
 mod recipes;
@@ -1972,6 +1973,9 @@ impl ClientWorld {
                 entity.move_by_motion();
             }
         }
+        if self.discard_spent_primed_tnt(entity_id) {
+            return;
+        }
         self.tick_item_entity(entity_id);
         let position = self
             .entities
@@ -1979,8 +1983,25 @@ impl ClientWorld {
             .expect("entity remains after tick")
             .position();
         self.update_entity_section(entity_id, previous_position, position);
-        // A living entity that eased into a chunk that is not loaded stops
-        // ticking there (`ClientLevel`'s entity callbacks on a move).
+        self.update_ticking_flag(entity_id, position);
+    }
+
+    /// `PrimedTnt.tick`: a spent fuse discards the block.
+    fn discard_spent_primed_tnt(&mut self, entity_id: i32) -> bool {
+        let spent = self
+            .entities
+            .get(&entity_id)
+            .and_then(ClientEntity::primed_tnt)
+            .is_some_and(primed_tnt::PrimedTntState::is_spent);
+        if spent {
+            self.remove_entity(entity_id);
+        }
+        spent
+    }
+
+    /// A living entity that eased into a chunk that is not loaded stops
+    /// ticking there (`ClientLevel`'s entity callbacks on a move).
+    fn update_ticking_flag(&mut self, entity_id: i32, position: (f64, f64, f64)) {
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let in_loaded_chunk = self.contains_chunk(chunk_x, chunk_z);
         if let Some(entity) = self.entities.get_mut(&entity_id)
@@ -3394,6 +3415,7 @@ impl ClientWorld {
                 minecart: None,
                 arrow: None,
                 evoker_fangs: None,
+                primed_tnt: None,
                 shot_at_angle: false,
                 parrot: None,
                 allay: None,
@@ -4539,6 +4561,20 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
         }
         if let Some(color) = metadata_int_value(metadata, arrow::EFFECT_COLOR_DATA_ID) {
             entity.arrow_mut().set_color(color);
+        }
+    }
+    if entity.is_primed_tnt() {
+        let state = entity.primed_tnt_mut();
+        if let Some(fuse) = metadata_int_value(metadata, primed_tnt::FUSE_DATA_ID) {
+            state.set_fuse(fuse);
+        }
+        if let Some((primed_tnt::BLOCK_STATE_SERIALIZER_ID, mut value)) =
+            find_metadata_field(metadata, primed_tnt::BLOCK_STATE_DATA_ID)
+            && let Some(id) = voxel_core::wire::read_varint(&mut value)
+                .ok()
+                .and_then(|id| u32::try_from(id).ok())
+        {
+            state.set_block_state(id);
         }
     }
     if entity.is_minecart() {

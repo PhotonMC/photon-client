@@ -754,6 +754,8 @@ pub struct ClientEntity {
     pub(crate) arrow: Option<crate::arrow::ArrowState>,
     /// Evoker fangs' bite, made when the server first says they bite or they first tick.
     pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
+    /// A primed tnt's fuse and block, made when its data or ticks first reach it.
+    pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
     /// A frog's animation states, made when its pose first changes or it first ticks.
@@ -2461,6 +2463,20 @@ impl ClientEntity {
         )
     }
 
+    /// Whether this is a block of primed tnt (`PrimedTnt`).
+    pub fn is_primed_tnt(&self) -> bool {
+        self.type_id == VANILLA_PRIMED_TNT_ENTITY_TYPE_ID
+    }
+
+    /// A primed tnt's fuse and block, if it has any.
+    pub fn primed_tnt(&self) -> Option<&crate::primed_tnt::PrimedTntState> {
+        self.primed_tnt.as_ref()
+    }
+
+    pub(crate) fn primed_tnt_mut(&mut self) -> &mut crate::primed_tnt::PrimedTntState {
+        self.primed_tnt.get_or_insert_with(Default::default)
+    }
+
     /// Whether this is a pair of evoker fangs.
     pub fn is_evoker_fangs(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:evoker_fangs")
@@ -3233,6 +3249,9 @@ impl ClientEntity {
         }
         if self.is_evoker_fangs() {
             self.evoker_fangs_mut().tick();
+        }
+        if self.is_primed_tnt() {
+            self.primed_tnt_mut().tick();
         }
     }
 

@@ -2392,6 +2392,51 @@ public final class EntityOracle {
         return result;
     }
 
+    /** Where the reference's own tnt renderer draws the block of a primed tnt from the fuse it has left. */
+    private static JsonObject primedTntPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.TntRenderState();
+            state.fuseRemainingInTicks = Oracle.f32(row, "fuse");
+            var parts = state.blockState.setupModel(new org.joml.Matrix4f(), false);
+            parts.add((net.minecraft.client.renderer.block.dispatch.BlockStateModelPart)
+                java.lang.reflect.Proxy.newProxyInstance(EntityOracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
+                    (proxy, method, args) -> null));
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.TntRenderer.class);
+            var poses = new JsonArray();
+            var overlays = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitBlockModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                        overlays.add((int) args[5]);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.TntRenderer) renderer).submit(state, stack, collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            out.add("overlays", overlays);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * Where the reference's own minecart renderer draws a minecart (and the block it carries) from
      * the state its old behaviour extracts: the pose each of its two submissions leaves.
@@ -4580,6 +4625,9 @@ public final class EntityOracle {
         }
         if (operation.equals("small_projectile_pose")) {
             return smallProjectilePose(request);
+        }
+        if (operation.equals("primed_tnt_pose")) {
+            return primedTntPose(request);
         }
         if (operation.equals("fishing_hook")) {
             return fishingHook(request);

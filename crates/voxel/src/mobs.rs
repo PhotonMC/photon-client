@@ -565,6 +565,7 @@ fn remote_projectiles_and_vehicles(
     vertices.extend(crate::bullets::remote_bullets(
         session, models, textures, view,
     ));
+    crate::minecarts::remote_primed_tnt(session, (view, &mut *held));
     vertices.extend(crate::minecarts::remote_minecarts(
         session,
         models,

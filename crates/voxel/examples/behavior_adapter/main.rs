@@ -21471,6 +21471,36 @@ fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `primed_tnt_pose`: the pose and overlay a block of primed tnt is drawn with.
+fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::minecart::{primed_tnt_pose, tnt_is_lit};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let fuse = bits("fuse")?;
+        let pose = primed_tnt_pose(&base, fuse);
+        let overlay = if tnt_is_lit(fuse) {
+            (10 << 16) | 15
+        } else {
+            10 << 16
+        };
+        out.push(
+            json!({"label": row["label"], "poses": [matrix_bits(&pose)], "overlays": [overlay]}),
+        );
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `fishing_hook`: a bobber's quad and its line's vertices.
 fn fishing_hook_result(request: &Value) -> Result<Value, String> {
     use voxel_render::fishing::string_vertices;
@@ -23780,6 +23810,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
         "fishing_hook" => return fishing_hook_result(request),
+        "primed_tnt_pose" => return primed_tnt_pose_result(request),
         "small_projectile_pose" => return small_projectile_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),

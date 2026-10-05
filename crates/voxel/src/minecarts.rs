@@ -7,7 +7,8 @@ use voxel_net::connection::PlaySession;
 use voxel_render::boat::boat_vertices;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::minecart::{
-    MinecartRenderState, RailPlace, minecart_poses, offset_seed, tnt_is_lit, tnt_swell_amount,
+    MinecartRenderState, RailPlace, minecart_poses, offset_seed, primed_tnt_pose, tnt_is_lit,
+    tnt_swell_amount,
 };
 use voxel_render::mob_model::overlay_code;
 use voxel_render::scene::Vertex;
@@ -106,4 +107,44 @@ pub fn remote_minecarts(
         }
     }
     vertices
+}
+
+/// `TntRenderer` for the blocks of primed tnt the server added: the block it shows (the tnt block's
+/// own), swollen as its fuse runs out and flashing white while it burns.
+pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut Vec<HeldItem>)) {
+    let world = session.world();
+    let partial = view.partial as f32;
+    for entity in world.entities().filter(|entity| entity.is_primed_tnt()) {
+        let (Some(snapshot), Some(own)) = (
+            world.entity_snapshot(entity.id(), partial),
+            entity.primed_tnt(),
+        ) else {
+            continue;
+        };
+        let Some(block) = own.block_state() else {
+            continue;
+        };
+        // `TntRenderer.extractRenderState`: the fuse left, less the part tick (plus one).
+        let fuse = own.fuse() as f32 - partial + 1.0;
+        let (x, y, z) = snapshot.position;
+        let mut base = voxel_render::joml::Pose::default();
+        base.translate(
+            (x - f64::from(view.origin[0])) as f32,
+            (y - f64::from(view.origin[1])) as f32,
+            (z - f64::from(view.origin[2])) as f32,
+        );
+        // `Entity.getLightProbePosition`: the eyes.
+        let light = packed_light(world, Vec3::new(x, y + f64::from(entity.eye_height()), z));
+        let overlay = if tnt_is_lit(fuse) {
+            overlay_code(false, 1.0)
+        } else {
+            0.0
+        };
+        held.push(HeldItem::block(
+            block,
+            primed_tnt_pose(&base, fuse),
+            light,
+            overlay,
+        ));
+    }
 }

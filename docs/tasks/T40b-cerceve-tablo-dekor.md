@@ -25,3 +25,4 @@ Blok entity çizicileri (PLAN-M8).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Bölündü: kristal T37h3'te yapıldı, TNT minecart'ı T38d'de; kalan dilimler T40c (TNT), T40d (düşen blok), T40e (yıldırım), T40f (bağ), T40g (çerçeve), T40h (tablo), T40i (display).

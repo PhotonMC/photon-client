@@ -117,3 +117,19 @@ pub fn tnt_swell_amount(fuse: f32) -> f32 {
 pub fn tnt_is_lit(fuse: f32) -> bool {
     fuse >= 0.0 && ((fuse / 5.0) as i32) % 2 == 0
 }
+
+/// `TntRenderer.submit` up to the block: lifted half a block, swollen as the fuse runs out, and set so
+/// the block's corner is at its middle.
+pub fn primed_tnt_pose(base: &Pose, fuse: f32) -> Pose {
+    let degrees = Quaternion::degrees_to_radians;
+    let mut pose = *base;
+    pose.translate(0.0, 0.5, 0.0);
+    if fuse < 10.0 {
+        let scale = 1.0 + tnt_swell_amount(fuse);
+        pose.scale(scale, scale, scale);
+    }
+    pose.rotate(&Quaternion::rotation_y(degrees(-90.0)));
+    pose.translate(-0.5, -0.5, 0.5);
+    pose.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    pose
+}

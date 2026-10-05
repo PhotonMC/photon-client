@@ -15316,6 +15316,7 @@ def entity_cases():
     yield from entity_charge_cases()
     yield from entity_small_projectile_cases()
     yield from entity_fishing_hook_cases()
+    yield from entity_primed_tnt_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16997,6 +16998,17 @@ def entity_fishing_hook_cases():
             seen("far-off", (30.0, 5.0), offset=(0.0, 0.0, 0.5), at=(-100.25, 70.5, 33.75), light=0x00F00000),
             seen("hand-on-the-bobber", offset=(0.0, 0.0, 0.0))]
     yield {"case_id": "entity/fishing-hook", "family": "entity", "operation": "fishing_hook", "rows": rows}
+
+
+def entity_primed_tnt_cases():
+    """Where the reference's own tnt renderer draws the block of a primed tnt from the fuse it has left (long, at the
+    swelling's start and end, either side of each flash, spent), and the overlay it flashes with."""
+    def at(label, fuse, place=(10.5, 64.0, -3.5)):
+        return {"label": f"tnt-{label}", "feet_x": float_bits(place[0]), "feet_y": float_bits(place[1]),
+                "feet_z": float_bits(place[2]), "fuse": float_bits(fuse)}
+    rows = [at(f"fuse-{fuse}", fuse) for fuse in (81.0, 80.5, 40.0, 11.0, 10.0, 9.5, 9.0, 7.25, 5.0, 4.99, 3.0, 1.5, 1.0, 0.5, 0.0, -0.5)]
+    rows.append(at("far-off", 6.0, place=(-100.25, 70.5, 33.75)))
+    yield {"case_id": "entity/primed-tnt-pose", "family": "entity", "operation": "primed_tnt_pose", "rows": rows}
 
 
 def entity_copper_golem_cases():
