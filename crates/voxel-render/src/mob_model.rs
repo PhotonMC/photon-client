@@ -227,6 +227,22 @@ pub struct BreezeRenderState {
     pub long_jump: voxel_world::animation_state::AnimationState,
 }
 
+/// What a warden's models (the body and its four glowing layers) are posed from
+/// (`WardenRenderState`): the look, the walk, the pulses of its tendrils, and
+/// the animation states its pose and events run.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WardenRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub tendril_animation: f32,
+    pub roar: voxel_world::animation_state::AnimationState,
+    pub sniff: voxel_world::animation_state::AnimationState,
+    pub emerge: voxel_world::animation_state::AnimationState,
+    pub digging: voxel_world::animation_state::AnimationState,
+    pub attack: voxel_world::animation_state::AnimationState,
+    pub sonic_boom: voxel_world::animation_state::AnimationState,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -1845,6 +1861,86 @@ impl MobModel {
             ("Breeze.SLIDE_BACK", state.slide_back),
             ("Breeze.INHALE", state.inhale),
             ("Breeze.JUMP", state.long_jump),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
+        }
+    }
+
+    /// `WardenModel.setupAnim`: the head takes the look, then the walk, the
+    /// idle sway and the tendrils' pulse move the parts, then each animation
+    /// that has started runs over them. The glowing layers share the parts'
+    /// names (the cut parts are empty), so the same call poses all five.
+    pub fn setup_warden(&mut self, state: &WardenRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let half_pi = (std::f64::consts::PI / 2.0) as f32;
+        let pi = std::f64::consts::PI as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        // `animateWalk`.
+        let speed = (3.0 * state.quadruped.walk_speed).min(0.5);
+        let position = state.quadruped.walk_position * 0.8662;
+        let (position_cos, position_sin) = (cos(position), sin(position));
+        let speed_with_min = speed.min(0.35);
+        // `animateIdlePose`.
+        let scaled_age = state.age_in_ticks * 0.1;
+        let (wobble_cos, wobble_sin) = (cos(scaled_age), sin(scaled_age));
+        // `animateTendrils`: the cosine is a double there.
+        let tendril_x_rot = state.tendril_animation
+            * ((f64::from(state.age_in_ticks) * 2.25).cos()
+                * std::f64::consts::PI
+                * f64::from(0.1_f32)) as f32;
+        let Some(bone) = self.root.child_mut("bone") else {
+            return;
+        };
+        if let Some(body) = bone.child_mut("body") {
+            body.z_rot = 0.1 * position_sin * speed;
+            body.x_rot = 1.0 * position_cos * speed_with_min;
+            body.z_rot += 0.025 * wobble_sin;
+            body.x_rot += 0.025 * wobble_cos;
+            if let Some(head) = body.child_mut("head") {
+                head.x_rot = state.quadruped.x_rot * degrees;
+                head.y_rot = state.quadruped.head_y_rot * degrees;
+                head.z_rot += 0.3 * position_sin * speed;
+                head.x_rot += 1.2 * cos(position + half_pi) * speed_with_min;
+                head.z_rot += 0.06 * wobble_cos;
+                head.x_rot += 0.06 * wobble_sin;
+                if let Some(left) = head.child_mut("left_tendril") {
+                    left.x_rot = tendril_x_rot;
+                }
+                if let Some(right) = head.child_mut("right_tendril") {
+                    right.x_rot = -tendril_x_rot;
+                }
+            }
+            // `resetArmPoses`: the arms stand where the model puts them, as the walk
+            // does not move them there.
+            for (name, swing, side) in [
+                ("left_arm", -(0.8 * position_cos * speed), 13.0),
+                ("right_arm", -(0.8 * position_sin * speed), -13.0),
+            ] {
+                if let Some(arm) = body.child_mut(name) {
+                    arm.x_rot = swing;
+                    arm.z_rot = 0.0;
+                    arm.y_rot = 0.0;
+                    arm.z = 1.0;
+                    arm.x = side;
+                    arm.y = -13.0;
+                }
+            }
+        }
+        if let Some(leg) = bone.child_mut("left_leg") {
+            leg.x_rot = 1.0 * position_cos * speed;
+        }
+        if let Some(leg) = bone.child_mut("right_leg") {
+            leg.x_rot = 1.0 * cos(position + pi) * speed;
+        }
+        for (name, running) in [
+            ("Warden.WARDEN_ATTACK", state.attack),
+            ("Warden.WARDEN_SONIC_BOOM", state.sonic_boom),
+            ("Warden.WARDEN_DIG", state.digging),
+            ("Warden.WARDEN_EMERGE", state.emerge),
+            ("Warden.WARDEN_ROAR", state.roar),
+            ("Warden.WARDEN_SNIFF", state.sniff),
         ] {
             self.animate_state(name, running, state.age_in_ticks);
         }
@@ -4350,6 +4446,37 @@ pub fn mob_vertices_emissive(
     placement: &MobPlacement,
     texture: TextureRect,
 ) -> Vec<Vertex> {
+    emissive_vertices(model, placement, texture, (0.0, [-1.0; 2]))
+}
+
+/// A layer drawn unlit but shaded by face and blended (`RenderTypes.entityTranslucentEmissive`)
+/// by `LivingEntityEmissiveLayer`: the same posed model, its colour white with
+/// this alpha (a whole 255th, as `ARGB.white` makes it), and the hurt overlay
+/// of the mob it covers.
+pub fn mob_vertices_emissive_faded(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+    alpha: f32,
+) -> Vec<Vertex> {
+    let alpha = (alpha * 255.0).floor() / 255.0;
+    emissive_vertices(
+        model,
+        placement,
+        texture,
+        (overlay_code(placement.red_overlay, 0.0), [-1.0, alpha]),
+    )
+}
+
+/// An emissive layer's triangles: each vertex carries its face's normal for
+/// the shader, and its light the negative full bright; the second value of
+/// the light, when not negative, is the layer's alpha.
+fn emissive_vertices(
+    model: &MobModel,
+    placement: &MobPlacement,
+    texture: TextureRect,
+    (shade, light): (f32, [f32; 2]),
+) -> Vec<Vertex> {
     let pose = placement_pose(placement);
     let mut vertices = Vec::new();
     for (_, corners) in model.render(&pose) {
@@ -4358,9 +4485,9 @@ pub fn mob_vertices_emissive(
             vertices.push(Vertex {
                 position: corner.position,
                 uv: uv(texture, corner.uv),
-                shade: 0.0,
+                shade,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
-                light: [-1.0; 2],
+                light,
             });
         }
     }
@@ -4486,6 +4613,25 @@ mod tests {
         }
         assert!((area(&still) - area(&scrolled)).abs() < 1e-3);
         assert!(scrolled.len() > still.len());
+    }
+
+    #[test]
+    fn a_faded_emissive_layer_carries_its_alpha_in_whole_255ths_and_the_overlay() {
+        let heart = MobModel::bake(layer("minecraft:warden#heart").expect("the heart's layer"));
+        let placement = MobPlacement {
+            red_overlay: true,
+            ..MobPlacement::default()
+        };
+        let vertices = mob_vertices_emissive_faded(&heart, &placement, [0.0, 0.0, 1.0, 1.0], 0.5);
+        assert!(!vertices.is_empty());
+        for vertex in &vertices {
+            // `ARGB.white(0.5F)`: floor(127.5) = 127 of 255.
+            assert_eq!(vertex.light, [-1.0, 127.0 / 255.0]);
+            assert_eq!(vertex.shade, 1.0);
+        }
+        // The plain emissive layer has no alpha and no overlay.
+        let plain = mob_vertices_emissive(&heart, &placement, [0.0, 0.0, 1.0, 1.0]);
+        assert!(plain.iter().all(|v| v.light == [-1.0; 2] && v.shade == 0.0));
     }
 
     #[test]

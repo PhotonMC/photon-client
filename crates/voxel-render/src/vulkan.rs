@@ -173,6 +173,7 @@ layout(location = 3) out vec3 out_light;
 layout(location = 4) out vec2 out_fog;
 layout(location = 5) out float out_hurt;
 layout(location = 6) out vec3 out_colour;
+layout(location = 7) out float out_alpha;
 // The level's two diffuse lights.
 const vec3 LIGHT0 = normalize(vec3(0.2, 1.0, -0.7));
 const vec3 LIGHT1 = normalize(vec3(-0.2, 1.0, 0.7));
@@ -190,6 +191,9 @@ void main() {
     out_front = vec3(shaded ? mix_light(light) : 1.0);
     out_back = vec3(shaded ? mix_light(-light) : 1.0);
     out_light = in_light.x < 0.0 ? vec3(1.0) : sample_lightmap(in_light);
+    // An emissive vertex whose second light is not negative carries the
+    // alpha its colour is blended with (`ARGB.white(alpha)`).
+    out_alpha = (in_light.x < 0.0 && in_light.y >= 0.0) ? in_light.y : 1.0;
     // The vertex's shade says whether the hurt overlay is on, and the fourth
     // component of its tint the colour its texel is multiplied by, as
     // 0xRRGGBB (exact in a float), or zero for none.
@@ -218,6 +222,7 @@ layout(location = 3) in vec3 in_light;
 layout(location = 4) in vec2 in_fog;
 layout(location = 5) in float in_hurt;
 layout(location = 6) in vec3 in_colour;
+layout(location = 7) in float in_alpha;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;
@@ -241,6 +246,7 @@ void main() {
         colour.rgb = mix(vec3(1.0), colour.rgb, flash);
     }
     colour.rgb *= in_light;
+    colour.a *= in_alpha;
     float fog = max(
         linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
         linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));

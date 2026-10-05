@@ -1006,6 +1006,13 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "warden_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.monster.warden.Warden.class, "CLIENT_ANGER_LEVEL",
+                            event.get("anger").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "turtle_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         if (event.has("has_egg")) {
@@ -1303,6 +1310,25 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "warden" -> {
+                            var warden = (net.minecraft.world.entity.monster.warden.Warden) entity;
+                            var states = new Object[][] {
+                                {"roar", warden.roarAnimationState}, {"sniff", warden.sniffAnimationState},
+                                {"emerge", warden.emergeAnimationState}, {"digging", warden.diggingAnimationState},
+                                {"attack", warden.attackAnimationState}, {"sonic_boom", warden.sonicBoomAnimationState},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) warden.tickCount) : 0L);
+                            }
+                            // The pulses at the start and at the end of the tick, as they lerp.
+                            described.addProperty("tendril_old", Oracle.bits(warden.getTendrilAnimation(0.0F)));
+                            described.addProperty("tendril", Oracle.bits(warden.getTendrilAnimation(1.0F)));
+                            described.addProperty("heart_old", Oracle.bits(warden.getHeartAnimation(0.0F)));
+                            described.addProperty("heart", Oracle.bits(warden.getHeartAnimation(1.0F)));
                         }
                         case "parrot" -> {
                             var parrot = (net.minecraft.world.entity.animal.parrot.Parrot) entity;

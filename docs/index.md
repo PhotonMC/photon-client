@@ -168,6 +168,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T37b — Sulfur cube — client-parity](client-sulfur-cube-parity-conformance.md)
 - [T41g — Köylü, tüccar ve cadının tuttuğu ve taktığı eşya — client-parity](client-villager-held-parity-conformance.md)
 - [T34 — Köylü ve gezgin tüccar — client-parity](client-villager-parity-conformance.md)
+- [T37d — Warden — client-parity](client-warden-parity-conformance.md)
 - [T32 — Kurt — client-parity](client-wolf-parity-conformance.md)
 - [P09.a — ClientWorld blok çarpışma şekli toplama — client-parity birleşik kayıt](client-world-block-collision-conformance.md)
 - [P08.c-block-entity — server-conformance ClientWorld block entity state](client-world-block-entity-conformance.md)

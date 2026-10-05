@@ -67,6 +67,7 @@ mod region_copy;
 mod shadow;
 pub mod shulker;
 pub mod squid;
+pub mod warden;
 pub mod wolf;
 
 pub use block_entity::*;
@@ -2268,6 +2269,15 @@ impl ClientWorld {
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
             }
+            Some("minecraft:warden")
+                if matches!(
+                    event,
+                    warden::ATTACK_EVENT | warden::TENDRIL_EVENT | warden::SONIC_BOOM_EVENT
+                ) =>
+            {
+                let tick_count = entity.tick_count;
+                return entity.warden_mut().event(event, tick_count);
+            }
             Some("minecraft:wolf") if event == wolf::SHAKE_EVENT => {
                 entity.living.wolf.start_shake();
                 return true;
@@ -3216,6 +3226,7 @@ impl ClientWorld {
                 bat: None,
                 boat: None,
                 breeze: None,
+                warden: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -3235,6 +3246,15 @@ impl ClientWorld {
             shulker.old_y_body_rot_bits = 0.0_f32.to_bits();
             let (position, (y_rot, x_rot, _)) = (shulker.position(), shulker.rotation());
             shulker.snap_to(position, y_rot, x_rot);
+        }
+        if let Some(warden) = self
+            .entities
+            .get_mut(&entity.entity_id)
+            .filter(|entity| entity.is_warden())
+            && entity.data == 1
+        {
+            // `Warden.recreateFromPacket`: the packet's data says it is emerging.
+            warden.set_pose(ClientEntityPose::Emerging);
         }
         self.snap_local_player_turn(entity.entity_id, head_rotation_bits, entity.rotation.0);
         true
@@ -4346,6 +4366,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
+    }
+    if let Some(anger) = warden_anger_from_metadata(entity.type_id, metadata) {
+        entity.warden_mut().anger = anger;
     }
     if let Some(size) = cube_mob_size_from_metadata(entity.type_id, metadata) {
         entity.set_cube_size(size);

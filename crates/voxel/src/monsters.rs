@@ -9,9 +9,10 @@ use voxel_render::entity_textures::EntityTextures;
 use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
 use voxel_render::mob_model::{
     AllayRenderState, BatRenderState, BreezeRenderState, EndermanState, MobModel, MobPlacement,
-    ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState, creeper_scale,
-    creeper_white_overlay, mob_vertices, mob_vertices_emissive, mob_vertices_glow,
-    mob_vertices_scrolled, mob_vertices_swirl, placement_pose,
+    ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState, WardenRenderState,
+    creeper_scale, creeper_white_overlay, mob_vertices, mob_vertices_emissive,
+    mob_vertices_emissive_faded, mob_vertices_glow, mob_vertices_scrolled, mob_vertices_swirl,
+    placement_pose,
 };
 use voxel_render::player_model::{Arm, Part, PlayerRenderState};
 use voxel_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
@@ -49,6 +50,8 @@ enum Pose {
     Parrot,
     /// `BreezeModel`, with its wind and its eyes drawn over it.
     Breeze,
+    /// `WardenModel`, with its four glowing layers drawn over it.
+    Warden,
 }
 
 /// A monster drawn here: its entity type, model layer and texture, how it is
@@ -61,7 +64,7 @@ struct Monster {
     flip_degrees: f32,
 }
 
-const MONSTERS: [Monster; 14] = [
+const MONSTERS: [Monster; 15] = [
     Monster {
         type_name: "minecraft:spider",
         layer: "minecraft:spider#main",
@@ -160,12 +163,31 @@ const MONSTERS: [Monster; 14] = [
         pose: Pose::Breeze,
         flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
     },
+    Monster {
+        type_name: "minecraft:warden",
+        layer: "minecraft:warden#main",
+        texture: "entity/warden/warden",
+        pose: Pose::Warden,
+        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+    },
 ];
 
 /// The wind and the eyes of a breeze (`BreezeWindLayer`, `BreezeEyesLayer`): their
 /// model layers and textures.
 const BREEZE_WIND: (&str, &str) = ("minecraft:breeze#wind", "entity/breeze/breeze_wind");
 const BREEZE_EYES: (&str, &str) = ("minecraft:breeze#eyes", "entity/breeze/breeze_eyes");
+
+/// The glowing layers of a warden (`WardenRenderer`), in the order they are
+/// added: each one's model layer and texture.
+const WARDEN_BIOLUMINESCENT: (&str, &str) = (
+    "minecraft:warden#bioluminescent",
+    "entity/warden/warden_bioluminescent_layer",
+);
+const WARDEN_SPOTS: &str = "minecraft:warden#pulsating_spots";
+const WARDEN_SPOTS_1: &str = "entity/warden/warden_pulsating_spots_1";
+const WARDEN_SPOTS_2: &str = "entity/warden/warden_pulsating_spots_2";
+const WARDEN_TENDRILS: (&str, &str) = ("minecraft:warden#tendrils", "entity/warden/warden");
+const WARDEN_HEART: (&str, &str) = ("minecraft:warden#heart", "entity/warden/warden_heart");
 
 /// The texture a vex charges in (`VexRenderer.getTextureLocation`).
 const VEX_CHARGING_TEXTURE: &str = "entity/illager/vex_charging";
@@ -187,6 +209,12 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain([POWER_TEXTURE, GHAST_SHOOTING_TEXTURE, VEX_CHARGING_TEXTURE])
         .chain(voxel_world::parrot::VARIANT_TEXTURES)
         .chain([BREEZE_WIND.1, BREEZE_EYES.1])
+        .chain([
+            WARDEN_BIOLUMINESCENT.1,
+            WARDEN_SPOTS_1,
+            WARDEN_SPOTS_2,
+            WARDEN_HEART.1,
+        ])
 }
 
 /// The texture a monster wears now: a ghast's mouth open to charge, a vex charging,
@@ -259,6 +287,83 @@ fn breeze_state(entity: &ClientEntity, partial: f32) -> BreezeRenderState {
         slide_back: own.slide_back,
         inhale: own.inhale,
         long_jump: own.long_jump,
+    }
+}
+
+/// `WardenRenderer.extractRenderState`: the look, the walk, the pulses and the
+/// animation states the warden runs.
+fn warden_state(entity: &ClientEntity, look: QuadrupedState, partial: f32) -> WardenRenderState {
+    let own = entity.warden().copied().unwrap_or_default();
+    WardenRenderState {
+        quadruped: look,
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        tendril_animation: own.tendril_animation(partial),
+        roar: own.roar,
+        sniff: own.sniff,
+        emerge: own.emerge,
+        digging: own.digging,
+        attack: own.attack,
+        sonic_boom: own.sonic_boom,
+    }
+}
+
+/// A warden's glowing layers over its body, in the order the renderer adds
+/// them (`LivingEntityEmissiveLayer`): the bioluminescent parts, the two
+/// pulsating spots that take turns, the tendrils and the heart, each faded by
+/// its own alpha and posed as the body is.
+fn warden_layers(
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (entity, state, partial): (&ClientEntity, &WardenRenderState, f32),
+    placed: &MobPlacement,
+) -> Vec<Vertex> {
+    let own = entity.warden().copied().unwrap_or_default();
+    let age = state.age_in_ticks;
+    let pi = std::f64::consts::PI as f32;
+    let spots = |phase: f32| {
+        (voxel_core::math::mth_cos_f64(f64::from(age * 0.045 + phase)) * 0.25).max(0.0)
+    };
+    let layers = [
+        (WARDEN_BIOLUMINESCENT.0, WARDEN_BIOLUMINESCENT.1, 1.0),
+        (WARDEN_SPOTS, WARDEN_SPOTS_1, spots(0.0)),
+        (WARDEN_SPOTS, WARDEN_SPOTS_2, spots(pi)),
+        (
+            WARDEN_TENDRILS.0,
+            WARDEN_TENDRILS.1,
+            state.tendril_animation,
+        ),
+        (WARDEN_HEART.0, WARDEN_HEART.1, own.heart_animation(partial)),
+    ];
+    let mut vertices = Vec::new();
+    for (layer, texture, alpha) in layers {
+        // `LivingEntityEmissiveLayer.submit`: nothing below this alpha.
+        if alpha <= 1.0e-5 {
+            continue;
+        }
+        let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
+            continue;
+        };
+        model.setup_warden(state);
+        vertices.extend(mob_vertices_emissive_faded(model, placed, rect, alpha));
+    }
+    vertices
+}
+
+/// The layers some monsters draw over their body: a breeze's wind and eyes, a
+/// warden's glowing parts.
+fn glowing_layers(
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (pose, entity, look, partial): (Pose, &ClientEntity, QuadrupedState, f32),
+    placed: &MobPlacement,
+) -> Vec<Vertex> {
+    match pose {
+        Pose::Breeze => breeze_layers(models, textures, (entity, partial), placed),
+        Pose::Warden => {
+            let state = warden_state(entity, look, partial);
+            warden_layers(models, textures, (entity, &state, partial), placed)
+        }
+        _ => Vec::new(),
     }
 }
 
@@ -356,6 +461,7 @@ fn pose_monster(
             placed.light = (placed.light & !0xFFFF) | (15 << 4);
         }
         Pose::Breeze => model.setup_breeze(&breeze_state(entity, partial)),
+        Pose::Warden => model.setup_warden(&warden_state(entity, look, partial)),
         Pose::Parrot => {
             let own = entity.parrot().copied();
             // `ParrotModel.getPose`: sitting, else flying in the air (the party
@@ -478,9 +584,12 @@ pub fn remote_monsters(
         {
             glow.extend(mob_vertices_glow(model, &placed, eyes));
         }
-        if monster.pose == Pose::Breeze {
-            vertices.extend(breeze_layers(models, textures, (entity, partial), &placed));
-        }
+        vertices.extend(glowing_layers(
+            models,
+            textures,
+            (monster.pose, entity, look, partial),
+            &placed,
+        ));
         // A charged creeper's swirl: the armor model, posed as the creeper is.
         if monster.pose == Pose::Creeper
             && entity.is_powered()

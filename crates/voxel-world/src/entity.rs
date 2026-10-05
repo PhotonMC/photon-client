@@ -734,6 +734,8 @@ pub struct ClientEntity {
     pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
     /// A breeze's animation states, made when its pose first changes or it first ticks.
     pub(crate) breeze: Option<Box<crate::breeze::BreezeState>>,
+    /// A warden's animation states and pulses, made when its pose, data or events first reach it.
+    pub(crate) warden: Option<Box<crate::warden::WardenState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2356,6 +2358,34 @@ impl ClientEntity {
                 .get_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
+        if self.is_warden() {
+            let tick_count = self.tick_count;
+            self.warden
+                .get_or_insert_with(Default::default)
+                .set_pose(pose, tick_count);
+        }
+    }
+
+    pub(crate) fn is_warden(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:warden")
+    }
+
+    /// A warden's animation states and pulses, if it has any.
+    pub fn warden(&self) -> Option<&crate::warden::WardenState> {
+        self.warden.as_deref()
+    }
+
+    /// The warden's state, made if it has none yet.
+    pub(crate) fn warden_mut(&mut self) -> &mut crate::warden::WardenState {
+        self.warden.get_or_insert_with(Default::default)
+    }
+
+    /// `Warden.tick`'s client half, after the rest of the tick.
+    pub(crate) fn tick_warden(&mut self) {
+        if self.is_warden() {
+            let tick_count = self.tick_count;
+            self.warden_mut().tick(tick_count);
+        }
     }
 
     pub(crate) fn is_breeze(&self) -> bool {
@@ -2839,6 +2869,7 @@ impl ClientEntity {
         self.tick_bat();
         self.tick_parrot();
         self.tick_allay();
+        self.tick_warden();
     }
 
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.

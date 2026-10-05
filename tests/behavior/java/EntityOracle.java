@@ -1731,6 +1731,27 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("warden")) {
+                var state = new net.minecraft.client.renderer.entity.state.WardenRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.tendrilAnimation = Oracle.f32(row, "tendril");
+                var animations = new Object[][] {
+                    {"roar", state.roarAnimationState}, {"sniff", state.sniffAnimationState},
+                    {"emerge", state.emergeAnimationState}, {"digging", state.diggingAnimationState},
+                    {"attack", state.attackAnimationState}, {"sonic_boom", state.sonicBoomAnimationState},
+                };
+                for (var animation : animations) {
+                    if (row.has((String) animation[0])) {
+                        ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                    }
+                }
+                var warden = new net.minecraft.client.model.monster.warden.WardenModel(root);
+                warden.setupAnim(state);
+                model = warden;
             } else if (id.contains("parrot")) {
                 var state = new net.minecraft.client.renderer.entity.state.ParrotRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

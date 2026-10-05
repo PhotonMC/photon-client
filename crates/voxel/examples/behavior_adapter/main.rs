@@ -18774,9 +18774,20 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             "SLIDING" => 15,
                             "SHOOTING" => 16,
                             "INHALING" => 17,
+                            "ROARING" => 11,
+                            "SNIFFING" => 12,
+                            "EMERGING" => 13,
+                            "DIGGING" => 14,
                             _ => 0,
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
+                    }
+                    "warden_data" => {
+                        // `Warden.CLIENT_ANGER_LEVEL`, an int.
+                        let mut data = vec![voxel_world::warden::CLIENT_ANGER_DATA_ID, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "anger")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
                     }
                     "turtle_data" => {
                         let mut data = Vec::new();
@@ -19087,6 +19098,30 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "warden" => {
+                        let state = entity.warden().copied().unwrap_or_default();
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("roar", state.roar),
+                            ("sniff", state.sniff),
+                            ("emerge", state.emerge),
+                            ("digging", state.digging),
+                            ("attack", state.attack),
+                            ("sonic_boom", state.sonic_boom),
+                        ] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                        described["tendril_old"] = json!(hex(state.tendril_animation(0.0)));
+                        described["tendril"] = json!(hex(state.tendril_animation(1.0)));
+                        described["heart_old"] = json!(hex(state.heart_animation(0.0)));
+                        described["heart"] = json!(hex(state.heart_animation(1.0)));
                     }
                     "parrot" => {
                         let state = entity.parrot().copied().unwrap_or_default();
@@ -20688,6 +20723,31 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 slide_back: started("slide_back"),
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
+            });
+        } else if id.contains("warden") {
+            use voxel_render::mob_model::WardenRenderState;
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_warden(&WardenRenderState {
+                quadruped: QuadrupedState {
+                    head_y_rot: bits("y_rot")?,
+                    x_rot: bits("x_rot")?,
+                    walk_position: bits("walk_position")?,
+                    walk_speed: bits("walk_speed")?,
+                },
+                age_in_ticks: bits("age_in_ticks")?,
+                tendril_animation: bits("tendril")?,
+                roar: started("roar"),
+                sniff: started("sniff"),
+                emerge: started("emerge"),
+                digging: started("digging"),
+                attack: started("attack"),
+                sonic_boom: started("sonic_boom"),
             });
         } else if id.contains("parrot") {
             use voxel_render::mob_model::{ParrotPose, ParrotRenderState};

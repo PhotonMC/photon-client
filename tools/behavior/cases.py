@@ -14634,6 +14634,28 @@ def movement_item_cases():
         fish("boat-in-shallow-water", "birch_boat", 10, [], water="shallow", y=63.5, extras="boat"),
         fish("boat-above-the-water", "bamboo_raft", 10, [], water="shallow", y=64.6, extras="boat"),
         fish("boat-on-dry-land", "spruce_boat", 10, [], water="none", extras="boat"),
+        # A warden's pose starts its roar, sniff, emerge and dig animations; its attack event stops
+        # the roar and starts the attack, the sonic boom event its boom, the tendril event its
+        # pulse; its heart beats every forty ticks, faster as its anger synced to the client grows.
+        living("warden-calm", "warden", 100, [], extras=["warden"]),
+        living("warden-poses", "warden", 60,
+               [{"tick": 4, "type": "frog_data", "pose": "EMERGING"},
+                {"tick": 20, "type": "frog_data", "pose": "DIGGING"},
+                {"tick": 30, "type": "frog_data", "pose": "ROARING"},
+                {"tick": 45, "type": "frog_data", "pose": "SNIFFING"}], extras=["warden"]),
+        living("warden-roars-then-attacks", "warden", 50,
+               [{"tick": 5, "type": "frog_data", "pose": "ROARING"},
+                {"tick": 20, "type": "entity_event", "event": 4}], extras=["warden"]),
+        living("warden-booms", "warden", 40, [{"tick": 6, "type": "entity_event", "event": 62}],
+               extras=["warden"]),
+        living("warden-tendrils", "warden", 20,
+               [{"tick": 6, "type": "entity_event", "event": 61}], extras=["warden"]),
+        living("warden-agitated", "warden", 90, [{"tick": 1, "type": "warden_data", "anger": 40}],
+               extras=["warden"]),
+        living("warden-angry", "warden", 40, [{"tick": 1, "type": "warden_data", "anger": 80}],
+               extras=["warden"]),
+        living("warden-furious", "warden", 40, [{"tick": 1, "type": "warden_data", "anger": 150}],
+               extras=["warden"]),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15066,6 +15088,7 @@ def entity_cases():
     yield from entity_flier_cases()
     yield from entity_parrot_cases()
     yield from entity_breeze_cases()
+    yield from entity_warden_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16335,6 +16358,49 @@ def entity_shulker_cases():
                   "scale": float_bits(1.0)})
     yield {"case_id": "entity/shulker-rotations", "family": "entity",
            "operation": "setup_rotations", "rows": turns}
+
+
+def entity_warden_cases():
+    """The warden's five models (the body, the bioluminescent parts, the pulsating spots, the
+    tendrils, the heart) posed by the reference's own `WardenModel.setupAnim`: the look, the walk
+    (slow, fast, past the speed it stops growing at), the tendrils' pulse, each of the six animations
+    alone (early, late and run out), and some together. The layers differ only in which parts they
+    keep, so all but the body run a shorter list."""
+    def warden(layer, label, age=37.5, look=(0.0, 0.0), walk=(0.0, 0.0), tendril=0.0, **started):
+        row = {"label": f"warden-{layer}-{label}", "layer": f"minecraft:warden#{layer}",
+               "age_in_ticks": float_bits(age), "y_rot": float_bits(look[0]),
+               "x_rot": float_bits(look[1]), "walk_position": float_bits(walk[0]),
+               "walk_speed": float_bits(walk[1]), "tendril": float_bits(tendril)}
+        row.update(started)
+        return row
+    rows = []
+    for layer in ("main", "bioluminescent", "pulsating_spots", "tendrils", "heart"):
+        rows += [warden(layer, "nothing"),
+                 warden(layer, "look-walk-tendril", age=91.25, look=(23.5, -14.0), walk=(6.3, 0.12),
+                        tendril=0.6),
+                 warden(layer, "emerge", age=60.0, emerge=20)]
+        if layer != "main":
+            continue
+        rows += [warden(layer, "look", look=(-31.0, 17.5)),
+                 warden(layer, "slow-walk", walk=(2.7, 0.04)),
+                 warden(layer, "fast-walk", walk=(11.9, 0.31)),
+                 warden(layer, "fastest-walk", age=12.0, walk=(30.1, 1.0)),
+                 warden(layer, "tendril", age=12.5, tendril=1.0),
+                 warden(layer, "attack", age=45.0, attack=40),
+                 warden(layer, "attack-over", age=120.0, attack=40),
+                 warden(layer, "sonic-boom", age=70.0, sonic_boom=50),
+                 warden(layer, "sonic-boom-late", age=105.0, sonic_boom=50),
+                 warden(layer, "dig", age=64.0, digging=40),
+                 warden(layer, "dig-late", age=140.0, digging=40),
+                 warden(layer, "emerge-late", age=150.0, emerge=20),
+                 warden(layer, "roar", age=55.0, roar=40),
+                 warden(layer, "roar-late", age=100.0, roar=40),
+                 warden(layer, "sniff", age=50.0, sniff=40),
+                 warden(layer, "sniff-late", age=80.0, sniff=40),
+                 warden(layer, "roar-then-attack", age=70.0, look=(10.0, 5.0), roar=40, attack=65),
+                 warden(layer, "walking-roar", age=55.0, walk=(8.1, 0.2), roar=40)]
+    yield {"case_id": "entity/warden-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
 
 
 def entity_copper_golem_cases():
