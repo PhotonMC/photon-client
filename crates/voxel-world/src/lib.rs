@@ -23,6 +23,7 @@ pub mod animal;
 pub mod animation_state;
 pub mod armadillo;
 pub mod armor_stand;
+pub mod arrow;
 pub mod axolotl;
 pub mod bat;
 pub mod block;
@@ -3382,6 +3383,7 @@ impl ClientWorld {
                 ender_dragon: None,
                 end_crystal: None,
                 minecart: None,
+                arrow: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4499,31 +4501,9 @@ enum LightTask {
     },
 }
 
-/// What the data of a boat, a parrot, a bat, a vex, an allay, a ghast, a phantom, a
-/// guardian or an axolotl says of it (each when it holds that species' fields).
-fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
-    if entity.is_boat() {
-        entity.set_boat_data(boat_data_from_metadata(metadata));
-    }
-    if let Some(variant) = parrot_variant_from_metadata(entity.type_id, metadata) {
-        entity.living.parrot_variant = variant;
-    }
-    let (bat_flags, vex_flags, allay_dancing) = flier_data_from_metadata(entity.type_id, metadata);
-    if let Some(flags) = bat_flags {
-        entity.living.bat_resting = flags & 1 != 0;
-    }
-    if let Some(flags) = vex_flags {
-        entity.living.vex_charging = flags & 1 != 0;
-    }
-    if let Some(dancing) = allay_dancing {
-        entity.living.allay_dancing = dancing;
-    }
-    if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
-        entity.living.ghast_charging = charging;
-    }
-    if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
-        entity.living.phantom_size = size;
-    }
+/// What the data of a sniffer, an armadillo, an arrow, a minecart, an end crystal, a wither, a
+/// creaking and an ender dragon says of it (each when it holds that kind's fields).
+fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
     if let Some(mode) = sniffer_state_from_metadata(entity.type_id, metadata) {
         entity.set_sniffer_mode(mode);
     }
@@ -4532,6 +4512,15 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if entity.is_wither() {
         wither_data_from_metadata(metadata).apply(entity.wither_mut());
+    }
+    if entity.is_abstract_arrow() {
+        let ticked = entity.tick_count > 0;
+        if let Some(in_ground) = metadata_boolean_value(metadata, arrow::IN_GROUND_DATA_ID) {
+            entity.arrow_mut().set_in_ground(in_ground, ticked);
+        }
+        if let Some(color) = metadata_int_value(metadata, arrow::EFFECT_COLOR_DATA_ID) {
+            entity.arrow_mut().set_color(color);
+        }
     }
     if entity.is_minecart() {
         let (data, hurt) = (
@@ -4591,6 +4580,34 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     if let Some(playing_dead) = playing_dead {
         entity.living.axolotl_playing_dead = playing_dead;
     }
+}
+
+/// What the data of a boat, a parrot, a bat, a vex, an allay, a ghast, a phantom, a
+/// guardian or an axolotl says of it (each when it holds that species' fields).
+fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    if entity.is_boat() {
+        entity.set_boat_data(boat_data_from_metadata(metadata));
+    }
+    if let Some(variant) = parrot_variant_from_metadata(entity.type_id, metadata) {
+        entity.living.parrot_variant = variant;
+    }
+    let (bat_flags, vex_flags, allay_dancing) = flier_data_from_metadata(entity.type_id, metadata);
+    if let Some(flags) = bat_flags {
+        entity.living.bat_resting = flags & 1 != 0;
+    }
+    if let Some(flags) = vex_flags {
+        entity.living.vex_charging = flags & 1 != 0;
+    }
+    if let Some(dancing) = allay_dancing {
+        entity.living.allay_dancing = dancing;
+    }
+    if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
+        entity.living.ghast_charging = charging;
+    }
+    if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
+        entity.living.phantom_size = size;
+    }
+    apply_special_data(entity, metadata);
 }
 
 fn new_light_engine(dimension: DimensionBounds, has_sky_light: bool) -> light::LevelLightEngine {

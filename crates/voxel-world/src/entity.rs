@@ -750,6 +750,8 @@ pub struct ClientEntity {
     pub(crate) end_crystal: Option<crate::end_crystal::EndCrystalState>,
     /// A minecart's hit, carried block and fuel, made when its data or ticks first reach it.
     pub(crate) minecart: Option<crate::minecart::MinecartState>,
+    /// An arrow's shake and data, made when its data or ticks first reach it.
+    pub(crate) arrow: Option<crate::arrow::ArrowState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -2425,6 +2427,23 @@ impl ClientEntity {
             .set_mode(mode, tick_count);
     }
 
+    /// Whether this is an arrow, a spectral arrow or a trident (`AbstractArrow`).
+    pub fn is_abstract_arrow(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:arrow" | "minecraft:spectral_arrow" | "minecraft:trident")
+        )
+    }
+
+    /// An arrow's shake and data, if it has any.
+    pub fn arrow(&self) -> Option<&crate::arrow::ArrowState> {
+        self.arrow.as_ref()
+    }
+
+    pub(crate) fn arrow_mut(&mut self) -> &mut crate::arrow::ArrowState {
+        self.arrow.get_or_insert_with(Default::default)
+    }
+
     /// Whether this is one of the minecarts (`AbstractMinecart`).
     pub fn is_minecart(&self) -> bool {
         voxel_data::entity_type::name(self.type_id)
@@ -3165,6 +3184,9 @@ impl ClientEntity {
         self.tick_armadillo();
         if self.is_end_crystal() {
             self.end_crystal_mut().tick();
+        }
+        if self.is_abstract_arrow() {
+            self.arrow_mut().tick();
         }
     }
 

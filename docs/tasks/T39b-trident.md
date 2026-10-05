@@ -1,0 +1,14 @@
+# T39b — Trident
+
+**Amaç:** `ThrownTridentRenderer` (model, parıltı katmanı, ısı: `loyalty` dönüşünde dönen yön), `ThrownTrident` istemci durumu (`ID_FOIL`, `ID_LOYALTY`, `dealtDamage`), `AbstractArrow` ortak kodu (T39).
+**Bağımlılık:** T39. **Boy:** M.
+
+## Oku
+- Java: `client/renderer/entity/ThrownTridentRenderer.java`, `client/model/object/projectile/TridentModel.java`, `world/entity/projectile/arrow/ThrownTrident.java`.
+- Rust: `crates/voxel/src/arrows.rs`, `crates/voxel-world/src/arrow.rs`, `crates/voxel-render/src/projectile.rs`.
+
+## Kabul
+`tools/voxel.py check --capture` → `CHECK OK`.
+
+## Devir notu
+(boş)

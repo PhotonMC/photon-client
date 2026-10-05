@@ -126,7 +126,12 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T38b](T38b-minecart.md) | Minecart ailesi | M | T38 | bölündü (2a1f94cc) |
 | [T38c](T38c-minecart-yeni-davranis.md) | Minecart'ın yeni (deneysel) davranışı | M | T38b | açık |
 | [T38d](T38d-minecart-tnt-spawner.md) | TNT ve spawner minecart | M | T38b | açık |
-| [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | açık |
+| [T39](T39-mermiler.md) | Mermiler ve fırlatılanlar | M | T24 | bölündü (HASH) |
+| [T39b](T39b-trident.md) | Trident | M | T39 | açık |
+| [T39c](T39c-firlatilan-esya.md) | Fırlatılan eşyalar ve havai fişek | M | T39 | açık |
+| [T39d](T39d-atesler-ruzgar-yukleri.md) | Ateş topları ve rüzgâr yükleri | M | T39 | açık |
+| [T39e](T39e-shulker-mermisi-tukuruk-disler.md) | Shulker mermisi, lama tükürüğü, evoker dişleri | M | T39 | açık |
+| [T39f](T39f-olta-samandirasi.md) | Olta şamandırası | M | T39 | açık |
 | [T40](T40-dekor-nesneler.md) | Dekor ve nesneler: zırh askısı, çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T24 | bölündü (bde91dfc) |
 | [T40b](T40b-cerceve-tablo-dekor.md) | Çerçeve, tablo, bağ düğümü, kristal, TNT, düşen blok, yıldırım, display'ler | L | T40 | açık |
 | [T41](T41-ekipman-katmanlari.md) | Ekipman katmanları: `SetEquipment`, elde eşya, zırh, kafa eşyası, pelerin/elytra | L | T28, T22 | bölündü (d20fb045) |

@@ -33,6 +33,7 @@ pub mod outline;
 pub mod player_model;
 pub mod player_renderer;
 pub mod png;
+pub mod projectile;
 pub mod render_types;
 pub mod resolve;
 pub mod rotation;

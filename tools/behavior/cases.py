@@ -14803,6 +14803,24 @@ def movement_item_cases():
                                             (0.5, 64.0, 2.9), (3.4, 64.0, 1.6), (4.6, 64.0, 1.4), (3.2, 64.0, 2.8),
                                             (4.1, 64.0, 2.2), (4.5, 64.0, 0.5), (5.5, 64.0, 0.4), (0.5, 65.0, 0.5),
                                             (-1.5, 64.0, 0.5), (0.5, 66.5, 0.5), (3.5, 65.0, 1.5)]]),
+        # An arrow starts to shake when the server says it is in the ground (not on its first tick,
+        # not while it shakes already), and the shake runs down by a tick; a potion's colour above
+        # nothing makes it tipped.
+        living("arrow-flies", "arrow", 12, [], extras=["arrow"], player_x=30.5),
+        living("arrow-sticks", "arrow", 20,
+               [{"tick": 3, "type": "arrow_data", "in_ground": True}], extras=["arrow"], player_x=30.5),
+        living("arrow-sticks-and-sticks-again", "arrow", 24,
+               [{"tick": 3, "type": "arrow_data", "in_ground": True},
+                {"tick": 6, "type": "arrow_data", "in_ground": True},
+                {"tick": 14, "type": "arrow_data", "in_ground": False},
+                {"tick": 16, "type": "arrow_data", "in_ground": True}], extras=["arrow"], player_x=30.5),
+        living("arrow-sticks-from-the-start", "arrow", 14,
+               [{"tick": 0, "type": "arrow_data", "in_ground": True}], extras=["arrow"], player_x=30.5),
+        living("arrow-is-tipped", "arrow", 8,
+               [{"tick": 2, "type": "arrow_data", "color": 16253176},
+                {"tick": 5, "type": "arrow_data", "color": -1}], extras=["arrow"], player_x=30.5),
+        living("spectral-arrow-sticks", "spectral_arrow", 14,
+               [{"tick": 3, "type": "arrow_data", "in_ground": True}], extras=["arrow"], player_x=30.5),
         # An end crystal holds the block its beam reaches and whether it shows its base; a dragon
         # looks for the nearest crystal whose box meets its own made 32 blocks wider (one tick in
         # ten, so long enough in these rows), and lets go of one that is gone or out of reach.
@@ -15286,6 +15304,7 @@ def entity_cases():
     yield from entity_end_crystal_cases()
     yield from entity_crystal_beam_cases()
     yield from entity_minecart_pose_cases()
+    yield from entity_arrow_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16841,6 +16860,25 @@ def entity_minecart_pose_cases():
             cart("everything", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(-1, 5.0, 20.0),
                  block=True, entity_id=99, x_rot=4.0, y_rot=-50.0, at=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/minecart-pose", "family": "entity", "operation": "minecart_pose", "rows": rows}
+
+
+def entity_arrow_cases():
+    """The arrow's model posed by the reference's own `ArrowModel.setupAnim` (still, and shaking
+    at ticks through the seven it lasts, between two ticks) and where the reference's own arrow
+    renderer draws it from the turns it was sent (along each axis, slantwise, pitched up and down)."""
+    model_rows = [{"label": f"arrow-shake-{shake}", "layer": "minecraft:arrow#main",
+                   "shake": float_bits(shake)} for shake in (0.0, 0.5, 1.0, 2.5, 4.0, 6.5, 7.0, -0.25)]
+    yield {"case_id": "entity/arrow-model", "family": "entity", "operation": "airborne_model",
+           "rows": model_rows}
+
+    def pose(label, y_rot, x_rot, shake=0.0, at=(10.5, 64.0, -3.5)):
+        return {"label": f"arrow-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2]), "y_rot": float_bits(y_rot), "x_rot": float_bits(x_rot),
+                "shake": float_bits(shake)}
+    pose_rows = [pose("still", 0.0, 0.0), pose("south-east", 45.0, 0.0), pose("west", -90.0, 0.0),
+                 pose("up", 30.0, 60.0), pose("down", 150.0, -75.0), pose("wrapped", 400.0, 10.0),
+                 pose("offset", 12.5, -33.3, at=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/arrow-pose", "family": "entity", "operation": "arrow_pose", "rows": pose_rows}
 
 
 def entity_copper_golem_cases():

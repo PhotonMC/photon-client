@@ -313,6 +313,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::ender_dragons::textures())
         .chain(crate::end_crystals::textures())
         .chain(crate::minecarts::textures())
+        .chain(crate::arrows::textures())
         .chain(crate::hoglins::textures())
         .chain(crate::foxes::textures())
         .chain(crate::pandas::textures())
@@ -530,6 +531,23 @@ fn remote_wild_animals(
     vertices
 }
 
+/// The arrows and minecarts the server added.
+fn remote_projectiles_and_vehicles(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
+) -> Vec<Vertex> {
+    let mut vertices = crate::arrows::remote_arrows(session, models, textures, view);
+    vertices.extend(crate::minecarts::remote_minecarts(
+        session,
+        models,
+        textures,
+        (view, held),
+    ));
+    vertices
+}
+
 /// The renderers of the families that have a module of their own, one after
 /// the other: humanoids, sheep, monsters, villagers, farm animals, golems,
 /// witches, illagers and armor stands.
@@ -578,7 +596,7 @@ fn remote_families(
     vertices.extend(crate::ravagers::remote_ravagers(
         session, models, textures, view,
     ));
-    vertices.extend(crate::minecarts::remote_minecarts(
+    vertices.extend(remote_projectiles_and_vehicles(
         session,
         models,
         textures,

@@ -344,6 +344,12 @@ pub fn end_crystal_y(time_in_ticks: f32) -> f32 {
     height - 1.4
 }
 
+/// What an arrow's model is posed from (`ArrowRenderState`): how long it has shaken.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArrowRenderState {
+    pub shake: f32,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -2382,6 +2388,15 @@ impl MobModel {
             if let Some(core) = inner.child_mut("cube") {
                 core.rotate_by(&tilted);
             }
+        }
+    }
+
+    /// `ArrowModel.setupAnim`: a stuck arrow shakes about its length for a few ticks.
+    pub fn setup_arrow(&mut self, state: &ArrowRenderState) {
+        self.root.reset();
+        if state.shake > 0.0 {
+            let pow = -mth_sin_f64(f64::from(state.shake * 3.0)) * state.shake;
+            self.root.z_rot += pow * (std::f64::consts::PI / 180.0) as f32;
         }
     }
 

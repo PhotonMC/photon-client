@@ -18782,6 +18782,23 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "arrow_data" => {
+                        // `AbstractArrow.IN_GROUND` (a boolean), `Arrow.ID_EFFECT_COLOR` (an int).
+                        let mut data = Vec::new();
+                        if let Some(value) = event["in_ground"].as_bool() {
+                            data.extend([
+                                voxel_world::arrow::IN_GROUND_DATA_ID,
+                                8,
+                                u8::from(value),
+                            ]);
+                        }
+                        if let Some(value) = event["color"].as_i64() {
+                            data.extend([voxel_world::arrow::EFFECT_COLOR_DATA_ID, 1]);
+                            voxel_core::wire::write_varint(value as i32, &mut data);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "minecart_data" => {
                         // `VehicleEntity`'s hit and `AbstractMinecart`'s block, its offset, a furnace's fuel.
                         let mut data = Vec::new();
@@ -19238,6 +19255,12 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "arrow" => {
+                        let state = entity.arrow().copied().unwrap_or_default();
+                        described["shake_time"] = json!(state.shake_time());
+                        described["in_ground"] = json!(state.is_in_ground());
+                        described["tipped"] = json!(state.is_tipped());
                     }
                     "minecart" => {
                         let state = entity.minecart().copied().unwrap_or_default();
@@ -21040,6 +21063,11 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
             });
+        } else if id.contains("arrow") {
+            use voxel_render::mob_model::ArrowRenderState;
+            model.setup_arrow(&ArrowRenderState {
+                shake: bits("shake")?,
+            });
         } else if id.contains("end_crystal") {
             use voxel_render::mob_model::EndCrystalRenderState;
             model.setup_end_crystal(&EndCrystalRenderState {
@@ -21393,6 +21421,28 @@ fn boat_pose_result(request: &Value) -> Result<Value, String> {
         let count = if state.is_under_water { 1 } else { 2 };
         let poses: Vec<Vec<String>> = (0..count).map(|_| matrix_bits(&pose)).collect();
         out.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `arrow_pose`: the pose an arrow's model is drawn from.
+fn arrow_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::projectile::arrow_pose;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let mut base = Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let pose = arrow_pose(&base, bits("y_rot")?, bits("x_rot")?);
+        out.push(json!({"label": row["label"], "poses": [matrix_bits(&pose)]}));
     }
     Ok(json!({"rows": out}))
 }
@@ -23527,6 +23577,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_beam" => return guardian_beam_result(request),
         "dragon_rays" => return dragon_rays_result(request),
         "minecart_pose" => return minecart_pose_result(request),
+        "arrow_pose" => return arrow_pose_result(request),
         "crystal_beam" => return crystal_beam_result(request),
         "airborne_model" => return airborne_model_result(request),
         "parrot_textures" => return parrot_textures_result(request),

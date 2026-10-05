@@ -1006,6 +1006,19 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "arrow_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        if (event.has("in_ground")) {
+                            data.add(wolfData(net.minecraft.world.entity.projectile.arrow.AbstractArrow.class, "IN_GROUND",
+                                event.get("in_ground").getAsBoolean()));
+                        }
+                        if (event.has("color")) {
+                            data.add(wolfData(net.minecraft.world.entity.projectile.arrow.Arrow.class, "ID_EFFECT_COLOR",
+                                event.get("color").getAsInt()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "minecart_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         var vehicle = net.minecraft.world.entity.vehicle.VehicleEntity.class;
@@ -1412,6 +1425,15 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "arrow" -> {
+                            var arrow = (net.minecraft.world.entity.projectile.arrow.AbstractArrow) entity;
+                            described.addProperty("shake_time", arrow.shakeTime);
+                            var inGround = net.minecraft.world.entity.projectile.arrow.AbstractArrow.class.getDeclaredMethod("isInGround");
+                            inGround.setAccessible(true);
+                            described.addProperty("in_ground", (boolean) inGround.invoke(arrow));
+                            described.addProperty("tipped", arrow instanceof net.minecraft.world.entity.projectile.arrow.Arrow plain
+                                && plain.getColor() > 0);
                         }
                         case "minecart" -> {
                             var cart = (net.minecraft.world.entity.vehicle.minecart.AbstractMinecart) entity;
