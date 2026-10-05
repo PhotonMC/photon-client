@@ -295,6 +295,40 @@ pub struct WitherRenderState {
     pub y_head_rots: [f32; 2],
 }
 
+/// What an ender dragon's model is posed from (`EnderDragonRenderState`): the
+/// wing beat, the flight history its parts follow (and the partial tick it is read at),
+/// and what its neck's pose follows while it lands, takes off or sits.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnderDragonRenderState {
+    pub flap_time: f32,
+    pub history: voxel_world::ender_dragon::FlightHistory,
+    pub partial_ticks: f32,
+    pub is_landing_or_taking_off: bool,
+    pub is_sitting: bool,
+    pub distance_to_egg: f64,
+}
+
+impl EnderDragonRenderState {
+    /// `getHeadPartYOffset`.
+    fn head_part_y_offset(
+        &self,
+        part: i32,
+        body: voxel_world::ender_dragon::Sample,
+        at: voxel_world::ender_dragon::Sample,
+    ) -> f32 {
+        let result = if self.is_landing_or_taking_off {
+            f64::from(part) / (self.distance_to_egg / 4.0).max(1.0)
+        } else if self.is_sitting {
+            f64::from(part)
+        } else if part == 6 {
+            0.0
+        } else {
+            at.y - body.y
+        };
+        result as f32
+    }
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -2151,6 +2185,157 @@ impl MobModel {
         if let Some(head) = self.root.child_mut("center_head") {
             head.y_rot = state.y_rot * degrees;
             head.x_rot = state.x_rot * degrees;
+        }
+    }
+
+    /// `EnderDragonModel.setupAnim`: the jaw and the body bounce with the wing beat, the
+    /// neck's five parts and the head follow the flight history's turns and heights
+    /// along a chain, the wings beat, the legs bounce, and the tail's twelve parts
+    /// follow the history behind.
+    pub fn setup_ender_dragon(&mut self, state: &EnderDragonRenderState) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let wrap = voxel_core::math::wrap_degrees_f32;
+        let at = |delay: i32| state.history.get_at(delay, state.partial_ticks);
+        let flap_time = state.flap_time * (std::f64::consts::PI * 2.0) as f32;
+        let bounce = sin(flap_time - 1.0) + 1.0;
+        let bounce = (bounce * bounce + bounce * 2.0) * 0.05;
+        self.root.y = (bounce - 2.0) * 16.0;
+        self.root.z = -48.0;
+        self.root.x_rot = bounce * 2.0 * degrees;
+        let neck0 = self
+            .root
+            .child_mut("neck0")
+            .map(|neck| (neck.x, neck.y, neck.z));
+        let (mut xx, mut yy, mut zz) = neck0.unwrap_or_default();
+        let start = at(6);
+        let rot2 = wrap(at(5).y_rot - at(10).y_rot);
+        let rot = wrap(at(5).y_rot + rot2 / 2.0);
+        for i in 0..5 {
+            let point = at(5 - i);
+            let neck_x_rot = cos(i as f32 * 0.45 + flap_time) * 0.15;
+            if let Some(neck) = self.root.child_mut(&format!("neck{i}")) {
+                neck.y_rot = wrap(point.y_rot - start.y_rot) * degrees * 1.5;
+                neck.x_rot =
+                    neck_x_rot + state.head_part_y_offset(i, start, point) * degrees * 1.5 * 5.0;
+                neck.z_rot = -wrap(point.y_rot - rot) * degrees * 1.5;
+                neck.y = yy;
+                neck.z = zz;
+                neck.x = xx;
+                xx -= sin(neck.y_rot) * cos(neck.x_rot) * 10.0;
+                yy += sin(neck.x_rot) * 10.0;
+                zz -= cos(neck.y_rot) * cos(neck.x_rot) * 10.0;
+            }
+        }
+        let current = at(0);
+        if let Some(head) = self.root.child_mut("head") {
+            head.y = yy;
+            head.z = zz;
+            head.x = xx;
+            head.y_rot = wrap(current.y_rot - start.y_rot) * degrees;
+            head.x_rot = wrap(state.head_part_y_offset(6, start, current)) * degrees * 1.5 * 5.0;
+            head.z_rot = -wrap(current.y_rot - rot) * degrees;
+            if let Some(jaw) = head.child_mut("jaw") {
+                jaw.x_rot = (sin(flap_time) + 1.0) * 0.2;
+            }
+        }
+        self.pose_ender_dragon_body(bounce, flap_time, rot2);
+        self.pose_ender_dragon_tail(state, flap_time, rot);
+    }
+
+    /// The wings and legs of `EnderDragonModel.setupAnim`: the wings beat (the right
+    /// ones the left ones' mirror), the legs bounce (`poseLimbs`), the body rolls.
+    fn pose_ender_dragon_body(&mut self, bounce: f32, flap_time: f32, rot2: f32) {
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let left_x_rot = 0.125 - cos(flap_time) * 0.2;
+        let left_z_rot = -(sin(flap_time) + 0.125) * 0.8;
+        let left_tip_z_rot = (sin(flap_time + 2.0) + 0.5) * 0.75;
+        if let Some(body) = self.root.child_mut("body") {
+            body.z_rot = -rot2 * 1.5 * degrees;
+            for (side, sign) in [("left", 1.0_f32), ("right", -1.0)] {
+                if let Some(wing) = body.child_mut(&format!("{side}_wing")) {
+                    wing.x_rot = left_x_rot;
+                    wing.y_rot = -0.25 * sign;
+                    wing.z_rot = if sign > 0.0 { left_z_rot } else { -left_z_rot };
+                    if let Some(tip) = wing.child_mut(&format!("{side}_wing_tip")) {
+                        tip.z_rot = if sign > 0.0 {
+                            left_tip_z_rot
+                        } else {
+                            -left_tip_z_rot
+                        };
+                    }
+                }
+                // `poseLimbs`.
+                for (leg, tip, foot, leg_x, tip_x, foot_x, up) in [
+                    (
+                        format!("{side}_front_leg"),
+                        format!("{side}_front_leg_tip"),
+                        format!("{side}_front_foot"),
+                        1.3_f32,
+                        -0.5_f32,
+                        0.75_f32,
+                        false,
+                    ),
+                    (
+                        format!("{side}_hind_leg"),
+                        format!("{side}_hind_leg_tip"),
+                        format!("{side}_hind_foot"),
+                        1.0,
+                        0.5,
+                        0.75,
+                        true,
+                    ),
+                ] {
+                    if let Some(leg_part) = body.child_mut(&leg) {
+                        leg_part.x_rot = leg_x + bounce * 0.1;
+                        if let Some(tip_part) = leg_part.child_mut(&tip) {
+                            tip_part.x_rot = if up {
+                                tip_x + bounce * 0.1
+                            } else {
+                                tip_x - bounce * 0.1
+                            };
+                            if let Some(foot_part) = tip_part.child_mut(&foot) {
+                                foot_part.x_rot = foot_x + bounce * 0.1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The tail of `EnderDragonModel.setupAnim`: twelve parts follow the history behind.
+    fn pose_ender_dragon_tail(&mut self, state: &EnderDragonRenderState, flap_time: f32, rot: f32) {
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let sin = |value: f32| mth_sin_f64(f64::from(value));
+        let cos = |value: f32| mth_cos_f64(f64::from(value));
+        let wrap = voxel_core::math::wrap_degrees_f32;
+        let at = |delay: i32| state.history.get_at(delay, state.partial_ticks);
+        let mut tail_x_rot = 0.0_f32;
+        let tail0 = self
+            .root
+            .child_mut("tail0")
+            .map(|tail| (tail.x, tail.y, tail.z));
+        let (mut xx, mut yy, mut zz) = tail0.unwrap_or_default();
+        let start = at(11);
+        for i in 0..12 {
+            let point = at(12 + i);
+            tail_x_rot += sin(i as f32 * 0.45 + flap_time) * 0.05;
+            if let Some(tail) = self.root.child_mut(&format!("tail{i}")) {
+                tail.y_rot = (wrap(point.y_rot - start.y_rot) * 1.5 + 180.0) * degrees;
+                tail.x_rot = tail_x_rot + (point.y - start.y) as f32 * degrees * 1.5 * 5.0;
+                tail.z_rot = wrap(point.y_rot - rot) * degrees * 1.5;
+                tail.y = yy;
+                tail.z = zz;
+                tail.x = xx;
+                yy += sin(tail.x_rot) * 10.0;
+                zz -= cos(tail.y_rot) * cos(tail.x_rot) * 10.0;
+                xx -= sin(tail.y_rot) * cos(tail.x_rot) * 10.0;
+            }
         }
     }
 
@@ -4593,9 +4778,13 @@ pub fn mob_vertices_glow(
     placement: &MobPlacement,
     texture: TextureRect,
 ) -> Vec<Vertex> {
-    let pose = placement_pose(placement);
+    mob_vertices_glow_posed(model, &placement_pose(placement), texture)
+}
+
+/// [`mob_vertices_glow`] for a model the renderer has already placed.
+pub fn mob_vertices_glow_posed(model: &MobModel, pose: &Pose, texture: TextureRect) -> Vec<Vertex> {
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for (_, corners) in model.render(pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -4765,6 +4954,31 @@ fn clip_u(polygon: &[([f32; 3], [f32; 2])], below: bool) -> Vec<([f32; 3], [f32;
         }
     }
     out
+}
+
+/// [`mob_vertices`] for a model the renderer has already placed: lit by the
+/// packed light, with the hurt overlay or not.
+pub fn mob_vertices_posed(
+    model: &MobModel,
+    pose: &Pose,
+    texture: TextureRect,
+    (packed_light, red_overlay): (i32, bool),
+) -> Vec<Vertex> {
+    let light = crate::block_light::light_uv(packed_light);
+    let mut vertices = Vec::new();
+    for (_, corners) in model.render(pose) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let corner = corners[index];
+            vertices.push(Vertex {
+                position: corner.position,
+                uv: uv(texture, corner.uv),
+                shade: overlay_code(red_overlay, 0.0),
+                tint: [corner.normal[0], corner.normal[1], corner.normal[2], 0.0],
+                light,
+            });
+        }
+    }
+    vertices
 }
 
 /// [`mob_vertices`], each texel multiplied by a colour (`0xRRGGBB`): a

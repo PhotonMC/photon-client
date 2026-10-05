@@ -744,6 +744,8 @@ pub struct ClientEntity {
     pub(crate) sniffer: Option<crate::sniffer::SnifferState>,
     /// A wither's head turns, targets and invulnerable ticks, made when its data first reaches it.
     pub(crate) wither: Option<crate::wither::WitherState>,
+    /// An ender dragon's flight history, wing beat and phase, made when its data or ticks first reach it.
+    pub(crate) ender_dragon: Option<Box<crate::ender_dragon::EnderDragonState>>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -1102,7 +1104,8 @@ impl ClientEntity {
         self.old_y_body_rot_bits = body_old.to_bits();
         self.old_y_head_rot_bits = head_old.to_bits();
         // `calculateEntityAnimation`: a rider or a dead entity stands still.
-        if self.vehicle_id.is_none() && self.alive {
+        // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
+        if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
             let camel = matches!(
                 voxel_data::entity_type::name(self.type_id),
                 Some("minecraft:camel" | "minecraft:camel_husk")
@@ -1896,7 +1899,12 @@ impl ClientEntity {
             self.living.hurt_time -= 1;
         }
         if self.is_dead_or_dying() && tick_death {
-            self.living.death_time += 1;
+            if self.is_ender_dragon() {
+                // `EnderDragon.tickDeath` keeps its own count, not `deathTime`.
+                self.ender_dragon_mut().tick_death();
+            } else {
+                self.living.death_time += 1;
+            }
         }
     }
 
@@ -2401,6 +2409,38 @@ impl ClientEntity {
             .set_mode(mode, tick_count);
     }
 
+    pub(crate) fn is_ender_dragon(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:ender_dragon")
+    }
+
+    /// An ender dragon's flight history, wing beat and phase, if it has any.
+    pub fn ender_dragon(&self) -> Option<&crate::ender_dragon::EnderDragonState> {
+        self.ender_dragon.as_deref()
+    }
+
+    pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::ender_dragon::EnderDragonState {
+        self.ender_dragon.get_or_insert_with(Default::default)
+    }
+
+    /// `EnderDragon.aiStep` on the client, which replaces `LivingEntity.aiStep`: the wing
+    /// beat and the flight history, then the position eases to the last packet's. Nothing
+    /// fades its motion and its head does not turn after anything.
+    pub(crate) fn tick_ender_dragon(&mut self) {
+        self.ender_dragon_mut().begin_ai_step();
+        if self.is_dead_or_dying() {
+            self.tick_position_interpolation();
+            return;
+        }
+        let y_rot = voxel_core::math::wrap_degrees_f32(f32::from_bits(self.y_rot_bits));
+        self.y_rot_bits = y_rot.to_bits();
+        let (motion, no_ai, y) = (self.motion(), self.is_no_ai(), self.position().1);
+        self.ender_dragon_mut().fly(motion, no_ai, (y, y_rot));
+        if !no_ai {
+            self.tick_position_interpolation();
+            self.y_body_rot_bits = self.y_rot_bits;
+        }
+    }
+
     pub(crate) fn is_wither(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:wither")
     }
@@ -2706,6 +2746,10 @@ impl ClientEntity {
         in_water: Option<bool>,
         targets: EntityTargets,
     ) {
+        if self.is_ender_dragon() {
+            self.tick_ender_dragon();
+            return;
+        }
         self.tick_frog();
         self.tick_breeze();
         self.tick_wither_motion();

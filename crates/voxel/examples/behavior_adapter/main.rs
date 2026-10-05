@@ -18782,6 +18782,28 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "dragon_data" => {
+                        // `EnderDragon.DATA_PHASE`, an int.
+                        let mut data = vec![voxel_world::ender_dragon::PHASE_DATA_ID, 1];
+                        voxel_core::wire::write_varint(i32_field(event, "phase")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
+                    "move_rot" => {
+                        // A relative move with the turn the wire packs in a byte of 256ths.
+                        let degrees = |key: &str| -> Result<f32, String> {
+                            Ok((i32_field(event, key)? * 360) as f32 / 256.0)
+                        };
+                        world.apply_entity_move(voxel_world::EntityMoveInput {
+                            entity_id,
+                            delta_x: i32_field(event, "xa")? as i16,
+                            delta_y: i32_field(event, "ya")? as i16,
+                            delta_z: i32_field(event, "za")? as i16,
+                            has_position: true,
+                            y_rot: Some(degrees("y_rot")?),
+                            x_rot: Some(degrees("x_rot")?),
+                        });
+                    }
                     "wither_data" => {
                         // `WitherBoss`'s int data: the side heads' targets and the invulnerable ticks.
                         let mut data = Vec::new();
@@ -19151,6 +19173,21 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "ender_dragon" => {
+                        let state = entity.ender_dragon().cloned().unwrap_or_default();
+                        described["flap_time"] = json!(hex(state.flap_time()));
+                        described["old_flap_time"] = json!(hex(state.old_flap_time()));
+                        let samples: Vec<Value> = (0..64)
+                            .map(|delay| {
+                                let sample = state.history.get(delay);
+                                json!({"y": format!("{:016x}", sample.y.to_bits()),
+                                    "y_rot": hex(sample.y_rot)})
+                            })
+                            .collect();
+                        described["history"] = json!(samples);
+                        described["y_rot"] = json!(hex(entity.rotation().0));
+                        described["dragon_death_time"] = json!(state.dragon_death_time());
                     }
                     "wither" => {
                         let state = entity.wither().copied().unwrap_or_default();
@@ -20850,6 +20887,33 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 slide_back: started("slide_back"),
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
+            });
+        } else if id.contains("ender_dragon") {
+            use voxel_render::mob_model::EnderDragonRenderState;
+            use voxel_world::ender_dragon::FlightHistory;
+            let mut history = FlightHistory::default();
+            for sample in row["history"].as_array().ok_or("history")? {
+                let y = u64::from_str_radix(sample["y"].as_str().ok_or("y")?, 16)
+                    .map(f64::from_bits)
+                    .map_err(|error| error.to_string())?;
+                let y_rot = u32::from_str_radix(sample["y_rot"].as_str().ok_or("y_rot")?, 16)
+                    .map(f32::from_bits)
+                    .map_err(|error| error.to_string())?;
+                history.record(y, y_rot);
+            }
+            let distance = u64::from_str_radix(
+                row["distance_to_egg"].as_str().ok_or("distance_to_egg")?,
+                16,
+            )
+            .map(f64::from_bits)
+            .map_err(|error| error.to_string())?;
+            model.setup_ender_dragon(&EnderDragonRenderState {
+                flap_time: bits("flap_time")?,
+                history,
+                partial_ticks: bits("partial_ticks")?,
+                is_landing_or_taking_off: flag("landing_or_taking_off")?,
+                is_sitting: flag("sitting")?,
+                distance_to_egg: distance,
             });
         } else if id.contains("wither") {
             use voxel_render::mob_model::WitherRenderState;

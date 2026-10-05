@@ -23,6 +23,11 @@ impl ClientEntity {
         voxel_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
     }
 
+    /// `Entity.getEyeHeight`, by the size the type starts with.
+    pub fn eye_height(&self) -> f32 {
+        self.dimensions().eye_height()
+    }
+
     /// The size the type starts with (a baby's, for the types that have
     /// babies, a player's by pose). Not carried: the scale attribute and the
     /// poses of the mobs that change size with them, bar a fish's.

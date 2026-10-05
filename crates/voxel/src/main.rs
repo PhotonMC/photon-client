@@ -12,6 +12,7 @@ mod copper_golems;
 mod cube_mobs;
 mod dolphins;
 mod dropped_items;
+mod ender_dragons;
 mod farm_animals;
 mod felines;
 mod fish;

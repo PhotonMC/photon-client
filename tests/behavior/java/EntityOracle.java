@@ -1731,6 +1731,20 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("ender_dragon")) {
+                var state = new net.minecraft.client.renderer.entity.state.EnderDragonRenderState();
+                state.flapTime = Oracle.f32(row, "flap_time");
+                state.partialTicks = Oracle.f32(row, "partial_ticks");
+                state.isLandingOrTakingOff = row.get("landing_or_taking_off").getAsBoolean();
+                state.isSitting = row.get("sitting").getAsBoolean();
+                state.distanceToEgg = Oracle.f64(row, "distance_to_egg");
+                for (var sample : row.getAsJsonArray("history")) {
+                    var pair = sample.getAsJsonObject();
+                    state.flightHistory.record(Oracle.f64(pair, "y"), Oracle.f32(pair, "y_rot"));
+                }
+                var dragon = new net.minecraft.client.model.monster.dragon.EnderDragonModel(root);
+                dragon.setupAnim(state);
+                model = dragon;
             } else if (id.contains("wither")) {
                 var state = new net.minecraft.client.renderer.entity.state.WitherRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

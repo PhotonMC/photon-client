@@ -41,6 +41,7 @@ pub mod copper_golem;
 pub mod creaking;
 pub mod cube_mob;
 mod dimension;
+pub mod ender_dragon;
 mod entity;
 mod entity_random;
 pub mod fish;
@@ -2341,6 +2342,15 @@ impl ClientWorld {
         }
         entity.health_bits = Some(0.0_f32.to_bits());
         entity.alive = false;
+        // `EnderDragon.handleKillingBlow`: unless it sits, it is not dead yet but at
+        // one health, in the dying phase, till the server says otherwise.
+        if entity.is_ender_dragon() && !entity.ender_dragon_mut().phase().is_sitting() {
+            entity.health_bits = Some(1.0_f32.to_bits());
+            entity.alive = true;
+            entity
+                .ender_dragon_mut()
+                .set_phase(ender_dragon::DragonPhase::Dying);
+        }
         // `Wolf.die` stops a shake.
         entity.living.wolf.cancel_shake();
         true
@@ -2681,6 +2691,41 @@ impl ClientWorld {
             }
         }
         bottom
+    }
+
+    /// `Heightmap.Types.MOTION_BLOCKING_NO_LEAVES` at a column: like
+    /// [`Self::motion_blocking_height`], but leaves do not count.
+    pub fn motion_blocking_no_leaves_height(&self, x: i32, z: i32) -> i32 {
+        let bottom = self.dimension().min_y;
+        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
+            return bottom;
+        };
+        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        for (section_y, section) in chunk.sections.iter().rev() {
+            for local_y in (0..16).rev() {
+                let Some(state) = section.block_states.get(local_y * 256 + column) else {
+                    continue;
+                };
+                if motion_blocking(state)
+                    && !block::state_or_air(i64::from(state))
+                        .block()
+                        .name
+                        .ends_with("_leaves")
+                {
+                    return section_y * 16 + local_y as i32 + 1;
+                }
+            }
+        }
+        bottom
+    }
+
+    /// How far the dragon egg's place on the End's podium is from a point
+    /// (`BlockPos.distToCenterSqr`), as `EnderDragonRenderer` measures it: the
+    /// podium stands at the origin, on the highest block there that is not a leaf.
+    pub fn end_podium_distance_squared(&self, at: (f64, f64, f64)) -> f64 {
+        let y = f64::from(self.motion_blocking_no_leaves_height(0, 0));
+        let (dx, dy, dz) = (0.5 - at.0, y + 0.5 - at.1, 0.5 - at.2);
+        dx * dx + dy * dy + dz * dz
     }
 
     /// How many bytes the loaded chunks' block states take, and how many
@@ -3265,6 +3310,7 @@ impl ClientWorld {
                 armadillo: None,
                 sniffer: None,
                 wither: None,
+                ender_dragon: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4413,6 +4459,13 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if entity.is_wither() {
         wither_data_from_metadata(metadata).apply(entity.wither_mut());
+    }
+    if entity.is_ender_dragon()
+        && let Some(id) = metadata_int_value(metadata, ender_dragon::PHASE_DATA_ID)
+    {
+        entity
+            .ender_dragon_mut()
+            .set_phase(ender_dragon::DragonPhase::from_id(id));
     }
     if entity.is_creaking() {
         creaking_data_from_metadata(metadata).apply(entity.creaking_mut());

@@ -14744,6 +14744,32 @@ def movement_item_cases():
                [{"tick": 3, "type": "entity_motion", "x": float_bits(0.1, "f64"),
                  "y": float_bits(0.5, "f64"), "z": float_bits(0.1, "f64")}],
                extras=["wither"], player_x=30.5),
+        # An ender dragon beats its wings faster the slower it moves, steadily while its phase has
+        # it sit (the phase it starts in), and records its height and turn each tick into its flight
+        # history (sixty-four samples) before its position eases to the last packet's; a dying
+        # one does neither.
+        living("dragon-hovers", "ender_dragon", 30, [], extras=["ender_dragon"], player_x=30.5),
+        living("dragon-flies", "ender_dragon", 50,
+               [{"tick": 2, "type": "dragon_data", "phase": 0},
+                {"tick": 3, "type": "entity_motion", "x": float_bits(0.3, "f64"),
+                 "y": float_bits(0.2, "f64"), "z": float_bits(-0.4, "f64")}],
+               extras=["ender_dragon"], player_x=30.5),
+        living("dragon-flies-and-turns", "ender_dragon", 90,
+               [{"tick": 2, "type": "dragon_data", "phase": 1},
+                {"tick": 3, "type": "entity_motion", "x": float_bits(1.1, "f64"),
+                 "y": float_bits(-0.1, "f64"), "z": float_bits(0.2, "f64")}]
+               + [{"tick": t, "type": "move_rot", "xa": 300, "ya": 40 if t < 40 else -60, "za": 100,
+                   "y_rot": (t * 3) % 256, "x_rot": 0} for t in range(5, 80, 3)],
+               extras=["ender_dragon"], player_x=30.5),
+        living("dragon-lands", "ender_dragon", 40,
+               [{"tick": 2, "type": "dragon_data", "phase": 3}], extras=["ender_dragon"], player_x=30.5),
+        living("dragon-dies-hovering", "ender_dragon", 40,
+               [{"tick": 6, "type": "death"}], extras=["ender_dragon"], player_x=30.5),
+        living("dragon-dies", "ender_dragon", 60,
+               [{"tick": 2, "type": "dragon_data", "phase": 0},
+                {"tick": 3, "type": "entity_motion", "x": float_bits(0.3, "f64"),
+                 "y": float_bits(0.2, "f64"), "z": float_bits(-0.4, "f64")},
+                {"tick": 20, "type": "death"}], extras=["ender_dragon"], player_x=30.5),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15181,6 +15207,7 @@ def entity_cases():
     yield from entity_armadillo_cases()
     yield from entity_sniffer_cases()
     yield from entity_wither_cases()
+    yield from entity_ender_dragon_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16614,6 +16641,42 @@ def entity_wither_cases():
                  wither(layer, "everything", age=91.25, look=(-31.0, 17.5), body=-120.0,
                         heads=((30.0, -100.0), (-5.0, 45.5)))]
     yield {"case_id": "entity/wither-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_ender_dragon_cases():
+    """The ender dragon's model posed by the reference's own `EnderDragonModel.setupAnim`: from a
+    flight history of few and of many samples (the ring wraps after sixty-four), climbing or
+    descending and turning one way or the other, at some points of its wing beat and between two
+    ticks, flying, landing or taking off (the neck follows the distance to the egg), and sitting."""
+    import math
+
+    def history(count, climb, turn, start_y=70.0, start_rot=-170.0):
+        samples = []
+        for i in range(count):
+            y = start_y + climb * i + 0.3 * math.sin(i * 0.4)
+            rot = ((start_rot + turn * i + 180.0) % 360.0) - 180.0
+            samples.append({"y": float_bits(y, "f64"), "y_rot": float_bits(rot)})
+        return samples
+
+    def dragon(label, samples, flap=0.37, partial=0.0, landing=False, sitting=False, egg=2500.0):
+        return {"label": f"dragon-{label}", "layer": "minecraft:ender_dragon#main",
+                "flap_time": float_bits(flap), "partial_ticks": float_bits(partial),
+                "landing_or_taking_off": landing, "sitting": sitting,
+                "distance_to_egg": float_bits(egg, "f64"), "history": samples}
+    rows = [dragon("one-sample", history(1, 0.0, 0.0)),
+            dragon("straight", history(30, 0.0, 0.0)),
+            dragon("climbs-and-turns-left", history(40, 0.35, 6.5), flap=1.62, partial=0.5),
+            dragon("descends-and-turns-right", history(50, -0.5, -9.25, start_y=95.0), flap=2.9, partial=0.25),
+            dragon("wraps-the-ring", history(150, 0.05, 3.1), flap=7.123, partial=1.0),
+            dragon("wraps-the-ring-between-ticks", history(130, -0.12, -2.7), flap=0.0, partial=0.7),
+            dragon("flaps-up", history(45, 0.2, 4.0), flap=0.2),
+            dragon("flaps-down", history(45, 0.2, 4.0), flap=0.7),
+            dragon("lands-far-from-the-egg", history(45, -0.4, 2.0), landing=True, egg=3600.0),
+            dragon("lands-near-the-egg", history(45, -0.4, 2.0), landing=True, egg=9.0),
+            dragon("sits", history(45, 0.0, 0.0), sitting=True, flap=0.9),
+            dragon("sits-and-turns", history(45, 0.0, 5.0), sitting=True)]
+    yield {"case_id": "entity/ender-dragon-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

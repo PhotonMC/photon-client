@@ -1006,6 +1006,18 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "dragon_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.boss.enderdragon.EnderDragon.class, "DATA_PHASE",
+                            event.get("phase").getAsInt()));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
+                    case "move_rot" -> listener.handleMoveEntity(
+                        new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.PosRot(entityId,
+                            (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
+                            (short) event.get("za").getAsInt(), (byte) event.get("y_rot").getAsInt(),
+                            (byte) event.get("x_rot").getAsInt(), true));
                     case "wither_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         for (var field : new String[][] {{"target_b", "DATA_TARGET_B"}, {"target_c", "DATA_TARGET_C"},
@@ -1352,6 +1364,22 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "ender_dragon" -> {
+                            var dragon = (net.minecraft.world.entity.boss.enderdragon.EnderDragon) entity;
+                            described.addProperty("flap_time", Oracle.bits(dragon.flapTime));
+                            described.addProperty("old_flap_time", Oracle.bits(dragon.oFlapTime));
+                            var samples = new JsonArray();
+                            for (int delay = 0; delay < 64; delay++) {
+                                var sample = dragon.flightHistory.get(delay);
+                                var pair = new JsonObject();
+                                pair.addProperty("y", Oracle.bits(sample.y()));
+                                pair.addProperty("y_rot", Oracle.bits(sample.yRot()));
+                                samples.add(pair);
+                            }
+                            described.add("history", samples);
+                            described.addProperty("y_rot", Oracle.bits(dragon.getYRot()));
+                            described.addProperty("dragon_death_time", dragon.dragonDeathTime);
                         }
                         case "wither" -> {
                             var wither = (net.minecraft.world.entity.boss.wither.WitherBoss) entity;
