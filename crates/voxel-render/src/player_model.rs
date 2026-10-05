@@ -193,6 +193,8 @@ pub struct Part {
     pub z_rot: f32,
     pub scale: [f32; 3],
     pub visible: bool,
+    /// `ModelPart.skipDraw`: the part's own cubes are not drawn, its children are.
+    pub skip_draw: bool,
 }
 
 impl Part {
@@ -233,6 +235,7 @@ impl Part {
             z_rot: rotation[2],
             scale,
             visible: true,
+            skip_draw: false,
         }
     }
 
@@ -346,7 +349,7 @@ impl Part {
         }
         let mut pose = *pose;
         self.translate_and_rotate(&mut pose);
-        for cube in &self.cubes {
+        for cube in self.cubes.iter().filter(|_| !self.skip_draw) {
             for polygon in &cube.polygons {
                 let normal = pose.transform_normal(polygon.normal);
                 let corner = |index: usize| {

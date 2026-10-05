@@ -14683,6 +14683,26 @@ def movement_item_cases():
                 {"tick": 6, "type": "death"}], extras=["creaking"], player_x=30.5),
         living("creaking-dies-unbound", "creaking", 40, [{"tick": 3, "type": "death"}],
                extras=["creaking"], player_x=30.5),
+        # An armadillo's synced state starts its roll up (rolling), peek (scared, from the
+        # middle of it when the state has just come) and roll out (unrolling) animations and
+        # decides when it hides in its shell; the peek event restarts the peek; a scared one's head
+        # is held to its body.
+        living("armadillo-idle", "armadillo", 20, [], extras=["armadillo"]),
+        living("armadillo-rolls", "armadillo", 30, [{"tick": 4, "type": "armadillo_data", "state": 1}],
+               extras=["armadillo"]),
+        living("armadillo-rolls-and-is-scared", "armadillo", 80,
+               [{"tick": 4, "type": "armadillo_data", "state": 1},
+                {"tick": 14, "type": "armadillo_data", "state": 2}], extras=["armadillo"]),
+        living("armadillo-peeks-again", "armadillo", 80,
+               [{"tick": 4, "type": "armadillo_data", "state": 2},
+                {"tick": 30, "type": "entity_event", "event": 64}], extras=["armadillo"]),
+        living("armadillo-unrolls", "armadillo", 60,
+               [{"tick": 4, "type": "armadillo_data", "state": 2},
+                {"tick": 20, "type": "armadillo_data", "state": 3},
+                {"tick": 55, "type": "armadillo_data", "state": 0}], extras=["armadillo"]),
+        living("armadillo-state-resent", "armadillo", 40,
+               [{"tick": 4, "type": "armadillo_data", "state": 2},
+                {"tick": 20, "type": "armadillo_data", "state": 2}], extras=["armadillo"]),
         living("bat-flies", "bat", 30, [], extras=["bat"]),
         living("bat-hangs", "bat", 30, [{"tick": 2, "type": "flier_data", "bat_flags": 1}],
                extras=["bat"]),
@@ -15117,6 +15137,7 @@ def entity_cases():
     yield from entity_breeze_cases()
     yield from entity_warden_cases()
     yield from entity_creaking_cases()
+    yield from entity_armadillo_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()
@@ -16463,6 +16484,38 @@ def entity_creaking_cases():
                  creaking(layer, "walking-attack", age=55.0, walk=(8.1, 0.5), attack=50),
                  creaking(layer, "frozen-death", age=80.0, can_move=False, death=50, attack=70)]
     yield {"case_id": "entity/creaking-model", "family": "entity", "operation": "airborne_model",
+           "rows": rows}
+
+
+def entity_armadillo_cases():
+    """The armadillo's two models (adult, baby) posed by the reference's own
+    `ArmadilloModel.setupAnim`: the look inside its limits, the walk (and not while it hides in its
+    shell), the ball and the body it hides behind, and each of the three animations alone and with
+    others."""
+    def armadillo(layer, label, age=37.5, look=(0.0, 0.0), walk=(0.0, 0.0), hiding=False, **started):
+        row = {"label": f"armadillo-{layer}-{label}", "layer": f"minecraft:{layer}#main",
+               "age_in_ticks": float_bits(age), "y_rot": float_bits(look[0]),
+               "x_rot": float_bits(look[1]), "walk_position": float_bits(walk[0]),
+               "walk_speed": float_bits(walk[1]), "hiding": hiding}
+        row.update(started)
+        return row
+    rows = []
+    for layer in ("armadillo", "armadillo_baby"):
+        rows += [armadillo(layer, "nothing"),
+                 armadillo(layer, "look", look=(20.0, -10.0)),
+                 armadillo(layer, "look-past-limits", look=(-70.0, 60.0)),
+                 armadillo(layer, "look-past-other-limits", look=(70.0, -60.0)),
+                 armadillo(layer, "walk", walk=(6.3, 0.2)),
+                 armadillo(layer, "fast-walk", walk=(11.9, 0.9)),
+                 armadillo(layer, "hiding", look=(20.0, -10.0), walk=(6.3, 0.2), hiding=True),
+                 armadillo(layer, "roll-up", age=40.0, roll_up=36, hiding=True),
+                 armadillo(layer, "roll-up-over", age=70.0, roll_up=36, hiding=True),
+                 armadillo(layer, "peek", age=80.0, peek=50, hiding=True),
+                 armadillo(layer, "peek-late", age=160.0, peek=50, hiding=True),
+                 armadillo(layer, "roll-out", age=75.0, roll_out=60),
+                 armadillo(layer, "roll-out-late", age=100.0, roll_out=60),
+                 armadillo(layer, "rolling-out-walking", age=70.0, walk=(8.1, 0.5), roll_out=60)]
+    yield {"case_id": "entity/armadillo-model", "family": "entity", "operation": "airborne_model",
            "rows": rows}
 
 

@@ -738,6 +738,8 @@ pub struct ClientEntity {
     pub(crate) warden: Option<Box<crate::warden::WardenState>>,
     /// A creaking's animation states and flags, made when its data, events or ticks first reach it.
     pub(crate) creaking: Option<Box<crate::creaking::CreakingState>>,
+    /// An armadillo's state and animation states, made when its data, events or ticks first reach it.
+    pub(crate) armadillo: Option<crate::armadillo::ArmadilloState>,
     /// A frog's animation states, made when its pose first changes or it first ticks.
     pub(crate) frog: Option<Box<crate::frog::FrogState>>,
     /// A panda's data and own client state, once it has any.
@@ -1647,6 +1649,11 @@ impl ClientEntity {
         )
     }
 
+    /// `getYHeadRot`.
+    pub fn y_head_rot(&self) -> f32 {
+        f32::from_bits(self.y_head_rot_bits)
+    }
+
     pub fn head_rotation_target(&self) -> f32 {
         f32::from_bits(self.head_rotation_target_bits)
     }
@@ -2372,6 +2379,43 @@ impl ClientEntity {
         }
     }
 
+    pub(crate) fn is_armadillo(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:armadillo")
+    }
+
+    /// An armadillo's state and animation states, if it has any.
+    pub fn armadillo(&self) -> Option<&crate::armadillo::ArmadilloState> {
+        self.armadillo.as_ref()
+    }
+
+    pub(crate) fn armadillo_mut(&mut self) -> &mut crate::armadillo::ArmadilloState {
+        self.armadillo.get_or_insert_with(Default::default)
+    }
+
+    /// `Armadillo.tick`'s client half, after the rest of the tick: the animation
+    /// states follow the state, a scared armadillo's head is held to its body
+    /// (`Mob.clampHeadRotationToBody`), and the time in the state counts on.
+    pub(crate) fn tick_armadillo(&mut self) {
+        if !self.is_armadillo() {
+            return;
+        }
+        let tick_count = self.tick_count;
+        let state = self.armadillo_mut();
+        state.animate(tick_count);
+        let scared = state.is_scared();
+        if scared {
+            let (head, body) = (
+                f32::from_bits(self.y_head_rot_bits),
+                f32::from_bits(self.y_body_rot_bits),
+            );
+            let limit = 75.0_f32;
+            let delta = voxel_core::math::wrap_degrees_f32(body - head);
+            let target = voxel_core::math::wrap_degrees_f32(body - head).clamp(-limit, limit);
+            self.y_head_rot_bits = (head + delta - target).to_bits();
+        }
+        self.armadillo_mut().finish_tick();
+    }
+
     pub(crate) fn is_creaking(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:creaking")
     }
@@ -2901,6 +2945,7 @@ impl ClientEntity {
         self.tick_allay();
         self.tick_warden();
         self.tick_creaking();
+        self.tick_armadillo();
     }
 
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.

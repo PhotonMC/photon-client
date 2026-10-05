@@ -21,6 +21,7 @@ use voxel_core::{
 pub mod allay;
 pub mod animal;
 pub mod animation_state;
+pub mod armadillo;
 pub mod armor_stand;
 pub mod axolotl;
 pub mod bat;
@@ -2270,6 +2271,9 @@ impl ClientWorld {
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
             }
+            Some("minecraft:armadillo") if event == armadillo::PEEK_EVENT => {
+                return entity.armadillo_mut().event(event);
+            }
             Some("minecraft:creaking")
                 if matches!(event, creaking::ATTACK_EVENT | creaking::INVULNERABLE_EVENT) =>
             {
@@ -3234,6 +3238,7 @@ impl ClientWorld {
                 breeze: None,
                 warden: None,
                 creaking: None,
+                armadillo: None,
                 parrot: None,
                 allay: None,
                 panda: None,
@@ -4373,6 +4378,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
+    }
+    if let Some(mode) = armadillo_state_from_metadata(entity.type_id, metadata) {
+        entity.armadillo_mut().set_mode(mode);
     }
     if entity.is_creaking() {
         creaking_data_from_metadata(metadata).apply(entity.creaking_mut());

@@ -115,7 +115,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T37c2](T37c2-shulker-konum.md) | Shulker konumu, ışınlanma kayması ve vuruş kutusu | M | T37c | bitti (97432bae) |
 | [T37d](T37d-warden.md) | Warden | L | T37, T43b | bitti (2c08a2a3) |
 | [T37e](T37e-creaking.md) | Creaking | M | T37, T43b | bitti (fc4791cb) |
-| [T37f](T37f-armadillo-sniffer.md) | Armadillo ve sniffer | L | T37, T43b | açık |
+| [T37f](T37f-armadillo-sniffer.md) | Armadillo ve sniffer | L | T37, T43b | bölündü (HASH) |
+| [T37f2](T37f2-sniffer.md) | Sniffer ve yavrusu | M | T37f | açık |
 | [T37g](T37g-wither.md) | Wither | M | T37, T33d | açık |
 | [T37h](T37h-ender-ejderhasi.md) | Ender ejderhası | L | T37 | açık |
 | [T38](T38-araclar.md) | Tekneler (tekne, sandıklı tekne, bambu salı) | M | T24 | bitti (21875028) |

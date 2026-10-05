@@ -308,6 +308,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::wolves::textures())
         .chain(crate::felines::textures())
         .chain(crate::bears::textures())
+        .chain(crate::armadillos::textures())
         .chain(crate::hoglins::textures())
         .chain(crate::foxes::textures())
         .chain(crate::pandas::textures())
@@ -487,6 +488,24 @@ pub fn remote_mobs(
     vertices
 }
 
+/// The felines, bears, armadillos and hoglins the server added.
+fn remote_wild_animals(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+) -> Vec<Vertex> {
+    let mut vertices = crate::felines::remote_felines(session, models, textures, view);
+    vertices.extend(crate::bears::remote_bears(session, models, textures, view));
+    vertices.extend(crate::armadillos::remote_armadillos(
+        session, models, textures, view,
+    ));
+    vertices.extend(crate::hoglins::remote_hoglins(
+        session, models, textures, view,
+    ));
+    vertices
+}
+
 /// The renderers of the families that have a module of their own, one after
 /// the other: humanoids, sheep, monsters, villagers, farm animals, golems,
 /// witches, illagers and armor stands.
@@ -519,13 +538,7 @@ fn remote_families(
     vertices.extend(crate::wolves::remote_wolves(
         session, models, textures, view,
     ));
-    vertices.extend(crate::felines::remote_felines(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::bears::remote_bears(session, models, textures, view));
-    vertices.extend(crate::hoglins::remote_hoglins(
-        session, models, textures, view,
-    ));
+    vertices.extend(remote_wild_animals(session, models, textures, view));
     vertices.extend(crate::foxes::remote_foxes(
         session,
         models,

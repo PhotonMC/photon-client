@@ -1731,6 +1731,28 @@ public final class EntityOracle {
                 var breeze = new net.minecraft.client.model.monster.breeze.BreezeModel(root);
                 breeze.setupAnim(state);
                 model = breeze;
+            } else if (id.contains("armadillo")) {
+                var state = new net.minecraft.client.renderer.entity.state.ArmadilloRenderState();
+                state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+                state.yRot = Oracle.f32(row, "y_rot");
+                state.xRot = Oracle.f32(row, "x_rot");
+                state.walkAnimationPos = Oracle.f32(row, "walk_position");
+                state.walkAnimationSpeed = Oracle.f32(row, "walk_speed");
+                state.isHidingInShell = row.get("hiding").getAsBoolean();
+                var animations = new Object[][] {
+                    {"roll_out", state.rollOutAnimationState}, {"roll_up", state.rollUpAnimationState},
+                    {"peek", state.peekAnimationState},
+                };
+                for (var animation : animations) {
+                    if (row.has((String) animation[0])) {
+                        ((net.minecraft.world.entity.AnimationState) animation[1]).start(row.get((String) animation[0]).getAsInt());
+                    }
+                }
+                net.minecraft.client.model.animal.armadillo.ArmadilloModel armadillo = id.contains("baby")
+                    ? new net.minecraft.client.model.animal.armadillo.BabyArmadilloModel(root)
+                    : new net.minecraft.client.model.animal.armadillo.AdultArmadilloModel(root);
+                armadillo.setupAnim(state);
+                model = armadillo;
             } else if (id.contains("creaking")) {
                 var state = new net.minecraft.client.renderer.entity.state.CreakingRenderState();
                 state.ageInTicks = Oracle.f32(row, "age_in_ticks");

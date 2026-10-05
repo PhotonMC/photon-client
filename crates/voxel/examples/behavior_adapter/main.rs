@@ -18782,6 +18782,13 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         };
                         world.apply_entity_metadata(entity_id, &[6, 20, id, 255]);
                     }
+                    "armadillo_data" => {
+                        // `Armadillo.ARMADILLO_STATE`: serializer 36, then the state's id.
+                        let mut data = vec![voxel_world::armadillo::STATE_DATA_ID, 36];
+                        voxel_core::wire::write_varint(i32_field(event, "state")?, &mut data);
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                    }
                     "creaking_data" => {
                         // The booleans `Creaking` defines, each when the event names it.
                         let mut data = Vec::new();
@@ -19121,6 +19128,26 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                     0
                                 });
                         }
+                    }
+                    "armadillo" => {
+                        let state = entity.armadillo().copied().unwrap_or_default();
+                        let age = entity.tick_count() as f32;
+                        for (name, animation) in [
+                            ("roll_out", state.roll_out),
+                            ("roll_up", state.roll_up),
+                            ("peek", state.peek),
+                        ] {
+                            described[format!("{name}_started")] = json!(animation.is_started());
+                            described[format!("{name}_millis")] =
+                                json!(if animation.is_started() {
+                                    animation.time_in_millis(age)
+                                } else {
+                                    0
+                                });
+                        }
+                        described["hiding"] = json!(state.should_hide_in_shell());
+                        described["scared"] = json!(state.is_scared());
+                        described["head_yaw"] = json!(hex(entity.y_head_rot()));
                     }
                     "creaking" => {
                         let state = entity
@@ -20771,6 +20798,31 @@ fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 inhale: started("inhale"),
                 long_jump: started("long_jump"),
             });
+        } else if id.contains("armadillo") {
+            use voxel_render::mob_model::ArmadilloRenderState;
+            let started = |key: &str| {
+                let mut state = AnimationState::default();
+                if let Some(tick) = row[key].as_i64() {
+                    state.start(tick as i32);
+                }
+                state
+            };
+            model.setup_armadillo(
+                &ArmadilloRenderState {
+                    quadruped: QuadrupedState {
+                        head_y_rot: bits("y_rot")?,
+                        x_rot: bits("x_rot")?,
+                        walk_position: bits("walk_position")?,
+                        walk_speed: bits("walk_speed")?,
+                    },
+                    age_in_ticks: bits("age_in_ticks")?,
+                    is_hiding_in_shell: flag("hiding")?,
+                    roll_out: started("roll_out"),
+                    roll_up: started("roll_up"),
+                    peek: started("peek"),
+                },
+                id.contains("baby"),
+            );
         } else if id.contains("creaking") {
             use voxel_render::mob_model::CreakingRenderState;
             let started = |key: &str| {

@@ -256,6 +256,18 @@ pub struct CreakingRenderState {
     pub death: voxel_world::animation_state::AnimationState,
 }
 
+/// What an armadillo's model is posed from (`ArmadilloRenderState`): the look,
+/// the walk, whether it hides in its shell, and its animation states.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArmadilloRenderState {
+    pub quadruped: QuadrupedState,
+    pub age_in_ticks: f32,
+    pub is_hiding_in_shell: bool,
+    pub roll_out: voxel_world::animation_state::AnimationState,
+    pub roll_up: voxel_world::animation_state::AnimationState,
+    pub peek: voxel_world::animation_state::AnimationState,
+}
+
 /// `ParrotModel.Pose`: how a parrot sits, stands or flies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParrotPose {
@@ -1986,6 +1998,63 @@ impl MobModel {
             ("Creaking.CREAKING_ATTACK", state.attack),
             ("Creaking.CREAKING_INVULNERABLE", state.invulnerable),
             ("Creaking.CREAKING_DEATH", state.death),
+        ] {
+            self.animate_state(name, running, state.age_in_ticks);
+        }
+    }
+
+    /// `ArmadilloModel.setupAnim` (the adult's and the baby's alike, with the
+    /// baby's own animations): hiding in the shell draws the ball in place of
+    /// the body's cubes, legs and tail, and the walk stops; otherwise the head
+    /// takes the look within its limits and the walk runs; then the animations
+    /// that have started.
+    pub fn setup_armadillo(&mut self, state: &ArmadilloRenderState, baby: bool) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        let hiding = state.is_hiding_in_shell;
+        if let Some(cube) = self.root.child_mut("cube") {
+            cube.visible = hiding;
+        }
+        for name in ["left_hind_leg", "right_hind_leg"] {
+            if let Some(leg) = self.root.child_mut(name) {
+                leg.visible = !hiding;
+            }
+        }
+        if let Some(body) = self.root.child_mut("body") {
+            body.skip_draw = hiding;
+            if let Some(tail) = body.child_mut("tail") {
+                tail.visible = !hiding;
+            }
+            if !hiding && let Some(head) = body.child_mut("head") {
+                head.x_rot = state.quadruped.x_rot.clamp(-22.5, 25.0) * degrees;
+                head.y_rot = state.quadruped.head_y_rot.clamp(-32.5, 32.5) * degrees;
+            }
+        }
+        let (walk, roll_out, roll_up, peek) = if baby {
+            (
+                "BabyArmadillo.ARMADILLO_BABY_WALK",
+                "BabyArmadillo.ARMADILLO_BABY_ROLL_OUT",
+                "BabyArmadillo.ARMADILLO_BABY_ROLL_UP",
+                "BabyArmadillo.ARMADILLO_BABY_PEEK",
+            )
+        } else {
+            (
+                "Armadillo.ARMADILLO_WALK",
+                "Armadillo.ARMADILLO_ROLL_OUT",
+                "Armadillo.ARMADILLO_ROLL_UP",
+                "Armadillo.ARMADILLO_PEEK",
+            )
+        };
+        if !hiding && let Some(definition) = voxel_data::animation::definition(walk) {
+            // `applyWalk(pos, speed, 16.5, 2.5)`.
+            let millis = (state.quadruped.walk_position * 50.0 * 16.5) as i64;
+            let scale = (state.quadruped.walk_speed * 2.5).min(1.0);
+            self.animate(definition, millis, scale);
+        }
+        for (name, running) in [
+            (roll_out, state.roll_out),
+            (roll_up, state.roll_up),
+            (peek, state.peek),
         ] {
             self.animate_state(name, running, state.age_in_ticks);
         }

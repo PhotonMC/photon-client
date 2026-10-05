@@ -11,4 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı yalnız armadillo: `setup_armadillo` (yetişkin ve yavru, `skip_draw`), `voxel-world/armadillo.rs` (durum, süre, olay 64, animasyon durumları, bakış tutma), `armadillos.rs` çizici. Kayıt: `docs/client-armadillo-parity-conformance.md`.
+- Sniffer ve yavrusu (koklama, kazma, yürüme, ayağa kalkma; `SNIFFER_STATE` verisi) [T37f2](T37f2-sniffer.md)'ye ayrıldı; bu görev `bölündü`.
+- Sapma: ses, parçacık, davranış yok; canlı gözlem yapılmadı.

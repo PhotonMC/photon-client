@@ -1006,6 +1006,13 @@ public final class MovementOracle {
                         listener.handleSetEntityData(
                             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
                     }
+                    case "armadillo_data" -> {
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        data.add(wolfData(net.minecraft.world.entity.animal.armadillo.Armadillo.class, "ARMADILLO_STATE",
+                            net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.values()[event.get("state").getAsInt()]));
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "creaking_data" -> {
                         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
                         for (var field : new String[][] {{"can_move", "CAN_MOVE"}, {"active", "IS_ACTIVE"},
@@ -1326,6 +1333,22 @@ public final class MovementOracle {
                                 described.addProperty(described2[0] + "_millis",
                                     animation.isStarted() ? animation.getTimeInMillis((float) breeze.tickCount) : 0L);
                             }
+                        }
+                        case "armadillo" -> {
+                            var armadillo = (net.minecraft.world.entity.animal.armadillo.Armadillo) entity;
+                            var states = new Object[][] {
+                                {"roll_out", armadillo.rollOutAnimationState}, {"roll_up", armadillo.rollUpAnimationState},
+                                {"peek", armadillo.peekAnimationState},
+                            };
+                            for (var described2 : states) {
+                                var animation = (net.minecraft.world.entity.AnimationState) described2[1];
+                                described.addProperty(described2[0] + "_started", animation.isStarted());
+                                described.addProperty(described2[0] + "_millis",
+                                    animation.isStarted() ? animation.getTimeInMillis((float) armadillo.tickCount) : 0L);
+                            }
+                            described.addProperty("hiding", armadillo.shouldHideInShell());
+                            described.addProperty("scared", armadillo.isScared());
+                            described.addProperty("head_yaw", Oracle.bits(armadillo.getYHeadRot()));
                         }
                         case "creaking" -> {
                             var creaking = (net.minecraft.world.entity.monster.creaking.Creaking) entity;

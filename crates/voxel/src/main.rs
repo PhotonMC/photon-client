@@ -1,4 +1,5 @@
 mod animated_atlas;
+mod armadillos;
 mod armor;
 mod armor_stands;
 mod assets;

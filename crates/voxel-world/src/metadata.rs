@@ -605,6 +605,28 @@ pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
     metadata_int_value(metadata, crate::warden::CLIENT_ANGER_DATA_ID)
 }
 
+/// An armadillo's synced state (`Armadillo.ARMADILLO_STATE`), when the data holds it.
+pub(crate) fn armadillo_state_from_metadata(
+    type_id: i32,
+    metadata: &[u8],
+) -> Option<crate::armadillo::ArmadilloMode> {
+    /// `EntityDataSerializers.ARMADILLO_STATE`'s place in the registry of serializers.
+    const ARMADILLO_STATE_SERIALIZER_ID: i32 = 36;
+    if voxel_data::entity_type::name(type_id)? != "minecraft:armadillo" {
+        return None;
+    }
+    let (serializer_id, mut value_input) =
+        find_metadata_field(metadata, crate::armadillo::STATE_DATA_ID)?;
+    if serializer_id != ARMADILLO_STATE_SERIALIZER_ID {
+        return None;
+    }
+    let id = voxel_core::wire::read_varint(&mut value_input).ok()?;
+    if value_input.is_empty() {
+        return None;
+    }
+    Some(crate::armadillo::ArmadilloMode::from_id(id))
+}
+
 /// A creaking's synced data, each field when the data holds it.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct CreakingData {
