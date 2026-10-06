@@ -172,6 +172,7 @@ pub fn remote_illagers(
             head: entity.equipment(EquipmentSlot::Head),
             head_transforms: HEAD_TRANSFORMS,
             eye: None,
+            motions: Default::default(),
         }
         .collect(held);
         vertices.extend(mob_vertices(model, &placed, rect));

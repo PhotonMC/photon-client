@@ -394,7 +394,8 @@ impl Matrix4 {
         }
         for row in 0..3 {
             let moved = m[0][row] * ox + m[1][row] * oy + m[2][row] * oz + m[3][row];
-            out[3][row] = -out[0][row] * ox - out[1][row] * oy - m[2][row] * oz + moved;
+            // The reference reads the matrix it has just written into: the turned third column.
+            out[3][row] = -out[0][row] * ox - out[1][row] * oy - out[2][row] * oz + moved;
         }
         out[3][3] = 1.0;
         self.m = out;

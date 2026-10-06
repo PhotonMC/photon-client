@@ -2448,16 +2448,22 @@ impl ClientWorld {
         if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
             return false;
         }
-        entity.living.swing.swing(action == 3);
+        let durations = entity.swing_durations();
+        entity.living.swing.swing(action == 3, durations);
         true
     }
 
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
     pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {
+        let game_time = self.game_time;
         let Some(entity) = self.entities.get_mut(&entity_id) else {
             return false;
         };
+        if event == 2 && entity.living_kind().is_some() {
+            entity.on_kinetic_hit(game_time);
+            return true;
+        }
         if event == 19 && entity.is_squid() {
             entity
                 .squid

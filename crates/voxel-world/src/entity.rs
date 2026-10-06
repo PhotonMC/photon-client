@@ -160,6 +160,9 @@ pub(crate) struct EntityState {
     pub(crate) death_time: i32,
     /// How many ticks the item in use has been used (`getTicksUsingItem`, whole).
     pub(crate) using_item_ticks: i32,
+    /// `LivingEntity.lastKineticHitFeedbackTime`: the game time a spear's hit last kicked, if one
+    /// has.
+    pub(crate) kinetic_hit_time: Option<u64>,
     /// `LivingEntity.elytraAnimationState`.
     pub(crate) elytra: crate::elytra::ElytraState,
     /// `LivingEntity.fallFlyTicks`: how long the entity has glided.
@@ -1924,6 +1927,25 @@ impl ClientEntity {
         }
     }
 
+    /// `LivingEntity.onKineticHit` (entity event 2): the kick of a spear's hit starts, unless one
+    /// began in the last ten ticks.
+    pub(crate) fn on_kinetic_hit(&mut self, game_time: u64) {
+        if self
+            .living
+            .kinetic_hit_time
+            .is_none_or(|last| game_time.saturating_sub(last) > 10)
+        {
+            self.living.kinetic_hit_time = Some(game_time);
+        }
+    }
+
+    /// `LivingEntity.getTicksSinceLastKineticHitFeedback`.
+    pub fn ticks_since_kinetic_hit(&self, game_time: u64, partial: f32) -> f32 {
+        self.living
+            .kinetic_hit_time
+            .map_or(0.0, |last| game_time.saturating_sub(last) as f32 + partial)
+    }
+
     pub fn used_item_is_off_hand(&self) -> bool {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_OFF_HAND)
     }
@@ -3547,8 +3569,21 @@ impl ClientEntity {
         self.living.swing.begin_tick();
         let monster = voxel_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.monster);
         if kind == LivingKind::Player || monster {
-            self.living.swing.update();
+            let durations = self.swing_durations();
+            self.living.swing.update(durations);
         }
+    }
+
+    /// `ItemStack.getSwingAnimation().duration()` of what each hand holds, the main hand's first.
+    pub(crate) fn swing_durations(&self) -> [i32; 2] {
+        [EquipmentSlot::MainHand, EquipmentSlot::OffHand].map(|slot| {
+            self.equipment(slot)
+                .and_then(|stack| crate::block_rules::item(stack.item_registry_id()))
+                .and_then(|item| voxel_data::spear::spear_of(item.name))
+                .map_or(crate::living::DEFAULT_SWING_DURATION, |spear| {
+                    spear.swing_ticks
+                })
+        })
     }
 
     /// What a living entity does each tick besides moving: hurt and death,

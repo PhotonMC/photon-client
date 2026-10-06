@@ -781,6 +781,13 @@ fn remote_humanoids(
                         HEAD_TRANSFORMS
                     },
                     eye: None,
+                    motions: crate::arm_poses::entity_spear_view(
+                        entity,
+                        (humanoid.attack_time, humanoid.attack_arm),
+                        (humanoid.right_arm_pose, humanoid.left_arm_pose),
+                        (world.game_time(), partial),
+                    )
+                    .motions,
                 };
                 hands.collect(held);
                 skull = hands.skull();
@@ -914,7 +921,9 @@ fn humanoid_pose(
     let holding_bow = entity
         .equipment(EquipmentSlot::MainHand)
         .is_some_and(|stack| is_item(stack, "minecraft:bow"));
-    let bow_arm = |left: bool| {
+    // `getArmPose` of each renderer: a skeleton's drawn bow, else a spear's pose (a zombie's
+    // also for the arm beside a spear).
+    let arm_pose = |left: bool| {
         if matches!(kind.family, Family::Skeleton)
             && left == main_left
             && entity.is_aggressive()
@@ -922,9 +931,25 @@ fn humanoid_pose(
         {
             ArmPose::BowAndArrow
         } else {
-            ArmPose::Empty
+            crate::arm_poses::mob_spear_pose(
+                entity,
+                left,
+                matches!(kind.family, Family::Zombie { .. }),
+            )
         }
     };
+    let attack_arm = if snapshot.attack_arm_left {
+        Arm::Left
+    } else {
+        Arm::Right
+    };
+    let (right_arm_pose, left_arm_pose) = (arm_pose(false), arm_pose(true));
+    let spears = crate::arm_poses::entity_spear_view(
+        entity,
+        (snapshot.attack_time, attack_arm),
+        (right_arm_pose, left_arm_pose),
+        (0, partial),
+    );
     let humanoid = PlayerRenderState {
         head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
         x_rot: snapshot.pitch,
@@ -933,14 +958,17 @@ fn humanoid_pose(
         age_in_ticks: entity.tick_count() as f32 + partial,
         swim_amount: snapshot.swim_amount,
         attack_time: snapshot.attack_time,
-        attack_arm: if snapshot.attack_arm_left {
-            Arm::Left
-        } else {
-            Arm::Right
-        },
-        right_arm_pose: bow_arm(false),
-        left_arm_pose: bow_arm(true),
+        attack_arm,
+        right_arm_pose,
+        left_arm_pose,
         main_arm: if main_left { Arm::Left } else { Arm::Right },
+        is_baby: entity.is_baby(),
+        main_hand_empty: entity.item_held_by_arm(main_left).is_none(),
+        is_using_item: entity.is_using_item(),
+        use_item_main_hand: !entity.used_item_is_off_hand(),
+        swing_animation: spears.swing_animation,
+        right_spear: spears.right,
+        left_spear: spears.left,
         ..Default::default()
     };
     (humanoid, holding_bow)

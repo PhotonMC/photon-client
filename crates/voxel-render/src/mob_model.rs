@@ -7,7 +7,9 @@ use voxel_data::entity_model::ModelLayer;
 
 use crate::entity_textures::{TextureRect, uv};
 use crate::joml::{Pose, Quaternion};
-use crate::player_model::{ModelVertex, Part, PlayerRenderState, humanoid_anim, rot_lerp_rad};
+use crate::player_model::{
+    ModelVertex, Part, PlayerRenderState, SwingAnimation, humanoid_anim, rot_lerp_rad,
+};
 use crate::scene::Vertex;
 
 /// What `QuadrupedModel.setupAnim` reads of a mob.
@@ -4445,24 +4447,38 @@ impl MobModel {
         }
     }
 
-    /// `AnimationUtils.animateZombieArms` with the arms raised and the whack
-    /// swing: `animateAttackArms` over a drop that depends on the flag, then
-    /// the arms' breathing again.
+    /// `AnimationUtils.animateZombieArms`: unless the swing is a stab, `animateAttackArms` over a
+    /// drop that depends on the flag (a baby holding something keeps its arms down), then the arms'
+    /// breathing again.
     fn animate_zombie_arms(&mut self, humanoid: &PlayerRenderState, aggressive: bool) {
         let sin = |value: f32| mth_sin_f64(f64::from(value));
         let cos = |value: f32| mth_cos_f64(f64::from(value));
         let pi = std::f64::consts::PI as f32;
-        let arm_drop = -pi / if aggressive { 1.5 } else { 2.25 };
-        let attack_time = humanoid.attack_time;
-        let y_modifier = sin(attack_time * pi);
-        let x_modifier = sin((1.0 - (1.0 - attack_time) * (1.0 - attack_time)) * pi);
-        let x_rot = arm_drop + y_modifier * 1.2 - x_modifier * 0.4;
-        let y_rot = 0.1 - y_modifier * 0.6;
-        for (name, y, bob) in [("right_arm", -y_rot, 1.0_f32), ("left_arm", y_rot, -1.0)] {
+        if humanoid.swing_animation != SwingAnimation::Stab {
+            let raise_arms = !humanoid.is_baby || humanoid.main_hand_empty;
+            let arm_drop = if raise_arms {
+                -pi / if aggressive { 1.5 } else { 2.25 }
+            } else {
+                0.0
+            };
+            let attack_time = humanoid.attack_time;
+            let y_modifier = (if raise_arms { 1.0 } else { -1.0 }) * sin(attack_time * pi);
+            let x_modifier = sin((1.0 - (1.0 - attack_time) * (1.0 - attack_time)) * pi);
+            let x_rot = arm_drop + y_modifier * 1.2 - x_modifier * 0.4;
+            let y_rot = 0.1 - y_modifier * 0.6;
+            for (name, y) in [
+                ("right_arm", if raise_arms { -y_rot } else { y_rot }),
+                ("left_arm", if raise_arms { y_rot } else { -y_rot }),
+            ] {
+                if let Some(arm) = self.root.child_mut(name) {
+                    arm.x_rot = x_rot;
+                    arm.y_rot = y;
+                    arm.z_rot = 0.0;
+                }
+            }
+        }
+        for (name, bob) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
             if let Some(arm) = self.root.child_mut(name) {
-                arm.x_rot = x_rot;
-                arm.y_rot = y;
-                arm.z_rot = 0.0;
                 // `bobArms`.
                 arm.z_rot += bob * (cos(humanoid.age_in_ticks * 0.09) * 0.05 + 0.05);
                 arm.x_rot += bob * (sin(humanoid.age_in_ticks * 0.067) * 0.05);

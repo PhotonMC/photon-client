@@ -232,6 +232,19 @@ pub fn player_model(
     let partial = view.partial as f32;
     let (_, x_rot) = player.rotation();
     let pose = player.model_pose(partial);
+    let attack_time = player.attack_anim(partial);
+    let arm_poses = (held_arm_pose(stacks.0), held_arm_pose(stacks.1));
+    // The local player's use of an item is not tracked, and its swing keeps the default length.
+    let spears = crate::arm_poses::stacks_spear_view(
+        stacks,
+        crate::arm_poses::SpearRest {
+            main_arm: Arm::Right,
+            attack: (attack_time, Arm::Right),
+            arm_poses,
+            using: (false, true, 0.0),
+            hit_feedback: 0.0,
+        },
+    );
     let state = PlayerRenderState {
         head_y_rot: voxel_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
         x_rot,
@@ -241,9 +254,12 @@ pub fn player_model(
         swim_amount: pose.swim_amount,
         crouching: pose.crouching,
         spectator: player.spectating(),
-        attack_time: player.attack_anim(partial),
-        right_arm_pose: held_arm_pose(stacks.0),
-        left_arm_pose: held_arm_pose(stacks.1),
+        attack_time,
+        right_arm_pose: arm_poses.0,
+        left_arm_pose: arm_poses.1,
+        swing_animation: spears.swing_animation,
+        right_spear: spears.right,
+        left_spear: spears.left,
         ..Default::default()
     };
     model.setup_anim(&state);
@@ -277,6 +293,7 @@ pub fn player_model(
         head: worn.head_item(armor),
         head_transforms: HEAD_TRANSFORMS,
         eye: None,
+        motions: spears.motions,
     };
     hands.collect(held);
     let skull = hands.skull();
@@ -333,11 +350,22 @@ fn remote_render_state(
     session: &PlaySession,
     (entity, snapshot): (&voxel_world::ClientEntity, &voxel_world::EntitySnapshot),
     partial: f32,
-) -> PlayerRenderState {
+) -> (PlayerRenderState, voxel_render::held_item::SpearView) {
     let world = session.world();
     let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
     let main_left = entity.main_arm_is_left();
     let arms = crate::arm_poses::arm_state(session, entity, partial);
+    let attack_arm = if snapshot.attack_arm_left {
+        Arm::Left
+    } else {
+        Arm::Right
+    };
+    let spears = crate::arm_poses::entity_spear_view(
+        entity,
+        (snapshot.attack_time, attack_arm),
+        (arms.right, arms.left),
+        (world.game_time(), partial),
+    );
     // `HumanoidMobRenderer.extractHumanoidRenderState`: a glider's limbs swing slower the
     // faster it flies.
     let gliding = entity.is_fall_flying();
@@ -348,7 +376,7 @@ fn remote_render_state(
     } else {
         1.0
     };
-    PlayerRenderState {
+    let state = PlayerRenderState {
         right_arm_pose: arms.right,
         left_arm_pose: arms.left,
         is_using_item: arms.using_item,
@@ -367,13 +395,13 @@ fn remote_render_state(
         swim_amount: snapshot.swim_amount,
         crouching,
         attack_time: snapshot.attack_time,
-        attack_arm: if snapshot.attack_arm_left {
-            Arm::Left
-        } else {
-            Arm::Right
-        },
+        attack_arm,
+        swing_animation: spears.swing_animation,
+        right_spear: spears.right,
+        left_spear: spears.left,
         ..Default::default()
-    }
+    };
+    (state, spears)
 }
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
@@ -411,7 +439,7 @@ pub fn remote_players(
             entity.item_held_by_arm(false),
             entity.item_held_by_arm(true),
         );
-        let state = remote_render_state(session, (entity, &snapshot), partial);
+        let (state, spears) = remote_render_state(session, (entity, &snapshot), partial);
         model.setup_anim(&state);
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
@@ -453,6 +481,7 @@ pub fn remote_players(
             head: worn.head_item(armor),
             head_transforms: HEAD_TRANSFORMS,
             eye: crate::arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
+            motions: spears.motions,
         };
         hands.collect(held);
         let skull = hands.skull();
@@ -510,9 +539,11 @@ fn wear(
 }
 
 /// `AvatarRenderer.getArmPose` of an arm that is not in use: a held stack
-/// raises the arm a little.
+/// raises the arm a little, a spear a good deal.
 fn held_arm_pose(stack: Option<&voxel_world::ClientItemStackState>) -> ArmPose {
-    if stack.is_some() {
+    if stack.is_some_and(|stack| crate::arm_poses::spear_of_stack(stack).is_some()) {
+        ArmPose::Spear
+    } else if stack.is_some() {
         ArmPose::Item
     } else {
         ArmPose::Empty

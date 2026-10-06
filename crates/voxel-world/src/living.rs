@@ -237,9 +237,9 @@ pub(crate) fn keep_old_angles_near(
     }
 }
 
-/// How long a swing lasts with an empty hand (`SwingAnimation.DEFAULT`):
-/// the duration a held item's own swing component and the effects of haste
-/// or mining fatigue would change, which are not read for other entities yet.
+/// How long a swing lasts with an empty hand (`SwingAnimation.DEFAULT`). A held item's own swing
+/// component changes it (a spear's), and so do the effects of haste or mining fatigue, which are
+/// not read for other entities yet.
 pub const DEFAULT_SWING_DURATION: i32 = 6;
 
 /// A living entity's arm swing (`LivingEntity.swing`, `updateSwingTime`):
@@ -254,10 +254,17 @@ pub struct SwingState {
 }
 
 impl SwingState {
+    /// `LivingEntity.getCurrentSwingDuration`, of the hand swinging: the main hand's or the off
+    /// hand's, as `durations` gives them.
+    fn duration(&self, durations: [i32; 2]) -> i32 {
+        durations[usize::from(self.off_hand)]
+    }
+
     /// `LivingEntity.swing`: a swing starts when none is going or the one
-    /// going is at least half through.
-    pub fn swing(&mut self, off_hand: bool) {
-        if !self.swinging || self.swing_time >= DEFAULT_SWING_DURATION / 2 || self.swing_time < 0 {
+    /// going is at least half through. `durations` is how long each hand's item swings.
+    pub fn swing(&mut self, off_hand: bool, durations: [i32; 2]) {
+        if !self.swinging || self.swing_time >= self.duration(durations) / 2 || self.swing_time < 0
+        {
             self.swing_time = -1;
             self.swinging = true;
             self.off_hand = off_hand;
@@ -270,17 +277,18 @@ impl SwingState {
     }
 
     /// `LivingEntity.updateSwingTime`, which only players and monsters run.
-    pub fn update(&mut self) {
+    pub fn update(&mut self, durations: [i32; 2]) {
+        let duration = self.duration(durations);
         if self.swinging {
             self.swing_time += 1;
-            if self.swing_time >= DEFAULT_SWING_DURATION {
+            if self.swing_time >= duration {
                 self.swing_time = 0;
                 self.swinging = false;
             }
         } else {
             self.swing_time = 0;
         }
-        self.attack_anim_bits = (self.swing_time as f32 / DEFAULT_SWING_DURATION as f32).to_bits();
+        self.attack_anim_bits = (self.swing_time as f32 / duration as f32).to_bits();
     }
 
     pub fn is_swinging(&self) -> bool {

@@ -19,4 +19,4 @@
 ## Devir notu
 - `PiglinArmPose` + `setup_piglin` altı poz (silah yukarıda/`swingWeaponDown`, arbalet tutma/doldurma ortak `AnimationUtils` işlevleriyle, hayranlık, dans); `entity/piglin-model` ~60 yeni satır bit bit eşit.
 - Oyunda: `piglin_arm_pose` (`getArmPose`: dans, sevilen eşya etiketi `piglin_loved` ile ikinci el, `TOOL` bileşenli saldırı, `DATA_IS_CHARGING_CROSSBOW` bayrağı, yüklü arbalet); çıkarım Java'ya karşı karşılaştırılmadı.
-- Açık: [T41d3](T41d3-mizrak-yerel-kullanim.md).
+- Açık: [T41d3](T41d3-mizrak-pozlari.md).

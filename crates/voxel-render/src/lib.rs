@@ -46,6 +46,7 @@ pub mod section_workers;
 pub mod shadow;
 pub mod skull;
 pub mod sky;
+pub mod spear_animation;
 pub mod special_models;
 pub mod texture_metadata;
 pub mod tint;

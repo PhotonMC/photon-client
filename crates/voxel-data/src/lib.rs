@@ -19,4 +19,5 @@ mod generated;
 pub mod item;
 pub mod leash;
 pub mod sound_event;
+pub mod spear;
 pub mod villager;

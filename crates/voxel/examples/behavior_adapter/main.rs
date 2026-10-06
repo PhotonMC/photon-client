@@ -24387,6 +24387,31 @@ fn sheep_eat_result(request: &Value) -> Result<Value, String> {
 /// `held_item_pose`: a humanoid model posed with its arms' poses, and the
 /// pose each held item is drawn from (`ItemInHandLayer`), before the item's
 /// own display transform.
+/// The items that are kinetic weapons, with the numbers a spear is posed and timed by.
+fn spear_table_result() -> Value {
+    let rows: Vec<Value> = voxel_data::item::items::ITEMS
+        .iter()
+        .filter(|item| item.kinetic_weapon)
+        .filter_map(|item| voxel_data::spear::spear_of(item.name))
+        .map(|spear| {
+            json!({
+                "name": spear.name,
+                "swing": "STAB",
+                "swing_ticks": spear.swing_ticks,
+                "delay_ticks": spear.delay_ticks,
+                "dismount_ticks": spear.dismount_ticks,
+                "knockback_ticks": spear.knockback_ticks,
+                "damage_ticks": spear.damage_ticks,
+                "forward_movement": format!(
+                    "{:08x}",
+                    voxel_data::spear::FORWARD_MOVEMENT.to_bits()
+                ),
+            })
+        })
+        .collect();
+    json!({ "rows": rows })
+}
+
 fn held_item_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::held_item::{hand_pose, head_item_pose};
     use voxel_render::joml::Pose;
@@ -24416,6 +24441,48 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
             max_crossbow_charge_duration: f32_field(row, "max_crossbow_charge")?,
             ..humanoid_state(row)?
         };
+        // The spears the rows' stacks are, and what they change.
+        let spear_of = |key: &str| row[key].as_str().and_then(voxel_data::spear::spear_of);
+        let attack_arm = if row["attack_arm"].as_str() == Some("left") {
+            Arm::Left
+        } else {
+            Arm::Right
+        };
+        let spears = voxel_render::held_item::spear_view(&voxel_render::held_item::SpearInput {
+            spears: (spear_of("right_item"), spear_of("left_item")),
+            main_arm: humanoid.main_arm,
+            attack: (humanoid.attack_time, attack_arm),
+            swing_animation: if row["swing"].as_str() == Some("stab") {
+                voxel_render::player_model::SwingAnimation::Stab
+            } else {
+                voxel_render::player_model::SwingAnimation::Whack
+            },
+            arm_poses: (humanoid.right_arm_pose, humanoid.left_arm_pose),
+            using: (
+                humanoid.is_using_item,
+                humanoid.use_item_main_hand,
+                humanoid.ticks_using_item,
+            ),
+            hit_feedback: if row["hit_feedback"].is_null() {
+                0.0
+            } else {
+                f32_field(row, "hit_feedback")?
+            },
+        });
+        let main_item = if humanoid.main_arm == Arm::Left {
+            "left_item"
+        } else {
+            "right_item"
+        };
+        let humanoid = voxel_render::player_model::PlayerRenderState {
+            attack_arm,
+            is_baby: baby,
+            main_hand_empty: row[main_item].is_null(),
+            swing_animation: spears.swing_animation,
+            right_spear: spears.right,
+            left_spear: spears.left,
+            ..humanoid
+        };
         let aggressive = flag("aggressive");
         let layer = |id: &str| {
             voxel_data::entity_model::layer(id)
@@ -24426,7 +24493,12 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
         let (quads, (poses, head_poses, skull_quads)) = if kind.starts_with("player") {
             let mut model = PlayerModel::new(slim);
             model.setup_anim(&humanoid);
-            let poses = held_poses(&model.root, row, if slim { 0.5 } else { 0.0 }, baby);
+            let poses = held_poses(
+                &model.root,
+                row,
+                (if slim { 0.5 } else { 0.0 }, baby),
+                &spears.motions,
+            );
             (sorted_quads(model.render(&Default::default())), poses)
         } else {
             let model = match kind {
@@ -24470,8 +24542,8 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
             let poses = held_poses(
                 model.root(),
                 row,
-                if kind == "skeleton" { 1.0 } else { 0.0 },
-                baby,
+                (if kind == "skeleton" { 1.0 } else { 0.0 }, baby),
+                &spears.motions,
             );
             (posed_quads(&model), poses)
         };
@@ -24481,8 +24553,8 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
         fn held_poses(
             root: &Part,
             row: &Value,
-            hand_shift: f32,
-            baby: bool,
+            (hand_shift, baby): (f32, bool),
+            motions: &[voxel_render::held_item::HandMotion; 2],
         ) -> (Vec<Vec<String>>, Vec<Vec<String>>, Option<Vec<String>>) {
             let hex = |value: f32| format!("{:08x}", value.to_bits());
             let mut poses = Vec::new();
@@ -24549,7 +24621,15 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                     .iter()
                     .find(|part| part.name() == name)
                     .expect("the model has its arms");
-                let mut pose = hand_pose(&Pose::default(), root, arm, side, hand_shift, baby);
+                let motion = &motions[usize::from(side == Arm::Left)];
+                let mut pose = hand_pose(
+                    &Pose::default(),
+                    root,
+                    arm,
+                    side,
+                    (hand_shift, baby),
+                    motion,
+                );
                 // A spyglass in use is held to the eye instead.
                 if row["kind"]
                     .as_str()
@@ -24819,6 +24899,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_entity_pose" => return item_entity_pose_result(request),
         "living_pose" => return living_pose_result(request),
         "held_item_pose" => return held_item_pose_result(request),
+        "spear_table" => return Ok(spear_table_result()),
         "sheep_model" => return sheep_model_result(request),
         "armor_stand_model" => return armor_stand_model_result(request),
         "equipment_layers" => return equipment_layers_result(),

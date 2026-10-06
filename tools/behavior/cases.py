@@ -15363,6 +15363,7 @@ def entity_cases():
     yield from entity_xp_orb_cases()
     yield from entity_living_pose_cases()
     yield from entity_held_item_cases()
+    yield {"case_id": "entity/spear-table", "family": "entity", "operation": "spear_table", "rows": []}
     yield from entity_sheep_cases()
     yield from entity_chicken_cases()
     yield from entity_sheep_colour_cases()
@@ -15662,7 +15663,8 @@ def entity_held_item_cases():
     def row(label, kind, baby=False, right="empty", left="empty", holds=(False, False),
             main="right", head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
             age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False,
-            head=None, used=0.0, charge=0.0, using=False, hand="main", passenger=False, gliding=False, speed=1.0, skull=None, skull_anim=0.0, eye=False):
+            head=None, used=0.0, charge=0.0, using=False, hand="main", passenger=False, gliding=False, speed=1.0, skull=None, skull_anim=0.0, eye=False,
+            items=None, swing="whack", attack_arm="right", hit=0.0):
         out = {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
                 "ticks_using_item": float_bits(used), "max_crossbow_charge": float_bits(charge),
                 "using_item": using, "use_hand": hand, "passenger": passenger, "fall_flying": gliding,
@@ -15681,6 +15683,12 @@ def entity_held_item_cases():
             out.update({"skull": skull, "skull_animation": float_bits(skull_anim)})
         if eye:
             out["eye_item"] = True
+        if items is not None:
+            # Real stacks in the hands, and how the hand that swings does.
+            for side, name in zip(("right", "left"), items):
+                if name is not None:
+                    out[f"{side}_item"] = f"minecraft:{name}"
+            out.update({"swing": swing, "attack_arm": attack_arm, "hit_feedback": float_bits(hit)})
         return out
 
     rows = []
@@ -15819,6 +15827,62 @@ def entity_held_item_cases():
                 head_y_rot=10.0, x_rot=-20.0)]
     rows.append(row("skull-villager-transforms", "zombie", head=(-0.1171875, -0.07421875, 1.0), skull="zombie",
                     walk_position=7.3, walk_speed=0.83))
+    # A spear (`SpearAnimations`): the arm raises it, sways it and lowers it as the use goes on, for each
+    # spear's own timings; the stab of its swing thrusts arm and item; the hit's kick; and what each
+    # model state changes (the other hand, the main arm, gliding, swimming).
+    spears = ("wooden", "stone", "copper", "iron", "golden", "diamond", "netherite")
+    for name in spears:
+        for used in (0.5, 9.5, 17.5, 45.5, 95.5, 160.5, 230.5, 300.5):
+            rows.append(row(f"spear-{name}-use-{used}", "player", right="spear", left="item", holds=(True, True),
+                            items=(f"{name}_spear", None), using=True, used=used, head_y_rot=8.0, x_rot=-14.0,
+                            age=6.5))
+    for kind, baby in (("player_slim", False), ("zombie", False), ("zombie", True), ("skeleton", False),
+                       ("piglin", False), ("piglin", True)):
+        rows.append(row("spear-use", kind, baby, right="spear", left="spear", holds=(True, True),
+                        items=("iron_spear", "wooden_spear"), using=True, used=33.5, head_y_rot=-12.0, x_rot=20.0,
+                        age=2.5, walk_position=3.0, walk_speed=0.3))
+    for main, hand in (("right", "main"), ("right", "off"), ("left", "main"), ("left", "off")):
+        rows.append(row(f"spear-use-{main}-{hand}", "player", right="spear", left="spear", holds=(True, True),
+                        items=("stone_spear", "diamond_spear"), main=main, using=True, hand=hand, used=21.5,
+                        head_y_rot=14.0, x_rot=-18.0, age=7.25))
+    rows += [
+        row("spear-held", "player", right="spear", left="item", holds=(True, True), items=("iron_spear", None),
+            head_y_rot=5.0, x_rot=10.0),
+        row("spear-held-left", "player", right="item", left="spear", holds=(True, True), main="left",
+            items=(None, "iron_spear"), head_y_rot=5.0, x_rot=10.0),
+        row("spear-use-gliding", "player", right="spear", holds=(True, False), items=("iron_spear", None),
+            using=True, used=14.5, gliding=True, x_rot=30.0),
+        row("spear-use-swimming", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), using=True, used=14.5, swim=0.6, walk_position=3.0, walk_speed=0.4),
+        row("spear-held-swimming", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), swim=0.6, walk_position=15.0, walk_speed=0.4),
+        row("spear-use-passenger", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), using=True, used=14.5, passenger=True),
+        row("spear-use-crouching", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), using=True, used=40.5, crouching=True),
+    ]
+    for hit in (0.0, 1.5, 2.5, 3.5, 6.5, 9.5, 12.0):
+        rows.append(row(f"spear-hit-feedback-{hit}", "player", right="spear", left="item", holds=(True, True),
+                        items=("iron_spear", None), using=True, used=30.5, hit=hit))
+    for arm in ("right", "left"):
+        main = arm
+        sides = {arm: "spear", "left" if arm == "right" else "right": "item"}
+        for attack in (0.02, 0.06, 0.12, 0.2, 0.3, 0.45, 0.6, 0.8, 0.95):
+            for kind, baby in (("player", False), ("zombie", False), ("piglin", True)):
+                spear_items = (("iron_spear", None) if arm == "right" else (None, "iron_spear"))
+                rows.append(row(f"spear-stab-{arm}-{attack}", kind, baby, right=sides["right"], left=sides["left"],
+                                holds=(True, True), items=spear_items, swing="stab", attack_arm=arm, main=main,
+                                attack=attack, head_y_rot=6.0, x_rot=-9.0, age=3.5))
+    rows += [
+        row("spear-stab-in-use", "player", right="spear", left="item", holds=(True, True),
+            items=("netherite_spear", None), swing="stab", attack=0.3, using=True, used=12.5, hit=4.0),
+        row("spear-stab-offhand-attack", "player", right="item", left="spear", holds=(True, True),
+            items=(None, "iron_spear"), swing="stab", attack_arm="left", attack=0.3),
+        row("spear-whack-with-spear-held", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), swing="whack", attack=0.3),
+        row("spear-stab-swimming", "player", right="spear", left="item", holds=(True, True),
+            items=("iron_spear", None), swing="stab", attack=0.3, swim=0.6, walk_position=3.0, walk_speed=0.4),
+    ]
     yield {
         "case_id": "entity/held-item-pose",
         "family": "entity",

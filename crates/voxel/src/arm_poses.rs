@@ -1,16 +1,18 @@
 //! What a player's arms are doing with what they hold (`AvatarRenderer.getArmPose` and the
 //! use-item fields of `HumanoidMobRenderer.extractHumanoidRenderState`): a raised bow, a blocking
-//! shield, a charging or charged crossbow, a spyglass, a horn, a brush, a trident. Not carried: a
-//! spear's poses, a stabbing swing, and the local player's own use of an item (the client does not
-//! track it yet), so the local model keeps to holding.
+//! shield, a charging or charged crossbow, a spyglass, a horn, a brush, a trident, a spear held up
+//! or thrust. Not carried: the local player's own use of an item (the client does not track it
+//! yet), so the local model keeps to holding. The `spears` item tag is read as the seven spears.
 
 use voxel_data::item::classes::ItemClass;
 use voxel_data::item::component_types::{
-    BLOCKS_ATTACKS, CHARGED_PROJECTILES, CONSUMABLE, ENCHANTMENTS,
+    BLOCKS_ATTACKS, CHARGED_PROJECTILES, CONSUMABLE, ENCHANTMENTS, KINETIC_WEAPON,
 };
+use voxel_data::spear::{Spear, spear_of};
 use voxel_game::item_values::Values;
 use voxel_net::connection::PlaySession;
-use voxel_render::player_model::{Arm, ArmPose};
+use voxel_render::held_item::{SpearInput, SpearView, spear_view};
+use voxel_render::player_model::{Arm, ArmPose, SwingAnimation};
 use voxel_world::{ClientEntity, ClientItemStackState, EquipmentSlot};
 
 /// `ItemUseAnimation`, of the ones that pose an arm.
@@ -23,6 +25,7 @@ enum UseAnimation {
     Spyglass,
     TootHorn,
     Brush,
+    Spear,
     Other,
 }
 
@@ -44,10 +47,16 @@ fn use_animation(stack: &ClientItemStackState) -> UseAnimation {
                 Some(_) => true,
                 None => item.is_some_and(|item| item.blocks_attacks),
             };
+            let kinetic = match values.raw(KINETIC_WEAPON) {
+                Some(_) => true,
+                None => item.is_some_and(|item| item.kinetic_weapon),
+            };
             if values.has(CONSUMABLE) {
                 UseAnimation::Other
             } else if blocks {
                 UseAnimation::Block
+            } else if kinetic {
+                UseAnimation::Spear
             } else {
                 UseAnimation::Other
             }
@@ -122,10 +131,104 @@ fn hand_pose(
             UseAnimation::Spyglass => return ArmPose::Spyglass,
             UseAnimation::TootHorn => return ArmPose::TootHorn,
             UseAnimation::Brush => return ArmPose::Brush,
+            UseAnimation::Spear => return ArmPose::Spear,
             UseAnimation::Other => {}
         }
     }
-    ArmPose::Item
+    // A spear thrust in a swing, or held about to be, is posed as one.
+    if spear_of_stack(stack).is_some() {
+        ArmPose::Spear
+    } else {
+        ArmPose::Item
+    }
+}
+
+/// The spear a stack is, by its item.
+pub(crate) fn spear_of_stack(stack: &ClientItemStackState) -> Option<&'static Spear> {
+    voxel_world::block_rules::item(stack.item_registry_id()).and_then(|item| spear_of(item.name))
+}
+
+/// [`spear_view`] of what two arms hold.
+pub fn stacks_spear_view(
+    stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+    rest: SpearRest,
+) -> SpearView {
+    let spears = (
+        stacks.0.and_then(spear_of_stack),
+        stacks.1.and_then(spear_of_stack),
+    );
+    // `ArmedEntityRenderState`: the swing is the type of the stack in the arm that swings.
+    let swinging_spear = if rest.attack.1 == Arm::Left {
+        spears.1
+    } else {
+        spears.0
+    };
+    spear_view(&SpearInput {
+        spears,
+        main_arm: rest.main_arm,
+        attack: rest.attack,
+        swing_animation: if swinging_spear.is_some() {
+            SwingAnimation::Stab
+        } else {
+            SwingAnimation::Whack
+        },
+        arm_poses: rest.arm_poses,
+        using: rest.using,
+        hit_feedback: rest.hit_feedback,
+    })
+}
+
+/// What a spear view reads besides the stacks.
+pub struct SpearRest {
+    pub main_arm: Arm,
+    /// `attackTime` and `attackArm`.
+    pub attack: (f32, Arm),
+    pub arm_poses: (ArmPose, ArmPose),
+    /// Whether an item is in use, whether the main hand uses it, and for how long.
+    pub using: (bool, bool, f32),
+    /// `ticksSinceKineticHitFeedback`.
+    pub hit_feedback: f32,
+}
+
+/// [`spear_view`] of an entity.
+pub fn entity_spear_view(
+    entity: &ClientEntity,
+    attack: (f32, Arm),
+    arm_poses: (ArmPose, ArmPose),
+    (game_time, partial): (u64, f32),
+) -> SpearView {
+    stacks_spear_view(
+        (
+            entity.item_held_by_arm(false),
+            entity.item_held_by_arm(true),
+        ),
+        SpearRest {
+            main_arm: if entity.main_arm_is_left() {
+                Arm::Left
+            } else {
+                Arm::Right
+            },
+            attack,
+            arm_poses,
+            using: (
+                entity.is_using_item(),
+                !entity.used_item_is_off_hand(),
+                entity.ticks_using_item(partial),
+            ),
+            hit_feedback: entity.ticks_since_kinetic_hit(game_time, partial),
+        },
+    )
+}
+
+/// `HumanoidMobRenderer.getArmPose`: a mob's arm holding a spear is posed as one, and so is any
+/// arm the other hand's stab swings (`AbstractZombieRenderer.getArmPose` for a zombie).
+pub(crate) fn mob_spear_pose(entity: &ClientEntity, left: bool, zombie: bool) -> ArmPose {
+    let holds = |left: bool| entity.item_held_by_arm(left).and_then(spear_of_stack);
+    if (zombie && holds(!left).is_some()) || holds(left).is_some() {
+        ArmPose::Spear
+    } else {
+        ArmPose::Empty
+    }
 }
 
 /// The poses of a remote player's arms and the fields the model reads of what it is using.
@@ -309,6 +412,52 @@ mod tests {
             use_animation(&stack("minecraft:stick")),
             UseAnimation::Other
         );
+        // Every spear is a kinetic weapon, which raises the arm as it is used.
+        assert_eq!(
+            use_animation(&stack("minecraft:iron_spear")),
+            UseAnimation::Spear
+        );
+        assert!(spear_of_stack(&stack("minecraft:wooden_spear")).is_some());
+        assert!(spear_of_stack(&stack("minecraft:iron_sword")).is_none());
+    }
+
+    #[test]
+    fn a_spear_thrusts_the_item_of_the_arm_that_swings_and_raises_the_one_in_use() {
+        let iron = stack("minecraft:iron_spear");
+        let view = |stacks, attack_arm, using, attack_time| {
+            stacks_spear_view(
+                stacks,
+                SpearRest {
+                    main_arm: Arm::Right,
+                    attack: (attack_time, attack_arm),
+                    arm_poses: (ArmPose::Spear, ArmPose::Item),
+                    using,
+                    hit_feedback: 2.5,
+                },
+            )
+        };
+        // Swinging a spear in the main hand stabs, and thrusts only the main arm's item.
+        let stab = view((Some(&iron), None), Arm::Right, (false, true, 0.0), 0.3);
+        assert_eq!(stab.swing_animation, SwingAnimation::Stab);
+        assert_eq!(
+            stab.motions[0].stab,
+            Some((0.3, voxel_data::spear::FORWARD_MOVEMENT))
+        );
+        assert_eq!(stab.motions[1].stab, None);
+        // The same swing with no spear in the swinging hand is a whack.
+        let whack = view((Some(&iron), None), Arm::Left, (false, true, 0.0), 0.3);
+        assert_eq!(whack.swing_animation, SwingAnimation::Whack);
+        assert_eq!(whack.motions[1].stab, None);
+        // A spear used by the main hand is held up with the ticks it has been used for.
+        let used = view((Some(&iron), None), Arm::Right, (true, true, 12.5), 0.0);
+        let held = used.motions[0]
+            .spear_use
+            .expect("the right arm holds it up");
+        assert_eq!(held.ticks_using_item, 12.5);
+        assert_eq!(held.hit_feedback, 2.5);
+        // The off hand using something leaves the main hand's spear as it is.
+        let other = view((Some(&iron), None), Arm::Right, (true, false, 12.5), 0.0);
+        assert!(other.motions[0].spear_use.is_none());
     }
 
     #[test]

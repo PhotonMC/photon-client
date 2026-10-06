@@ -76,6 +76,7 @@ pub fn remote_armor_stands(
                 head: worn.head_item(armor),
                 head_transforms: HEAD_TRANSFORMS,
                 eye: None,
+                motions: Default::default(),
             };
             hands.collect(held);
             vertices.extend(mob_vertices(model, &placed, rect));

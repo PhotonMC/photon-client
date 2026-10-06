@@ -228,6 +228,37 @@ public final class EntityOracle {
     }
 
     /**
+     * Every item that is a kinetic weapon or does not swing as the default does: the registry's own
+     * numbers a spear is posed and timed by (its swing, and its kinetic weapon's delay and conditions).
+     */
+    private static JsonObject spearTable() {
+        var rows = new JsonArray();
+        for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            var stack = new net.minecraft.world.item.ItemStack(item);
+            var kinetic = stack.get(net.minecraft.core.component.DataComponents.KINETIC_WEAPON);
+            var swing = stack.getSwingAnimation();
+            if (kinetic == null && swing.type() == net.minecraft.world.item.SwingAnimationType.WHACK) {
+                continue;
+            }
+            var row = new JsonObject();
+            row.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString());
+            row.addProperty("swing", swing.type().name());
+            row.addProperty("swing_ticks", swing.duration());
+            if (kinetic != null) {
+                row.addProperty("delay_ticks", kinetic.delayTicks());
+                row.addProperty("dismount_ticks", kinetic.dismountConditions().map(c -> c.maxDurationTicks()).orElse(0));
+                row.addProperty("knockback_ticks", kinetic.knockbackConditions().map(c -> c.maxDurationTicks()).orElse(0));
+                row.addProperty("damage_ticks", kinetic.damageConditions().map(c -> c.maxDurationTicks()).orElse(0));
+                row.addProperty("forward_movement", Oracle.bits(kinetic.forwardMovement()));
+            }
+            rows.add(row);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * A humanoid model posed with its arms' poses, and where the reference's own `ItemInHandLayer`
      * puts the item each hand holds: the quads of the posed model and the pose (a matrix) each held
      * item is submitted with, before its own display transform.
@@ -294,6 +325,28 @@ public final class EntityOracle {
                 row.get("right_pose").getAsString().toUpperCase());
             state.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.valueOf(
                 row.get("left_pose").getAsString().toUpperCase());
+            if (row.has("right_item") || row.has("left_item")) {
+                // Real stacks: a spear's components pose its arm and move its item.
+                for (var side : new String[] {"right", "left"}) {
+                    if (!row.has(side + "_item")) {
+                        continue;
+                    }
+                    var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                        net.minecraft.resources.Identifier.parse(row.get(side + "_item").getAsString()));
+                    var stack = new net.minecraft.world.item.ItemStack(item);
+                    if (side.equals("right")) {
+                        state.rightHandItemStack = stack;
+                    } else {
+                        state.leftHandItemStack = stack;
+                    }
+                }
+                state.swingAnimationType = net.minecraft.world.item.SwingAnimationType.valueOf(
+                    row.get("swing").getAsString().toUpperCase(java.util.Locale.ROOT));
+                state.attackArm = row.get("attack_arm").getAsString().equals("left")
+                    ? net.minecraft.world.entity.HumanoidArm.LEFT
+                    : net.minecraft.world.entity.HumanoidArm.RIGHT;
+                state.ticksSinceKineticHitFeedback = Oracle.f32(row, "hit_feedback");
+            }
             if (row.has("eye_item") && row.get("eye_item").getAsBoolean()) {
                 // A spyglass in use is held to the eye.
                 ((net.minecraft.client.renderer.entity.state.AvatarRenderState) state).heldOnHead.newLayer();
@@ -5064,6 +5117,9 @@ public final class EntityOracle {
         }
         if (operation.equals("held_item_pose")) {
             return heldItemPose(request);
+        }
+        if (operation.equals("spear_table")) {
+            return spearTable();
         }
         if (operation.equals("item_entity_pose")) {
             return itemEntityPose(request);

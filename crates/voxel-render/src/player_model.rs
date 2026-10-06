@@ -9,6 +9,7 @@
 //! crouching, swimming or swinging player.
 
 use crate::joml::{Matrix3, Pose, Quaternion};
+use crate::spear_animation::{HandUse, third_person_attack_hand, third_person_hand_use};
 use voxel_core::direction::Direction;
 use voxel_core::math::{mth_cos_f64, mth_sin_f64};
 
@@ -428,9 +429,7 @@ pub enum Arm {
     Right,
 }
 
-/// `HumanoidModel.ArmPose`, as far as a held item and a skeleton's bow ask
-/// for it. The poses a use of the item asks for (block, trident, crossbow,
-/// spyglass, horn, brush, spear) are not carried: the use is not read yet.
+/// `HumanoidModel.ArmPose`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ArmPose {
     #[default]
@@ -444,6 +443,15 @@ pub enum ArmPose {
     Spyglass,
     TootHorn,
     Brush,
+    Spear,
+}
+
+/// `SwingAnimationType`, of the two that move the arm: an item swung down, or thrust.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SwingAnimation {
+    #[default]
+    Whack,
+    Stab,
 }
 
 impl ArmPose {
@@ -463,6 +471,7 @@ impl ArmPose {
                 | ArmPose::ThrowTrident
                 | ArmPose::CrossbowCharge
                 | ArmPose::CrossbowHold
+                | ArmPose::Spear
         )
     }
 
@@ -479,6 +488,7 @@ impl ArmPose {
             "spyglass" => Self::Spyglass,
             "toot_horn" => Self::TootHorn,
             "brush" => Self::Brush,
+            "spear" => Self::Spear,
             _ => return None,
         })
     }
@@ -517,6 +527,15 @@ pub struct PlayerRenderState {
     pub speed_value: f32,
     /// A piglin with a melee weapon swings it down (`PiglinModel.setupAttackAnimation`).
     pub swing_weapon_down: bool,
+    /// `swingAnimationType`: how the swing of the hand that swings moves the arm.
+    pub swing_animation: SwingAnimation,
+    /// `isBaby`, and whether the main hand holds nothing (`getMainHandItemStack() == EMPTY`): a
+    /// baby zombie only raises its arms when its hand is empty.
+    pub is_baby: bool,
+    pub main_hand_empty: bool,
+    /// The spear each arm holds, which a spear pose raises the arm with.
+    pub right_spear: Option<&'static voxel_data::spear::Spear>,
+    pub left_spear: Option<&'static voxel_data::spear::Spear>,
 }
 
 impl Default for PlayerRenderState {
@@ -543,6 +562,11 @@ impl Default for PlayerRenderState {
             is_fall_flying: false,
             speed_value: 1.0,
             swing_weapon_down: false,
+            swing_animation: SwingAnimation::Whack,
+            is_baby: false,
+            main_hand_empty: true,
+            right_spear: None,
+            left_spear: None,
         }
     }
 }
@@ -747,43 +771,7 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     }
     pose_arms(root, state);
 
-    // `setupAttackAnimation`, a whack.
-    let attack_time = state.attack_time;
-    // The reference swings unless the time is at most zero, so a NaN
-    // time swings too.
-    if state.swing_weapon_down && attack_time > 0.0 {
-        swing_weapon_down(root, state.main_arm, attack_time, state.age_in_ticks);
-    } else if attack_time > 0.0 || attack_time.is_nan() {
-        let mut body_y_rot = sin(f64::from(attack_time).sqrt() as f32 * (PI * 2.0) as f32) * 0.2;
-        if state.attack_arm == Arm::Left {
-            body_y_rot *= -1.0;
-        }
-        root.child("body").y_rot = body_y_rot;
-        {
-            let right = root.child("right_arm");
-            right.z = sin(body_y_rot) * 5.0 * 1.0;
-            right.x = -cos(body_y_rot) * 5.0 * 1.0;
-        }
-        {
-            let left = root.child("left_arm");
-            left.z = -sin(body_y_rot) * 5.0 * 1.0;
-            left.x = cos(body_y_rot) * 5.0 * 1.0;
-        }
-        root.child("right_arm").y_rot += body_y_rot;
-        root.child("left_arm").y_rot += body_y_rot;
-        root.child("left_arm").x_rot += body_y_rot;
-        let swing = 1.0 - square(square(1.0 - attack_time));
-        let aa = sin(swing * pi);
-        let head_x_rot = root.child("head").x_rot;
-        let bb = sin(attack_time * pi) * -(head_x_rot - 0.7) * 0.75;
-        let arm = root.child(match state.attack_arm {
-            Arm::Left => "left_arm",
-            Arm::Right => "right_arm",
-        });
-        arm.x_rot -= aa * 1.2 + bb;
-        arm.y_rot += body_y_rot * 2.0;
-        arm.z_rot += sin(attack_time * pi) * -0.4;
-    }
+    setup_attack_animation(root, state);
 
     if state.crouching {
         root.child("body").x_rot = 0.5;
@@ -865,6 +853,58 @@ fn pose_arms(root: &mut Part, state: &PlayerRenderState) {
             pose_arm(root, state, Arm::Right);
             if !state.right_arm_pose.affects_offhand_pose() {
                 pose_arm(root, state, Arm::Left);
+            }
+        }
+    }
+}
+
+/// `HumanoidModel.setupAttackAnimation`: the body turns with the swing and the swinging arm
+/// whacks, or stabs.
+fn setup_attack_animation(root: &mut Part, state: &PlayerRenderState) {
+    use std::f64::consts::PI;
+    let pi = PI as f32;
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    let cos = |value: f32| mth_cos_f64(f64::from(value));
+    let attack_time = state.attack_time;
+    // The reference swings unless the time is at most zero, so a NaN
+    // time swings too.
+    if state.swing_weapon_down && attack_time > 0.0 {
+        swing_weapon_down(root, state.main_arm, attack_time, state.age_in_ticks);
+    } else if attack_time > 0.0 || attack_time.is_nan() {
+        let mut body_y_rot = sin(f64::from(attack_time).sqrt() as f32 * (PI * 2.0) as f32) * 0.2;
+        if state.attack_arm == Arm::Left {
+            body_y_rot *= -1.0;
+        }
+        root.child("body").y_rot = body_y_rot;
+        {
+            let right = root.child("right_arm");
+            right.z = sin(body_y_rot) * 5.0 * 1.0;
+            right.x = -cos(body_y_rot) * 5.0 * 1.0;
+        }
+        {
+            let left = root.child("left_arm");
+            left.z = -sin(body_y_rot) * 5.0 * 1.0;
+            left.x = cos(body_y_rot) * 5.0 * 1.0;
+        }
+        root.child("right_arm").y_rot += body_y_rot;
+        root.child("left_arm").y_rot += body_y_rot;
+        root.child("left_arm").x_rot += body_y_rot;
+        let swing = 1.0 - square(square(1.0 - attack_time));
+        let aa = sin(swing * pi);
+        let head_x_rot = root.child("head").x_rot;
+        let bb = sin(attack_time * pi) * -(head_x_rot - 0.7) * 0.75;
+        match state.swing_animation {
+            SwingAnimation::Whack => {
+                let arm = root.child(match state.attack_arm {
+                    Arm::Left => "left_arm",
+                    Arm::Right => "right_arm",
+                });
+                arm.x_rot -= aa * 1.2 + bb;
+                arm.y_rot += body_y_rot * 2.0;
+                arm.z_rot += sin(attack_time * pi) * -0.4;
+            }
+            SwingAnimation::Stab => {
+                third_person_attack_hand(root, attack_time, state.attack_arm);
             }
         }
     }
@@ -1020,6 +1060,19 @@ fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
             part.x_rot = part.x_rot * 0.5 - (pi / 5.0) as f32;
             part.y_rot = 0.0;
         }
+        ArmPose::Spear => {
+            let use_state = HandUse {
+                spear: match arm {
+                    Arm::Right => state.right_spear,
+                    Arm::Left => state.left_spear,
+                },
+                fall_flying_or_swimming: state.is_fall_flying || state.swim_amount > 0.0,
+                ticks_using_item: state.ticks_using_item,
+                is_using_item: state.is_using_item,
+                use_item_main_hand: state.use_item_main_hand,
+            };
+            third_person_hand_use(root.child(name), (head_x, head_y), right, &use_state);
+        }
     }
 }
 
@@ -1029,12 +1082,12 @@ fn swim(root: &mut Part, state: &PlayerRenderState, pi: f32) {
     let position = state.walk_position;
     let swim_position = position % 26.0;
     let swinging = |arm: Arm| state.attack_arm == arm && state.attack_time > 0.0;
-    let right_amount = if swinging(Arm::Right) {
+    let right_amount = if state.right_arm_pose == ArmPose::Spear || swinging(Arm::Right) {
         0.0
     } else {
         swim_amount
     };
-    let left_amount = if swinging(Arm::Left) {
+    let left_amount = if state.left_arm_pose == ArmPose::Spear || swinging(Arm::Left) {
         0.0
     } else {
         swim_amount

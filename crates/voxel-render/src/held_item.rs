@@ -2,7 +2,109 @@
 //! the posed model.
 
 use crate::joml::{Matrix4, Pose, Quaternion};
-use crate::player_model::{Arm, Part};
+use crate::player_model::{Arm, ArmPose, Part, SwingAnimation};
+use crate::spear_animation::{third_person_attack_item, third_person_use_item};
+use voxel_data::spear::{FORWARD_MOVEMENT, Spear};
+
+/// What a hand's item does besides being held (`ItemInHandLayer.submitArmWithItem` after the
+/// item is in the palm): a spear thrust by the stab of the swing, and a spear held up in use.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct HandMotion {
+    /// The swing of this arm is a stab: how far through it is, and how far the main hand's spear
+    /// thrusts (`kineticWeapon.forwardMovement`, none for an item that is not one).
+    pub stab: Option<(f32, f32)>,
+    /// The spear this hand holds in use.
+    pub spear_use: Option<SpearUse>,
+}
+
+/// A spear held up by an arm posed `SPEAR` that is in use.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpearUse {
+    pub spear: &'static Spear,
+    /// `ticksUsingItem(arm)`, never zero here.
+    pub ticks_using_item: f32,
+    pub attack_time: f32,
+    /// `ticksSinceKineticHitFeedback`.
+    pub hit_feedback: f32,
+}
+
+/// What spears change in a humanoid's model state and in what its hands hold.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SpearView {
+    pub swing_animation: SwingAnimation,
+    pub right: Option<&'static Spear>,
+    pub left: Option<&'static Spear>,
+    /// What each hand's item does besides being held, the right hand's first.
+    pub motions: [HandMotion; 2],
+}
+
+/// What a humanoid's spear fields are read from.
+pub struct SpearInput {
+    /// The spear each arm holds.
+    pub spears: (Option<&'static Spear>, Option<&'static Spear>),
+    pub main_arm: Arm,
+    /// `attackTime` and `attackArm`, and the swing's type, which the item in the attacking hand
+    /// decides.
+    pub attack: (f32, Arm),
+    pub swing_animation: SwingAnimation,
+    pub arm_poses: (ArmPose, ArmPose),
+    /// Whether an item is in use, whether the main hand uses it, and for how long.
+    pub using: (bool, bool, f32),
+    /// `ticksSinceKineticHitFeedback`.
+    pub hit_feedback: f32,
+}
+
+/// The spear fields of a humanoid's render state (`ArmedEntityRenderState.swingAnimationType`,
+/// the stacks its arms hold) and what each hand's item does with them
+/// (`ItemInHandLayer.submitArmWithItem`): the stab of a swing thrusts the item, and a spear
+/// held up in use follows its raising.
+pub fn spear_view(input: &SpearInput) -> SpearView {
+    let (right, left) = input.spears;
+    let (attack_time, attack_arm) = input.attack;
+    let spear_of_arm = |arm: Arm| if arm == Arm::Left { left } else { right };
+    let swing_animation = input.swing_animation;
+    let (using_item, use_main_hand, used_ticks) = input.using;
+    // `HumanoidRenderState.ticksUsingItem(arm)`.
+    let ticks_using = |arm: Arm| {
+        if using_item && use_main_hand == (arm == input.main_arm) {
+            used_ticks
+        } else {
+            0.0
+        }
+    };
+    let motion = |arm: Arm, pose: ArmPose| {
+        let stab =
+            (attack_time > 0.0 && attack_arm == arm && swing_animation == SwingAnimation::Stab)
+                .then(|| {
+                    // The thrust is the main hand's spear's.
+                    let forward = if spear_of_arm(input.main_arm).is_some() {
+                        FORWARD_MOVEMENT
+                    } else {
+                        0.0
+                    };
+                    (attack_time, forward)
+                });
+        let ticks = ticks_using(arm);
+        let spear_use = spear_of_arm(arm)
+            .filter(|_| pose == ArmPose::Spear && ticks != 0.0)
+            .map(|spear| SpearUse {
+                spear,
+                ticks_using_item: ticks,
+                attack_time,
+                hit_feedback: input.hit_feedback,
+            });
+        HandMotion { stab, spear_use }
+    };
+    SpearView {
+        swing_animation,
+        right,
+        left,
+        motions: [
+            motion(Arm::Right, input.arm_poses.0),
+            motion(Arm::Left, input.arm_poses.1),
+        ],
+    }
+}
 
 /// `ItemInHandLayer.submitArmWithItem` up to the item's own display
 /// transform: from the pose the model is drawn from, to the arm's hand,
@@ -10,21 +112,33 @@ use crate::player_model::{Arm, Part};
 /// hand is half a unit further out (`PlayerModel.translateToHand`), a
 /// skeleton's a whole unit (`hand_shift`); a baby holds its item closer in.
 ///
-/// The swing of a spear and the pose of a stack in use (`SpearAnimations`,
-/// `ArmPose.animateUseItem`) are not applied: the use is not read yet.
+/// A spear's stab and its use then move the item on (`SpearAnimations`).
 pub fn hand_pose(
     base: &Pose,
     root: &Part,
     arm: &Part,
     side: Arm,
-    hand_shift: f32,
-    baby: bool,
+    (hand_shift, baby): (f32, bool),
+    motion: &HandMotion,
 ) -> Pose {
     let mut pose = *base;
     let left = side == Arm::Left;
     root.translate_and_rotate(&mut pose);
     arm.translate_and_rotate_shifted(&mut pose, if left { -hand_shift } else { hand_shift });
     in_hand(&mut pose, left, baby);
+    if let Some((attack_time, forward_movement)) = motion.stab {
+        third_person_attack_item(&mut pose, attack_time, forward_movement);
+    }
+    if let Some(used) = motion.spear_use {
+        third_person_use_item(
+            &mut pose,
+            used.attack_time,
+            used.hit_feedback,
+            used.ticks_using_item,
+            side,
+            used.spear,
+        );
+    }
     pose
 }
 

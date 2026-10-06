@@ -7138,3 +7138,76 @@ fn a_block_broken_makes_its_break_sound_at_its_middle_and_a_hit_a_softer_one() {
     world.apply_level_event(2001, (0, 0, 0), 0);
     assert!(world.take_sounds().is_empty());
 }
+
+#[test]
+fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_ticks() {
+    let mut world = ClientWorld::default();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: 9,
+        uuid: Uuid::new(1, 2),
+        type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+        x: 0.5,
+        y: 0.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    let swinging = |world: &ClientWorld| {
+        world
+            .entities()
+            .find(|entity| entity.id() == 9)
+            .unwrap()
+            .swing_state()
+            .is_swinging()
+    };
+    // An empty hand swings over six ticks, the first of which only starts it.
+    world.apply_entity_animate(9, 0);
+    for _ in 0..6 {
+        world.tick_entities();
+    }
+    assert!(swinging(&world));
+    world.tick_entities();
+    assert!(!swinging(&world));
+    // An iron spear's stab lasts nineteen.
+    let iron_spear = voxel_data::item::items::ITEMS
+        .iter()
+        .position(|item| item.name == "minecraft:iron_spear")
+        .unwrap();
+    world.apply_entity_equipment(
+        9,
+        crate::EquipmentSlot::MainHand,
+        Some(ClientItemStackState::from_wire(
+            1,
+            iron_spear as i32,
+            vec![],
+            vec![],
+        )),
+    );
+    world.apply_entity_animate(9, 0);
+    for _ in 0..19 {
+        world.tick_entities();
+    }
+    assert!(swinging(&world));
+    world.tick_entities();
+    assert!(!swinging(&world));
+
+    // The kick of a hit starts at the game time of the event and is not restarted within ten ticks.
+    let since = |world: &ClientWorld| {
+        world
+            .entities()
+            .find(|entity| entity.id() == 9)
+            .unwrap()
+            .ticks_since_kinetic_hit(world.game_time(), 0.5)
+    };
+    assert_eq!(since(&world), 0.0);
+    world.set_game_time(100);
+    assert!(world.apply_entity_event(9, 2));
+    world.set_game_time(104);
+    assert_eq!(since(&world), 4.5);
+    assert!(world.apply_entity_event(9, 2));
+    assert_eq!(since(&world), 4.5);
+    world.set_game_time(111);
+    assert!(world.apply_entity_event(9, 2));
+    assert_eq!(since(&world), 0.5);
+}

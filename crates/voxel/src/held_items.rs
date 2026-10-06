@@ -2,7 +2,7 @@
 //! its arm's hand is, drawn like the items lying in the world.
 
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::held_item::{hand_pose, head_item_pose, held_to_eye_pose};
+use voxel_render::held_item::{HandMotion, hand_pose, head_item_pose, held_to_eye_pose};
 use voxel_render::item_entity::item_layer_vertices;
 use voxel_render::joml::Pose;
 use voxel_render::player_model::{Arm, Part};
@@ -117,6 +117,8 @@ pub struct Hands<'a> {
     pub head_transforms: (f32, f32),
     /// The arm whose stack is held to the eye instead of in the hand (`renderItemHeldToEye`).
     pub eye: Option<Arm>,
+    /// What each hand's item does besides being held, the right hand's first.
+    pub motions: [HandMotion; 2],
 }
 
 /// `CustomHeadLayer.Transforms.DEFAULT` less its skull offset.
@@ -146,7 +148,10 @@ impl Hands<'_> {
 
     /// Adds each held stack, the right arm's first.
     pub fn collect(&self, out: &mut Vec<HeldItem>) {
-        for (side, stack) in [(Arm::Right, self.right), (Arm::Left, self.left)] {
+        for (index, (side, stack)) in [(Arm::Right, self.right), (Arm::Left, self.left)]
+            .into_iter()
+            .enumerate()
+        {
             let Some(stack) = stack else {
                 continue;
             };
@@ -175,7 +180,14 @@ impl Hands<'_> {
             }
             out.push(HeldItem {
                 stack: Carried::Stack(stack.clone()),
-                pose: hand_pose(self.base, self.root, arm, side, self.hand_shift, self.baby),
+                pose: hand_pose(
+                    self.base,
+                    self.root,
+                    arm,
+                    side,
+                    (self.hand_shift, self.baby),
+                    &self.motions[index],
+                ),
                 place: if side == Arm::Left {
                     Place::Left
                 } else {
