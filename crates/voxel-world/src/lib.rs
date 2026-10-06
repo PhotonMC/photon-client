@@ -4761,6 +4761,7 @@ fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:block_display") => display.apply_block_state(metadata),
             Some("minecraft:item_display") => display.apply_item_context(metadata),
+            Some("minecraft:text_display") => display.apply_text(metadata),
             _ => {}
         }
     }

@@ -1,4 +1,4 @@
-# T40i, T40i3 — Block ve item display'leri — [client-parity]
+# T40i, T40i2, T40i3 — Display entity'leri — [client-parity]
 
 Bu kayıt `block_display` ve `item_display` entity'lerinin (`Display`, `DisplayRenderer`) istemci durumunu ve çizim yerleşimini kapsar. Kanıt sınıfı `client-parity`'dir: veri, render durumu ve aradeğerleme gerçek `Display` varlıklarının gerçek istemci dinleyicisiyle tiklenmesine, yerleşim gerçek `DisplayRenderer.submit`'e karşı karşılaştırılır. Işık geçersiz kılma, görüş menzili ve çizim entegrasyonu oracle'sızdır (aşağıda). Canlı gözlem `server-conformance`'tır. Metin display'i, gölge, çerçeve ve parıltı dışı bırakıldı.
 
@@ -24,8 +24,16 @@ Bu kayıt `block_display` ve `item_display` entity'lerinin (`Display`, `DisplayR
 - Kapsam: `entity/display-light` 6 satır (gerçek `DisplayRenderer.getBlockLightLevel/getSkyLightLevel`: ikisi birden, karanlık, yalnız blok, yalnız gökyüzü, başıboş bitler, eksi); `living-entity-animations` display satırlarına her tikte altı mesafede `shouldRenderAtSqrDistance`.
 - Frustum ayıklaması (`affectedByCulling`, genişlik/yükseklik) yapılmadı: istemcide hiçbir varlık için frustum ayıklaması yoktur, yalnız çizilen şeyi azaltırdı. Parıltı rengi ve dış çizgi kapsam dışı.
 
+## Metin display'i (T40i2)
+
+- Veri (item display'in ardından): 23 metin (bileşen, NBT), 24 satır genişliği, 25 arka plan rengi, 26 metin opaklığı (bayt), 27 biçim bayrakları (bayt; 1 gölge, 2 içinden, 4 varsayılan arka plan, 8 sola, 16 sağa). Herhangi birinin değişmesi render durumunu yeniden yapar; süre sıfır değilse opaklık tam sayıda (`lerpInt`), arka plan kanal kanal (`ARGB.srgbLerp`) son ilerlemeden yenisine kayar.
+- `TextDisplayRenderer.submitInner`: pose üzerinde `rotate(π, y)`, `scale(−0,025)` ve `translate(1 − genişlik/2, −yükseklik)` (`yükseklik = satır·10 − 1`, genişlik en geniş satır); arka plan (rengi sıfır değilse) `(−1, −1, −0,01)`'den `(genişlik, yükseklik, −0,01)`'e kutu; satırlar `10` aralıkla, hizaya göre (sol 0, sağ `genişlik − satır`, orta `genişlik/2 − satır/2`); metin rengi `opaklık << 24 | 0xFFFFFF`; varsayılan arka plan `(int)(0,25·255) << 24`; içinden bayrağı arka planı ve metni içinden çizer.
+- Kapsam: `entity/text-display-submit` 12 satır gerçek `TextDisplayRenderer.submit`'e karşı (pose matrisi, arka plan köşeleri ve rengi ve ışığı, her satırın yeri, gölge, kip, ışık, renk, çizim sırası: bir satır, üç satır ortalı/sola/sağa, iki hiza bayrağı, gölge ve içinden, varsayılan ve boş arka plan, yarım ve soluk opaklık, satırsız, uzak konum); `living-entity-animations`'a 2 satır gerçek `TextDisplay` varlığına karşı (veri, süre boyunca opaklık ve arka plan).
+- Oyunda `displays::display_texts`: bileşen dilden sözcüklere (`Lang::runs`), `Font.split` ile satırlara, pozun köşeleri ve glifler isim etiketinin metin hatlarına (içinden / derinlikli) eklenir.
+- Açık: satır bölme ve genişlikler oracle'sız (oyunun yazı tipiyle; satırlar oracle'da genişlikleriyle verilir), `getBackgroundOpacity` seçeneği varsayılan (0,25), kayan satır önbelleği yok (her karede yeniden bölünür), `POLYGON_OFFSET` kipinin derinlik kayması yok.
+
 ## Sapmalar ve açık kalanlar
 
 - Oyun içi çizim (`displays.rs`, gölge dahil: `display_shadow`) ve gölgenin canlıda görülmesi oracle'sız (arazide gölge düşecek zemin bulunamadı; hat mob gölgeleriyle ortaktır). Çizim konumu entity'nin kısmi tikli konumudur.
-- Metin display'i yok ([T40i2](tasks/T40i2-metin-display.md)). Dönüşümlü sağ/sol el bağlamları item display'inde `ItemLayerCache` başına kuruldur.
+- Dönüşümlü sağ/sol el bağlamları item display'inde `ItemLayerCache` başına kuruldur.
 - `entitySolidZOffsetForward` yok.

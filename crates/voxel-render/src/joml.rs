@@ -545,6 +545,34 @@ impl Matrix4 {
         }
     }
 
+    /// `Matrix4f.rotateY(angle)`: turned about the y axis (a sine and a cosine, not a quaternion).
+    pub fn rotate_y(&mut self, angle: f32) {
+        let sin = sin(angle);
+        let cos = cos_from_sin(sin, angle);
+        let rotation = |translation: [f32; 3]| {
+            let mut matrix = Self::identity();
+            matrix.m[0][0] = cos;
+            matrix.m[0][2] = -sin;
+            matrix.m[2][0] = sin;
+            matrix.m[2][2] = cos;
+            matrix.m[3][..3].copy_from_slice(&translation);
+            matrix.properties = AFFINE | ORTHONORMAL;
+            matrix
+        };
+        if self.properties & IDENTITY != 0 {
+            *self = rotation([0.0; 3]);
+        } else if self.properties & TRANSLATION != 0 {
+            *self = rotation([self.m[3][0], self.m[3][1], self.m[3][2]]);
+        } else {
+            for row in 0..4 {
+                let (m0, m2) = (self.m[0][row], self.m[2][row]);
+                self.m[0][row] = fma(m0, cos, m2 * -sin);
+                self.m[2][row] = fma(m0, sin, m2 * cos);
+            }
+            self.properties &= !(PERSPECTIVE | IDENTITY | TRANSLATION);
+        }
+    }
+
     /// `Matrix4f.scale(x, y, z)`.
     pub fn scale(&mut self, x: f32, y: f32, z: f32) {
         let one = [x, y, z].iter().all(|value| value.abs() == 1.0);

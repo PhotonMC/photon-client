@@ -15337,6 +15337,17 @@ def movement_item_cases():
                  "motion_y": float_bits(0.0, "f64"), "motion_z": float_bits(0.0, "f64")},
                 {"tick": 12, "type": "move_rot", "xa": 4096, "ya": 0, "za": 0, "y_rot": 64, "x_rot": 0}],
                extras=["display"], player_x=30.5), chunk_radius=1),
+        # A text display's text, line width, background, opacity and flags make its render state; the
+        # opacity eases in whole numbers and the background by channels, over the same duration.
+        dict(living("display-text-static", "text_display", 8,
+               [display_data(2, text="Hello\nworld", line_width=120, background=0x40FF8000, text_opacity=-128,
+                             style_flags=13)],
+               extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-text-eases", "text_display", 24,
+               [display_data(2, text="a", background=0x80102030 - (1 << 32), text_opacity=100),
+                display_data(5, duration=10, start_delta=0, background=0x00FFFFFF, text_opacity=-1, line_width=40),
+                display_data(9, duration=6, start_delta=0, text_opacity=20)],
+               extras=["display"], player_x=30.5), chunk_radius=1),
         dict(living("display-item", "item_display", 14,
                [display_data(2, item="minecraft:diamond_sword", item_display=8),
                 display_data(8, item_display=5)],
@@ -15948,6 +15959,7 @@ def entity_cases():
     yield from entity_item_frame_pose_cases()
     yield from entity_display_pose_cases()
     yield from entity_glint_cases()
+    yield from entity_text_display_cases()
     yield from entity_equippable_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
@@ -17752,6 +17764,7 @@ def entity_display_pose_cases():
              display("mirrored", scale=(-1.0, 1.0, 1.0), left=tilted),
              display("item", kind="item", billboard=3, translation=(0.0, 0.5, 0.0), scale=(0.5, 0.5, 0.5), left=tilted),
              display("item-fixed", kind="item", right=quarter),
+             display("no-turns", entity=(0.0, 0.0), camera=(0.0, 0.0)),
              display("far", scale=(1.5, 1.5, 1.5), left=quarter, feet=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/display-pose", "family": "entity", "operation": "display_pose", "rows": rows}
 
@@ -17817,6 +17830,26 @@ def entity_equippable_cases():
              "patch": equippable(7, "minecraft:saddle", sound="00" + name("minecraft:x") + "013f800000")},
             {"label": "equippable-removed", "item": "minecraft:diamond_chestplate", "patch": "0001" + "20"}]
     yield {"case_id": "entity/item-equippable", "family": "entity", "operation": "item_equippable", "rows": rows}
+
+
+def entity_text_display_cases():
+    """What the reference's own text display renderer submits for the lines a text split into (each
+    of a given width): the background box (none when clear, the default one by the option's opacity,
+    and one seen through blocks), each line's place by the alignment, the shadow, the opacity in the
+    colour, and the light."""
+    def text(label, widths, flags=0, opacity=-1, background=0x40000000, light=15728880, feet=(10.5, 64.25, -3.5)):
+        return {"label": f"text-{label}", "widths": widths, "flags": flags, "opacity": opacity,
+                "background": background, "light": light, "feet_x": float_bits(feet[0]),
+                "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
+    rows = [text("one-line", [37]), text("three-lines-centred", [40, 95, 17]),
+            text("left", [40, 95, 17], flags=8), text("right", [40, 95, 17], flags=16),
+            text("both-align-flags", [40, 95, 17], flags=24), text("shadow-and-see-through", [20, 30], flags=3),
+            text("default-background", [20, 30], flags=4, background=0x12345678),
+            text("clear-background", [20, 30], background=0), text("half-opacity", [20, 30], opacity=-128),
+            text("dim-opacity", [20, 30], opacity=40, background=0x80102030 - (1 << 32), light=240),
+            text("no-lines", []), text("far", [64], feet=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/text-display-submit", "family": "entity", "operation": "text_display_submit",
+           "rows": rows}
 
 
 def entity_arrow_cases():

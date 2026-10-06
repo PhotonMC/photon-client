@@ -2998,12 +2998,8 @@ public final class EntityOracle {
         return result;
     }
 
-    /**
-     * The render type the armor's enchantment glint asks for (`RenderTypes.armorEntityGlint`): its
-     * pipeline's state and texture, and the matrix that moves the texture at some times and glint
-     * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
-     */
-    private static JsonObject glintLayers(final JsonObject request) throws Exception {
+    /** A `Minecraft` whose renderer holds a game render state of its options (the glint's speed, the text background). */
+    private static net.minecraft.client.renderer.state.GameRenderState installGameState() throws Exception {
         var minecraft = (net.minecraft.client.Minecraft) UNSAFE.allocateInstance(net.minecraft.client.Minecraft.class);
         var renderer = (net.minecraft.client.renderer.GameRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.GameRenderer.class);
@@ -3017,6 +3013,147 @@ public final class EntityOracle {
         var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
         instanceField.setAccessible(true);
         instanceField.set(null, minecraft);
+        return gameState;
+    }
+
+    /**
+     * What the reference's own text display renderer submits for lines of the given widths: the
+     * pose (and the background's vertices through it) and each line's place and manner.
+     */
+    private static JsonObject textDisplaySubmit(final JsonObject request) throws Exception {
+        var gameState = installGameState();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            gameState.optionsRenderState.backgroundForChatOnly = true;
+            var lines = new java.util.ArrayList<net.minecraft.world.entity.Display.TextDisplay.CachedLine>();
+            int widest = 0;
+            for (var width : row.getAsJsonArray("widths")) {
+                lines.add(new net.minecraft.world.entity.Display.TextDisplay.CachedLine(
+                    net.minecraft.util.FormattedCharSequence.forward("x", net.minecraft.network.chat.Style.EMPTY),
+                    width.getAsInt()));
+                widest = Math.max(widest, width.getAsInt());
+            }
+            var state = new net.minecraft.client.renderer.entity.state.TextDisplayEntityRenderState();
+            state.renderState = new net.minecraft.world.entity.Display.RenderState(
+                // What the entity's own data makes (the parts composed), not the identity constant.
+                net.minecraft.world.entity.Display.GenericInterpolator.constant(new com.mojang.math.Transformation(
+                    new org.joml.Vector3f(), new org.joml.Quaternionf(), new org.joml.Vector3f(1.0F, 1.0F, 1.0F),
+                    new org.joml.Quaternionf())),
+                net.minecraft.world.entity.Display.BillboardConstraints.FIXED, -1,
+                net.minecraft.world.entity.Display.FloatInterpolator.constant(0.0F),
+                net.minecraft.world.entity.Display.FloatInterpolator.constant(1.0F), -1);
+            state.textRenderState = new net.minecraft.world.entity.Display.TextDisplay.TextRenderState(
+                net.minecraft.network.chat.Component.empty(), 200,
+                net.minecraft.world.entity.Display.IntInterpolator.constant(row.get("opacity").getAsInt()),
+                net.minecraft.world.entity.Display.IntInterpolator.constant(row.get("background").getAsInt()),
+                (byte) row.get("flags").getAsInt());
+            state.cachedInfo = new net.minecraft.world.entity.Display.TextDisplay.CachedInfo(lines, widest);
+            state.interpolationProgress = 1.0F;
+            state.lightCoords = row.get("light").getAsInt();
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class);
+            // The line height is what the font says (a font of no glyphs: only its height is read).
+            var font = UNSAFE.allocateInstance(net.minecraft.client.gui.Font.class);
+            var lineHeight = net.minecraft.client.gui.Font.class.getDeclaredField("lineHeight");
+            lineHeight.setAccessible(true);
+            lineHeight.set(font, 9);
+            var fontField = net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class.getDeclaredField("font");
+            fontField.setAccessible(true);
+            fontField.set(renderer, font);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var texts = new JsonArray();
+            var background = new JsonArray();
+            var order = new int[] {-1};
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        order[0] = (int) args[0];
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var pose = new StringBuilder();
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        for (float value : matrix) {
+                            pose.append(Oracle.bits(value));
+                        }
+                        out.addProperty("pose", pose.toString());
+                        out.addProperty("see_through", String.valueOf(args[1]).contains("see_through"));
+                        var consumer = new java.lang.reflect.InvocationHandler[1];
+                        var vertex = new float[3];
+                        var color = new int[1];
+                        var light = new int[1];
+                        consumer[0] = (consumerProxy, call, callArgs) -> {
+                            if (call.isDefault()) {
+                                return java.lang.reflect.InvocationHandler.invokeDefault(consumerProxy, call, callArgs);
+                            }
+                            switch (call.getName()) {
+                                case "addVertex" -> {
+                                    vertex[0] = (float) callArgs[0];
+                                    vertex[1] = (float) callArgs[1];
+                                    vertex[2] = (float) callArgs[2];
+                                }
+                                case "setColor" -> {
+                                    if (callArgs.length == 1) {
+                                        color[0] = (int) callArgs[0];
+                                    }
+                                }
+                                case "setUv2" -> {
+                                    light[0] = (int) callArgs[0] | ((int) callArgs[1] << 16);
+                                    background.add(Oracle.bits(vertex[0]) + Oracle.bits(vertex[1]) + Oracle.bits(vertex[2])
+                                        + "," + color[0] + "," + light[0]);
+                                }
+                                default -> { }
+                            }
+                            return call.getReturnType() == com.mojang.blaze3d.vertex.VertexConsumer.class ? consumerProxy : null;
+                        };
+                        var buffer = (com.mojang.blaze3d.vertex.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
+                            EntityOracle.class.getClassLoader(),
+                            new Class<?>[] {com.mojang.blaze3d.vertex.VertexConsumer.class}, consumer[0]);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(stack.last(), buffer);
+                    }
+                    if (method.getName().equals("submitText")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        if (!out.has("pose")) {
+                            var pose = new StringBuilder();
+                            var matrix = new float[16];
+                            stack.last().pose().get(matrix);
+                            for (float value : matrix) {
+                                pose.append(Oracle.bits(value));
+                            }
+                            out.addProperty("pose", pose.toString());
+                        }
+                        out.addProperty("text_order", order[0]);
+                        texts.add(Oracle.bits((float) args[1]) + "," + Oracle.bits((float) args[2]) + "," + args[4] + ","
+                            + args[5] + "," + args[6] + "," + args[7] + "," + args[8] + "," + args[9]);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer) renderer).submit(state, stack, holder[0], null);
+            out.add("background", background);
+            out.add("texts", texts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The render type the armor's enchantment glint asks for (`RenderTypes.armorEntityGlint`): its
+     * pipeline's state and texture, and the matrix that moves the texture at some times and glint
+     * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
+     */
+    private static JsonObject glintLayers(final JsonObject request) throws Exception {
+        var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
         var renderTypeState = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
         renderTypeState.setAccessible(true);
@@ -5304,6 +5441,9 @@ public final class EntityOracle {
         }
         if (operation.equals("item_equippable")) {
             return itemEquippable(request);
+        }
+        if (operation.equals("text_display_submit")) {
+            return textDisplaySubmit(request);
         }
         if (operation.equals("item_foil")) {
             return itemFoil(request);

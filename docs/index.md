@@ -110,7 +110,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T34e, T34f — Bakır golem — client-parity](client-copper-golem-parity-conformance.md)
 - [T37e — Creaking — client-parity](client-creaking-parity-conformance.md)
 - [T37a — Slime ve magma cube — client-parity](client-cube-mob-parity-conformance.md)
-- [T40i, T40i3 — Block ve item display'leri — client-parity](client-display-parity-conformance.md)
+- [T40i, T40i2, T40i3 — Display entity'leri — client-parity](client-display-parity-conformance.md)
 - [T37h3 — Ender kristali ve kristal ışını — client-parity](client-end-crystal-parity-conformance.md)
 - [T37h2 — Ender ejderhasının ölümü — client-parity](client-ender-dragon-death-parity-conformance.md)
 - [T37h — Ender ejderhası (canlı hâl) — client-parity](client-ender-dragon-parity-conformance.md)

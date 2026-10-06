@@ -1345,6 +1345,21 @@ public final class MovementOracle {
                             data.add(wolfData(net.minecraft.world.entity.Display.ItemDisplay.class, "DATA_ITEM_STACK_ID",
                                 new net.minecraft.world.item.ItemStack(item)));
                         }
+                        var textDisplay = net.minecraft.world.entity.Display.TextDisplay.class;
+                        if (event.has("text")) {
+                            data.add(wolfData(textDisplay, "DATA_TEXT_ID",
+                                net.minecraft.network.chat.Component.literal(event.get("text").getAsString())));
+                        }
+                        for (var field : new String[][] {{"line_width", "DATA_LINE_WIDTH_ID"}, {"background", "DATA_BACKGROUND_COLOR_ID"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(textDisplay, field[1], event.get(field[0]).getAsInt()));
+                            }
+                        }
+                        for (var field : new String[][] {{"text_opacity", "DATA_TEXT_OPACITY_ID"}, {"style_flags", "DATA_STYLE_FLAGS_ID"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(textDisplay, field[1], (byte) event.get(field[0]).getAsInt()));
+                            }
+                        }
                         if (event.has("item_display")) {
                             data.add(wolfData(net.minecraft.world.entity.Display.ItemDisplay.class, "DATA_ITEM_DISPLAY_ID",
                                 (byte) event.get("item_display").getAsInt()));
@@ -1695,6 +1710,20 @@ public final class MovementOracle {
                                 described.addProperty("glow", renderState.glowColorOverride());
                             }
                             described.add("samples", samples);
+                            // A text display's own render state, as it is read at the same part ticks.
+                            if (shown instanceof net.minecraft.world.entity.Display.TextDisplay textShown
+                                    && textShown.textRenderState() != null) {
+                                var text = textShown.textRenderState();
+                                described.addProperty("text", text.text().getString());
+                                described.addProperty("line_width", text.lineWidth());
+                                described.addProperty("style_flags", (int) text.flags());
+                                var textSamples = new JsonArray();
+                                for (float partial : new float[] {0.0F, 0.5F}) {
+                                    float progress = shown.calculateInterpolationProgress(partial);
+                                    textSamples.add(text.textOpacity().get(progress) + "," + text.backgroundColor().get(progress));
+                                }
+                                described.add("text_samples", textSamples);
+                            }
                             // Whether it is near enough to be drawn, at some squared distances.
                             var near = new JsonArray();
                             for (double distance : new double[] {0.0, 4095.99, 4096.0, 16383.99, 16384.0, 1.0E9}) {

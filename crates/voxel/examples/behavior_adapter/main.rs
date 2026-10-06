@@ -19097,6 +19097,30 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                                 &mut data,
                             );
                         }
+                        if let Some(text) = event["text"].as_str() {
+                            // A component that is only a string: a string tag.
+                            data.extend([voxel_world::display::TEXT_DATA_ID, 5, 8]);
+                            data.extend((text.len() as u16).to_be_bytes());
+                            data.extend(text.as_bytes());
+                        }
+                        for (key, id) in [
+                            ("line_width", voxel_world::display::LINE_WIDTH_DATA_ID),
+                            ("background", voxel_world::display::BACKGROUND_DATA_ID),
+                        ] {
+                            if event[key].is_i64() {
+                                data.extend([id, 1]);
+                                voxel_core::wire::write_varint(i32_field(event, key)?, &mut data);
+                            }
+                        }
+                        for (key, id) in [
+                            ("text_opacity", voxel_world::display::TEXT_OPACITY_DATA_ID),
+                            ("style_flags", voxel_world::display::STYLE_FLAGS_DATA_ID),
+                        ] {
+                            if event[key].is_i64() {
+                                data.extend([id, 0]);
+                                data.push(i32_field(event, key)? as u8);
+                            }
+                        }
                         if event["item_display"].is_i64() {
                             data.extend([voxel_world::display::ITEM_DISPLAY_DATA_ID, 0]);
                             data.push(i32_field(event, "item_display")? as u8);
@@ -19657,6 +19681,33 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described["glow"] = json!(state.glow_color_override);
                         }
                         described["samples"] = json!(samples);
+                        if let Some((text, _)) = display.text_render_state() {
+                            let mut data = text.text.as_slice();
+                            let tag = voxel_core::nbt::read_any_nbt(&mut data)
+                                .ok()
+                                .flatten()
+                                .and_then(|tag| voxel_game::text::Component::from_nbt(&tag))
+                                .ok_or("a component")?;
+                            let words: String = voxel_game::text::Lang::default()
+                                .runs(&tag, &voxel_game::text::Style::default())
+                                .into_iter()
+                                .map(|run| run.text)
+                                .collect();
+                            described["text"] = json!(words);
+                            described["line_width"] = json!(text.line_width);
+                            described["style_flags"] = json!(i32::from(text.flags));
+                            let mut text_samples = Vec::new();
+                            for partial in [0.0_f32, 0.5] {
+                                let progress =
+                                    display.interpolation_progress(entity.tick_count(), partial);
+                                text_samples.push(json!(format!(
+                                    "{},{}",
+                                    text.text_opacity.get(progress),
+                                    text.background.get(progress)
+                                )));
+                            }
+                            described["text_samples"] = json!(text_samples);
+                        }
                         described["render_at"] =
                             json!([0.0, 4095.99, 4096.0, 16383.99, 16384.0, 1.0e9].map(
                                 |distance| display.should_render_at_sqr_distance(distance, 1.0)
@@ -23280,6 +23331,90 @@ fn display_light_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `text_display_submit`: what a text display submits for lines of given widths.
+fn text_display_submit_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::display::{DisplayTurns, display_pose, text_submit};
+    use voxel_world::display::{Billboard, Transformation};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(string(row, key)?, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let widths: Vec<i32> = row["widths"]
+            .as_array()
+            .ok_or("widths")?
+            .iter()
+            .map(|width| width.as_i64().map(|width| width as i32).ok_or("a width"))
+            .collect::<Result<_, _>>()?;
+        let light = i32_field(row, "light")?;
+        let mut base = voxel_render::joml::Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let turns = DisplayTurns {
+            entity: (0.0, 0.0),
+            camera: (0.0, 0.0),
+        };
+        let pose = display_pose(&base, (Billboard::Fixed, &Transformation::IDENTITY), &turns);
+        let submit = text_submit(
+            &pose,
+            i32_field(row, "flags")? as i8,
+            (i32_field(row, "opacity")?, i32_field(row, "background")?),
+            (&widths, 0.25),
+        );
+        let matrix = submit
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect::<String>();
+        let order = i32::from(submit.background.is_some());
+        let mut described = json!({"label": row["label"], "pose": matrix, "text_order": order});
+        let mut background = Vec::new();
+        if let Some((corners, color)) = submit.background {
+            for [x, y, z] in corners {
+                let [px, py, pz] = submit.pose.transform_position(x, y, z);
+                background.push(json!(format!(
+                    "{:08x}{:08x}{:08x},{color},{light}",
+                    px.to_bits(),
+                    py.to_bits(),
+                    pz.to_bits()
+                )));
+            }
+            described["see_through"] = json!(submit.see_through);
+        }
+        let mode = if submit.see_through {
+            "SEE_THROUGH"
+        } else {
+            "POLYGON_OFFSET"
+        };
+        let texts: Vec<Value> = submit
+            .lines
+            .iter()
+            .map(|(x, y)| {
+                json!(format!(
+                    "{:08x},{:08x},{},{mode},{light},{},0,0",
+                    x.to_bits(),
+                    y.to_bits(),
+                    submit.shadow,
+                    submit.color
+                ))
+            })
+            .collect();
+        if texts.is_empty() {
+            described
+                .as_object_mut()
+                .ok_or("object")?
+                .remove("text_order");
+        }
+        described["background"] = json!(background);
+        described["texts"] = json!(texts);
+        out.push(described);
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `item_foil`: whether a stack has the enchantment glint, from the component patch it carries.
 fn item_foil_result(request: &Value) -> Result<Value, String> {
     use voxel_game::item_values::Values;
@@ -25581,6 +25716,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_frame_pose" => return item_frame_pose_result(request),
         "display_pose" => return display_pose_result(request),
         "item_foil" => return item_foil_result(request),
+        "text_display_submit" => return text_display_submit_result(request),
         "item_equippable" => return item_equippable_result(request),
         "glint_layers" => return glint_layers_result(request),
         "display_light" => return display_light_result(request),

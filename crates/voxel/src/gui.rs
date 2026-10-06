@@ -104,6 +104,11 @@ impl Gui {
     }
 
     /// The default font and the sprites it is drawn from, for text in the world.
+    /// The language the texts are worded in.
+    pub fn lang(&self) -> &Lang {
+        &self.lang
+    }
+
     pub fn text_assets(&self) -> (&Font, &GuiAtlas) {
         (&self.font, &self.atlas)
     }

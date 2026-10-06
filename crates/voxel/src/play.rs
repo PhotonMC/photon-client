@@ -735,8 +735,13 @@ impl Play {
             rotation: frame.rotation,
             spectating,
         };
-        let (see_through, mut normal) =
+        let (mut see_through, mut normal) =
             overlays::name_tags(&self.session, self.gui.text_assets(), &camera, view);
+        let (font, atlas) = self.gui.text_assets();
+        let (shown_through, shown) =
+            crate::displays::display_texts(&self.session, (self.gui.lang(), font, atlas), view);
+        see_through.extend(shown_through);
+        normal.extend(shown);
         // The leads are a flat colour lit by the lightmap, as the world text is.
         normal.extend(crate::leashes::leashes(&self.session, view));
         self.backend.set_name_tags(&see_through, &normal)?;

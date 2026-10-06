@@ -432,6 +432,7 @@
         "io.netty:netty-common",
         "io.netty:netty-codec-base",
         "io.netty:netty-transport",
+        "com.ibm.icu:icu4j",
         "com.mojang:datafixerupper",
         "com.google.guava:guava",
         "com.google.guava:failureaccess",

@@ -4,7 +4,7 @@
 
 use std::cell::Cell;
 
-use voxel_core::math::{mth_inverse_lerp_f32, mth_lerp_f32};
+use voxel_core::math::{mth_inverse_lerp_f32, mth_lerp_f32, mth_lerp_int};
 
 use crate::metadata::{
     find_metadata_field, metadata_byte_value, metadata_float_value, metadata_int_value,
@@ -31,6 +31,15 @@ pub const BLOCK_STATE_DATA_ID: u8 = 23;
 pub const ITEM_STACK_DATA_ID: u8 = 23;
 pub const ITEM_DISPLAY_DATA_ID: u8 = 24;
 
+/// A text display's data after the item display's: the text (a component), the line width, the
+/// background colour, the text opacity (a byte) and the style flags (a byte).
+pub const TEXT_DATA_ID: u8 = 23;
+pub const LINE_WIDTH_DATA_ID: u8 = 24;
+pub const BACKGROUND_DATA_ID: u8 = 25;
+pub const TEXT_OPACITY_DATA_ID: u8 = 26;
+pub const STYLE_FLAGS_DATA_ID: u8 = 27;
+
+const COMPONENT_SERIALIZER_ID: i32 = 5;
 const BLOCK_STATE_SERIALIZER_ID: i32 = 14;
 const VECTOR3_SERIALIZER_ID: i32 = 39;
 const QUATERNION_SERIALIZER_ID: i32 = 40;
@@ -177,6 +186,46 @@ impl FloatInterpolator {
     }
 }
 
+/// `Display.IntInterpolator`: a constant, the last to the new in whole numbers (`lerpInt`), or the
+/// colours' channels one by one (`ARGB.srgbLerp`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntInterpolator {
+    Constant(i32),
+    Linear(i32, i32),
+    Color(i32, i32),
+}
+
+impl IntInterpolator {
+    pub fn get(&self, progress: f32) -> i32 {
+        match *self {
+            Self::Constant(value) => value,
+            Self::Linear(previous, current) => mth_lerp_int(progress, previous, current),
+            Self::Color(previous, current) => {
+                let channel = |shift: u32| {
+                    mth_lerp_int(
+                        progress,
+                        ((previous as u32 >> shift) & 0xFF) as i32,
+                        ((current as u32 >> shift) & 0xFF) as i32,
+                    ) as u32
+                };
+                // `ARGB.color(a, r, g, b)`.
+                ((channel(24) << 24) | (channel(16) << 16) | (channel(8) << 8) | channel(0)) as i32
+            }
+        }
+    }
+}
+
+/// `Display.TextDisplay.TextRenderState`: the text (a component, as the network carried it), how
+/// wide its lines are, how opaque and what background, and the style flags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextRenderState {
+    pub text: Vec<u8>,
+    pub line_width: i32,
+    pub text_opacity: IntInterpolator,
+    pub background: IntInterpolator,
+    pub flags: i8,
+}
+
 /// `Display.RenderState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RenderState {
@@ -221,6 +270,34 @@ pub struct DisplayState {
     block_render: Option<u32>,
     /// `ItemDisplay.itemRenderState`'s context (the stack is the entity's).
     item_render: Option<u8>,
+    /// A text display's data, and the render state made of it, with how many times it was made
+    /// (the lines split from its text are kept until then).
+    text: TextData,
+    text_render: Option<TextRenderState>,
+    text_version: u32,
+}
+
+/// A text display's own data (`Display.TextDisplay`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TextData {
+    text: Vec<u8>,
+    line_width: i32,
+    background: i32,
+    opacity: i8,
+    flags: i8,
+}
+
+impl Default for TextData {
+    fn default() -> Self {
+        Self {
+            // `Component.empty()`: a string tag with no text.
+            text: vec![8, 0, 0],
+            line_width: 200,
+            background: 1_073_741_824,
+            opacity: -1,
+            flags: 0,
+        }
+    }
 }
 
 // The data is made of finite numbers: never NaN.
@@ -256,6 +333,9 @@ impl Default for DisplayState {
             render_state: None,
             block_render: None,
             item_render: None,
+            text: TextData::default(),
+            text_render: None,
+            text_version: 0,
         }
     }
 }
@@ -341,6 +421,34 @@ impl DisplayState {
         }
     }
 
+    /// A text display's data: what changes any of it makes the render state again.
+    pub(crate) fn apply_text(&mut self, metadata: &[u8]) {
+        if let Some((COMPONENT_SERIALIZER_ID, value)) = find_metadata_field(metadata, TEXT_DATA_ID)
+        {
+            let mut rest = value;
+            if voxel_core::nbt::read_any_nbt(&mut rest).is_ok() {
+                self.text.text = value[..value.len() - rest.len()].to_vec();
+                self.update_render_state = true;
+            }
+        }
+        if let Some(value) = metadata_int_value(metadata, LINE_WIDTH_DATA_ID) {
+            self.text.line_width = value;
+            self.update_render_state = true;
+        }
+        if let Some(value) = metadata_int_value(metadata, BACKGROUND_DATA_ID) {
+            self.text.background = value;
+            self.update_render_state = true;
+        }
+        if let Some(value) = metadata_byte_value(metadata, TEXT_OPACITY_DATA_ID) {
+            self.text.opacity = value as i8;
+            self.update_render_state = true;
+        }
+        if let Some(value) = metadata_byte_value(metadata, STYLE_FLAGS_DATA_ID) {
+            self.text.flags = value as i8;
+            self.update_render_state = true;
+        }
+    }
+
     /// A block display's block state data (`DATA_BLOCK_STATE_ID`).
     pub(crate) fn apply_block_state(&mut self, metadata: &[u8]) {
         if let Some((BLOCK_STATE_SERIALIZER_ID, mut value)) =
@@ -407,7 +515,32 @@ impl DisplayState {
             match self.kind {
                 DisplayKind::Block => self.block_render = Some(self.block_state),
                 DisplayKind::Item => self.item_render = Some(self.item_display),
-                DisplayKind::Text => {}
+                DisplayKind::Text => {
+                    let text = &self.text;
+                    self.text_render = Some(match &self.text_render {
+                        Some(previous) if should_interpolate => TextRenderState {
+                            text: text.text.clone(),
+                            line_width: text.line_width,
+                            text_opacity: IntInterpolator::Linear(
+                                previous.text_opacity.get(progress),
+                                i32::from(text.opacity),
+                            ),
+                            background: IntInterpolator::Color(
+                                previous.background.get(progress),
+                                text.background,
+                            ),
+                            flags: text.flags,
+                        },
+                        _ => TextRenderState {
+                            text: text.text.clone(),
+                            line_width: text.line_width,
+                            text_opacity: IntInterpolator::Constant(i32::from(text.opacity)),
+                            background: IntInterpolator::Constant(text.background),
+                            flags: text.flags,
+                        },
+                    });
+                    self.text_version = self.text_version.wrapping_add(1);
+                }
             }
         }
     }
@@ -476,6 +609,14 @@ impl DisplayState {
     /// `ItemDisplay.itemRenderState`'s `ItemDisplayContext` id.
     pub fn item_context(&self) -> Option<u8> {
         self.item_render
+    }
+
+    /// `TextDisplay.textRenderState`, and how many times it has been made (the lines split from the
+    /// text are good until it changes).
+    pub fn text_render_state(&self) -> Option<(&TextRenderState, u32)> {
+        self.text_render
+            .as_ref()
+            .map(|state| (state, self.text_version))
     }
 
     /// `Display.shouldRenderAtSqrDistance`: whether it is near enough to be drawn (`view_scale` is
