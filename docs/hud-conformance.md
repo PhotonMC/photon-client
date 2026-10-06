@@ -1,9 +1,11 @@
 # HUD
 
-Kanıt sınıfı: `client-parity` (artı işareti, saldırı göstergesi ve kısayol
-çubuğu gerçek `Hud`'ın çizdiği karelerle karşılaştırıldı (`hud_hotbar`,
-[GUI oracle](gui-oracle.md)); kalan öğelerin yerleşimi referansın `Hud`
-sınıfından taşındı ve karelerle karşılaştırılmadı).
+Kanıt sınıfı: `client-parity` (artı işareti, saldırı göstergesi, kısayol
+çubuğu, zırh, kalpler, yiyecek, hava baloncukları ve deneyim çubuğu gerçek
+`Hud`'ın çizdiği karelerle karşılaştırıldı (`hud_hotbar`, `hud_status`,
+[GUI oracle](gui-oracle.md)); araç canı, atlama çubuğu, etki simgeleri ve
+seçili eşya adının yerleşimi referansın `Hud` sınıfından taşındı veya henüz
+yok ve karelerle karşılaştırılmadı).
 
 ## Çizim
 
@@ -57,6 +59,13 @@ artı işareti arkasını ters çeviren karışımla (`1 - hedef` ve `1 - kaynak
   yan el simgesi karşı tarafta), izleyicinin menülü bir bloğa/varlığa
   baktığında artı işareti, üç boyutlu artı işareti hata ayıklama girdisi,
   yan elde eşya.
+
+`hud_status` oracle'ı (150 satır): gerçek `LocalPlayer` ile can (yarım kalpten kırk kalbe), emilim
+(en çok emilim özniteliğiyle), zırh, yiyecek ve doygunluk (titreme), hava (suyun altında ve dışında,
+patlayan ve boşalan baloncuklar), zehir/solgunluk/donma/yenilenme/açlık, zorlu mod, deneyim seviyesi ve
+ilerlemesi, üç pencere boyutu ve kareler boyunca can düşüşü/artışı (yanıp sönme, gösterilen canın
+yetişmesi, saat ve HUD tik sayısıyla); sprite adı ve yerleri bit bit eşit. Açık: araç canı, atlama ve konum
+çubuğu bu oracle'da yok (konum çubuğunun kendi oracle'ı var), eşya adı ve etki simgeleri yok.
 
 Veriler:
 

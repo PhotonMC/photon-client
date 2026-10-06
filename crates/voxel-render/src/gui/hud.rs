@@ -257,7 +257,7 @@ impl Hud {
     /// `Hud.nextContextualInfoState` and the bar it picks: the experience
     /// bar, or the locator bar when the server tracks waypoints and the
     /// experience did not just change. The level shows over either.
-    fn contextual_bar(
+    pub fn contextual_bar(
         &self,
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
@@ -276,7 +276,12 @@ impl Hud {
             locator::background(frame, atlas, (width, height));
         } else if input.survival {
             // `ExperienceBar.extractBackground`.
-            frame.blit(atlas, t, "hud/experience_bar_background", left, top, 182, 5);
+            frame.sprite_blend(
+                atlas,
+                t,
+                "hud/experience_bar_background",
+                (left, top, 182, 5),
+            );
         }
         if input.survival {
             // `ContextualBar.extractExperienceLevel`: the level in green,
@@ -304,16 +309,13 @@ impl Hud {
             // experience, so the bar always shows.
             let progress = (input.experience_progress * 183.0) as i32;
             if progress > 0 {
-                frame.blit_part(
+                frame.sprite_region_blend(
                     atlas,
                     t,
                     "hud/experience_bar_progress",
                     (182, 5),
                     (0, 0),
-                    left,
-                    top,
-                    progress,
-                    5,
+                    (left, top, progress, 5),
                 );
             }
         }
@@ -377,7 +379,7 @@ impl Hud {
         clippy::too_many_lines,
         reason = "kept whole to read against the reference method line by line"
     )]
-    fn player_health(
+    pub fn player_health(
         &mut self,
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
@@ -426,13 +428,13 @@ impl Hud {
             for i in 0..10 {
                 let x = x_left + i * 8;
                 if i * 2 + 1 < input.armor {
-                    frame.blit(atlas, t, "hud/armor_full", x, y, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/armor_full", (x, y, 9, 9));
                 }
                 if i * 2 + 1 == input.armor {
-                    frame.blit(atlas, t, "hud/armor_half", x, y, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/armor_half", (x, y, 9, 9));
                 }
                 if i * 2 + 1 > input.armor {
-                    frame.blit(atlas, t, "hud/armor_empty", x, y, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/armor_empty", (x, y, 9, 9));
                 }
             }
         }
@@ -444,7 +446,12 @@ impl Hud {
         let hardcore = input.hardcore;
         let heart =
             |frame: &mut GuiFrame, kind: HeartType, x: i32, y: i32, blinking: bool, half: bool| {
-                frame.blit(atlas, t, &kind.sprite(hardcore, half, blinking), x, y, 9, 9);
+                frame.sprite_blend(
+                    atlas,
+                    t,
+                    &kind.sprite(hardcore, half, blinking),
+                    (x, y, 9, 9),
+                );
             };
         for index in (0..health_containers + absorption_containers).rev() {
             let row = index / 10;
@@ -502,12 +509,12 @@ impl Hud {
                 y += self.random.next_int_bound(3).unwrap_or(1) - 1;
             }
             let x = x_right - i * 8 - 9;
-            frame.blit(atlas, t, empty, x, y, 9, 9);
+            frame.sprite_blend(atlas, t, empty, (x, y, 9, 9));
             if i * 2 + 1 < input.food {
-                frame.blit(atlas, t, full, x, y, 9, 9);
+                frame.sprite_blend(atlas, t, full, (x, y, 9, 9));
             }
             if i * 2 + 1 == input.food {
-                frame.blit(atlas, t, half, x, y, 9, 9);
+                frame.sprite_blend(atlas, t, half, (x, y, 9, 9));
             }
         }
         y_air -= 10;
@@ -529,16 +536,16 @@ impl Hud {
             for index in 1..=10 {
                 let x = x_right - (index - 1) * 8 - 9;
                 if index <= full_bubbles {
-                    frame.blit(atlas, t, "hud/air", x, y_air, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/air", (x, y_air, 9, 9));
                 } else if is_popping && index == popping && under_water {
-                    frame.blit(atlas, t, "hud/air_bursting", x, y_air, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/air_bursting", (x, y_air, 9, 9));
                 } else if index > 10 - empty_bubbles {
                     let wobble = if empty_bubbles == 10 && self.tick_count % 2 == 0 {
                         self.random.next_int_bound(2).unwrap_or(0)
                     } else {
                         0
                     };
-                    frame.blit(atlas, t, "hud/air_empty", x, y_air + wobble, 9, 9);
+                    frame.sprite_blend(atlas, t, "hud/air_empty", (x, y_air + wobble, 9, 9));
                 }
             }
         }

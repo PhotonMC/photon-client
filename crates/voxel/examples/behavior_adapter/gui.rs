@@ -1182,6 +1182,78 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     &mut draw_item,
                 );
             }
+            "hud_status" => {
+                use voxel_render::gui::HeartType;
+                use voxel_render::gui::hud::{Hud, HudInput};
+                let number = |key: &str| row[key].as_f64().unwrap_or(0.0);
+                let has = |name: &str| {
+                    row["effects"]
+                        .as_array()
+                        .is_some_and(|effects| effects.iter().any(|effect| effect == name))
+                };
+                let float = |key: &str| -> Result<f32, String> {
+                    u32::from_str_radix(row[key].as_str().ok_or(key)?, 16)
+                        .map(f32::from_bits)
+                        .map_err(|error| error.to_string())
+                };
+                let mut hud = Hud::default();
+                let mut ticks = 0;
+                let mut frames = Vec::new();
+                for step in row["frames"].as_array().ok_or("frames")? {
+                    let tick = step["tick"].as_i64().unwrap_or(0);
+                    while ticks < tick {
+                        hud.tick();
+                        ticks += 1;
+                    }
+                    let input = HudInput {
+                        first_person: true,
+                        spectator: false,
+                        survival: true,
+                        selected_slot: 0,
+                        health: u32::from_str_radix(step["health"].as_str().ok_or("health")?, 16)
+                            .map(f32::from_bits)
+                            .map_err(|error| error.to_string())?,
+                        max_health: number("max_health") as f32,
+                        absorption: float("absorption")?,
+                        invulnerable_time: step["invulnerable"].as_i64().unwrap_or(0) as i32,
+                        heart_type: HeartType::for_player(
+                            has("poison"),
+                            has("wither"),
+                            int("frozen_ticks") >= 140,
+                        ),
+                        regeneration: has("regeneration"),
+                        hardcore: row["hardcore"].as_bool().unwrap_or(false),
+                        armor: number("armor").floor() as i32,
+                        food: int("food"),
+                        saturation: float("saturation")?,
+                        hunger: has("hunger"),
+                        air_supply: int("air"),
+                        max_air_supply: 300,
+                        eye_in_water: row["eye_in_water"].as_bool().unwrap_or(false),
+                        experience_progress: float("xp_progress")?,
+                        experience_level: int("xp_level"),
+                        experience_prioritised: false,
+                        locator: None,
+                        attack_strength: 1.0,
+                        attack_delay: 5.0,
+                        attack_indicator: voxel_game::options::AttackIndicator::Off,
+                        target_is_living: false,
+                        hotbar: Default::default(),
+                        offhand: None,
+                    };
+                    let mut drawn = GuiFrame {
+                        log: Some(Vec::new()),
+                        ..GuiFrame::default()
+                    };
+                    let now = step["ms"].as_u64().unwrap_or(0) as u128;
+                    let size = (int("width"), int("height"));
+                    hud.player_health(&mut drawn, &atlas, size.0, size.1, &input, now);
+                    hud.contextual_bar(&mut drawn, &atlas, &font, size, &input);
+                    frames.push(Value::Array(gui_ops(&drawn.log.take().unwrap_or_default())));
+                }
+                out.push(json!({"label": row["label"], "frames": frames}));
+                continue;
+            }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;
                 let mut bars = BossBars::default();

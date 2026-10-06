@@ -758,24 +758,6 @@ impl GuiFrame {
         }
     }
 
-    /// `GuiGraphics.blitSprite` of a whole sprite at a size.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
-    pub(crate) fn blit(
-        &mut self,
-        atlas: &GuiAtlas,
-        blend: GuiBlend,
-        name: &str,
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
-    ) {
-        self.blit_part(atlas, blend, name, (w, h), (0, 0), x, y, w, h);
-    }
-
     /// `GuiGraphics.text` without a shadow: each glyph of the default font
     /// at its place, in one colour (`0xAARRGGBB`).
     pub fn text(

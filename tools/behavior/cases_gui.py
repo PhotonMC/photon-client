@@ -1577,6 +1577,95 @@ def gui_hud_hotbar_cases():
     yield {"case_id": "gui/hud-hotbar", "family": "gui", "operation": "hud_hotbar", "rows": rows}
 
 
+def gui_hud_status_cases():
+    """The status bars of a real local player: the hearts (health from half a heart to forty hearts,
+    absorption, hardcore, the poisoned, withered and frozen kinds, regeneration's hop, the shake at low
+    health), the armor, the food (with the shake at no saturation, and hunger), the air bubbles (under water
+    and after, popping and emptied), the experience bar and its level, several window sizes, and frames
+    over time: the hearts blinking as health falls or rises, and the displayed health catching up."""
+    def frame(tick=0, ms=0, health=20.0, invulnerable=0):
+        return {"tick": tick, "ms": ms, "health": float_bits(health), "invulnerable": invulnerable}
+
+    def row(label, frames=None, width=427, height=240, max_health=20.0, absorption=0.0, armor=0.0, food=20,
+            saturation=5.0, air=300, eye_in_water=False, effects=(), frozen_ticks=0, hardcore=False,
+            xp_level=0, xp_progress=0.0):
+        return {"label": label, "width": width, "height": height, "hardcore": hardcore,
+                "max_health": max_health, "absorption": float_bits(absorption), "armor": armor,
+                "food": food, "saturation": float_bits(saturation), "air": air,
+                "eye_in_water": eye_in_water, "effects": list(effects), "frozen_ticks": frozen_ticks,
+                "xp_level": xp_level, "xp_progress": float_bits(xp_progress),
+                "frames": frames or [frame()]}
+
+    rows = [row("full"), row("small", width=320, height=240), row("wide", width=1000, height=500),
+            row("odd", width=641, height=361)]
+    for health in (0.0, 0.5, 1.0, 3.0, 4.0, 4.5, 5.0, 10.0, 10.5, 19.0, 19.5, 20.0):
+        rows.append(row(f"health-{health}", [frame(7, 0, health)]))
+    for max_health in (2.0, 10.0, 30.0, 40.0, 60.0, 100.0, 200.0):
+        rows.append(row(f"max-{max_health}", [frame(3, 0, max_health)], max_health=max_health))
+        rows.append(row(f"max-{max_health}-half", [frame(3, 0, max_health / 2 + 0.5)], max_health=max_health))
+    for absorption in (0.5, 1.0, 4.0, 10.0, 20.0, 25.0, 40.0):
+        rows.append(row(f"absorption-{absorption}", [frame(2, 0, 20.0)], absorption=absorption))
+        rows.append(row(f"absorption-{absorption}-hurt", [frame(2, 0, 7.0)], absorption=absorption))
+    for armor in (0.0, 1.0, 2.0, 7.0, 19.0, 20.0, 30.0):
+        rows.append(row(f"armor-{armor}", armor=armor))
+    rows.append(row("armor-over-rows", [frame(1, 0, 40.0)], armor=20.0, max_health=60.0))
+    for food in (0, 1, 2, 9, 10, 19, 20):
+        rows.append(row(f"food-{food}", food=food))
+    for tick in (0, 1, 5, 6, 13):
+        for food in (0, 4, 20):
+            rows.append(row(f"starving-{food}-{tick}", [frame(tick, 0, 20.0)], food=food, saturation=0.0))
+    rows.append(row("hunger", effects=["hunger"], food=11))
+    rows.append(row("hunger-starving", [frame(0, 0, 20.0)], effects=["hunger"], food=0, saturation=0.0))
+    for air in (300, 299, 290, 250, 150, 31, 30, 1, 0, -20):
+        rows.append(row(f"air-{air}", [frame(1, 0, 20.0)], air=air, eye_in_water=True))
+        rows.append(row(f"air-{air}-out", [frame(1, 0, 20.0)], air=air))
+    for tick in (0, 1, 2, 3):
+        rows.append(row(f"drowned-{tick}", [frame(tick, 0, 20.0)], air=0, eye_in_water=True))
+    rows.append(row("in-water-full", eye_in_water=True))
+    rows.append(row("air-with-armor", [frame(1, 0, 40.0)], air=100, eye_in_water=True, armor=10.0,
+                    max_health=40.0, food=20))
+    for effect in ("poison", "wither", "regeneration"):
+        for tick in (0, 3, 9, 24):
+            rows.append(row(f"{effect}-{tick}", [frame(tick, 0, 13.0)], effects=[effect]))
+        rows.append(row(f"{effect}-absorption", [frame(4, 0, 13.0)], effects=[effect], absorption=6.0))
+        rows.append(row(f"{effect}-hardcore", [frame(4, 0, 13.0)], effects=[effect], hardcore=True))
+    rows.append(row("regeneration-big", [frame(31, 0, 30.0)], effects=["regeneration"], max_health=40.0))
+    rows.append(row("poison-wither", effects=["poison", "wither"]))
+    rows.append(row("frozen-short", [frame(0, 0, 13.0)], frozen_ticks=139))
+    rows.append(row("frozen", [frame(0, 0, 13.0)], frozen_ticks=140))
+    rows.append(row("frozen-poisoned", [frame(0, 0, 13.0)], frozen_ticks=200, effects=["poison"]))
+    rows.append(row("hardcore", [frame(0, 0, 13.0)], hardcore=True))
+    rows.append(row("hardcore-absorption", [frame(0, 0, 13.0)], hardcore=True, absorption=5.0))
+    for level, progress in ((0, 0.0), (0, 0.5), (1, 0.0), (1, 0.01), (5, 0.5), (9, 0.99), (10, 1.0),
+                            (30, 0.37), (99, 0.5), (100, 0.25), (1000, 0.9), (0, 0.001), (3, 0.0054)):
+        rows.append(row(f"xp-{level}-{progress}", xp_level=level, xp_progress=progress))
+    # Over time.
+    ms = lambda tick: tick * 50
+    rows.append(row("hurt", [frame(0, 0, 20.0), frame(1, 50, 14.0, 20)]
+                    + [frame(t, ms(t), 14.0, max(0, 20 - (t - 1))) for t in range(2, 26)]))
+    rows.append(row("healed", [frame(0, 0, 10.0), frame(1, 50, 16.0, 20)]
+                    + [frame(t, ms(t), 16.0, max(0, 20 - (t - 1))) for t in range(2, 14)]))
+    rows.append(row("hurt-twice", [frame(0, 0, 20.0), frame(1, 50, 14.0, 20), frame(5, 250, 11.0, 15),
+                                   frame(6, 300, 11.0, 14), frame(14, 700, 11.0, 6), frame(30, 1500, 11.0, 0),
+                                   frame(31, 1550, 11.0, 0)]))
+    rows.append(row("hurt-no-immunity", [frame(0, 0, 20.0), frame(1, 50, 14.0, 0), frame(2, 100, 14.0, 0)]))
+    rows.append(row("catches-up", [frame(0, 0, 20.0), frame(1, 50, 8.0, 20), frame(10, 500, 8.0, 11),
+                                   frame(20, 1000, 8.0, 1), frame(21, 1100, 8.0, 0), frame(22, 1200, 8.0, 0),
+                                   frame(23, 2300, 8.0, 0)]))
+    rows.append(row("hurt-with-absorption", [frame(0, 0, 20.0), frame(1, 50, 14.0, 20), frame(2, 100, 14.0, 19),
+                                             frame(3, 150, 14.0, 18), frame(4, 200, 14.0, 17)],
+                    absorption=8.0))
+    rows.append(row("hurt-big", [frame(0, 0, 40.0), frame(1, 50, 25.0, 20), frame(2, 100, 25.0, 19),
+                                 frame(3, 150, 25.0, 18)], max_health=40.0))
+    rows.append(row("hurt-low", [frame(0, 0, 6.0), frame(1, 50, 2.0, 20), frame(2, 100, 2.0, 19),
+                                 frame(3, 150, 2.0, 18), frame(4, 200, 2.0, 17)]))
+    rows.append(row("hurt-regeneration", [frame(0, 0, 20.0), frame(1, 50, 14.0, 20), frame(2, 100, 14.0, 19)],
+                    effects=["regeneration"]))
+    rows.append(row("hurt-hardcore", [frame(0, 0, 20.0), frame(1, 50, 14.0, 20), frame(2, 100, 14.0, 19)],
+                    hardcore=True))
+    yield {"case_id": "gui/hud-status", "family": "gui", "operation": "hud_status", "rows": rows}
+
+
 def latin_language_codes():
     """The languages whose names are all in Latin letters, from the asset
     pack's own list: the font's other scripts need fallbacks and the right
@@ -2009,7 +2098,7 @@ def gui_generators():
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
-        gui_mouse_cases(), gui_sound_options_cases(), gui_hud_hotbar_cases(), gui_language_cases(), gui_locator_bar_cases(),
+        gui_mouse_cases(), gui_sound_options_cases(), gui_hud_hotbar_cases(), gui_hud_status_cases(), gui_language_cases(), gui_locator_bar_cases(),
         gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases())
 
 

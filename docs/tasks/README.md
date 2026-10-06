@@ -170,6 +170,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T64](T64-ses-tetikleri-muzik.md) | Oyun ses tetikleri (adım, kırma, hasar, ortam) ve müzik | L | T63 | bölündü (3659d38e) |
 | [T64b](T64b-ses-tetikleri-kalan.md) | Kalan oyun sesleri ve müzik (atlama/iniş, hasar, ortam, yağmur, müzik; tetik oracle'ı) | L | T64 | açık |
 | [T65](T65-ses-ayarlari-ekrani.md) | Ses ayarları ekranı | M | T63, T06 | bitti (a9e6230d) |
+| [T66](T66-hud-durum-oracle.md) | HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) | M | T45 | açık |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
 
 Görev yazarken şablon: Amaç · Bağımlılık · Oku · Yapılacaklar · Oracle · Kabul · Kapsam dışı · Belgeler · Devir notu (≤ 60 satır).
