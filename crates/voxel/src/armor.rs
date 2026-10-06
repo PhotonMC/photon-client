@@ -8,6 +8,9 @@ use voxel_game::item_values::Values;
 use voxel_render::entity_textures::{EntityTextures, TextureRect};
 use voxel_render::equipment::{EquipmentInfo, parse_equipment_info};
 use voxel_render::mob_model::MobModel;
+use voxel_render::render_types::{
+    ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, glint_texture_matrix, glint_uv,
+};
 use voxel_render::scene::Vertex;
 use voxel_render::skull::SkullKind;
 use voxel_render::trim::{PalettedPermutations, TrimData, permute, sprite_path};
@@ -83,7 +86,15 @@ pub struct Armor {
     /// (a `trim` component holds registry numbers).
     trims: TrimData,
     trim_names: Option<(Vec<String>, Vec<String>)>,
+    /// The glints of the enchanted pieces drawn since they were last taken
+    /// (`RenderTypes.armorEntityGlint`), for the renderer's glint pass.
+    pub glint: Vec<Vertex>,
+    /// What `Util.getMillis` is counted from for the glint's movement.
+    clock: std::time::Instant,
 }
+
+/// The glint speed option's default (`Options.glintSpeed`, one half).
+const GLINT_SPEED: f64 = 0.5;
 
 /// Turns a posed armor model into triangles, in a texture, multiplied by a
 /// colour (`0xRRGGBB`).
@@ -122,6 +133,8 @@ impl Armor {
             models: HashMap::new(),
             trims: TrimData::load(&std::path::Path::new(root).with_file_name("data")),
             trim_names: None,
+            glint: Vec::new(),
+            clock: std::time::Instant::now(),
         }
     }
 
@@ -209,9 +222,16 @@ impl Armor {
                     })
             }))
             .collect();
+        paths.push(ARMOR_GLINT_TEXTURE.to_owned());
         paths.sort();
         paths.dedup();
         paths
+    }
+
+    /// `TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING` now.
+    fn glint_matrix(&self) -> [f32; 16] {
+        let millis = self.clock.elapsed().as_millis() as i64;
+        glint_texture_matrix(millis, GLINT_SPEED, ARMOR_GLINT_SCALE)
     }
 
     /// The triangles of the armor on a wearer. `prefix` names the wearer's
@@ -227,6 +247,7 @@ impl Armor {
         place: Place,
     ) -> Vec<Vertex> {
         let mut vertices = Vec::new();
+        let glint_matrix = self.glint_matrix();
         for slot in Slot::ALL {
             let Some(stack) = worn.get(slot) else {
                 continue;
@@ -262,13 +283,27 @@ impl Armor {
                 .get_mut(&name)
                 .expect("the model was just built");
             pose(model);
+            // The glint is on the first layer drawn (`renderFoil`).
+            let mut foil = Values::new(stack.item_registry_id(), stack.patch_bytes()).has_foil();
+            let mut glints = Vec::new();
             for (texture, colour) in layers {
                 // A layer coloured to nothing is not drawn; white is no colour.
                 let (true, Some(rect)) = (colour != 0, textures.rect(&texture)) else {
                     continue;
                 };
                 let rgb = colour & 0x00FF_FFFF;
-                vertices.extend(place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb)));
+                let triangles = place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb));
+                if std::mem::take(&mut foil) {
+                    glints.push((triangles.clone(), rect));
+                }
+                vertices.extend(triangles);
+            }
+            for (triangles, rect) in glints {
+                push_glint(
+                    &mut self.glint,
+                    (&triangles, rect),
+                    (&glint_matrix, textures),
+                );
             }
             // The trim, over the layers, undyed (a baby's armor has none).
             if layer_type != BABY
@@ -319,6 +354,7 @@ impl Armor {
         textures: &EntityTextures,
         place: Place,
     ) -> Vec<Vertex> {
+        let glint_matrix = self.glint_matrix();
         let Some(asset) = chest.and_then(|stack| self.asset_for(stack, "chest")) else {
             return Vec::new();
         };
@@ -346,12 +382,28 @@ impl Armor {
         // `WingsLayer.submit`: the wings sit an eighth of a block behind the back.
         model.shift_root([0.0, 0.0, 2.0]);
         let mut vertices = Vec::new();
+        // The glint is on the first layer drawn (`renderFoil`).
+        let mut foil = chest.is_some_and(|stack| {
+            Values::new(stack.item_registry_id(), stack.patch_bytes()).has_foil()
+        });
+        let mut glints = Vec::new();
         for (texture, colour) in layers {
             let (true, Some(rect)) = (colour != 0, textures.rect(&texture)) else {
                 continue;
             };
             let rgb = colour & 0x00FF_FFFF;
-            vertices.extend(place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb)));
+            let triangles = place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb));
+            if std::mem::take(&mut foil) {
+                glints.push((triangles.clone(), rect));
+            }
+            vertices.extend(triangles);
+        }
+        for (triangles, rect) in glints {
+            push_glint(
+                &mut self.glint,
+                (&triangles, rect),
+                (&glint_matrix, textures),
+            );
         }
         vertices
     }
@@ -411,5 +463,34 @@ impl Armor {
             .filter(|equip| equip.slot == slot)?;
         let asset = equip.asset?.strip_prefix("minecraft:")?;
         self.infos.contains_key(asset).then(|| asset.to_owned())
+    }
+}
+
+/// `RenderTypes.armorEntityGlint` over a layer's triangles (drawn in the texture at `rect`): the
+/// same triangles with their texture coordinate (of the layer's texture, in 0 to 1) moved by the
+/// glint's matrix into the glint texture, which repeats.
+fn push_glint(
+    out: &mut Vec<Vertex>,
+    (triangles, rect): (&[Vertex], TextureRect),
+    (matrix, textures): (&[f32; 16], &EntityTextures),
+) {
+    let Some(glint) = textures.rect(ARMOR_GLINT_TEXTURE) else {
+        return;
+    };
+    let size = [glint[2] - glint[0], glint[3] - glint[1]];
+    let layer = [rect[2] - rect[0], rect[3] - rect[1]];
+    for vertex in triangles {
+        let own = [
+            (vertex.uv[0] - rect[0]) / layer[0],
+            (vertex.uv[1] - rect[1]) / layer[1],
+        ];
+        let moved = glint_uv(matrix, own);
+        out.push(Vertex {
+            position: vertex.position,
+            uv: [glint[0] + moved[0] * size[0], glint[1] + moved[1] * size[1]],
+            shade: 0.0,
+            tint: [glint[0], glint[1], size[0], size[1]],
+            light: [0.0; 2],
+        });
     }
 }

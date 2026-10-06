@@ -181,6 +181,7 @@ float mix_light(vec2 light) {
     vec2 value = max(vec2(0.0), light);
     return min(1.0, (value.x + value.y) * 0.6 + 0.4);
 }
+invariant gl_Position;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
@@ -334,6 +335,56 @@ void main() {
         linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
         linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
     out_colour = vec4(mix(colour.rgb, push.fog_colour.rgb, fog * push.fog_colour.a), colour.a);
+}
+";
+
+/// The glint's vertex shader (`RenderPipelines.GLINT`): the entity's position (the same
+/// expression, so the depth is exactly the model's), the texture coordinate already moved by the
+/// glint's texture matrix, and the glint texture's place in the packed image in the tint.
+const GLINT_VERTEX_SHADER: &str = concat!(
+    vertex_prelude!(vertex_inputs!()),
+    r"invariant gl_Position;
+layout(location = 0) out vec2 out_uv;
+layout(location = 1) flat out vec4 out_rect;
+layout(location = 2) out vec2 out_fog;
+void main() {
+    gl_Position = push.view_projection * vec4(in_position, 1.0);
+    out_uv = in_uv;
+    out_rect = in_tint;
+    vec3 offset = in_position - push.camera.xyz;
+    out_fog = vec2(length(offset), max(length(offset.xz), abs(offset.y)));
+}
+",
+);
+
+/// The glint's fragment shader (`core/glint`): the texture wrapped inside its own place in the
+/// packed image (the reference's texture repeats), cut out below a tenth of alpha, its colour
+/// faded by fog and by the glint strength (the option's default).
+const GLINT_FRAGMENT_SHADER: &str = r"#version 450
+layout(set = 0, binding = 0) uniform sampler2D skin;
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) flat in vec4 in_rect;
+layout(location = 2) in vec2 in_fog;
+layout(location = 0) out vec4 out_colour;
+layout(push_constant) uniform Push {
+    layout(offset = 128) vec4 fog_colour;
+    vec4 fog_distances;
+} push;
+const float GLINT_ALPHA = 0.75;
+float linear_fog(float distance, float start, float end) {
+    if (distance <= start) { return 0.0; }
+    if (distance >= end) { return 1.0; }
+    return (distance - start) / (end - start);
+}
+void main() {
+    vec2 local = (in_uv - in_rect.xy) / in_rect.zw;
+    vec2 wrapped = in_rect.xy + fract(local) * in_rect.zw;
+    vec4 colour = texture(skin, wrapped);
+    if (colour.a < 0.1) { discard; }
+    float fog = max(
+        linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
+        linear_fog(in_fog.y, push.fog_distances.z, push.fog_distances.w));
+    out_colour = vec4(colour.rgb * ((1.0 - fog) * GLINT_ALPHA), colour.a);
 }
 ";
 
@@ -909,6 +960,11 @@ enum PipelineKind {
     /// An energy swirl (`ENERGY_SWIRL`): the entity textures moved and wrapped,
     /// added to what is behind, written to the depth.
     Swirl,
+    /// An enchantment's glint (`GLINT`): over the depth the model wrote, blended by its colour. The
+    /// reference tests the depth for equality; the same triangles pass the reversed depth's
+    /// greater-or-equal test exactly where the model is the nearest surface, which a second
+    /// shader's depth (not bit for bit the model's) cannot be trusted to equal.
+    Glint,
     /// A dissolving entity (`ENTITY_CUTOUT_DISSOLVE`): the entity's shaders, each
     /// texel dropped by a mask.
     Dissolve,
@@ -1045,6 +1101,8 @@ struct SceneResources {
     shadow_pipeline: vk::Pipeline,
     swirl_pipeline_layout: vk::PipelineLayout,
     swirl_pipeline: vk::Pipeline,
+    glint_pipeline_layout: vk::PipelineLayout,
+    glint_pipeline: vk::Pipeline,
     dissolve_pipeline_layout: vk::PipelineLayout,
     dissolve_pipeline: vk::Pipeline,
     rays_pipeline_layout: vk::PipelineLayout,
@@ -1271,6 +1329,9 @@ pub struct VulkanBackend {
     /// The energy swirls' triangles (`RenderTypes.energySwirl`).
     swirl_buffer: Option<SkyBuffer>,
     swirl_count: u32,
+    /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
+    glint_buffer: Option<SkyBuffer>,
+    glint_count: u32,
     /// What the dissolving entities draw (a dying dragon's body), and where
     /// each texel's mask is from it in the packed image (in texture units).
     dissolve_buffer: Option<SkyBuffer>,
@@ -1589,6 +1650,8 @@ impl VulkanBackend {
                 glow_count: 0,
                 swirl_buffer: None,
                 swirl_count: 0,
+                glint_buffer: None,
+                glint_count: 0,
                 dissolve_buffer: None,
                 dissolve_count: 0,
                 dissolve_mask_offset: [0.0; 2],
@@ -1798,22 +1861,10 @@ impl VulkanBackend {
         }
     }
 
-    /// The shadows, experience orbs and name tags: flat shapes drawn after the
-    /// entities, each from its own buffer.
-    unsafe fn record_flat_shapes(&self, scene: &SceneResources, terrain_push: &[f32]) {
+    /// Dissolving entities (a dying dragon's body), over the entities' own draw: its push constants
+    /// carry where the masks are.
+    unsafe fn record_dissolve(&self, scene: &SceneResources, terrain_push: &[f32]) {
         unsafe {
-            // Shadows under the entities, before them: blended quads of the
-            // shadow texture over the blocks' tops.
-            if let (Some(buffer), Some(set)) = (self.shadow_buffer.as_ref(), scene.entity_set) {
-                self.draw_triangles(
-                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
-                    set,
-                    (buffer, self.shadow_count),
-                    terrain_push,
-                );
-            }
-            // Dissolving entities (a dying dragon's body), over the entities'
-            // own draw: its push constants carry where the masks are.
             if let (Some(buffer), Some(set)) = (self.dissolve_buffer.as_ref(), scene.entity_set)
                 && self.dissolve_count > 0
             {
@@ -1846,6 +1897,24 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.dissolve_count, 1, 0, 0);
             }
+        }
+    }
+
+    /// The shadows, experience orbs and name tags: flat shapes drawn after the
+    /// entities, each from its own buffer.
+    unsafe fn record_flat_shapes(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        unsafe {
+            // Shadows under the entities, before them: blended quads of the
+            // shadow texture over the blocks' tops.
+            if let (Some(buffer), Some(set)) = (self.shadow_buffer.as_ref(), scene.entity_set) {
+                self.draw_triangles(
+                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    set,
+                    (buffer, self.shadow_count),
+                    terrain_push,
+                );
+            }
+            self.record_dissolve(scene, terrain_push);
             // The glowing layers (the eyes of spiders and endermen): the
             // `EYES` pipeline is the shadow's shaders and state, the texel
             // times the colour with no light and no cut-out, then fog.
@@ -1857,23 +1926,31 @@ impl VulkanBackend {
                     terrain_push,
                 );
             }
-            // The energy swirls (a charged creeper's): added over the entities.
-            if let (Some(buffer), Some(set)) = (self.swirl_buffer.as_ref(), scene.entity_set) {
-                self.draw_triangles(
-                    (scene.swirl_pipeline, scene.swirl_pipeline_layout),
-                    set,
-                    (buffer, self.swirl_count),
-                    terrain_push,
-                );
-            }
-            // A dying dragon's rays: added by their alpha over what is behind.
-            if let (Some(buffer), Some(set)) = (self.rays_buffer.as_ref(), scene.entity_set) {
-                self.draw_triangles(
-                    (scene.rays_pipeline, scene.rays_pipeline_layout),
-                    set,
-                    (buffer, self.rays_count),
-                    terrain_push,
-                );
+            // The energy swirls (a charged creeper's), the enchantments' glints (over the
+            // depth the entities wrote) and a dying dragon's rays (by their alpha): added over
+            // what is behind.
+            if let Some(set) = scene.entity_set {
+                for (buffer, count, pipeline) in [
+                    (
+                        self.swirl_buffer.as_ref(),
+                        self.swirl_count,
+                        (scene.swirl_pipeline, scene.swirl_pipeline_layout),
+                    ),
+                    (
+                        self.glint_buffer.as_ref(),
+                        self.glint_count,
+                        (scene.glint_pipeline, scene.glint_pipeline_layout),
+                    ),
+                    (
+                        self.rays_buffer.as_ref(),
+                        self.rays_count,
+                        (scene.rays_pipeline, scene.rays_pipeline_layout),
+                    ),
+                ] {
+                    if let Some(buffer) = buffer {
+                        self.draw_triangles(pipeline, set, (buffer, count), terrain_push);
+                    }
+                }
             }
             // Experience orbs: blended quads over the entity textures.
             if let (Some(buffer), Some(set)) = (self.orb_buffer.as_ref(), scene.entity_set) {
@@ -2525,6 +2602,7 @@ impl VulkanBackend {
         let entity = kind == PipelineKind::Entity || dissolve;
         let shadow = kind == PipelineKind::Shadow;
         let swirl = kind == PipelineKind::Swirl;
+        let glint = kind == PipelineKind::Glint;
         let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
@@ -2555,6 +2633,8 @@ impl VulkanBackend {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else if swirl {
                 (SWIRL_VERTEX_SHADER, SWIRL_FRAGMENT_SHADER)
+            } else if glint {
+                (GLINT_VERTEX_SHADER, GLINT_FRAGMENT_SHADER)
             } else if shadow {
                 (SHADOW_VERTEX_SHADER, SHADOW_FRAGMENT_SHADER)
             } else if text {
@@ -2793,6 +2873,7 @@ impl VulkanBackend {
                         || weather
                         || entity
                         || swirl
+                        || glint
                         || rays
                         || text
                         || text_see_through
@@ -2865,6 +2946,17 @@ impl VulkanBackend {
                     .color_blend_op(vk::BlendOp::ADD)
                     .src_alpha_blend_factor(vk::BlendFactor::ONE)
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if glint {
+                // `BlendFunction.GLINT`: added by its own colour, the alpha kept.
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::SRC_COLOR)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
             } else if swirl {
@@ -3613,6 +3705,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptor_layout, PipelineKind::Shadow)?;
             let (swirl_pipeline_layout, swirl_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Swirl)?;
+            let (glint_pipeline_layout, glint_pipeline) =
+                self.create_pipeline(descriptor_layout, PipelineKind::Glint)?;
             let (dissolve_pipeline_layout, dissolve_pipeline) =
                 self.create_pipeline(descriptor_layout, PipelineKind::Dissolve)?;
             let (rays_pipeline_layout, rays_pipeline) =
@@ -3663,6 +3757,8 @@ impl VulkanBackend {
                 shadow_pipeline,
                 swirl_pipeline_layout,
                 swirl_pipeline,
+                glint_pipeline_layout,
+                glint_pipeline,
                 dissolve_pipeline_layout,
                 dissolve_pipeline,
                 rays_pipeline_layout,
@@ -3936,6 +4032,24 @@ impl VulkanBackend {
         }
     }
 
+    /// Destroy an image with its view and memory, and the sampler it was read with, if they were made.
+    unsafe fn destroy_texture(
+        &self,
+        texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+        sampler: Option<vk::Sampler>,
+    ) {
+        unsafe {
+            if let Some((image, memory, view)) = texture {
+                self.device.destroy_image_view(view, None);
+                self.device.destroy_image(image, None);
+                self.device.free_memory(memory, None);
+            }
+            if let Some(sampler) = sampler {
+                self.device.destroy_sampler(sampler, None);
+            }
+        }
+    }
+
     unsafe fn destroy_scene(&mut self) {
         unsafe {
             let _ = self.device.device_wait_idle();
@@ -3951,22 +4065,8 @@ impl VulkanBackend {
                 if let Some(sampler) = scene.weather_sampler {
                     self.device.destroy_sampler(sampler, None);
                 }
-                if let Some((image, memory, view)) = scene.crack_texture {
-                    self.device.destroy_image_view(view, None);
-                    self.device.destroy_image(image, None);
-                    self.device.free_memory(memory, None);
-                }
-                if let Some(sampler) = scene.crack_sampler {
-                    self.device.destroy_sampler(sampler, None);
-                }
-                if let Some((image, memory, view)) = scene.entity_texture {
-                    self.device.destroy_image_view(view, None);
-                    self.device.destroy_image(image, None);
-                    self.device.free_memory(memory, None);
-                }
-                if let Some(sampler) = scene.entity_sampler {
-                    self.device.destroy_sampler(sampler, None);
-                }
+                self.destroy_texture(scene.crack_texture, scene.crack_sampler);
+                self.destroy_texture(scene.entity_texture, scene.entity_sampler);
                 for (pipeline, layout) in [
                     (scene.sky_pipeline, scene.sky_pipeline_layout),
                     (
@@ -3990,6 +4090,7 @@ impl VulkanBackend {
                     ),
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     (scene.swirl_pipeline, scene.swirl_pipeline_layout),
+                    (scene.glint_pipeline, scene.glint_pipeline_layout),
                     (scene.dissolve_pipeline, scene.dissolve_pipeline_layout),
                     (scene.rays_pipeline, scene.rays_pipeline_layout),
                     (scene.gui_pipeline, scene.gui_pipeline_layout),
@@ -3999,14 +4100,7 @@ impl VulkanBackend {
                     self.device.destroy_pipeline(pipeline, None);
                     self.device.destroy_pipeline_layout(layout, None);
                 }
-                if let Some((image, memory, view)) = scene.gui_texture {
-                    self.device.destroy_image_view(view, None);
-                    self.device.destroy_image(image, None);
-                    self.device.free_memory(memory, None);
-                }
-                if let Some(sampler) = scene.gui_sampler {
-                    self.device.destroy_sampler(sampler, None);
-                }
+                self.destroy_texture(scene.gui_texture, scene.gui_sampler);
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -4312,6 +4406,17 @@ impl VulkanBackend {
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.swirl_buffer = buffer;
         self.swirl_count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's enchantment glints: each vertex's texture coordinate is moved by
+    /// the glint's texture matrix and its tint carries the glint texture's place in the packed image
+    /// (see [`GLINT_VERTEX_SHADER`]).
+    pub fn set_entity_glint(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut buffer = self.glint_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, vertices)?;
+        self.glint_buffer = buffer;
+        self.glint_count = vertices.len() as u32;
         Ok(())
     }
 
@@ -4950,6 +5055,7 @@ impl Drop for VulkanBackend {
                 self.shadow_buffer.take(),
                 self.glow_buffer.take(),
                 self.swirl_buffer.take(),
+                self.glint_buffer.take(),
                 self.dissolve_buffer.take(),
                 self.rays_buffer.take(),
                 self.name_tag_buffer.take(),

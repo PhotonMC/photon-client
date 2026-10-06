@@ -1,6 +1,6 @@
 # T41e2 — Zırh büyü parıltısı ve `equippable` yaması
 
-**Amaç:** `armorEntityGlint` (büyülü parçanın kayan parıltısı: `hasFoil`, `enchanted_glint_armor` dokusu, doku matrisi, ışıksız karışım; yeni boru hattı) ve eşya yamasındaki `equippable` bileşeninin özel varlık kimliği.
+**Amaç:** `armorEntityGlint` (büyülü parçanın kayan parıltısı: `hasFoil`, `enchanted_glint_armor` dokusu, doku matrisi, ışıksız karışım; yeni boru hattı). Eşya yamasındaki `equippable` [T41e3](T41e3-equippable-yamasi.md)'e ayrıldı.
 **Bağımlılık:** T41e. **Boy:** M.
 
 ## Oku
@@ -17,4 +17,6 @@
 `docs/client-armor-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `ItemStack.hasFoil` (`Values::has_foil`), glint doku matrisi ve boru hattı bilgisi (`render_types::{GLINT, glint_texture_matrix}`), `PipelineKind::Glint` (Vulkan, yeni gölgelendirici), zırh ve elytra katmanının ilk katmanında parıltı (`Armor::glint`). Kayıt: `docs/client-armor-parity-conformance.md`. Canlıda görüldü.
+- Oracle: `entity/item-foil` (gerçek `hasFoil`, her eşya + yamalar), `entity/glint-layers` (gerçek render türü ve doku matrisi); `entity` ailesine `netty-transport` eklendi (gerçek `Minecraft` sınıfı için).
+- Sapma: derinlik `EQUAL` yerine büyük-eşit; parıltı gücü/hızı seçenekleri sabit varsayılan; eyer/kafa/el eşyasında parıltı yok; `equippable` yaması T41e3.

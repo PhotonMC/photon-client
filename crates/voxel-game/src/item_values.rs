@@ -278,6 +278,15 @@ impl Values {
         entries
     }
 
+    /// `ItemStack.hasFoil`: the glint override if the stack has one, else whether it has any
+    /// enchantment (`Item.isFoil`).
+    pub fn has_foil(&self) -> bool {
+        match self.raw(ids::ENCHANTMENT_GLINT_OVERRIDE) {
+            Some(raw) => raw.first().is_some_and(|value| *value != 0),
+            None => !self.enchantments(ids::ENCHANTMENTS).is_empty(),
+        }
+    }
+
     /// `attribute_modifiers`.
     pub fn attribute_modifiers(&self) -> Vec<AttributeEntry> {
         let Some(data) = self.raw(ids::ATTRIBUTE_MODIFIERS) else {

@@ -15934,6 +15934,7 @@ def entity_cases():
     yield from entity_minecart_pose_cases()
     yield from entity_item_frame_pose_cases()
     yield from entity_display_pose_cases()
+    yield from entity_glint_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17748,6 +17749,33 @@ def entity_display_light_cases():
             [("both", (15 << 4) | (10 << 20)), ("dark", 0), ("block-only", 3 << 4), ("sky-only", 7 << 20),
              ("stray-bits", 0x7FFFFFFF), ("negative", -2)]]
     yield {"case_id": "entity/display-light", "family": "entity", "operation": "display_light", "rows": rows}
+
+
+def entity_glint_cases():
+    """What decides an enchantment glint and how the reference draws it. `hasFoil` of real stacks:
+    every item's default (the items with a glint override), a stack with enchantments, one with
+    an override either way, one whose override is removed, and empty enchantments. The armor's
+    glint render type: its pipeline and texture, and the matrix that moves the texture."""
+    # A component patch as the wire carries it: how many are added, how many removed, then each added
+    # as its id and value (enchantments: 13, a count and the enchantment ids and levels; the glint
+    # override: 21 and a bool), then each removed id.
+    foil = [{"label": "foil-defaults", "all": True},
+            {"label": "foil-plain-armor", "item": "minecraft:diamond_chestplate", "patch": "0000"},
+            {"label": "foil-enchanted-armor", "item": "minecraft:diamond_chestplate",
+             "patch": "0100" + "0d" + "02" + "0003" + "0101"},
+            {"label": "foil-enchanted-but-overridden-off", "item": "minecraft:diamond_chestplate",
+             "patch": "0200" + "0d" + "01" + "0001" + "15" + "00"},
+            {"label": "foil-overridden-on", "item": "minecraft:leather_boots", "patch": "0100" + "15" + "01"},
+            {"label": "foil-removed-override", "item": "minecraft:enchanted_golden_apple",
+             "patch": "0001" + "15"},
+            {"label": "foil-no-enchantments", "item": "minecraft:iron_helmet", "patch": "0100" + "0d" + "00"},
+            {"label": "foil-enchanted-book-overridden-off", "item": "minecraft:enchanted_book",
+             "patch": "0100" + "15" + "00"}]
+    yield {"case_id": "entity/item-foil", "family": "entity", "operation": "item_foil", "rows": foil}
+    matrices = [{"label": f"glint-matrix-{millis}-{speed}", "millis": millis, "speed": speed}
+                for millis, speed in [(0, 0.5), (1234, 0.5), (27500, 0.5), (55000, 0.5), (1_000_000, 0.5),
+                                      (987654321, 0.5), (5000, 0.0), (5000, 1.0), (123456, 0.25)]]
+    yield {"case_id": "entity/glint-layers", "family": "entity", "operation": "glint_layers", "rows": matrices}
 
 
 def entity_arrow_cases():

@@ -394,21 +394,23 @@ impl MobModels {
     }
 }
 
-impl MobModels {
-    /// Hand what the glowing layers, the swirls, the dissolving bodies and the rays drew this
-    /// frame to the renderer, which draws them after the mobs.
-    pub fn hand_over_layers(
-        &mut self,
-        backend: &mut voxel_render::VulkanBackend,
-    ) -> Result<(), voxel_render::VulkanError> {
-        backend.set_entity_glow(&std::mem::take(&mut self.glow))?;
-        backend.set_entity_swirl(&std::mem::take(&mut self.swirl))?;
-        backend.set_entity_dissolve(
-            &std::mem::take(&mut self.dissolve),
-            self.dissolve_mask_offset,
-        )?;
-        backend.set_dragon_rays(&std::mem::take(&mut self.rays))
-    }
+impl MobModels {}
+
+/// Hand what the glowing layers, the swirls, the enchantment glints (the armor's), the dissolving
+/// bodies and the rays drew this frame to the renderer, which draws them after the mobs.
+pub fn hand_layers(
+    models: &mut MobModels,
+    backend: &mut voxel_render::VulkanBackend,
+    armor: &mut crate::armor::Armor,
+) -> Result<(), voxel_render::VulkanError> {
+    backend.set_entity_glint(&std::mem::take(&mut armor.glint))?;
+    backend.set_entity_glow(&std::mem::take(&mut models.glow))?;
+    backend.set_entity_swirl(&std::mem::take(&mut models.swirl))?;
+    backend.set_entity_dissolve(
+        &std::mem::take(&mut models.dissolve),
+        models.dissolve_mask_offset,
+    )?;
+    backend.set_dragon_rays(&std::mem::take(&mut models.rays))
 }
 
 impl Default for MobModels {

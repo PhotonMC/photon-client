@@ -2958,6 +2958,112 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * `ItemStack.hasFoil` of real stacks (every item's default, then stacks with a component patch
+     * of enchantments and glint overrides set or removed over the item's own).
+     */
+    private static JsonObject itemFoil(final JsonObject request) throws Exception {
+        var registries = Oracle.vanillaRegistries();
+        var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.has("all")) {
+                var found = new JsonArray();
+                for (var item : items) {
+                    found.add(item.getDefaultInstance().hasFoil());
+                }
+                out.add("foil", found);
+                rows.add(out);
+                continue;
+            }
+            var item = items.getValue(net.minecraft.resources.Identifier.parse(row.get("item").getAsString()));
+            var stack = item.getDefaultInstance();
+            // The patch as the wire carries it, applied over the item's own components.
+            var patch = row.get("patch").getAsString();
+            var bytes = new byte[patch.length() / 2];
+            for (int index = 0; index < bytes.length; index++) {
+                bytes[index] = (byte) Integer.parseInt(patch.substring(index * 2, index * 2 + 2), 16);
+            }
+            var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), registries);
+            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+            out.addProperty("foil", stack.hasFoil());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The render type the armor's enchantment glint asks for (`RenderTypes.armorEntityGlint`): its
+     * pipeline's state and texture, and the matrix that moves the texture at some times and glint
+     * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
+     */
+    private static JsonObject glintLayers(final JsonObject request) throws Exception {
+        var minecraft = (net.minecraft.client.Minecraft) UNSAFE.allocateInstance(net.minecraft.client.Minecraft.class);
+        var renderer = (net.minecraft.client.renderer.GameRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.GameRenderer.class);
+        var gameState = new net.minecraft.client.renderer.state.GameRenderState();
+        var stateField = net.minecraft.client.renderer.GameRenderer.class.getDeclaredField("gameRenderState");
+        stateField.setAccessible(true);
+        stateField.set(renderer, gameState);
+        var rendererField = net.minecraft.client.Minecraft.class.getDeclaredField("gameRenderer");
+        rendererField.setAccessible(true);
+        rendererField.set(minecraft, renderer);
+        var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+        instanceField.setAccessible(true);
+        instanceField.set(null, minecraft);
+        var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
+        var renderTypeState = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
+        renderTypeState.setAccessible(true);
+        var setup = renderTypeState.get(renderType);
+        var pipelineField = setup.getClass().getDeclaredField("pipeline");
+        pipelineField.setAccessible(true);
+        var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
+        var transformField = setup.getClass().getDeclaredField("textureTransform");
+        transformField.setAccessible(true);
+        var transform = (net.minecraft.client.renderer.rendertype.TextureTransform) transformField.get(setup);
+        var result = new JsonObject();
+        result.addProperty("pipeline", pipeline.getLocation().toString());
+        result.addProperty("flags", String.join(",", new java.util.TreeSet<>(pipeline.getShaderDefines().flags())));
+        var text = new StringBuilder();
+        new java.util.TreeMap<>(pipeline.getShaderDefines().values())
+            .forEach((key, value) -> text.append(key).append('=').append(value).append(','));
+        result.addProperty("values", text.toString());
+        var blend = pipeline.getColorTargetState().blendFunction();
+        result.addProperty("blend", blend.isEmpty() ? "NONE"
+            : blend.get().equals(com.mojang.blaze3d.pipeline.BlendFunction.GLINT) ? "GLINT" : "OTHER");
+        result.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
+        result.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
+        result.addProperty("cull", pipeline.isCull());
+        var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)").matcher(String.valueOf(renderType));
+        result.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            long millis = row.get("millis").getAsLong();
+            net.minecraft.util.Util.setTimeSource(() -> millis * 1000000L);
+            gameState.optionsRenderState.glintSpeed = row.get("speed").getAsDouble();
+            var matrix = new float[16];
+            transform.createMatrix().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("matrix", described);
+            rows.add(out);
+        }
+        net.minecraft.util.Util.setTimeSource(System::nanoTime);
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -5162,6 +5268,12 @@ public final class EntityOracle {
         }
         if (operation.equals("display_light")) {
             return displayLight(request);
+        }
+        if (operation.equals("item_foil")) {
+            return itemFoil(request);
+        }
+        if (operation.equals("glint_layers")) {
+            return glintLayers(request);
         }
         if (operation.equals("display_pose")) {
             return displayPose(request);

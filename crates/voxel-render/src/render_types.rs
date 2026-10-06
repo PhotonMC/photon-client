@@ -75,3 +75,60 @@ pub fn swirl_offset(age_in_ticks: f32) -> [f32; 2] {
     let offset = age_in_ticks * 0.01 % 1.0;
     [offset, offset]
 }
+
+/// `RenderPipelines.GLINT`: the glint's own shader (the texture moved by the texture matrix, cut
+/// out below a tenth of alpha, faded by fog and the glint strength), added to what is behind by
+/// its own colour, drawn on both faces over exactly the depth the model wrote.
+pub const GLINT: PipelineState = PipelineState {
+    location: "minecraft:pipeline/glint",
+    flags: "",
+    values: "",
+    blend: "GLINT",
+    depth_test: "EQUAL",
+    depth_write: false,
+    cull: false,
+};
+
+/// `ItemFeatureRenderer.ENCHANTED_GLINT_ARMOR`: the texture (under `textures/`) the glint on armor
+/// is drawn in, and the scale of `TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING`.
+pub const ARMOR_GLINT_TEXTURE: &str = "misc/enchanted_glint_armor";
+pub const ARMOR_GLINT_SCALE: f32 = 0.16;
+
+/// `TextureTransform.setupGlintTexturing`: the matrix (as `Matrix4f.get(float[])` gives it, column
+/// by column) that moves the glint's texture at a time (`Util.getMillis`) and glint speed (the
+/// option): translated by two slow offsets, turned a tenth of a half turn about z and scaled.
+pub fn glint_texture_matrix(millis: i64, glint_speed: f64, scale: f32) -> [f32; 16] {
+    let millis = (millis as f64 * glint_speed * 8.0) as i64;
+    let layer_offset0 = (millis % 110_000) as f32 / 110_000.0;
+    let layer_offset1 = (millis % 30_000) as f32 / 30_000.0;
+    let angle = (std::f64::consts::PI / 18.0) as f32;
+    let sin = crate::joml::sin(angle);
+    let cos = crate::joml::cos_from_sin(sin, angle);
+    // translation(-o0, o1, 0), rotateZ keeping it, scale(s) on the three columns.
+    [
+        cos * scale,
+        sin * scale,
+        0.0 * scale,
+        0.0,
+        -sin * scale,
+        cos * scale,
+        0.0 * scale,
+        0.0,
+        0.0 * scale,
+        0.0 * scale,
+        scale,
+        0.0,
+        -layer_offset0,
+        layer_offset1,
+        0.0,
+        1.0,
+    ]
+}
+
+/// A glint's texture coordinate for a model's (`TextureMat * vec4(UV0, 0, 1)`).
+pub fn glint_uv(matrix: &[f32; 16], [u, v]: [f32; 2]) -> [f32; 2] {
+    [
+        matrix[0] * u + matrix[4] * v + matrix[12],
+        matrix[1] * u + matrix[5] * v + matrix[13],
+    ]
+}

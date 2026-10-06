@@ -150,7 +150,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41](T41-ekipman-katmanlari.md) | Ekipman katmanları: `SetEquipment`, elde eşya, zırh, kafa eşyası, pelerin/elytra | L | T28, T22 | bölündü (d20fb045) |
 | [T41b](T41b-zirh-katmani.md) | Zırh katmanı (`HumanoidArmorLayer`, boya, süs, parıltı) | L | T41 | bitti (c2bf0545) |
 | [T41e](T41e-zirh-susu-parilti.md) | Zırh süsü, büyü parıltısı ve bileşen yaması | M | T41b | bölündü (adbcff46) |
-| [T41e2](T41e2-zirh-parilti-equippable.md) | Zırh büyü parıltısı ve `equippable` yaması | M | T41e | açık |
+| [T41e2](T41e2-zirh-parilti-equippable.md) | Zırh büyü parıltısı | M | T41e | bitti |
+| [T41e3](T41e3-equippable-yamasi.md) | Eşya yamasındaki `equippable` bileşeni | S | T41e2 | açık |
 | [T41c](T41c-kafa-pelerin-elytra.md) | Kafa eşyası, pelerin, elytra, dürbün | M | T41 | bölündü (kafa eşyası: 4c7e5a5a) |
 | [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | bölündü (ce6f64c8) |
 | [T41f2](T41f2-kafatasi-yerel-elytra.md) | Yerel oyuncunun ve mobların elytrası | S | T41f | bitti (1fc20242) |

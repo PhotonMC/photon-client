@@ -23276,6 +23276,57 @@ fn display_light_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `item_foil`: whether a stack has the enchantment glint, from the component patch it carries.
+fn item_foil_result(request: &Value) -> Result<Value, String> {
+    use voxel_game::item_values::Values;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        if row.get("all").is_some() {
+            let foil: Vec<bool> = (0..voxel_data::item::registry::ITEMS.len())
+                .map(|index| Values::new(index as i32, &[0, 0]).has_foil())
+                .collect();
+            out.push(json!({"label": row["label"], "foil": foil}));
+            continue;
+        }
+        let item = voxel_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
+        let patch = hex_bytes(string(row, "patch")?)?;
+        out.push(json!({
+            "label": row["label"],
+            "foil": Values::new(item as i32, &patch).has_foil(),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `glint_layers`: the pipeline the armor's glint is drawn with, its texture, and the matrix that
+/// moves the texture.
+fn glint_layers_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::render_types::{
+        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, GLINT, glint_texture_matrix,
+    };
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let millis = row["millis"].as_i64().ok_or("millis")?;
+        let speed = row["speed"].as_f64().ok_or("speed")?;
+        let matrix: Vec<String> = glint_texture_matrix(millis, speed, ARMOR_GLINT_SCALE)
+            .iter()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({"label": row["label"], "matrix": matrix}));
+    }
+    Ok(json!({
+        "pipeline": GLINT.location,
+        "flags": GLINT.flags,
+        "values": GLINT.values,
+        "blend": GLINT.blend,
+        "depth_test": GLINT.depth_test,
+        "depth_write": GLINT.depth_write,
+        "cull": GLINT.cull,
+        "texture": format!("textures/{ARMOR_GLINT_TEXTURE}.png"),
+        "rows": rows,
+    }))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -25507,6 +25558,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "minecart_pose" => return minecart_pose_result(request),
         "item_frame_pose" => return item_frame_pose_result(request),
         "display_pose" => return display_pose_result(request),
+        "item_foil" => return item_foil_result(request),
+        "glint_layers" => return glint_layers_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),

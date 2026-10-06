@@ -673,7 +673,7 @@ impl Play {
             ));
         }
         self.backend.set_entities(&models)?;
-        self.mob_models.hand_over_layers(&mut self.backend)?;
+        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
         let local = (!first_person && !player.spectating())
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;
