@@ -18168,6 +18168,92 @@ fn item_entity_ticks_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `projectile_ticks`: a projectile the server added, ticked by the client between the server's
+/// packets against the blocks and the entities the scene holds.
+fn projectile_ticks_result(request: &Value) -> Result<Value, String> {
+    let bits64 = |row: &Value, key: &str| -> Result<f64, String> {
+        u64::from_str_radix(string(row, key)?, 16)
+            .map(f64::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let bits32 = |row: &Value, key: &str| -> Result<f32, String> {
+        u32::from_str_radix(string(row, key)?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let hex64 = |value: f64| format!("{:016x}", value.to_bits());
+    let hex32 = |value: f32| format!("{:08x}", value.to_bits());
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut world = movement_world(row)?;
+        for other in row["others"].as_array().ok_or("others must be an array")? {
+            let id = i32_field(other, "id")?;
+            let name = string(other, "type")?;
+            let type_id = voxel_data::entity_type::id(name).ok_or_else(|| format!("no {name}"))?;
+            if !world.apply_entity(EntityInput {
+                entity_id: id,
+                uuid: Uuid::new(0, u64::from(id as u32)),
+                type_id,
+                x: bits64(other, "x")?,
+                y: bits64(other, "y")?,
+                z: bits64(other, "z")?,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }) {
+                return Err(format!("{name} was rejected"));
+            }
+        }
+        let entity_id = i32_field(row, "entity_id")?;
+        let name = string(row, "type")?;
+        let type_id = voxel_data::entity_type::id(name).ok_or_else(|| format!("no {name}"))?;
+        if !world.apply_entity(EntityInput {
+            entity_id,
+            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            type_id,
+            x: bits64(row, "x")?,
+            y: bits64(row, "y")?,
+            z: bits64(row, "z")?,
+            movement: (
+                bits64(row, "motion_x")?,
+                bits64(row, "motion_y")?,
+                bits64(row, "motion_z")?,
+            ),
+            rotation: (bits32(row, "y_rot")?, bits32(row, "x_rot")?, 0.0),
+            data: row.get("owner").and_then(Value::as_i64).unwrap_or(0) as i32,
+        }) {
+            return Err(format!("{name} was rejected"));
+        }
+        if let Some(dangerous) = row.get("dangerous").and_then(Value::as_bool) {
+            // The skull's data, as the server's entity data packet sets it.
+            world.apply_entity_metadata(entity_id, &[8, 8, u8::from(dangerous), 255]);
+        }
+        let mut ticks = Vec::new();
+        for _ in 0..i32_field(row, "tick_count")? {
+            world.tick_entities();
+            let described = match world.entity_at(entity_id) {
+                Some(entity) => {
+                    let (x, y, z) = entity.position();
+                    let (mx, my, mz) = entity.motion();
+                    let (y_rot, x_rot, _) = entity.rotation();
+                    json!({
+                        "present": true,
+                        "x": hex64(x), "y": hex64(y), "z": hex64(z),
+                        "motion_x": hex64(mx), "motion_y": hex64(my), "motion_z": hex64(mz),
+                        "x_rot": hex32(x_rot), "y_rot": hex32(y_rot),
+                        "in_water": entity.is_in_water(),
+                    })
+                }
+                None => json!({"present": false}),
+            };
+            ticks.push(described);
+        }
+        out.push(json!({"label": row["label"], "outcome": "ticked", "ticks": ticks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `name_tags`: a remote player's name tag, whether it shows and what is
 /// submitted for it, with the viewer the scene names.
 fn name_tags_result(request: &Value) -> Result<Value, String> {
@@ -19978,6 +20064,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "container_clicks" {
         return container_clicks_result(request);
+    }
+    if string(request, "operation")? == "projectile_ticks" {
+        return projectile_ticks_result(request);
     }
     if string(request, "operation")? == "item_entity_ticks" {
         return item_entity_ticks_result(request);

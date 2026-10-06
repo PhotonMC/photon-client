@@ -243,6 +243,8 @@ pub(crate) struct EntityState {
     /// `Ghast.isCharging` and `Phantom.getPhantomSize`.
     pub(crate) ghast_charging: bool,
     pub(crate) phantom_size: i32,
+    /// `WitherSkull.isDangerous`: the blue skull, which flies slower.
+    pub(crate) wither_skull_dangerous: bool,
     /// `Guardian.isMoving` and the id of `getActiveAttackTarget` (zero for none).
     pub(crate) guardian_moving: bool,
     pub(crate) guardian_target: i32,
@@ -680,6 +682,8 @@ pub struct ClientEntity {
     pub(crate) boat_ride: crate::boat_ride::RideState,
     /// The same of a saddled horse the local player rides.
     pub(crate) mount_ride: crate::mount_ride::MountState,
+    /// A flying projectile's owner and whether it has left it.
+    pub(crate) flight: crate::flight::FlightState,
     pub(crate) paddle_left: bool,
     pub(crate) paddle_right: bool,
     pub(crate) head_rotation_target_bits: u32,

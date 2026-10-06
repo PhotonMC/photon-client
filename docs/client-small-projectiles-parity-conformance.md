@@ -18,5 +18,10 @@ Bu kayıt `shulker_bullet`, `llama_spit` ve `evoker_fangs` çizimini kapsar. Kan
 ## Sapmalar ve açık kalanlar
 
 - Fangs durumunun (olay 4, sayaç) gerçek Java tikine karşı karşılaştırması yok; formül birim testtedir. Kabuğun harmanlama sırası ve alfa uygulaması oracle'da karşılaştırılmaz (canlıda kabuğun saydam görüldüğü doğrulandı).
-- İstemci hareket tahmini yok (mermi ve tükürük yalnız sunucunun gönderdiği konumda): [T39g](tasks/T39g-mermi-hareketi.md).
+- İstemci hareket tahmini T39g'de eklendi (aşağıdaki bölüm).
 - Dış çizgi, partiküller (`END_ROD`, `CRIT`) ve sesler yok.
+
+## İstemci hareketi (T39g) — [client-parity]
+
+`movement/projectile-ticks`: ateş topları (`fireball`, `small_fireball`, `dragon_fireball`), `wither_skull` (mavi: 0,73 eylemsizlik), `wind_charge`, `breeze_wind_charge`, `shulker_bullet` ve `llama_spit` gerçek varlıkların `ClientLevel.tickNonPassenger` tikine karşı bit bit eşit (≈38 satır). `AbstractHurtingProjectile.tick`: eylemsizlik (suda 0,8; rüzgâr yükünde 1 ve ivme 0), blok kesimi (`COLLIDER`) ve varlık isabeti (kutu payı `computeMargin`, sahibi terk edene dek sahip hariç), `rotateTowardsMovement` (0,2; bayt kodda `180/π` tek sabite katlanır), akışkan itişi. Shulker mermisi istemcide yalnız gelen hareketle ilerler ve 0,5 ile döner; tükürük sürtünme (0,99) ve yerçekimi (0,06) uygular, kutusunda hava kalmayınca ya da suda silinir. Rüzgâr yükünün kutusu konumun 0,15 altında asılıdır (`AbstractWindCharge.makeBoundingBox`; seçim kutusunu da etkiler).
+Sapmalar: çarpma sonucu (`onHit`: patlama, hasar) sunucuda; Breeze yansıtması (`deflection`) ve yerel oyuncunun hedef/sahip olması yok; bloğun içi etkileri (`applyEffectsFromBlocks`) ve dünya sınırı yok; parçacık ve ses yok.

@@ -505,6 +505,14 @@ pub(crate) fn ghast_charging_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
     metadata_boolean_value(metadata, GHAST_CHARGING_DATA_ID)
 }
 
+/// Whether a wither skull is the blue one (`WitherSkull.DATA_DANGEROUS`), when the data holds it.
+pub(crate) fn wither_skull_dangerous_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+    if voxel_data::entity_type::name(type_id)? != "minecraft:wither_skull" {
+        return None;
+    }
+    metadata_boolean_value(metadata, WITHER_SKULL_DANGEROUS_DATA_ID)
+}
+
 /// A bat's flags (`Bat.DATA_ID_FLAGS`: resting), a vex's (`Vex.DATA_FLAGS_ID`:
 /// charging) and whether an allay dances (`Allay.DATA_DANCING`), each when the
 /// data holds it.

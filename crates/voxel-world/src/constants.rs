@@ -239,6 +239,8 @@ pub const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 pub const GUARDIAN_MOVING_DATA_ID: u8 = 16;
 /// Where a ghast's charging flag (a boolean) and a phantom's size (an int) sit among their data.
 pub const GHAST_CHARGING_DATA_ID: u8 = 16;
+/// `WitherSkull.DATA_DANGEROUS`, the first of the skull's own data after `Entity`'s eight.
+pub const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 /// Where a bat's flags, a vex's flags (each a byte) and whether an allay dances (a boolean) sit among their data.
 pub const BAT_FLAGS_DATA_ID: u8 = 16;
 /// Where a parrot's variant (an int) sits among its data.

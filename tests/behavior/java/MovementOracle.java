@@ -189,6 +189,7 @@ public final class MovementOracle {
             switch (operation) {
                 case "local_player_ticks" -> rows.add(localPlayerTicks(element.getAsJsonObject()));
                 case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
+                case "projectile_ticks" -> rows.add(projectileTicks(element.getAsJsonObject()));
                 case "living_entity_ticks" -> rows.add(livingEntityTicks(element.getAsJsonObject()));
                 case "entity_shadows" -> rows.add(entityShadows(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
@@ -391,6 +392,95 @@ public final class MovementOracle {
             described.addProperty("motion_y", Oracle.bits(item.getDeltaMovement().y));
             described.addProperty("motion_z", Oracle.bits(item.getDeltaMovement().z));
             described.addProperty("on_ground", item.onGround());
+            ticks.add(described);
+        }
+        entry.addProperty("outcome", "ticked");
+        entry.add("ticks", ticks);
+        return entry;
+    }
+
+    /**
+     * A projectile the server added, ticked on the client as the level ticks it: where it goes
+     * between the server's packets, against the blocks and the entities the scene holds.
+     */
+    private static JsonObject projectileTicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var listener = scene.listener();
+        setField(scene.minecraft(), "packetProcessor",
+            new net.minecraft.network.PacketProcessor(Thread.currentThread()));
+        setField(listener, "level", level);
+        setField(listener, "minecraft", scene.minecraft());
+        setField(scene.minecraft(), "player",
+            unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
+        // A splash in the water asks the camera, bubbles and smoke ask the engine; none is drawn.
+        var splashRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(splashRenderer, "mainCamera", new net.minecraft.client.Camera());
+        setField(scene.minecraft(), "gameRenderer", splashRenderer);
+        setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
+        setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
+        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        // What else stands in the scene: the owner, the targets.
+        for (var element : row.getAsJsonArray("others")) {
+            var other = element.getAsJsonObject();
+            var otherType = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(other.get("type").getAsString()));
+            var entity = otherType.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+            entity.setId(other.get("id").getAsInt());
+            entity.snapTo(Oracle.f64(other, "x"), Oracle.f64(other, "y"), Oracle.f64(other, "z"), 0.0F, 0.0F);
+            if (entity instanceof net.minecraft.world.entity.LivingEntity living) {
+                living.yBodyRot = 0.0F;
+                living.yHeadRot = 0.0F;
+                living.yBodyRotO = 0.0F;
+                living.yHeadRotO = 0.0F;
+            }
+            level.addEntity(entity);
+        }
+        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+            net.minecraft.resources.Identifier.parse(row.get("type").getAsString()));
+        var projectile = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+            net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+        int projectileId = row.get("entity_id").getAsInt();
+        projectile.setId(projectileId);
+        projectile.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+            Oracle.f32(row, "y_rot"), Oracle.f32(row, "x_rot"));
+        projectile.setDeltaMovement(
+            Oracle.f64(row, "motion_x"), Oracle.f64(row, "motion_y"), Oracle.f64(row, "motion_z"));
+        if (row.has("owner")) {
+            // `recreateFromPacket`: the packet's data names the owner.
+            var owner = level.getEntity(row.get("owner").getAsInt());
+            ((net.minecraft.world.entity.projectile.Projectile) projectile).setOwner(owner);
+        }
+        if (row.has("dangerous")) {
+            ((net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull) projectile)
+                .setDangerous(row.get("dangerous").getAsBoolean());
+        }
+        projectile.syncPacketPositionCodec(projectile.getX(), projectile.getY(), projectile.getZ());
+        level.addEntity(projectile);
+        var ticks = new JsonArray();
+        for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            if (!projectile.isRemoved()) {
+                level.tickNonPassenger(projectile);
+            }
+            var described = new JsonObject();
+            described.addProperty("present", !projectile.isRemoved());
+            if (projectile.isRemoved()) {
+                // Gone: nothing more of it to compare.
+                ticks.add(described);
+                continue;
+            }
+            described.addProperty("x", Oracle.bits(projectile.getX()));
+            described.addProperty("y", Oracle.bits(projectile.getY()));
+            described.addProperty("z", Oracle.bits(projectile.getZ()));
+            described.addProperty("motion_x", Oracle.bits(projectile.getDeltaMovement().x));
+            described.addProperty("motion_y", Oracle.bits(projectile.getDeltaMovement().y));
+            described.addProperty("motion_z", Oracle.bits(projectile.getDeltaMovement().z));
+            described.addProperty("x_rot", Oracle.bits(projectile.getXRot()));
+            described.addProperty("y_rot", Oracle.bits(projectile.getYRot()));
+            described.addProperty("in_water", projectile.isInWater());
             ticks.add(described);
         }
         entry.addProperty("outcome", "ticked");

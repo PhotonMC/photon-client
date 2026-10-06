@@ -20,4 +20,6 @@ Partiküller ve sesler.
 `docs/client-small-projectiles-parity-conformance.md` sapma satırını güncelle.
 
 ## Devir notu
-(boş)
+`flight.rs`: zarar veren mermilerin, shulker mermisinin ve tükürüğün istemci tiki; `projectile_ticks` oracle'ı (MovementOracle) gerçek varlığa karşı bit bit eşit. Kayıt `client-small-projectiles-parity-conformance.md` sonunda.
+Ek bulgu: rüzgâr yükünün kutusu 0,15 aşağıda (pick.rs `bounding_box`).
+Sapma: onHit, deflection, blok içi etkiler, dünya sınırı, yerel oyuncu hedef/sahip; parçacık/ses yok.

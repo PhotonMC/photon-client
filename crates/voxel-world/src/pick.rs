@@ -101,6 +101,23 @@ impl ClientEntity {
             return self.shulker_bounding_box();
         }
         let (x, y, z) = self.position();
+        if matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:wind_charge" | "minecraft:breeze_wind_charge")
+        ) {
+            // `AbstractWindCharge.makeBoundingBox`: the box hangs a little below the position.
+            let dimensions = self.dimensions();
+            let half = f64::from(dimensions.width() / 2.0);
+            let low = y - f64::from(0.15_f32);
+            return Aabb::new(
+                x - half,
+                low,
+                z - half,
+                x + half,
+                low + f64::from(dimensions.height()),
+                z + half,
+            );
+        }
         self.dimensions().make_bounding_box(Vec3::new(x, y, z))
     }
 
@@ -125,7 +142,65 @@ pub struct EntityHit {
     pub bounds: Aabb,
 }
 
+/// An entity a segment can be cast at: its id (a dragon's part has its own), where it stands, its
+/// box, how far the aim inflates that box, whether it is picked from inside, and whether a
+/// projectile can hit it (`Entity.canBeHitByProjectile`).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PickableBox {
+    pub(crate) id: i32,
+    pub(crate) position: (f64, f64, f64),
+    pub(crate) bounds: Aabb,
+    pub(crate) pick_radius: f32,
+    pub(crate) from_inside: bool,
+    pub(crate) can_be_hit: bool,
+}
+
 impl ClientWorld {
+    /// The pickable entities but `except`, then the dragons' parts (`Level.getEntities` lists
+    /// those last).
+    pub(crate) fn pickable_boxes(&self, except: i32) -> impl Iterator<Item = PickableBox> + '_ {
+        let parts = self
+            .entities
+            .values()
+            .filter(move |entity| entity.is_ender_dragon() && entity.id != except)
+            .flat_map(|dragon| {
+                dragon
+                    .ender_dragon()
+                    .into_iter()
+                    .flat_map(|state| state.parts().iter().enumerate())
+                    .map(|(index, part)| {
+                        let size = ClientEntityDimensions::from_values(
+                            part.width,
+                            part.height,
+                            part.height * 0.85,
+                            false,
+                        );
+                        let (x, y, z) = part.position;
+                        PickableBox {
+                            id: dragon.id + 1 + index as i32,
+                            position: part.position,
+                            bounds: size.make_bounding_box(Vec3::new(x, y, z)),
+                            pick_radius: 0.0,
+                            from_inside: true,
+                            can_be_hit: true,
+                        }
+                    })
+            });
+        let others = self
+            .entities
+            .values()
+            .filter(move |entity| entity.id != except && entity.is_pickable())
+            .map(|entity| PickableBox {
+                id: entity.id,
+                position: entity.position(),
+                bounds: entity.bounding_box(),
+                pick_radius: entity.pick_radius(),
+                from_inside: entity.can_be_picked_from_inside(),
+                can_be_hit: !entity.is_dead_or_dying(),
+            });
+        others.chain(parts)
+    }
+
     /// `ProjectileUtil.getEntityHitResult(except, from, to, box, CAN_BE_PICKED,
     /// maxValue)`: the nearest pickable entity the segment crosses, as the
     /// local player (`except`) sees it.
@@ -140,49 +215,15 @@ impl ClientWorld {
         let mut nearest = max_value;
         let mut hovered: Option<EntityHit> = None;
         let except_root = self.root_vehicle_id(except);
-        // The candidates the world's entities give, then the dragons' parts
-        // (`Level.getEntities` lists those last): the id, where it stands, its box,
-        // how far its box is inflated by the aim, and whether it is picked from inside.
-        let parts = self
-            .entities
-            .values()
-            .filter(|entity| entity.is_ender_dragon() && entity.id != except)
-            .flat_map(|dragon| {
-                dragon
-                    .ender_dragon()
-                    .into_iter()
-                    .flat_map(|state| state.parts().iter().enumerate())
-                    .map(|(index, part)| {
-                        let size = ClientEntityDimensions::from_values(
-                            part.width,
-                            part.height,
-                            part.height * 0.85,
-                            false,
-                        );
-                        let (x, y, z) = part.position;
-                        (
-                            dragon.id + 1 + index as i32,
-                            part.position,
-                            size.make_bounding_box(Vec3::new(x, y, z)),
-                            0.0_f32,
-                            true,
-                        )
-                    })
-            });
-        let others = self
-            .entities
-            .values()
-            .filter(|entity| entity.id != except && entity.is_pickable())
-            .map(|entity| {
-                (
-                    entity.id,
-                    entity.position(),
-                    entity.bounding_box(),
-                    entity.pick_radius(),
-                    entity.can_be_picked_from_inside(),
-                )
-            });
-        for (id, position, bounds, pick_radius, from_inside) in others.chain(parts) {
+        for PickableBox {
+            id,
+            position,
+            bounds,
+            pick_radius,
+            from_inside,
+            ..
+        } in self.pickable_boxes(except)
+        {
             if !bounds.intersects(search) {
                 continue;
             }

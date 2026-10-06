@@ -55,6 +55,7 @@ mod entity;
 mod entity_random;
 pub mod evoker_fangs;
 pub mod fish;
+mod flight;
 mod fluid;
 pub mod fox;
 pub mod frog;
@@ -1940,6 +1941,7 @@ impl ClientWorld {
             projectile_kind,
             projectile_path_is_open,
             (ridden, ridden_mount),
+            flying,
         )) = self.entities.get(&entity_id).map(|entity| {
             let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
             let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
@@ -1957,6 +1959,7 @@ impl ClientWorld {
                 kind,
                 path_open,
                 (authoritative, mount),
+                flight::flight_of(entity),
             )
         })
         else {
@@ -1987,6 +1990,12 @@ impl ClientWorld {
         // rearing and eases its animations.
         if ridden_mount {
             self.tick_ridden_mount(entity_id);
+        }
+        if let Some(flight) = flying {
+            self.tick_flying_projectile(entity_id, flight);
+            if !self.entities.contains_key(&entity_id) {
+                return;
+            }
         }
         {
             let entity = self
@@ -3420,6 +3429,8 @@ impl ClientWorld {
         }
         let ticking = self.contains_chunk_at((entity.x, entity.y, entity.z));
         let head_rotation_bits = entity.rotation.2.to_bits();
+        // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
+        let owner = self.entity_exists(entity.data).then_some(entity.data);
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
@@ -3458,6 +3469,10 @@ impl ClientWorld {
                 boat_input: BoatInput::EMPTY,
                 boat_ride: boat_ride::RideState::default(),
                 mount_ride: mount_ride::MountState::default(),
+                flight: flight::FlightState {
+                    owner,
+                    left_owner: false,
+                },
                 paddle_left: false,
                 paddle_right: false,
                 head_rotation_target_bits: entity.rotation.2.to_bits(),
@@ -4787,6 +4802,9 @@ fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if let Some(charging) = ghast_charging_from_metadata(entity.type_id, metadata) {
         entity.living.ghast_charging = charging;
+    }
+    if let Some(dangerous) = wither_skull_dangerous_from_metadata(entity.type_id, metadata) {
+        entity.living.wither_skull_dangerous = dangerous;
     }
     if let Some(size) = phantom_size_from_metadata(entity.type_id, metadata) {
         entity.living.phantom_size = size;
