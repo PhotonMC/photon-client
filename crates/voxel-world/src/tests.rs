@@ -7117,3 +7117,24 @@ fn a_leash_knot_stands_above_the_middle_of_the_block_the_packet_names() {
         (10.25, 64.0, -3.75)
     );
 }
+
+#[test]
+fn a_block_broken_makes_its_break_sound_at_its_middle_and_a_hit_a_softer_one() {
+    let mut world = ClientWorld::default();
+    let stone = voxel_data::block::registry::block("minecraft:stone")
+        .expect("stone")
+        .default_state_id() as i32;
+    world.apply_level_event(2001, (10, 64, -3), stone);
+    let sounds = world.take_sounds();
+    assert_eq!(sounds.len(), 1);
+    assert_eq!(sounds[0].event, "minecraft:block.stone.break");
+    assert_eq!((sounds[0].volume, sounds[0].pitch), (1.0, 0.8));
+    assert_eq!(sounds[0].position, (10.5, 64.5, -2.5));
+    world.play_hit_sound((0, 0, 0), stone);
+    let hit = world.take_sounds();
+    assert_eq!(hit[0].event, "minecraft:block.stone.hit");
+    assert_eq!((hit[0].volume, hit[0].pitch), (0.25, 0.5));
+    // Air breaks with no sound, and nothing is left waiting.
+    world.apply_level_event(2001, (0, 0, 0), 0);
+    assert!(world.take_sounds().is_empty());
+}

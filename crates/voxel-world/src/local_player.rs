@@ -207,6 +207,9 @@ struct Movement {
 }
 
 /// The tags and classes movement tests of a block.
+mod sounds;
+pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
+
 mod flag {
     pub const CLIMBABLE: u16 = 1 << 0;
     pub const FENCE: u16 = 1 << 1;
@@ -739,6 +742,10 @@ pub struct LocalPlayer {
     bob_old: f32,
     first_tick: bool,
     tick_count: i32,
+    /// `Entity.moveDist` and `nextStep`: how far the player has walked, and where the next step sounds.
+    move_dist: f32,
+    next_step: f32,
+    pending_sounds: Vec<LocalSound>,
     was_touching_water: bool,
     was_eye_in_water: bool,
     water: FluidTracker,
@@ -836,6 +843,9 @@ impl LocalPlayer {
             bob_old: 0.0,
             first_tick: true,
             tick_count: 0,
+            move_dist: 0.0,
+            next_step: 1.0,
+            pending_sounds: Vec::new(),
             was_touching_water: false,
             was_eye_in_water: false,
             water: FluidTracker::default(),
@@ -1790,6 +1800,8 @@ impl LocalPlayer {
                 movement,
             );
         }
+
+        self.apply_movement_emission(level, movement, effect_pos);
 
         let speed_factor = f64::from(self.block_speed_factor(level));
         self.delta = self

@@ -101,6 +101,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T40 — Zırh askısı — client-parity](client-armor-stand-parity-conformance.md)
 - [T39 — Ok ve spektral ok — client-parity](client-arrow-parity-conformance.md)
 - [T35f — Aksolotl — client-parity](client-axolotl-parity-conformance.md)
+- [T64a — Blok sesleri ve oyuncunun hareket sesleri — client-parity (tablo) · server-conformance (tetikler)](client-block-sounds-conformance.md)
 - [T38 — Tekneler, sandıklı tekneler ve sallar — client-parity](client-boat-parity-conformance.md)
 - [T36e — Breeze — client-parity](client-breeze-parity-conformance.md)
 - [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)

@@ -17831,6 +17831,7 @@ def sound_cases():
     yield from sound_packet_cases()
     yield from sound_decode_cases()
     yield from sound_engine_cases()
+    yield {"case_id": "sound/block-sounds", "family": "sound", "operation": "block_sounds", "rows": [{"label": "all"}]}
 
 
 def sound_engine_cases():

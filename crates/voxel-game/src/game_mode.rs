@@ -699,6 +699,9 @@ impl GameMode {
             return false;
         }
         self.destroy_progress += ctx.miner.destroy_progress(ctx.world, ctx.player, state);
+        if self.destroy_ticks % 4.0 == 0.0 {
+            ctx.world.play_hit_sound(pos, state);
+        }
         self.destroy_ticks += 1.0;
         if self.destroy_progress >= 1.0 {
             self.is_destroying = false;
@@ -738,8 +741,14 @@ fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool {
         .fluid
         .legacy_block() as i32;
     let position: Vec3 = ctx.player.position();
-    ctx.world
-        .set_block_with_updates(pos, fluid, 11, 512, position)
+    let changed = ctx
+        .world
+        .set_block_with_updates(pos, fluid, 11, 512, position);
+    if changed {
+        // `Block.playerWillDestroy`: the break sound (and the particles).
+        ctx.world.apply_level_event(2001, pos, old);
+    }
+    changed
 }
 
 impl GameMode {
@@ -984,6 +993,7 @@ impl GameMode {
         {
             return UseResult::Fail;
         }
+        ctx.world.play_place_sound(pos, state);
         // `ItemStack.consume`: used up unless materials are infinite.
         if !ctx.instabuild() {
             let slot = ctx.hand_slot(hand);

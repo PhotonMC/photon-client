@@ -131,6 +131,8 @@ pub struct ClientWorld {
     entities: BTreeMap<i32, ClientEntity>,
     entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
+    /// The sounds the world's own events made, until they are taken.
+    sounds: local_player::SoundQueue,
     world_border: ClientWorldBorder,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
     server_simulation_distance: i32,
@@ -195,6 +197,7 @@ impl ClientWorld {
             entities: BTreeMap::new(),
             entity_sections: BTreeMap::new(),
             local_player: None,
+            sounds: local_player::SoundQueue::default(),
             world_border: ClientWorldBorder::default(),
             server_simulation_distance: 3,
             local_chunk: None,
@@ -2196,6 +2199,79 @@ impl ClientWorld {
     /// `getBrightness(LightLayer.BLOCK, pos)`: nothing where no data arrived.
     pub fn block_brightness(&self, x: i32, y: i32, z: i32) -> u8 {
         self.light.light_value(light::LightLayer::Block, (x, y, z))
+    }
+
+    /// A sound the world makes at a place (`Level.playLocalSound`), for the sound engine to play.
+    pub fn push_sound(&mut self, sound: local_player::LocalSound) {
+        self.sounds.0.push(sound);
+    }
+
+    /// The sounds made since the last call, in order.
+    pub fn take_sounds(&mut self) -> Vec<local_player::LocalSound> {
+        std::mem::take(&mut self.sounds.0)
+    }
+
+    /// The sound a block makes (`SoundType`) at its middle: its volume and pitch scaled as the event
+    /// asks, whichever of the five sounds `pick` takes. Nothing for a state with no sound type.
+    fn block_sound(
+        &mut self,
+        pos: (i32, i32, i32),
+        state: i32,
+        pick: fn(&voxel_data::block_sound::SoundTypeRow) -> &'static str,
+        (volume, pitch): (fn(f32) -> f32, f32),
+    ) {
+        let id = i64::from(state);
+        let info = block::state_or_air(id);
+        let Some(sound_type) = u32::try_from(id)
+            .ok()
+            .and_then(|id| voxel_data::block_sound::of_state(info.block().name, id))
+        else {
+            return;
+        };
+        self.sounds.0.push(local_player::LocalSound {
+            event: pick(sound_type),
+            source: local_player::LocalSoundSource::Blocks,
+            volume: volume(sound_type.volume),
+            pitch: sound_type.pitch * pitch,
+            position: (
+                f64::from(pos.0) + 0.5,
+                f64::from(pos.1) + 0.5,
+                f64::from(pos.2) + 0.5,
+            ),
+        });
+    }
+
+    /// `BlockItem.place`'s sound: the block placed, a little softer than loud and lower.
+    pub fn play_place_sound(&mut self, pos: (i32, i32, i32), state: i32) {
+        self.block_sound(
+            pos,
+            state,
+            voxel_data::block_sound::SoundTypeRow::place_sound,
+            (|volume| (volume + 1.0) / 2.0, 0.8),
+        );
+    }
+
+    /// `MultiPlayerGameMode.continueDestroyBlock`'s hit sound: a block struck while it is broken.
+    pub fn play_hit_sound(&mut self, pos: (i32, i32, i32), state: i32) {
+        self.block_sound(
+            pos,
+            state,
+            voxel_data::block_sound::SoundTypeRow::hit_sound,
+            (|volume| (volume + 1.0) / 8.0, 0.5),
+        );
+    }
+
+    /// `LevelEventHandler.levelEvent`, for the events that make a sound the client knows: `2001`,
+    /// a block broken (its state's number is the data).
+    pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
+        if event == 2001 && block::state_or_air(i64::from(data)).block().name != "minecraft:air" {
+            self.block_sound(
+                pos,
+                data,
+                voxel_data::block_sound::SoundTypeRow::break_sound,
+                (|volume| (volume + 1.0) / 2.0, 0.8),
+            );
+        }
     }
 
     pub fn light_engine(&self) -> &light::LevelLightEngine {

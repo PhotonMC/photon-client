@@ -49,6 +49,9 @@ public final class SoundOracle {
                 case "engine" -> {
                     return engine(request);
                 }
+                case "block_sounds" -> {
+                    return blockSounds();
+                }
                 default -> {
                 }
             }
@@ -96,6 +99,60 @@ public final class SoundOracle {
                 // Itself, sample for sample, within a least significant bit.
                 out.addProperty("within_one_lsb", true);
             }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The sound type of every block: the types the reference names (`SoundType`'s own constants), then each
+     * block's type (its default state's) and the states of it that have another.
+     */
+    private static JsonObject blockSounds() throws Exception {
+        var types = new java.util.LinkedHashMap<net.minecraft.world.level.block.SoundType, String>();
+        var rows = new JsonArray();
+        for (var field : net.minecraft.world.level.block.SoundType.class.getFields()) {
+            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                && field.getType() == net.minecraft.world.level.block.SoundType.class) {
+                var type = (net.minecraft.world.level.block.SoundType) field.get(null);
+                types.putIfAbsent(type, field.getName());
+            }
+        }
+        for (var entry : types.entrySet()) {
+            var type = entry.getKey();
+            var out = new JsonObject();
+            out.addProperty("label", "type:" + entry.getValue());
+            out.addProperty("kind", "type");
+            out.addProperty("name", entry.getValue());
+            out.addProperty("volume", Oracle.bits(type.getVolume()));
+            out.addProperty("pitch", Oracle.bits(type.getPitch()));
+            out.addProperty("break", type.getBreakSound().location().toString());
+            out.addProperty("step", type.getStepSound().location().toString());
+            out.addProperty("place", type.getPlaceSound().location().toString());
+            out.addProperty("hit", type.getHitSound().location().toString());
+            out.addProperty("fall", type.getFallSound().location().toString());
+            rows.add(out);
+        }
+        for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+            var normal = block.defaultBlockState().getSoundType();
+            var out = new JsonObject();
+            var name = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString();
+            out.addProperty("label", "block:" + name);
+            out.addProperty("kind", "block");
+            out.addProperty("name", name);
+            out.addProperty("type", types.get(normal));
+            var overrides = new JsonArray();
+            for (var state : block.getStateDefinition().getPossibleStates()) {
+                if (state.getSoundType() != normal) {
+                    var one = new JsonArray();
+                    one.add(net.minecraft.world.level.block.Block.getId(state));
+                    one.add(types.get(state.getSoundType()));
+                    overrides.add(one);
+                }
+            }
+            out.add("overrides", overrides);
             rows.add(out);
         }
         var result = new JsonObject();

@@ -33,6 +33,7 @@ use crate::sound::SoundSystem;
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
 use crate::{mobs, villagers};
 use voxel_game::pick::pick;
+use voxel_world::local_player::LocalPlayer;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -372,12 +373,15 @@ impl Play {
             }
         }
         println!(
-            "play_frames={} play_ticks={} entities={} ticking={} sounds={}",
+            "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={}",
             self.frames,
             self.ticks,
             self.session.entity_count(),
             self.session.ticking_entity_count(),
-            self.sounds_heard
+            self.sounds_heard,
+            self.sound
+                .as_ref()
+                .map_or(0, SoundSystem::local_sound_count)
         );
         Ok(())
     }
@@ -469,6 +473,14 @@ impl Play {
         // After the keys and before the player ticks.
         tick_hands(&mut self.item_in_hand, session, &self.block_renderer);
         session.tick(held.input())?;
+        let mut own_sounds = session
+            .player_mut()
+            .map(LocalPlayer::take_sounds)
+            .unwrap_or_default();
+        own_sounds.extend(session.take_world_sounds());
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle_local(own_sounds);
+        }
         self.animated_atlas.tick();
         if let Some(player) = session.player() {
             self.camera.tick(player);

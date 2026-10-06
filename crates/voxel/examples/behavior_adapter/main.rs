@@ -25195,6 +25195,37 @@ fn respond(request: Value) -> Result<Value, String> {
             "packets" => sound_packets_result(&request)?,
             "decode" => sound_decode_result(&request)?,
             "engine" => sound_engine_result(&request)?,
+            "block_sounds" => {
+                let bits = |value: f32| format!("{:08x}", value.to_bits());
+                let mut rows: Vec<Value> = voxel_data::block_sound::sound_types()
+                    .map(|row| {
+                        json!({"label": format!("type:{}", row.name), "kind": "type", "name": row.name,
+                            "volume": bits(row.volume), "pitch": bits(row.pitch),
+                            "break": row.break_sound(), "step": row.step_sound(), "place": row.place_sound(),
+                            "hit": row.hit_sound(), "fall": row.fall_sound()})
+                    })
+                    .collect();
+                let overrides: Vec<(u32, &str)> = voxel_data::block_sound::state_overrides()
+                    .map(|(state, row)| (state, row.name))
+                    .collect();
+                for (name, row) in voxel_data::block_sound::blocks() {
+                    let own: Vec<Value> = overrides
+                        .iter()
+                        .filter(|(state, _)| {
+                            voxel_world::block::state_or_air(i64::from(*state))
+                                .block()
+                                .name
+                                == name
+                        })
+                        .map(|(state, type_name)| json!([state, type_name]))
+                        .collect();
+                    rows.push(
+                        json!({"label": format!("block:{name}"), "kind": "block", "name": name,
+                        "type": row.name, "overrides": own}),
+                    );
+                }
+                json!({"rows": rows})
+            }
             _ => sound_registry_result(&request)?,
         },
         _ => return Err("unknown behavior family".into()),

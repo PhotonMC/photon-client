@@ -16,6 +16,7 @@ use voxel_game::sounds::{
     SoundCommand, SoundEntityPacket, SoundHolder, SoundRegistry, SoundSource,
 };
 use voxel_world::ClientWorld;
+use voxel_world::local_player::LocalSoundSource;
 
 /// The asset index's objects: the sound files and `sounds.json` are kept by the hash of their content.
 struct IndexedAssets {
@@ -67,6 +68,7 @@ pub struct SoundSystem {
     mixer: Arc<Mutex<voxel_audio::mixer::Mixer>>,
     _output: Output,
     followed: Followed,
+    local_sounds: u32,
 }
 
 impl SoundSystem {
@@ -108,6 +110,7 @@ impl SoundSystem {
             mixer: Arc::clone(&output.mixer),
             _output: output,
             followed: Arc::new(Mutex::new(HashMap::new())),
+            local_sounds: 0,
         })
     }
 
@@ -127,6 +130,30 @@ impl SoundSystem {
                     .engine
                     .stop_matching(packet.name.as_deref(), packet.source),
             }
+        }
+    }
+
+    /// How many sounds the local player has made.
+    pub fn local_sound_count(&self) -> u32 {
+        self.local_sounds
+    }
+
+    /// The sounds the local player made by moving (`Level.playLocalSound`): played where they were made.
+    pub fn handle_local(&mut self, sounds: Vec<voxel_world::local_player::LocalSound>) {
+        for sound in sounds {
+            self.local_sounds += 1;
+            let source = match sound.source {
+                LocalSoundSource::Players => SoundSource::Players,
+                LocalSoundSource::Blocks => SoundSource::Blocks,
+            };
+            // The reference draws the seed from the level's own random source.
+            let seed = i64::from(self.local_sounds).wrapping_mul(0x5DEE_CE66_D1CE_4E5B);
+            let mut instance = SoundInstance::new(sound.event, source, RandomSource::create(seed));
+            instance.volume = sound.volume;
+            instance.pitch = sound.pitch;
+            instance.position = sound.position;
+            let id = self.engine.add(instance);
+            self.engine.play(id);
         }
     }
 

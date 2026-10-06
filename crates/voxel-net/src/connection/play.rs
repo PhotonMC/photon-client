@@ -240,6 +240,11 @@ impl PlaySession {
         &self.trace.world
     }
 
+    /// The sounds the world's events and the player's own blocks made since the last call.
+    pub fn take_world_sounds(&mut self) -> Vec<voxel_world::local_player::LocalSound> {
+        self.trace.world.take_sounds()
+    }
+
     /// Where an entity is drawn between two ticks.
     pub fn entity_snapshot(
         &self,
@@ -1652,6 +1657,16 @@ impl PlaySession {
                 self.status.health = packet.health;
                 self.status.food = packet.food;
                 self.status.saturation = packet.saturation;
+            }
+            PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID => {
+                let mut input = payload;
+                let event = read_level_event_packet(&mut input)?;
+                if !input.is_empty() {
+                    return Err(ConnectionError::Codec("level event trailing payload"));
+                }
+                self.trace
+                    .world
+                    .apply_level_event(event.event, event.pos, event.data);
             }
             PLAY_CLIENTBOUND_SOUND_PACKET_ID
             | PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID

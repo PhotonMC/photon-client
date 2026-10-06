@@ -118,6 +118,7 @@ pub(crate) const PLAY_CLIENTBOUND_LOGIN_PACKET_ID: i32 = 49;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID: i32 = 72;
 pub(crate) const PLAY_CLIENTBOUND_RESPAWN_PACKET_ID: i32 = 82;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID: i32 = 68;
+pub(crate) const PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID: i32 = 46;
 pub(crate) const PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID: i32 = 116;
 pub(crate) const PLAY_CLIENTBOUND_SOUND_PACKET_ID: i32 = 117;
 pub(crate) const PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID: i32 = 119;
@@ -3304,6 +3305,29 @@ pub(crate) fn parse_player_combat_kill_packet(
     let mut input = input;
     let id = read_varint(&mut input, "combat kill player id")?;
     Ok((id, read_chat_component(&mut input, "combat kill message")?))
+}
+
+/// `ClientboundLevelEventPacket`: an event of the level at a place.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LevelEvent {
+    pub event: i32,
+    pub pos: (i32, i32, i32),
+    pub data: i32,
+    pub global: bool,
+}
+
+/// `ClientboundLevelEventPacket`, read from the front of `input`.
+pub fn read_level_event_packet(input: &mut &[u8]) -> Result<LevelEvent, ConnectionError> {
+    let event = read_i32(input, "level event")?;
+    let pos = voxel_core::binary::BlockPos::unpack(read_i64(input, "level event position")? as u64);
+    let data = read_i32(input, "level event data")?;
+    let global = read_bool(input, "level event global")?;
+    Ok(LevelEvent {
+        event,
+        pos: (pos.x, pos.y, pos.z),
+        data,
+        global,
+    })
 }
 
 /// `SoundEvent.STREAM_CODEC`: a registry place plus one, or zero and the event whole.
