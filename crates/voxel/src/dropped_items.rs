@@ -64,17 +64,41 @@ pub fn dropped_items(
     vertices
 }
 
+/// The layers of the items in the world, by the display context they are drawn in.
+pub struct WorldItemLayers {
+    ground: ItemLayerCache,
+    frames: ItemLayerCache,
+}
+
+impl WorldItemLayers {
+    pub fn new() -> Self {
+        Self {
+            ground: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
+            frames: ItemLayerCache::new(voxel_render::model::DisplayContext::Fixed),
+        }
+    }
+}
+
 /// The triangles of every item in the world as the ground shows it: those lying about and those
-/// thrown or shot through the air.
+/// thrown or shot through the air, and those in item frames.
 pub fn world_items(
     session: &PlaySession,
-    layers: &mut ItemLayerCache,
+    layers: &mut WorldItemLayers,
     tints: (&BlockRenderer, &BiomeTints),
     view: FrameView,
 ) -> Vec<Vertex> {
-    let mut items = dropped_items(session, layers, tints, view);
+    let mut items = dropped_items(session, &mut layers.ground, tints, view);
     items.extend(crate::thrown_items::thrown_items(
-        session, layers, tints, view,
+        session,
+        &mut layers.ground,
+        tints,
+        view,
+    ));
+    items.extend(crate::item_frames::item_frames(
+        session,
+        &mut layers.frames,
+        tints,
+        view,
     ));
     items
 }

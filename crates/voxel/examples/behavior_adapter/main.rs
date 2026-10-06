@@ -23033,6 +23033,41 @@ fn minecart_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `item_frame_pose`: the poses an item frame's model and the item in it are drawn from.
+fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::item_frame::item_frame_poses;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let bits = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let direction = voxel_core::direction::Direction::from_name(string(row, "direction")?)
+            .ok_or("unknown direction")?;
+        let invisible = row["invisible"].as_bool().ok_or("invisible")?;
+        let mut base = voxel_render::joml::Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let poses = item_frame_poses(&base, direction, invisible, i32_field(row, "rotation")?);
+        // The frame's model first, if it has one, then the item.
+        let mut described = Vec::new();
+        if let Some(frame) = poses.frame {
+            described.push(matrix_bits(&frame));
+        }
+        if row["item"].as_bool() == Some(true) {
+            // The item's layer, which has no transform of its own here, centres its model.
+            let mut item = poses.item;
+            item.translate(-0.5, -0.5, -0.5);
+            described.push(matrix_bits(&item));
+        }
+        out.push(json!({"label": row["label"], "poses": described}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -25262,6 +25297,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "guardian_beam" => return guardian_beam_result(request),
         "dragon_rays" => return dragon_rays_result(request),
         "minecart_pose" => return minecart_pose_result(request),
+        "item_frame_pose" => return item_frame_pose_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),

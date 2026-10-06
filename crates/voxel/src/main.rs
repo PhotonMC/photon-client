@@ -33,6 +33,7 @@ mod held_items;
 mod hoglins;
 mod hud_input;
 mod illagers;
+mod item_frames;
 mod item_layers;
 mod leashes;
 mod lightning_bolts;

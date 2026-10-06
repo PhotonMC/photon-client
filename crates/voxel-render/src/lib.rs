@@ -22,6 +22,7 @@ pub mod guardian_beam;
 pub mod gui;
 pub mod held_item;
 pub mod item_entity;
+pub mod item_frame;
 pub mod item_model;
 pub mod joml;
 pub mod keyframe;

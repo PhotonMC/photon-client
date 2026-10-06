@@ -98,10 +98,19 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
             || entity.thrown_item_look().is_some()
             || voxel_data::entity_type::id("minecraft:firework_rocket") == Some(entity.type_id)
     });
+    // An item frame keeps its item after the direction `HangingEntity` has.
+    let is_frame = world
+        .entity_at(packet.entity_id)
+        .is_some_and(|entity| entity.is_item_frame());
+    let stack_data_id = if is_frame {
+        voxel_world::ITEM_FRAME_ITEM_DATA_ID
+    } else {
+        ITEM_ENTITY_STACK_DATA_ID
+    };
     if applied
-        && is_item
+        && (is_item || is_frame)
         && let Some((ITEM_STACK_SERIALIZER_ID, value)) =
-            voxel_world::entity_metadata_field(&packet.metadata, ITEM_ENTITY_STACK_DATA_ID)
+            voxel_world::entity_metadata_field(&packet.metadata, stack_data_id)
     {
         world.apply_entity_item_stack(
             packet.entity_id,

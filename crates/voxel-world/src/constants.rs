@@ -348,3 +348,8 @@ pub(crate) const SHARED_FLAG_FALL_FLYING: u8 = 7;
 /// direction before it), and the serializer that carries it.
 pub const PAINTING_VARIANT_DATA_ID: u8 = 9;
 pub const PAINTING_VARIANT_SERIALIZER_ID: i32 = 34;
+
+/// Where an item frame's item and its turn sit among its data (`HangingEntity` has the direction
+/// before them).
+pub const ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
+pub const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;

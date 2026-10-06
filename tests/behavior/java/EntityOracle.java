@@ -2772,6 +2772,60 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the reference's own item frame renderer draws a frame's model and the item in it, from
+     * the state its extraction makes (no map data here: the map's drawing is not asked).
+     */
+    private static JsonObject itemFramePose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.ItemFrameRenderState();
+            state.direction = net.minecraft.core.Direction.byName(row.get("direction").getAsString());
+            state.isInvisible = row.get("invisible").getAsBoolean();
+            state.rotation = row.get("rotation").getAsInt();
+            state.isGlowFrame = row.get("glow").getAsBoolean();
+            if (!state.isInvisible) {
+                var parts = state.frameModel.setupModel(new org.joml.Matrix4f(), false);
+                parts.add((net.minecraft.client.renderer.block.dispatch.BlockStateModelPart)
+                    java.lang.reflect.Proxy.newProxyInstance(EntityOracle.class.getClassLoader(),
+                        new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
+                        (proxy, method, args) -> null));
+            }
+            if (row.get("item").getAsBoolean()) {
+                state.item.newLayer();
+            }
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ItemFrameRenderer.class);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitBlockModel") || method.getName().equals("submitItem")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            ((net.minecraft.client.renderer.entity.ItemFrameRenderer<?>) renderer).submit(state, stack, collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -4973,6 +5027,9 @@ public final class EntityOracle {
         }
         if (operation.equals("minecart_pose")) {
             return minecartPose(request);
+        }
+        if (operation.equals("item_frame_pose")) {
+            return itemFramePose(request);
         }
         if (operation.equals("arrow_pose")) {
             return arrowPose(request);

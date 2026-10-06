@@ -16,7 +16,7 @@ use crate::animated_atlas::AnimatedAtlas;
 use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
 use crate::controls::Controls;
-use crate::dropped_items::world_items;
+use crate::dropped_items::{WorldItemLayers, world_items};
 use crate::falling_blocks::falling_blocks;
 use crate::fishing_hooks::{HookView, fishing_hooks};
 use crate::gui::Gui;
@@ -111,7 +111,7 @@ struct Play {
     /// The other players' models, and which default skin the local player wears.
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
-    ground_layers: ItemLayerCache,
+    item_layers: WorldItemLayers,
     /// What humanoids wear.
     armor: Armor,
     /// The layers of what humanoids hold, in the right and the left hand.
@@ -286,7 +286,7 @@ impl Play {
             player_model: voxel_render::player_model::PlayerModel::new(skin.slim),
             remote_models: overlays::RemoteModels::new(),
             mob_models: mobs::MobModels::new(),
-            ground_layers: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
+            item_layers: WorldItemLayers::new(),
             armor,
             worn_layers: [
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonRightHand),
@@ -678,7 +678,7 @@ impl Play {
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
-        let mut items = world_items(&self.session, &mut self.ground_layers, tints, view);
+        let mut items = world_items(&self.session, &mut self.item_layers, tints, view);
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
         self.backend.set_ground_items(&items)?;
         let moving = falling_blocks(&self.session, tints, view);

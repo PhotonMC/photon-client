@@ -15877,6 +15877,7 @@ def entity_cases():
     yield from entity_end_crystal_cases()
     yield from entity_crystal_beam_cases()
     yield from entity_minecart_pose_cases()
+    yield from entity_item_frame_pose_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
     yield from entity_charge_cases()
@@ -17633,6 +17634,23 @@ def entity_minecart_pose_cases():
         new_render.append(row)
     rows += new_render
     yield {"case_id": "entity/minecart-pose", "family": "entity", "operation": "minecart_pose", "rows": rows}
+
+
+def entity_item_frame_pose_cases():
+    """Where the reference's own item frame renderer draws a frame's model and the item in it, for
+    each way it faces (the four around, and up and down, which turn by an axis), with and without
+    the frame (an invisible one hangs the item further out) and the item turned by each eighth."""
+    def frame(label, direction, invisible=False, rotation=0, item=True, glow=False,
+              feet=(10.5, 64.25, -3.5)):
+        return {"label": f"item-frame-{label}", "direction": direction, "invisible": invisible,
+                "rotation": rotation, "item": item, "glow": glow, "feet_x": float_bits(feet[0]),
+                "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
+    rows = [frame(direction, direction) for direction in ["north", "south", "west", "east", "up", "down"]]
+    rows += [frame(f"turned-{turn}", "east", rotation=turn) for turn in range(8)]
+    rows += [frame("empty", "north", item=False), frame("invisible", "south", invisible=True),
+             frame("invisible-up", "up", invisible=True, rotation=3),
+             frame("far", "down", rotation=5, feet=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/item-frame-pose", "family": "entity", "operation": "item_frame_pose", "rows": rows}
 
 
 def entity_arrow_cases():

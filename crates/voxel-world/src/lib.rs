@@ -3570,6 +3570,7 @@ impl ClientWorld {
                 arrow: None,
                 evoker_fangs: None,
                 primed_tnt: None,
+                item_frame_rotation: 0,
                 lightning: None,
                 leash_holder_id: 0,
                 lightning_done: false,
@@ -4762,6 +4763,12 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
         state.hurt_dir = hurt.hurt_dir.unwrap_or(state.hurt_dir);
         state.damage = hurt.damage.unwrap_or(state.damage);
         data.apply(state);
+    }
+    if entity.is_item_frame()
+        && let Some(rotation) = metadata_int_value(metadata, constants::ITEM_FRAME_ROTATION_DATA_ID)
+    {
+        // `ItemFrame.setRotation`'s data holds the turn below eight.
+        entity.item_frame_rotation = rotation;
     }
     if entity.is_end_crystal() {
         let (beam_target, show_bottom) = end_crystal_data_from_metadata(metadata);

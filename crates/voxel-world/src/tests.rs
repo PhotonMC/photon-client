@@ -7087,3 +7087,30 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     assert!(world.apply_entity_event(9, 2));
     assert_eq!(since(&world), 0.5);
 }
+
+/// An item frame's turn comes from its data (after the direction `HangingEntity` has), and only an
+/// item frame keeps it.
+#[test]
+fn an_item_frame_keeps_the_turn_of_its_item() {
+    let mut world = ClientWorld::new(DimensionBounds::default());
+    for (id, name) in [
+        (1, "minecraft:item_frame"),
+        (2, "minecraft:glow_item_frame"),
+    ] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: id,
+            uuid: Uuid::new(0, id as u64),
+            type_id: voxel_data::entity_type::id(name).expect("an item frame"),
+            x: 3.0,
+            y: 64.0,
+            z: 3.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 2,
+        }));
+        assert!(world.apply_entity_metadata(id, &[10, 1, 5, 255]));
+        let frame = world.entity_at(id).expect("the frame");
+        assert!(frame.is_item_frame());
+        assert_eq!(frame.item_frame_rotation(), 5);
+    }
+}

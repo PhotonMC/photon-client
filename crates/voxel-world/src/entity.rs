@@ -780,6 +780,8 @@ pub struct ClientEntity {
     /// Evoker fangs' bite, made when the server first says they bite or they first tick.
     pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
+    /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
+    pub(crate) item_frame_rotation: i32,
     pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
     /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
     pub(crate) leash_holder_id: i32,
@@ -2619,6 +2621,19 @@ impl ClientEntity {
 
     pub(crate) fn lightning_finished(&self) -> bool {
         self.lightning_done
+    }
+
+    /// Whether this is an item frame or a glow item frame (`ItemFrame`).
+    pub fn is_item_frame(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:item_frame" | "minecraft:glow_item_frame")
+        )
+    }
+
+    /// `ItemFrame.getRotation`.
+    pub fn item_frame_rotation(&self) -> i32 {
+        self.item_frame_rotation
     }
 
     /// Whether this is a block of primed tnt (`PrimedTnt`).

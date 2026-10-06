@@ -43,13 +43,20 @@ pub struct BlockRenderer {
     items: Vec<Option<crate::item_model::ClientItem>>,
     /// The alpha of every texture a flat item extrudes, with its size.
     layer_alpha: BTreeMap<String, crate::item_model::LayerAlpha>,
-    /// What each block state draws, by state id.
+    /// What each block state draws, by state id; after the registry's come the item frames'
+    /// fake states ([`Self::item_frame_state`]).
     states: Vec<StateRender>,
+    /// The id of the first fake state (the number of states the registry has).
+    frame_base: u32,
     /// The block atlas, with the fluid and sky sprites too.
     pub atlas: BuiltAtlas,
     /// Blocks or models that could not be prepared, with why.
     pub skipped: Vec<(String, String)>,
 }
+
+/// The blockstate files that name no block: the item frames' (`BlockStateDefinitions`), each with
+/// a `map` property.
+const ITEM_FRAME_FILES: [&str; 2] = ["minecraft:item_frame", "minecraft:glow_item_frame"];
 
 /// What one block state draws, worked out once at load rather than for
 /// every block.
@@ -306,6 +313,68 @@ fn state_lists(
     per_block.into_iter().flatten().unzip()
 }
 
+/// The item frames' blockstate files, with the models they name read ahead.
+fn item_frame_files(
+    source: &impl AssetSource,
+    model_cache: &mut crate::resolve::ModelCache,
+) -> Vec<Option<crate::blockstate::BlockStateFile>> {
+    let files: Vec<_> = ITEM_FRAME_FILES
+        .iter()
+        .map(|name| {
+            Identifier::parse(name)
+                .ok()
+                .and_then(|name| source.block_state(&name))
+                .and_then(|text| crate::blockstate::parse_block_state(&text))
+        })
+        .collect();
+    model_cache.prefetch(
+        source,
+        files
+            .iter()
+            .flatten()
+            .flat_map(variant_lists)
+            .flatten()
+            .map(|variant| variant.model.clone()),
+    );
+    files
+}
+
+/// The models the item frames' variants name, added to `models`.
+fn add_item_frame_models(
+    files: &[Option<crate::blockstate::BlockStateFile>],
+    (source, model_cache): (&impl AssetSource, &mut crate::resolve::ModelCache),
+    models: &mut BTreeMap<String, ResolvedModel>,
+) {
+    for variant in files.iter().flatten().flat_map(variant_lists).flatten() {
+        if let std::collections::btree_map::Entry::Vacant(slot) =
+            models.entry(variant.model.as_string())
+            && let Ok(model) = model_cache.resolve(source, &variant.model)
+        {
+            slot.insert(model);
+        }
+    }
+}
+
+/// The item frames' fake states after the registry's: each file's `map=false` then `map=true`.
+fn add_item_frame_states(
+    files: &[Option<crate::blockstate::BlockStateFile>],
+    pending: &mut Vec<PendingState>,
+    air: &mut Vec<bool>,
+) {
+    for file in files {
+        for map in [false, true] {
+            let properties = BTreeMap::from([("map".to_owned(), map.to_string())]);
+            pending.push(file.as_ref().map(|file| {
+                (
+                    file.matched_lists(&properties),
+                    StateTints::Fixed(Vec::new()),
+                )
+            }));
+            air.push(false);
+        }
+    }
+}
+
 /// Every item's client item definition, the models its layers name in any
 /// display context (added to `models`), the alpha of every flat item's
 /// layers and the sprites no element names.
@@ -441,6 +510,7 @@ impl BlockRenderer {
                 .flatten()
                 .map(|variant| variant.model.clone()),
         );
+        let frame_files = item_frame_files(source, &mut model_cache);
         let mut blockstates = BTreeMap::new();
         let mut models: BTreeMap<String, ResolvedModel> = BTreeMap::new();
         let mut skipped: Vec<(String, String)> = Vec::new();
@@ -473,7 +543,10 @@ impl BlockRenderer {
             }
             blockstates.insert(block.name.to_owned(), file);
         }
-        let (pending, air) = state_lists(&blockstates);
+        add_item_frame_models(&frame_files, (source, &mut model_cache), &mut models);
+        let (mut pending, mut air) = state_lists(&blockstates);
+        let frame_base = pending.len() as u32;
+        add_item_frame_states(&frame_files, &mut pending, &mut air);
         let (items, layer_alpha, layer_sprites) =
             item_models(source, &mut model_cache, &mut models);
         let ordered: Vec<&ResolvedModel> = models.values().collect();
@@ -495,9 +568,16 @@ impl BlockRenderer {
             items,
             layer_alpha,
             states,
+            frame_base,
             atlas,
             skipped,
         })
+    }
+
+    /// The fake state an item frame's model is drawn from (`BlockStateDefinitions.getItemFrameFakeState`),
+    /// for [`Self::entity_block`].
+    pub fn item_frame_state(&self, glowing: bool, map: bool) -> u32 {
+        self.frame_base + u32::from(glowing) * 2 + u32::from(map)
     }
 
     /// The quads an item's default stack draws in a display context, layer
@@ -674,7 +754,12 @@ impl BlockRenderer {
                 });
             }
         });
-        let info = voxel_world::block::state_or_air(i64::from(state_id));
+        // A fake state is of air: it gives off no light.
+        let info = voxel_world::block::state_or_air(if state_id >= self.frame_base {
+            0
+        } else {
+            i64::from(state_id)
+        });
         Some((
             ItemLayer {
                 mesh,
