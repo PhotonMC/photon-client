@@ -766,6 +766,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     row["in_world"].as_bool().unwrap_or(false),
                     gui_scale,
                     max_scale,
+                    voxel_game::options::AttackIndicator::Crosshair,
                 );
                 let mut last = (0.0, 0.0);
                 let mut clock = 0_u64;
@@ -1125,6 +1126,61 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     row["mouse"][1].as_i64().unwrap_or(0) as i32,
                 );
                 screen.draw(&mut frame, &atlas, &font, mouse);
+            }
+            "hud_hotbar" => {
+                use voxel_render::gui::hud::{Hud, HudInput};
+                let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+                let speed = row["attack_speed"].as_f64().unwrap_or(4.0);
+                let delay = voxel_world::local_player::attack_strength_delay(speed);
+                let ticks = row["attack_ticks"].as_i64().unwrap_or(0) as f32;
+                let attack_indicator =
+                    voxel_game::options::AttackIndicator::ALL[int("attack_indicator") as usize];
+                let input = HudInput {
+                    first_person: !flag("third_person"),
+                    spectator: flag("spectator"),
+                    // The reference draws the crosshair and the hotbar alone here.
+                    survival: false,
+                    selected_slot: int("selected_slot"),
+                    health: 20.0,
+                    max_health: 20.0,
+                    absorption: 0.0,
+                    invulnerable_time: 0,
+                    heart_type: voxel_render::gui::HeartType::Normal,
+                    regeneration: false,
+                    hardcore: false,
+                    armor: 0,
+                    food: 20,
+                    saturation: 5.0,
+                    hunger: false,
+                    air_supply: 300,
+                    max_air_supply: 300,
+                    eye_in_water: false,
+                    experience_progress: 0.0,
+                    experience_level: 0,
+                    experience_prioritised: false,
+                    locator: None,
+                    attack_strength: (ticks / delay).clamp(0.0, 1.0),
+                    attack_delay: delay,
+                    attack_indicator,
+                    target_is_living: row["target"] == "living",
+                    hotbar: Default::default(),
+                    offhand: None,
+                };
+                let mut draw_item =
+                    |_: &voxel_world::ClientItemStackState,
+                     _: f32,
+                     _: f32,
+                     _: &mut Vec<voxel_render::gui::GuiItemVertex>| {};
+                Hud::default().draw(
+                    &mut frame,
+                    &atlas,
+                    &font,
+                    int("width"),
+                    int("height"),
+                    &input,
+                    0,
+                    &mut draw_item,
+                );
             }
             "boss_bar" => {
                 use voxel_render::gui::boss_bar::BossBars;

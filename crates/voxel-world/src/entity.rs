@@ -1058,6 +1058,11 @@ impl ClientEntity {
         );
     }
 
+    /// Whether the type is a `LivingEntity`.
+    pub fn is_living_entity(&self) -> bool {
+        self.living_kind().is_some()
+    }
+
     /// Which kind of living entity this is, as far as its drawn pose goes.
     pub(crate) fn living_kind(&self) -> Option<LivingKind> {
         if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {

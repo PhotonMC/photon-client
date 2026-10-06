@@ -1,7 +1,9 @@
 # HUD
 
-Kanıt sınıfı: `client-parity` (yerleşim referansın `Hud` sınıfından
-taşındı; çizilen karelerle karşılaştırılmadı).
+Kanıt sınıfı: `client-parity` (artı işareti, saldırı göstergesi ve kısayol
+çubuğu gerçek `Hud`'ın çizdiği karelerle karşılaştırıldı (`hud_hotbar`,
+[GUI oracle](gui-oracle.md)); kalan öğelerin yerleşimi referansın `Hud`
+sınıfından taşındı ve karelerle karşılaştırılmadı).
 
 ## Çizim
 
@@ -43,9 +45,18 @@ artı işareti arkasını ters çeviren karışımla (`1 - hedef` ve `1 - kaynak
   sprite'larıyla çiziliyor.
 - **Hava baloncukları:** Suyun altındayken ya da hava eksikken, patlayan
   baloncuk ve boş baloncuklarla.
-- **Artı işaretinin altında saldırı göstergesi:** Saldırı gücü dolmamışken
-  çiziliyor (varsayılan seçenek). Canlı hedeflenmediği için "tam"
-  göstergesi çıkmıyor.
+- **Saldırı göstergesi:** `attackIndicator` seçeneğine göre (Video
+  ayarlarından değişir, `options.txt`'e yazılır) artı işaretinin altında,
+  kısayol çubuğunun yanında ya da hiç çizilmiyor. Saldırı gücü dolmamışken
+  ilerleme çiziliyor; dolmuşken artı işareti canlı ve ölmemiş bir varlığın
+  üzerindeyse ve saldırı gecikmesi 5 tikten uzunsa (yavaş silah) "tam"
+  gösterge çıkıyor. Oracle: saldırı gücü 0'dan doluya, iki saldırı hızı, dört
+  hedef türü, izleyici, üçüncü şahıs ve pencere boyutları. Açık: eşyanın
+  kendi saldırı menzili (mızrak; hedef menzil dışındaysa tam gösterge
+  çıkmaz), sol elini kullanan oyuncu (kısayol çubuğundaki gösterge ve
+  yan el simgesi karşı tarafta), izleyicinin menülü bir bloğa/varlığa
+  baktığında artı işareti, üç boyutlu artı işareti hata ayıklama girdisi,
+  yan elde eşya.
 
 Veriler:
 

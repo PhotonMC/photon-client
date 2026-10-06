@@ -526,6 +526,7 @@ public final class GuiOracle {
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "name_tags" -> nameTags(request);
+                case "hud_hotbar" -> hudHotbar(request);
                 case "confirm_screen" -> confirmScreen(request);
                 case "widgets" -> widgets(request);
                 case "options_screen" -> optionsScreen(request);
@@ -1325,6 +1326,101 @@ public final class GuiOracle {
         }
         entry.add("submits", submits);
         return entry;
+    }
+
+    /**
+     * The game's own crosshair and hotbar (`Hud.extractCrosshair`, then `extractItemHotbar` for
+     * a player who is not spectating) for a real local player: its attack strength, the attack
+     * indicator option, the game mode, the camera and what the crosshair is on.
+     */
+    private static JsonObject hudHotbar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            MovementOracle.bootstrap();
+            var empty = new JsonObject();
+            empty.add("blocks", new JsonArray());
+            empty.addProperty("chunk_radius", 0);
+            var scene = MovementOracle.buildScene(empty);
+            var level = scene.level();
+            var minecraft = scene.minecraft();
+            var screen = prepare(minecraft, row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var options = minecraft.options;
+            options.attackIndicator().set(net.minecraft.client.AttackIndicatorStatus.values()[
+                row.get("attack_indicator").getAsInt()]);
+            if (row.get("third_person").getAsBoolean()) {
+                options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+            }
+
+            var local = new net.minecraft.client.player.LocalPlayer(
+                minecraft, level, scene.listener(), null, null,
+                net.minecraft.world.entity.player.Input.EMPTY, false, null);
+            local.setId(1);
+            var info = new net.minecraft.client.multiplayer.PlayerInfo(scene.listener().getLocalGameProfile(), false);
+            var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+                "setGameMode", net.minecraft.world.level.GameType.class);
+            setMode.setAccessible(true);
+            setMode.invoke(info, row.get("spectator").getAsBoolean()
+                ? net.minecraft.world.level.GameType.SPECTATOR : net.minecraft.world.level.GameType.SURVIVAL);
+            MovementOracle.setField(local, "playerInfo", info);
+            local.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_SPEED)
+                .setBaseValue(row.get("attack_speed").getAsDouble());
+            MovementOracle.setField(local, "attackStrengthTicker", row.get("attack_ticks").getAsInt());
+            local.getInventory().setSelectedSlot(row.get("selected_slot").getAsInt());
+            MovementOracle.setField(minecraft, "player", local);
+            var mode = unsafe.allocateInstance(net.minecraft.client.multiplayer.MultiPlayerGameMode.class);
+            MovementOracle.setField(mode, "localPlayerMode", row.get("spectator").getAsBoolean()
+                ? net.minecraft.world.level.GameType.SPECTATOR : net.minecraft.world.level.GameType.SURVIVAL);
+            MovementOracle.setField(minecraft, "gameMode", mode);
+            var entries = unsafe.allocateInstance(net.minecraft.client.gui.components.debug.DebugScreenEntryList.class);
+            MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
+            MovementOracle.setField(minecraft, "debugEntries", entries);
+
+            // The camera is the player's; the game renderer holds it.
+            var camera = new net.minecraft.client.Camera();
+            camera.setEntity(local);
+            var gameRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            MovementOracle.setField(gameRenderer, "mainCamera", camera);
+            MovementOracle.setField(minecraft, "gameRenderer", gameRenderer);
+
+            // What the crosshair is on.
+            net.minecraft.world.entity.Entity target = switch (row.get("target").getAsString()) {
+                case "none" -> null;
+                case "living" -> new net.minecraft.world.entity.animal.pig.Pig(
+                    net.minecraft.world.entity.EntityTypes.PIG, level);
+                case "dead" -> {
+                    var pig = new net.minecraft.world.entity.animal.pig.Pig(
+                        net.minecraft.world.entity.EntityTypes.PIG, level);
+                    pig.setHealth(0.0F);
+                    yield pig;
+                }
+                case "item" -> new net.minecraft.world.entity.item.ItemEntity(level, 0.0, 0.0, 0.0,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STONE));
+                default -> throw new IllegalArgumentException(row.get("target").getAsString());
+            };
+            MovementOracle.setField(minecraft, "crosshairPickEntity", target);
+
+            var graphics = screen.graphics();
+            var hud = screen.hud();
+            var tracker = net.minecraft.client.DeltaTracker.ZERO;
+            var crosshair = net.minecraft.client.gui.Hud.class.getDeclaredMethod(
+                "extractCrosshair", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
+            crosshair.setAccessible(true);
+            crosshair.invoke(hud, graphics, tracker);
+            if (!row.get("spectator").getAsBoolean()) {
+                var hotbar = net.minecraft.client.gui.Hud.class.getDeclaredMethod(
+                    "extractItemHotbar", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
+                hotbar.setAccessible(true);
+                hotbar.invoke(hud, graphics, tracker);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
     }
 
     private static JsonObject nameTags(JsonObject request) throws Exception {

@@ -7,6 +7,7 @@ use super::atlas::GuiAtlas;
 use super::frame::{GuiBlend, GuiFrame, ItemDrawer};
 use super::locator::{self, LocatorInput, WaypointStyles};
 use voxel_core::random::RandomSource;
+use voxel_game::options::AttackIndicator;
 
 /// Which hearts the player's health is drawn with: `Hud.HeartType`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +88,13 @@ pub struct HudInput {
     pub locator: Option<LocatorInput>,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
+    /// `getCurrentItemAttackStrengthDelay`, in ticks.
+    pub attack_delay: f32,
+    /// The `attackIndicator` option.
+    pub attack_indicator: AttackIndicator,
+    /// The crosshair is on a living entity that is alive
+    /// (`crosshairPickEntity`).
+    pub target_is_living: bool,
     /// The hotbar's stacks and the off hand's.
     pub hotbar: [Option<voxel_world::ClientItemStackState>; 9],
     pub offhand: Option<voxel_world::ClientItemStackState>,
@@ -136,8 +144,9 @@ impl Hud {
         clippy::too_many_arguments,
         reason = "mirrors the parameters of the reference's `GuiGraphics` call"
     )]
-    pub fn build(
+    pub fn draw(
         &mut self,
+        frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &crate::gui::font::Font,
         width: i32,
@@ -145,34 +154,32 @@ impl Hud {
         input: &HudInput,
         now_millis: u128,
         draw_item: &mut ItemDrawer<'_>,
-    ) -> GuiFrame {
-        let mut frame = GuiFrame::default();
-        self.crosshair(&mut frame, atlas, width, height, input);
+    ) {
+        self.crosshair(frame, atlas, width, height, input);
         let t = GuiBlend::Translucent;
         let centre = width / 2;
         // `extractItemHotbar`; a spectator's hotbar is its own menu.
         if !input.spectator {
-            frame.blit(atlas, t, "hud/hotbar", centre - 91, height - 22, 182, 22);
-            frame.blit(
+            frame.sprite_blend(atlas, t, "hud/hotbar", (centre - 91, height - 22, 182, 22));
+            frame.sprite_blend(
                 atlas,
                 t,
                 "hud/hotbar_selection",
-                centre - 91 - 1 + input.selected_slot * 20,
-                height - 22 - 1,
-                24,
-                23,
+                (
+                    centre - 91 - 1 + input.selected_slot * 20,
+                    height - 22 - 1,
+                    24,
+                    23,
+                ),
             );
             // The off hand is on the left of a right-handed player, which
             // is the default main arm.
             if input.offhand.is_some() {
-                frame.blit(
+                frame.sprite_blend(
                     atlas,
                     t,
                     "hud/hotbar_offhand_left",
-                    centre - 91 - 29,
-                    height - 23,
-                    29,
-                    24,
+                    (centre - 91 - 29, height - 23, 29, 24),
                 );
             }
             // `extractSlot` for each hotbar slot, then the off hand: the
@@ -198,11 +205,52 @@ impl Hud {
                     );
                 }
             }
+            // The indicator beside the hotbar, on the side of the off hand
+            // (the main arm is the right one).
+            if input.attack_indicator == AttackIndicator::Hotbar && input.attack_strength < 1.0 {
+                let progress = (input.attack_strength * 19.0) as i32;
+                let (x, y) = (centre + 91 + 6, height - 20);
+                frame.sprite_blend(
+                    atlas,
+                    t,
+                    "hud/hotbar_attack_indicator_background",
+                    (x, y, 18, 18),
+                );
+                frame.sprite_region_blend(
+                    atlas,
+                    t,
+                    "hud/hotbar_attack_indicator_progress",
+                    (18, 18),
+                    (0, 18 - progress),
+                    (x, y + 18 - progress, 18, progress),
+                );
+            }
         }
         if input.survival {
-            self.player_health(&mut frame, atlas, width, height, input, now_millis);
+            self.player_health(frame, atlas, width, height, input, now_millis);
         }
-        self.contextual_bar(&mut frame, atlas, font, (width, height), input);
+        self.contextual_bar(frame, atlas, font, (width, height), input);
+    }
+
+    /// `draw` into a new frame.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
+    pub fn build(
+        &mut self,
+        atlas: &GuiAtlas,
+        font: &crate::gui::font::Font,
+        width: i32,
+        height: i32,
+        input: &HudInput,
+        now_millis: u128,
+        draw_item: &mut ItemDrawer<'_>,
+    ) -> GuiFrame {
+        let mut frame = GuiFrame::default();
+        self.draw(
+            &mut frame, atlas, font, width, height, input, now_millis, draw_item,
+        );
         frame
     }
 
@@ -271,9 +319,9 @@ impl Hud {
         }
     }
 
-    /// `Hud.extractCrosshair` with the attack indicator under it, as the
-    /// default option places it. Nothing is picked as an entity yet, so the
-    /// full indicator never shows.
+    /// `Hud.extractCrosshair` with the attack indicator under it when the
+    /// option puts it there. A target in the item's own attack range is not
+    /// told apart: no item sets one yet.
     fn crosshair(
         &self,
         frame: &mut GuiFrame,
@@ -286,38 +334,39 @@ impl Hud {
             return;
         }
         let invert = GuiBlend::Invert;
-        frame.blit(
+        frame.sprite_blend(
             atlas,
             invert,
             "hud/crosshair",
-            (width - 15) / 2,
-            (height - 15) / 2,
-            15,
-            15,
+            ((width - 15) / 2, (height - 15) / 2, 15, 15),
         );
-        if input.attack_strength < 1.0 {
-            let y = height / 2 - 7 + 16;
-            let x = width / 2 - 8;
+        if input.attack_indicator != AttackIndicator::Crosshair {
+            return;
+        }
+        let y = height / 2 - 7 + 16;
+        let x = width / 2 - 8;
+        if input.target_is_living && input.attack_strength >= 1.0 && input.attack_delay > 5.0 {
+            frame.sprite_blend(
+                atlas,
+                invert,
+                "hud/crosshair_attack_indicator_full",
+                (x, y, 16, 16),
+            );
+        } else if input.attack_strength < 1.0 {
             let progress = (input.attack_strength * 17.0) as i32;
-            frame.blit(
+            frame.sprite_blend(
                 atlas,
                 invert,
                 "hud/crosshair_attack_indicator_background",
-                x,
-                y,
-                16,
-                4,
+                (x, y, 16, 4),
             );
-            frame.blit_part(
+            frame.sprite_region_blend(
                 atlas,
                 invert,
                 "hud/crosshair_attack_indicator_progress",
                 (16, 4),
                 (0, 0),
-                x,
-                y,
-                progress,
-                4,
+                (x, y, progress, 4),
             );
         }
     }

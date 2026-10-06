@@ -28,4 +28,7 @@ Hasar yönü göstergesi, ses.
 Küçük; bağımsız. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- İlk gerçek HUD oracle'ı: `hud_hotbar` (`GuiOracle.hudHotbar`: gerçek `LocalPlayer`, `Hud.extractCrosshair` + `extractItemHotbar`, `prepare` sahte atlası); 96 satır, `docs/hud-conformance.md` ve `gui-oracle.md` güncellendi. Sağlık/zırh/yiyecek/deneyim hâlâ oracle'sız.
+- `attackIndicator` seçeneği (`options.txt`, Video ekranı) artık etkili: artı işareti altı / kısayol çubuğu yanı / kapalı; "tam" gösterge (`crosshairPickEntity` canlı ve ölmemiş, gecikme > 5 tik). `Hud::draw(&mut frame, …)` ayrıldı; HUD sprite'ları `sprite_blend` ile günlüğe yazılır, sıfır genişlikli sprite referans gibi atlanır.
+- `PlayerCombatKill` → ölüm ekranı mesajı zaten vardı (`controls.rs`); tepme istemcide hesaplanmıyor (doğrulandı, yapılacak yok).
+- Açık: eşyanın `ATTACK_RANGE`'i (mızrak; `pick.rs` de bunu bilmiyor), sol elini kullanan oyuncu (`mainHand` seçeneği yok), menülü bloğa bakan izleyicide artı işareti, yan elde eşya.

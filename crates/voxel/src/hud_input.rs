@@ -1,9 +1,15 @@
 //! What the HUD shows, read from the session: the player's attributes (by
 //! the registry's ids), effects, stacks and status.
 
+use voxel_game::game_mode::Aim;
+use voxel_game::options::AttackIndicator;
+use voxel_game::pick::pick;
 use voxel_net::connection::PlaySession;
 use voxel_render::gui::locator::{LocatorCamera, LocatorInput, Viewer};
 use voxel_world::ClientPlayerState;
+use voxel_world::local_player::attack_strength_delay;
+
+use crate::view::eye_position;
 
 const ARMOR: i32 = 1;
 const ATTACK_SPEED: i32 = 5;
@@ -44,6 +50,7 @@ pub fn hud_input(
     session: &PlaySession,
     first_person: bool,
     camera: LocatorCamera,
+    attack_indicator: AttackIndicator,
 ) -> voxel_render::gui::HudInput {
     let status = *session.status();
     let game_mode = session.game_mode();
@@ -55,6 +62,18 @@ pub fn hud_input(
             .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
             .cloned()
     };
+    // `Minecraft.crosshairPickEntity`: a living entity the crosshair is on that has not died.
+    let target_is_living = player.is_some_and(|player| {
+        let Aim::Entity { id, .. } = pick(session.world(), player, eye_position(player, 1.0))
+        else {
+            return false;
+        };
+        session
+            .world()
+            .entities()
+            .find(|entity| entity.id() == id)
+            .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
+    });
     voxel_render::gui::HudInput {
         first_person,
         spectator: game_mode == voxel_world::ClientPlayerGameMode::Spectator,
@@ -99,6 +118,9 @@ pub fn hud_input(
         attack_strength: player.map_or(1.0, |player| {
             player.attack_strength_scale(0.0, attack_speed(local))
         }),
+        attack_delay: attack_strength_delay(attack_speed(local)),
+        attack_indicator,
+        target_is_living,
         hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
         offhand: stack(45),
     }

@@ -305,6 +305,7 @@ impl Controls {
             true,
             self.options.gui_scale,
             scale.calculate_scale(0, false),
+            self.options.attack_indicator,
         ));
     }
 
@@ -763,6 +764,7 @@ impl Controls {
             }
             _ => {}
         }
+        self.options.attack_indicator = video.attack_indicator();
         if done {
             self.close_video();
         }

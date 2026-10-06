@@ -1,8 +1,10 @@
 //! The video settings screen (`VideoSettingsScreen`): the display, quality
-//! and preference options in a scrolling list. Only the GUI scale does
-//! anything; the others hold a value on their widget and nothing follows.
+//! and preference options in a scrolling list. Only the GUI scale and the
+//! attack indicator do anything; the others hold a value on their widget and
+//! nothing follows.
 
 use voxel_game::option::{IntRange, SliderableEnum};
+use voxel_game::options::AttackIndicator;
 use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::cycle::CycleButton;
@@ -26,6 +28,7 @@ const TEXTURE_FILTERING: u8 = CUSTOMISING | 1;
 const MAX_ANISOTROPY: u8 = CUSTOMISING | 2;
 const EXCLUSIVE_FULLSCREEN: u8 = 3;
 const GRAPHICS_API: u8 = 4;
+const ATTACK_INDICATOR: u8 = 5;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -386,7 +389,7 @@ fn quality_options() -> Vec<(u8, Build)> {
 }
 
 /// `preferenceOptions`.
-fn preference_options() -> Vec<(u8, Build)> {
+fn preference_options(attack_indicator: AttackIndicator) -> Vec<(u8, Build)> {
     vec![
         (PLAIN, boolean("options.autosaveIndicator", true)),
         (
@@ -394,7 +397,7 @@ fn preference_options() -> Vec<(u8, Build)> {
             boolean_tip("options.vignette", true, "options.vignette.tooltip"),
         ),
         (
-            PLAIN,
+            ATTACK_INDICATOR,
             named(
                 "options.attackIndicator",
                 &[
@@ -402,7 +405,7 @@ fn preference_options() -> Vec<(u8, Build)> {
                     "options.attack.crosshair",
                     "options.attack.hotbar",
                 ],
-                "options.attack.crosshair",
+                attack_indicator.caption_key(),
             ),
         ),
         (
@@ -442,6 +445,7 @@ impl VideoSettingsScreen {
         in_world: bool,
         gui_scale: i32,
         max_gui_scale: i32,
+        attack_indicator: AttackIndicator,
     ) -> Self {
         let screen = SubScreen::new(font, lang, size, "options.videoTitle", in_world, |list| {
             list.add_header(font, lang, "options.video.display.header");
@@ -475,7 +479,7 @@ impl VideoSettingsScreen {
             );
             list.add_small(lang, quality_options());
             list.add_header(font, lang, "options.video.preferences.header");
-            list.add_small(lang, preference_options());
+            list.add_small(lang, preference_options(attack_indicator));
         });
         let style = Style {
             colour: Some(RESTART_COLOUR),
@@ -529,6 +533,16 @@ impl VideoSettingsScreen {
 
     pub fn scroll_amount(&self) -> f64 {
         self.screen.list.scroll_amount()
+    }
+
+    /// What the attack indicator's button says.
+    pub fn attack_indicator(&self) -> AttackIndicator {
+        self.screen
+            .list
+            .find(ATTACK_INDICATOR)
+            .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
+            .and_then(|button| AttackIndicator::from_caption_key(button.value()))
+            .unwrap_or(AttackIndicator::Crosshair)
     }
 
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
@@ -670,7 +684,15 @@ mod tests {
     #[test]
     fn done_leaves_and_a_gui_scale_press_asks_the_window_for_a_size() {
         let Some((font, lang)) = assets() else { return };
-        let mut screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2);
+        let mut screen = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            2,
+            2,
+            AttackIndicator::Crosshair,
+        );
         let mut asked = Vec::new();
         let mut resize = |scale: i32| {
             asked.push(scale);

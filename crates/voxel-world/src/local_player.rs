@@ -780,6 +780,12 @@ pub struct LocalPlayer {
     sent: Vec<ServerboundMovement>,
 }
 
+/// `Player.getCurrentItemAttackStrengthDelay`: the ticks an attack takes to recharge at an
+/// attack speed.
+pub fn attack_strength_delay(attack_speed: f64) -> f32 {
+    (1.0 / attack_speed * 20.0) as f32
+}
+
 impl LocalPlayer {
     /// A player the connection just made, snapped to its spawn pose, with the
     /// game mode's abilities applied.
@@ -1065,7 +1071,7 @@ impl LocalPlayer {
     /// `Player.getAttackStrengthScale`: how far the attack has recharged,
     /// over the attack delay the attack speed sets.
     pub fn attack_strength_scale(&self, partial_tick: f32, attack_speed: f64) -> f32 {
-        let delay = (1.0 / attack_speed * 20.0) as f32;
+        let delay = attack_strength_delay(attack_speed);
         ((self.attack_strength_ticker as f32 + partial_tick) / delay).clamp(0.0, 1.0)
     }
 

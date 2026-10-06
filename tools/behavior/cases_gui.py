@@ -1541,6 +1541,42 @@ def gui_sound_options_cases():
            "rows": rows}
 
 
+def gui_hud_hotbar_cases():
+    """The crosshair, the attack indicator under it or beside the hotbar, and the hotbar, for a
+    real local player: the option's three values, the attack strength from none to full at the
+    default attack speed and a slow weapon's (whose delay is long enough to show the full
+    indicator), what the crosshair is on, the game mode and the camera, the selected slot, and
+    several window sizes."""
+    def row(label, width=427, height=240, indicator=1, ticks=0, speed=4.0, target="none",
+            spectator=False, third_person=False, slot=0):
+        return {"label": label, "width": width, "height": height, "attack_indicator": indicator,
+                "attack_ticks": ticks, "attack_speed": speed, "target": target,
+                "spectator": spectator, "third_person": third_person, "selected_slot": slot}
+
+    rows = []
+    for indicator, name in ((0, "off"), (1, "crosshair"), (2, "hotbar")):
+        for ticks in (0, 1, 2, 3, 4, 5, 9):
+            rows.append(row(f"{name}-fast-{ticks}", indicator=indicator, ticks=ticks))
+        for ticks in (0, 1, 6, 12, 13):
+            rows.append(row(f"{name}-sword-{ticks}", indicator=indicator, ticks=ticks, speed=1.6))
+        for target in ("living", "dead", "item"):
+            for ticks, speed in ((20, 1.6), (6, 1.6), (5, 4.0), (5, 3.9), (6, 3.9)):
+                rows.append(row(f"{name}-{target}-{ticks}-{speed}", indicator=indicator,
+                                ticks=ticks, speed=speed, target=target))
+    rows += [
+        row("slot-0"), row("slot-4", slot=4), row("slot-8", slot=8),
+        row("small", 320, 240), row("wide", 1000, 500), row("odd", 641, 361),
+        row("tiny", 213, 120), row("hotbar-odd", 641, 361, indicator=2, ticks=2, speed=1.6),
+        row("third-person", third_person=True, ticks=2, speed=1.6),
+        row("third-person-hotbar", third_person=True, indicator=2, ticks=2, speed=1.6),
+        row("spectator", spectator=True, ticks=2, speed=1.6),
+        row("spectator-hotbar", spectator=True, indicator=2, ticks=2, speed=1.6),
+        row("slow-speed", speed=0.5, ticks=20), row("fast-speed", speed=20.0, ticks=0),
+        row("hotbar-slow-speed", indicator=2, speed=0.5, ticks=20),
+    ]
+    yield {"case_id": "gui/hud-hotbar", "family": "gui", "operation": "hud_hotbar", "rows": rows}
+
+
 def latin_language_codes():
     """The languages whose names are all in Latin letters, from the asset
     pack's own list: the font's other scripts need fallbacks and the right
@@ -1973,7 +2009,7 @@ def gui_generators():
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
-        gui_mouse_cases(), gui_sound_options_cases(), gui_language_cases(), gui_locator_bar_cases(),
+        gui_mouse_cases(), gui_sound_options_cases(), gui_hud_hotbar_cases(), gui_language_cases(), gui_locator_bar_cases(),
         gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases())
 
 

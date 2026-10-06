@@ -281,6 +281,35 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of a whole sprite.
     pub fn sprite(&mut self, atlas: &GuiAtlas, name: &str, x: i32, y: i32, w: i32, h: i32) {
+        self.sprite_blend(atlas, GuiBlend::Translucent, name, (x, y, w, h));
+    }
+
+    /// `blitSprite` of a whole sprite through a pipeline's blend.
+    pub fn sprite_blend(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        name: &str,
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        self.sprite_region_blend(atlas, blend, name, (w, h), (0, 0), (x, y, w, h));
+    }
+
+    /// `blitSprite` of the part of a sprite `size` big that starts at `uv`
+    /// and is as big as `rect`, drawn at `rect`.
+    pub fn sprite_region_blend(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        name: &str,
+        size: (i32, i32),
+        uv: (i32, i32),
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        // The reference draws nothing for a sprite with no width or height.
+        if w == 0 || h == 0 {
+            return;
+        }
         if let Some(log) = &mut self.log {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
@@ -288,7 +317,7 @@ impl GuiFrame {
                 colour: 0xFFFF_FFFF,
             });
         }
-        self.blit(atlas, GuiBlend::Translucent, name, x, y, w, h);
+        self.blit_part(atlas, blend, name, size, uv, x, y, w, h);
     }
 
     /// `GuiGraphics.blitSprite` of the left `w` by `h` part of a sprite

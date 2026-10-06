@@ -41,6 +41,41 @@ impl ChatVisibility {
     }
 }
 
+/// `AttackIndicatorStatus`: where the attack strength is shown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttackIndicator {
+    Off,
+    Crosshair,
+    Hotbar,
+}
+
+impl AttackIndicator {
+    pub const ALL: [Self; 3] = [Self::Off, Self::Crosshair, Self::Hotbar];
+
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Off => 0,
+            Self::Crosshair => 1,
+            Self::Hotbar => 2,
+        }
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Off => "options.off",
+            Self::Crosshair => "options.attack.crosshair",
+            Self::Hotbar => "options.attack.hotbar",
+        }
+    }
+
+    pub fn from_caption_key(key: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.caption_key() == key)
+    }
+}
+
 /// `MusicManager.MusicFrequency`: how long the music waits between songs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MusicFrequency {
@@ -167,6 +202,7 @@ pub struct Options {
     pub chat_height_unfocused: f64,
     pub chat_scale: f64,
     pub chat_width: f64,
+    pub attack_indicator: AttackIndicator,
     /// `soundCategory_<name>` for each `SoundSource`, in ordinal order, 0 to 1.
     pub sound_volumes: [f64; 11],
     /// `soundDevice`: "" is the default device.
@@ -199,6 +235,7 @@ impl Default for Options {
             chat_height_unfocused: 70.0 / CHAT_HEIGHT_SPAN,
             chat_scale: 1.0,
             chat_width: 1.0,
+            attack_indicator: AttackIndicator::Crosshair,
             sound_volumes: [1.0; 11],
             sound_device: String::new(),
             show_subtitles: false,
@@ -229,6 +266,7 @@ enum Key {
     ChatWidth,
     MouseWheelSensitivity,
     SaveChatDrafts,
+    AttackIndicator,
     SoundDevice,
     ShowSubtitles,
     DirectionalAudio,
@@ -237,7 +275,7 @@ enum Key {
     SoundCategory(SoundSource),
 }
 
-const KEYS: [(&str, Key); 32] = [
+const KEYS: [(&str, Key); 33] = [
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
     ("invertXMouse", Key::InvertXMouse),
@@ -254,6 +292,7 @@ const KEYS: [(&str, Key); 32] = [
     ("chatWidth", Key::ChatWidth),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("saveChatDrafts", Key::SaveChatDrafts),
+    ("attackIndicator", Key::AttackIndicator),
     ("soundDevice", Key::SoundDevice),
     ("showSubtitles", Key::ShowSubtitles),
     ("directionalAudio", Key::DirectionalAudio),
@@ -510,6 +549,16 @@ impl Options {
                 self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
             }
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
+            Key::AttackIndicator => {
+                if let Json::Number(number) = json {
+                    // `ByIdMap` wraps an id out of range.
+                    let id = int_value(number).rem_euclid(3);
+                    self.attack_indicator = AttackIndicator::ALL
+                        .into_iter()
+                        .find(|value| value.id() == id)
+                        .unwrap_or(self.attack_indicator);
+                }
+            }
             Key::ShowSubtitles
             | Key::DirectionalAudio
             | Key::SoundDevice
@@ -572,6 +621,7 @@ impl Options {
             Key::ChatScale => java_double(self.chat_scale),
             Key::ChatWidth => java_double(self.chat_width),
             Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
+            Key::AttackIndicator => self.attack_indicator.id().to_string(),
             Key::ShowSubtitles => self.show_subtitles.to_string(),
             Key::DirectionalAudio => self.directional_audio.to_string(),
             Key::SoundDevice => write_string(&self.sound_device),
@@ -773,5 +823,23 @@ mod tests {
         assert!(text.contains("musicFrequency:\"CONSTANT\"\n"));
         assert!(text.contains("soundCategory_music:0.25\n"));
         assert!(text.contains("soundDevice:\"Speakers\"\n"));
+    }
+
+    #[test]
+    fn the_attack_indicator_reads_by_id_and_wraps() {
+        let options = loaded("attackIndicator:2");
+        assert_eq!(options.attack_indicator, AttackIndicator::Hotbar);
+        assert_eq!(
+            loaded("attackIndicator:5").attack_indicator,
+            AttackIndicator::Hotbar
+        );
+        assert_eq!(
+            loaded("attackIndicator:3").attack_indicator,
+            AttackIndicator::Off
+        );
+        assert_eq!(
+            loaded("attackIndicator:true").attack_indicator,
+            AttackIndicator::Crosshair
+        );
     }
 }

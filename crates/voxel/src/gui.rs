@@ -471,6 +471,7 @@ impl Gui {
                 session,
                 controls.camera_type == CameraType::FirstPerson,
                 locator_camera,
+                controls.options.attack_indicator,
             ),
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
