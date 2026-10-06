@@ -59,6 +59,7 @@ pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID: i32 = 83;
+pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID: i32 = 100;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID: i32 = 101;
 pub(crate) const PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID: i32 = 102;
 pub(crate) const PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID: i32 = 107;
@@ -2375,6 +2376,18 @@ pub(crate) fn parse_add_entity_packet(
         applied_to_world: false,
         applied_rotation: None,
     })
+}
+
+/// `ClientboundSetEntityLinkPacket`: the entity on a lead and the entity that holds it (zero
+/// when it is let go), each as an `int`.
+pub(crate) fn parse_set_entity_link_packet(input: &[u8]) -> Result<(i32, i32), ConnectionError> {
+    let mut input = input;
+    let source = read_i32(&mut input, "entity link source id")?;
+    let holder = read_i32(&mut input, "entity link holder id")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("entity link trailing payload"));
+    }
+    Ok((source, holder))
 }
 
 pub(crate) fn parse_set_entity_motion_packet(

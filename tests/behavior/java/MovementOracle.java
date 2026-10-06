@@ -1841,6 +1841,43 @@ public final class MovementOracle {
         return entry;
     }
 
+    /** One vector as three hex words of its doubles. */
+    private static JsonArray vectorBits(net.minecraft.world.phys.Vec3 vector) {
+        var bits = new JsonArray();
+        bits.add(String.format("%016x", Double.doubleToRawLongBits(vector.x)));
+        bits.add(String.format("%016x", Double.doubleToRawLongBits(vector.y)));
+        bits.add(String.format("%016x", Double.doubleToRawLongBits(vector.z)));
+        return bits;
+    }
+
+    /**
+     * What a leash needs of an entity: whether it can be leashed, where the line is tied to it
+     * (the standing camel's, which moves with its sitting animation), whether it is tied by four
+     * lines and where, and the same for a holder.
+     */
+    private static void leashSupport(JsonObject out, net.minecraft.world.entity.Entity entity, String prefix) {
+        if (entity instanceof net.minecraft.world.entity.Leashable leashable) {
+            out.addProperty(prefix + "leashable", true);
+            out.add(prefix + "leash_offset", vectorBits(leashable.getLeashOffset(0.0F)));
+            out.addProperty(prefix + "quad", leashable.supportQuadLeash());
+            if (leashable.supportQuadLeash()) {
+                var offsets = new JsonArray();
+                for (var offset : leashable.getQuadLeashOffsets()) {
+                    offsets.add(vectorBits(offset));
+                }
+                out.add(prefix + "quad_offsets", offsets);
+            }
+        }
+        out.addProperty(prefix + "quad_holder", entity.supportQuadLeashAsHolder());
+        if (entity.supportQuadLeashAsHolder()) {
+            var offsets = new JsonArray();
+            for (var offset : entity.getQuadLeashHolderOffsets()) {
+                offsets.add(vectorBits(offset));
+            }
+            out.add(prefix + "quad_holder_offsets", offsets);
+        }
+    }
+
     /**
      * Every entity type as a new entity of it answers the crosshair:
      * `isPickable`, `getPickRadius`, `canBePickedFromInside`, and its size in
@@ -1880,6 +1917,7 @@ public final class MovementOracle {
                 out.addProperty("width", Oracle.bits(size.width()));
                 out.addProperty("height", Oracle.bits(size.height()));
                 out.addProperty("eye_height", Oracle.bits(size.eyeHeight()));
+                leashSupport(out, entity, "");
                 if (entity instanceof net.minecraft.world.entity.Mob mob) {
                     mob.setBaby(true);
                     if (mob.isBaby()) {
@@ -1887,6 +1925,7 @@ public final class MovementOracle {
                         out.addProperty("baby_width", Oracle.bits(baby.width()));
                         out.addProperty("baby_height", Oracle.bits(baby.height()));
                         out.addProperty("baby_eye_height", Oracle.bits(baby.eyeHeight()));
+                        leashSupport(out, entity, "baby_");
                     }
                 }
             }

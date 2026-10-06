@@ -17,5 +17,6 @@ pub mod entity_model;
 pub mod entity_type;
 mod generated;
 pub mod item;
+pub mod leash;
 pub mod sound_event;
 pub mod villager;

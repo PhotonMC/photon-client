@@ -6,8 +6,9 @@ What the crosshair needs of each entity type, in id order, as a new entity of
 the type answers it: whether it can be aimed at, how much its box grows for
 the aim, whether the aim can start inside it, whether it is a `Monster` (which
 updates its swing time on its own), its size in the standing pose,
-and a baby's size for the types that have babies. The player makes no entity
-there, so it has no row of answers.
+and a baby's size for the types that have babies, and how a leash is tied to it
+(whether it can be leashed, by four lines, and held by four lines). The player
+makes no entity there, so it has no row of answers.
 """
 from common import f32, header, load_case, run, rust_bool, write
 
@@ -21,7 +22,7 @@ def generate(capture):
     if [row["id"] for row in types] != list(range(len(types))):
         raise SystemExit("the registry must come in id order, with no gaps")
     out = header("What the crosshair needs of each entity type, in id order.", "entity_picks.py") + [
-        "use crate::entity_type::EntityPick;",
+        "use crate::entity_type::{EntityPick, Leash};",
         "",
         "#[rustfmt::skip]",
         f"pub static ENTITY_PICKS: [Option<EntityPick>; {len(types)}] = [",
@@ -31,11 +32,13 @@ def generate(capture):
             out.append("    None,")
             continue
         baby = f"Some({size(row, 'baby_')})" if "baby_width" in row else "None"
+        leash = f"Some(Leash {{ quad: {rust_bool(row['quad'])} }})" if row.get("leashable") else "None"
         out.append(
             "    Some(EntityPick { "
             f"pickable: {rust_bool(row['pickable'])}, pick_radius: {f32(row['pick_radius'])}, "
             f"from_inside: {rust_bool(row['from_inside'])}, monster: {rust_bool(row['monster'])}, "
-            f"size: {size(row)}, baby: {baby} }}),")
+            f"size: {size(row)}, baby: {baby}, leash: {leash}, "
+            f"quad_holder: {rust_bool(row['quad_holder'])} }}),")
     out.append("];")
     write("entity_picks.rs", out)
     print(f"entity_picks={len(types)}")

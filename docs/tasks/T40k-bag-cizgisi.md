@@ -20,4 +20,6 @@ Sesler, bağın kopması (sunucu işi).
 `docs/client-leash-knot-parity-conformance.md` sapma satırını güncelle.
 
 ## Devir notu
-(boş)
+- `SetEntityLink` (kimlik 100) → `ClientWorld::set_leash_holder`; bağlanabilirlik, dörtlü bağlantı ve dörtlü tutucu bayrakları `entity_picks.rs`'e (oracle'dan), bağlanma noktası formülleri `voxel-data::leash` (yetişkin/yavru, deve animasyonu dahil) — pick tablosu oracle'ı her tür için bit bit karşılaştırır.
+- `voxel-render::leash` (şerit) 18 satırlık `entity/leash-strip` oracle'ına karşı; `crates/voxel/src/leashes.rs` durumları kurar ve dünya metni hattına verir (canlı: at + çit düğümü görüldü).
+- Açık: elytra/mızrak tutucu dalı, yerel oyuncunun xRotO'su, `getBlockLightLevel` geçersiz kılmaları, devenin oturan boyutu, paketi sonradan gelen tutucu için latch (Java'da tutucu bir kez bulununca sabitlenir), çizim hattı farkları Java'ya karşı karşılaştırılmadı.

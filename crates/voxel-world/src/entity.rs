@@ -758,6 +758,8 @@ pub struct ClientEntity {
     pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
+    /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
+    pub(crate) leash_holder_id: i32,
     /// A lightning bolt's shape and flashes, made when it first ticks.
     pub(crate) lightning: Option<crate::lightning::LightningState>,
     /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
@@ -1679,6 +1681,11 @@ impl ClientEntity {
         )
     }
 
+    /// `xRotO`.
+    pub fn previous_x_rotation(&self) -> f32 {
+        f32::from_bits(self.old_x_rot_bits)
+    }
+
     /// `yBodyRot`.
     pub fn y_body_rot(&self) -> f32 {
         f32::from_bits(self.y_body_rot_bits)
@@ -2477,6 +2484,11 @@ impl ClientEntity {
     /// The block the entity was added in (`FallingBlockEntity.getStartPos`).
     pub fn start_block(&self) -> (i32, i32, i32) {
         self.start_block
+    }
+
+    /// The id of the entity this one is leashed to, if it is.
+    pub fn leash_holder_id(&self) -> Option<i32> {
+        (self.leash_holder_id != 0).then_some(self.leash_holder_id)
     }
 
     /// Whether this is a lightning bolt (`LightningBolt`).

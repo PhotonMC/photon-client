@@ -241,6 +241,17 @@ pub struct EntityPick {
     pub size: (f32, f32, f32),
     /// Only the types a baby can be.
     pub baby: Option<(f32, f32, f32)>,
+    /// Whether the type can be leashed (`Leashable`), and whether it is tied by four lines
+    /// (`supportQuadLeash`).
+    pub leash: Option<Leash>,
+    /// `supportQuadLeashAsHolder`: a holder that four lines tie to.
+    pub quad_holder: bool,
+}
+
+/// How a leashable type takes a leash.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Leash {
+    pub quad: bool,
 }
 
 /// The crosshair's answers for the type with this id; the player has none.

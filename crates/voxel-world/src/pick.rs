@@ -52,6 +52,48 @@ impl ClientEntity {
         }
     }
 
+    /// The size a leash is tied by (`getBbWidth`, `getBbHeight`, `getEyeHeight`): the size the
+    /// type starts with, grown by the scale attribute.
+    pub fn leash_size(&self) -> voxel_data::leash::Size {
+        let scale = if self.is_player() { 1.0 } else { self.scale() };
+        let dimensions = self.dimensions().scale(scale, scale);
+        voxel_data::leash::Size {
+            width: dimensions.width(),
+            height: dimensions.height(),
+            eye_height: dimensions.eye_height(),
+        }
+    }
+
+    /// `Entity.getPreciseBodyRotation`: a living entity's body, else the way it faces.
+    pub fn precise_body_rotation(&self, partial_tick: f32) -> f32 {
+        let (old, current) = if self.is_living_entity() {
+            (self.previous_body_y_rotation(), self.body_y_rotation())
+        } else {
+            (
+                f32::from_bits(self.old_y_rot_bits),
+                f32::from_bits(self.y_rot_bits),
+            )
+        };
+        voxel_core::math::mth_lerp_f32(partial_tick, old, current)
+    }
+
+    /// What a camel's leash offset follows: whether it sits, and the game time since its pose
+    /// last changed.
+    pub fn camel_leash_pose(
+        &self,
+        game_time: i64,
+        partial_tick: f32,
+    ) -> voxel_data::leash::CamelPose {
+        self.horse().map_or_else(Default::default, |horse| {
+            let (sitting, pose_time) = horse.camel.leash_pose(game_time);
+            voxel_data::leash::CamelPose {
+                sitting,
+                pose_time,
+                partial: partial_tick,
+            }
+        })
+    }
+
     /// `Entity.getBoundingBox`: the box of those dimensions around where the
     /// entity is.
     pub fn bounding_box(&self) -> Aabb {

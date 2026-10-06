@@ -1432,6 +1432,11 @@ impl PlaySession {
                     entities::motion(&mut self.trace.world, &packet);
                 }
             }
+            PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID => {
+                if let Ok((source, holder)) = parse_set_entity_link_packet(payload) {
+                    self.trace.world.set_leash_holder(source, holder);
+                }
+            }
             PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
                 if let Ok(packet) = parse_rotate_head_packet(payload) {
                     entities::rotate_head(&mut self.trace.world, &packet);

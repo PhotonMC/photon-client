@@ -15335,6 +15335,7 @@ def entity_cases():
     yield from entity_charge_cases()
     yield from entity_small_projectile_cases()
     yield from entity_fishing_hook_cases()
+    yield from entity_leash_cases()
     yield from entity_primed_tnt_cases()
     yield from entity_lightning_bolt_cases()
     yield from entity_painting_geometry_cases()
@@ -17004,6 +17005,42 @@ def entity_small_projectile_cases():
            "rows": [{"label": "knot", "layer": "minecraft:leash_knot#main"}]}
     yield {"case_id": "entity/small-projectile-pose", "family": "entity", "operation": "small_projectile_pose",
            "rows": rows}
+
+
+def entity_leash_cases():
+    """A leash's strip as the reference's own `LeashFeatureRenderer` builds it: taut and slack, a hand
+    above and below the entity, along each axis and slantwise, near and far, with the light the same at
+    both ends and different, and the line tied at an offset."""
+    def strip(label, start, end, offset=(0.0, 1.0, 0.4), slack=True, lights=(15, 15, 15, 15),
+              at=(10.5, 64.0, -3.5)):
+        return {"label": f"leash-{label}", "feet_x": float_bits(at[0]), "feet_y": float_bits(at[1]),
+                "feet_z": float_bits(at[2]),
+                "offset": [float_bits(value, "f64") for value in offset],
+                "start": [float_bits(value, "f64") for value in start],
+                "end": [float_bits(value, "f64") for value in end],
+                "start_block": lights[0], "end_block": lights[1], "start_sky": lights[2],
+                "end_sky": lights[3], "slack": slack}
+    rows = [
+        strip("up-slack", (10.5, 65.0, -3.1), (12.5, 66.2, -1.0)),
+        strip("down-slack", (10.5, 65.0, -3.1), (12.5, 63.5, -1.0)),
+        strip("up-taut", (10.5, 65.0, -3.1), (12.5, 66.2, -1.0), slack=False),
+        strip("down-taut", (10.5, 65.0, -3.1), (12.5, 63.5, -1.0), slack=False),
+        strip("level-slack", (10.5, 65.0, -3.1), (13.5, 65.0, -3.1)),
+        strip("east", (0.0, 1.0, 0.0), (4.0, 1.5, 0.0)),
+        strip("west", (0.0, 1.0, 0.0), (-4.0, 0.5, 0.0)),
+        strip("south", (0.0, 1.0, 0.0), (0.0, 1.5, 4.0)),
+        strip("north", (0.0, 1.0, 0.0), (0.0, 0.5, -4.0)),
+        strip("slantwise", (0.0, 1.0, 0.0), (-3.25, 2.75, 5.5)),
+        strip("straight-up", (0.0, 1.0, 0.0), (0.0, 4.0, 0.0)),
+        strip("short", (0.0, 1.0, 0.0), (0.25, 1.1, 0.25)),
+        strip("far", (0.0, 1.0, 0.0), (20.0, 3.0, -12.0), at=(-100.25, 70.5, 33.75)),
+        strip("lit-differently", (0.0, 1.0, 0.0), (4.0, 2.0, 1.0), lights=(0, 15, 15, 0)),
+        strip("dark-to-bright", (0.0, 1.0, 0.0), (4.0, 2.0, 1.0), lights=(3, 12, 1, 14)),
+        strip("no-offset", (0.0, 1.0, 0.0), (4.0, 2.0, 1.0), offset=(0.0, 0.0, 0.0)),
+        strip("odd-offset", (0.3, 1.7, -0.2), (4.0, 2.0, 1.0), offset=(0.3, 1.7, -0.2)),
+        strip("on-the-spot", (0.0, 1.0, 0.0), (0.0, 1.0, 0.0)),
+    ]
+    yield {"case_id": "entity/leash-strip", "family": "entity", "operation": "leash_strip", "rows": rows}
 
 
 def entity_fishing_hook_cases():

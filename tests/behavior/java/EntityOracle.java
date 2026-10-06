@@ -2350,6 +2350,58 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * A leash's strip as the reference's own `LeashFeatureRenderer` builds it: each vertex from its
+     * own `addVertexPair`, out along one edge and back along the other, from a leash state.
+     */
+    private static JsonObject leashStrip(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var pair = net.minecraft.client.renderer.feature.LeashFeatureRenderer.class.getDeclaredMethod("addVertexPair",
+            com.mojang.blaze3d.vertex.VertexConsumer.class, org.joml.Matrix4fc.class,
+            float.class, float.class, float.class, float.class, float.class, float.class, int.class,
+            boolean.class, net.minecraft.client.renderer.entity.state.EntityRenderState.LeashState.class);
+        pair.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.EntityRenderState.LeashState();
+            state.offset = vec3(row.getAsJsonArray("offset"));
+            state.start = vec3(row.getAsJsonArray("start"));
+            state.end = vec3(row.getAsJsonArray("end"));
+            state.startBlockLight = row.get("start_block").getAsInt();
+            state.endBlockLight = row.get("end_block").getAsInt();
+            state.startSkyLight = row.get("start_sky").getAsInt();
+            state.endSkyLight = row.get("end_sky").getAsInt();
+            state.slack = row.get("slack").getAsBoolean();
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            // `LeashFeatureRenderer.prepare`, with the vertex consumer in hand.
+            var pose = new org.joml.Matrix4f(stack.last().pose());
+            float dx = (float) (state.end.x - state.start.x);
+            float dy = (float) (state.end.y - state.start.y);
+            float dz = (float) (state.end.z - state.start.z);
+            float offsetFactor = net.minecraft.util.Mth.invSqrt(dx * dx + dz * dz) * 0.05F / 2.0F;
+            float dxOff = dz * offsetFactor;
+            float dzOff = dx * offsetFactor;
+            pose.translate((float) state.offset.x, (float) state.offset.y, (float) state.offset.z);
+            var strip = new JsonArray();
+            var capture = new BeamCapture(strip);
+            for (int k = 0; k <= 24; k++) {
+                pair.invoke(null, capture, pose, dx, dy, dz, 0.05F, dxOff, dzOff, k, false, state);
+            }
+            for (int k = 24; k >= 0; k--) {
+                pair.invoke(null, capture, pose, dx, dy, dz, 0.0F, dxOff, dzOff, k, true, state);
+            }
+            capture.flush();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("strip", strip);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** Where the reference's own arrow renderer draws an arrow from the turns it was sent. */
     private static JsonObject arrowPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4765,6 +4817,9 @@ public final class EntityOracle {
         }
         if (operation.equals("fishing_hook")) {
             return fishingHook(request);
+        }
+        if (operation.equals("leash_strip")) {
+            return leashStrip(request);
         }
         if (operation.equals("dragon_fireball_quad")) {
             return dragonFireballQuad(request);

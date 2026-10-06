@@ -96,7 +96,7 @@ pub struct Holder {
 }
 
 /// `Vec3.yRot`.
-fn y_rot([x, y, z]: [f64; 3], radians: f32) -> [f64; 3] {
+pub fn y_rot([x, y, z]: [f64; 3], radians: f32) -> [f64; 3] {
     let (cos, sin) = (
         f64::from(mth_cos_f64(f64::from(radians))),
         f64::from(mth_sin_f64(f64::from(radians))),
@@ -105,7 +105,7 @@ fn y_rot([x, y, z]: [f64; 3], radians: f32) -> [f64; 3] {
 }
 
 /// `Vec3.xRot`.
-fn x_rot([x, y, z]: [f64; 3], radians: f32) -> [f64; 3] {
+pub fn x_rot([x, y, z]: [f64; 3], radians: f32) -> [f64; 3] {
     let (cos, sin) = (
         f64::from(mth_cos_f64(f64::from(radians))),
         f64::from(mth_sin_f64(f64::from(radians))),

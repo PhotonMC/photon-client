@@ -19749,6 +19749,40 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// What the pick table says of how a leash is tied to a type, in the oracle's fields.
+fn leash_fields(
+    out: &mut Value,
+    name: &str,
+    pick: &voxel_data::entity_type::EntityPick,
+    (width, height, eye_height): (f32, f32, f32),
+    baby: bool,
+    prefix: &str,
+) {
+    use voxel_data::leash::{Size, leash_offset, quad_holder_offsets, quad_leash_offsets};
+    let size = Size {
+        width,
+        height,
+        eye_height,
+    };
+    let bits = |vector: [f64; 3]| -> Value {
+        json!(vector.map(|value| format!("{:016x}", value.to_bits())))
+    };
+    if let Some(leash) = pick.leash {
+        out[format!("{prefix}leashable")] = json!(true);
+        out[format!("{prefix}leash_offset")] =
+            bits(leash_offset(name, size, baby, Default::default()));
+        out[format!("{prefix}quad")] = json!(leash.quad);
+        if leash.quad {
+            out[format!("{prefix}quad_offsets")] = json!(quad_leash_offsets(name, size).map(bits));
+        }
+    }
+    out[format!("{prefix}quad_holder")] = json!(pick.quad_holder);
+    if pick.quad_holder {
+        out[format!("{prefix}quad_holder_offsets")] =
+            json!(quad_holder_offsets(name, size).map(bits));
+    }
+}
+
 /// `entity_pick_table`: the generated table of what the crosshair needs of
 /// every entity type, answered as the reference's rows are.
 fn entity_pick_table_result(request: &Value) -> Value {
@@ -19775,10 +19809,19 @@ fn entity_pick_table_result(request: &Value) -> Value {
                     out["width"] = json!(hex(width));
                     out["height"] = json!(hex(height));
                     out["eye_height"] = json!(hex(eye_height));
+                    leash_fields(&mut out, name, pick, pick.size, false, "");
                     if let Some((width, height, eye_height)) = pick.baby {
                         out["baby_width"] = json!(hex(width));
                         out["baby_height"] = json!(hex(height));
                         out["baby_eye_height"] = json!(hex(eye_height));
+                        leash_fields(
+                            &mut out,
+                            name,
+                            pick,
+                            (width, height, eye_height),
+                            true,
+                            "baby_",
+                        );
                     }
                     out
                 })
@@ -22269,6 +22312,69 @@ fn fishing_hook_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `leash_strip`: a leash's strip as `LeashFeatureRenderer.prepare` builds it.
+fn leash_strip_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::leash::{LeashState, leash_vertices};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(
+                row[key].as_str().ok_or(format!("{key} must be a string"))?,
+                16,
+            )
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+        };
+        let vector = |key: &str| -> Result<[f64; 3], String> {
+            let words = row[key]
+                .as_array()
+                .ok_or(format!("{key} must be an array"))?;
+            let mut out = [0.0; 3];
+            for (slot, word) in out.iter_mut().zip(words) {
+                *slot = u64::from_str_radix(word.as_str().ok_or("word")?, 16)
+                    .map(f64::from_bits)
+                    .map_err(|error| error.to_string())?;
+            }
+            Ok(out)
+        };
+        let mut base = Pose::default();
+        base.translate(float("feet_x")?, float("feet_y")?, float("feet_z")?);
+        let state = LeashState {
+            offset: vector("offset")?,
+            start: vector("start")?,
+            end: vector("end")?,
+            start_block_light: i32_field(row, "start_block")?,
+            end_block_light: i32_field(row, "end_block")?,
+            start_sky_light: i32_field(row, "start_sky")?,
+            end_sky_light: i32_field(row, "end_sky")?,
+            slack: row["slack"].as_bool().ok_or("slack")?,
+        };
+        let hex = |value: f32| format!("{:08x}", value.to_bits());
+        let strip: Vec<String> = leash_vertices(&base, &state)
+            .iter()
+            .map(|vertex| {
+                let [r, g, b] = vertex.colour.map(u32::from);
+                format!(
+                    "{}{}{}{}{}{:08x}{:08x}{}{}{}",
+                    hex(vertex.position[0]),
+                    hex(vertex.position[1]),
+                    hex(vertex.position[2]),
+                    hex(0.0),
+                    hex(0.0),
+                    0xFF00_0000 | r << 16 | g << 8 | b,
+                    vertex.light,
+                    hex(0.0),
+                    hex(0.0),
+                    hex(0.0),
+                )
+            })
+            .collect();
+        out.push(json!({"label": row["label"], "strip": strip}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `small_projectile_pose`: the poses a shulker bullet's, llama spit's or evoker fangs' models are drawn from.
 fn small_projectile_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -24515,6 +24621,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
         "fishing_hook" => return fishing_hook_result(request),
+        "leash_strip" => return leash_strip_result(request),
         "primed_tnt_pose" => return primed_tnt_pose_result(request),
         "lightning_bolt" => return lightning_bolt_result(request),
         "painting_geometry" => return painting_geometry_result(request),

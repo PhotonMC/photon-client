@@ -69,6 +69,12 @@ impl CamelState {
         game_time.wrapping_sub(self.last_pose_change_tick.wrapping_abs())
     }
 
+    /// Whether the camel sits and the game time since its pose last changed, as its leash
+    /// offset reads them.
+    pub fn leash_pose(&self, game_time: i64) -> (bool, i64) {
+        (self.sitting(), self.pose_time(game_time))
+    }
+
     /// `isInPoseTransition`.
     fn in_pose_transition(&self, game_time: i64) -> bool {
         self.pose_time(game_time)

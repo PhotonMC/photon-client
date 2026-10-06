@@ -3527,6 +3527,7 @@ impl ClientWorld {
                 evoker_fangs: None,
                 primed_tnt: None,
                 lightning: None,
+                leash_holder_id: 0,
                 lightning_done: false,
                 shot_at_angle: false,
                 parrot: None,
@@ -4137,6 +4138,20 @@ impl ClientWorld {
             entity.motion_y_bits = input.y.to_bits();
             entity.motion_z_bits = input.z.to_bits();
         }
+        true
+    }
+
+    /// `handleEntityLinkPacket`: the entity is tied to the entity with this id, or let go when
+    /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
+    /// drawn, as it may arrive later than the lead.
+    pub fn set_leash_holder(&mut self, entity_id: i32, holder_id: i32) -> bool {
+        let Some(entity) = self.entities.get_mut(&entity_id) else {
+            return false;
+        };
+        if voxel_data::leash::leash_of(entity.type_id).is_none() {
+            return false;
+        }
+        entity.leash_holder_id = holder_id;
         true
     }
 
