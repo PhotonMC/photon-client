@@ -16,10 +16,11 @@ use super::{
     PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID,
     PLAY_CLIENTBOUND_LOGIN_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID,
     PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID,
-    PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID,
-    PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
-    PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID, PLAY_CLIENTBOUND_RESPAWN_PACKET_ID,
-    PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID,
+    PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID, PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID,
+    PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID, PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+    PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID, PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID,
+    PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID,
+    PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID,
     PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID, PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID,
     PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID, PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID,
     PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID,
@@ -57,14 +58,14 @@ use super::{
     parse_entity_event_packet, parse_entity_metadata_packet, parse_entity_position_sync_packet,
     parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_game_event_packet,
     parse_light_update_packet, parse_login_packet, parse_move_entity_pos_packet,
-    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_open_screen_packet,
-    parse_optional_item_stack, parse_player_abilities_packet, parse_player_position_packet,
-    parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
-    parse_rotate_head_packet, parse_section_data, parse_set_chunk_cache_center_packet,
-    parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet, parse_set_health_packet,
-    parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
-    parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
-    support_block_position,
+    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_move_minecart_packet,
+    parse_open_screen_packet, parse_optional_item_stack, parse_player_abilities_packet,
+    parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
+    parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
+    parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
+    parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
+    parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
+    parse_update_mob_effect_packet, resolve_player_position, support_block_position,
 };
 
 #[test]
@@ -95,6 +96,7 @@ fn play_packet_ids_match_java_26_2_dispatch_order() {
     assert_eq!(PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, 83);
     assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID, 100);
     assert_eq!(PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID, 101);
+    assert_eq!(PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID, 55);
     assert_eq!(PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID, 107);
     assert_eq!(PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID, 44);
     assert_eq!(PLAY_CLIENTBOUND_CHUNK_PACKET_ID, 45);
@@ -2801,4 +2803,27 @@ fn an_entity_link_names_the_leashed_entity_and_its_holder() {
         (7, 0)
     );
     assert!(super::parse_set_entity_link_packet(&packet[..6]).is_err());
+}
+
+#[test]
+fn minecart_steps_parser_reads_doubles_packed_turns_and_a_float_weight() {
+    let mut payload = Vec::new();
+    voxel_core::wire::write_varint(9, &mut payload);
+    voxel_core::wire::write_varint(1, &mut payload);
+    for value in [1.5_f64, 64.1, -2.0, 0.25, 0.0, -0.5] {
+        payload.extend(value.to_be_bytes());
+    }
+    payload.extend([64, 0xe0]);
+    payload.extend(0.75_f32.to_be_bytes());
+
+    let (entity_id, steps) = parse_move_minecart_packet(&payload).expect("minecart steps");
+    assert_eq!(entity_id, 9);
+    assert_eq!(steps.len(), 1);
+    assert_eq!(steps[0].position, (1.5, 64.1, -2.0));
+    assert_eq!(steps[0].movement, (0.25, 0.0, -0.5));
+    assert_eq!((steps[0].y_rot, steps[0].x_rot), (90.0, -45.0));
+    assert_eq!(steps[0].weight, 0.75);
+
+    payload.push(0);
+    assert!(parse_move_minecart_packet(&payload).is_err());
 }

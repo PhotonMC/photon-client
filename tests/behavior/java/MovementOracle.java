@@ -685,7 +685,11 @@ public final class MovementOracle {
         setField(scene.minecraft(), "gameRenderer", soundRenderer);
         // What an entity adds to the air (a glow squid's sparks) is not drawn here.
         setField(scene.minecraft(), "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
-        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        // The server's features: a minecart reads them as it is made (the new behaviour when it enabled `minecart_improvements`).
+        setField(listener, "enabledFeatures", row.has("minecart_improvements")
+            ? net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS.join(
+                net.minecraft.world.flag.FeatureFlagSet.of(net.minecraft.world.flag.FeatureFlags.MINECART_IMPROVEMENTS))
+            : net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         // A boat asks for the teams of what it could push (no team here).
         setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
         var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
@@ -1291,6 +1295,21 @@ public final class MovementOracle {
                     case "entity_event" -> listener.handleEntityEvent(
                         new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(
                             entity, (byte) event.get("event").getAsInt()));
+                    case "minecart_steps" -> {
+                        // The steps along the track the server took, with the turns as the wire packs them.
+                        var steps = new java.util.ArrayList<net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.MinecartStep>();
+                        for (var stepElement : event.getAsJsonArray("steps")) {
+                            var step = stepElement.getAsJsonObject();
+                            steps.add(new net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.MinecartStep(
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(step, "x"), Oracle.f64(step, "y"), Oracle.f64(step, "z")),
+                                new net.minecraft.world.phys.Vec3(Oracle.f64(step, "mx"), Oracle.f64(step, "my"), Oracle.f64(step, "mz")),
+                                net.minecraft.util.Mth.unpackDegrees((byte) step.get("y_rot").getAsInt()),
+                                net.minecraft.util.Mth.unpackDegrees((byte) step.get("x_rot").getAsInt()),
+                                Oracle.f32(step, "weight")));
+                        }
+                        listener.handleMinecartAlongTrack(
+                            new net.minecraft.network.protocol.game.ClientboundMoveMinecartPacket(entityId, steps));
+                    }
                     default -> throw new IllegalArgumentException("Unknown event " + event);
                 }
             }
@@ -1542,6 +1561,23 @@ public final class MovementOracle {
                             described.addProperty("z", Oracle.bits(cart.getZ()));
                             described.addProperty("y_rot", Oracle.bits(cart.getYRot()));
                             described.addProperty("x_rot", Oracle.bits(cart.getXRot()));
+                            if (cart.getBehavior() instanceof net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior track) {
+                                // The new behaviour: its motion, and where its playback of the steps puts it between two ticks.
+                                described.addProperty("motion_x", Oracle.bits(cart.getDeltaMovement().x));
+                                described.addProperty("motion_y", Oracle.bits(cart.getDeltaMovement().y));
+                                described.addProperty("motion_z", Oracle.bits(cart.getDeltaMovement().z));
+                                described.addProperty("playing", track.cartHasPosRotLerp());
+                                var samples = new JsonArray();
+                                // Unseen ticks are not asked (a place asked for is kept by the reference for the next ask).
+                                if (track.cartHasPosRotLerp() && tick >= (row.has("sample_from") ? row.get("sample_from").getAsInt() : 0)) {
+                                    for (float partial : new float[] {0.0F, 0.5F}) {
+                                        var at = track.getCartLerpPosition(partial);
+                                        samples.add(Oracle.bits(at.x) + Oracle.bits(at.y) + Oracle.bits(at.z)
+                                            + Oracle.bits(track.getCartLerpXRot(partial)) + Oracle.bits(track.getCartLerpYRot(partial)));
+                                    }
+                                }
+                                described.add("lerp", samples);
+                            }
                             // Where the rail puts it, and a little ahead and behind it, at some places
                             // (asked on the last tick only: it is the world that answers).
                             var probes = new JsonArray();

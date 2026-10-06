@@ -14753,6 +14753,12 @@ def movement_item_cases():
             row["extras"] = extras
         return row
 
+    def cart_step(x, y, z, mx, my, mz, y_rot, x_rot, weight):
+        """A step along the track the server sent (the turns in the byte the wire packs them in)."""
+        return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64"),
+                "mx": float_bits(mx, "f64"), "my": float_bits(my, "f64"), "mz": float_bits(mz, "f64"),
+                "y_rot": y_rot, "x_rot": x_rot, "weight": float_bits(weight)}
+
     living_rows = [
         living("quiet", "pig", 6, []),
         living("damage", "pig", 16, [{"tick": 2, "type": "damage"}]),
@@ -15267,6 +15273,60 @@ def movement_item_cases():
                                             (0.5, 64.0, 2.9), (3.4, 64.0, 1.6), (4.6, 64.0, 1.4), (3.2, 64.0, 2.8),
                                             (4.1, 64.0, 2.2), (4.5, 64.0, 0.5), (5.5, 64.0, 0.4), (0.5, 65.0, 0.5),
                                             (-1.5, 64.0, 0.5), (0.5, 66.5, 0.5), (3.5, 65.0, 1.5)]]),
+        # A minecart of the new behaviour (the server enabled `minecart_improvements`) is not eased to
+        # the place a packet gives: a move or a teleport puts it there at once, and it plays back the
+        # steps the server sent along the track over three ticks, weighted by how far each went
+        # (a batch that arrives while one plays waits; one of no weight is played at once, and its
+        # answer is kept for the next as the reference keeps it), turning by the short way round.
+        dict(living("minecart-new-idle", "minecart", 6, [], extras=["minecart"], player_x=30.5),
+             chunk_radius=1, minecart_improvements=True),
+        dict(living("minecart-new-steps", "minecart", 24,
+               [{"tick": 2, "type": "minecart_steps", "steps": [
+                   cart_step(0.75, 64.1, 0.5, 0.1, 0.0, 0.0, 64, 0, 0.25),
+                   cart_step(1.0, 64.1, 0.5, 0.2, 0.0, 0.0, 64, 0, 0.5),
+                   cart_step(1.5, 64.6, 0.5, 0.3, 0.1, 0.0, 70, -32, 0.5)]}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1, minecart_improvements=True),
+        dict(living("minecart-new-batches", "minecart", 30,
+               [{"tick": 1, "type": "minecart_steps", "steps": [
+                   cart_step(1.0, 64.1, 0.5, 0.25, 0.0, 0.0, 64, 0, 1.0)]},
+                {"tick": 2, "type": "minecart_steps", "steps": [
+                   cart_step(1.5, 64.1, 0.5, 0.25, 0.0, 0.0, 120, 10, 0.4)]},
+                {"tick": 3, "type": "minecart_steps", "steps": [
+                   cart_step(2.0, 64.1, 0.5, 0.25, 0.0, 0.0, -120, 100, 0.6)]},
+                {"tick": 12, "type": "minecart_steps", "steps": [
+                   cart_step(2.0, 64.1, 0.5, 0.0, 0.0, 0.0, -120, 100, 1.0)]}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1, minecart_improvements=True),
+        dict(living("minecart-new-no-weight", "minecart", 14,
+               [{"tick": 2, "type": "minecart_steps", "steps": [
+                   cart_step(2.5, 65.1, 0.5, 0.0, 0.0, 0.0, 32, 0, 0.0)]},
+                {"tick": 3, "type": "minecart_steps", "steps": [
+                   cart_step(3.5, 65.1, 1.5, 0.0, 0.0, 0.0, 96, 8, 0.0)]},
+                {"tick": 5, "type": "minecart_steps", "steps": [
+                   cart_step(4.5, 65.1, 1.5, 0.0, 0.0, 0.0, 96, 8, 0.0),
+                   cart_step(5.5, 65.1, 1.5, 0.0, 0.0, 0.0, 100, 8, 0.0)]}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1, minecart_improvements=True),
+        # No frame is drawn between the ticks (the cart is out of sight): the place the last tick asked for
+        # at no weight is the one the next tick gets.
+        dict(living("minecart-new-no-weight-unseen", "minecart", 14,
+               [{"tick": 2, "type": "minecart_steps", "steps": [
+                   cart_step(2.5, 65.1, 0.5, 0.0, 0.0, 0.0, 32, 0, 0.0)]},
+                {"tick": 3, "type": "minecart_steps", "steps": [
+                   cart_step(3.5, 65.1, 1.5, 0.0, 0.0, 0.0, 96, 8, 0.0)]},
+                {"tick": 4, "type": "minecart_steps", "steps": [
+                   cart_step(4.5, 65.1, 1.5, 0.0, 0.0, 0.0, 96, 8, 0.0)]},
+                {"tick": 6, "type": "minecart_steps", "steps": [
+                   cart_step(5.5, 65.1, 1.5, 0.0, 0.0, 0.0, 96, 8, 1.0)]}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1, minecart_improvements=True, sample_from=5),
+        dict(living("minecart-new-is-moved", "minecart", 24,
+               [{"tick": 2, "type": "move", "xa": 4096, "ya": 0, "za": 0},
+                {"tick": 4, "type": "move_rot", "xa": 1000, "ya": 2000, "za": -3000, "y_rot": 200, "x_rot": 10},
+                {"tick": 8, "type": "move_rot", "xa": 0, "ya": 0, "za": 0, "y_rot": 250, "x_rot": -100},
+                {"tick": 12, "type": "sync", "x": float_bits(5.5, "f64"), "y": float_bits(65.0, "f64"),
+                 "z": float_bits(-2.5, "f64"), "motion_x": float_bits(0.0, "f64"),
+                 "motion_y": float_bits(0.0, "f64"), "motion_z": float_bits(0.0, "f64")},
+                {"tick": 14, "type": "entity_motion", "x": float_bits(0.4, "f64"),
+                 "y": float_bits(0.0, "f64"), "z": float_bits(-0.3, "f64")}],
+               extras=["minecart"], player_x=30.5), chunk_radius=1, minecart_improvements=True),
         # An arrow starts to shake when the server says it is in the ground (not on its first tick,
         # not while it shakes already), and the shake runs down by a tick; a potion's colour above
         # nothing makes it tipped.
@@ -17563,6 +17623,15 @@ def entity_minecart_pose_cases():
             tnt("tnt-lit-on-a-rail", 7.5, rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(1, 4.0, 10.0)),
             cart("everything", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)), hurt=(-1, 5.0, 20.0),
                  block=True, entity_id=99, x_rot=4.0, y_rot=-50.0, at=(-100.25, 70.5, 33.75))]
+    # The new behaviour draws from the turns alone, whatever rail there is; a hit and a block still apply.
+    new_render = []
+    for row in [cart("new-flat"), cart("new-turned-and-sloped", y_rot=123.0, x_rot=-37.0),
+                cart("new-ignores-the-rail", rail=((10.5, 64.5, -3.5), (10.8, 64.8, -3.4), (10.2, 64.2, -3.6)),
+                     y_rot=-80.0, x_rot=22.5),
+                cart("new-hit-with-a-block", hurt=(-1, 5.0, 20.0), block=True, entity_id=99, y_rot=45.0, x_rot=10.0)]:
+        row["new_render"] = True
+        new_render.append(row)
+    rows += new_render
     yield {"case_id": "entity/minecart-pose", "family": "entity", "operation": "minecart_pose", "rows": rows}
 
 

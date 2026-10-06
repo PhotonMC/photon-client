@@ -18472,6 +18472,7 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
             0.5,
         );
         world.set_server_simulation_distance(8);
+        world.set_minecart_improvements(row.get("minecart_improvements").is_some());
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id as u32)),
@@ -19019,10 +19020,38 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "minecart_steps" => {
+                        // The steps along the track, with the turns the wire packs in a byte of 256ths.
+                        let degrees = |step: &Value, key: &str| -> Result<f32, String> {
+                            Ok(i32::from(i32_field(step, key)? as i8) as f32 * 360.0 / 256.0)
+                        };
+                        let mut steps = Vec::new();
+                        for step in event["steps"].as_array().ok_or("steps")? {
+                            steps.push(voxel_world::minecart_track::MinecartStep {
+                                position: (
+                                    bits64(step, "x")?,
+                                    bits64(step, "y")?,
+                                    bits64(step, "z")?,
+                                ),
+                                movement: (
+                                    bits64(step, "mx")?,
+                                    bits64(step, "my")?,
+                                    bits64(step, "mz")?,
+                                ),
+                                y_rot: degrees(step, "y_rot")?,
+                                x_rot: degrees(step, "x_rot")?,
+                                weight: f32::from_bits(
+                                    u32::from_str_radix(string(step, "weight")?, 16)
+                                        .map_err(|error| error.to_string())?,
+                                ),
+                            });
+                        }
+                        world.apply_minecart_steps(entity_id, &steps);
+                    }
                     "move_rot" => {
                         // A relative move with the turn the wire packs in a byte of 256ths.
                         let degrees = |key: &str| -> Result<f32, String> {
-                            Ok((i32_field(event, key)? * 360) as f32 / 256.0)
+                            Ok(i32::from(i32_field(event, key)? as i8) as f32 * 360.0 / 256.0)
                         };
                         world.apply_entity_move(voxel_world::EntityMoveInput {
                             entity_id,
@@ -19428,6 +19457,36 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         }
                         described["y_rot"] = json!(hex(y_rot));
                         described["x_rot"] = json!(hex(x_rot));
+                        if let Some(track) = entity.minecart_track() {
+                            let motion = entity.motion();
+                            for (key, value) in [("x", motion.0), ("y", motion.1), ("z", motion.2)]
+                            {
+                                described[format!("motion_{key}")] =
+                                    json!(format!("{:016x}", value.to_bits()));
+                            }
+                            described["playing"] = json!(track.is_playing());
+                            let mut samples = Vec::new();
+                            // Unseen ticks are not asked (a place asked for is kept for the next ask).
+                            if track.is_playing()
+                                && tick
+                                    >= row
+                                        .get("sample_from")
+                                        .map_or(Ok(0), |_| i32_field(row, "sample_from"))?
+                            {
+                                for partial in [0.0_f32, 0.5] {
+                                    let place = track.place(partial).ok_or("playing")?;
+                                    samples.push(json!(format!(
+                                        "{:016x}{:016x}{:016x}{}{}",
+                                        place.position.0.to_bits(),
+                                        place.position.1.to_bits(),
+                                        place.position.2.to_bits(),
+                                        hex(place.x_rot),
+                                        hex(place.y_rot)
+                                    )));
+                                }
+                            }
+                            described["lerp"] = json!(samples);
+                        }
                         let mut probes = Vec::new();
                         if tick + 1 == i32_field(row, "tick_count")? {
                             for probe in row["rail_probes"].as_array().into_iter().flatten() {
@@ -22953,6 +23012,7 @@ fn minecart_pose_result(request: &Value) -> Result<Value, String> {
             } else {
                 None
             },
+            new_render: row.get("new_render").is_some(),
             rail,
         };
         let mut base = Pose::default();

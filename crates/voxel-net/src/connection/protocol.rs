@@ -13,6 +13,7 @@ use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::protocol::ConnectionProtocol;
 use voxel_core::binary::{BitSet, Uuid};
 use voxel_core::wire;
+use voxel_world::minecart_track::MinecartStep;
 use voxel_world::{
     ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientPlayerGameMode,
     ClientWorld, DimensionBounds, DimensionEnvironment,
@@ -57,6 +58,7 @@ pub(crate) const PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID: i32 = 111;
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID: i32 = 53;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID: i32 = 54;
+pub(crate) const PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID: i32 = 55;
 pub(crate) const PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID: i32 = 56;
 pub(crate) const PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID: i32 = 83;
 pub(crate) const PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID: i32 = 100;
@@ -2388,6 +2390,42 @@ pub(crate) fn parse_set_entity_link_packet(input: &[u8]) -> Result<(i32, i32), C
         return Err(ConnectionError::Codec("entity link trailing payload"));
     }
     Ok((source, holder))
+}
+
+/// `ClientboundMoveMinecartPacket`: the minecart and the steps it took along the track, each a
+/// position and a movement (doubles), two turns (a byte each), and a weight (a float).
+pub(crate) fn parse_move_minecart_packet(
+    input: &[u8],
+) -> Result<(i32, Vec<MinecartStep>), ConnectionError> {
+    let mut input = input;
+    let entity_id = read_varint(&mut input, "minecart entity id")?;
+    let count = read_varint(&mut input, "minecart step count")?;
+    let mut steps = Vec::new();
+    for _ in 0..count {
+        let mut vec3 = |name| -> Result<(f64, f64, f64), ConnectionError> {
+            Ok((
+                read_f64(&mut input, name)?,
+                read_f64(&mut input, name)?,
+                read_f64(&mut input, name)?,
+            ))
+        };
+        let position = vec3("minecart step position")?;
+        let movement = vec3("minecart step movement")?;
+        let y_rot = decode_packed_degrees(read_byte(&mut input, "minecart step y rot")?);
+        let x_rot = decode_packed_degrees(read_byte(&mut input, "minecart step x rot")?);
+        let weight = read_f32(&mut input, "minecart step weight")?;
+        steps.push(MinecartStep {
+            position,
+            movement,
+            y_rot,
+            x_rot,
+            weight,
+        });
+    }
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("minecart steps trailing payload"));
+    }
+    Ok((entity_id, steps))
 }
 
 pub(crate) fn parse_set_entity_motion_packet(

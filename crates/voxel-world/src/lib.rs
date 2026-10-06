@@ -69,6 +69,7 @@ pub mod lightning;
 pub mod living;
 mod metadata;
 pub mod minecart;
+pub mod minecart_track;
 mod paletted;
 pub mod panda;
 pub mod parrot;
@@ -124,6 +125,9 @@ pub struct ClientWorld {
     block_state_registry: ClientBlockStateRegistry,
     /// The items each recipe property set accepts, as the server sent them.
     recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,
+    /// Whether the server enabled `minecart_improvements`: the minecarts made from now on use the
+    /// new behaviour (`AbstractMinecart.useExperimentalMovement`, read as one is made).
+    minecart_improvements: bool,
     /// The stonecutter's recipes, as the server sent them.
     stonecutter: Arc<Vec<StonecutterEntry>>,
     /// The recipe book the server keeps the client in step with.
@@ -201,6 +205,7 @@ impl ClientWorld {
             ),
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
+            minecart_improvements: false,
             stonecutter: Arc::default(),
             recipe_book: RecipeBook::default(),
             chunks: BTreeMap::new(),
@@ -2913,6 +2918,29 @@ impl ClientWorld {
         bottom
     }
 
+    /// `ClientboundUpdateEnabledFeaturesPacket`: whether `minecart_improvements` is on, which the
+    /// minecarts made after this read to choose their behaviour.
+    pub fn set_minecart_improvements(&mut self, enabled: bool) {
+        self.minecart_improvements = enabled;
+    }
+
+    /// `handleMinecartAlongTrack`: the steps a minecart of the new behaviour is to play.
+    pub fn apply_minecart_steps(
+        &mut self,
+        entity_id: i32,
+        steps: &[minecart_track::MinecartStep],
+    ) -> bool {
+        let Some(track) = self
+            .entities
+            .get_mut(&entity_id)
+            .and_then(|entity| entity.minecart_track.as_mut())
+        else {
+            return false;
+        };
+        track.push_steps(steps);
+        true
+    }
+
     /// `OldMinecartBehavior.getPos`: where the rail puts a minecart that is at this place.
     pub fn minecart_rail_pos(&self, at: (f64, f64, f64)) -> Option<(f64, f64, f64)> {
         minecart::rail_pos(&|x, y, z| self.block_state_at(x, y, z), at)
@@ -3428,6 +3456,8 @@ impl ClientWorld {
             self.remove_entity(entity.entity_id);
         }
         let ticking = self.contains_chunk_at((entity.x, entity.y, entity.z));
+        let new_minecart =
+            self.minecart_improvements && entity::is_vanilla_minecart_entity_type(entity.type_id);
         let head_rotation_bits = entity.rotation.2.to_bits();
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
         let owner = self.entity_exists(entity.data).then_some(entity.data);
@@ -3536,6 +3566,7 @@ impl ClientWorld {
                 ender_dragon: None,
                 end_crystal: None,
                 minecart: None,
+                minecart_track: new_minecart.then(Default::default),
                 arrow: None,
                 evoker_fangs: None,
                 primed_tnt: None,

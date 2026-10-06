@@ -1,6 +1,6 @@
-//! The minecarts (`MinecartRenderer`): the model on the rail it is on, rocked by a
-//! hit, with the block it carries. Only the old behaviour (the default's) is drawn; a
-//! tnt minecart does not flash and a spawner minecart shows no mob in its block yet.
+//! The minecarts (`MinecartRenderer`): the model on the rail it is on (the old behaviour) or where
+//! the steps along the track put it (the new one), rocked by a hit, with the block it carries.
+//! A spawner minecart shows no mob in its block yet.
 
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
@@ -74,10 +74,22 @@ pub fn remote_minecarts(
             }
         });
         let (x, y, z) = snapshot.position;
+        // `newExtractState`: where the steps put it and the turns they give it while they play, else
+        // the entity's own turns; `oldExtractState`: the turns between two ticks.
+        let track = entity.minecart_track();
+        let played = track.and_then(|track| track.place(partial));
+        let (x_rot, y_rot) = match (track, played) {
+            (_, Some(place)) => (place.x_rot, place.y_rot),
+            (Some(_), None) => {
+                let (y_rot, x_rot, _) = entity.rotation();
+                (x_rot, y_rot)
+            }
+            (None, None) => (entity.x_rot_at(partial), entity.y_rot_at(partial)),
+        };
         let state = MinecartRenderState {
             position: (x, y, z),
-            x_rot: entity.x_rot_at(partial),
-            y_rot: entity.y_rot_at(partial),
+            x_rot,
+            y_rot,
             offset_seed: offset_seed(entity.id()),
             hurt_dir: own.hurt_dir,
             hurt_time: own.hurt_time as f32 - partial,
@@ -86,12 +98,26 @@ pub fn remote_minecarts(
             block_swell: tnt_fuse
                 .filter(|fuse| *fuse > -1.0 && *fuse < 10.0)
                 .map(tnt_swell_amount),
-            rail: rail_place(world, (x, y, z)),
+            new_render: track.is_some(),
+            rail: if track.is_some() {
+                None
+            } else {
+                rail_place(world, (x, y, z))
+            },
         };
+        // `getRenderOffset`: the new behaviour's playback puts it where it says, not where the
+        // entity is.
+        let offset = played.map_or((0.0, 0.0, 0.0), |place| {
+            (
+                place.position.0 - x,
+                place.position.1 - y,
+                place.position.2 - z,
+            )
+        });
         let feet = [
-            (x - f64::from(view.origin[0])) as f32,
-            (y - f64::from(view.origin[1])) as f32,
-            (z - f64::from(view.origin[2])) as f32,
+            ((x - f64::from(view.origin[0])) + offset.0) as f32,
+            ((y - f64::from(view.origin[1])) + offset.1) as f32,
+            ((z - f64::from(view.origin[2])) + offset.2) as f32,
         ];
         // `Entity.getLightProbePosition`: the eyes.
         let light = packed_light(world, Vec3::new(x, y + f64::from(entity.eye_height()), z));

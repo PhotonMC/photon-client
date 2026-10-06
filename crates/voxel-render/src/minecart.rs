@@ -1,12 +1,12 @@
-//! A minecart (`AbstractMinecartRenderer`, the old behaviour's way): where its
-//! model and the block it carries are drawn, from the rail under it, the turn it
-//! was last sent, and the rocking of a hit.
+//! A minecart (`AbstractMinecartRenderer`): where its model and the block it carries are drawn,
+//! from the rail under it (the old behaviour) or the turn the steps along the track give it (the
+//! new one), and the rocking of a hit.
 
 use voxel_core::math::mth_sin_f64;
 
 use crate::joml::{Pose, Quaternion};
 
-/// What a minecart is placed from (`MinecartRenderState`), when its behaviour is the old one.
+/// What a minecart is placed from (`MinecartRenderState`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct MinecartRenderState {
     /// Where the entity is between two ticks (`EntityRenderState.x, y, z`).
@@ -21,6 +21,8 @@ pub struct MinecartRenderState {
     /// How far a lit tnt minecart's block swells (`TntRenderer.getSwellAmount`), while its fuse is
     /// short; none for the others.
     pub block_swell: Option<f32>,
+    /// `isNewRender`: the new behaviour's, drawn from the turns alone (no rail).
+    pub new_render: bool,
     /// Where the rail puts it, and the rail's two ends a little ahead and behind it,
     /// when it is on one.
     pub rail: Option<RailPlace>,
@@ -55,7 +57,43 @@ pub fn minecart_poses(base: &Pose, state: &MinecartRenderState) -> MinecartPoses
     // The shift that keeps two minecarts' faces from fighting: a tenth of a pixel or so.
     let shift = |bits: u32| ((((state.offset_seed >> bits) & 7) as f32 + 0.5) / 8.0 - 0.5) * 0.004;
     pose.translate(shift(16), shift(20), shift(24));
-    // `oldRender`.
+    if state.new_render {
+        new_render(&mut pose, state);
+    } else {
+        old_render(&mut pose, state);
+    }
+    let hurt = state.hurt_time;
+    if hurt > 0.0 {
+        pose.rotate(&Quaternion::rotation_x(degrees(
+            mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0 * state.hurt_dir as f32,
+        )));
+    }
+    // The carried block: three quarters size, lowered, a quarter turn.
+    let mut block = pose;
+    block.scale(0.75, 0.75, 0.75);
+    block.translate(-0.5, (state.display_offset - 8) as f32 / 16.0, 0.5);
+    block.rotate(&Quaternion::rotation_y(degrees(90.0)));
+    if let Some(swell) = state.block_swell {
+        // `TntMinecartRenderer.submitMinecartContents`.
+        block.translate(-swell * 0.5, 0.0, -swell * 0.5);
+        let scale = 1.0 + swell;
+        block.scale(scale, scale, scale);
+    }
+    pose.scale(-1.0, -1.0, 1.0);
+    MinecartPoses { block, model: pose }
+}
+
+/// `AbstractMinecartRenderer.newRender`: turned by the playback's turns alone.
+fn new_render(pose: &mut Pose, state: &MinecartRenderState) {
+    let degrees = Quaternion::degrees_to_radians;
+    pose.rotate(&Quaternion::rotation_y(degrees(state.y_rot)));
+    pose.rotate(&Quaternion::rotation_z(degrees(-state.x_rot)));
+    pose.translate(0.0, 0.375, 0.0);
+}
+
+/// `AbstractMinecartRenderer.oldRender`: put on the rail, and turned along it if it is on one.
+fn old_render(pose: &mut Pose, state: &MinecartRenderState) {
+    let degrees = Quaternion::degrees_to_radians;
     let (entity_x, entity_y, entity_z) = state.position;
     let mut x_rot = state.x_rot;
     let mut rotation = state.y_rot;
@@ -84,25 +122,6 @@ pub fn minecart_poses(base: &Pose, state: &MinecartRenderState) -> MinecartPoses
     pose.translate(0.0, 0.375, 0.0);
     pose.rotate(&Quaternion::rotation_y(degrees(180.0 - rotation)));
     pose.rotate(&Quaternion::rotation_z(degrees(-x_rot)));
-    let hurt = state.hurt_time;
-    if hurt > 0.0 {
-        pose.rotate(&Quaternion::rotation_x(degrees(
-            mth_sin_f64(f64::from(hurt)) * hurt * state.damage_time / 10.0 * state.hurt_dir as f32,
-        )));
-    }
-    // The carried block: three quarters size, lowered, a quarter turn.
-    let mut block = pose;
-    block.scale(0.75, 0.75, 0.75);
-    block.translate(-0.5, (state.display_offset - 8) as f32 / 16.0, 0.5);
-    block.rotate(&Quaternion::rotation_y(degrees(90.0)));
-    if let Some(swell) = state.block_swell {
-        // `TntMinecartRenderer.submitMinecartContents`.
-        block.translate(-swell * 0.5, 0.0, -swell * 0.5);
-        let scale = 1.0 + swell;
-        block.scale(scale, scale, scale);
-    }
-    pose.scale(-1.0, -1.0, 1.0);
-    MinecartPoses { block, model: pose }
 }
 
 /// `TntRenderer.getSwellAmount`: how far a block of primed tnt has swollen, at this long to its blast.

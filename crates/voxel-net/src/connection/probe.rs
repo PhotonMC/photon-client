@@ -1907,6 +1907,12 @@ pub(crate) fn open_play_connection(
                 )
                 .map_err(|_| ConnectionError::Codec("enabled features"))?;
                 trace.enabled_feature_count = packet.features.len();
+                trace
+                    .world
+                    .set_minecart_improvements(packet.features.iter().any(|feature| {
+                        feature.namespace() == "minecraft"
+                            && feature.path() == "minecart_improvements"
+                    }));
             }
             CONFIG_SELECT_KNOWN_PACKS_PACKET_ID => {
                 let mut input = payload;

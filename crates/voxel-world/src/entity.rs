@@ -772,6 +772,9 @@ pub struct ClientEntity {
     pub(crate) end_crystal: Option<crate::end_crystal::EndCrystalState>,
     /// A minecart's hit, carried block and fuel, made when its data or ticks first reach it.
     pub(crate) minecart: Option<crate::minecart::MinecartState>,
+    /// A minecart of the new behaviour (`NewMinecartBehavior`): the steps the server sent along
+    /// the track and how far they are played; none for the old behaviour.
+    pub(crate) minecart_track: Option<crate::minecart_track::TrackLerp>,
     /// An arrow's shake and data, made when its data or ticks first reach it.
     pub(crate) arrow: Option<crate::arrow::ArrowState>,
     /// Evoker fangs' bite, made when the server first says they bite or they first tick.
@@ -1255,8 +1258,8 @@ impl ClientEntity {
         }
     }
 
-    /// `Entity.moveOrInterpolateTo`: a shulker has no interpolation
-    /// (`getInterpolation` is null), so it is put at the place, and turned,
+    /// `Entity.moveOrInterpolateTo`: a shulker and a minecart of the new behaviour have no
+    /// interpolation (`getInterpolation` is null), so they are put at the place, and turned,
     /// at once; the rest interpolate.
     pub(crate) fn move_or_interpolate_to(
         &mut self,
@@ -1264,7 +1267,7 @@ impl ClientEntity {
         y_rot: f32,
         x_rot: f32,
     ) {
-        if self.is_shulker() {
+        if self.is_shulker() || self.minecart_track.is_some() {
             self.set_position(position);
             self.y_rot_bits = (y_rot % 360.0).to_bits();
             self.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
@@ -2697,7 +2700,9 @@ impl ClientEntity {
         if voxel_data::entity_type::name(self.type_id) == Some("minecraft:tnt_minecart") {
             self.minecart_mut().burn_fuse();
         }
-        if self.is_interpolating() {
+        if self.minecart_track.is_some() {
+            self.tick_minecart_track();
+        } else if self.is_interpolating() {
             self.tick_position_interpolation();
         } else {
             let (y_rot, x_rot) = (
@@ -2707,6 +2712,42 @@ impl ClientEntity {
             self.x_rot_bits = (x_rot % 360.0).to_bits();
             self.y_rot_bits = (y_rot % 360.0).to_bits();
         }
+    }
+
+    /// `NewMinecartBehavior.lerpClientPositionAndRotation`: the steps the server sent are played
+    /// back, putting the minecart where they lead.
+    fn tick_minecart_track(&mut self) {
+        let (y_rot, x_rot) = self.body_rotation();
+        let now = crate::minecart_track::MinecartStep {
+            position: self.position(),
+            movement: self.motion(),
+            y_rot,
+            x_rot,
+            weight: 0.0,
+        };
+        let Some(place) = self
+            .minecart_track
+            .as_mut()
+            .and_then(|track| track.tick(now))
+        else {
+            return;
+        };
+        self.set_position(place.position);
+        self.motion_x_bits = place.movement.0.to_bits();
+        self.motion_y_bits = place.movement.1.to_bits();
+        self.motion_z_bits = place.movement.2.to_bits();
+        // `Entity.setXRot` and `setYRot` discard what is not finite.
+        if place.x_rot.is_finite() {
+            self.x_rot_bits = (place.x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+        }
+        if place.y_rot.is_finite() {
+            self.y_rot_bits = place.y_rot.to_bits();
+        }
+    }
+
+    /// A minecart of the new behaviour: the steps the server sent along the track.
+    pub fn minecart_track(&self) -> Option<&crate::minecart_track::TrackLerp> {
+        self.minecart_track.as_ref()
     }
 
     pub(crate) fn is_end_crystal(&self) -> bool {

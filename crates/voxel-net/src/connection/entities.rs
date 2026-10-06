@@ -7,6 +7,8 @@ use voxel_world::{
     EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput, EquipmentSlot,
 };
 
+use voxel_world::minecart_track::MinecartStep;
+
 use super::protocol::{
     AddEntityObservation, EntityEquipmentObservation, EntityHeadRotationObservation,
     EntityMetadataObservation, EntityMotionObservation, EntityMoveObservation,
@@ -37,6 +39,15 @@ pub(crate) fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) 
         y: packet.y,
         z: packet.z,
     })
+}
+
+/// `handleMinecartAlongTrack`.
+pub(crate) fn minecart_steps(
+    world: &mut ClientWorld,
+    entity_id: i32,
+    steps: &[MinecartStep],
+) -> bool {
+    world.apply_minecart_steps(entity_id, steps)
 }
 
 /// `handleRotateMob`: only the head turns.

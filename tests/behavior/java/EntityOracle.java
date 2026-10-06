@@ -2716,7 +2716,7 @@ public final class EntityOracle {
             state.hurtTime = Oracle.f32(row, "hurt_time");
             state.damageTime = Oracle.f32(row, "damage_time");
             state.displayOffset = row.get("display_offset").getAsInt();
-            state.isNewRender = false;
+            state.isNewRender = row.has("new_render");
             if (row.has("rail")) {
                 var rail = row.getAsJsonObject("rail");
                 state.posOnRail = vec3(rail.getAsJsonArray("pos"));

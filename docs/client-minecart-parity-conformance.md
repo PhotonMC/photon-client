@@ -1,4 +1,4 @@
-# T38b — Minecart ailesi (eski davranış) — [client-parity]
+# T38b, T38c — Minecart ailesi (eski ve yeni davranış) — [client-parity]
 
 Bu kayıt, minecart'ın (ve sandık, ocak, huni, TNT, spawner, komut bloğu türevlerinin) modelinin yerleşimini
 (`AbstractMinecartRenderer`, eski davranışın çıkardığı durumdan), taşıdığı bloğun yerleşimini, rayın verdiği konumu
@@ -9,7 +9,7 @@ gerçek `Minecart` varlığına karşı karşılaştırılır. Canlı gözlem `s
 ## Java kaynak incelemesi
 
 - Hangi davranışın kullanıldığı özellik bayrağına bağlıdır: `minecart_improvements` varsayılan (`vanilla`) kümede
-  değildir, yani sunucu açmadıkça **eski** davranış kullanılır. Yeni davranış bu görevde yok (aşağıda).
+  değildir, yani sunucu açmadıkça **eski** davranış kullanılır. Yeni davranış T38c bölümündedir.
 - `AbstractMinecartRenderer.submit`: kimlikten türeyen küçük bir kayma (`offsetSeed`: `(id·493286711)` ve ikinci dereceden bir
   karışım; her eksen için üç bitlik bir dilim, 0.004 ölçeğinde); eski çizim: ray üzerindeyse konum rayın verdiği yere kayar,
   yön önündeki ve arkasındaki ray noktalarından (`getPosOffs(±0.3)`) çıkarılır (`atan2` ve `atan·73`), değilse gönderilen dönüş;
@@ -39,8 +39,27 @@ düz, yokuş, köşe, hepsi dört ray türünde).
   `living-entity-animations`'a 2 satır (olay 70, yeniden kurma). Spawner minecart istemcide yaratık göstermez (sunucu doğurma
   verisini göndermez): düz spawner bloğudur.
 
+## Yeni (deneysel) davranış (T38c)
+
+- Sunucu `minecart_improvements`'ı açtıysa (`ClientboundUpdateEnabledFeatures`) minecart'lar bundan sonra `NewMinecartBehavior` ile
+  yapılır (bayrak yapım anında okunur). Bu davranışın `getInterpolation`'ı yoktur: hareket, dönüş ve ışınlanma paketleri konumu ve
+  dönüşü yaklaştırmadan **hemen** koyar (`setXRot` yine ±90'a sıkıştırır); `lerpMotion` hareketi doğrudan atar.
+- `ClientboundMoveMinecartPacket` (kimlik 55): minecart ve adımları (konum ve hareket çift, iki dönüş birer bayt, ağırlık float). Adımlar
+  bir sonraki tikte oynatılmak üzere biriktirilir.
+- `lerpClientPositionAndRotation` her tik: gecikme bir azalır; sıfıra inince eski değerler (konum, hareket, dönüşler) saklanır,
+  oynanan adımlar atılır ve biriken adımlar alınır (ağırlıklar toplanır; toplam sıfırsa gecikme 0, değilse 3). Oynuyorsa konum, hareket
+  ve dönüşler `(3 − gecikme + kısmiTik) / 3` noktasındaki adımdan alınır (ağırlığa göre; dönüşler `rotLerp` ile kısa yoldan).
+  `getCurrentLerpStep` tek girişlik bir bellek tutar (kısmi tik ve gecikme aynıysa eski cevabı verir; adımlar değişse de silinmez):
+  ağırlığı sıfır adımlarda (`adjustToRails` anında) bu, bir önceki paketin cevabını döndürür; Rust bellek giriş değerini aynen taşır.
+- Çizim (`newExtractState`, `getRenderOffset`, `newRender`): oynuyorsa konum, `x/y rot` oynatmadan; yoksa varlığın kendi dönüşü
+  (kısmi tiksiz). Çizim konumu `x + (oynatma konumu − x)`; poz `Y(yRot)`, `Z(−xRot)`, `(0, 0.375, 0)`; ray bakılmaz.
+
+Kapsam: `entity/minecart-pose`'a 4 satır (`new_render`: düz, dönük ve eğik, rayı yok sayan, vuruş ve bloklu); `living-entity-animations`'a
+5 satır (boşta, adımlar, dört paket ve bekleyen, ağırlıksız adımlar, hareket/dönüş/ışınlanma paketlerinin anında koyması; her tikte
+konum, hareket, dönüş ve iki kısmi tikte oynatma yeri).
+
 ## Sapmalar (açık)
 
-- Yeni (deneysel) davranış yok ([T38c](tasks/T38c-minecart-yeni-davranis.md)). Sandık minecart'ın sandığı
-  blok varlık (özel) modeliyle çizildiğinden henüz görünmez; diğer bloklar normal blok modelidir.
+- Sandık minecart'ın sandığı blok varlık (özel) modeliyle çizildiğinden henüz görünmez; diğer bloklar normal blok modelidir.
+- Yeni davranışta istemcinin `onRails` bayrağı (yalnız ses ve adım olayları okur) tutulmaz; çarpışma/itme ve sunucu kolu sunucunundur.
 - Taşınan bloğun ışığı ve ışığın çizimi oracle'sızdır; gölge ve ses yok. Doku yolu elle yazıldı.
