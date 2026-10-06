@@ -44,6 +44,8 @@ pub struct CamelState {
     idle_timeout: i32,
     dashing: bool,
     last_pose_change_tick: i64,
+    /// `Camel.dashCooldown`: ticks until it can dash again.
+    dash_cooldown: i32,
 }
 
 /// How long a camel takes to sit down and to stand up, in ticks.
@@ -59,9 +61,40 @@ impl CamelState {
         self.last_pose_change_tick = tick;
     }
 
+    /// `Camel.dashCooldown` (also `getJumpCooldown`).
+    pub fn dash_cooldown(&self) -> i32 {
+        self.dash_cooldown
+    }
+
+    pub(crate) fn set_dash_cooldown(&mut self, ticks: i32) {
+        self.dash_cooldown = ticks;
+    }
+
     /// `isCamelSitting`.
-    fn sitting(&self) -> bool {
+    pub fn sitting(&self) -> bool {
         self.last_pose_change_tick < 0
+    }
+
+    /// `Camel.refuseToMove`: sitting, or sitting down or standing up.
+    pub fn refuses_to_move(&self, game_time: i64) -> bool {
+        self.sitting() || self.in_pose_transition(game_time)
+    }
+
+    /// `Camel.standUp`: from sitting, it rises.
+    pub(crate) fn stand_up(&mut self, game_time: i64) {
+        if self.sitting() {
+            self.last_pose_change_tick = game_time;
+        }
+    }
+
+    /// `Camel.standUpInstantly`: standing, and for a while long enough to have stood.
+    pub(crate) fn stand_up_instantly(&mut self, game_time: i64) {
+        self.last_pose_change_tick = (game_time - 52 - 1).max(0);
+    }
+
+    /// `Camel.getBodyAnchorAnimationYOffset`'s pose: whether it sits and for how long.
+    pub fn pose_for_anchor(&self, game_time: i64) -> (bool, i64) {
+        (self.sitting(), self.pose_time(game_time))
     }
 
     /// `getPoseTime`: the game time since the pose last changed.
@@ -76,7 +109,7 @@ impl CamelState {
     }
 
     /// `isInPoseTransition`.
-    fn in_pose_transition(&self, game_time: i64) -> bool {
+    pub fn in_pose_transition(&self, game_time: i64) -> bool {
         self.pose_time(game_time)
             < if self.sitting() {
                 SIT_DOWN_TICKS
@@ -102,10 +135,13 @@ impl CamelState {
         &mut self,
         random: &mut RandomSource,
         (tick_count, game_time): (i32, i64),
-        (on_ground, passenger): (bool, bool),
+        (on_ground, in_liquid, passenger): (bool, bool, bool),
     ) {
-        if self.dashing && (on_ground || passenger) {
+        if self.dashing && self.dash_cooldown < 50 && (on_ground || in_liquid || passenger) {
             self.dashing = false;
+        }
+        if self.dash_cooldown > 0 {
+            self.dash_cooldown -= 1;
         }
         if self.idle_timeout <= 0 {
             self.idle_timeout = random.next_int_bound(40).unwrap_or(0) + 80;
@@ -280,12 +316,12 @@ impl HorseState {
     pub(crate) fn tick_camel(
         &mut self,
         (tick_count, game_time): (i32, i64),
-        (on_ground, passenger): (bool, bool),
+        (on_ground, in_liquid, passenger): (bool, bool, bool),
     ) {
         self.camel.tick(
             &mut self.random.0,
             (tick_count, game_time),
-            (on_ground, passenger),
+            (on_ground, in_liquid, passenger),
         );
     }
 

@@ -30,6 +30,8 @@ pub enum MountKind {
     Pig,
     /// A saddled strider steered with a warped fungus on a stick, which walks on lava.
     Strider,
+    /// A saddled camel (or camel husk), a horse that dashes and sits.
+    Camel,
 }
 
 /// What a ridden mount keeps from one tick to the next beyond its place and motion.
@@ -48,6 +50,8 @@ pub struct MountState {
     /// How deep the lava it stands in reached at the last look (`getFluidHeight(LAVA)`), which a
     /// strider's warmth reads the next tick.
     pub lava_height: f64,
+    /// Whether it was in water or lava at the last look (`Entity.isInLiquid`).
+    pub in_liquid: bool,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -64,6 +68,7 @@ impl Default for MountState {
             no_jump_delay: 0,
             jump_pending_scale: 0.0,
             lava_height: 0.0,
+            in_liquid: false,
         }
     }
 }
@@ -80,6 +85,8 @@ pub struct Controller {
     pub holds_carrot_on_a_stick: bool,
     /// Likewise for a warped fungus on a stick, which steers a saddled strider.
     pub holds_warped_fungus_on_a_stick: bool,
+    /// `Entity.isSprinting`, which a camel's speed reads.
+    pub sprinting: bool,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -89,6 +96,8 @@ impl Eq for Controller {}
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Attributes {
     pub(crate) speed: f32,
+    /// The movement speed attribute itself, which a camel's dash reads.
+    pub(crate) base_speed: f64,
     pub(crate) gravity: f64,
     pub(crate) step_height: f32,
     pub(crate) jump_strength: f32,
@@ -119,6 +128,8 @@ pub(crate) struct MountBody {
     /// Whether the type floats while ridden (`EntityTypeTags.CAN_FLOAT_WHILE_RIDDEN`).
     pub(crate) floats_when_ridden: bool,
     pub(crate) controller: Controller,
+    /// What a camel's pose and dash make of this tick.
+    pub(crate) camel: CamelRide,
     water: FluidTracker,
     lava: FluidTracker,
     movements: Vec<Movement>,
@@ -150,6 +161,7 @@ impl MountBody {
             allow_stand_sliding: false,
             floats_when_ridden: false,
             controller: Controller::default(),
+            camel: CamelRide::default(),
             water: FluidTracker::default(),
             lava: FluidTracker::default(),
             movements: Vec::new(),
@@ -192,6 +204,7 @@ impl MountBody {
     pub(crate) fn tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         self.update_fluid_interaction(level)?;
         self.state.lava_height = self.lava.height;
+        self.state.in_liquid = self.is_in_water() || self.is_in_lava();
         // `LivingEntity.aiStep`: a small motion is none, for a mob on each axis.
         self.state.no_jump_delay = (self.state.no_jump_delay - 1).max(0);
         let delta = self.delta;
@@ -238,6 +251,17 @@ impl MountBody {
     fn travel_ridden(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         let ridden_input = self.ridden_input();
         self.tick_ridden(level, ridden_input);
+        if self.kind == MountKind::Camel {
+            // `Camel.getRiddenSpeed`, after the dash may have started: faster for a rider that
+            // sprints while it can dash.
+            let cooldown = self.camel.dash_cooldown.unwrap_or(self.camel.cooldown);
+            let bonus = if self.controller.sprinting && cooldown == 0 {
+                0.1_f32
+            } else {
+                0.0
+            };
+            self.attributes.speed = self.attributes.base_speed as f32 + bonus;
+        }
         self.travel(level, ridden_input)
     }
 
@@ -247,6 +271,9 @@ impl MountBody {
         // `Pig.getRiddenInput`: always straight ahead; the stick's rider only steers.
         if matches!(self.kind, MountKind::Pig | MountKind::Strider) {
             return Vec3::new(0.0, 0.0, 1.0);
+        }
+        if self.kind == MountKind::Camel && self.camel.refuses_to_move {
+            return Vec3::ZERO;
         }
         if self.on_ground
             && self.state.jump_pending_scale == 0.0
@@ -266,19 +293,33 @@ impl MountBody {
     /// `AbstractHorse.tickRidden`: it faces where the rider does (looking up only half as far),
     /// and, on the ground, carries out the jump the rider asked for.
     fn tick_ridden(&mut self, level: &Level<'_>, ridden_input: Vec3) {
-        self.x_rot = (self.controller.x_rot * 0.5) % 360.0;
-        self.y_rot = self.controller.y_rot % 360.0;
+        // `Camel.getRiddenRotation`: a camel that sits, or sits down or rises, keeps its look.
+        if !(self.kind == MountKind::Camel && self.camel.refuses_to_move) {
+            self.x_rot = (self.controller.x_rot * 0.5) % 360.0;
+            self.y_rot = self.controller.y_rot % 360.0;
+        }
         // A pig has no jump to carry out (`Pig.tickRidden`).
-        if self.kind == MountKind::Horse && self.on_ground {
+        if matches!(self.kind, MountKind::Horse | MountKind::Camel) && self.on_ground {
             if self.state.jump_pending_scale > 0.0 {
                 self.execute_riders_jump(level, self.state.jump_pending_scale, ridden_input);
             }
             self.state.jump_pending_scale = 0.0;
         }
+        // `Camel.tickRidden`: pushing forward on a camel that sits makes it rise.
+        if self.kind == MountKind::Camel
+            && self.controller.zza > 0.0
+            && self.camel.sitting
+            && !self.camel.in_pose_transition
+        {
+            self.camel.stand_up = true;
+        }
     }
 
     /// `AbstractHorse.executeRidersJump`.
     fn execute_riders_jump(&mut self, level: &Level<'_>, amount: f32, input: Vec3) {
+        if self.kind == MountKind::Camel {
+            return self.execute_camels_dash(level, amount);
+        }
         let impulse = f64::from(self.jump_power(level, amount));
         self.delta = Vec3::new(self.delta.x, impulse, self.delta.z);
         if input.z > 0.0 {
@@ -290,6 +331,29 @@ impl MountBody {
                 f64::from(0.4_f32 * cos * amount),
             ));
         }
+    }
+
+    /// `Camel.executeRidersJump`: a dash along where it looks, level, and a hop.
+    fn execute_camels_dash(&mut self, level: &Level<'_>, amount: f32) {
+        let jump_momentum = f64::from(self.jump_power(level, 1.0));
+        let look = view_vector(self.x_rot, self.y_rot);
+        let along = look
+            .multiply_components(1.0, 0.0, 1.0)
+            .normalized()
+            .scale(
+                f64::from(22.2222_f32 * amount)
+                    * self.attributes.base_speed
+                    * f64::from(self.block_speed_factor(level)),
+            )
+            .add_components(0.0, f64::from(1.4285_f32 * amount) * jump_momentum, 0.0);
+        self.delta = self.delta.add_vec3(along);
+        self.camel.dash_cooldown = Some(55);
+    }
+
+    /// `Entity.getBlockSpeedFactor`.
+    fn block_speed_factor(&self, level: &Level<'_>) -> f32 {
+        let below = self.get_on_pos(level, 0.500_001);
+        level.block_speed_factor(self.block_position(), below)
     }
 
     /// `LivingEntity.getJumpPower(multiplier)`: the jump strength, the block's own jump factor
@@ -345,6 +409,14 @@ impl MountBody {
 
     /// `LivingEntity.travel`: in a fluid, or in the air.
     fn travel(&mut self, level: &Level<'_>, input: Vec3) -> Result<(), Unsupported> {
+        // `Camel.travel`: a camel that sits, or sits down or rises, stays where it is.
+        let input = if self.kind == MountKind::Camel && self.camel.refuses_to_move && self.on_ground
+        {
+            self.delta = self.delta.multiply_components(0.0, 1.0, 0.0);
+            input.multiply_components(0.0, 1.0, 0.0)
+        } else {
+            input
+        };
         // `shouldTravelInFluid`: a strider does not travel in the lava it stands on.
         let stands_on_fluid = self.kind == MountKind::Strider
             && level.info(self.block_position()).fluid == Fluid::Lava;
@@ -498,7 +570,7 @@ impl MountBody {
 
     /// `LivingEntity.onClimbable`; `AbstractHorse` overrides it to never.
     fn on_climbable(&self, level: &Level<'_>) -> bool {
-        if self.kind == MountKind::Horse {
+        if matches!(self.kind, MountKind::Horse | MountKind::Camel) {
             return false;
         }
         let pos = self.block_position();
@@ -811,6 +883,8 @@ pub(crate) fn is_horse_type(type_id: i32) -> bool {
         "minecraft:mule",
         "minecraft:skeleton_horse",
         "minecraft:zombie_horse",
+        "minecraft:camel",
+        "minecraft:camel_husk",
     ]
     .iter()
     .any(|name| voxel_data::entity_type::id(name) == Some(type_id))
@@ -825,7 +899,11 @@ impl ClientWorld {
             return None;
         }
         if entity.is_controllable_horse() {
-            Some(MountKind::Horse)
+            Some(if entity.is_camel() {
+                MountKind::Camel
+            } else {
+                MountKind::Horse
+            })
         } else if entity.is_saddled_pig() && self.rider_controls.holds_carrot_on_a_stick {
             Some(MountKind::Pig)
         } else if entity.is_saddled_strider() && self.rider_controls.holds_warped_fungus_on_a_stick
@@ -850,14 +928,23 @@ impl ClientWorld {
         else {
             return;
         };
+        let camel = horse.is_camel();
+        let on_ground = horse.on_ground;
+        let state = horse
+            .horse
+            .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+        // `Camel.onPlayerJump`: only when it has rested from its last dash and stands on the ground.
+        if camel && !(state.camel.dash_cooldown() <= 0 && on_ground) {
+            return;
+        }
         let amount = if jump_amount < 0 {
             0
         } else {
-            let state = horse
-                .horse
-                .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
             state.set_allow_stand_sliding(true);
-            state.stand_if_possible();
+            // A camel does not rear (`Camel.canPerformRearing`).
+            if !camel {
+                state.stand_if_possible();
+            }
             jump_amount
         };
         // `PlayerRideableJumping.getPlayerJumpPendingScale`.
@@ -877,6 +964,13 @@ impl ClientWorld {
             return;
         };
         let (width, height, eye_height) = pick.size;
+        // A camel that sits is a good deal lower (`Camel.getDefaultDimensions`).
+        let (height, eye_height) =
+            if entity.is_camel() && entity.pose() == crate::entity::ClientEntityPose::Sitting {
+                (height - 1.43, 0.845)
+            } else {
+                (height, eye_height)
+            };
         let dimensions = ClientEntityDimensions::scalable(width, height)
             .with_eye_height(eye_height)
             .scale(entity.scale(), entity.scale());
@@ -893,29 +987,7 @@ impl ClientWorld {
         let Some(entity) = self.entities.get(&entity_id) else {
             return;
         };
-        let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);
-        let attributes = Attributes {
-            // `getRiddenSpeed`: a pig's is its speed times 0.225 (and its boost, which is one here).
-            speed: match kind {
-                MountKind::Horse => attribute("minecraft:movement_speed", 0.7) as f32,
-                MountKind::Pig => {
-                    (attribute("minecraft:movement_speed", 0.25) * 0.225 * 1.0) as f32
-                }
-                // `Strider.getRiddenSpeed`: slower while it is cold (suffocating).
-                MountKind::Strider => {
-                    let suffocating = entity.is_suffocating();
-                    (attribute("minecraft:movement_speed", 0.175)
-                        * f64::from(if suffocating { 0.35_f32 } else { 0.55_f32 })
-                        * 1.0) as f32
-                }
-            },
-            gravity: attribute("minecraft:gravity", 0.08),
-            step_height: attribute("minecraft:step_height", 0.6) as f32,
-            jump_strength: attribute("minecraft:jump_strength", 0.42) as f32,
-            friction_modifier: attribute("minecraft:friction_modifier", 1.0) as f32,
-            air_drag_modifier: attribute("minecraft:air_drag_modifier", 1.0) as f32,
-            water_movement_efficiency: attribute("minecraft:water_movement_efficiency", 0.0) as f32,
-        };
+        let attributes = mount_attributes(entity, kind);
         let (x, y, z) = entity.position();
         let (ox, oy, oz) = entity.previous_position();
         let mut body = MountBody::new(
@@ -937,11 +1009,25 @@ impl ClientWorld {
         body.allow_stand_sliding = entity
             .horse()
             .is_some_and(|horse| horse.allow_stand_sliding());
-        body.floats_when_ridden = kind == MountKind::Horse;
+        body.floats_when_ridden = matches!(kind, MountKind::Horse | MountKind::Camel);
         body.controller = self.rider_controls;
+        if kind == MountKind::Camel {
+            let game_time = self.game_time as i64;
+            if let Some(horse) = entity.horse() {
+                body.camel = CamelRide {
+                    sitting: horse.camel.sitting(),
+                    refuses_to_move: horse.camel.refuses_to_move(game_time),
+                    in_pose_transition: horse.camel.in_pose_transition(game_time),
+                    cooldown: horse.camel.dash_cooldown(),
+                    ..CamelRide::default()
+                };
+            }
+        }
         if body.tick(&Level::new(self)).is_err() {
             return;
         }
+        let game_time = self.game_time as i64;
+        let in_water = body.is_in_water();
         let entity = self
             .entities
             .get_mut(&entity_id)
@@ -962,7 +1048,93 @@ impl ClientWorld {
             no_blocks: body.on_ground_no_blocks,
         };
         entity.mount_ride = body.state;
+        if kind == MountKind::Camel {
+            write_back_camel(entity, &body.camel, in_water, game_time);
+        }
     }
+}
+
+/// The attributes a ridden mount moves by, read from what the server sent.
+fn mount_attributes(entity: &crate::entity::ClientEntity, kind: MountKind) -> Attributes {
+    let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);
+    Attributes {
+        // `getRiddenSpeed`: a pig's is its speed times 0.225 (and its boost, which is one here).
+        base_speed: attribute("minecraft:movement_speed", 0.7),
+        speed: match kind {
+            MountKind::Horse => attribute("minecraft:movement_speed", 0.7) as f32,
+            // `Camel.getRiddenSpeed`: the attribute, and the sprint's bonus the body adds.
+            MountKind::Camel => attribute("minecraft:movement_speed", 0.09) as f32,
+            MountKind::Pig => (attribute("minecraft:movement_speed", 0.25) * 0.225 * 1.0) as f32,
+            // `Strider.getRiddenSpeed`: slower while it is cold (suffocating).
+            MountKind::Strider => {
+                let suffocating = entity.is_suffocating();
+                (attribute("minecraft:movement_speed", 0.175)
+                    * f64::from(if suffocating { 0.35_f32 } else { 0.55_f32 })
+                    * 1.0) as f32
+            }
+        },
+        gravity: attribute("minecraft:gravity", 0.08),
+        step_height: attribute("minecraft:step_height", 0.6) as f32,
+        jump_strength: attribute("minecraft:jump_strength", 0.42) as f32,
+        friction_modifier: attribute("minecraft:friction_modifier", 1.0) as f32,
+        air_drag_modifier: attribute("minecraft:air_drag_modifier", 1.0) as f32,
+        water_movement_efficiency: attribute("minecraft:water_movement_efficiency", 0.0) as f32,
+    }
+}
+
+/// What a ridden camel's tick leaves in its state: standing up, a dash begun, the water.
+fn write_back_camel(
+    entity: &mut crate::entity::ClientEntity,
+    ride: &CamelRide,
+    in_water: bool,
+    game_time: i64,
+) {
+    let horse = entity
+        .horse
+        .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+    if ride.stand_up {
+        horse.camel.stand_up(game_time);
+        entity.pose = crate::entity::ClientEntityPose::Standing;
+    }
+    if let Some(cooldown) = ride.dash_cooldown {
+        let horse = entity.horse.as_mut().expect("made above");
+        horse.camel.set_dash_cooldown(cooldown);
+        horse.camel.set_dashing(true);
+    }
+    // `Camel.tick`: a sitting camel in the water stands up at once.
+    let horse = entity.horse.as_mut().expect("made above");
+    if horse.camel.sitting() && in_water {
+        horse.camel.stand_up_instantly(game_time);
+        entity.pose = crate::entity::ClientEntityPose::Standing;
+    }
+}
+
+/// `Entity.calculateViewVector`: where an entity looks, from its pitch and its yaw.
+fn view_vector(x_rot: f32, y_rot: f32) -> Vec3 {
+    let real_x_rot = x_rot * DEG_TO_RAD;
+    let real_y_rot = -y_rot * DEG_TO_RAD;
+    let y_cos = mth_cos_f64(f64::from(real_y_rot));
+    let y_sin = mth_sin_f64(f64::from(real_y_rot));
+    let x_cos = mth_cos_f64(f64::from(real_x_rot));
+    let x_sin = mth_sin_f64(f64::from(real_x_rot));
+    Vec3::new(
+        f64::from(y_sin * x_cos),
+        f64::from(-x_sin),
+        f64::from(y_cos * x_cos),
+    )
+}
+
+/// What a ridden camel's pose and dash are, going into its tick, and what the tick makes of them.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct CamelRide {
+    pub(crate) sitting: bool,
+    pub(crate) refuses_to_move: bool,
+    pub(crate) in_pose_transition: bool,
+    /// `Camel.dashCooldown` going into the tick.
+    pub(crate) cooldown: i32,
+    /// The tick asks it to stand up, and the dash's new cooldown.
+    pub(crate) stand_up: bool,
+    pub(crate) dash_cooldown: Option<i32>,
 }
 
 /// `Strider.tick`'s setting of the suffocating flag: cold unless it is in or on a warm block or in

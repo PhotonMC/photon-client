@@ -17,4 +17,8 @@
 `docs/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+Deve bitti: `ride-camel` 24 satır gerçek Camel/CamelHusk ile bit bit eşit (koşu, oturma/kalkma, koltuk, su). Kayıt
+`client-mount-ride-parity-conformance.md` "Deve" bölümünde.
+Sapma: ikinci yolcu koltuğu, bebek/ölçekli koltuk, itiş ve ses yok.
+Açık: minecart yolcusu ve binme/inme T44c4'e taşındı. Canlıda deve görüntüsü sahne dünyasının bozukluğundan okunamadı
+(düz katılımda da aynı bozulma var).

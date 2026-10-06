@@ -1334,6 +1334,7 @@ impl LocalPlayer {
             x_rot: self.x_rot,
             holds_carrot_on_a_stick: false,
             holds_warped_fungus_on_a_stick: false,
+            sprinting: self.sprinting,
         }
     }
 

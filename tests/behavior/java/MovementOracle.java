@@ -2109,6 +2109,16 @@ public final class MovementOracle {
                     net.minecraft.resources.Identifier.parse(ride.get("holding").getAsString()));
                 player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(held));
             }
+            if (vehicle instanceof net.minecraft.world.entity.animal.camel.Camel camel) {
+                // The game's clock, and how long ago it last changed its pose (sitting counts negative).
+                level.setTimeFromServer(1000L);
+                if (ride.has("sit_age")) {
+                    camel.setPose(net.minecraft.world.entity.Pose.SITTING);
+                    camel.resetLastPoseChangeTick(-(1000L - ride.get("sit_age").getAsLong()));
+                } else {
+                    camel.resetLastPoseChangeTick(0L);
+                }
+            }
             if (vehicle instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
                 // A tamed horse in a saddle: the one a player controls.
                 horse.setTamed(true);
@@ -2580,6 +2590,11 @@ public final class MovementOracle {
         out.addProperty("fall_distance", Oracle.bits(vehicle.fallDistance));
         if (vehicle instanceof net.minecraft.world.entity.animal.equine.AbstractHorse) {
             out.addProperty("pending_jump", Oracle.bits((float) getField(vehicle, "playerJumpPendingScale")));
+            if (vehicle instanceof net.minecraft.world.entity.animal.camel.Camel camel) {
+                out.addProperty("dash_cooldown", camel.getJumpCooldown());
+                out.addProperty("camel_sitting", camel.isCamelSitting());
+                out.addProperty("dashing", camel.isDashing());
+            }
             out.addProperty("y_head_rot", Oracle.bits(((net.minecraft.world.entity.LivingEntity) vehicle).yHeadRot));
         }
         if (vehicle instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat boat) {

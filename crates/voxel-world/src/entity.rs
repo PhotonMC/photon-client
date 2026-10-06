@@ -2191,6 +2191,14 @@ impl ClientEntity {
         self.mount_ride
     }
 
+    /// Whether this is a camel or a camel husk.
+    pub fn is_camel(&self) -> bool {
+        matches!(
+            voxel_data::entity_type::name(self.type_id),
+            Some("minecraft:camel" | "minecraft:camel_husk")
+        )
+    }
+
     /// Whether this is a horse, donkey, mule or undead horse, saddled or not.
     pub fn is_horse(&self) -> bool {
         crate::mount_ride::is_horse_type(self.type_id)
@@ -3695,7 +3703,11 @@ impl ClientEntity {
                     .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
                 horse.tick(alive);
                 if camel {
-                    horse.tick_camel((tick_count, game_time as i64), (on_ground, passenger));
+                    let in_liquid = self.mount_ride.in_liquid;
+                    horse.tick_camel(
+                        (tick_count, game_time as i64),
+                        (on_ground, in_liquid, passenger),
+                    );
                 }
             }
             Some("minecraft:rabbit") => {

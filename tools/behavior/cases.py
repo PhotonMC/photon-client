@@ -13624,6 +13624,50 @@ def movement_cases():
         "rows": horse_rows,
     }
 
+    # Riding a camel (a horse that dashes and sits): a jump charge is a dash, a sitting camel rises when
+    # pushed forward, and one that sits or moves between poses stays put.
+    def camel(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, sit_age=None, kind="minecraft:camel"):
+        row = ride(label, blocks, ticks, boat=start, y_rot=y_rot, kind=kind)
+        if sit_age is not None:
+            row["ride"]["sit_age"] = sit_age
+        return row
+
+    camel_rows = [
+        camel("camel-idle", floor(), keys(30)),
+        camel("camel-forward", floor(), keys(50, forward=True)),
+        camel("camel-sprint", floor(), keys(10, forward=True) + keys(40, forward=True, sprint=True)),
+        camel("camel-strafe-back", floor(), keys(20, left=True) + keys(20, backward=True)),
+        camel("camel-look", floor(), looking(keys(50, forward=True), (0.0, 0.0), (50.0, 30.0), (-80.0, -40.0))),
+        camel("camel-dash", floor(), keys(5, forward=True) + keys(12, forward=True, jump=True) + keys(70, forward=True)),
+        camel("camel-small-dash", floor(), keys(5, forward=True) + keys(3, jump=True) + keys(60, forward=True)),
+        camel("camel-dash-twice", floor(), keys(12, jump=True) + keys(80) + keys(12, jump=True) + keys(30)),
+        camel("camel-dash-looking-up", floor(), looking(keys(5) + keys(12, jump=True) + keys(50), (0.0, -90.0))),
+        camel("camel-dash-sprint", floor(), keys(5, forward=True, sprint=True) + keys(10, forward=True, sprint=True, jump=True)
+              + keys(60, forward=True, sprint=True)),
+        camel("camel-sitting", floor(), keys(30), sit_age=100),
+        camel("camel-sitting-forward", floor(), keys(60, forward=True), sit_age=100),
+        camel("camel-sitting-dash", floor(), keys(10, jump=True) + keys(30), sit_age=100),
+        camel("camel-sitting-down", floor(), keys(60, forward=True), sit_age=10),
+        camel("camel-standing-up", floor(), keys(60, forward=True), sit_age=-30 + 52 - 20 + 0),
+        camel("camel-step", floor() + [{"x": x, "y": 64, "z": 3, "block": "minecraft:stone"} for x in range(-3, 4)],
+              keys(40, forward=True)),
+        camel("camel-fence", floor() + [{"x": x, "y": 64, "z": 3, "block": "minecraft:oak_fence"} for x in range(-3, 4)],
+              keys(40, forward=True)),
+        camel("camel-water", floor() + lake, keys(40, forward=True), start=(0.5, 64.2, -8.5)),
+        camel("camel-deep-water", floor() + deep_lake, keys(40, forward=True) + keys(20), start=(0.5, 65.0, 0.5)),
+        camel("camel-sitting-in-water", floor() + lake, keys(30), start=(0.5, 64.2, 0.5), sit_age=100),
+        camel("camel-ice", floor(block="minecraft:ice"), keys(30, forward=True, sprint=True) + keys(30)),
+        camel("camel-slime-dash", floor(block="minecraft:slime_block"), keys(10, jump=True) + keys(60)),
+        camel("camel-falls", floor(), keys(40), start=(0.5, 75.0, 0.5)),
+        camel("camel-husk", floor(), keys(30, forward=True) + keys(10, jump=True) + keys(40), kind="minecraft:camel_husk"),
+    ]
+    yield {
+        "case_id": "movement/ride-camel",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": camel_rows,
+    }
+
     # Riding a pig: saddled and steered with a carrot on a stick it goes straight ahead where the
     # rider looks (`Pig.getRiddenInput`); otherwise the rider only sits in it.
     def pig(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, saddled=True, stick="minecraft:carrot_on_a_stick"):

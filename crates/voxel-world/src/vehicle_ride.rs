@@ -75,28 +75,7 @@ impl ClientWorld {
         let (x, y, z) = vehicle.position();
         let position = Vec3::new(x, y, z);
         if vehicle.is_boat() {
-            let pick = voxel_data::entity_type::pick(vehicle.type_id)?;
-            let (width, height, _) = pick.size;
-            let bb = ClientEntityDimensions::scalable(width, height)
-                .scale(vehicle.scale(), vehicle.scale())
-                .make_bounding_box(position);
-            return Some(VehicleView {
-                vehicle_id,
-                kind: VehicleKind::Boat,
-                controlled: vehicle.passenger_ids.first() == Some(&player.id),
-                type_id: vehicle.type_id,
-                position,
-                y_rot: f32::from_bits(vehicle.y_rot_bits),
-                x_rot: 0.0,
-                on_ground: vehicle.on_ground,
-                horizontal_collision: vehicle.boat_ride.horizontal_collision,
-                rider_position: self.boat_rider_position(vehicle_id, player.id)?,
-                delta_rotation: f32::from_bits(vehicle.delta_rotation_bits),
-                max_y: bb.max_y,
-                under_water: vehicle.boat_ride.status.is_some_and(Status::is_under_water),
-                can_sprint: false,
-                can_jump: false,
-            });
+            return self.boat_view(vehicle_id, vehicle, position);
         }
         let driven = self.mount_kind_of(vehicle);
         let kind = if vehicle.is_horse() {
@@ -120,7 +99,11 @@ impl ClientWorld {
             .map_or(Vec3::ZERO, |&(x, y, z)| Vec3::new(x, y, z));
         let turn = -y_rot * (std::f64::consts::PI / 180.0) as f32;
         let mut attachment = rotate_y(seat, turn);
-        if kind == VehicleKind::Horse {
+        let camel = vehicle.is_camel();
+        if camel {
+            attachment = self.camel_seat(vehicle, index, turn);
+        }
+        if kind == VehicleKind::Horse && !camel {
             let stand_old = vehicle
                 .horse()
                 .map_or(0.0, |horse| horse.stand_animation_old());
@@ -164,8 +147,77 @@ impl ClientWorld {
             max_y: 0.0,
             under_water: true,
             // Only a camel and a player can sprint (`Entity.canSprint`).
+            can_sprint: camel,
+            can_jump: match driven {
+                Some(crate::MountKind::Horse) => true,
+                Some(crate::MountKind::Camel) => vehicle.horse().is_none_or(|horse| {
+                    !horse.camel.refuses_to_move(self.game_time as i64)
+                        && horse.camel.dash_cooldown() == 0
+                }),
+                _ => false,
+            },
+        })
+    }
+
+    /// `Camel.getPassengerAttachmentPoint`: where the body is as it sits or rises, and the seat
+    /// forward or back by the passenger's place.
+    fn camel_seat(&self, vehicle: &crate::entity::ClientEntity, index: usize, turn: f32) -> Vec3 {
+        let (sitting, pose_time) = vehicle.horse().map_or((false, i64::MAX / 2), |horse| {
+            horse.camel.pose_for_anchor(self.game_time as i64)
+        });
+        let height = voxel_data::entity_type::pick(vehicle.type_id).map_or(0.0, |pick| pick.size.1);
+        let height = if vehicle.pose() == crate::entity::ClientEntityPose::Sitting {
+            height - 1.43
+        } else {
+            height
+        };
+        let anchor = voxel_data::leash::camel_anchor_offset(
+            height,
+            vehicle.is_baby(),
+            voxel_data::leash::CamelPose {
+                sitting,
+                pose_time,
+                partial: 0.0,
+            },
+            index == 0,
+        );
+        let forward = if vehicle.passenger_ids.len() > 1 && index != 0 {
+            -0.7_f32
+        } else {
+            0.5_f32
+        };
+        rotate_y(Vec3::new(0.0, anchor, f64::from(forward)), turn)
+    }
+
+    /// What the local player's tick reads of a boat it rides.
+    fn boat_view(
+        &self,
+        vehicle_id: i32,
+        vehicle: &crate::entity::ClientEntity,
+        position: Vec3,
+    ) -> Option<VehicleView> {
+        let player = self.local_player.as_ref()?;
+        let pick = voxel_data::entity_type::pick(vehicle.type_id)?;
+        let (width, height, _) = pick.size;
+        let bb = ClientEntityDimensions::scalable(width, height)
+            .scale(vehicle.scale(), vehicle.scale())
+            .make_bounding_box(position);
+        Some(VehicleView {
+            vehicle_id,
+            kind: VehicleKind::Boat,
+            controlled: vehicle.passenger_ids.first() == Some(&player.id),
+            type_id: vehicle.type_id,
+            position,
+            y_rot: f32::from_bits(vehicle.y_rot_bits),
+            x_rot: 0.0,
+            on_ground: vehicle.on_ground,
+            horizontal_collision: vehicle.boat_ride.horizontal_collision,
+            rider_position: self.boat_rider_position(vehicle_id, player.id)?,
+            delta_rotation: f32::from_bits(vehicle.delta_rotation_bits),
+            max_y: bb.max_y,
+            under_water: vehicle.boat_ride.status.is_some_and(Status::is_under_water),
             can_sprint: false,
-            can_jump: driven == Some(crate::MountKind::Horse),
+            can_jump: false,
         })
     }
 }

@@ -67,3 +67,16 @@ yüksek sütun; çarpışma, dayanak bloğu ve `shouldTravelInFluid` buna göre)
 girme, derin, çatı altı, kıyı), içine batma, düşme, magma zemini, su, buz, ağ; sopasız ve eyersiz. Koltuk yürüyüşle
 oynar (istemci `getPassengerAttachmentPoint`). Sapma: çarpık mantarlı sopanın hızlandırması (`boost`) yok; strider bineği
 `Strider`a binen strider (sıcak binek) durumu yok.
+
+## Deve (T44c3)
+
+`movement/ride-camel`: 24 satır gerçek `Camel` ve `CamelHusk` ile bit bit eşit. Eyerli deve binicinin bakışıyla gider
+(`getRiddenInput`), koşarken (`canSprint`) hız özelliğine `+0,1` ekler; zıplama tuşu
+yükü koşudur (`dash`): bakış yönünün yatay izdüşümü `22,2222 × güç × hız × blok hız çarpanı`, düşeyde `1,4285 × güç ×
+zıplama momentumu` eklenir, soğukluk 55 tick ve soğukluk bitene dek koşu bonusu yok. Oturan deve
+ileri itilince kalkar (`standUp`), oturma/kalkma geçişinde ve oturmuşken yerinde kalır; sudaki oturan deve hemen kalkar
+(`Camel.tick`). Koltuk: oturmada gövde çapası (`getBodyAnchorAnimationOffset`) ve yolcu sırasına göre ileri/geri.
+Kapsanan: düz, koşu, yön, kısa/çift/yukarı bakarak/koşarken koşu, oturan, oturuyor/kalkıyor geçişi, basamak, çit, su,
+derin su, suda oturan, buz, balçık, düşme, `CamelHusk`.
+Sapmalar (kayıtlı): çit sınırı ve basamak dışında entity itişi/çarpışması yok; bebek ve ölçekli deve koltuğu sınanmadı;
+ses yok; ikinci yolcu koltuğu (`index != 0`) oracle'da yok; minecart yolcusu ve binme/inme akışı T44c4'e bırakıldı.

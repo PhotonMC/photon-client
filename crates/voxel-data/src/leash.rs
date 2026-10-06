@@ -28,9 +28,9 @@ fn lerp(delta: f32, from: f32, to: f32) -> f32 {
     from + delta * (to - from)
 }
 
-/// `Camel.getBodyAnchorAnimationYOffset` for the front anchor: where the body is as the camel
-/// sits down or rises. `height` is the height of the pose it is in.
-fn camel_anchor_offset(height: f32, baby: bool, pose: CamelPose) -> f64 {
+/// `Camel.getBodyAnchorAnimationYOffset`: where the body is, at the front (the driver's seat, the
+/// leash) or the back, as the camel sits down or rises. `height` is the height of the pose it is in.
+pub fn camel_anchor_offset(height: f32, baby: bool, pose: CamelPose, front: bool) -> f64 {
     let scale: f32 = if baby { 0.6 } else { 1.0 };
     let age_sit_y: f64 = if baby { 0.09375 } else { 0.375 };
     let mut base = f64::from(height) - age_sit_y;
@@ -39,10 +39,11 @@ fn camel_anchor_offset(height: f32, baby: bool, pose: CamelPose) -> f64 {
     let bottom_point = sitting_height_difference - vertical_drop;
     let in_transition = pose.pose_time < if pose.sitting { 40 } else { 52 };
     if in_transition {
-        let (duration, half_point, flex_offset): (i32, i32, f32) = if pose.sitting {
-            (40, 28, 0.5)
-        } else {
-            (52, 24, 0.6)
+        let (duration, half_point, flex_offset): (i32, i32, f32) = match (pose.sitting, front) {
+            (true, true) => (40, 28, 0.5),
+            (true, false) => (40, 28, 0.1),
+            (false, true) => (52, 24, 0.6),
+            (false, false) => (52, 32, 0.35),
         };
         let pose_time = (pose.pose_time as f32 + pose.partial).clamp(0.0, duration as f32);
         let first_part = pose_time < half_point as f32;
@@ -115,7 +116,7 @@ pub fn leash_offset(name: &str, size: Size, baby: bool, camel: CamelPose) -> [f6
             let scale: f32 = if baby { 0.6 } else { 1.0 };
             [
                 0.0,
-                camel_anchor_offset(height, baby, camel) - f64::from(0.2_f32 * scale),
+                camel_anchor_offset(height, baby, camel, true) - f64::from(0.2_f32 * scale),
                 f64::from(width * 0.56),
             ]
         }

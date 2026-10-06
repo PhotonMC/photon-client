@@ -20109,7 +20109,20 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             if kind.ends_with("_boat") || kind.ends_with("_raft") {
                 player.face_boat(bits32(ride, "y_rot")?);
             }
-            if (kind.ends_with("horse") || kind.ends_with("donkey") || kind.ends_with("mule"))
+            if kind.contains("camel") {
+                // The game's clock, and a camel that has sat for so long.
+                world.set_game_time(1000);
+                if let Some(age) = ride["sit_age"].as_i64() {
+                    let mut data = vec![voxel_world::CAMEL_LAST_POSE_CHANGE_DATA_ID, 2];
+                    voxel_core::wire::write_varlong(-(1000 - age), &mut data);
+                    data.extend([6, 20, 10, 255]);
+                    world.apply_entity_metadata(id, &data);
+                }
+            }
+            if (kind.ends_with("horse")
+                || kind.ends_with("donkey")
+                || kind.ends_with("mule")
+                || kind.contains("camel"))
                 && ride.get("unsaddled").is_none()
             {
                 // `AbstractHorse.addPassenger`: the rider looks the way the horse does.
@@ -20443,6 +20456,12 @@ fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String>
         report["vertical_collision"] = json!(ride.vertical_collision);
         report["fall_distance"] = json!(double(ride.fall_distance));
         if vehicle.is_horse() {
+            if vehicle.is_camel() {
+                let camel = vehicle.horse().map(|horse| &horse.camel);
+                report["dash_cooldown"] = json!(camel.map_or(0, |camel| camel.dash_cooldown()));
+                report["camel_sitting"] = json!(camel.is_some_and(|camel| camel.sitting()));
+                report["dashing"] = json!(camel.is_some_and(|camel| camel.is_dashing()));
+            }
             report["pending_jump"] = json!(single(ride.jump_pending_scale));
             report["y_head_rot"] = json!(single(vehicle.rotation().2));
         }
