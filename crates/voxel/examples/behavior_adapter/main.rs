@@ -19789,6 +19789,56 @@ fn entity_pick_table_result(request: &Value) -> Value {
     json!({"rows": rows})
 }
 
+/// `sky_flash`: the overworld's sky colour and sky light factor where nothing is loaded
+/// (plains, no weather, the clocks at zero), with the lightning flash on or off.
+fn sky_flash_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::sky::{Attribute, Environment, Value as Attr, Weather};
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    let mut biomes: Vec<String> = std::fs::read_dir(data_root.join("minecraft/worldgen/biome"))
+        .map_err(|error| error.to_string())?
+        .filter_map(|entry| {
+            let name = entry.ok()?.file_name().to_string_lossy().into_owned();
+            Some(format!("minecraft:{}", name.strip_suffix(".json")?))
+        })
+        .collect();
+    biomes.sort();
+    let environment = Environment::load(&data_root, "minecraft:overworld", &biomes)
+        .ok_or("the overworld's sky data could not be read")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let number = |key: &str| -> Result<f64, String> {
+            u64::from_str_radix(string(row, key)?, 16)
+                .map(f64::from_bits)
+                .map_err(|error| format!("{key}: {error}"))
+        };
+        let flash =
+            row["flash"].as_i64().ok_or("flash")? > 0 && !row["hide"].as_bool().ok_or("hide")?;
+        let attributes = environment.evaluate(
+            [number("x")?, number("y")?, number("z")?],
+            |_, _, _| None,
+            |_| 0,
+            Weather {
+                rain: 0.0,
+                thunder: 0.0,
+            },
+            flash,
+        );
+        let Attr::Color(colour) = attributes.get(Attribute::SkyColor) else {
+            return Err("the sky colour is not a colour".into());
+        };
+        let Attr::Float(factor) = attributes.get(Attribute::SkyLightFactor) else {
+            return Err("the sky light factor is not a float".into());
+        };
+        rows.push(json!({
+            "label": row["label"],
+            "sky_color": colour as i32,
+            "sky_light_factor": format!("{:08x}", factor.to_bits()),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 fn movement_result(request: &Value) -> Result<Value, String> {
     use voxel_world::ClientPlayerGameMode;
     use voxel_world::local_player::LocalPlayer;
@@ -19828,6 +19878,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     }
     if string(request, "operation")? == "entity_pick_table" {
         return Ok(entity_pick_table_result(request));
+    }
+    if string(request, "operation")? == "sky_flash" {
+        return sky_flash_result(request);
     }
     if string(request, "operation")? != "local_player_ticks" {
         return Err("unknown movement operation".into());

@@ -140,6 +140,8 @@ pub struct ClientWorld {
     /// (`Minecraft.player.chunkPosition()`); unknown until it does.
     local_chunk: Option<(i32, i32)>,
     game_time: u64,
+    /// `ClientLevel.skyFlashTime`: ticks the sky still flashes for.
+    sky_flash_time: i32,
     /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
     /// the bits of the floats.
     rain_level_bits: u32,
@@ -202,6 +204,7 @@ impl ClientWorld {
             server_simulation_distance: 3,
             local_chunk: None,
             game_time: 0,
+            sky_flash_time: 0,
             rain_level_bits: 0,
             thunder_level_bits: 0,
             predictions: prediction::BlockPredictions::new(),
@@ -1400,6 +1403,19 @@ impl ClientWorld {
             self.tick_local_player(None);
         }
         self.tick_entities();
+        self.tick_sky_flash();
+    }
+
+    /// `ClientLevel.tick`'s share: the sky flash counts down.
+    pub fn tick_sky_flash(&mut self) {
+        if self.sky_flash_time > 0 {
+            self.sky_flash_time -= 1;
+        }
+    }
+
+    /// `ClientLevel.skyFlashTime`, without the option that hides the flash.
+    pub fn sky_flash_time(&self) -> i32 {
+        self.sky_flash_time
     }
 
     /// `ClientLevel.tickEntities`: every entity the server added that is
@@ -1414,6 +1430,14 @@ impl ClientWorld {
             .collect();
         for entity_id in ticking_entity_ids {
             self.tick_entity_tree(entity_id, None);
+        }
+        // `LightningBolt.tick`: a bolt that is still lit flashes the sky.
+        if self
+            .entities
+            .values()
+            .any(|entity| entity.ticking && entity.lightning().is_some_and(|bolt| bolt.is_lit()))
+        {
+            self.sky_flash_time = 2;
         }
     }
 

@@ -494,7 +494,8 @@ impl Play {
             confirm.tick();
         }
         self.gui.tick_chat(&mut self.controls.chat_log);
-        self.sky.tick(session);
+        self.sky
+            .tick(session, self.controls.options.hide_lightning_flashes);
         self.ticks += 1;
         Ok(())
     }

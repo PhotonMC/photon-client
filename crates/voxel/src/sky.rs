@@ -62,7 +62,7 @@ impl Sky {
         .ok_or("the dimension's sky data could not be read")?;
         let stars = voxel_render::sky::build_stars();
         let dimension = session.world().dimension();
-        let first = probe(&environment, dimension, session);
+        let first = probe(&environment, dimension, session, false);
         let cloud_image = crate::play::texture(root, "environment/clouds", "clouds")?;
         Ok(Self {
             environment,
@@ -84,10 +84,15 @@ impl Sky {
 
     /// One client tick: the block light flicker, and the camera's attribute
     /// probe while there is a player.
-    pub fn tick(&mut self, session: &PlaySession) {
+    pub fn tick(&mut self, session: &PlaySession, hide_lightning_flashes: bool) {
         self.flicker.tick();
         if session.player().is_some() {
-            let next = probe(&self.environment, self.dimension, session);
+            let next = probe(
+                &self.environment,
+                self.dimension,
+                session,
+                hide_lightning_flashes,
+            );
             self.last = std::mem::replace(&mut self.next, next);
         }
     }
@@ -166,6 +171,7 @@ fn probe(
     environment: &Environment,
     dimension: voxel_world::DimensionBounds,
     session: &PlaySession,
+    hide_lightning_flashes: bool,
 ) -> Attributes {
     let player = session.player().expect("a loaded session has a player");
     let feet = player.position();
@@ -181,5 +187,7 @@ fn probe(
             rain: session.rain_level(),
             thunder: session.thunder_level(),
         },
+        // `ClientLevel.getSkyFlashTime`: the option hides the flash.
+        session.world().sky_flash_time() > 0 && !hide_lightning_flashes,
     )
 }

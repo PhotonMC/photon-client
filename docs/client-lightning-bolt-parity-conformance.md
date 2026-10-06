@@ -16,5 +16,12 @@ Bu kayıt `lightning_bolt` entity'sinin (`LightningBolt`, `LightningBoltRenderer
 ## Sapmalar ve açık kalanlar
 
 - Tohum ve parlama sayısı entity'nin kimliğinden türetilen rastgeleden gelir: Java'da tohumsuz olduğundan gözlemlenemez. Bekleme/silinme sayacı gerçek tike karşı karşılaştırılmadı.
-- **Gökyüzü çakması yok**: `setSkyFlashTime(2)` gökyüzü rengini ve gökyüzü ışık çarpanını değiştirir ([T40j](tasks/T40j-gokyuzu-cakmasi.md)). Sesler (`LIGHTNING_BOLT_THUNDER`, `IMPACT`) yok.
+- Sesler (`LIGHTNING_BOLT_THUNDER`, `IMPACT`) yok.
 - Karışımın derinlik/yüz ayıklama davranışı oracle'da karşılaştırılmaz (ışınların hattı kullanıldı).
+
+## Gökyüzü çakması (T40j) — [client-parity]
+
+- Java: `LightningBolt.tick` istemcide ömür `>= 0` iken `ClientLevel.skyFlashTime`'ı 2 yapar; `ClientLevel.tick` her tikte bir azaltır (`Minecraft.tick` önce `tickEntities`, sonra `level.tick` çalıştırır). `skyFlashTime > 0` iken `SKY_COLOR` `srgbLerp(0,22; renk; 0xFFCCCCFF)`, `SKY_LIGHT_FACTOR` 1,0 olur (`ClientLevel`'ın son iki katmanı); `hideLightningFlashes` seçeneği süreyi sıfır gösterir.
+- Rust: `ClientWorld::{tick_entities (ışıklı bolt ise 2), tick_sky_flash, sky_flash_time}`, `Environment::evaluate`'ın `sky_flash` bağımsız değişkeni; seçenek `options.txt`'te (`hideLightningFlashes`, bir ekranda yok).
+- Oracle: `movement/sky-flash` 9 satır — gerçek `ClientLevel.environmentAttributes()` ile çakma süresi 0/1/2, seçenek açık/kapalı, üç yükseklik; gökyüzü rengi ve ışık çarpanı bit bit eşit. Yüklü parça, yağmur/fırtına ve saat ilerlemesi (zaman çizelgesi) bu oracle'da yok (bitki örtüsü ovası, saat sıfır).
+- Açık: bolt'un `life >= 0` ve süre sayacı gerçek tike karşı karşılaştırılmadı (tohum gibi entity rastgelesi tohumsuz).

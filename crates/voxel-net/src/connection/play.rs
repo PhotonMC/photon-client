@@ -1259,6 +1259,7 @@ impl PlaySession {
                 .set_local_player_chunk(position.x, position.z);
         }
         self.trace.world.tick_entities();
+        self.trace.world.tick_sky_flash();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))

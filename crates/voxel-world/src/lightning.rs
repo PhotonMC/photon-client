@@ -43,6 +43,11 @@ impl LightningState {
         self.seed
     }
 
+    /// `LightningBolt.life >= 0`: the bolt is lit, and flashes the sky.
+    pub fn is_lit(&self) -> bool {
+        self.life >= 0
+    }
+
     /// `LightningBolt.tick` on the client: the life runs down; once it is spent, the bolt flashes
     /// again after a random wait with a new shape, or, with no flashes left, is discarded (true).
     pub(crate) fn tick(&mut self) -> bool {
@@ -80,5 +85,16 @@ mod tests {
         }
         // One to three flashes: the first seed and up to two new ones.
         assert!((1..=3).contains(&seeds.len()));
+    }
+
+    #[test]
+    fn a_bolt_lights_the_sky_while_its_life_is_not_spent() {
+        let mut bolt = LightningState::new(7);
+        // Made with a life of two: the first tick leaves one, the second none.
+        assert!(!bolt.tick() && bolt.is_lit());
+        assert!(!bolt.tick() && bolt.is_lit());
+        // The third spends it: it is gone, or waits dark, or flashes again with a life of one.
+        let gone = bolt.tick();
+        assert_eq!(bolt.is_lit(), !gone && bolt.life == 1);
     }
 }

@@ -282,6 +282,9 @@ fn lerp_int(alpha: f32, from: i32, to: i32) -> i32 {
     from + (alpha * (to - from) as f32).floor() as i32
 }
 
+/// `ARGB.color(204, 204, 255)`, what a lightning flash lerps the sky colour towards.
+const FLASH_COLOUR: u32 = 0xFFCC_CCFF;
+
 /// `ARGB.srgbLerp`: each channel on its own, truncated as integers are.
 pub fn srgb_lerp(alpha: f32, from: u32, to: u32) -> u32 {
     argb(
@@ -871,6 +874,7 @@ impl Environment {
         biome_at: impl Fn(i32, i32, i32) -> Option<i32>,
         clock_ticks: impl Fn(&str) -> i64,
         weather: Weather,
+        sky_flash: bool,
     ) -> Attributes {
         // GaussianSampler over the biomes around the camera, a quarter scale.
         let mut weights: Vec<(usize, f64)> = Vec::new();
@@ -974,6 +978,16 @@ impl Environment {
                     value = lerp(kind, weather.thunder, value, thundered);
                 }
             }
+            // `ClientLevel`'s own layers, last: a lightning flash lights the sky.
+            if sky_flash {
+                value = match attribute {
+                    Attribute::SkyColor => {
+                        Value::Color(srgb_lerp(0.22, value.color(), FLASH_COLOUR))
+                    }
+                    Attribute::SkyLightFactor => Value::Float(1.0),
+                    _ => value,
+                };
+            }
             values.insert(attribute, attribute.sanitize(value));
         }
         Attributes { values }
@@ -987,7 +1001,7 @@ pub struct Attributes {
 }
 
 impl Attributes {
-    fn get(&self, attribute: Attribute) -> Value {
+    pub fn get(&self, attribute: Attribute) -> Value {
         self.values
             .get(&attribute)
             .copied()

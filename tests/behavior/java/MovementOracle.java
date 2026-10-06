@@ -193,6 +193,7 @@ public final class MovementOracle {
                 case "entity_shadows" -> rows.add(entityShadows(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
+                case "sky_flash" -> rows.add(skyFlash(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
@@ -1814,6 +1815,30 @@ public final class MovementOracle {
         accessor.setAccessible(true);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
+    }
+
+    /**
+     * The sky colour and the sky light factor the real client level's attribute system gives
+     * with the flash time set, with the option that hides the flash on or off: where nothing is
+     * loaded (plains, no weather, the clocks at zero).
+     */
+    private static JsonObject skyFlash(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        setField(scene.minecraft(), "level", level);
+        scene.options().hideLightningFlash().set(row.get("hide").getAsBoolean());
+        level.setSkyFlashTime(row.get("flash").getAsInt());
+        level.environmentAttributes().invalidateTickCache();
+        var at = new net.minecraft.world.phys.Vec3(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
+        int color = level.environmentAttributes().getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, at);
+        float factor = level.environmentAttributes().getValue(
+            net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_FACTOR, at);
+        entry.addProperty("sky_color", color);
+        entry.addProperty("sky_light_factor", Oracle.bits(factor));
+        return entry;
     }
 
     /**

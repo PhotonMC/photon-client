@@ -203,6 +203,8 @@ pub struct Options {
     pub chat_scale: f64,
     pub chat_width: f64,
     pub attack_indicator: AttackIndicator,
+    /// `hideLightningFlashes`: the sky does not flash with lightning.
+    pub hide_lightning_flashes: bool,
     /// `soundCategory_<name>` for each `SoundSource`, in ordinal order, 0 to 1.
     pub sound_volumes: [f64; 11],
     /// `soundDevice`: "" is the default device.
@@ -236,6 +238,7 @@ impl Default for Options {
             chat_scale: 1.0,
             chat_width: 1.0,
             attack_indicator: AttackIndicator::Crosshair,
+            hide_lightning_flashes: false,
             sound_volumes: [1.0; 11],
             sound_device: String::new(),
             show_subtitles: false,
@@ -267,6 +270,7 @@ enum Key {
     MouseWheelSensitivity,
     SaveChatDrafts,
     AttackIndicator,
+    HideLightningFlashes,
     SoundDevice,
     ShowSubtitles,
     DirectionalAudio,
@@ -275,7 +279,7 @@ enum Key {
     SoundCategory(SoundSource),
 }
 
-const KEYS: [(&str, Key); 33] = [
+const KEYS: [(&str, Key); 34] = [
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
     ("invertXMouse", Key::InvertXMouse),
@@ -293,6 +297,7 @@ const KEYS: [(&str, Key); 33] = [
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
+    ("hideLightningFlashes", Key::HideLightningFlashes),
     ("soundDevice", Key::SoundDevice),
     ("showSubtitles", Key::ShowSubtitles),
     ("directionalAudio", Key::DirectionalAudio),
@@ -490,6 +495,7 @@ impl Options {
     fn read_sound(&mut self, key: Key, json: &Json) {
         match (key, json) {
             (Key::ShowSubtitles, Json::Bool(value)) => self.show_subtitles = *value,
+            (Key::HideLightningFlashes, Json::Bool(value)) => self.hide_lightning_flashes = *value,
             (Key::DirectionalAudio, Json::Bool(value)) => self.directional_audio = *value,
             (Key::SoundDevice, Json::Text(device)) => self.sound_device.clone_from(device),
             (Key::MusicFrequency, Json::Text(name)) => {
@@ -560,6 +566,7 @@ impl Options {
                 }
             }
             Key::ShowSubtitles
+            | Key::HideLightningFlashes
             | Key::DirectionalAudio
             | Key::SoundDevice
             | Key::MusicFrequency
@@ -623,6 +630,7 @@ impl Options {
             Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
             Key::AttackIndicator => self.attack_indicator.id().to_string(),
             Key::ShowSubtitles => self.show_subtitles.to_string(),
+            Key::HideLightningFlashes => self.hide_lightning_flashes.to_string(),
             Key::DirectionalAudio => self.directional_audio.to_string(),
             Key::SoundDevice => write_string(&self.sound_device),
             Key::MusicFrequency => write_string(self.music_frequency.serialized()),
