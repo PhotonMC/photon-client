@@ -1295,6 +1295,63 @@ public final class MovementOracle {
                     case "entity_event" -> listener.handleEntityEvent(
                         new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(
                             entity, (byte) event.get("event").getAsInt()));
+                    case "display_data" -> {
+                        // A display's data, each field built from the reference's own accessor.
+                        var display = net.minecraft.world.entity.Display.class;
+                        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+                        for (var field : new String[][] {{"start_delta", "DATA_TRANSFORMATION_INTERPOLATION_START_DELTA_TICKS_ID"},
+                                {"duration", "DATA_TRANSFORMATION_INTERPOLATION_DURATION_ID"},
+                                {"pos_rot", "DATA_POS_ROT_INTERPOLATION_DURATION_ID"}, {"brightness", "DATA_BRIGHTNESS_OVERRIDE_ID"},
+                                {"glow", "DATA_GLOW_COLOR_OVERRIDE_ID"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(display, field[1], event.get(field[0]).getAsInt()));
+                            }
+                        }
+                        for (var field : new String[][] {{"view_range", "DATA_VIEW_RANGE_ID"}, {"shadow_radius", "DATA_SHADOW_RADIUS_ID"},
+                                {"shadow_strength", "DATA_SHADOW_STRENGTH_ID"}, {"width", "DATA_WIDTH_ID"}, {"height", "DATA_HEIGHT_ID"}}) {
+                            if (event.has(field[0])) {
+                                data.add(wolfData(display, field[1], Oracle.f32(event, field[0])));
+                            }
+                        }
+                        if (event.has("billboard")) {
+                            data.add(wolfData(display, "DATA_BILLBOARD_RENDER_CONSTRAINTS_ID", (byte) event.get("billboard").getAsInt()));
+                        }
+                        for (var field : new String[][] {{"translation", "DATA_TRANSLATION_ID"}, {"scale", "DATA_SCALE_ID"}}) {
+                            if (event.has(field[0])) {
+                                var parts = event.getAsJsonArray(field[0]);
+                                data.add(wolfData(display, field[1], new org.joml.Vector3f(
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(0).getAsString(), 16)),
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(1).getAsString(), 16)),
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(2).getAsString(), 16)))));
+                            }
+                        }
+                        for (var field : new String[][] {{"left_rotation", "DATA_LEFT_ROTATION_ID"}, {"right_rotation", "DATA_RIGHT_ROTATION_ID"}}) {
+                            if (event.has(field[0])) {
+                                var parts = event.getAsJsonArray(field[0]);
+                                data.add(wolfData(display, field[1], new org.joml.Quaternionf(
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(0).getAsString(), 16)),
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(1).getAsString(), 16)),
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(2).getAsString(), 16)),
+                                    Float.intBitsToFloat((int) Long.parseLong(parts.get(3).getAsString(), 16)))));
+                            }
+                        }
+                        if (event.has("block_state")) {
+                            data.add(wolfData(net.minecraft.world.entity.Display.BlockDisplay.class, "DATA_BLOCK_STATE_ID",
+                                net.minecraft.world.level.block.Block.stateById(event.get("block_state").getAsInt())));
+                        }
+                        if (event.has("item")) {
+                            var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                                net.minecraft.resources.Identifier.parse(event.get("item").getAsString()));
+                            data.add(wolfData(net.minecraft.world.entity.Display.ItemDisplay.class, "DATA_ITEM_STACK_ID",
+                                new net.minecraft.world.item.ItemStack(item)));
+                        }
+                        if (event.has("item_display")) {
+                            data.add(wolfData(net.minecraft.world.entity.Display.ItemDisplay.class, "DATA_ITEM_DISPLAY_ID",
+                                (byte) event.get("item_display").getAsInt()));
+                        }
+                        listener.handleSetEntityData(
+                            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
+                    }
                     case "minecart_steps" -> {
                         // The steps along the track the server took, with the turns as the wire packs them.
                         var steps = new java.util.ArrayList<net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.MinecartStep>();
@@ -1598,6 +1655,46 @@ public final class MovementOracle {
                                 }
                             }
                             described.add("rail", probes);
+                        }
+                        case "display" -> {
+                            var shown = (net.minecraft.world.entity.Display) entity;
+                            described.addProperty("x", Oracle.bits(shown.getX()));
+                            described.addProperty("y", Oracle.bits(shown.getY()));
+                            described.addProperty("z", Oracle.bits(shown.getZ()));
+                            described.addProperty("y_rot", Oracle.bits(shown.getYRot()));
+                            described.addProperty("x_rot", Oracle.bits(shown.getXRot()));
+                            if (shown instanceof net.minecraft.world.entity.Display.BlockDisplay block
+                                    && block.blockRenderState() != null) {
+                                described.addProperty("block_state", net.minecraft.world.level.block.Block.getId(
+                                    block.blockRenderState().blockState()));
+                            }
+                            if (shown instanceof net.minecraft.world.entity.Display.ItemDisplay itemDisplay
+                                    && itemDisplay.itemRenderState() != null) {
+                                described.addProperty("item_context", itemDisplay.itemRenderState().itemTransform().getId());
+                                described.addProperty("item_empty", itemDisplay.itemRenderState().itemStack().isEmpty());
+                            }
+                            // What the render state gives between two ticks (asked as the renderer does, each asks remembering its progress).
+                            var samples = new JsonArray();
+                            var renderState = shown.renderState();
+                            described.addProperty("has_state", renderState != null);
+                            if (renderState != null) {
+                                for (float partial : new float[] {0.0F, 0.5F}) {
+                                    float progress = shown.calculateInterpolationProgress(partial);
+                                    var matrix = new float[16];
+                                    renderState.transformation().get(progress).getMatrix().get(matrix);
+                                    var sample = new StringBuilder(Oracle.bits(progress));
+                                    for (float value : matrix) {
+                                        sample.append(Oracle.bits(value));
+                                    }
+                                    sample.append(Oracle.bits(renderState.shadowRadius().get(progress)));
+                                    sample.append(Oracle.bits(renderState.shadowStrength().get(progress)));
+                                    samples.add(sample.toString());
+                                }
+                                described.addProperty("billboard", renderState.billboardConstraints().ordinal());
+                                described.addProperty("brightness", renderState.brightnessOverride());
+                                described.addProperty("glow", renderState.glowColorOverride());
+                            }
+                            described.add("samples", samples);
                         }
                         case "end_crystal" -> {
                             var crystal = (net.minecraft.world.entity.boss.enderdragon.EndCrystal) entity;

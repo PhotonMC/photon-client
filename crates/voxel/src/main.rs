@@ -14,6 +14,7 @@ mod charges;
 mod controls;
 mod copper_golems;
 mod cube_mobs;
+mod displays;
 mod dolphins;
 mod dropped_items;
 mod end_crystals;

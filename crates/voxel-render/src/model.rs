@@ -258,6 +258,8 @@ pub enum DisplayContext {
     Ground,
     Fixed,
     OnShelf,
+    /// `ItemDisplayContext.NONE`: no transform of the model's (not one of [`Self::ALL`]).
+    None,
 }
 
 impl DisplayContext {
@@ -285,6 +287,7 @@ impl DisplayContext {
             DisplayContext::Ground => "ground",
             DisplayContext::Fixed => "fixed",
             DisplayContext::OnShelf => "on_shelf",
+            DisplayContext::None => "none",
         }
     }
 
@@ -314,7 +317,7 @@ pub struct ItemTransforms {
 
 impl ItemTransforms {
     pub fn get(&self, context: DisplayContext) -> Option<ItemTransform> {
-        self.transforms[context as usize]
+        self.transforms.get(context as usize).copied().flatten()
     }
 }
 

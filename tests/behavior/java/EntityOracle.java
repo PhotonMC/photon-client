@@ -2826,6 +2826,101 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * Where the reference's own display renderers draw a block or an item display, from the render
+     * state the entity makes: the pose (and its normal matrix) at the submit of the model or item.
+     */
+    private static JsonObject displayPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            boolean item = row.get("kind").getAsString().equals("item");
+            var parts = (java.util.function.BiFunction<String, Integer, float[]>) (key, count) -> {
+                var values = new float[count];
+                for (int index = 0; index < count; index++) {
+                    values[index] = Float.intBitsToFloat((int) Long.parseLong(
+                        row.getAsJsonArray(key).get(index).getAsString(), 16));
+                }
+                return values;
+            };
+            var translation = parts.apply("translation", 3);
+            var scale = parts.apply("scale", 3);
+            var left = parts.apply("left_rotation", 4);
+            var right = parts.apply("right_rotation", 4);
+            var transformation = new com.mojang.math.Transformation(
+                new org.joml.Vector3f(translation[0], translation[1], translation[2]),
+                new org.joml.Quaternionf(left[0], left[1], left[2], left[3]),
+                new org.joml.Vector3f(scale[0], scale[1], scale[2]),
+                new org.joml.Quaternionf(right[0], right[1], right[2], right[3]));
+            var renderState = new net.minecraft.world.entity.Display.RenderState(
+                net.minecraft.world.entity.Display.GenericInterpolator.constant(transformation),
+                net.minecraft.world.entity.Display.BillboardConstraints.values()[row.get("billboard").getAsInt()],
+                -1, net.minecraft.world.entity.Display.FloatInterpolator.constant(0.0F),
+                net.minecraft.world.entity.Display.FloatInterpolator.constant(1.0F), -1);
+            net.minecraft.client.renderer.entity.state.DisplayEntityRenderState state;
+            if (item) {
+                var itemState = new net.minecraft.client.renderer.entity.state.ItemDisplayEntityRenderState();
+                itemState.item.newLayer();
+                state = itemState;
+            } else {
+                var blockState = new net.minecraft.client.renderer.entity.state.BlockDisplayEntityRenderState();
+                blockState.blockModel.setupModel(new org.joml.Matrix4f(), false).add(
+                    (net.minecraft.client.renderer.block.dispatch.BlockStateModelPart)
+                        java.lang.reflect.Proxy.newProxyInstance(EntityOracle.class.getClassLoader(),
+                            new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModelPart.class},
+                            (proxy, method, args) -> null));
+                state = blockState;
+            }
+            state.renderState = renderState;
+            state.interpolationProgress = 1.0F;
+            state.entityYRot = Oracle.f32(row, "entity_y_rot");
+            state.entityXRot = Oracle.f32(row, "entity_x_rot");
+            state.cameraYRot = Oracle.f32(row, "camera_y_rot");
+            state.cameraXRot = Oracle.f32(row, "camera_x_rot");
+            var renderer = UNSAFE.allocateInstance(item
+                ? net.minecraft.client.renderer.entity.DisplayRenderer.ItemDisplayRenderer.class
+                : net.minecraft.client.renderer.entity.DisplayRenderer.BlockDisplayRenderer.class);
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitBlockModel") || method.getName().equals("submitItem")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var normal = new float[9];
+                        stack.last().normal().get(normal);
+                        var described = new StringBuilder();
+                        for (float value : matrix) {
+                            described.append(Oracle.bits(value));
+                        }
+                        for (float value : normal) {
+                            described.append(Oracle.bits(value));
+                        }
+                        poses.add(described.toString());
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            if (item) {
+                ((net.minecraft.client.renderer.entity.DisplayRenderer.ItemDisplayRenderer) renderer).submit(
+                    (net.minecraft.client.renderer.entity.state.ItemDisplayEntityRenderState) state, stack, collector, null);
+            } else {
+                ((net.minecraft.client.renderer.entity.DisplayRenderer.BlockDisplayRenderer) renderer).submit(
+                    (net.minecraft.client.renderer.entity.state.BlockDisplayEntityRenderState) state, stack, collector, null);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -5027,6 +5122,9 @@ public final class EntityOracle {
         }
         if (operation.equals("minecart_pose")) {
             return minecartPose(request);
+        }
+        if (operation.equals("display_pose")) {
+            return displayPose(request);
         }
         if (operation.equals("item_frame_pose")) {
             return itemFramePose(request);

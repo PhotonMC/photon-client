@@ -584,6 +584,17 @@ pub(crate) fn is_vanilla_shulker_entity_type(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_SHULKER_ENTITY_TYPE_ID
 }
 
+/// Which display a type is, if it is one (`Display`).
+pub(crate) fn display_kind_of(entity_type_id: i32) -> Option<crate::display::DisplayKind> {
+    use crate::display::DisplayKind;
+    match voxel_data::entity_type::name(entity_type_id)? {
+        "minecraft:block_display" => Some(DisplayKind::Block),
+        "minecraft:item_display" => Some(DisplayKind::Item),
+        "minecraft:text_display" => Some(DisplayKind::Text),
+        _ => None,
+    }
+}
+
 pub(crate) fn is_vanilla_minecart_entity_type(entity_type_id: i32) -> bool {
     VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id)
 }
@@ -782,6 +793,8 @@ pub struct ClientEntity {
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
     pub(crate) item_frame_rotation: i32,
+    /// A display entity's data and render state (`Display`).
+    pub(crate) display: Option<Box<crate::display::DisplayState>>,
     pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
     /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
     pub(crate) leash_holder_id: i32,
@@ -1213,6 +1226,13 @@ impl ClientEntity {
     }
 
     pub(crate) fn interpolate_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        let steps = self.interpolation_length();
+        if steps == 0 {
+            // `InterpolationHandler.interpolateTo` with no steps: put there at once.
+            self.snap_to(position, y_rot, x_rot);
+            self.interpolation = None;
+            return;
+        }
         let target_matches = self.interpolation.is_some_and(|interpolation| {
             interpolation.steps > 0
                 && interpolation.target_x_bits == position.0.to_bits()
@@ -1238,7 +1258,7 @@ impl ClientEntity {
             previous_z_bits: current_position.2.to_bits(),
             previous_y_rot_bits: current_rotation.0.to_bits(),
             previous_x_rot_bits: current_rotation.1.to_bits(),
-            steps: LIVING_ENTITY_POSITION_LERP_STEPS,
+            steps: steps.clamp(0, 255) as u8,
         });
     }
 
@@ -2623,6 +2643,27 @@ impl ClientEntity {
         self.lightning_done
     }
 
+    /// A display entity's data and render state.
+    pub fn display(&self) -> Option<&crate::display::DisplayState> {
+        self.display.as_deref()
+    }
+
+    /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
+    /// living, the minecarts and the displays ease to the positions the server sends.
+    pub(crate) fn has_interpolation_handler(&self) -> bool {
+        self.living_kind().is_some() || self.is_minecart() || self.display.is_some()
+    }
+
+    /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or
+    /// a display's own.
+    fn interpolation_length(&self) -> i32 {
+        self.display
+            .as_ref()
+            .map_or(i32::from(LIVING_ENTITY_POSITION_LERP_STEPS), |display| {
+                display.pos_rot_duration()
+            })
+    }
+
     /// Whether this is an item frame or a glow item frame (`ItemFrame`).
     pub fn is_item_frame(&self) -> bool {
         matches!(
@@ -3136,6 +3177,12 @@ impl ClientEntity {
         }
         if self.is_minecart() {
             self.tick_minecart();
+            return;
+        }
+        if let Some(display) = self.display.as_mut() {
+            // `Display.tick`'s client half: the notes the data left, then the position's easing.
+            display.tick(self.tick_count);
+            self.tick_position_interpolation();
             return;
         }
         self.tick_frog();

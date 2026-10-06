@@ -12,6 +12,7 @@ pub mod breaking;
 pub mod camera;
 pub mod clouds;
 pub mod crystal_beam;
+pub mod display;
 pub mod dragon_rays;
 pub mod entity_block;
 pub mod entity_textures;

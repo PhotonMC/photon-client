@@ -19020,6 +19020,97 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                         data.push(255);
                         world.apply_entity_metadata(entity_id, &data);
                     }
+                    "display_data" => {
+                        // A display's data in the wire's own form (data id, serializer, value).
+                        let float = |value: &Value| -> Result<f32, String> {
+                            u32::from_str_radix(value.as_str().ok_or("a float is a string")?, 16)
+                                .map(f32::from_bits)
+                                .map_err(|error| error.to_string())
+                        };
+                        let mut data = Vec::new();
+                        for (key, id) in [
+                            ("start_delta", voxel_world::display::START_DELTA_DATA_ID),
+                            (
+                                "duration",
+                                voxel_world::display::INTERPOLATION_DURATION_DATA_ID,
+                            ),
+                            ("pos_rot", voxel_world::display::POS_ROT_DURATION_DATA_ID),
+                            ("brightness", voxel_world::display::BRIGHTNESS_DATA_ID),
+                            ("glow", voxel_world::display::GLOW_COLOR_DATA_ID),
+                        ] {
+                            if event[key].is_i64() {
+                                data.extend([id, 1]);
+                                voxel_core::wire::write_varint(i32_field(event, key)?, &mut data);
+                            }
+                        }
+                        for (key, id) in [
+                            ("view_range", voxel_world::display::VIEW_RANGE_DATA_ID),
+                            ("shadow_radius", voxel_world::display::SHADOW_RADIUS_DATA_ID),
+                            (
+                                "shadow_strength",
+                                voxel_world::display::SHADOW_STRENGTH_DATA_ID,
+                            ),
+                            ("width", voxel_world::display::WIDTH_DATA_ID),
+                            ("height", voxel_world::display::HEIGHT_DATA_ID),
+                        ] {
+                            if event[key].is_string() {
+                                data.extend([id, 3]);
+                                data.extend(float(&event[key])?.to_be_bytes());
+                            }
+                        }
+                        if event["billboard"].is_i64() {
+                            data.extend([voxel_world::display::BILLBOARD_DATA_ID, 0]);
+                            data.push(i32_field(event, "billboard")? as u8);
+                        }
+                        for (key, id, serializer, count) in [
+                            (
+                                "translation",
+                                voxel_world::display::TRANSLATION_DATA_ID,
+                                39,
+                                3,
+                            ),
+                            ("scale", voxel_world::display::SCALE_DATA_ID, 39, 3),
+                            (
+                                "left_rotation",
+                                voxel_world::display::LEFT_ROTATION_DATA_ID,
+                                40,
+                                4,
+                            ),
+                            (
+                                "right_rotation",
+                                voxel_world::display::RIGHT_ROTATION_DATA_ID,
+                                40,
+                                4,
+                            ),
+                        ] {
+                            if let Some(parts) = event[key].as_array() {
+                                data.extend([id, serializer]);
+                                for part in parts.iter().take(count) {
+                                    data.extend(float(part)?.to_be_bytes());
+                                }
+                            }
+                        }
+                        if event["block_state"].is_i64() {
+                            data.extend([voxel_world::display::BLOCK_STATE_DATA_ID, 14]);
+                            voxel_core::wire::write_varint(
+                                i32_field(event, "block_state")?,
+                                &mut data,
+                            );
+                        }
+                        if event["item_display"].is_i64() {
+                            data.extend([voxel_world::display::ITEM_DISPLAY_DATA_ID, 0]);
+                            data.push(i32_field(event, "item_display")? as u8);
+                        }
+                        data.push(255);
+                        world.apply_entity_metadata(entity_id, &data);
+                        if let Some(name) = event["item"].as_str() {
+                            let id = voxel_data::item::registry::index(name).unwrap_or(0);
+                            world.apply_entity_item_stack(
+                                entity_id,
+                                Some(voxel_world::ClientItemStackState::new(1, id as i32)),
+                            );
+                        }
+                    }
                     "minecart_steps" => {
                         // The steps along the track, with the turns the wire packs in a byte of 256ths.
                         let degrees = |step: &Value, key: &str| -> Result<f32, String> {
@@ -19522,6 +19613,50 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             }
                         }
                         described["rail"] = json!(probes);
+                    }
+                    "display" => {
+                        let (x, y, z) = entity.position();
+                        let (y_rot, x_rot, _) = entity.rotation();
+                        for (key, value) in [("x", x), ("y", y), ("z", z)] {
+                            described[key] = json!(format!("{:016x}", value.to_bits()));
+                        }
+                        described["y_rot"] = json!(hex(y_rot));
+                        described["x_rot"] = json!(hex(x_rot));
+                        let display = entity.display().ok_or("a display")?;
+                        if let Some(block) = display.block_state() {
+                            described["block_state"] = json!(block);
+                        }
+                        if let Some(context) = display.item_context() {
+                            described["item_context"] = json!(context);
+                            described["item_empty"] = json!(
+                                entity
+                                    .item_stack()
+                                    .is_none_or(|stack| stack.item_count() <= 0)
+                            );
+                        }
+                        let state = display.render_state();
+                        described["has_state"] = json!(state.is_some());
+                        let mut samples = Vec::new();
+                        if let Some(state) = state {
+                            for partial in [0.0_f32, 0.5] {
+                                let progress =
+                                    display.interpolation_progress(entity.tick_count(), partial);
+                                let matrix = voxel_render::display::transformation_matrix(
+                                    &state.transformation.get(progress),
+                                );
+                                let mut sample = hex(progress);
+                                for value in matrix {
+                                    sample.push_str(&hex(value));
+                                }
+                                sample.push_str(&hex(state.shadow_radius.get(progress)));
+                                sample.push_str(&hex(state.shadow_strength.get(progress)));
+                                samples.push(json!(sample));
+                            }
+                            described["billboard"] = json!(state.billboard as i32);
+                            described["brightness"] = json!(state.brightness_override);
+                            described["glow"] = json!(state.glow_color_override);
+                        }
+                        described["samples"] = json!(samples);
                     }
                     "end_crystal" => {
                         let state = entity.end_crystal().copied();
@@ -23068,6 +23203,63 @@ fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `display_pose`: the pose (and its normal matrix) a display's block or item is drawn from.
+fn display_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::display::{DisplayTurns, display_pose, item_display_pose};
+    use voxel_world::display::{Billboard, Transformation};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |value: &Value| -> Result<f32, String> {
+            u32::from_str_radix(value.as_str().ok_or("a float is a string")?, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let bits = |key: &str| float(&row[key]);
+        let parts = |key: &str| -> Result<Vec<f32>, String> {
+            row[key]
+                .as_array()
+                .ok_or("a vector is an array")?
+                .iter()
+                .map(float)
+                .collect()
+        };
+        let (translation, scale) = (parts("translation")?, parts("scale")?);
+        let (left, right) = (parts("left_rotation")?, parts("right_rotation")?);
+        let transformation = Transformation {
+            translation: [translation[0], translation[1], translation[2]],
+            left_rotation: [left[0], left[1], left[2], left[3]],
+            scale: [scale[0], scale[1], scale[2]],
+            right_rotation: [right[0], right[1], right[2], right[3]],
+        };
+        let billboard = match i32_field(row, "billboard")? {
+            1 => Billboard::Vertical,
+            2 => Billboard::Horizontal,
+            3 => Billboard::Center,
+            _ => Billboard::Fixed,
+        };
+        let turns = DisplayTurns {
+            entity: (bits("entity_y_rot")?, bits("entity_x_rot")?),
+            camera: (bits("camera_y_rot")?, bits("camera_x_rot")?),
+        };
+        let mut base = voxel_render::joml::Pose::default();
+        base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
+        let mut pose = display_pose(&base, (billboard, &transformation), &turns);
+        if string(row, "kind")? == "item" {
+            pose = item_display_pose(&pose);
+            // The item's layer, which has no transform of its own here, centres its model.
+            pose.translate(-0.5, -0.5, -0.5);
+        }
+        let mut described = matrix_bits(&pose).concat();
+        for column in 0..3 {
+            for row in 0..3 {
+                described.push_str(&format!("{:08x}", pose.normal.m[column][row].to_bits()));
+            }
+        }
+        out.push(json!({"label": row["label"], "poses": [described]}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -25298,6 +25490,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "dragon_rays" => return dragon_rays_result(request),
         "minecart_pose" => return minecart_pose_result(request),
         "item_frame_pose" => return item_frame_pose_result(request),
+        "display_pose" => return display_pose_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),

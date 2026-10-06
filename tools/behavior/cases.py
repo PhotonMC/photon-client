@@ -14753,6 +14753,18 @@ def movement_item_cases():
             row["extras"] = extras
         return row
 
+    def display_data(tick, **fields):
+        """A display's data the server sent: floats and vectors in their bits, ints as they are."""
+        event = {"tick": tick, "type": "display_data"}
+        for key, value in fields.items():
+            if key in ("translation", "scale", "left_rotation", "right_rotation"):
+                event[key] = [float_bits(part) for part in value]
+            elif key in ("view_range", "shadow_radius", "shadow_strength", "width", "height"):
+                event[key] = float_bits(value)
+            else:
+                event[key] = value
+        return event
+
     def cart_step(x, y, z, mx, my, mz, y_rot, x_rot, weight):
         """A step along the track the server sent (the turns in the byte the wire packs them in)."""
         return {"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64"),
@@ -15273,6 +15285,49 @@ def movement_item_cases():
                                             (0.5, 64.0, 2.9), (3.4, 64.0, 1.6), (4.6, 64.0, 1.4), (3.2, 64.0, 2.8),
                                             (4.1, 64.0, 2.2), (4.5, 64.0, 0.5), (5.5, 64.0, 0.4), (0.5, 65.0, 0.5),
                                             (-1.5, 64.0, 0.5), (0.5, 66.5, 0.5), (3.5, 65.0, 1.5)]]),
+        # A display entity keeps nothing until some data arrives; then its render state is made from the
+        # data (the transformation of the four parts, billboard, brightness, shadow, glow, and the
+        # block or item it shows). While the interpolation duration is not zero a change eases from where
+        # the last had got to (the turns by the shorter arc, linear where they are the same), over the
+        # duration from the start tick (the delay after it was sent); the position and the turn ease over
+        # the teleport duration, and are put there at once while it is zero.
+        dict(living("display-quiet", "block_display", 6, [], extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-block-static", "block_display", 8,
+               [display_data(2, block_state=1, translation=[0.5, 0.25, -1.0], scale=[2.0, 1.0, 0.5],
+                             left_rotation=[0.0, 0.25881904, 0.0, 0.9659258],
+                             right_rotation=[0.0, 0.0, 0.25881904, 0.9659258], billboard=3,
+                             brightness=(15 << 4) | (10 << 20), glow=0xFF8800, shadow_radius=0.75,
+                             shadow_strength=0.5, view_range=2.0, width=1.5, height=2.0)],
+               extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-eases", "block_display", 30,
+               [display_data(2, block_state=1, translation=[0.0, 0.0, 0.0], scale=[1.0, 1.0, 1.0],
+                             shadow_radius=0.0),
+                display_data(6, duration=10, start_delta=0, translation=[1.0, 2.0, 3.0], scale=[2.0, 2.0, 2.0],
+                             left_rotation=[0.0, 0.7071068, 0.0, 0.7071068], shadow_radius=1.0),
+                display_data(13, duration=8, start_delta=2, translation=[-1.0, 0.0, 0.5],
+                             shadow_radius=0.25, shadow_strength=0.5),
+                display_data(24, duration=0, translation=[0.0, 0.0, 0.0])],
+               extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-turns-the-other-way", "block_display", 20,
+               [display_data(2, block_state=1, left_rotation=[0.0, 0.0, 0.0, 1.0]),
+                display_data(5, duration=6, start_delta=0, left_rotation=[0.0, 0.8660254, 0.0, -0.5],
+                             right_rotation=[0.0, 0.0, 0.0, 1.0])],
+               extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-moves", "block_display", 30,
+               [display_data(2, block_state=1),
+                {"tick": 3, "type": "sync", "x": float_bits(5.5, "f64"), "y": float_bits(65.0, "f64"),
+                 "z": float_bits(-2.5, "f64"), "motion_x": float_bits(0.0, "f64"),
+                 "motion_y": float_bits(0.0, "f64"), "motion_z": float_bits(0.0, "f64")},
+                display_data(6, pos_rot=6),
+                {"tick": 8, "type": "sync", "x": float_bits(10.5, "f64"), "y": float_bits(66.0, "f64"),
+                 "z": float_bits(4.5, "f64"), "motion_x": float_bits(0.0, "f64"),
+                 "motion_y": float_bits(0.0, "f64"), "motion_z": float_bits(0.0, "f64")},
+                {"tick": 12, "type": "move_rot", "xa": 4096, "ya": 0, "za": 0, "y_rot": 64, "x_rot": 0}],
+               extras=["display"], player_x=30.5), chunk_radius=1),
+        dict(living("display-item", "item_display", 14,
+               [display_data(2, item="minecraft:diamond_sword", item_display=8),
+                display_data(8, item_display=5)],
+               extras=["display"], player_x=30.5), chunk_radius=1),
         # A minecart of the new behaviour (the server enabled `minecart_improvements`) is not eased to
         # the place a packet gives: a move or a teleport puts it there at once, and it plays back the
         # steps the server sent along the track over three ticks, weighted by how far each went
@@ -15878,6 +15933,7 @@ def entity_cases():
     yield from entity_crystal_beam_cases()
     yield from entity_minecart_pose_cases()
     yield from entity_item_frame_pose_cases()
+    yield from entity_display_pose_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
     yield from entity_charge_cases()
@@ -17651,6 +17707,37 @@ def entity_item_frame_pose_cases():
              frame("invisible-up", "up", invisible=True, rotation=3),
              frame("far", "down", rotation=5, feet=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/item-frame-pose", "family": "entity", "operation": "item_frame_pose", "rows": rows}
+
+
+def entity_display_pose_cases():
+    """Where the reference's own display renderers draw a block or an item display, from the render
+    state an entity makes: each billboard constraint (the entity's turns, the camera's, or a mix),
+    a transformation that keeps normals (a turn and a uniform scale), one that does not (a scale
+    that differs by axis, with the turns before and after it), and the item's turn about."""
+    def bits(values):
+        return [float_bits(value) for value in values]
+
+    quarter = [0.0, 0.7071068, 0.0, 0.7071068]
+    tilted = [0.2418448, 0.0, 0.0, 0.9703133]
+    def display(label, kind="block", billboard=0, translation=(0.0, 0.0, 0.0), scale=(1.0, 1.0, 1.0),
+                left=(0.0, 0.0, 0.0, 1.0), right=(0.0, 0.0, 0.0, 1.0), entity=(33.0, -12.5),
+                camera=(110.0, 25.0), feet=(10.5, 64.25, -3.5)):
+        return {"label": f"display-{label}", "kind": kind, "billboard": billboard,
+                "translation": bits(translation), "scale": bits(scale), "left_rotation": bits(left),
+                "right_rotation": bits(right), "entity_y_rot": float_bits(entity[0]),
+                "entity_x_rot": float_bits(entity[1]), "camera_y_rot": float_bits(camera[0]),
+                "camera_x_rot": float_bits(camera[1]), "feet_x": float_bits(feet[0]),
+                "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
+    rows = [display(f"billboard-{name}", billboard=index, translation=(0.25, -0.5, 1.0), left=quarter)
+            for index, name in enumerate(["fixed", "vertical", "horizontal", "center"])]
+    rows += [display("uniform-scale", scale=(2.0, 2.0, 2.0), left=tilted, translation=(-1.0, 0.5, 0.0)),
+             display("squashed", scale=(2.0, 0.5, 1.0), left=quarter, right=tilted, translation=(0.0, 1.0, 0.0)),
+             display("squashed-center", billboard=3, scale=(1.0, 3.0, 0.25), left=tilted, right=quarter),
+             display("mirrored", scale=(-1.0, 1.0, 1.0), left=tilted),
+             display("item", kind="item", billboard=3, translation=(0.0, 0.5, 0.0), scale=(0.5, 0.5, 0.5), left=tilted),
+             display("item-fixed", kind="item", right=quarter),
+             display("far", scale=(1.5, 1.5, 1.5), left=quarter, feet=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/display-pose", "family": "entity", "operation": "display_pose", "rows": rows}
 
 
 def entity_arrow_cases():

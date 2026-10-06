@@ -318,6 +318,16 @@ impl Matrix4 {
         matrix
     }
 
+    /// `MatrixUtil.checkPropertyRaw(matrix, 16)`: whether the matrix is known to be orthonormal.
+    pub fn is_orthonormal(&self) -> bool {
+        self.properties & ORTHONORMAL != 0
+    }
+
+    /// `MatrixUtil.isPureTranslation`.
+    pub fn is_pure_translation(&self) -> bool {
+        self.properties & TRANSLATION != 0
+    }
+
     /// Whether the matrix is exactly the identity
     /// (`MatrixUtil.isIdentity`, which compares values).
     pub fn is_identity(&self) -> bool {
@@ -596,6 +606,41 @@ impl Matrix3 {
         }
     }
 
+    /// `Matrix3f.invert().transpose()`: the normal matrix of a pose whose matrix does not keep
+    /// normals unit length (`Pose.computeNormalMatrix`).
+    pub fn inverse_transpose(&self) -> Self {
+        let m = |column: usize, row: usize| self.m[column][row];
+        let (m00, m01, m02) = (m(0, 0), m(0, 1), m(0, 2));
+        let (m10, m11, m12) = (m(1, 0), m(1, 1), m(1, 2));
+        let (m20, m21, m22) = (m(2, 0), m(2, 1), m(2, 2));
+        let a = fma(m00, m11, -m01 * m10);
+        let b = fma(m02, m10, -m00 * m12);
+        let c = fma(m01, m12, -m02 * m11);
+        let d = fma(a, m22, fma(b, m21, c * m20));
+        let s = 1.0 / d;
+        let inverse = [
+            [
+                fma(m11, m22, -m21 * m12) * s,
+                fma(m21, m02, -m01 * m22) * s,
+                c * s,
+            ],
+            [
+                fma(m20, m12, -m10 * m22) * s,
+                fma(m00, m22, -m20 * m02) * s,
+                b * s,
+            ],
+            [
+                fma(m10, m21, -m20 * m11) * s,
+                fma(m20, m01, -m00 * m21) * s,
+                a * s,
+            ],
+        ];
+        // Transposed: the row of the inverse is the column of the result.
+        Self {
+            m: std::array::from_fn(|column| std::array::from_fn(|row| inverse[row][column])),
+        }
+    }
+
     /// `Matrix3f.mul(right)`.
     pub fn mul(&mut self, right: &Self) {
         let (l, r) = (self.m, &right.m);
@@ -702,10 +747,19 @@ impl Pose {
         self.pose.translate(x, y, z);
     }
 
-    /// `PoseStack.mulPose(Matrix4fc)` for an orthonormal, affine matrix.
+    /// `PoseStack.Pose.mulPose(Matrix4fc)` for an affine matrix: the normals follow it as it is,
+    /// or are worked out again when it does not keep them unit length.
     pub fn mul_matrix(&mut self, matrix: &Matrix4) {
         self.pose = self.pose.mul(matrix);
-        self.normal.mul(&Matrix3::from_matrix4(matrix));
+        if !matrix.is_pure_translation() {
+            if matrix.is_orthonormal() {
+                self.normal.mul(&Matrix3::from_matrix4(matrix));
+            } else {
+                // `computeNormalMatrix`.
+                self.normal = Matrix3::from_matrix4(&self.pose).inverse_transpose();
+                self.untrusted_normals = true;
+            }
+        }
     }
 
     pub fn rotate(&mut self, quat: &Quaternion) {

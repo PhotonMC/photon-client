@@ -48,6 +48,7 @@ pub mod copper_golem;
 pub mod creaking;
 pub mod cube_mob;
 mod dimension;
+pub mod display;
 pub mod elytra;
 pub mod end_crystal;
 pub mod ender_dragon;
@@ -2339,6 +2340,9 @@ impl ClientWorld {
             return false;
         };
         entity.item_stack = stack;
+        if let Some(display) = entity.display.as_mut() {
+            display.item_changed();
+        }
         true
     }
 
@@ -3571,6 +3575,8 @@ impl ClientWorld {
                 evoker_fangs: None,
                 primed_tnt: None,
                 item_frame_rotation: 0,
+                display: entity::display_kind_of(entity.type_id)
+                    .map(|kind| Box::new(display::DisplayState::new(kind))),
                 lightning: None,
                 leash_holder_id: 0,
                 lightning_done: false,
@@ -4218,7 +4224,7 @@ impl ClientWorld {
             let Some(entity) = self.entities.get_mut(&input.entity_id) else {
                 return false;
             };
-            if (entity.living_kind().is_some() || entity.is_minecart())
+            if (entity.has_interpolation_handler())
                 && (input.y_rot.is_some() || input.x_rot.is_some())
             {
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
@@ -4405,7 +4411,7 @@ impl ClientWorld {
             if let Some(position) = new_position {
                 entity.set_packet_base(position);
             }
-            if entity.living_kind().is_some() || entity.is_minecart() {
+            if entity.has_interpolation_handler() {
                 let target_position =
                     new_position.unwrap_or_else(|| entity.interpolation_position());
                 let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
@@ -4519,7 +4525,7 @@ impl ClientWorld {
             if mode == EntityPositionUpdateMode::PositionSync {
                 entity.set_packet_base(target_position);
             }
-            if entity.living_kind().is_some() || entity.is_minecart() {
+            if entity.has_interpolation_handler() {
                 let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
                 let distance_position = match mode {
                     EntityPositionUpdateMode::PositionSync => entity.position(),
@@ -4713,6 +4719,24 @@ enum LightTask {
 /// `FireworkRocketEntity.DATA_SHOT_AT_ANGLE`'s data id: the item and the attached target come first.
 pub const FIREWORK_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 
+/// The data of a display (`Display`) and of an item frame's turn, which this entity may have.
+fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    if let Some(display) = entity.display.as_mut() {
+        display.apply_metadata(metadata);
+        match voxel_data::entity_type::name(entity.type_id) {
+            Some("minecraft:block_display") => display.apply_block_state(metadata),
+            Some("minecraft:item_display") => display.apply_item_context(metadata),
+            _ => {}
+        }
+    }
+    if entity.is_item_frame()
+        && let Some(rotation) = metadata_int_value(metadata, constants::ITEM_FRAME_ROTATION_DATA_ID)
+    {
+        // `ItemFrame.setRotation`'s data holds the turn below eight.
+        entity.item_frame_rotation = rotation;
+    }
+}
+
 /// What the data of a sniffer, an armadillo, an arrow, a minecart, an end crystal, a wither, a
 /// creaking and an ender dragon says of it (each when it holds that kind's fields).
 fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
@@ -4764,12 +4788,7 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
         state.damage = hurt.damage.unwrap_or(state.damage);
         data.apply(state);
     }
-    if entity.is_item_frame()
-        && let Some(rotation) = metadata_int_value(metadata, constants::ITEM_FRAME_ROTATION_DATA_ID)
-    {
-        // `ItemFrame.setRotation`'s data holds the turn below eight.
-        entity.item_frame_rotation = rotation;
-    }
+    apply_display_and_frame_data(entity, metadata);
     if entity.is_end_crystal() {
         let (beam_target, show_bottom) = end_crystal_data_from_metadata(metadata);
         let state = entity.end_crystal_mut();

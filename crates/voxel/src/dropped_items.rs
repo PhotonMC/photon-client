@@ -68,6 +68,7 @@ pub fn dropped_items(
 pub struct WorldItemLayers {
     ground: ItemLayerCache,
     frames: ItemLayerCache,
+    displays: crate::displays::DisplayLayers,
 }
 
 impl WorldItemLayers {
@@ -75,12 +76,13 @@ impl WorldItemLayers {
         Self {
             ground: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
             frames: ItemLayerCache::new(voxel_render::model::DisplayContext::Fixed),
+            displays: crate::displays::DisplayLayers::new(),
         }
     }
 }
 
 /// The triangles of every item in the world as the ground shows it: those lying about and those
-/// thrown or shot through the air, and those in item frames.
+/// thrown or shot through the air, and those in item frames, and the displays'.
 pub fn world_items(
     session: &PlaySession,
     layers: &mut WorldItemLayers,
@@ -97,6 +99,12 @@ pub fn world_items(
     items.extend(crate::item_frames::item_frames(
         session,
         &mut layers.frames,
+        tints,
+        view,
+    ));
+    items.extend(crate::displays::displays(
+        session,
+        &mut layers.displays,
         tints,
         view,
     ));

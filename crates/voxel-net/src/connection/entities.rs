@@ -102,13 +102,20 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
     let is_frame = world
         .entity_at(packet.entity_id)
         .is_some_and(|entity| entity.is_item_frame());
+    let is_item_display = voxel_data::entity_type::id("minecraft:item_display").is_some_and(|id| {
+        world
+            .entity_at(packet.entity_id)
+            .is_some_and(|entity| entity.type_id == id)
+    });
     let stack_data_id = if is_frame {
         voxel_world::ITEM_FRAME_ITEM_DATA_ID
+    } else if is_item_display {
+        voxel_world::display::ITEM_STACK_DATA_ID
     } else {
         ITEM_ENTITY_STACK_DATA_ID
     };
     if applied
-        && (is_item || is_frame)
+        && (is_item || is_frame || is_item_display)
         && let Some((ITEM_STACK_SERIALIZER_ID, value)) =
             voxel_world::entity_metadata_field(&packet.metadata, stack_data_id)
     {
