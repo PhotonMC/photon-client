@@ -807,22 +807,52 @@ fn remote_humanoids(
             },
             &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
         ));
-        if let Some(folder) = kind.profession_folder {
-            for pass in crate::villagers::profession_layer(entity, folder, baby) {
-                let id = crate::villagers::layer(folder, pass.hatless, baby);
-                let (Some(rect), Some(model)) = (textures.rect(&pass.texture), models.model(&id))
-                else {
-                    continue;
-                };
-                pose_humanoid(
-                    model,
-                    kind,
-                    (humanoid, aggressive, holding_bow),
-                    (entity, arm_pose),
-                );
-                vertices.extend(mob_vertices(model, &placement, rect));
-            }
-        }
+        // `WingsLayer`: an elytra on the chest, grown or baby.
+        vertices.extend(armor.wings(
+            worn.chest,
+            (
+                baby,
+                entity.is_crouching(),
+                entity.elytra_rotations(partial),
+            ),
+            textures,
+            &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
+        ));
+        vertices.extend(profession_layers(
+            (models, textures),
+            kind,
+            (entity, baby),
+            (humanoid, aggressive, holding_bow, arm_pose),
+            &placement,
+        ));
+    }
+    vertices
+}
+
+/// A villager's profession and level layers over its model, posed as it is.
+fn profession_layers(
+    (models, textures): (&mut MobModels, &EntityTextures),
+    kind: &HumanoidKind,
+    (entity, baby): (&voxel_world::ClientEntity, bool),
+    (humanoid, aggressive, holding_bow, arm_pose): (PlayerRenderState, bool, bool, PiglinArmPose),
+    placement: &MobPlacement,
+) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+    let Some(folder) = kind.profession_folder else {
+        return vertices;
+    };
+    for pass in crate::villagers::profession_layer(entity, folder, baby) {
+        let id = crate::villagers::layer(folder, pass.hatless, baby);
+        let (Some(rect), Some(model)) = (textures.rect(&pass.texture), models.model(&id)) else {
+            continue;
+        };
+        pose_humanoid(
+            model,
+            kind,
+            (humanoid, aggressive, holding_bow),
+            (entity, arm_pose),
+        );
+        vertices.extend(mob_vertices(model, placement, rect));
     }
     vertices
 }

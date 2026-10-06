@@ -742,6 +742,8 @@ pub struct LocalPlayer {
     bob_old: f32,
     first_tick: bool,
     tick_count: i32,
+    /// `LivingEntity.elytraAnimationState`: the local player never glides in this port.
+    elytra: crate::elytra::ElytraState,
     /// `Entity.moveDist` and `nextStep`: how far the player has walked, and where the next step sounds.
     move_dist: f32,
     next_step: f32,
@@ -836,6 +838,7 @@ impl LocalPlayer {
             attack_anim: 0.0,
             attack_anim_old: 0.0,
             attack_strength_ticker: 0,
+            elytra: crate::elytra::ElytraState::default(),
             main_hand_item: 0,
             last_main_hand_item: 0,
             item_swap_ticker: 0,
@@ -901,6 +904,11 @@ impl LocalPlayer {
 
     pub fn delta_movement(&self) -> Vec3 {
         self.delta
+    }
+
+    /// `ElytraAnimationState.getRotX/Y/Z`.
+    pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
+        self.elytra.rotations(partial_tick)
     }
 
     pub fn rotation(&self) -> (f32, f32) {
@@ -1215,6 +1223,11 @@ impl LocalPlayer {
         if clamped_x != self.position.x || clamped_z != self.position.z {
             self.set_pos(Vec3::new(clamped_x, self.position.y, clamped_z));
         }
+        self.elytra.tick(crate::elytra::ElytraInput {
+            fall_flying: false,
+            motion: (self.delta.x, self.delta.y, self.delta.z),
+            crouching: self.crouching,
+        });
         // Player.tick, after the living tick.
         self.attack_strength_ticker += 1;
         self.item_swap_ticker += 1;

@@ -284,6 +284,14 @@ pub fn player_model(
         textures,
         (&state, &placement),
     ));
+    vertices.extend(armor.wings(
+        worn.chest,
+        (false, pose.crouching, player.elytra_rotations(partial)),
+        textures,
+        &|model, rect, colour| {
+            voxel_render::player_renderer::layer_vertices(model, &placement, rect, colour)
+        },
+    ));
     vertices
 }
 

@@ -1,20 +1,21 @@
-# T41f2 — Kafatası modelleri, yerel ve mob elytrası, gözde dürbün
+# T41f2 — Yerel oyuncunun ve mobların elytrası
 
-**Amaç:** T41f'den kalanlar: kafadaki kafatası modelleri (`SkullBlockRenderer`, `*_head#main` katmanları, `submitSkull`), yerel oyuncunun ve insansı mobların elytrası (`WingsLayer`), süzülen oyuncunun gövde eğimi (`AvatarRenderer.setupRotations`/`fallFlyingScale`), `PlayerItemInHandLayer.renderItemHeldToEye` (dürbün).
-**Bağımlılık:** T41f. **Boy:** M.
+**Amaç:** `WingsLayer`'ı yerel oyuncunun (üçüncü şahıs) ve insansı mobların (zombi, iskelet, piglin…) modeline de uygula.
+**Bağımlılık:** T41f. **Boy:** S.
 
 ## Oku
-- Java: `client/renderer/blockentity/SkullBlockRenderer.java`, `client/model/object/skull/*.java`, `client/renderer/entity/layers/{CustomHeadLayer,PlayerItemInHandLayer}.java`, `client/renderer/entity/player/AvatarRenderer.java`.
-- Rust: `crates/voxel/src/{armor,held_items,overlays,mobs}.rs`, `voxel-world/src/local_player.rs` (elytra durumu yok).
+- Java: `client/renderer/entity/layers/WingsLayer.java`, `client/renderer/entity/HumanoidMobRenderer.java`.
+- Rust: `crates/voxel/src/{overlays,mobs}.rs`, `voxel-world/src/local_player.rs`.
 
 ## Oracle
-`held_item_pose` kalıbı; kafatası modelleri model tablosundan.
+Model ve durum T41f'in oracle'ında; burada yalnız bağlama (canlı gözlem).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/voxel.py check --capture` → `CHECK OK`. Canlı: elytralı zombi.
 
 ## Belgeler
-`docs/client-armor-parity-conformance.md`, `docs/client-held-item-parity-conformance.md`.
+`docs/client-armor-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- `LocalPlayer` kendi `ElytraState`'ini tikler (bu port'ta oyuncu süzülmez), `Armor::wings` yerel ve mob modellerine de bağlandı; canlıda elytralı zombinin arkasında kanatlar görüldü. Yerel oyuncu için karşılaştırma yok.
+- Açık → [T41f3](T41f3-kafatasi-durbun-suzulme.md).
