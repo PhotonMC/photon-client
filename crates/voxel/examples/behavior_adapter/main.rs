@@ -19657,6 +19657,10 @@ fn living_entity_ticks_result(request: &Value) -> Result<Value, String> {
                             described["glow"] = json!(state.glow_color_override);
                         }
                         described["samples"] = json!(samples);
+                        described["render_at"] =
+                            json!([0.0, 4095.99, 4096.0, 16383.99, 16384.0, 1.0e9].map(
+                                |distance| display.should_render_at_sqr_distance(distance, 1.0)
+                            ));
                     }
                     "end_crystal" => {
                         let state = entity.end_crystal().copied();
@@ -23260,6 +23264,18 @@ fn display_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `display_light`: the light a display is drawn with when the server set its brightness.
+fn display_light_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let brightness = i32_field(row, "brightness")?;
+        // Only an override is asked, so the world's light does not show.
+        let light = voxel_render::display::displayed_light(0, brightness);
+        out.push(json!({"label": row["label"], "light": light}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -25491,6 +25507,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "minecart_pose" => return minecart_pose_result(request),
         "item_frame_pose" => return item_frame_pose_result(request),
         "display_pose" => return display_pose_result(request),
+        "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),

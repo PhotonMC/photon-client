@@ -2921,6 +2921,43 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The light the reference's display renderer reads for a display whose brightness the server
+     * set: its block and sky levels, packed again. (What it leaves to the world is not asked.)
+     */
+    private static JsonObject displayLight(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var renderStateField = net.minecraft.world.entity.Display.class.getDeclaredField("renderState");
+        renderStateField.setAccessible(true);
+        var base = net.minecraft.client.renderer.entity.DisplayRenderer.class;
+        var blockLevel = base.getDeclaredMethod("getBlockLightLevel", net.minecraft.world.entity.Display.class,
+            net.minecraft.core.BlockPos.class);
+        var skyLevel = base.getDeclaredMethod("getSkyLightLevel", net.minecraft.world.entity.Display.class,
+            net.minecraft.core.BlockPos.class);
+        blockLevel.setAccessible(true);
+        skyLevel.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var entity = (net.minecraft.world.entity.Display) UNSAFE.allocateInstance(
+                net.minecraft.world.entity.Display.BlockDisplay.class);
+            renderStateField.set(entity, new net.minecraft.world.entity.Display.RenderState(
+                net.minecraft.world.entity.Display.GenericInterpolator.constant(com.mojang.math.Transformation.IDENTITY),
+                net.minecraft.world.entity.Display.BillboardConstraints.FIXED, row.get("brightness").getAsInt(),
+                net.minecraft.world.entity.Display.FloatInterpolator.constant(0.0F),
+                net.minecraft.world.entity.Display.FloatInterpolator.constant(1.0F), -1));
+            var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.DisplayRenderer.BlockDisplayRenderer.class);
+            int block = (int) blockLevel.invoke(renderer, entity, net.minecraft.core.BlockPos.ZERO);
+            int sky = (int) skyLevel.invoke(renderer, entity, net.minecraft.core.BlockPos.ZERO);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("light", net.minecraft.util.LightCoordsUtil.pack(block, sky));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -5122,6 +5159,9 @@ public final class EntityOracle {
         }
         if (operation.equals("minecart_pose")) {
             return minecartPose(request);
+        }
+        if (operation.equals("display_light")) {
+            return displayLight(request);
         }
         if (operation.equals("display_pose")) {
             return displayPose(request);

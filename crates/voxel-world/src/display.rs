@@ -478,9 +478,11 @@ impl DisplayState {
         self.item_render
     }
 
-    /// `Display.getViewRange`.
-    pub fn view_range(&self) -> f32 {
-        self.view_range
+    /// `Display.shouldRenderAtSqrDistance`: whether it is near enough to be drawn (`view_scale` is
+    /// `Entity.getViewScale`).
+    pub fn should_render_at_sqr_distance(&self, distance_sqr: f64, view_scale: f64) -> bool {
+        let range = f64::from(self.view_range) * 64.0 * view_scale;
+        distance_sqr < range * range
     }
 
     /// `Display.getWidth` and `getHeight`.

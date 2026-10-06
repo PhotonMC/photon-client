@@ -1,4 +1,4 @@
-# T40i — Block ve item display'leri — [client-parity]
+# T40i, T40i3 — Block ve item display'leri — [client-parity]
 
 Bu kayıt `block_display` ve `item_display` entity'lerinin (`Display`, `DisplayRenderer`) istemci durumunu ve çizim yerleşimini kapsar. Kanıt sınıfı `client-parity`'dir: veri, render durumu ve aradeğerleme gerçek `Display` varlıklarının gerçek istemci dinleyicisiyle tiklenmesine, yerleşim gerçek `DisplayRenderer.submit`'e karşı karşılaştırılır. Işık geçersiz kılma, görüş menzili ve çizim entegrasyonu oracle'sızdır (aşağıda). Canlı gözlem `server-conformance`'tır. Metin display'i, gölge, çerçeve ve parıltı dışı bırakıldı.
 
@@ -16,8 +16,16 @@ Bu kayıt `block_display` ve `item_display` entity'lerinin (`Display`, `DisplayR
 - `entity/display-pose` 11 satır (dört billboard, tek biçimli ve ezilmiş ve aynalı ölçek, item; her satırda pozun matrisi ve normal matrisi).
 - Rust: `voxel-world::display` (veri, durum, aradeğerleyiciler), `voxel-render::display` (matris, yönelim, poz), `Pose::mul_matrix` genelleşti (normal matrisini yeniden hesaplar, `Matrix3::inverse_transpose`), `DisplayContext::None`, oyunda `displays.rs`.
 
+## Gölge, görüş menzili ve ışık (T40i3)
+
+- `Display.shouldRenderAtSqrDistance`: `mesafe² < (görüşMenzili·64·viewScale)²` (`viewScale` seçenek, bir). Çizilmeyen display gölge de vermez.
+- Gölge: `DisplayRenderer.getShadowRadius/Strength` render durumunun yarıçap ve gücü, ilerlemede aradeğerlenmiş; yarıçap sıfır veya entity görünmezse gölge yoktur; gerisini mevcut gölge hattı (`extractShadow`) yürütür.
+- Işık geçersiz kılma: parlaklık −1 değilse blok ve gökyüzü seviyeleri (`>> 4 & 15`, `>> 20 & 15`) yeniden paketlenir.
+- Kapsam: `entity/display-light` 6 satır (gerçek `DisplayRenderer.getBlockLightLevel/getSkyLightLevel`: ikisi birden, karanlık, yalnız blok, yalnız gökyüzü, başıboş bitler, eksi); `living-entity-animations` display satırlarına her tikte altı mesafede `shouldRenderAtSqrDistance`.
+- Frustum ayıklaması (`affectedByCulling`, genişlik/yükseklik) yapılmadı: istemcide hiçbir varlık için frustum ayıklaması yoktur, yalnız çizilen şeyi azaltırdı. Parıltı rengi ve dış çizgi kapsam dışı.
+
 ## Sapmalar ve açık kalanlar
 
-- Işık geçersiz kılma, görüş menzili ve oyun içi çizim (`displays.rs`) kaynaktan yazıldı, oracle'sız. Çizim konumu entity'nin kısmi tikli konumudur; frustum ayıklaması (`affectedByCulling`, genişlik/yükseklik) yok.
-- Gölge (`shadowRadius`, `shadowStrength`), parıltı rengi ve dış çizgi çizilmez ([T40i3](tasks/T40i3-display-golge-ayiklama.md)). Metin display'i yok ([T40i2](tasks/T40i2-metin-display.md)).
+- Oyun içi çizim (`displays.rs`, gölge dahil: `display_shadow`) ve gölgenin canlıda görülmesi oracle'sız (arazide gölge düşecek zemin bulunamadı; hat mob gölgeleriyle ortaktır). Çizim konumu entity'nin kısmi tikli konumudur.
+- Metin display'i yok ([T40i2](tasks/T40i2-metin-display.md)). Dönüşümlü sağ/sol el bağlamları item display'inde `ItemLayerCache` başına kuruldur.
 - `entitySolidZOffsetForward` yok.

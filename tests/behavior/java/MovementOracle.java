@@ -1695,6 +1695,12 @@ public final class MovementOracle {
                                 described.addProperty("glow", renderState.glowColorOverride());
                             }
                             described.add("samples", samples);
+                            // Whether it is near enough to be drawn, at some squared distances.
+                            var near = new JsonArray();
+                            for (double distance : new double[] {0.0, 4095.99, 4096.0, 16383.99, 16384.0, 1.0E9}) {
+                                near.add(shown.shouldRenderAtSqrDistance(distance));
+                            }
+                            described.add("render_at", near);
                         }
                         case "end_crystal" -> {
                             var crystal = (net.minecraft.world.entity.boss.enderdragon.EndCrystal) entity;

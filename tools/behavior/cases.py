@@ -15934,6 +15934,7 @@ def entity_cases():
     yield from entity_minecart_pose_cases()
     yield from entity_item_frame_pose_cases()
     yield from entity_display_pose_cases()
+    yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
     yield from entity_charge_cases()
@@ -17738,6 +17739,15 @@ def entity_display_pose_cases():
              display("item-fixed", kind="item", right=quarter),
              display("far", scale=(1.5, 1.5, 1.5), left=quarter, feet=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/display-pose", "family": "entity", "operation": "display_pose", "rows": rows}
+
+
+def entity_display_light_cases():
+    """The light the reference's own display renderer uses when the server set a brightness: its
+    block and sky levels, whatever else the number holds."""
+    rows = [{"label": f"display-light-{label}", "brightness": value} for label, value in
+            [("both", (15 << 4) | (10 << 20)), ("dark", 0), ("block-only", 3 << 4), ("sky-only", 7 << 20),
+             ("stray-bits", 0x7FFFFFFF), ("negative", -2)]]
+    yield {"case_id": "entity/display-light", "family": "entity", "operation": "display_light", "rows": rows}
 
 
 def entity_arrow_cases():

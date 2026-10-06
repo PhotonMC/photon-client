@@ -5,13 +5,12 @@
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::display::{DisplayTurns, display_pose, item_display_pose};
+use voxel_render::display::{DisplayTurns, display_pose, displayed_light, item_display_pose};
 use voxel_render::item_entity::{entity_block_vertices, item_layer_vertices};
 use voxel_render::joml::Pose;
 use voxel_render::model::DisplayContext;
 use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
-use voxel_world::display::NO_BRIGHTNESS_OVERRIDE;
 
 use crate::item_layers::ItemLayerCache;
 use crate::overlays::{FrameView, packed_light};
@@ -46,16 +45,8 @@ fn context_index(id: u8) -> usize {
     usize::from(id).min(9) * usize::from(id <= 9)
 }
 
-/// `DisplayRenderer.getBlockLightLevel` and `getSkyLightLevel`: the light the server set, a level
-/// at a time, else the world's.
-fn displayed_light(world_light: i32, brightness_override: i32) -> i32 {
-    if brightness_override == NO_BRIGHTNESS_OVERRIDE {
-        return world_light;
-    }
-    (world_light & !(15 << 4) & !(15 << 20))
-        | (brightness_override & (15 << 4))
-        | (brightness_override & (15 << 20))
-}
+/// `Entity.getViewScale`: the entity distance scaling option, which is one.
+pub const VIEW_SCALE: f64 = 1.0;
 
 /// The triangles of every block and item display the server added.
 pub fn displays(
@@ -85,8 +76,7 @@ pub fn displays(
             f64::from(view.origin[2]) + f64::from(view.camera[2]),
         );
         let distance_sqr = (x - camera.0).powi(2) + (y - camera.1).powi(2) + (z - camera.2).powi(2);
-        let range = f64::from(display.view_range()) * 64.0;
-        if distance_sqr >= range * range {
+        if !display.should_render_at_sqr_distance(distance_sqr, VIEW_SCALE) {
             continue;
         }
         let progress = display.interpolation_progress(entity.tick_count(), partial);
@@ -132,4 +122,24 @@ pub fn displays(
         }
     }
     vertices
+}
+
+/// What a display casts as a shadow (`DisplayRenderer.getShadowRadius` and `getShadowStrength`
+/// at its easing's progress): the radius and the strength, if it is drawn and has any.
+pub fn display_shadow(
+    entity: &voxel_world::ClientEntity,
+    drawn: (f64, f64, f64),
+    camera: (f64, f64, f64),
+    partial: f32,
+) -> Option<(f32, f32)> {
+    let display = entity.display()?;
+    let state = display.render_state()?;
+    let distance_sqr =
+        (drawn.0 - camera.0).powi(2) + (drawn.1 - camera.1).powi(2) + (drawn.2 - camera.2).powi(2);
+    if entity.is_invisible() || !display.should_render_at_sqr_distance(distance_sqr, VIEW_SCALE) {
+        return None;
+    }
+    let progress = display.interpolation_progress(entity.tick_count(), partial);
+    let radius = state.shadow_radius.get(progress);
+    (radius > 0.0).then(|| (radius, state.shadow_strength.get(progress)))
 }

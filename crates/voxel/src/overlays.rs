@@ -731,6 +731,19 @@ pub fn entity_shadows(
             (entity.cube_size() as f32 * 0.25, 1.0)
         } else if type_id == item || type_id == orb {
             (0.15, 0.75)
+        } else if entity.display().is_some() {
+            let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+                continue;
+            };
+            let Some(shadow) = crate::displays::display_shadow(
+                entity,
+                snapshot.position,
+                (camera.position.x, camera.position.y, camera.position.z),
+                partial,
+            ) else {
+                continue;
+            };
+            shadow
         } else {
             continue;
         };

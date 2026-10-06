@@ -11,4 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: display gölgesi (`displays::display_shadow`, mevcut gölge hattına bir kaynak), `shouldRenderAtSqrDistance` (oracle'da gerçek varlık, altı mesafe) ve çizimde uygulanması, ışık geçersiz kılma (`voxel-render::display::displayed_light`, gerçek `DisplayRenderer.getBlockLightLevel/getSkyLightLevel`'a karşı 6 satır). Kayıt: `docs/client-display-parity-conformance.md`.
+- Sapma: frustum ayıklaması yapılmadı (istemcide hiçbir varlık için yok); `glow_color_override` ve dış çizgi kapsam dışı; gölge canlıda görülemedi (düz zemin yok), gölge çizimi oracle'sız.

@@ -73,3 +73,14 @@ pub fn item_display_pose(pose: &Pose) -> Pose {
     pose.rotate(&Quaternion::rotation_y(std::f32::consts::PI));
     pose
 }
+
+/// `DisplayRenderer.getBlockLightLevel` and `getSkyLightLevel` together: the light the server set
+/// (its block and sky levels, as `LightCoordsUtil` reads them) in place of the world's, unless it
+/// set none (`-1`).
+pub fn displayed_light(world_light: i32, brightness_override: i32) -> i32 {
+    if brightness_override == voxel_world::display::NO_BRIGHTNESS_OVERRIDE {
+        return world_light;
+    }
+    // `LightCoordsUtil.pack(block(packed), sky(packed))`.
+    (((brightness_override >> 4) & 15) << 4) | (((brightness_override >> 20) & 15) << 20)
+}
