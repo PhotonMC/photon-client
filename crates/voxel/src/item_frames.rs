@@ -1,16 +1,20 @@
 //! The item frames (`ItemFrameRenderer`): the frame's model on the wall (none for an invisible
-//! one) and the item in it, turned by eighths. A frame that holds a map shows the map's item, as
-//! one whose map data has not come: the map's own drawing is not here yet.
+//! one) and the item in it, turned by eighths, or the map in it once the map's data has come
+//! (the map's colours in a texture of its own, its decorations over them).
 
 use voxel_core::direction::Direction;
 use voxel_core::math::{Vec3, floor_f64};
+use voxel_game::item_values::Values;
 use voxel_net::connection::PlaySession;
 use voxel_render::biome_tint::BiomeTints;
+use voxel_render::entity_textures::EntityTextures;
 use voxel_render::item_entity::{entity_block_vertices, item_layer_vertices};
 use voxel_render::item_frame::{item_frame_poses, item_frame_position, render_offset};
 use voxel_render::joml::Pose;
+use voxel_render::map::{DecorationDraw, Sheet, map_quads};
 use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
+use voxel_world::map::{MAP_SIDE, MapData};
 
 use crate::item_layers::ItemLayerCache;
 use crate::overlays::{FrameView, packed_light};
@@ -19,14 +23,124 @@ use crate::overlays::{FrameView, packed_light};
 /// (`LightCoordsUtil.FULL_BRIGHT`): full block and sky light.
 const GLOW_ITEM_LIGHT: i32 = 15_728_880;
 
+/// The light of a map in a glow frame (`15728850`).
+const GLOW_MAP_LIGHT: i32 = 15_728_850;
+
 /// The block light a glow frame is at least lit by (`ItemFrameRenderer.GLOW_FRAME_BRIGHTNESS`).
 const GLOW_FRAME_BRIGHTNESS: i32 = 5;
 
-/// The triangles of every item frame the server added, with the frame's model and the item in it.
+/// How many maps the maps' image holds at once.
+const MAP_SLOTS: usize = 16;
+
+/// The maps' colours as one image, a map to a slot of 128 rows, kept until a map changes.
+pub struct MapTextures {
+    slots: Vec<Option<(i32, u32)>>,
+    pixels: Vec<u8>,
+    next_victim: usize,
+    dirty: bool,
+}
+
+impl MapTextures {
+    fn new() -> Self {
+        Self {
+            slots: vec![None; MAP_SLOTS],
+            pixels: vec![0; MAP_SIDE * MAP_SIDE * MAP_SLOTS * 4],
+            next_victim: 0,
+            dirty: false,
+        }
+    }
+
+    /// The slot a map is in, its colours written first if it has none or has changed
+    /// (`MapTextureManager.prepareMapTexture`).
+    fn slot_of(&mut self, id: i32, data: &MapData) -> usize {
+        let found = self
+            .slots
+            .iter()
+            .position(|slot| slot.is_some_and(|(held, _)| held == id));
+        let slot = found.unwrap_or_else(|| {
+            let free = self.slots.iter().position(Option::is_none);
+            free.unwrap_or_else(|| {
+                let victim = self.next_victim;
+                self.next_victim = (victim + 1) % MAP_SLOTS;
+                victim
+            })
+        });
+        if self.slots[slot] != Some((id, data.version())) {
+            let start = slot * MAP_SIDE * MAP_SIDE * 4;
+            for (index, color) in data.colors().iter().enumerate() {
+                let at = start + index * 4;
+                self.pixels[at..at + 4].copy_from_slice(&voxel_data::map::packed_rgba(*color));
+            }
+            self.slots[slot] = Some((id, data.version()));
+            self.dirty = true;
+        }
+        slot
+    }
+
+    /// The image to upload, if a map came or changed since it last was.
+    fn take_image(&mut self) -> Option<voxel_render::DecodedImage> {
+        std::mem::take(&mut self.dirty).then(|| voxel_render::DecodedImage {
+            width: MAP_SIDE as u32,
+            height: (MAP_SIDE * MAP_SLOTS) as u32,
+            rgba: self.pixels.clone(),
+        })
+    }
+}
+
+/// What the item frames keep between frames: the layers of their items, the maps' image, and the
+/// quads of the maps and their decorations of this frame.
+pub struct FrameState {
+    pub(crate) layers: ItemLayerCache,
+    maps: MapTextures,
+    map_vertices: Vec<Vertex>,
+    decoration_vertices: Vec<Vertex>,
+}
+
+impl FrameState {
+    pub fn new() -> Self {
+        Self {
+            layers: ItemLayerCache::new(voxel_render::model::DisplayContext::Fixed),
+            maps: MapTextures::new(),
+            map_vertices: Vec::new(),
+            decoration_vertices: Vec::new(),
+        }
+    }
+
+    /// Hand the maps' image (if it changed) and this frame's quads to the renderer.
+    pub fn hand_over(
+        &mut self,
+        backend: &mut voxel_render::VulkanBackend,
+    ) -> Result<(), voxel_render::VulkanError> {
+        if let Some(image) = self.maps.take_image() {
+            backend.set_map_texture(&image)?;
+        }
+        backend.set_map_quads((
+            &std::mem::take(&mut self.map_vertices),
+            &std::mem::take(&mut self.decoration_vertices),
+        ))
+    }
+}
+
+/// The paths (under `textures/`) of the decoration sprites.
+pub fn textures() -> impl Iterator<Item = &'static str> {
+    voxel_data::map::decoration_types()
+        .iter()
+        .map(|kind| kind.texture)
+}
+
+/// The id of the map a stack holds (`DataComponents.MAP_ID`), if it holds one.
+fn framed_map_id(stack: &voxel_world::ClientItemStackState) -> Option<i32> {
+    let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
+    let mut raw = values.raw(voxel_data::item::component_types::MAP_ID)?;
+    voxel_core::wire::read_varint(&mut raw).ok()
+}
+
+/// The triangles of every item frame the server added, with the frame's model and the item in it;
+/// the quads of the maps in them are kept in `state` for [`FrameState::hand_over`].
 pub fn item_frames(
     session: &PlaySession,
-    layers: &mut ItemLayerCache,
-    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    state: &mut FrameState,
+    (renderer, tints, textures): (&BlockRenderer, &BiomeTints, &EntityTextures),
     view: FrameView,
 ) -> Vec<Vertex> {
     let world = session.world();
@@ -58,10 +172,15 @@ pub fn item_frames(
             entity.is_invisible(),
             entity.item_frame_rotation(),
         );
+        let stack = entity.item_stack().filter(|stack| stack.item_count() > 0);
+        // `getFramedMapId` and `getMapData`: a map whose data has come.
+        let map = stack
+            .and_then(framed_map_id)
+            .and_then(|id| world.map_data(id).map(|data| (id, data)));
         if let Some(pose) = poses.frame {
-            // `updateForItemFrame`: the map variant is for a frame whose map data is here (never yet).
-            let state = renderer.item_frame_state(glowing, false);
-            if let Some((layer, block_light)) = layers.block(state, renderer) {
+            // `updateForItemFrame`: the map's own model while a map is shown.
+            let model = renderer.item_frame_state(glowing, map.is_some());
+            if let Some((layer, block_light)) = state.layers.block(model, renderer) {
                 vertices.extend(entity_block_vertices(
                     layer,
                     &pose,
@@ -72,10 +191,14 @@ pub fn item_frames(
                 ));
             }
         }
-        if let Some(stack) = entity.item_stack().filter(|stack| stack.item_count() > 0) {
+        if let Some((id, data)) = map {
+            let map_light = if glowing { GLOW_MAP_LIGHT } else { light };
+            let slot = state.maps.slot_of(id, data);
+            frame_map(state, (&poses.map, data), (slot, map_light), textures);
+        } else if let Some(stack) = stack {
             let item_light = if glowing { GLOW_ITEM_LIGHT } else { light };
             vertices.extend(item_layer_vertices(
-                layers.get(stack, renderer, tints),
+                state.layers.get(stack, renderer, tints),
                 &[poses.item],
                 item_light,
                 false,
@@ -83,4 +206,51 @@ pub fn item_frames(
         }
     }
     vertices
+}
+
+/// The quads of a map in a frame (`MapRenderer.render` with only the decorations a frame shows):
+/// the map's rows of the maps' image, and each decoration's sprite among the entity textures.
+fn frame_map(
+    state: &mut FrameState,
+    (pose, data): (&Pose, &MapData),
+    (slot, light): (usize, i32),
+    textures: &EntityTextures,
+) {
+    let decorations: Vec<DecorationDraw> = data
+        .decorations()
+        .iter()
+        .filter_map(|decoration| {
+            let kind = voxel_data::map::decoration_type(decoration.type_id)?;
+            let rect = textures.rect(kind.texture)?;
+            Some(DecorationDraw {
+                x: decoration.x,
+                y: decoration.y,
+                rot: decoration.rot,
+                render_on_frame: kind.show_on_item_frame,
+                sprite: rect,
+            })
+        })
+        .collect();
+    let light = voxel_render::block_light::light_uv(light);
+    let rows = MAP_SLOTS as f32;
+    for quad in map_quads(pose, &decorations, true) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            let uv = quad.uvs[index];
+            let (uv, target) = match quad.sheet {
+                // The map's own rows of the image.
+                Sheet::Map => (
+                    [uv[0], (slot as f32 + uv[1]) / rows],
+                    &mut state.map_vertices,
+                ),
+                Sheet::Decorations => (uv, &mut state.decoration_vertices),
+            };
+            target.push(Vertex {
+                position: quad.corners[index],
+                uv,
+                shade: 1.0,
+                tint: [1.0; 4],
+                light,
+            });
+        }
+    }
 }

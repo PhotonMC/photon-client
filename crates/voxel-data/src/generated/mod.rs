@@ -12,6 +12,7 @@ pub mod entity_serializers;
 pub mod entity_types;
 pub mod entity_variants;
 pub mod item;
+pub mod map_data;
 pub mod painting_variants;
 pub mod sheep_colors;
 pub mod sound_events;

@@ -29,6 +29,7 @@ pub mod joml;
 pub mod keyframe;
 pub mod leash;
 pub mod lightning;
+pub mod map;
 pub mod minecart;
 pub mod mipmap;
 pub mod mob_model;

@@ -1124,6 +1124,10 @@ struct SceneResources {
     gui_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
     gui_sampler: Option<vk::Sampler>,
     gui_set: Option<vk::DescriptorSet>,
+    /// The maps' colours and the decoration sprites, packed in one image, and its sampler and set.
+    map_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
+    map_sampler: Option<vk::Sampler>,
+    map_set: Option<vk::DescriptorSet>,
 }
 
 /// A rectangle of one atlas level to rewrite.
@@ -1332,6 +1336,12 @@ pub struct VulkanBackend {
     /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
     glint_buffer: Option<SkyBuffer>,
     glint_count: u32,
+    /// The maps' quads, drawn with the text pipeline over the maps' image.
+    map_buffer: Option<SkyBuffer>,
+    map_count: u32,
+    /// The decorations' sprites on them, blended over the entity textures.
+    map_decoration_buffer: Option<SkyBuffer>,
+    map_decoration_count: u32,
     /// What the dissolving entities draw (a dying dragon's body), and where
     /// each texel's mask is from it in the packed image (in texture units).
     dissolve_buffer: Option<SkyBuffer>,
@@ -1652,6 +1662,10 @@ impl VulkanBackend {
                 swirl_count: 0,
                 glint_buffer: None,
                 glint_count: 0,
+                map_buffer: None,
+                map_count: 0,
+                map_decoration_buffer: None,
+                map_decoration_count: 0,
                 dissolve_buffer: None,
                 dissolve_count: 0,
                 dissolve_mask_offset: [0.0; 2],
@@ -1900,6 +1914,33 @@ impl VulkanBackend {
         }
     }
 
+    /// The maps in item frames: quads of the maps' image, drawn as text is.
+    unsafe fn record_maps(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        unsafe {
+            if let (Some(buffer), Some(set)) = (self.map_buffer.as_ref(), scene.map_set) {
+                self.draw_triangles(
+                    (scene.text_pipeline, scene.text_pipeline_layout),
+                    set,
+                    (buffer, self.map_count),
+                    terrain_push,
+                );
+            }
+            if let (Some(buffer), Some(set)) =
+                (self.map_decoration_buffer.as_ref(), scene.entity_set)
+            {
+                self.draw_triangles(
+                    (
+                        scene.text_translucent_pipeline,
+                        scene.text_translucent_pipeline_layout,
+                    ),
+                    set,
+                    (buffer, self.map_decoration_count),
+                    terrain_push,
+                );
+            }
+        }
+    }
+
     /// The shadows, experience orbs and name tags: flat shapes drawn after the
     /// entities, each from its own buffer.
     unsafe fn record_flat_shapes(&self, scene: &SceneResources, terrain_push: &[f32]) {
@@ -1964,6 +2005,7 @@ impl VulkanBackend {
                     terrain_push,
                 );
             }
+            self.record_maps(scene, terrain_push);
             // Name tags after the entities: the text seen through blocks
             // first, then the text tested against the depth.
             if let Some(set) = scene.gui_set {
@@ -3640,15 +3682,15 @@ impl VulkanBackend {
                 )
                 .map_err(|result| VulkanError::Call("vkCreateDescriptorSetLayout", result))?;
             // The atlas's set, the rain's and the snow's, the skin's, the
-            // GUI's and the cracks'.
+            // GUI's, the cracks' and the maps'.
             let sizes = [vk::DescriptorPoolSize::default()
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(6)];
+                .descriptor_count(7)];
             let descriptor_pool = self
                 .device
                 .create_descriptor_pool(
                     &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(6)
+                        .max_sets(7)
                         .pool_sizes(&sizes),
                     None,
                 )
@@ -3778,6 +3820,9 @@ impl VulkanBackend {
                 gui_texture: None,
                 gui_sampler: None,
                 gui_set: None,
+                map_texture: None,
+                map_sampler: None,
+                map_set: None,
             });
             Ok(())
         }
@@ -4101,6 +4146,7 @@ impl VulkanBackend {
                     self.device.destroy_pipeline_layout(layout, None);
                 }
                 self.destroy_texture(scene.gui_texture, scene.gui_sampler);
+                self.destroy_texture(scene.map_texture, scene.map_sampler);
                 self.device
                     .destroy_pipeline_layout(scene.translucent_pipeline_layout, None);
                 self.device
@@ -4297,6 +4343,72 @@ impl VulkanBackend {
         scene.entity_texture = Some(texture);
         scene.entity_sampler = Some(sampler);
         scene.entity_set = Some(set);
+        Ok(())
+    }
+
+    /// Hand over the maps' image (the maps' colours and the decoration sprites), which replaces the
+    /// last: the descriptor set is kept and made to point at the new image.
+    pub fn set_map_texture(&mut self, image: &DecodedImage) -> Result<(), VulkanError> {
+        if self.scene.is_none() {
+            return Ok(());
+        }
+        if self
+            .scene
+            .as_ref()
+            .is_some_and(|scene| scene.map_set.is_none())
+        {
+            let Some((texture, sampler, set)) = self.upload_sampled_texture(image)? else {
+                return Ok(());
+            };
+            let scene = self.scene.as_mut().expect("checked above");
+            scene.map_texture = Some(texture);
+            scene.map_sampler = Some(sampler);
+            scene.map_set = Some(set);
+            return Ok(());
+        }
+        unsafe {
+            let _ = self.device.device_wait_idle();
+            let (texture, memory, view) = self.upload_texture(std::slice::from_ref(image))?;
+            let scene = self.scene.as_mut().expect("checked above");
+            let (set, sampler) = (
+                scene.map_set.expect("checked above"),
+                scene.map_sampler.expect("made with the set"),
+            );
+            let image_info = [vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(view)
+                .sampler(sampler)];
+            let write = vk::WriteDescriptorSet::default()
+                .dst_set(set)
+                .dst_binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .image_info(&image_info);
+            self.device.update_descriptor_sets(&[write], &[]);
+            if let Some((old_image, old_memory, old_view)) =
+                scene.map_texture.replace((texture, memory, view))
+            {
+                self.device.destroy_image_view(old_view, None);
+                self.device.destroy_image(old_image, None);
+                self.device.free_memory(old_memory, None);
+            }
+        }
+        Ok(())
+    }
+
+    /// Hand over the next frame's maps: quads over the maps' image, drawn as text is, and the
+    /// decorations' quads over the entity textures.
+    pub fn set_map_quads(
+        &mut self,
+        (maps, decorations): (&[Vertex], &[Vertex]),
+    ) -> Result<(), VulkanError> {
+        let mut buffer = self.map_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, maps)?;
+        self.map_buffer = buffer;
+        self.map_count = maps.len() as u32;
+        let mut buffer = self.map_decoration_buffer.take();
+        self.fill_vertex_buffer(&mut buffer, decorations)?;
+        self.map_decoration_buffer = buffer;
+        self.map_decoration_count = decorations.len() as u32;
         Ok(())
     }
 
@@ -5056,6 +5168,8 @@ impl Drop for VulkanBackend {
                 self.glow_buffer.take(),
                 self.swirl_buffer.take(),
                 self.glint_buffer.take(),
+                self.map_buffer.take(),
+                self.map_decoration_buffer.take(),
                 self.dissolve_buffer.take(),
                 self.rays_buffer.take(),
                 self.name_tag_buffer.take(),

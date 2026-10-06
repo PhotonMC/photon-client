@@ -1,4 +1,4 @@
-# T40g — Eşya çerçevesi — [client-parity]
+# T40g, T40g2 — Eşya çerçevesi ve haritası — [client-parity]
 
 Bu kayıt `item_frame` ve `glow_item_frame` entity'lerinin (`ItemFrame`, `ItemFrameRenderer`) çizimini kapsar. Kanıt sınıfı `client-parity`'dir: çerçeve modelinin ve eşyanın yerleşimi gerçek `ItemFrameRenderer.submit`'e karşı karşılaştırılır. Konum türetimi, ışık kuralları ve çerçeve modelinin kendisi oracle'sızdır (aşağıda). Canlı gözlem `server-conformance`'tır.
 
@@ -14,8 +14,17 @@ Bu kayıt `item_frame` ve `glow_item_frame` entity'lerinin (`ItemFrame`, `ItemFr
 - `entity/item-frame-pose` 18 satır (altı yön, sekiz dönüş, boş, görünmez, görünmez ve dikey, uzak konum; her satırda çerçeve ve eşya pozu). Eşya pozu, katmanın kendi `NO_TRANSFORM`'unun `(−0,5)` kaymasıyla karşılaştırılır (oracle'da katmanın başka dönüşümü yoktur).
 - Rust: `voxel-render::item_frame` (`item_frame_position`, `render_offset`, `item_frame_poses`), `BlockRenderer::item_frame_state`, `voxel-world` veri (dönüş, eşya), oyunda `item_frames.rs` (eşya `Fixed` bağlamında).
 
+## Çerçevedeki harita (T40g2)
+
+- `ClientboundMapItemDataPacket` (kimlik 51): harita kimliği (var int), ölçek (bayt), kilit (bool), süsler (bool, sayı, her biri: tür numarası, `x`, `y`, `rot & 15`, isteğe bağlı ad bileşeni) ve renk yaması (genişlik sıfırsa yok; yükseklik, `başX`, `başY`, renk dizisi). İstemci haritayı ilk pakette yapar (renkler boş), süsleri paketteki ile değiştirir (`addClientSideDecorations`), yama renkleri yazar; sürüm sayacı her pakette artar. Dünya yenilenince (boyut değişimi) haritalar silinir.
+- `MapColor.getColorFromPackedId`: 256 paketli rengin ARGB'si ve `MapDecorationType` kayıt tablosu (ad, sprite, çerçevede gösterilir mi, harita rengi, sayılır mı) oracle'dan alınır (`entity/map-data`, `tools/generate/map_data.py`) ve her koşuda karşılaştırılır.
+- `ItemFrameRenderer`: eşya `map_id` bileşeni taşıyorsa ve haritanın verisi gelmişse harita dalı: çerçeve modeli `map=true`, poz `Z(dönüş % 4 · 2 sekizde)`, `Z(180)`, `0,0078125` ölçek, `(−64, −64, 0)` ve `(0, 0, −1)` ötelemesi; ışık parlak çerçevede `15728850`. `MapRenderer.render`: `(0..128)` kare `z = −0,01`, sonra her süs (çerçevede yalnız `showOnItemFrame` olanlar): `(x/2 + 64, y/2 + 64, −0,02)` ötele, `Z(rot·360/16)`, `(4, 4, 3)` ölçek, `(−0,125, 0,125, 0)` ötele, kare `z = sıra · −0,001`.
+- Kapsam: `entity/item-frame-pose`'a 7 harita satırı (dönüşler, parlak ve dikey, güney; poz ve haritanın köşeleri, doku koordinatları ve ışığı), `entity/map-render` 5 satır gerçek `MapRenderer.render`'a karşı (süssüz, süslü, yalnız çerçevede olanlar, hiçbiri, uzak), `entity/map-data` tablosu; paket ayrıştırıcı için birim testi.
+- Oyunda `item_frames::MapTextures`: haritalar 128 satırlık yuvalara (en çok 16) yazılan tek görüntüde (`VulkanBackend::set_map_texture`, tanımlayıcı küme aynı kalıp yeni görüntüye çevrilir), süs sprite'ları entity dokularına paketlenir; haritalar metin hattıyla, süsler yarı saydam metin hattıyla çizilir. Canlı: `filled_map` taşıyan iki çerçevede (biri parlak) harita görüldü.
+- Açık: süs adları (`decoration.name`: yazı ölçeği ve konumu) çizilmez ve oracle'sızdır; 16'dan çok harita aynı anda görünürse yuvalar sırayla yeniden kullanılır; eldeki/envanterdeki harita çizimi ayrı iştir.
+
 ## Sapmalar ve açık kalanlar
 
-- Harita içeriği yok: istemcide harita verisi paketi ve `MapRenderer` yoktur; harita taşıyan çerçeve, haritanın verisi gelmemiş gibi (Java'nın `mapData == null` kolu) `map=false` modeliyle ve eşya olarak çizilir ([T40g2](tasks/T40g2-cerceve-haritasi.md)).
+- Verisi gelmemiş haritanın çerçevesi Java'nın `mapData == null` koluyla `map=false` modeliyle ve harita eşyası olarak çizilir.
 - Entity'nin kendi konumu ve vuruş kutusu hâlâ blok köşesidir (seçim/hedefleme çerçeve için doğru değil); çizim konumu blok köşesinden türetilir. Konum ve ışık kuralı (yoklama noktası, parlak çerçeve alt sınırı) kaynaktan yazıldı, oracle'sız.
 - Çerçeve modelinin geometrisi oracle'sızdır (sahte durumun kendisi karşılaştırılmaz; blok model hattı başka kayıtlarla doğrulanmıştır). `entitySolidZOffsetForward` derinlik kaydırması yok; eşya adı etiketi (bakılan çerçevede özel adlı eşya) yok; ses, partikül, dış çizgi yok.

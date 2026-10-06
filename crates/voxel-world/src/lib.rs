@@ -68,6 +68,7 @@ mod java_math;
 pub mod light;
 pub mod lightning;
 pub mod living;
+pub mod map;
 mod metadata;
 pub mod minecart;
 pub mod minecart_track;
@@ -142,6 +143,8 @@ pub struct ClientWorld {
     /// Sections the light tasks asked to redraw, besides the engine's own.
     light_dirty: Vec<light::SectionKey>,
     entities: BTreeMap<i32, ClientEntity>,
+    /// The maps the server has sent, by id (`ClientLevel.getMapData`).
+    maps: BTreeMap<i32, map::MapData>,
     entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
@@ -215,6 +218,7 @@ impl ClientWorld {
             light_tasks: VecDeque::new(),
             light_dirty: Vec::new(),
             entities: BTreeMap::new(),
+            maps: BTreeMap::new(),
             entity_sections: BTreeMap::new(),
             local_player: None,
             sounds: local_player::SoundQueue::default(),
@@ -1410,6 +1414,7 @@ impl ClientWorld {
             self.chunks.clear();
             self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
             self.entities.clear();
+            self.maps.clear();
             if let Some(player) = self.local_player.as_mut() {
                 player.vehicle_id = None;
                 player.passenger_ids.clear();

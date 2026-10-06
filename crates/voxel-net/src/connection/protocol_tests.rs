@@ -57,12 +57,12 @@ use super::{
     parse_container_set_slot_packet, parse_cursor_item_packet, parse_entity_equipment_packet,
     parse_entity_event_packet, parse_entity_metadata_packet, parse_entity_position_sync_packet,
     parse_entity_teleport_packet, parse_forget_level_chunk_packet, parse_game_event_packet,
-    parse_light_update_packet, parse_login_packet, parse_move_entity_pos_packet,
-    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_move_minecart_packet,
-    parse_open_screen_packet, parse_optional_item_stack, parse_player_abilities_packet,
-    parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
-    parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
-    parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
+    parse_light_update_packet, parse_login_packet, parse_map_item_data_packet,
+    parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet,
+    parse_move_minecart_packet, parse_open_screen_packet, parse_optional_item_stack,
+    parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
+    parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
+    parse_section_data, parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
     parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
     parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
     parse_update_mob_effect_packet, resolve_player_position, support_block_position,
@@ -2826,4 +2826,51 @@ fn minecart_steps_parser_reads_doubles_packed_turns_and_a_float_weight() {
 
     payload.push(0);
     assert!(parse_move_minecart_packet(&payload).is_err());
+}
+
+#[test]
+fn map_item_data_parser_reads_decorations_and_a_patch_of_colours() {
+    let mut payload = Vec::new();
+    voxel_core::wire::write_varint(7, &mut payload);
+    payload.extend([2, 1]);
+    // Decorations: one, of type 3, at (-4, 5), turned 19 (kept to 3), with no name.
+    payload.push(1);
+    voxel_core::wire::write_varint(1, &mut payload);
+    voxel_core::wire::write_varint(3, &mut payload);
+    payload.extend([(-4_i8) as u8, 5, 19, 0]);
+    // A patch of 2 by 2 colours at (10, 20).
+    payload.extend([2, 2, 10, 20]);
+    voxel_core::wire::write_varint(4, &mut payload);
+    payload.extend([1, 2, 3, 4]);
+
+    let packet = parse_map_item_data_packet(&payload).expect("map data");
+    assert_eq!((packet.map_id, packet.scale, packet.locked), (7, 2, true));
+    let decoration = &packet.decorations.as_ref().expect("decorations")[0];
+    assert_eq!(
+        (
+            decoration.type_id,
+            decoration.x,
+            decoration.y,
+            decoration.rot
+        ),
+        (3, -4, 5, 3)
+    );
+    let patch = packet.patch.as_ref().expect("a patch");
+    assert_eq!(
+        (patch.start_x, patch.start_y, patch.width, patch.height),
+        (10, 20, 2, 2)
+    );
+
+    let mut world = voxel_world::ClientWorld::new(voxel_world::DimensionBounds::default());
+    world.apply_map_item_data(&packet);
+    let map = world.map_data(7).expect("the map");
+    assert_eq!(map.colors()[10 + 20 * 128], 1);
+    assert_eq!(map.colors()[11 + 21 * 128], 4);
+
+    // A width of zero is no patch, and no decorations is none sent.
+    let bare = [vec![7_u8, 0, 0, 0, 0]].concat();
+    let none = parse_map_item_data_packet(&bare).expect("bare");
+    assert!(none.decorations.is_none() && none.patch.is_none());
+    payload.push(0);
+    assert!(parse_map_item_data_packet(&payload).is_err());
 }

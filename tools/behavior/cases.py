@@ -15899,6 +15899,7 @@ def entity_cases():
     yield from entity_variant_cases()
     yield from entity_wolf_variant_cases()
     yield from entity_painting_variant_cases()
+    yield from entity_map_data_cases()
     yield from entity_zombie_cases()
     yield from entity_skeleton_cases()
     yield from entity_piglin_cases()
@@ -15960,6 +15961,7 @@ def entity_cases():
     yield from entity_display_pose_cases()
     yield from entity_glint_cases()
     yield from entity_text_display_cases()
+    yield from entity_map_render_cases()
     yield from entity_equippable_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
@@ -17724,16 +17726,21 @@ def entity_item_frame_pose_cases():
     """Where the reference's own item frame renderer draws a frame's model and the item in it, for
     each way it faces (the four around, and up and down, which turn by an axis), with and without
     the frame (an invisible one hangs the item further out) and the item turned by each eighth."""
-    def frame(label, direction, invisible=False, rotation=0, item=True, glow=False,
-              feet=(10.5, 64.25, -3.5)):
+    def frame(label, direction, invisible=False, rotation=0, item=True, glow=False, map_=False,
+              light=15728880, feet=(10.5, 64.25, -3.5)):
         return {"label": f"item-frame-{label}", "direction": direction, "invisible": invisible,
-                "rotation": rotation, "item": item, "glow": glow, "feet_x": float_bits(feet[0]),
-                "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
+                "rotation": rotation, "item": item, "glow": glow, "map": map_, "light": light,
+                "feet_x": float_bits(feet[0]), "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
     rows = [frame(direction, direction) for direction in ["north", "south", "west", "east", "up", "down"]]
     rows += [frame(f"turned-{turn}", "east", rotation=turn) for turn in range(8)]
     rows += [frame("empty", "north", item=False), frame("invisible", "south", invisible=True),
              frame("invisible-up", "up", invisible=True, rotation=3),
              frame("far", "down", rotation=5, feet=(-100.25, 70.5, 33.75))]
+    # A frame that holds a map draws the map in the item's place, turned by quarter turns, and lit
+    # as the map is (the glow frame's way when it is one).
+    rows += [frame(f"map-{turn}", "north", rotation=turn, map_=True, light=0x00A000C0) for turn in (0, 1, 2, 3, 5)]
+    rows += [frame("map-glow", "up", map_=True, glow=True, light=0x00A000C0, invisible=True),
+             frame("map-south", "south", map_=True, rotation=2)]
     yield {"case_id": "entity/item-frame-pose", "family": "entity", "operation": "item_frame_pose", "rows": rows}
 
 
@@ -17850,6 +17857,25 @@ def entity_text_display_cases():
             text("no-lines", []), text("far", [64], feet=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/text-display-submit", "family": "entity", "operation": "text_display_submit",
            "rows": rows}
+
+
+def entity_map_render_cases():
+    """What the reference's own map renderer draws: the map's quad and each decoration (all of
+    them, or only those a frame shows), turned by sixteenths, one in front of the next."""
+    def decoration(x, y, rot, on_frame, sprite=(0.25, 0.5, 0.375, 0.625)):
+        return {"x": x, "y": y, "rot": rot, "on_frame": on_frame,
+                "sprite": {"u0": float_bits(sprite[0]), "v0": float_bits(sprite[1]),
+                           "u1": float_bits(sprite[2]), "v1": float_bits(sprite[3])}}
+
+    def map_(label, decorations, only_frame=False, light=15728850, feet=(10.5, 64.25, -3.5)):
+        return {"label": f"map-{label}", "decorations": decorations, "only_frame": only_frame, "light": light,
+                "feet_x": float_bits(feet[0]), "feet_y": float_bits(feet[1]), "feet_z": float_bits(feet[2])}
+    many = [decoration(0, 0, 0, True), decoration(-128, 127, 4, False, (0.5, 0.0, 0.625, 0.125)),
+            decoration(63, -64, 15, True, (0.0, 0.25, 0.125, 0.375)), decoration(-20, 33, 8, False)]
+    rows = [map_("bare", []), map_("decorated", many), map_("only-a-frames", many, only_frame=True),
+            map_("none-shown", [decoration(1, 2, 3, False)], only_frame=True),
+            map_("turned-far", many, light=0x00F000F0, feet=(-100.25, 70.5, 33.75))]
+    yield {"case_id": "entity/map-render", "family": "entity", "operation": "map_render", "rows": rows}
 
 
 def entity_arrow_cases():
@@ -18774,6 +18800,11 @@ def entity_painting_variant_cases():
         "operation": "painting_variants",
         "rows": [{"label": "all"}],
     }
+
+
+def entity_map_data_cases():
+    """The map's tables: each packed colour as an ARGB number and the decoration types by id."""
+    yield {"case_id": "entity/map-data", "family": "entity", "operation": "map_data", "rows": [{"label": "all"}]}
 
 
 def entity_variant_field_cases():

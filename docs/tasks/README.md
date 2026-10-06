@@ -142,7 +142,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40f](T40f-bag-dugumu.md) | Bağ düğümü (yalnız düğüm; çizgi T40k) | S | T40 | bitti (de557daf) |
 | [T40k](T40k-bag-cizgisi.md) | Bağ çizgisi (`SetEntityLink`, `LeashFeatureRenderer`) | M | T40f | bitti (fdcd2c0e) |
 | [T40g](T40g-esya-cercevesi.md) | Eşya çerçevesi | L | T40 | bitti (43fb7744) |
-| [T40g2](T40g2-cerceve-haritasi.md) | Çerçevedeki haritanın içeriği (`MapItemData`, `MapRenderer`) | L | T40g | açık |
+| [T40g2](T40g2-cerceve-haritasi.md) | Çerçevedeki haritanın içeriği (`MapItemData`, `MapRenderer`) | L | T40g | bitti |
 | [T40h](T40h-tablo.md) | Tablo | M | T40 | bitti (f75db4a8) |
 | [T40i](T40i-display.md) | Block ve item display'leri | L | T40 | bitti (302fc404) |
 | [T40i2](T40i2-metin-display.md) | Metin display'i | L | T40i | bitti (dbf5c822) |

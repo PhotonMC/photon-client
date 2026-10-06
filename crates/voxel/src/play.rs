@@ -678,16 +678,11 @@ impl Play {
             .then(|| player.interpolated_position(frame.partial));
         self.set_billboards(frame, (player.spectating(), local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
-        let mut items = world_items(&self.session, &mut self.item_layers, tints, view);
+        let with_textures = (tints.0, tints.1, &self.entity_textures);
+        let mut items = world_items(&self.session, &mut self.item_layers, with_textures, view);
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
-        self.backend.set_ground_items(&items)?;
-        let moving = falling_blocks(&self.session, tints, view);
-        let moving: Vec<_> = moving
-            .iter()
-            .map(|(mesh, centre)| (mesh, *centre))
-            .collect();
-        self.backend.set_moving_blocks(&moving)?;
-        Ok(())
+        self.item_layers.hand_over(&mut self.backend, &items)?;
+        set_moving_blocks(&mut self.backend, &self.session, tints, view)
     }
 
     /// The fishing bobbers' sprites and lines for the frame.
@@ -1036,5 +1031,21 @@ fn report_end(session: &PlaySession, ticks: u64, (y_rot, x_rot): (f32, f32)) -> 
     if let Some(warning) = session.warning() {
         println!("play_warning={warning}");
     }
+    Ok(())
+}
+
+/// The blocks that fall or are carried (`FallingBlockRenderer`) for the frame.
+fn set_moving_blocks(
+    backend: &mut voxel_render::VulkanBackend,
+    session: &PlaySession,
+    tints: (&BlockRenderer, &BiomeTints),
+    view: overlays::FrameView,
+) -> Result<()> {
+    let moving = falling_blocks(session, tints, view);
+    let moving: Vec<_> = moving
+        .iter()
+        .map(|(mesh, centre)| (mesh, *centre))
+        .collect();
+    backend.set_moving_blocks(&moving)?;
     Ok(())
 }

@@ -4,6 +4,7 @@
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::biome_tint::BiomeTints;
+use voxel_render::entity_textures::EntityTextures;
 use voxel_render::item_entity::{
     item_entity_poses, item_entity_vertices, model_extent, rendered_amount, seed_for_stack,
 };
@@ -67,7 +68,7 @@ pub fn dropped_items(
 /// The layers of the items in the world, by the display context they are drawn in.
 pub struct WorldItemLayers {
     ground: ItemLayerCache,
-    frames: ItemLayerCache,
+    frames: crate::item_frames::FrameState,
     displays: crate::displays::DisplayLayers,
 }
 
@@ -75,9 +76,21 @@ impl WorldItemLayers {
     pub fn new() -> Self {
         Self {
             ground: ItemLayerCache::new(voxel_render::model::DisplayContext::Ground),
-            frames: ItemLayerCache::new(voxel_render::model::DisplayContext::Fixed),
+            frames: crate::item_frames::FrameState::new(),
             displays: crate::displays::DisplayLayers::new(),
         }
+    }
+}
+
+impl WorldItemLayers {
+    /// Hand the items on the ground and what the frames' maps need to the renderer.
+    pub fn hand_over(
+        &mut self,
+        backend: &mut voxel_render::VulkanBackend,
+        items: &[Vertex],
+    ) -> Result<(), voxel_render::VulkanError> {
+        backend.set_ground_items(items)?;
+        self.frames.hand_over(backend)
     }
 }
 
@@ -86,26 +99,26 @@ impl WorldItemLayers {
 pub fn world_items(
     session: &PlaySession,
     layers: &mut WorldItemLayers,
-    tints: (&BlockRenderer, &BiomeTints),
+    (renderer, tints, textures): (&BlockRenderer, &BiomeTints, &EntityTextures),
     view: FrameView,
 ) -> Vec<Vertex> {
-    let mut items = dropped_items(session, &mut layers.ground, tints, view);
+    let mut items = dropped_items(session, &mut layers.ground, (renderer, tints), view);
     items.extend(crate::thrown_items::thrown_items(
         session,
         &mut layers.ground,
-        tints,
+        (renderer, tints),
         view,
     ));
     items.extend(crate::item_frames::item_frames(
         session,
         &mut layers.frames,
-        tints,
+        (renderer, tints, textures),
         view,
     ));
     items.extend(crate::displays::displays(
         session,
         &mut layers.displays,
-        tints,
+        (renderer, tints),
         view,
     ));
     items

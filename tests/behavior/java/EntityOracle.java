@@ -2795,8 +2795,18 @@ public final class EntityOracle {
             if (row.get("item").getAsBoolean()) {
                 state.item.newLayer();
             }
+            state.lightCoords = row.get("light").getAsInt();
+            if (row.get("map").getAsBoolean()) {
+                state.mapId = new net.minecraft.world.level.saveddata.maps.MapId(1);
+                state.mapRenderState.texture = net.minecraft.resources.Identifier.withDefaultNamespace("map/1");
+            }
             var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ItemFrameRenderer.class);
+            // The map renderer only draws what the state holds.
+            var mapRendererField = net.minecraft.client.renderer.entity.ItemFrameRenderer.class.getDeclaredField("mapRenderer");
+            mapRendererField.setAccessible(true);
+            mapRendererField.set(renderer, UNSAFE.allocateInstance(net.minecraft.client.renderer.MapRenderer.class));
             var poses = new JsonArray();
+            var maps = new JsonArray();
             var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
                 EntityOracle.class.getClassLoader(),
                 new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
@@ -2811,6 +2821,10 @@ public final class EntityOracle {
                         }
                         poses.add(described);
                     }
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        describeGeometry(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(),
+                            (net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2]).forEach(maps::add);
+                    }
                     return null;
                 });
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
@@ -2819,6 +2833,67 @@ public final class EntityOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("poses", poses);
+            out.add("map_vertices", maps);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the reference's own map renderer draws: the quad of the map, then each decoration (those a
+     * frame shows when it is a frame's), as the vertices it adds through the pose.
+     */
+    private static JsonObject mapRender(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.state.MapRenderState();
+            state.texture = net.minecraft.resources.Identifier.withDefaultNamespace("map/1");
+            var spriteFields = net.minecraft.client.renderer.texture.TextureAtlasSprite.class;
+            for (var entry : row.getAsJsonArray("decorations")) {
+                var decoration = entry.getAsJsonObject();
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(spriteFields);
+                var names = new String[] {"u0", "v0", "u1", "v1"};
+                for (int index = 0; index < 4; index++) {
+                    var field = spriteFields.getDeclaredField(names[index]);
+                    field.setAccessible(true);
+                    field.set(sprite, Oracle.f32(decoration.getAsJsonObject("sprite"), names[index]));
+                }
+                var atlas = spriteFields.getDeclaredField("atlasLocation");
+                atlas.setAccessible(true);
+                atlas.set(sprite, net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/map_decorations.png"));
+                var drawn = new net.minecraft.client.renderer.state.MapRenderState.MapDecorationRenderState();
+                drawn.atlasSprite = sprite;
+                drawn.x = (byte) decoration.get("x").getAsInt();
+                drawn.y = (byte) decoration.get("y").getAsInt();
+                drawn.rot = (byte) decoration.get("rot").getAsInt();
+                drawn.renderOnFrame = decoration.get("on_frame").getAsBoolean();
+                state.decorations.add(drawn);
+            }
+            var vertices = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var texture = String.valueOf(args[1]).contains("map_decorations") ? "decorations" : "map";
+                        for (var vertex : describeGeometry(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(),
+                                (net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])) {
+                            vertices.add(texture + "," + vertex);
+                        }
+                    }
+                    return null;
+                });
+            var renderer = (net.minecraft.client.renderer.MapRenderer) UNSAFE.allocateInstance(
+                net.minecraft.client.renderer.MapRenderer.class);
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
+            renderer.render(state, stack, collector, row.get("only_frame").getAsBoolean(), row.get("light").getAsInt());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -3017,6 +3092,54 @@ public final class EntityOracle {
     }
 
     /**
+     * The vertices a custom geometry renderer adds, each as its position through the pose (bits),
+     * its texture coordinate if it has one (bits), its colour and its light.
+     */
+    private static java.util.List<String> describeGeometry(
+            final com.mojang.blaze3d.vertex.PoseStack.Pose pose,
+            final net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer renderer) {
+        var described = new java.util.ArrayList<String>();
+        var vertex = new float[3];
+        var uv = new float[2];
+        var hasUv = new boolean[1];
+        var color = new int[1];
+        java.lang.reflect.InvocationHandler handler = (proxy, call, callArgs) -> {
+            if (call.isDefault()) {
+                return java.lang.reflect.InvocationHandler.invokeDefault(proxy, call, callArgs);
+            }
+            switch (call.getName()) {
+                case "addVertex" -> {
+                    vertex[0] = (float) callArgs[0];
+                    vertex[1] = (float) callArgs[1];
+                    vertex[2] = (float) callArgs[2];
+                    hasUv[0] = false;
+                }
+                case "setColor" -> {
+                    if (callArgs.length == 1) {
+                        color[0] = (int) callArgs[0];
+                    }
+                }
+                case "setUv" -> {
+                    uv[0] = (float) callArgs[0];
+                    uv[1] = (float) callArgs[1];
+                    hasUv[0] = true;
+                }
+                case "setUv2" -> {
+                    int light = (int) callArgs[0] | ((int) callArgs[1] << 16);
+                    described.add(Oracle.bits(vertex[0]) + Oracle.bits(vertex[1]) + Oracle.bits(vertex[2])
+                        + (hasUv[0] ? "," + Oracle.bits(uv[0]) + Oracle.bits(uv[1]) : "") + "," + color[0] + "," + light);
+                }
+                default -> { }
+            }
+            return call.getReturnType() == com.mojang.blaze3d.vertex.VertexConsumer.class ? proxy : null;
+        };
+        var buffer = (com.mojang.blaze3d.vertex.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.vertex.VertexConsumer.class}, handler);
+        renderer.render(pose, buffer);
+        return described;
+    }
+
+    /**
      * What the reference's own text display renderer submits for lines of the given widths: the
      * pose (and the background's vertices through it) and each line's place and manner.
      */
@@ -3063,7 +3186,7 @@ public final class EntityOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             var texts = new JsonArray();
-            var background = new JsonArray();
+            var background = new java.util.ArrayList<String>();
             var order = new int[] {-1};
             var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
             holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
@@ -3084,39 +3207,7 @@ public final class EntityOracle {
                         }
                         out.addProperty("pose", pose.toString());
                         out.addProperty("see_through", String.valueOf(args[1]).contains("see_through"));
-                        var consumer = new java.lang.reflect.InvocationHandler[1];
-                        var vertex = new float[3];
-                        var color = new int[1];
-                        var light = new int[1];
-                        consumer[0] = (consumerProxy, call, callArgs) -> {
-                            if (call.isDefault()) {
-                                return java.lang.reflect.InvocationHandler.invokeDefault(consumerProxy, call, callArgs);
-                            }
-                            switch (call.getName()) {
-                                case "addVertex" -> {
-                                    vertex[0] = (float) callArgs[0];
-                                    vertex[1] = (float) callArgs[1];
-                                    vertex[2] = (float) callArgs[2];
-                                }
-                                case "setColor" -> {
-                                    if (callArgs.length == 1) {
-                                        color[0] = (int) callArgs[0];
-                                    }
-                                }
-                                case "setUv2" -> {
-                                    light[0] = (int) callArgs[0] | ((int) callArgs[1] << 16);
-                                    background.add(Oracle.bits(vertex[0]) + Oracle.bits(vertex[1]) + Oracle.bits(vertex[2])
-                                        + "," + color[0] + "," + light[0]);
-                                }
-                                default -> { }
-                            }
-                            return call.getReturnType() == com.mojang.blaze3d.vertex.VertexConsumer.class ? consumerProxy : null;
-                        };
-                        var buffer = (com.mojang.blaze3d.vertex.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
-                            EntityOracle.class.getClassLoader(),
-                            new Class<?>[] {com.mojang.blaze3d.vertex.VertexConsumer.class}, consumer[0]);
-                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
-                            .render(stack.last(), buffer);
+                        background.addAll(describeGeometry(stack.last(), (net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2]));
                     }
                     if (method.getName().equals("submitText")) {
                         var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
@@ -3138,7 +3229,9 @@ public final class EntityOracle {
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             stack.translate(Oracle.f32(row, "feet_x"), Oracle.f32(row, "feet_y"), Oracle.f32(row, "feet_z"));
             ((net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer) renderer).submit(state, stack, holder[0], null);
-            out.add("background", background);
+            var backgroundArray = new JsonArray();
+            background.forEach(backgroundArray::add);
+            out.add("background", backgroundArray);
             out.add("texts", texts);
             rows.add(out);
         }
@@ -5095,6 +5188,36 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The map's data tables: what each of the 256 packed colours is (`MapColor.getColorFromPackedId`)
+     * and the decoration types of the registry in the order the server numbers them.
+     */
+    private static JsonObject mapData() {
+        var rows = new JsonArray();
+        var colors = new JsonObject();
+        colors.addProperty("label", "colors");
+        var packed = new JsonArray();
+        for (int id = 0; id < 256; id++) {
+            packed.add(net.minecraft.world.level.material.MapColor.getColorFromPackedId(id));
+        }
+        colors.add("colors", packed);
+        rows.add(colors);
+        var registry = net.minecraft.core.registries.BuiltInRegistries.MAP_DECORATION_TYPE;
+        for (var type : registry) {
+            var out = new JsonObject();
+            out.addProperty("label", registry.getKey(type).toString());
+            out.addProperty("id", registry.getId(type));
+            out.addProperty("asset", type.assetId().toString());
+            out.addProperty("show_on_item_frame", type.showOnItemFrame());
+            out.addProperty("map_color", type.mapColor());
+            out.addProperty("track_count", type.trackCount());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     private static JsonObject paintingVariants() {
         var rows = new java.util.TreeMap<String, JsonObject>();
         Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT)
@@ -5310,6 +5433,9 @@ public final class EntityOracle {
         if (operation.equals("experience_orb")) {
             return experienceOrb(request);
         }
+        if (operation.equals("map_data")) {
+            return mapData();
+        }
         if (operation.equals("painting_variants")) {
             return paintingVariants();
         }
@@ -5450,6 +5576,9 @@ public final class EntityOracle {
         }
         if (operation.equals("glint_layers")) {
             return glintLayers(request);
+        }
+        if (operation.equals("map_render")) {
+            return mapRender(request);
         }
         if (operation.equals("display_pose")) {
             return displayPose(request);

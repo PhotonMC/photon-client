@@ -30,11 +30,13 @@ pub fn render_offset(direction: Direction) -> (f64, f64, f64) {
 }
 
 /// The poses `ItemFrameRenderer.submit` draws with: the frame's model (when it has one: not an
-/// invisible frame's) and the item (the map's own drawing is not here).
+/// invisible frame's), the item, and the corner of the map that takes the item's place when the
+/// frame holds one whose data has come.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemFramePoses {
     pub frame: Option<Pose>,
     pub item: Pose,
+    pub map: Pose,
 }
 
 /// `base` is the pose the dispatcher leaves: the entity's place moved by [`render_offset`].
@@ -66,9 +68,24 @@ pub fn item_frame_poses(
         frame
     });
     pose.translate(0.0, 0.0, if invisible { 0.5 } else { 0.4375 });
+    // A map: turned by quarter turns (`rotation % 4 * 2` eighths), flipped, scaled to its 128
+    // colours a block wide, and its corner put at the middle.
+    let mut map = pose;
+    let eighths = rotation % 4 * 2;
+    map.rotate(&Quaternion::rotation_z(degrees(
+        eighths as f32 * 360.0 / 8.0,
+    )));
+    map.rotate(&Quaternion::rotation_z(degrees(180.0)));
+    map.scale(0.007_812_5, 0.007_812_5, 0.007_812_5);
+    map.translate(-64.0, -64.0, 0.0);
+    map.translate(0.0, 0.0, -1.0);
     pose.rotate(&Quaternion::rotation_z(degrees(
         rotation as f32 * 360.0 / 8.0,
     )));
     pose.scale(0.5, 0.5, 0.5);
-    ItemFramePoses { frame, item: pose }
+    ItemFramePoses {
+        frame,
+        item: pose,
+        map,
+    }
 }

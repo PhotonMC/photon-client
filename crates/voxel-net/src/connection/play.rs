@@ -1514,6 +1514,11 @@ impl PlaySession {
                     entities::motion(&mut self.trace.world, &packet);
                 }
             }
+            PLAY_CLIENTBOUND_MAP_ITEM_DATA_PACKET_ID => {
+                if let Ok(packet) = parse_map_item_data_packet(payload) {
+                    self.trace.world.apply_map_item_data(&packet);
+                }
+            }
             PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID => {
                 if let Ok((entity_id, steps)) = parse_move_minecart_packet(payload) {
                     entities::minecart_steps(&mut self.trace.world, entity_id, &steps);

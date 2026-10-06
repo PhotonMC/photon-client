@@ -23246,18 +23246,39 @@ fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
         let mut base = voxel_render::joml::Pose::default();
         base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
         let poses = item_frame_poses(&base, direction, invisible, i32_field(row, "rotation")?);
-        // The frame's model first, if it has one, then the item.
+        // The frame's model first, if it has one, then the item (a map takes its place).
         let mut described = Vec::new();
         if let Some(frame) = poses.frame {
             described.push(matrix_bits(&frame));
         }
-        if row["item"].as_bool() == Some(true) {
+        let mut map_vertices = Vec::new();
+        let holds_map = row["map"].as_bool() == Some(true);
+        if holds_map {
+            // `getLightCoords(isGlowFrame, 15728850, lightCoords)`.
+            let light = if row["glow"].as_bool() == Some(true) {
+                15_728_850
+            } else {
+                i32_field(row, "light")?
+            };
+            for quad in voxel_render::map::map_quads(&poses.map, &[], true) {
+                for (corner, uv) in quad.corners.iter().zip(quad.uvs) {
+                    map_vertices.push(json!(format!(
+                        "{:08x}{:08x}{:08x},{:08x}{:08x},-1,{light}",
+                        corner[0].to_bits(),
+                        corner[1].to_bits(),
+                        corner[2].to_bits(),
+                        uv[0].to_bits(),
+                        uv[1].to_bits()
+                    )));
+                }
+            }
+        } else if row["item"].as_bool() == Some(true) {
             // The item's layer, which has no transform of its own here, centres its model.
             let mut item = poses.item;
             item.translate(-0.5, -0.5, -0.5);
             described.push(matrix_bits(&item));
         }
-        out.push(json!({"label": row["label"], "poses": described}));
+        out.push(json!({"label": row["label"], "poses": described, "map_vertices": map_vertices}));
     }
     Ok(json!({"rows": out}))
 }
@@ -23411,6 +23432,64 @@ fn text_display_submit_result(request: &Value) -> Result<Value, String> {
         described["background"] = json!(background);
         described["texts"] = json!(texts);
         out.push(described);
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `map_render`: the quads a map and its decorations are drawn with.
+fn map_render_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::map::{DecorationDraw, Sheet, map_quads};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |value: &Value| -> Result<f32, String> {
+            u32::from_str_radix(value.as_str().ok_or("a float is a string")?, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let decorations: Vec<DecorationDraw> = row["decorations"]
+            .as_array()
+            .ok_or("decorations")?
+            .iter()
+            .map(|decoration| {
+                Ok(DecorationDraw {
+                    x: i32_field(decoration, "x")? as i8,
+                    y: i32_field(decoration, "y")? as i8,
+                    rot: i32_field(decoration, "rot")? as i8,
+                    render_on_frame: decoration["on_frame"].as_bool().ok_or("on_frame")?,
+                    sprite: ["u0", "v0", "u1", "v1"]
+                        .map(|key| float(&decoration["sprite"][key]).unwrap_or(0.0)),
+                })
+            })
+            .collect::<Result<_, String>>()?;
+        let mut base = voxel_render::joml::Pose::default();
+        base.translate(
+            float(&row["feet_x"])?,
+            float(&row["feet_y"])?,
+            float(&row["feet_z"])?,
+        );
+        let light = i32_field(row, "light")?;
+        let mut vertices = Vec::new();
+        for quad in map_quads(
+            &base,
+            &decorations,
+            row["only_frame"].as_bool().ok_or("only_frame")?,
+        ) {
+            let sheet = match quad.sheet {
+                Sheet::Map => "map",
+                Sheet::Decorations => "decorations",
+            };
+            for (corner, uv) in quad.corners.iter().zip(quad.uvs) {
+                vertices.push(json!(format!(
+                    "{sheet},{:08x}{:08x}{:08x},{:08x}{:08x},-1,{light}",
+                    corner[0].to_bits(),
+                    corner[1].to_bits(),
+                    corner[2].to_bits(),
+                    uv[0].to_bits(),
+                    uv[1].to_bits()
+                )));
+            }
+        }
+        out.push(json!({"label": row["label"], "vertices": vertices}));
     }
     Ok(json!({"rows": out}))
 }
@@ -25716,6 +25795,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_frame_pose" => return item_frame_pose_result(request),
         "display_pose" => return display_pose_result(request),
         "item_foil" => return item_foil_result(request),
+        "map_render" => return map_render_result(request),
         "text_display_submit" => return text_display_submit_result(request),
         "item_equippable" => return item_equippable_result(request),
         "glint_layers" => return glint_layers_result(request),
@@ -25774,6 +25854,20 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "skeleton_model" => return skeleton_model_result(request),
         "piglin_model" => return piglin_model_result(request),
         "experience_orb" => return experience_orb_result(request),
+        "map_data" => {
+            let mut rows = vec![json!({
+                "label": "colors",
+                "colors": (0..=255u8)
+                    .map(|packed| voxel_data::map::packed_color(packed) as i32)
+                    .collect::<Vec<_>>(),
+            })];
+            for (id, kind) in voxel_data::map::decoration_types().iter().enumerate() {
+                rows.push(json!({"label": kind.name, "id": id, "asset": kind.asset,
+                    "show_on_item_frame": kind.show_on_item_frame, "map_color": kind.map_color,
+                    "track_count": kind.track_count}));
+            }
+            return Ok(json!({"rows": rows}));
+        }
         "painting_variants" => {
             let rows: Vec<Value> = voxel_data::entity_type::painting_variants()
                 .map(|variant| {

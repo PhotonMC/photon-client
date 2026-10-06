@@ -142,7 +142,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T31 — At, eşek, katır ve ölü atlar — client-parity](client-horse-parity-conformance.md)
 - [T34b — Illager ve cadı — client-parity](client-illager-witch-parity-conformance.md)
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](client-insects-parity-conformance.md)
-- [T40g — Eşya çerçevesi — client-parity](client-item-frame-parity-conformance.md)
+- [T40g, T40g2 — Eşya çerçevesi ve haritası — client-parity](client-item-frame-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](client-keyframe-animation-parity-conformance.md)
 - [T40f — Bağ düğümü — client-parity](client-leash-knot-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
