@@ -1294,7 +1294,7 @@ impl PlaySession {
         if self.loaded
             && let Some(player) = self.player.as_mut()
         {
-            player.set_main_hand_item(main_hand);
+            player.set_hand_state(self.trace.world.local_hand_state(self.status.selected_slot));
             let ticked = match ridden.and_then(|id| self.trace.world.vehicle_view(id)) {
                 Some(view) => player
                     .tick_riding(&self.trace.world, keys, &view)

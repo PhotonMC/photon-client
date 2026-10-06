@@ -20359,6 +20359,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 let id = match string(effect, "effect")? {
                     "minecraft:haste" => 2,
                     "minecraft:mining_fatigue" => 3,
+                    "minecraft:conduit_power" => 28,
                     other => return Err(format!("unknown effect {other}")),
                 };
                 world.apply_local_player_mob_effect(
@@ -20560,11 +20561,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             // As the session does: the main hand the player ticks with is
             // the world's inventory now.
             if breaking.is_some() {
-                let main_hand = world
-                    .local_player()
-                    .and_then(|state| state.inventory_slot(36))
-                    .map_or(0, |stack| stack.item_registry_id());
-                player.set_main_hand_item(main_hand);
+                player.set_hand_state(world.local_hand_state(0));
             }
             let sent = if let Some(vehicle_id) = ridden {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
@@ -20647,6 +20644,13 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "swim_amount": format!("{:08x}", player.model_pose(0.5).swim_amount.to_bits()),
                 "hand_x_bob": format!("{:08x}", player.hand_bob(0.5).0.to_bits()),
                 "hand_y_bob": format!("{:08x}", player.hand_bob(0.5).1.to_bits()),
+                "swinging": player.is_swinging(),
+                "swing_time": player.swing_time(),
+                "swing_off_hand": player.swinging_off_hand(),
+                "attack_anim": format!("{:08x}", player.attack_anim(0.5).to_bits()),
+                "using_item": player.is_using_item(),
+                "using_off_hand": player.used_item_is_off_hand(),
+                "ticks_using_item": format!("{:08x}", player.ticks_using_item(0.5).to_bits()),
                 "sent": packets,
             });
             if let Some(vehicle_id) = ridden {

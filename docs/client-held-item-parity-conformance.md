@@ -56,7 +56,14 @@ satırıdır; eşyanın görüntü dönüşümü ayrıca `model/display-*` ailes
 
 Oyunda: uzaktaki oyuncu ve insansı moblar (`arm_poses::{spear_view, mob_spear_pose}`): `getArmPose` (kinetik silahlı eşya kullanılırken `SPEAR`, mızrak tutarken `SPEAR`, zombide öteki elin mızrağı da), `ItemInHandLayer`'ın dürtme ve kullanım dönüşleri, `EntityEvent` 2 ile vuruş geri tepmesi (`ClientEntity::ticks_since_kinetic_hit`), ve sallama süresi elde tutulan mızrağın `SwingAnimation.duration`'ı (`ClientEntity::swing_durations`; oyuncular ve canavarlar). Çıkarım (`getArmPose`, hangi elin ne tuttuğu) Java'ya karşı karşılaştırılmadı; `spears` eşya etiketi yedi mızrak sayılır.
 
-Açık ([T41d4](tasks/T41d4-yerel-kullanim.md)): yerel oyuncunun kendi kullanımı (istemci izlemiyor) ve sallama süresi (varsayılan altı tick kalır), hız/yorgunluk etkisinin sallama süresine katkısı (uzaktaki varlıkların etkileri okunmuyor), vuruş sesi (`makeLocalHitSound`), `SwingAnimationType.NONE`, bir yamanın `KINETIC_WEAPON`/`SWING_ANIMATION` bileşenini değiştirmesi (yalnız varsayılan bileşenler).
+Açık: uzaktaki varlıkların hız/yorgunluk etkileri (okunmuyor), vuruş sesi (`makeLocalHitSound`), `SwingAnimationType.NONE`, bir yamanın `KINETIC_WEAPON`/`SWING_ANIMATION` bileşenini değiştirmesi (yalnız varsayılan bileşenler).
+
+## Yerel oyuncunun sallaması ve kullanımı (T41d4)
+
+- `LivingEntity.getCurrentSwingDuration`: sallayan elin eşyasının süresi (mızrakta kendi süresi, yoksa altı), hız (`haste`) ya da kanal gücü (`conduit_power`) varsa `süre − (1 + en yüksek seviye)`, yoksa kazı yorgunluğu varsa `süre + (1 + seviye)·2`. `swing(el)` yarısı geçmemiş bir sallamayı yeniden başlatmaz (yarı bu süreden); `updateSwingTime` ve saldırı animasyonu bu süreyle işler; sallayan kol (`swingingArm`) sallama bitince de kalır. Yerel oyuncunun sallaması artık el seçer: ikinci el eylem yapınca (`ServerboundSwing` zaten gidiyordu) sol kol sallanır.
+- Kullanım: sunucunun canlılık bayrakları (kullanılıyor, ikinci el) ve sayaç (`getTicksUsingItem`, kullanıldığı her tikte bir artar). Üçüncü şahıs modeli kollarını bununla uzak oyuncularla aynı kodla (`arm_state_of`) kurar: yay, kalkan, arbalet, mızrak, dürbün, boru, fırça ve sallayan kol.
+- Kapsam: `movement/entity-aim` ve öteki yerel oyuncu satırlarının her tik çıktısına sallama (`swinging`, `swingTime`, ikinci el, saldırı animasyonu) ve kullanım (kullanılıyor, el, sayaç) eklendi; satırlar gerçek `LocalPlayer`'a karşı: hız, kanal gücü ve hız birlikte, yorgunluk, ikinci elle koyma ve hızla ikinci el kullanımı, mevcut saldırı ve yerleştirme satırları.
+- Açık: istemci kullanımı kendi başlatmaz (sunucunun bayrağı beklenir; `Item.use`'un ön tahmini yok); kullanırken yavaşlama (`isSlowDueToUsingItem`, `useEffects`) ve koşma kesilmesi; yerel mızrağın saldırı/dürtme akışı (oracle'da saldırı tuşu mızrakla paket göndermez) ve vuruş sesi; uzaktaki varlıkların etkileri; yerel mızrak sallaması oracle'sız (aynı `spear_of` yolu).
 
 ## Oyuncunun gövde dönüşü (T41f3)
 
@@ -66,7 +73,7 @@ Açık ([T41d4](tasks/T41d4-yerel-kullanim.md)): yerel oyuncunun kendi kullanım
 
 - Uzaktaki oyuncunun kol pozları (`AvatarRenderer.getArmPose`: blok, yay, trident, arbalet doldurma/tutma, dürbün, boru, fırça) ve `HumanoidModel.setupAnim`'in kullanım dalı (kullanılan elin kolu önce), yolcu, süzülme (`speedValue` dahil) ve dürbünde soluk almama gerçek modele karşı karşılaştırıldı (`entity/held-item-pose`). Kullanım süresi istemcide sayılır (`ticks_using_item`); arbalet doldurma süresi hızlı doldurma büyüsünden. Pozu eşyadan çıkarma (kullanım animasyonu, yüklü arbalet) birim testli, Java'ya karşı karşılaştırılmadı.
 - Piglinin kol pozları (`PiglinArmPose`: silah yukarıda ve aşağı sallama, arbalet tutma/doldurma, hayranlık, dans) `entity/piglin-model`'de gerçek modele karşı karşılaştırıldı; pozun çıkarımı (`Piglin.getArmPose`) karşılaştırılmadı.
-- Yerel oyuncunun kendi kullanımı (istemci izlemiyor, model tutmada kalır) ve bir yama `blocks_attacks`'ı kaldırırsa kalkan sayılması yok ([T41d4](tasks/T41d4-yerel-kullanim.md)).
+- Bir yama `blocks_attacks`'ı kaldırırsa kalkan sayılması yok ([T41d4](tasks/T41d4-yerel-kullanim.md)).
 - Yerel oyuncunun ana kolu seçenek olarak okunmuyor (sağ sayılır); üçüncü şahıs
   yerel oyuncu eşyası envanterden alınır, sunucunun yankısından değil.
 - Eşya dokuları blok atlasından, ışık entity konumundan alınır; kafatası modelleri

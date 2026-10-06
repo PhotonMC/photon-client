@@ -1,8 +1,8 @@
 //! What a player's arms are doing with what they hold (`AvatarRenderer.getArmPose` and the
 //! use-item fields of `HumanoidMobRenderer.extractHumanoidRenderState`): a raised bow, a blocking
 //! shield, a charging or charged crossbow, a spyglass, a horn, a brush, a trident, a spear held up
-//! or thrust. Not carried: the local player's own use of an item (the client does not track it
-//! yet), so the local model keeps to holding. The `spears` item tag is read as the seven spears.
+//! or thrust. The local player's use of an item is the server's flag (the client does not predict
+//! it yet). The `spears` item tag is read as the seven spears.
 
 use voxel_data::item::classes::ItemClass;
 use voxel_data::item::component_types::{
@@ -110,19 +110,25 @@ pub struct ArmState {
     pub max_crossbow_charge: f32,
 }
 
+/// What a player's arms are doing, which the arm poses read: a swing, and the use of an item.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArmSource {
+    pub main_arm_left: bool,
+    pub swinging: bool,
+    pub using_item: bool,
+    pub used_off_hand: bool,
+    pub ticks_using_item: f32,
+}
+
 /// `AvatarRenderer.getArmPose` of one hand's stack.
-fn hand_pose(
-    entity: &ClientEntity,
-    stack: Option<&ClientItemStackState>,
-    off_hand: bool,
-) -> ArmPose {
+fn hand_pose(source: &ArmSource, stack: Option<&ClientItemStackState>, off_hand: bool) -> ArmPose {
     let Some(stack) = stack else {
         return ArmPose::Empty;
     };
-    if !entity.swing_state().is_swinging() && is_charged_crossbow(stack) {
+    if !source.swinging && is_charged_crossbow(stack) {
         return ArmPose::CrossbowHold;
     }
-    if entity.is_using_item() && entity.used_item_is_off_hand() == off_hand {
+    if source.using_item && source.used_off_hand == off_hand {
         match use_animation(stack) {
             UseAnimation::Block => return ArmPose::Block,
             UseAnimation::Bow => return ArmPose::BowAndArrow,
@@ -233,10 +239,30 @@ pub(crate) fn mob_spear_pose(entity: &ClientEntity, left: bool, zombie: bool) ->
 
 /// The poses of a remote player's arms and the fields the model reads of what it is using.
 pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> ArmState {
-    let main = entity.equipment(EquipmentSlot::MainHand);
-    let off = entity.equipment(EquipmentSlot::OffHand);
-    let main_pose = hand_pose(entity, main, false);
-    let mut off_pose = hand_pose(entity, off, true);
+    arm_state_of(
+        session,
+        (
+            entity.equipment(EquipmentSlot::MainHand),
+            entity.equipment(EquipmentSlot::OffHand),
+        ),
+        &ArmSource {
+            main_arm_left: entity.main_arm_is_left(),
+            swinging: entity.swing_state().is_swinging(),
+            using_item: entity.is_using_item(),
+            used_off_hand: entity.used_item_is_off_hand(),
+            ticks_using_item: entity.ticks_using_item(partial),
+        },
+    )
+}
+
+/// The poses of a player's arms from what its hands hold and what they are doing.
+pub fn arm_state_of(
+    session: &PlaySession,
+    (main, off): (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+    source: &ArmSource,
+) -> ArmState {
+    let main_pose = hand_pose(source, main, false);
+    let mut off_pose = hand_pose(source, off, true);
     if main_pose.is_two_handed() {
         off_pose = if off.is_none() {
             ArmPose::Empty
@@ -244,7 +270,7 @@ pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> 
             ArmPose::Item
         };
     }
-    let main_arm = if entity.main_arm_is_left() {
+    let main_arm = if source.main_arm_left {
         Arm::Left
     } else {
         Arm::Right
@@ -254,20 +280,16 @@ pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> 
     } else {
         (off_pose, main_pose)
     };
-    let in_use = if entity.used_item_is_off_hand() {
-        off
-    } else {
-        main
-    };
+    let in_use = if source.used_off_hand { off } else { main };
     ArmState {
         right,
         left,
-        using_item: entity.is_using_item(),
-        use_main_hand: !entity.used_item_is_off_hand(),
-        ticks_using_item: entity.ticks_using_item(partial),
+        using_item: source.using_item,
+        use_main_hand: !source.used_off_hand,
+        ticks_using_item: source.ticks_using_item,
         max_crossbow_charge: crossbow_charge_duration(
             session,
-            in_use.filter(|_| entity.is_using_item()),
+            in_use.filter(|_| source.using_item),
         ),
     }
 }

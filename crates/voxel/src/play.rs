@@ -656,7 +656,7 @@ impl Play {
             };
             let selected = self.session.status().selected_slot as i16;
             models.extend(overlays::player_model(
-                player,
+                (&self.session, player),
                 &mut self.player_model,
                 (view, &mut held),
                 (stack(36 + selected), stack(45)),

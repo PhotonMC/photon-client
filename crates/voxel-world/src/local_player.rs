@@ -829,6 +829,8 @@ pub struct LocalPlayer {
     /// ticks in, and how far through, now and a tick ago.
     swinging: bool,
     swing_time: i32,
+    /// `swingingArm`: the hand that swung last (the main hand until one swings).
+    swinging_off_hand: bool,
     attack_anim: f32,
     attack_anim_old: f32,
     /// `Player.attackStrengthTicker` and `itemSwapTicker`: ticks since the
@@ -838,6 +840,10 @@ pub struct LocalPlayer {
     /// last tick saw.
     main_hand_item: i32,
     last_main_hand_item: i32,
+    /// What the hands hold, the effects and the use of an item, as the world last heard them.
+    hands: HandState,
+    /// How many ticks the item in use has been used (`getTicksUsingItem`).
+    using_item_ticks: i32,
     item_swap_ticker: i32,
     /// `LivingEntity`'s health as the client last set it, and the hurt
     /// state `LocalPlayer.hurtTo` keeps: ticks of damage immunity, of the
@@ -950,12 +956,15 @@ impl LocalPlayer {
             y_bob_old: 0.0,
             swinging: false,
             swing_time: 0,
+            swinging_off_hand: false,
             attack_anim: 0.0,
             attack_anim_old: 0.0,
             attack_strength_ticker: 0,
             elytra: crate::elytra::ElytraState::default(),
             main_hand_item: 0,
             last_main_hand_item: 0,
+            hands: HandState::default(),
+            using_item_ticks: 0,
             item_swap_ticker: 0,
             health: 20.0,
             flash_on_set_health: false,
@@ -1201,15 +1210,85 @@ impl LocalPlayer {
     /// `LivingEntity.swing` for the main hand: start a swing, unless one is
     /// in its first half.
     pub fn swing(&mut self) {
-        if !self.swinging || self.swing_time >= SWING_DURATION / 2 || self.swing_time < 0 {
+        self.swing_hand(false);
+    }
+
+    /// `LivingEntity.swing(hand)`: start a swing of that hand's arm, unless one is under way and
+    /// still in its first half.
+    pub fn swing_hand(&mut self, off_hand: bool) {
+        if !self.swinging
+            || self.swing_time >= self.current_swing_duration() / 2
+            || self.swing_time < 0
+        {
             self.swing_time = -1;
             self.swinging = true;
+            self.swinging_off_hand = off_hand;
+        }
+    }
+
+    /// `LivingEntity.getCurrentSwingDuration`: how long the swinging hand's item swings, less what
+    /// haste or the conduit's power takes off and plus what mining fatigue adds.
+    pub fn current_swing_duration(&self) -> i32 {
+        let item = if self.swinging_off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        let base = crate::block_rules::item(item)
+            .and_then(|item| voxel_data::spear::spear_of(item.name))
+            .map_or(SWING_DURATION, |spear| spear.swing_ticks);
+        if let Some(amplifier) = self.hands.dig_speed {
+            base - (1 + amplifier)
+        } else if let Some(amplifier) = self.hands.mining_fatigue {
+            base + (1 + amplifier) * 2
+        } else {
+            base
+        }
+    }
+
+    /// Whether the off hand's arm is the one swinging (or last swung): `attackArm`.
+    pub fn swinging_off_hand(&self) -> bool {
+        self.swinging_off_hand
+    }
+
+    pub fn is_swinging(&self) -> bool {
+        self.swinging
+    }
+
+    /// `LivingEntity.swingTime`.
+    pub fn swing_time(&self) -> i32 {
+        self.swing_time
+    }
+
+    /// What the hands hold, the effects and the use of an item, from the world's player state.
+    pub fn set_hand_state(&mut self, hands: HandState) {
+        self.main_hand_item = hands.main_item;
+        self.hands = hands;
+    }
+
+    /// `LivingEntity.isUsingItem`, as the server's flag says.
+    pub fn is_using_item(&self) -> bool {
+        self.hands.using_item
+    }
+
+    /// Whether the off hand is the one using the item.
+    pub fn used_item_is_off_hand(&self) -> bool {
+        self.hands.using_off_hand
+    }
+
+    /// `LivingEntity.getTicksUsingItem(partialTicks)`.
+    pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
+        if self.hands.using_item {
+            self.using_item_ticks as f32 + partial_tick
+        } else {
+            0.0
         }
     }
 
     /// The item now in the main hand, by registry id; air when empty.
     pub fn set_main_hand_item(&mut self, item: i32) {
         self.main_hand_item = item;
+        self.hands.main_item = item;
     }
 
     pub fn attack_strength_ticker(&self) -> i32 {
@@ -1706,17 +1785,24 @@ impl LocalPlayer {
             self.fall_distance = 0.0;
         }
         self.living_ai_step(level)?;
-        // `updateSwingTime`: an empty hand swings over six ticks.
+        // `updateSwingTime`: the swing lasts as long as the swinging hand's item says.
+        let swing_duration = self.current_swing_duration();
         if self.swinging {
             self.swing_time += 1;
-            if self.swing_time >= SWING_DURATION {
+            if self.swing_time >= swing_duration {
                 self.swing_time = 0;
                 self.swinging = false;
             }
         } else {
             self.swing_time = 0;
         }
-        self.attack_anim = self.swing_time as f32 / SWING_DURATION as f32;
+        self.attack_anim = self.swing_time as f32 / swing_duration as f32;
+        // `getTicksUsingItem`: counted while the item is in use.
+        self.using_item_ticks = if self.hands.using_item {
+            self.using_item_ticks.saturating_add(1)
+        } else {
+            0
+        };
         self.y_head_rot = self.y_rot;
         Ok(())
     }
@@ -3354,7 +3440,22 @@ pub(crate) fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
 }
 
 /// `SwingAnimation.DEFAULT`'s duration: an empty hand's swing, in ticks.
+/// How long a swing lasts with nothing special in the hand (`SwingAnimation.DEFAULT`).
 const SWING_DURATION: i32 = 6;
+
+/// What the local player's swing and use of items read of the world's player state.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HandState {
+    /// The registry ids of what the main and off hands hold (air when empty).
+    pub main_item: i32,
+    pub off_item: i32,
+    /// The greater of the haste and conduit power amplifiers, if either is on.
+    pub dig_speed: Option<i32>,
+    pub mining_fatigue: Option<i32>,
+    /// The server's flags: an item is in use, and in the off hand.
+    pub using_item: bool,
+    pub using_off_hand: bool,
+}
 
 /// What the player model is posed from.
 #[derive(Debug, Clone, Copy, PartialEq)]

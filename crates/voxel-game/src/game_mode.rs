@@ -378,12 +378,9 @@ impl Context<'_> {
         self.swing_hand(MAIN_HAND, out);
     }
 
-    /// `LocalPlayer.swing`: the arm swings and the server hears of it. The
-    /// off hand's arm is not animated yet.
+    /// `LocalPlayer.swing`: the arm swings and the server hears of it.
     fn swing_hand(&mut self, hand: u8, out: &mut Vec<Outgoing>) {
-        if hand == MAIN_HAND {
-            self.player.swing();
-        }
+        self.player.swing_hand(hand != MAIN_HAND);
         out.push(Outgoing::Swing { hand });
     }
 

@@ -2871,6 +2871,14 @@ public final class MovementOracle {
         tick.addProperty("swim_amount", Oracle.bits(player.getSwimAmount(0.5F)));
         tick.addProperty("hand_x_bob", Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, player.xBobO, player.xBob)));
         tick.addProperty("hand_y_bob", Oracle.bits(net.minecraft.util.Mth.lerp(0.5F, player.yBobO, player.yBob)));
+        // The swing and the use of an item the arms are posed from.
+        tick.addProperty("swinging", player.swinging);
+        tick.addProperty("swing_time", player.swingTime);
+        tick.addProperty("swing_off_hand", player.swingingArm == net.minecraft.world.InteractionHand.OFF_HAND);
+        tick.addProperty("attack_anim", Oracle.bits(player.getAttackAnim(0.5F)));
+        tick.addProperty("using_item", player.isUsingItem());
+        tick.addProperty("using_off_hand", player.getUsedItemHand() == net.minecraft.world.InteractionHand.OFF_HAND);
+        tick.addProperty("ticks_using_item", Oracle.bits(player.getTicksUsingItem(0.5F)));
         var packets = new JsonArray();
         for (var packet : sent) {
             var described = new JsonObject();

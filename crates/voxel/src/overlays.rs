@@ -8,7 +8,7 @@ use voxel_game::item_in_hand::ItemInHand;
 use voxel_net::connection::PlaySession;
 use voxel_render::biome_tint::BiomeTints;
 use voxel_render::outline::LineVertex;
-use voxel_render::player_model::{Arm, ArmPose, PlayerModel, PlayerRenderState};
+use voxel_render::player_model::{Arm, PlayerModel, PlayerRenderState};
 use voxel_render::player_renderer::{HandView, Placement};
 use voxel_render::scene::Vertex;
 use voxel_render::world_mesh::BlockRenderer;
@@ -216,9 +216,36 @@ pub fn cracks(
     breaking
 }
 
+/// The poses of the local player's arms and the arm that swings: the main arm is the right, and
+/// the off hand's is the one that swings when it acted.
+fn local_arms(
+    session: &PlaySession,
+    player: &LocalPlayer,
+    stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+    partial: f32,
+) -> (crate::arm_poses::ArmState, Arm) {
+    let arms = crate::arm_poses::arm_state_of(
+        session,
+        stacks,
+        &crate::arm_poses::ArmSource {
+            main_arm_left: false,
+            swinging: player.is_swinging(),
+            using_item: player.is_using_item(),
+            used_off_hand: player.used_item_is_off_hand(),
+            ticks_using_item: player.ticks_using_item(partial),
+        },
+    );
+    let attack_arm = if player.swinging_off_hand() {
+        Arm::Left
+    } else {
+        Arm::Right
+    };
+    (arms, attack_arm)
+}
+
 /// The player's own model where it stands, posed for the frame.
 pub fn player_model(
-    player: &LocalPlayer,
+    (session, player): (&PlaySession, &LocalPlayer),
     model: &mut PlayerModel,
     (view, held): (FrameView, &mut Vec<HeldItem>),
     stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
@@ -233,15 +260,15 @@ pub fn player_model(
     let (_, x_rot) = player.rotation();
     let pose = player.model_pose(partial);
     let attack_time = player.attack_anim(partial);
-    let arm_poses = (held_arm_pose(stacks.0), held_arm_pose(stacks.1));
-    // The local player's use of an item is not tracked, and its swing keeps the default length.
+    let (arms, attack_arm) = local_arms(session, player, stacks, partial);
+    let arm_poses = (arms.right, arms.left);
     let spears = crate::arm_poses::stacks_spear_view(
         stacks,
         crate::arm_poses::SpearRest {
             main_arm: Arm::Right,
-            attack: (attack_time, Arm::Right),
+            attack: (attack_time, attack_arm),
             arm_poses,
-            using: (false, true, 0.0),
+            using: (arms.using_item, arms.use_main_hand, arms.ticks_using_item),
             hit_feedback: 0.0,
         },
     );
@@ -255,8 +282,13 @@ pub fn player_model(
         crouching: pose.crouching,
         spectator: player.spectating(),
         attack_time,
+        attack_arm,
         right_arm_pose: arm_poses.0,
         left_arm_pose: arm_poses.1,
+        is_using_item: arms.using_item,
+        use_item_main_hand: arms.use_main_hand,
+        ticks_using_item: arms.ticks_using_item,
+        max_crossbow_charge_duration: arms.max_crossbow_charge,
         swing_animation: spears.swing_animation,
         right_spear: spears.right,
         left_spear: spears.left,
@@ -536,18 +568,6 @@ fn wear(
             voxel_render::player_renderer::layer_vertices(model, placement, rect, colour)
         },
     )
-}
-
-/// `AvatarRenderer.getArmPose` of an arm that is not in use: a held stack
-/// raises the arm a little, a spear a good deal.
-fn held_arm_pose(stack: Option<&voxel_world::ClientItemStackState>) -> ArmPose {
-    if stack.is_some_and(|stack| crate::arm_poses::spear_of_stack(stack).is_some()) {
-        ArmPose::Spear
-    } else if stack.is_some() {
-        ArmPose::Item
-    } else {
-        ArmPose::Empty
-    }
 }
 
 /// Where the name tags are seen from.

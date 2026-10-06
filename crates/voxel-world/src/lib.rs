@@ -424,6 +424,41 @@ impl ClientWorld {
         self.local_player.as_ref()
     }
 
+    /// What the local player's swing and use of items read of the player state: what the main hand
+    /// (the selected hotbar slot) and the off hand hold, the effects that change a swing, and the
+    /// server's use flags.
+    pub fn local_hand_state(&self, selected_slot: i32) -> local_player::HandState {
+        const HASTE: i32 = 2;
+        const MINING_FATIGUE: i32 = 3;
+        const CONDUIT_POWER: i32 = 28;
+        let Some(state) = self.local_player() else {
+            return local_player::HandState::default();
+        };
+        let item = |slot: i32| {
+            state
+                .inventory_slot(slot as i16)
+                .map_or(0, |stack| stack.item_registry_id())
+        };
+        let amplifier = |id: i32| {
+            state
+                .effects()
+                .iter()
+                .find(|effect| effect.effect_id() == id)
+                .map(|effect| effect.amplifier())
+        };
+        local_player::HandState {
+            main_item: item(36 + selected_slot),
+            off_item: item(45),
+            dig_speed: match (amplifier(HASTE), amplifier(CONDUIT_POWER)) {
+                (None, None) => None,
+                (a, b) => Some(a.unwrap_or(0).max(b.unwrap_or(0))),
+            },
+            mining_fatigue: amplifier(MINING_FATIGUE),
+            using_item: state.is_using_item(),
+            using_off_hand: state.used_item_is_off_hand(),
+        }
+    }
+
     /// Create or replace the local player state for a clientbound player ID.
     pub fn set_local_player_id(&mut self, player_id: i32) {
         let mut player = ClientPlayerState::new(player_id);

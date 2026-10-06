@@ -14009,13 +14009,15 @@ def movement_cases():
         return {"id": entity_id, "type": f"minecraft:{kind}", "x": float_bits(x, "f64"),
                 "y": float_bits(y, "f64"), "z": float_bits(z, "f64")}
 
-    def facing(label, entities, ticks, blocks=(), main_hand=None, off_hand=None, **kwargs):
+    def facing(label, entities, ticks, blocks=(), main_hand=None, off_hand=None, effects=None, **kwargs):
         row = scene(label, floor() + list(blocks), ticks, **kwargs)
         row["breaking"] = {}
         if main_hand:
             row["breaking"]["main_hand"] = main_hand
         if off_hand:
             row["breaking"]["off_hand"] = off_hand
+        if effects:
+            row["breaking"]["effects"] = effects
         row["entities"] = entities
         return row
 
@@ -14027,6 +14029,17 @@ def movement_cases():
         facing("use-on-zombie-empty-hands", [zombie], aims(1, use_clicks=1) + aims(3)),
         facing("use-on-zombie-with-stone", [zombie], aims(1, use_clicks=1) + aims(3),
                main_hand="minecraft:stone"),
+        # The swing lasts as long as haste (or the conduit's power) leaves of it, or mining fatigue adds to it
+        # (a spear's own length is read the same way for a remote player), and the off hand's arm swings
+        # when it is the one that acts.
+        facing("attack-with-haste", [zombie], aims(2, clicks=1) + aims(8),
+               effects=[{"effect": "minecraft:haste", "amplifier": 1}]),
+        facing("attack-with-conduit-power-and-haste", [zombie], aims(2, clicks=1) + aims(8),
+               effects=[{"effect": "minecraft:haste", "amplifier": 0}, {"effect": "minecraft:conduit_power", "amplifier": 2}]),
+        facing("attack-with-mining-fatigue", [zombie], aims(2, clicks=1) + aims(14),
+               effects=[{"effect": "minecraft:mining_fatigue", "amplifier": 1}]),
+        facing("off-hand-use-with-haste", [zombie], aims(1, use_clicks=1) + aims(6), off_hand="minecraft:cobblestone",
+               effects=[{"effect": "minecraft:haste", "amplifier": 0}]),
         facing("use-on-zombie-both-hands", [zombie], aims(1, use_clicks=1) + aims(3),
                main_hand="minecraft:stone", off_hand="minecraft:cobblestone"),
         facing("use-held-on-zombie", [zombie], aims(10, use_down=True)),
