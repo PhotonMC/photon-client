@@ -442,6 +442,14 @@ pub fn remote_players(
             textures,
             (&state, &placement),
         ));
+        vertices.extend(armor.wings(
+            worn.chest,
+            (false, crouching, entity.elytra_rotations(partial)),
+            textures,
+            &|model, rect, colour| {
+                voxel_render::player_renderer::layer_vertices(model, &placement, rect, colour)
+            },
+        ));
     }
     vertices
 }

@@ -19987,6 +19987,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "sky_flash" {
         return sky_flash_result(request);
     }
+    if string(request, "operation")? == "elytra_state" {
+        return elytra_state_result(request);
+    }
     if string(request, "operation")? != "local_player_ticks" {
         return Err("unknown movement operation".into());
     }
@@ -22374,6 +22377,60 @@ fn fishing_hook_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `elytra_model`: the elytra models posed by the wings' spread, drawn.
+fn elytra_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let layer =
+            voxel_data::entity_model::layer(string(row, "layer")?).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_elytra(
+            [
+                f32_field(row, "rot_x")?,
+                f32_field(row, "rot_y")?,
+                f32_field(row, "rot_z")?,
+            ],
+            row["crouching"].as_bool().ok_or("crouching")?,
+        );
+        out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `elytra_state`: the wings' spread through a scenario, tick by tick.
+fn elytra_state_result(request: &Value) -> Result<Value, String> {
+    use voxel_world::elytra::{ElytraInput, ElytraState};
+    let double = |tick: &Value, key: &str| -> Result<f64, String> {
+        u64::from_str_radix(string(tick, key)?, 16)
+            .map(f64::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let hex = |value: f32| format!("{:08x}", value.to_bits());
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut state = ElytraState::default();
+        let mut ticks = Vec::new();
+        for tick in row["ticks"].as_array().ok_or("ticks")? {
+            state.tick(ElytraInput {
+                fall_flying: tick["fall_flying"].as_bool().ok_or("fall_flying")?,
+                motion: (double(tick, "x")?, double(tick, "y")?, double(tick, "z")?),
+                crouching: tick["crouching"].as_bool().ok_or("crouching")?,
+            });
+            let mut described = serde_json::Map::new();
+            for partial in [0.0_f32, 0.5, 1.0] {
+                described.insert(
+                    format!("at_{partial:?}"),
+                    json!(state.rotations(partial).map(hex)),
+                );
+            }
+            ticks.push(Value::Object(described));
+        }
+        out.push(json!({"label": row["label"], "ticks": ticks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `leash_strip`: a leash's strip as `LeashFeatureRenderer.prepare` builds it.
 fn leash_strip_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
@@ -24699,6 +24756,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "dragon_fireball_quad" => return dragon_fireball_quad_result(request),
         "fishing_hook" => return fishing_hook_result(request),
         "leash_strip" => return leash_strip_result(request),
+        "elytra_model" => return elytra_model_result(request),
         "primed_tnt_pose" => return primed_tnt_pose_result(request),
         "lightning_bolt" => return lightning_bolt_result(request),
         "painting_geometry" => return painting_geometry_result(request),

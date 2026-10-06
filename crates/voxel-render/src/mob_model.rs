@@ -2418,6 +2418,32 @@ impl MobModel {
         }
     }
 
+    /// Move the whole model (`PoseStack.translate` before its own pose), in model units.
+    pub fn shift_root(&mut self, [x, y, z]: [f32; 3]) {
+        self.root.x += x;
+        self.root.y += y;
+        self.root.z += z;
+    }
+
+    /// `ElytraModel.setupAnim`: the wings spread by the animation state's rotations, lowered when
+    /// the wearer sneaks.
+    pub fn setup_elytra(&mut self, [rot_x, rot_y, rot_z]: [f32; 3], crouching: bool) {
+        self.root.reset();
+        let y = if crouching { 3.0 } else { 0.0 };
+        if let Some(left) = self.root.child_mut("left_wing") {
+            left.y = y;
+            left.x_rot = rot_x;
+            left.z_rot = rot_z;
+            left.y_rot = rot_y;
+        }
+        if let Some(right) = self.root.child_mut("right_wing") {
+            right.y = y;
+            right.x_rot = rot_x;
+            right.z_rot = -rot_z;
+            right.y_rot = -rot_y;
+        }
+    }
+
     /// `WindChargeModel.setupAnim`: the charge and the wind about it spin opposite ways.
     pub fn setup_wind_charge(&mut self, age_in_ticks: f32) {
         self.root.reset();

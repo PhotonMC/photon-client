@@ -25,3 +25,6 @@ Pelerin dokusu indirme (PLAN-M9).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- Yalnız uzaktaki oyuncunun elytrası: `ElytraState` (`voxel-world::elytra`, her yaşayan varlığın tikinde), `MobModel::{setup_elytra, shift_root}`, `Armor::wings` (katman türü `wings`, doku atlasa eklendi).
+- Oracle: `entity/elytra-model` (8) ve `movement/elytra-state` (13 senaryo, gerçek `ElytraAnimationState`), bit bit eşit; canlı gözlem yok.
+- Açık → [T41f2](T41f2-kafatasi-yerel-elytra.md): kafatası, yerel/mob elytrası, süzülme eğimi, dürbün.

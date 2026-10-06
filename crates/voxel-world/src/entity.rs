@@ -160,6 +160,8 @@ pub(crate) struct EntityState {
     pub(crate) death_time: i32,
     /// How many ticks the item in use has been used (`getTicksUsingItem`, whole).
     pub(crate) using_item_ticks: i32,
+    /// `LivingEntity.elytraAnimationState`.
+    pub(crate) elytra: crate::elytra::ElytraState,
     pub(crate) variant: Option<i32>,
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.
@@ -1893,6 +1895,11 @@ impl ClientEntity {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
     }
 
+    /// `ElytraAnimationState.getRotX/Y/Z`: how far the wings are spread.
+    pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
+        self.living.elytra.rotations(partial_tick)
+    }
+
     /// `LivingEntity.getTicksUsingItem(partialTick)`: how long the item in use has been used.
     pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
         if self.is_using_item() {
@@ -3537,6 +3544,11 @@ impl ClientEntity {
         } else {
             0
         };
+        self.living.elytra.tick(crate::elytra::ElytraInput {
+            fall_flying: self.is_fall_flying(),
+            motion: self.motion(),
+            crouching: self.is_crouching(),
+        });
         self.tick_hurt_and_death(tick_death);
         self.tick_living_pose(kind);
         self.tick_swing(kind);

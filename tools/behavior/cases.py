@@ -14088,6 +14088,7 @@ def movement_cases():
     }
     yield from movement_item_cases()
     yield from sky_flash_cases()
+    yield from elytra_state_cases()
 
 
 def movement_item_cases():
@@ -15300,6 +15301,36 @@ def movement_item_cases():
     }
 
 
+def elytra_state_cases():
+    """The real `ElytraAnimationState` of a real remote player ticked through scenarios: standing,
+    sneaking, gliding level, diving steeply and shallowly, rising, a glide that ends, sneaking while
+    gliding, and no motion."""
+    def tick(glide=False, sneak=False, motion=(0.0, 0.0, 0.0)):
+        return {"fall_flying": glide, "crouching": sneak, "x": float_bits(motion[0], "f64"),
+                "y": float_bits(motion[1], "f64"), "z": float_bits(motion[2], "f64")}
+
+    def scenario(label, ticks):
+        return {"label": label, "ticks": ticks}
+
+    level = (0.0, 0.0, 1.2)
+    scenarios = [
+        scenario("standing", [tick() for _ in range(12)]),
+        scenario("sneaking", [tick(sneak=True) for _ in range(12)]),
+        scenario("sneak-then-stand", [tick(sneak=True)] * 8 + [tick()] * 8),
+        scenario("glide-level", [tick(True, motion=level) for _ in range(14)]),
+        scenario("glide-dive-steep", [tick(True, motion=(0.0, -1.5, 0.3)) for _ in range(14)]),
+        scenario("glide-dive-shallow", [tick(True, motion=(0.0, -0.2, 1.5)) for _ in range(14)]),
+        scenario("glide-rising", [tick(True, motion=(0.0, 0.8, 1.0)) for _ in range(14)]),
+        scenario("glide-no-motion", [tick(True) for _ in range(8)]),
+        scenario("glide-tiny-motion", [tick(True, motion=(0.0, -1.0e-6, 0.0)) for _ in range(8)]),
+        scenario("glide-ends", [tick(True, motion=(0.0, -0.7, 1.0))] * 6 + [tick()] * 10),
+        scenario("glide-sneaking", [tick(True, sneak=True, motion=(0.5, -0.5, 0.5)) for _ in range(10)]),
+        scenario("glide-varying", [tick(True, motion=(0.1 * i, -0.1 * i, 1.0 - 0.05 * i)) for i in range(16)]),
+        scenario("glide-turning-down", [tick(True, motion=(0.0, -0.05 * i, 1.0)) for i in range(16)]),
+    ]
+    yield {"case_id": "movement/elytra-state", "family": "movement", "operation": "elytra_state", "rows": scenarios}
+
+
 def sky_flash_cases():
     """The sky colour and the sky light factor with and without a lightning flash, with the
     option that hides it, from the real client level's attribute system."""
@@ -15388,6 +15419,7 @@ def entity_cases():
     yield from entity_small_projectile_cases()
     yield from entity_fishing_hook_cases()
     yield from entity_leash_cases()
+    yield from entity_elytra_cases()
     yield from entity_primed_tnt_cases()
     yield from entity_lightning_bolt_cases()
     yield from entity_painting_geometry_cases()
@@ -17164,6 +17196,22 @@ def entity_leash_cases():
         strip("on-the-spot", (0.0, 1.0, 0.0), (0.0, 1.0, 0.0)),
     ]
     yield {"case_id": "entity/leash-strip", "family": "entity", "operation": "leash_strip", "rows": rows}
+
+
+def entity_elytra_cases():
+    """The elytra: its models (grown and baby) posed by the real `ElytraModel.setupAnim` from the wings'
+    spread, standing and sneaking; and the real `ElytraAnimationState` ticked through scenarios: standing,
+    sneaking, gliding level, diving steeply and shallowly, rising, a glide that ends, sneaking while
+    gliding, and no motion."""
+    rows = []
+    for layer in ("minecraft:elytra#main", "minecraft:elytra_baby#main"):
+        for label, spread, crouching in (
+                ("rest", (0.2617994, 0.0, -0.2617994), False), ("sneak", (0.6981317, 0.08726646, -0.7853982), True),
+                ("glide", (0.34906584, 0.0, -1.5707964), False), ("odd", (0.4, -0.1, -0.9), True)):
+            rows.append({"label": f"{layer}-{label}", "layer": layer, "crouching": crouching,
+                         "rot_x": float_bits(spread[0]), "rot_y": float_bits(spread[1]),
+                         "rot_z": float_bits(spread[2])})
+    yield {"case_id": "entity/elytra-model", "family": "entity", "operation": "elytra_model", "rows": rows}
 
 
 def entity_fishing_hook_cases():

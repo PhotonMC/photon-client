@@ -42,6 +42,7 @@ pub mod copper_golem;
 pub mod creaking;
 pub mod cube_mob;
 mod dimension;
+pub mod elytra;
 pub mod end_crystal;
 pub mod ender_dragon;
 mod entity;

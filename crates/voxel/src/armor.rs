@@ -92,6 +92,7 @@ pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vert
 const HUMANOID: &str = "humanoid";
 const LEGGINGS: &str = "humanoid_leggings";
 const BABY: &str = "humanoid_baby";
+const WINGS: &str = "wings";
 /// The layer types mobs wear one piece in (`SimpleEquipmentLayer`): the saddles, the
 /// happy ghast's harness and the nautilus's armor.
 const SIMPLE: [&str; 4] = [
@@ -196,7 +197,7 @@ impl Armor {
             .infos
             .values()
             .flat_map(|info| {
-                [HUMANOID, LEGGINGS, BABY]
+                [HUMANOID, LEGGINGS, BABY, WINGS]
                     .into_iter()
                     .chain(SIMPLE)
                     .flat_map(|layer_type| {
@@ -273,6 +274,52 @@ impl Armor {
             {
                 vertices.extend(place(model, rect, None));
             }
+        }
+        vertices
+    }
+
+    /// `WingsLayer`: the wings of what is worn on the chest (an elytra), spread by the wearer's
+    /// animation state, in their wings texture.
+    pub fn wings(
+        &mut self,
+        chest: Option<&ClientItemStackState>,
+        (baby, crouching, spread): (bool, bool, [f32; 3]),
+        textures: &EntityTextures,
+        place: Place,
+    ) -> Vec<Vertex> {
+        let Some(asset) = chest.and_then(|stack| self.asset_for(stack, "chest")) else {
+            return Vec::new();
+        };
+        let layers: Vec<(String, u32)> = self.infos[&asset]
+            .layers(WINGS)
+            .iter()
+            .map(|layer| (layer.texture_path(WINGS), layer.colour(0)))
+            .collect();
+        let name = if baby {
+            "minecraft:elytra_baby#main"
+        } else {
+            "minecraft:elytra#main"
+        };
+        if layers.is_empty() {
+            return Vec::new();
+        }
+        if !self.models.contains_key(name) {
+            let Some(layer) = voxel_data::entity_model::layer(name) else {
+                return Vec::new();
+            };
+            self.models.insert(name.to_owned(), MobModel::bake(layer));
+        }
+        let model = self.models.get_mut(name).expect("the model was just built");
+        model.setup_elytra(spread, crouching);
+        // `WingsLayer.submit`: the wings sit an eighth of a block behind the back.
+        model.shift_root([0.0, 0.0, 2.0]);
+        let mut vertices = Vec::new();
+        for (texture, colour) in layers {
+            let (true, Some(rect)) = (colour != 0, textures.rect(&texture)) else {
+                continue;
+            };
+            let rgb = colour & 0x00FF_FFFF;
+            vertices.extend(place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb)));
         }
         vertices
     }

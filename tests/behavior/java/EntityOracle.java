@@ -4117,6 +4117,26 @@ public final class EntityOracle {
         state.swimAmount = Oracle.f32(row, "swim_amount");
     }
 
+    /** The elytra models posed by the real `ElytraModel.setupAnim`, drawn. */
+    private static JsonObject elytraModel(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.object.equipment.ElytraModel(
+                bakedLayer(row.get("layer").getAsString()));
+            var state = new net.minecraft.client.renderer.entity.state.HumanoidRenderState();
+            state.isCrouching = row.get("crouching").getAsBoolean();
+            state.elytraRotX = Oracle.f32(row, "rot_x");
+            state.elytraRotY = Oracle.f32(row, "rot_y");
+            state.elytraRotZ = Oracle.f32(row, "rot_z");
+            model.setupAnim(state);
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A skeleton family model posed by `SkeletonModel.setupAnim`, drawn. */
     private static JsonObject skeletonModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4842,6 +4862,9 @@ public final class EntityOracle {
         }
         if (operation.equals("parrot_textures")) {
             return parrotTextures(request);
+        }
+        if (operation.equals("elytra_model")) {
+            return elytraModel(request);
         }
         if (operation.equals("airborne_model")) {
             return airborneModel(request);

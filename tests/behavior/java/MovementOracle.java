@@ -194,6 +194,7 @@ public final class MovementOracle {
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
                 case "sky_flash" -> rows.add(skyFlash(element.getAsJsonObject()));
+                case "elytra_state" -> rows.add(elytraState(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
@@ -1815,6 +1816,46 @@ public final class MovementOracle {
         accessor.setAccessible(true);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
+    }
+
+    /**
+     * The real `ElytraAnimationState` of a real remote player ticked through a scenario: whether it
+     * glides, its motion and whether it sneaks each tick, and the spread of the wings after each.
+     */
+    private static JsonObject elytraState(final JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var setFlag = net.minecraft.world.entity.Entity.class.getDeclaredMethod("setSharedFlag", int.class, boolean.class);
+        setFlag.setAccessible(true);
+        {
+            var empty = new JsonObject();
+            empty.add("blocks", new JsonArray());
+            empty.addProperty("chunk_radius", 0);
+            var scene = buildScene(empty);
+            var player = new net.minecraft.client.player.RemotePlayer(scene.level(),
+                new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(new byte[] {5}), "Glider"));
+            var state = new net.minecraft.world.entity.ElytraAnimationState(player);
+            var ticks = new JsonArray();
+            for (var tickElement : row.getAsJsonArray("ticks")) {
+                var tick = tickElement.getAsJsonObject();
+                setFlag.invoke(player, 7, tick.get("fall_flying").getAsBoolean());
+                player.setPose(tick.get("crouching").getAsBoolean()
+                    ? net.minecraft.world.entity.Pose.CROUCHING : net.minecraft.world.entity.Pose.STANDING);
+                player.setDeltaMovement(Oracle.f64(tick, "x"), Oracle.f64(tick, "y"), Oracle.f64(tick, "z"));
+                state.tick();
+                var out = new JsonObject();
+                for (var partial : new float[] {0.0F, 0.5F, 1.0F}) {
+                    var spread = new JsonArray();
+                    spread.add(Oracle.bits(state.getRotX(partial)));
+                    spread.add(Oracle.bits(state.getRotY(partial)));
+                    spread.add(Oracle.bits(state.getRotZ(partial)));
+                    out.add("at_" + partial, spread);
+                }
+                ticks.add(out);
+            }
+            entry.add("ticks", ticks);
+        }
+        return entry;
     }
 
     /**

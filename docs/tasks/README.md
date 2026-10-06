@@ -149,7 +149,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41e](T41e-zirh-susu-parilti.md) | Zırh süsü, büyü parıltısı ve bileşen yaması | M | T41b | bölündü (adbcff46) |
 | [T41e2](T41e2-zirh-parilti-equippable.md) | Zırh büyü parıltısı ve `equippable` yaması | M | T41e | açık |
 | [T41c](T41c-kafa-pelerin-elytra.md) | Kafa eşyası, pelerin, elytra, dürbün | M | T41 | bölündü (kafa eşyası: 4c7e5a5a) |
-| [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | açık |
+| [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | bölündü (HASH) |
+| [T41f2](T41f2-kafatasi-yerel-elytra.md) | Kafatası modelleri, yerel ve mob elytrası, gözde dürbün | M | T41f | açık |
 | [T41g](T41g-koylu-cadi-esya.md) | Köylü, tüccar ve cadının tuttuğu ve taktığı eşya | S | T34b, T41c | bitti (2b8c193d) |
 | [T41d](T41d-kullanim-pozlari.md) | Eşya kullanım pozları ve silah kol pozları | M | T41 | bölündü (acbea4de) |
 | [T41d2](T41d2-mizrak-piglin-yerel-kullanim.md) | Piglinin kol pozları | S | T41d | bitti (9c0b8c20) |
