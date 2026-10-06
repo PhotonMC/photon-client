@@ -445,6 +445,7 @@ impl Play {
     /// One client tick.
     fn tick(&mut self, held: HeldKeys) -> Result<()> {
         if let Some(sound) = self.sound.as_mut() {
+            sound.apply_volumes(&self.controls.options);
             sound.tick(self.session.world(), false);
         }
         let session = &mut self.session;

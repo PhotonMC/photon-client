@@ -24,3 +24,6 @@ Aygıt seçimi, altyazı, ses önizlemesi (`SoundPreviewHandler`).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
+- `gui/sound_options.rs`: `SoundOptionsScreen` (ana ses büyük, on kategori küçük, aygıt döngüsü, altyazı/yönlü ses, müzik sıklığı/bildirimi); `Options`'a `sound_volumes`, `show_subtitles`, `directional_audio`, `music_frequency`, `music_toast`, `sound_device` ve `options.txt` anahtarları (`soundCategory_*` artık alan; eski dosya satırı okuması kalktı). `play.rs` her tikte `SoundSystem::apply_volumes` ile değişen kategoriyi çalan seslere uygular.
+- Oracle: `sound_options_screen` 66 satır; `SilentSounds` (reload/refresh/getAvailableSoundDevices) ve `SilentMusic` sahteleri, `gui.toastManager` elle kuruldu. Java'dan sapma yok.
+- Açık: aygıt seçimi (yalnız varsayılan sunulur, `getAvailableSoundDevices` Rust'ta yok), `SoundPreviewHandler` önizlemesi, altyazı/yönlü ses/müzik değerlerinin etkisi (T64b); canlı pencerede elle denenmedi.

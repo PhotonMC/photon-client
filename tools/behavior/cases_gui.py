@@ -1454,6 +1454,93 @@ def gui_mouse_cases():
            "rows": controls}
 
 
+def gui_sound_options_cases():
+    """The sound settings screen: its list in several sizes, the sliders at
+    their ends and middle (with the "Off" label), the device, the subtitles,
+    the directional audio and the music choices at their values and pressed,
+    and the tooltips of the last three."""
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
+            options=None, ms=0):
+        row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps), "ms": ms}
+        if options:
+            row["options"] = options
+        return row
+
+    click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
+    drag = lambda x, y: {"do": "drag", "x": x, "y": y}
+    release = lambda x=0, y=0: {"do": "release", "x": x, "y": y}
+    wheel = lambda dy, x=200, y=100: {"do": "scroll", "x": x, "y": y, "dy": dy, "ctrl": False}
+    frame = {"do": "frame", "ms": 0}
+    opt = lambda **values: values
+    rows = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
+        row("large", (1280, 720)), row("tiny", (640, 480), 3), row("short", (854, 240)),
+        row("tall", (854, 720)),
+        row("master-off", options=opt(volumes={"master": 0.0})),
+        row("master-mid", options=opt(volumes={"master": 0.37})),
+        row("all-off", options=opt(volumes={n: 0.0 for n in (
+            "master", "music", "record", "weather", "block", "hostile", "neutral", "player",
+            "ambient", "voice", "ui")})),
+        row("mixed", options=opt(volumes={"music": 0.5, "record": 0.25, "weather": 0.0, "block": 0.75,
+                                          "hostile": 0.1, "neutral": 0.9, "player": 0.33})),
+        row("subtitles-on", options=opt(subtitles=True)),
+        row("directional-on", options=opt(directional=True)),
+        row("frequent", options=opt(music_frequency="FREQUENT")),
+        row("constant", options=opt(music_frequency="CONSTANT")),
+        row("toast-pause", options=opt(music_toast="pause")),
+        row("toast-both", options=opt(music_toast="pause_and_toast")),
+        row("hover-master", mouse=(100, 45)), row("hover-music", mouse=(100, 70)),
+        row("hover-gap", mouse=(212, 70)), row("hover-done", mouse=(213, 223)),
+        row("press-master", steps=[click(100, 45)]),
+        row("press-master-start", steps=[click(60, 45)]),
+        row("press-master-end", steps=[click(365, 45)]),
+        row("drag-master", steps=[click(100, 45), drag(200, 45), release(200, 45)]),
+        row("drag-master-held", steps=[click(100, 45), drag(300, 45)]),
+        row("drag-master-zero", steps=[click(100, 45), drag(0, 45), release(0, 45)]),
+        row("drag-master-full", steps=[click(100, 45), drag(500, 45), release(500, 45)]),
+        row("press-music", steps=[click(100, 70)]), row("press-record", steps=[click(300, 70)]),
+        row("drag-weather", steps=[click(100, 95), drag(60, 95), release(60, 95)]),
+        row("drag-block", steps=[click(300, 95), drag(250, 95), release(250, 95)]),
+        row("press-hostile", steps=[click(100, 120)]), row("press-neutral", steps=[click(300, 120)]),
+        row("press-player", steps=[click(100, 145)]), row("press-ambient", steps=[click(300, 145)]),
+        row("press-voice", steps=[click(100, 170)]), row("press-ui", steps=[click(300, 170)]),
+        row("press-gap", steps=[click(212, 70)]),
+        row("scroll-bottom", steps=[wheel(-100)]),
+        row("scroll-short", (854, 240), steps=[wheel(-100)]),
+        row("scroll-short-hover", (854, 240), mouse=(100, 60), steps=[wheel(-100)]),
+        row("scroll-tall-up", (854, 240), steps=[wheel(-100), wheel(100)]),
+        row("press-device-scrolled", steps=[wheel(-100), click(100, 140)]),
+        row("press-subtitles", steps=[wheel(-100), click(100, 165)]),
+        row("press-directional", steps=[wheel(-100), click(300, 165)]),
+        row("press-frequency", steps=[wheel(-100), click(100, 190)]),
+        row("press-frequency-twice", steps=[wheel(-100), click(100, 190), click(100, 190)]),
+        row("press-frequency-shift", steps=[wheel(-100), click(100, 190, True)]),
+        row("press-toast", steps=[wheel(-100), click(300, 190)]),
+        row("press-toast-thrice", steps=[wheel(-100), click(300, 190), click(300, 190), click(300, 190)]),
+        row("tip-subtitles", mouse=(100, 165), steps=[wheel(-100), frame], ms=10),
+        row("tip-directional", mouse=(300, 165), steps=[wheel(-100), frame], ms=10),
+        row("tip-directional-on", mouse=(300, 165), steps=[wheel(-100), frame],
+            options=opt(directional=True), ms=10),
+        row("tip-frequency", mouse=(100, 190), steps=[wheel(-100), frame], ms=10),
+        row("tip-toast", mouse=(300, 190), steps=[wheel(-100), frame], ms=10),
+        row("tip-toast-both", mouse=(300, 190), steps=[wheel(-100), frame],
+            options=opt(music_toast="pause_and_toast"), ms=10),
+        row("tip-none-on-slider", mouse=(100, 45), steps=[frame], ms=10),
+        row("tip-none-on-device", mouse=(100, 140), steps=[wheel(-100), frame], ms=10),
+        row("tab-first", steps=[{"do": "key", "key": "tab"}]),
+        row("tab-twice", steps=[{"do": "key", "key": "tab"}] * 2),
+        row("tab-back", steps=[{"do": "key", "key": "shift+tab"}]),
+        row("arrow-right", steps=[{"do": "key", "key": "tab"}, {"do": "key", "key": "right"}]),
+        row("arrow-left", steps=[{"do": "key", "key": "tab"}, {"do": "key", "key": "left"}]),
+        row("arrow-down-twice", steps=[{"do": "key", "key": "tab"}, {"do": "key", "key": "down"},
+                                       {"do": "key", "key": "down"}]),
+        row("press-in-turn", steps=[click(100, 45), click(300, 70), click(100, 95)]),
+    ]
+    yield {"case_id": "gui/sound-options-screen", "family": "gui", "operation": "sound_options_screen",
+           "rows": rows}
+
+
 def latin_language_codes():
     """The languages whose names are all in Latin letters, from the asset
     pack's own list: the font's other scripts need fallbacks and the right
@@ -1886,7 +1973,7 @@ def gui_generators():
         gui_tab_list_cases(), gui_container_screen_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
-        gui_mouse_cases(), gui_language_cases(), gui_locator_bar_cases(),
+        gui_mouse_cases(), gui_sound_options_cases(), gui_language_cases(), gui_locator_bar_cases(),
         gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases())
 
 

@@ -835,14 +835,19 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 }));
                 continue;
             }
-            "chat_options_screen" | "mouse_settings_screen" | "controls_screen" => {
+            "chat_options_screen"
+            | "mouse_settings_screen"
+            | "controls_screen"
+            | "sound_options_screen" => {
                 use voxel_render::gui::chat_options::ChatOptionsScreen;
                 use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
+                use voxel_render::gui::sound_options::SoundOptionsScreen;
                 // The settings screens that have the same inputs.
                 enum Shell {
                     Chat(ChatOptionsScreen),
                     Mouse(MouseSettingsScreen),
                     Controls(ControlsScreen),
+                    Sound(SoundOptionsScreen),
                 }
                 macro_rules! each {
                     ($shell:expr, $screen:ident => $body:expr) => {
@@ -850,6 +855,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                             Shell::Chat($screen) => $body,
                             Shell::Mouse($screen) => $body,
                             Shell::Controls($screen) => $body,
+                            Shell::Sound($screen) => $body,
                         }
                     };
                 }
@@ -882,6 +888,26 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 set("wheel", &mut options.mouse_wheel_sensitivity);
                 options.invert_mouse_x = row["options"]["invert_x"].as_bool().unwrap_or(false);
                 options.invert_mouse_y = row["options"]["invert_y"].as_bool().unwrap_or(false);
+                for source in voxel_game::sounds::SoundSource::ALL {
+                    if let Some(volume) = row["options"]["volumes"][source.name()].as_f64() {
+                        options.sound_volumes[source as usize] = volume;
+                    }
+                }
+                options.show_subtitles = row["options"]["subtitles"].as_bool().unwrap_or(false);
+                options.directional_audio =
+                    row["options"]["directional"].as_bool().unwrap_or(false);
+                if let Some(value) = row["options"]["music_frequency"]
+                    .as_str()
+                    .and_then(voxel_game::options::MusicFrequency::from_serialized)
+                {
+                    options.music_frequency = value;
+                }
+                if let Some(value) = row["options"]["music_toast"]
+                    .as_str()
+                    .and_then(voxel_game::options::MusicToast::from_serialized)
+                {
+                    options.music_toast = value;
+                }
                 let size = (window.gui_scaled_width(), window.gui_scaled_height());
                 let in_world = row["in_world"].as_bool().unwrap_or(false);
                 let mut screen = match super::string(request, "operation")? {
@@ -889,6 +915,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                         &font, &lang, size, in_world, &options,
                     )),
                     "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
+                        &font, &lang, size, in_world, &options,
+                    )),
+                    "sound_options_screen" => Shell::Sound(SoundOptionsScreen::new(
                         &font, &lang, size, in_world, &options,
                     )),
                     _ => Shell::Controls(ControlsScreen::new(&font, &lang, size, in_world)),

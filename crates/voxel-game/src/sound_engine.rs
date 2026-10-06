@@ -211,6 +211,11 @@ impl SoundVolumes {
         self.0[source.ordinal() as usize] = volume;
     }
 
+    /// What the slider of a category is set to.
+    pub fn slider_value(&self, source: SoundSource) -> f64 {
+        self.0[source.ordinal() as usize]
+    }
+
     /// `Options.getSoundSourceVolume`.
     fn slider(&self, source: SoundSource) -> f32 {
         self.0[source.ordinal() as usize] as f32

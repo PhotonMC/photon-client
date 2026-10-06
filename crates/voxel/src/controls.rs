@@ -19,6 +19,7 @@ use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::gui::slider::SliderKey;
+use voxel_render::gui::sound_options::SoundOptionsScreen;
 use voxel_render::gui::video::VideoSettingsScreen;
 use voxel_render::window::WindowSurface;
 
@@ -66,6 +67,7 @@ pub struct Controls {
     pub video_screen: Option<VideoSettingsScreen>,
     /// The chat settings, opened the same way.
     pub chat_options_screen: Option<ChatOptionsScreen>,
+    pub sound_screen: Option<SoundOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,
     /// The language screen, and the language it chose, for the game to load.
@@ -191,6 +193,7 @@ impl Controls {
             options_screen: None,
             video_screen: None,
             chat_options_screen: None,
+            sound_screen: None,
             controls_screen: None,
             language_screen: None,
             language_request: None,
@@ -285,6 +288,7 @@ impl Controls {
             Some(OptionsAction::Done) => self.close_options(),
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
+            Some(OptionsAction::Sounds) => self.open_sound_options(surface, assets),
             Some(OptionsAction::Controls) => self.open_controls(surface, assets),
             Some(OptionsAction::Language) => self.open_language(surface, assets),
             _ => {}
@@ -535,6 +539,85 @@ impl Controls {
         let _ = self.options.save(&options_path());
     }
 
+    /// `SoundOptionsScreen`, over the options screen.
+    fn open_sound_options(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        self.sound_screen = Some(SoundOptionsScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            Self::gui_size(surface),
+            true,
+            &self.options,
+        ));
+    }
+
+    /// `OptionsSubScreen.onClose`: back to the options screen, and the
+    /// options are saved.
+    fn close_sound_options(&mut self) {
+        self.sound_screen = None;
+        let _ = self.options.save(&options_path());
+    }
+
+    /// The sound options the screen shows are the options.
+    fn take_sound_choices(&mut self) {
+        let Some(screen) = self.sound_screen.as_ref() else {
+            return;
+        };
+        let choices = screen.choices();
+        let options = &mut self.options;
+        options.sound_volumes = choices.volumes;
+        options.show_subtitles = choices.show_subtitles;
+        options.directional_audio = choices.directional_audio;
+        options.music_frequency = choices.music_frequency;
+        options.music_toast = choices.music_toast;
+    }
+
+    /// An event for the open sound settings.
+    fn sound_options_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, MouseButton, WindowEvent};
+        let lang = &assets.lang;
+        if let WindowEvent::CursorPos(x, y) = event {
+            let before = self.gui_mouse.1;
+            self.move_gui_mouse((x, y), surface);
+            if let Some(screen) = self.sound_screen.as_mut() {
+                screen.dragged(lang, self.gui_mouse, self.gui_mouse.1 - before);
+            }
+            self.take_sound_choices();
+            return;
+        }
+        let Some(screen) = self.sound_screen.as_mut() else {
+            return;
+        };
+        let mut done = false;
+        match menu_key(&event) {
+            Some(MenuKey::Tab(forward)) => screen.tab(forward),
+            Some(MenuKey::Key(key, shift)) => done = screen.key_pressed(lang, key, shift).done,
+            None => {}
+        }
+        match event {
+            WindowEvent::Key(Key::Escape, _, Action::Press, _) => done = true,
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
+                let shift = modifiers.contains(glfw::Modifiers::Shift);
+                done = screen.clicked(lang, self.gui_mouse, shift).done;
+            }
+            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+                screen.released(lang);
+            }
+            WindowEvent::Scroll(_, y) => {
+                screen.scrolled(self.gui_mouse, y * self.options.mouse_wheel_sensitivity);
+            }
+            _ => {}
+        }
+        self.take_sound_choices();
+        if done {
+            self.close_sound_options();
+        }
+    }
+
     /// `ChatOptionsScreen`, over the options screen.
     fn open_chat_options(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         let scale = surface.scale();
@@ -768,6 +851,7 @@ impl Controls {
         self.options_screen = None;
         self.video_screen = None;
         self.chat_options_screen = None;
+        self.sound_screen = None;
         self.controls_screen = None;
         self.language_screen = None;
         self.mouse_screen = None;
@@ -836,6 +920,7 @@ impl Controls {
             self.options_screen = None;
             self.video_screen = None;
             self.chat_options_screen = None;
+            self.sound_screen = None;
             self.controls_screen = None;
             self.language_screen = None;
             self.mouse_screen = None;
@@ -932,6 +1017,8 @@ impl Controls {
             self.language_screen = None;
         } else if self.mouse_screen.is_some() || self.controls_screen.is_some() {
             self.close_controls();
+        } else if self.sound_screen.is_some() {
+            self.close_sound_options();
         } else if self.chat_options_screen.is_some() {
             self.close_chat_options();
         } else if self.video_screen.is_some() {
@@ -1615,6 +1702,10 @@ impl Controls {
         }
         if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
             self.controls_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.sound_screen.is_some() && for_screen {
+            self.sound_options_event(event, surface, assets);
             return Ok(());
         }
         if self.chat_options_screen.is_some() && for_screen {

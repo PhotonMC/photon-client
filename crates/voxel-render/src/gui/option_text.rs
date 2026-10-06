@@ -31,6 +31,15 @@ pub fn percent_value(caption: &Component, value: f64) -> Component {
     )
 }
 
+/// `percentValueOrOffLabel`: a sound slider's label, "Off" at zero.
+pub fn percent_value_or_off(caption: &Component, value: &f64) -> Component {
+    if *value == 0.0 {
+        generic_value(caption, on_off(false))
+    } else {
+        percent_value(caption, *value)
+    }
+}
+
 /// `fov`'s label: its ends are named.
 pub fn fov(caption: &Component, value: &i32) -> Component {
     match *value {

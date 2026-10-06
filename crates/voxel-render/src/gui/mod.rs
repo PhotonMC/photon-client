@@ -27,6 +27,7 @@ pub mod screen;
 pub mod scroll_area;
 pub mod sidebar;
 pub mod slider;
+pub mod sound_options;
 pub mod suggestions;
 pub mod tab_list;
 pub mod text_hit;

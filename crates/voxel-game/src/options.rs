@@ -7,6 +7,7 @@ use std::io;
 use std::path::Path;
 
 use crate::option::{ClampingLazyMaxIntRange, IntRange, UnitDouble};
+use crate::sounds::SoundSource;
 
 /// The data version `options.txt` is written for (`version:` in the file),
 /// the pinned client's `world_version`.
@@ -36,6 +37,77 @@ impl ChatVisibility {
             1 => Some(Self::System),
             2 => Some(Self::Hidden),
             _ => None,
+        }
+    }
+}
+
+/// `MusicManager.MusicFrequency`: how long the music waits between songs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MusicFrequency {
+    Default,
+    Frequent,
+    Constant,
+}
+
+impl MusicFrequency {
+    pub const ALL: [Self; 3] = [Self::Default, Self::Frequent, Self::Constant];
+
+    /// The codec's name, which is what the file holds.
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Default => "DEFAULT",
+            Self::Frequent => "FREQUENT",
+            Self::Constant => "CONSTANT",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The caption's translation key.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Default => "options.music_frequency.default",
+            Self::Frequent => "options.music_frequency.frequent",
+            Self::Constant => "options.music_frequency.constant",
+        }
+    }
+}
+
+/// `MusicToastDisplayState`: where the playing song is announced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MusicToast {
+    Never,
+    Pause,
+    PauseAndToast,
+}
+
+impl MusicToast {
+    pub const ALL: [Self; 3] = [Self::Never, Self::Pause, Self::PauseAndToast];
+
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Never => "never",
+            Self::Pause => "pause",
+            Self::PauseAndToast => "pause_and_toast",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The label's translation key; the tooltip's is this and `.tooltip`.
+    pub const fn text_key(self) -> &'static str {
+        match self {
+            Self::Never => "options.musicToast.never",
+            Self::Pause => "options.musicToast.pauseMenu",
+            Self::PauseAndToast => "options.musicToast.pauseMenuAndToast",
         }
     }
 }
@@ -95,6 +167,14 @@ pub struct Options {
     pub chat_height_unfocused: f64,
     pub chat_scale: f64,
     pub chat_width: f64,
+    /// `soundCategory_<name>` for each `SoundSource`, in ordinal order, 0 to 1.
+    pub sound_volumes: [f64; 11],
+    /// `soundDevice`: "" is the default device.
+    pub sound_device: String,
+    pub show_subtitles: bool,
+    pub directional_audio: bool,
+    pub music_frequency: MusicFrequency,
+    pub music_toast: MusicToast,
     /// The file's lines as last read, so what is not known is kept.
     lines: Vec<(String, String)>,
 }
@@ -119,6 +199,12 @@ impl Default for Options {
             chat_height_unfocused: 70.0 / CHAT_HEIGHT_SPAN,
             chat_scale: 1.0,
             chat_width: 1.0,
+            sound_volumes: [1.0; 11],
+            sound_device: String::new(),
+            show_subtitles: false,
+            directional_audio: false,
+            music_frequency: MusicFrequency::Default,
+            music_toast: MusicToast::Never,
             lines: Vec::new(),
         }
     }
@@ -143,9 +229,15 @@ enum Key {
     ChatWidth,
     MouseWheelSensitivity,
     SaveChatDrafts,
+    SoundDevice,
+    ShowSubtitles,
+    DirectionalAudio,
+    MusicToast,
+    MusicFrequency,
+    SoundCategory(SoundSource),
 }
 
-const KEYS: [(&str, Key); 16] = [
+const KEYS: [(&str, Key); 32] = [
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
     ("invertXMouse", Key::InvertXMouse),
@@ -162,13 +254,60 @@ const KEYS: [(&str, Key); 16] = [
     ("chatWidth", Key::ChatWidth),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("saveChatDrafts", Key::SaveChatDrafts),
+    ("soundDevice", Key::SoundDevice),
+    ("showSubtitles", Key::ShowSubtitles),
+    ("directionalAudio", Key::DirectionalAudio),
+    ("musicToast", Key::MusicToast),
+    ("musicFrequency", Key::MusicFrequency),
+    (
+        "soundCategory_master",
+        Key::SoundCategory(SoundSource::Master),
+    ),
+    (
+        "soundCategory_music",
+        Key::SoundCategory(SoundSource::Music),
+    ),
+    (
+        "soundCategory_record",
+        Key::SoundCategory(SoundSource::Records),
+    ),
+    (
+        "soundCategory_weather",
+        Key::SoundCategory(SoundSource::Weather),
+    ),
+    (
+        "soundCategory_block",
+        Key::SoundCategory(SoundSource::Blocks),
+    ),
+    (
+        "soundCategory_hostile",
+        Key::SoundCategory(SoundSource::Hostile),
+    ),
+    (
+        "soundCategory_neutral",
+        Key::SoundCategory(SoundSource::Neutral),
+    ),
+    (
+        "soundCategory_player",
+        Key::SoundCategory(SoundSource::Players),
+    ),
+    (
+        "soundCategory_ambient",
+        Key::SoundCategory(SoundSource::Ambient),
+    ),
+    (
+        "soundCategory_voice",
+        Key::SoundCategory(SoundSource::Voice),
+    ),
+    ("soundCategory_ui", Key::SoundCategory(SoundSource::Ui)),
 ];
 
 /// A value as the file's JSON holds it (`LenientJsonParser`): a number, a
-/// boolean, or anything else, which no option's codec takes.
+/// boolean, a string, or anything else, which no option's codec takes.
 enum Json<'a> {
     Number(&'a str),
     Bool(bool),
+    Text(String),
     Other,
 }
 
@@ -178,8 +317,33 @@ fn parse_json(text: &str) -> Json<'_> {
         "true" => Json::Bool(true),
         "false" => Json::Bool(false),
         _ if is_json_number(text) => Json::Number(text),
-        _ => Json::Other,
+        _ => json_string(text).map_or(Json::Other, Json::Text),
     }
+}
+
+/// A JSON string with the escapes a name can carry.
+fn json_string(text: &str) -> Option<String> {
+    let inner = text.strip_prefix('"')?.strip_suffix('"')?;
+    let mut out = String::new();
+    let mut chars = inner.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => return None,
+            '\\' => match chars.next()? {
+                '"' => out.push('"'),
+                '\\' => out.push('\\'),
+                '/' => out.push('/'),
+                _ => return None,
+            },
+            _ => out.push(c),
+        }
+    }
+    Some(out)
+}
+
+/// A string as the file writes it.
+fn write_string(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 /// The JSON number grammar.
@@ -283,6 +447,34 @@ impl Options {
         options
     }
 
+    /// `read` for the sound options.
+    fn read_sound(&mut self, key: Key, json: &Json) {
+        match (key, json) {
+            (Key::ShowSubtitles, Json::Bool(value)) => self.show_subtitles = *value,
+            (Key::DirectionalAudio, Json::Bool(value)) => self.directional_audio = *value,
+            (Key::SoundDevice, Json::Text(device)) => self.sound_device.clone_from(device),
+            (Key::MusicFrequency, Json::Text(name)) => {
+                if let Some(value) = MusicFrequency::from_serialized(name) {
+                    self.music_frequency = value;
+                }
+            }
+            (Key::MusicToast, Json::Text(name)) => {
+                if let Some(value) = MusicToast::from_serialized(name) {
+                    self.music_toast = value;
+                }
+            }
+            (Key::SoundCategory(source), Json::Number(number)) => {
+                if let Some(value) = UnitDouble::validate_value(double_value(number)) {
+                    self.sound_volumes[source.ordinal() as usize] = value;
+                }
+            }
+            (Key::SoundCategory(source), Json::Bool(value)) => {
+                self.sound_volumes[source.ordinal() as usize] = if *value { 1.0 } else { 0.0 };
+            }
+            _ => {}
+        }
+    }
+
     /// `option.codec().parse` and `set`: a value its codec refuses leaves
     /// the option as it was; one its value set refuses falls to the default.
     fn read(&mut self, key: Key, text: &str) {
@@ -290,7 +482,7 @@ impl Options {
         let unit = || match json {
             Json::Number(number) => UnitDouble::validate_value(double_value(number)),
             Json::Bool(value) => Some(if value { 1.0 } else { 0.0 }),
-            Json::Other => None,
+            Json::Text(_) | Json::Other => None,
         };
         let boolean = || match json {
             Json::Bool(value) => Some(value),
@@ -318,6 +510,12 @@ impl Options {
                 self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
             }
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
+            Key::ShowSubtitles
+            | Key::DirectionalAudio
+            | Key::SoundDevice
+            | Key::MusicFrequency
+            | Key::MusicToast
+            | Key::SoundCategory(_) => self.read_sound(key, &json),
             Key::MouseSensitivity => self.sensitivity = unit().unwrap_or(self.sensitivity),
             Key::Lang => text.clone_into(&mut self.language_code),
             Key::ChatVisibility => {
@@ -374,23 +572,24 @@ impl Options {
             Key::ChatScale => java_double(self.chat_scale),
             Key::ChatWidth => java_double(self.chat_width),
             Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
+            Key::ShowSubtitles => self.show_subtitles.to_string(),
+            Key::DirectionalAudio => self.directional_audio.to_string(),
+            Key::SoundDevice => write_string(&self.sound_device),
+            Key::MusicFrequency => write_string(self.music_frequency.serialized()),
+            Key::MusicToast => write_string(self.music_toast.serialized()),
+            Key::SoundCategory(source) => {
+                java_double(self.sound_volumes[source.ordinal() as usize])
+            }
         }
+    }
+
+    /// `Options.getSoundSourceVolume`: what the player set a sound category to.
+    pub fn sound_category_volume(&self, source: SoundSource) -> f64 {
+        self.sound_volumes[source.ordinal() as usize]
     }
 
     /// `Options.save`: the version, then the lines as they were read with
     /// the values this holds, then the options the file did not have.
-    /// `Options.getSoundSourceVolume`: what the file holds for a sound category (`soundCategory_<name>`),
-    /// a full volume if it holds nothing.
-    pub fn sound_category_volume(&self, name: &str) -> f64 {
-        let key = format!("soundCategory_{name}");
-        self.lines
-            .iter()
-            .rev()
-            .find(|(line, _)| *line == key)
-            .and_then(|(_, value)| value.parse::<f64>().ok())
-            .unwrap_or(1.0)
-    }
-
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let mut text = format!("version:{DATA_VERSION}\n");
         let mut written = Vec::new();
@@ -549,5 +748,30 @@ mod tests {
         assert!(lines.contains(&"guiScale:0"));
         let again = Options::load(&path);
         assert_eq!((again.fov, again.chat_width), (100, 0.25));
+    }
+
+    #[test]
+    fn the_sound_options_read_and_write_as_the_file_holds_them() {
+        let directory = std::env::temp_dir().join("voxel-options-sound");
+        let path = directory.join("options.txt");
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            &path,
+            "soundCategory_music:0.25\nsoundCategory_ui:2.0\nshowSubtitles:true\nmusicFrequency:\"CONSTANT\"\nmusicToast:\"pause_and_toast\"\nsoundDevice:\"Speakers\"\n",
+        )
+        .unwrap();
+        let options = Options::load(&path);
+        assert_eq!(options.sound_category_volume(SoundSource::Music), 0.25);
+        // Out of range: the option keeps its default.
+        assert_eq!(options.sound_category_volume(SoundSource::Ui), 1.0);
+        assert!(options.show_subtitles);
+        assert_eq!(options.music_frequency, MusicFrequency::Constant);
+        assert_eq!(options.music_toast, MusicToast::PauseAndToast);
+        assert_eq!(options.sound_device, "Speakers");
+        options.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("musicFrequency:\"CONSTANT\"\n"));
+        assert!(text.contains("soundCategory_music:0.25\n"));
+        assert!(text.contains("soundDevice:\"Speakers\"\n"));
     }
 }

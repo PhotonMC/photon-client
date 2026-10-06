@@ -532,6 +532,7 @@ public final class GuiOracle {
                 case "video_settings_screen" -> settingsScreen(request, "video");
                 case "chat_options_screen" -> settingsScreen(request, "chat");
                 case "mouse_settings_screen" -> settingsScreen(request, "mouse");
+                case "sound_options_screen" -> settingsScreen(request, "sound");
                 case "controls_screen" -> settingsScreen(request, "controls");
                 case "language_screen" -> settingsScreen(request, "language");
                 case "lang_text" -> langText(request);
@@ -560,6 +561,27 @@ public final class GuiOracle {
         if (values.has("height_unfocused")) options.chatHeightUnfocused().set(values.get("height_unfocused").getAsDouble());
         if (values.has("line_spacing")) options.chatLineSpacing().set(values.get("line_spacing").getAsDouble());
         if (values.has("background_opacity")) options.textBackgroundOpacity().set(values.get("background_opacity").getAsDouble());
+        if (values.has("volumes")) {
+            for (var source : net.minecraft.sounds.SoundSource.values()) {
+                var volumes = values.getAsJsonObject("volumes");
+                if (volumes.has(source.getName())) {
+                    options.getSoundSourceOptionInstance(source).set(volumes.get(source.getName()).getAsDouble());
+                }
+            }
+        }
+        if (values.has("subtitles")) options.showSubtitles().set(values.get("subtitles").getAsBoolean());
+        if (values.has("directional")) options.directionalAudio().set(values.get("directional").getAsBoolean());
+        if (values.has("music_frequency")) {
+            options.musicFrequency().set(net.minecraft.client.sounds.MusicManager.MusicFrequency.valueOf(
+                values.get("music_frequency").getAsString()));
+        }
+        if (values.has("music_toast")) {
+            for (var state : net.minecraft.client.MusicToastDisplayState.values()) {
+                if (state.getSerializedName().equals(values.get("music_toast").getAsString())) {
+                    options.musicToast().set(state);
+                }
+            }
+        }
     }
 
     private static JsonObject chat(JsonObject request) throws Exception {
@@ -1404,6 +1426,39 @@ public final class GuiOracle {
                 net.minecraft.client.resources.sounds.SoundInstance instance) {
             return null;
         }
+
+        // What the sound screen's widgets tell the manager when they change.
+        @Override
+        public void refreshCategoryVolume(net.minecraft.sounds.SoundSource category) {}
+
+        @Override
+        public void reload() {}
+
+        @Override
+        public boolean isActive(net.minecraft.client.resources.sounds.SoundInstance instance) {
+            return false;
+        }
+
+        @Override
+        public void stop(net.minecraft.client.resources.sounds.SoundInstance instance) {}
+
+        @Override
+        public java.util.List<String> getAvailableSoundDevices() {
+            return java.util.List.of();
+        }
+    }
+
+    /** A music manager with no music: the sound screen's sliders and cycles tell it. */
+    static final class SilentMusic extends net.minecraft.client.sounds.MusicManager {
+        SilentMusic() {
+            super(null);
+        }
+
+        @Override
+        public void showNowPlayingToastIfNeeded() {}
+
+        @Override
+        public void setMinutesBetweenSongs(net.minecraft.client.sounds.MusicManager.MusicFrequency frequency) {}
     }
 
     /**
@@ -1806,6 +1861,7 @@ public final class GuiOracle {
             long[] now = {0};
             clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            set(minecraft, "musicManager", unsafe.allocateInstance(SilentMusic.class));
             // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
             var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
             deviceField.setAccessible(true);
@@ -1828,6 +1884,9 @@ public final class GuiOracle {
             window.setGuiScale(window.calculateScale(minecraft.options.guiScale().get(), false));
             // The chat the options screen asks to wrap its lines again.
             set(minecraft.gui.hud, "chat", new net.minecraft.client.gui.components.ChatComponent(minecraft));
+            // The music toast the sound screen's choice tells.
+            set(minecraft.gui, "toastManager",
+                new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options));
             if (row.has("options")) {
                 chatOptions(minecraft.options, row.getAsJsonObject("options"));
             }
@@ -1842,6 +1901,7 @@ public final class GuiOracle {
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
                 case "mouse" -> new net.minecraft.client.gui.screens.options.MouseSettingsScreen(null, minecraft.options);
                 case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
+                case "sound" -> new net.minecraft.client.gui.screens.options.SoundOptionsScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 default -> throw new IllegalArgumentException(kind);

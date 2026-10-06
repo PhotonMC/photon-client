@@ -399,6 +399,7 @@ impl Gui {
         sized!(controls.mouse_screen);
         sized!(controls.controls_screen);
         sized!(controls.chat_options_screen);
+        sized!(controls.sound_screen);
         sized!(controls.video_screen);
         if let Some(options_screen) = controls.options_screen.as_mut() {
             if options_screen.size() != gui_size {

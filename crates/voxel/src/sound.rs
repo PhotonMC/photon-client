@@ -102,7 +102,7 @@ impl SoundSystem {
         for source in SoundSource::ALL {
             engine
                 .volumes
-                .set(source, options.sound_category_volume(source.name()));
+                .set(source, options.sound_category_volume(source));
         }
         println!("sound=on");
         Some(Self {
@@ -199,6 +199,18 @@ impl SoundSystem {
         }));
         let id = self.engine.add(instance);
         self.engine.play(id);
+    }
+
+    /// `Options`' sound sliders, as the engine plays by them: a category that changed is applied
+    /// to the sounds already playing (`SoundManager.refreshCategoryVolume`).
+    pub fn apply_volumes(&mut self, options: &Options) {
+        for source in SoundSource::ALL {
+            let volume = options.sound_category_volume(source);
+            if self.engine.volumes.slider_value(source) != volume {
+                self.engine.volumes.set(source, volume);
+                self.engine.refresh_category_volume(source);
+            }
+        }
     }
 
     /// One client tick of sound: the entities that sounds follow are looked up, then the engine ticks.
