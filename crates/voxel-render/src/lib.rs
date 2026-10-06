@@ -48,6 +48,7 @@ pub mod sky;
 pub mod special_models;
 pub mod texture_metadata;
 pub mod tint;
+pub mod trim;
 pub mod uv_lock;
 pub mod villager;
 pub mod visibility;

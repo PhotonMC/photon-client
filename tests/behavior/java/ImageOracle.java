@@ -21,12 +21,67 @@ public final class ImageOracle {
                 case "argb_multiply" -> rows.add(argbMultiply(element.getAsJsonObject()));
                 case "tint_constants" -> rows.add(tintConstants(element.getAsJsonObject()));
                 case "item_side_faces" -> rows.add(itemSideFaces(element.getAsJsonObject()));
+                case "palette_permutation" -> rows.add(palettePermutation(element.getAsJsonObject()));
+                case "trim_sprite_id" -> rows.add(trimSpriteId(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown image operation: " + operation);
             }
         }
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /**
+     * A picture recoloured by a palette as the atlas's `PalettedPermutations` source does it: the real
+     * mapping built from the key palette and the permutation's, applied by `NativeImage.mappedCopy`.
+     */
+    private static JsonObject palettePermutation(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var mapping = net.minecraft.client.renderer.texture.atlas.sources.PalettedPermutations.class
+            .getDeclaredMethod("createPaletteMapping", int[].class, int[].class);
+        mapping.setAccessible(true);
+        try (var base = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("png").getAsString())));
+             var keys = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("keys").getAsString())));
+             var values = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("values").getAsString())))) {
+            var operator = (java.util.function.IntUnaryOperator) mapping.invoke(null, keys.getPixels(), values.getPixels());
+            try (var mapped = base.mappedCopy(operator)) {
+                var out = new StringBuilder();
+                for (int y = 0; y < mapped.getHeight(); y++) {
+                    for (int x = 0; x < mapped.getWidth(); x++) {
+                        out.append(String.format(java.util.Locale.ROOT, "%08x", mapped.getPixel(x, y)));
+                    }
+                }
+                entry.addProperty("outcome", "mapped");
+                entry.addProperty("pixels", out.toString());
+            }
+        }
+        return entry;
+    }
+
+    /** The picture a trim pattern in a material is drawn with, from the real `ArmorTrim.layerAssetId`. */
+    private static JsonObject trimSpriteId(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var registries = Oracle.vanillaRegistries();
+        var materials = registries.lookupOrThrow(net.minecraft.core.registries.Registries.TRIM_MATERIAL);
+        var patterns = registries.lookupOrThrow(net.minecraft.core.registries.Registries.TRIM_PATTERN);
+        var trim = new net.minecraft.world.item.equipment.trim.ArmorTrim(
+            materials.getOrThrow(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.TRIM_MATERIAL,
+                net.minecraft.resources.Identifier.parse(row.get("material").getAsString()))),
+            patterns.getOrThrow(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.TRIM_PATTERN,
+                net.minecraft.resources.Identifier.parse(row.get("pattern").getAsString()))));
+        var layerType = net.minecraft.client.resources.model.EquipmentClientInfo.LayerType.valueOf(
+            row.get("layer").getAsString().toUpperCase(java.util.Locale.ROOT));
+        var asset = net.minecraft.resources.ResourceKey.create(
+            net.minecraft.world.item.equipment.EquipmentAssets.ROOT_ID,
+            net.minecraft.resources.Identifier.parse(row.get("equipment").getAsString()));
+        entry.addProperty("outcome", "named");
+        entry.addProperty("sprite", trim.layerAssetId(layerType.trimAssetPrefix(), asset).toString());
+        entry.addProperty("decal", trim.pattern().value().decal());
+        return entry;
     }
 
     /** The two fixed colour tables the mean blend reads. */

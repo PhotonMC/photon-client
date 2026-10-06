@@ -25,3 +25,6 @@ Kafa eşyası/pelerin (T41c).
 `docs/client-armor-parity-conformance.md` sapma listesi.
 
 ## Devir notu
+- Yalnız süs yapıldı: `voxel-render::trim` (veri paketi desen/malzeme, `PalettedPermutations` eşlemesi, sprite adı), `Armor::{trim_images, set_trim_registries, trim_texture}`, süs atlası entity dokusuna eklenir, süs katmanı zırhın üstüne.
+- Oracle: `image/trim-sprite-id` (gerçek `ArmorTrim`, 246 satır) ve `image/palette-permutation` (gerçek eşleme); canlıda görüldü. Dekal deseni derinlik eşitliği olmadan çizilir.
+- Parıltı ve `equippable` yaması → [T41e2](T41e2-zirh-parilti-equippable.md).

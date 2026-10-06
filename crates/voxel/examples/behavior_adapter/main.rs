@@ -17539,9 +17539,71 @@ fn shape_table(label: &str, outline: bool) -> Value {
     json!({"label": label, "outcome": "listed", "shapes": shapes, "blocks": blocks})
 }
 
+/// `palette_permutation`: a picture recoloured by a palette, as the atlas's paletted permutations do.
+fn palette_permutation_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::trim::permute;
+    let image = |row: &Value, key: &str| -> Result<voxel_render::DecodedImage, String> {
+        let hex = row[key].as_str().ok_or(format!("{key} must be a string"))?;
+        let bytes: Vec<u8> = (0..hex.len() / 2)
+            .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16))
+            .collect::<Result<_, _>>()
+            .map_err(|error| error.to_string())?;
+        voxel_render::png::decode_rgba(&bytes).map_err(|error| format!("{error:?}"))
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mapped = permute(
+            &image(row, "png")?,
+            &image(row, "keys")?,
+            &image(row, "values")?,
+        )
+        .ok_or("palettes differ in size")?;
+        // The reference prints each pixel as `0xAARRGGBB`.
+        let pixels: String = mapped
+            .rgba
+            .chunks_exact(4)
+            .map(|p| format!("{:02x}{:02x}{:02x}{:02x}", p[3], p[0], p[1], p[2]))
+            .collect();
+        out.push(json!({"label": row["label"], "outcome": "mapped", "pixels": pixels}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `trim_sprite_id`: the picture a pattern in a material takes on an armor's layer.
+fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::trim::{TrimData, sprite_path};
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    let data = TrimData::load(&data_root);
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let pattern = data
+            .pattern(string(row, "pattern")?)
+            .ok_or("no such trim pattern")?;
+        let material = data
+            .material(string(row, "material")?)
+            .ok_or("no such trim material")?;
+        let prefix = format!("trims/entity/{}", string(row, "layer")?);
+        let path = sprite_path(&prefix, pattern, material, string(row, "equipment")?);
+        out.push(json!({
+            "label": row["label"],
+            "outcome": "named",
+            "sprite": format!("minecraft:{path}"),
+            "decal": pattern.decal,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 fn image_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "srgb_tables" {
         return image_tables_result(request);
+    }
+    if string(request, "operation")? == "palette_permutation" {
+        return palette_permutation_result(request);
+    }
+    if string(request, "operation")? == "trim_sprite_id" {
+        return trim_sprite_id_result(request);
     }
     if string(request, "operation")? == "mip_levels" {
         return image_mip_result(request);

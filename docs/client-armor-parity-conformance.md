@@ -38,11 +38,12 @@ başlangıcında entity dokusuna paketlenir.
 `entity/equipment-layers` 39 satır (her ekipman varlığı × üç katman türü; boyasız ve
 boyalı renk). Aile içi zırh türleri veri satırıdır.
 
+Süs (T41e): `image/trim-sprite-id` 246 satır gerçek `ArmorTrim.layerAssetId`'e karşı (desen × malzeme × zırh varlığı: `iron_darker` gibi geçersiz kılmalar, düz ve pantolon katmanı) ve `image/palette-permutation` 3 satır gerçek `PalettedPermutations` eşlemesine karşı (sentetik resim ve palet: anahtar renk değişir, alfa çarpılır, diğer opak renkler kalır). Oyunda süs atlası açılışta üretilir (`Armor::trim_images`, `voxel-render::trim`), `trim` bileşeninin kayıt numaraları sunucunun adlarıyla çözülür, süs zırh katmanının üstüne boyasız çizilir (yavrularda yok). Canlı: süslü zombi görüldü. Süs kayıt verisi vanilla veri paketinden; sunucunun özel desenleri okunmaz.
+
 ## Sapmalar (açık)
 
-- Zırh süsü (`ArmorTrim`, süs atlası) ve büyü parıltısı çizilmiyor (T41e).
-- Eşya yamasındaki `equippable` bileşeni (özel varlık kimliği) okunmuyor; yalnız eşyanın
-  varsayılan bileşeni. Boya yamadan okunur.
+- Büyü parıltısı (`armorEntityGlint`) çizilmiyor ve eşya yamasındaki `equippable` okunmuyor ([T41e2](tasks/T41e2-zirh-parilti-equippable.md)). Dekal desenli süs (`decal: true`; vanilla'da yok) süs katmanı gibi çizilir, derinlik eşitliği yok.
+- Boya yamadan okunur.
 - Kafadaki eşya (kafatası, balkabağı), elytra, pelerin T41c'de; at/kurt/lama gövde zırhı,
   eyer katmanları ilgili aile görevlerinde. Zırh askısı T40'ta.
 - Oyuncu zırhı için `wearing` yamaları (gizli ayrıntılar: `hide_tooltip`) etkisiz.

@@ -1,5 +1,6 @@
 """Original synthetic inputs only. Expected values always come from the Java JAR."""
 
+import itertools
 import math
 import struct
 
@@ -12046,6 +12047,57 @@ def _encode_png(width, height, colour_type, bit_depth, rows, palette=None,
     return b"\x89PNG\r\n\x1a\n" + b"".join(chunks)
 
 
+def image_trim_cases():
+    """The pictures armor trims are drawn with: a synthetic picture recoloured by a palette (a colour
+    of the key palette replaced by the permutation's, its alpha scaled by the replacement's; other
+    opaque colours kept; clear pixels kept), by the real mapping; and the name of the picture each
+    pattern in each material takes on each armor's layer, from the real `ArmorTrim`."""
+    def png(pixels, width):
+        rows = [bytes(b for pixel in pixels[y * width:(y + 1) * width] for b in pixel)
+                for y in range(len(pixels) // width)]
+        return _encode_png(width, len(rows), 6, 8, rows).hex()
+
+    keys = [(200, 10, 10, 255), (10, 200, 10, 255), (10, 10, 200, 255), (90, 90, 90, 255),
+            (250, 250, 250, 255), (1, 2, 3, 0)]
+    values = [(255, 0, 0, 255), (0, 255, 0, 128), (0, 0, 255, 255), (12, 34, 56, 200),
+              (255, 255, 255, 0), (9, 9, 9, 255)]
+    base = [
+        keys[0], keys[1], keys[2], keys[3], keys[4], (1, 2, 3, 255), (77, 77, 77, 255), (0, 0, 0, 0),
+        (200, 10, 10, 100), (10, 200, 10, 255), (10, 10, 200, 1), (90, 90, 90, 254),
+        (250, 250, 250, 255), (5, 5, 5, 255), (0, 0, 0, 0), (200, 10, 10, 255),
+    ]
+    other = [(0, 0, 0, 255), (255, 128, 0, 255), (10, 200, 10, 255), (7, 7, 7, 40),
+             (200, 10, 10, 255), (90, 90, 90, 90), (1, 1, 1, 255), (2, 2, 2, 255)]
+    yield {
+        "case_id": "image/palette-permutation",
+        "family": "image",
+        "operation": "palette_permutation",
+        "rows": [
+            {"label": "mixed", "png": png(base, 4), "keys": png(keys, 6), "values": png(values, 6)},
+            {"label": "other-pixels", "png": png(other, 4), "keys": png(keys, 6), "values": png(values, 6)},
+            {"label": "one-colour", "png": png([keys[0]], 1), "keys": png(keys[:1], 1), "values": png(values[:1], 1)},
+        ],
+    }
+    patterns = ["sentry", "dune", "coast", "wild", "ward", "eye", "vex", "tide", "snout", "rib", "spire",
+                "wayfinder", "shaper", "silence", "raiser", "host", "flow", "bolt"]
+    materials = ["quartz", "iron", "netherite", "redstone", "copper", "gold", "emerald", "diamond", "lapis",
+                 "amethyst", "resin"]
+    equipment = ["iron", "diamond", "gold", "netherite", "copper", "chainmail", "leather", "turtle_scute"]
+    rows = []
+    for index, pattern in enumerate(patterns):
+        for material in materials:
+            layer = ("humanoid", "humanoid_leggings")[index % 2]
+            rows.append({"label": f"{pattern}-{material}-{layer}", "pattern": f"minecraft:{pattern}",
+                         "material": f"minecraft:{material}", "equipment": f"minecraft:{equipment[index % len(equipment)]}",
+                         "layer": layer})
+    for asset in equipment:
+        for material in ("iron", "gold", "copper", "diamond", "netherite", "quartz"):
+            rows.append({"label": f"over-{asset}-{material}", "pattern": "minecraft:sentry",
+                         "material": f"minecraft:{material}", "equipment": f"minecraft:{asset}",
+                         "layer": "humanoid"})
+    yield {"case_id": "image/trim-sprite-id", "family": "image", "operation": "trim_sprite_id", "rows": rows}
+
+
 def image_cases():
     """Java `NativeImage.read`: every PNG colour type reduced to RGBA8.
 
@@ -18175,7 +18227,7 @@ def build_cases(families):
                   "binary": binary_cases, "nbt": nbt_cases, "resources": resources_cases,
                   "window": window_cases,
                   "atlas": atlas_cases,
-                  "image": image_cases,
+                  "image": lambda: itertools.chain(image_cases(), image_trim_cases()),
                   "model": model_cases,
                   "json": json_cases,
                   "block": block_cases,

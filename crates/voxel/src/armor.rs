@@ -9,6 +9,7 @@ use voxel_render::entity_textures::{EntityTextures, TextureRect};
 use voxel_render::equipment::{EquipmentInfo, parse_equipment_info};
 use voxel_render::mob_model::MobModel;
 use voxel_render::scene::Vertex;
+use voxel_render::trim::{PalettedPermutations, TrimData, permute, sprite_path};
 use voxel_world::ClientItemStackState;
 
 /// The equipment slots armor is worn in, in the order the layer draws them.
@@ -77,6 +78,10 @@ impl<'a> Worn<'a> {
 pub struct Armor {
     infos: HashMap<String, EquipmentInfo>,
     models: HashMap<String, MobModel>,
+    /// The trim patterns and materials of the data pack, and the order the server named them in
+    /// (a `trim` component holds registry numbers).
+    trims: TrimData,
+    trim_names: Option<(Vec<String>, Vec<String>)>,
 }
 
 /// Turns a posed armor model into triangles, in a texture, multiplied by a
@@ -113,7 +118,76 @@ impl Armor {
         Self {
             infos,
             models: HashMap::new(),
+            trims: TrimData::load(&std::path::Path::new(root).with_file_name("data")),
+            trim_names: None,
         }
+    }
+
+    /// The server's trim patterns and materials, in the order a `trim` component numbers them.
+    pub fn set_trim_registries(&mut self, patterns: Vec<String>, materials: Vec<String>) {
+        self.trim_names = Some((patterns, materials));
+    }
+
+    /// The pictures of the `armor_trims` atlas: each pattern's grey picture recoloured by each
+    /// material's palette (`PalettedPermutations`), named by their path under `textures/`.
+    pub fn trim_images(root: &str) -> Vec<(String, voxel_render::DecodedImage)> {
+        let base = std::path::Path::new(root).join("minecraft");
+        let load = |path: &str| {
+            voxel_render::png::decode_rgba(
+                &std::fs::read(base.join("textures").join(format!("{path}.png"))).ok()?,
+            )
+            .ok()
+        };
+        let Some(source) = voxel_core::json::read_object(&base.join("atlases/armor_trims.json"))
+            .as_ref()
+            .and_then(PalettedPermutations::parse)
+        else {
+            return Vec::new();
+        };
+        let Some(keys) = load(&source.palette_key) else {
+            return Vec::new();
+        };
+        let palettes: Vec<(&String, voxel_render::DecodedImage)> = source
+            .permutations
+            .iter()
+            .filter_map(|(suffix, path)| Some((suffix, load(path)?)))
+            .collect();
+        let mut images = Vec::new();
+        for texture in &source.textures {
+            let Some(image) = load(texture) else {
+                continue;
+            };
+            for (suffix, palette) in &palettes {
+                if let Some(mapped) = permute(&image, &keys, palette) {
+                    images.push((format!("{texture}_{suffix}"), mapped));
+                }
+            }
+        }
+        images
+    }
+
+    /// `EquipmentLayerRenderer`'s trim pass: the picture of the stack's trim for the layer type
+    /// and equipment asset, if it has one.
+    fn trim_texture(
+        &self,
+        stack: &ClientItemStackState,
+        (layer_type, asset): (&str, &str),
+    ) -> Option<String> {
+        let (material, pattern) =
+            Values::new(stack.item_registry_id(), stack.patch_bytes()).trim()?;
+        let (patterns, materials) = self.trim_names.as_ref()?;
+        let pattern = self
+            .trims
+            .pattern(patterns.get(usize::try_from(pattern).ok()?)?)?;
+        let material = self
+            .trims
+            .material(materials.get(usize::try_from(material).ok()?)?)?;
+        Some(sprite_path(
+            &format!("trims/entity/{layer_type}"),
+            pattern,
+            material,
+            &format!("minecraft:{asset}"),
+        ))
     }
 
     /// The paths (under `textures/`) of every texture a humanoid's armor wears.
@@ -172,6 +246,7 @@ impl Armor {
                 .iter()
                 .map(|layer| (layer.texture_path(layer_type), layer.colour(dye)))
                 .collect();
+            let trim = self.trim_texture(stack, (layer_type, &asset));
             let name = format!("{prefix}#{}", slot.model_suffix());
             if !self.models.contains_key(&name) {
                 let Some(layer) = voxel_data::entity_model::layer(&name) else {
@@ -191,6 +266,12 @@ impl Armor {
                 };
                 let rgb = colour & 0x00FF_FFFF;
                 vertices.extend(place(model, rect, (colour != 0xFFFF_FFFF).then_some(rgb)));
+            }
+            // The trim, over the layers, undyed (a baby's armor has none).
+            if layer_type != BABY
+                && let Some(rect) = trim.as_deref().and_then(|path| textures.rect(path))
+            {
+                vertices.extend(place(model, rect, None));
             }
         }
         vertices

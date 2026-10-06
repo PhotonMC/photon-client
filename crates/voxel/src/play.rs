@@ -213,7 +213,11 @@ impl Play {
                 .profile_id()
                 .unwrap_or(voxel_core::binary::Uuid { most: 0, least: 0 }),
         );
-        let armor = Armor::load(&root);
+        let mut armor = Armor::load(&root);
+        armor.set_trim_registries(
+            session.registry_names("minecraft:trim_pattern").to_vec(),
+            session.registry_names("minecraft:trim_material").to_vec(),
+        );
         let entity_textures = voxel_render::entity_textures::EntityTextures::build(
             voxel_render::player_renderer::skin_textures()
                 .chain(mobs::textures())
@@ -225,7 +229,10 @@ impl Play {
                     let image = texture(&root, &name, "entity texture")?;
                     Ok((name, image))
                 })
-                .collect::<Result<Vec<_>>>()?,
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .chain(Armor::trim_images(&root))
+                .collect(),
         )
         .ok_or("the entity textures did not fit")?;
         backend.load_entity_texture(&entity_textures.image)?;
