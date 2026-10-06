@@ -19871,6 +19871,13 @@ fn entity_pick_table_result(request: &Value) -> Value {
                     out["width"] = json!(hex(width));
                     out["height"] = json!(hex(height));
                     out["eye_height"] = json!(hex(eye_height));
+                    out["passengers"] = json!(
+                        pick.passengers
+                            .iter()
+                            .map(|&(x, y, z)| [x, y, z]
+                                .map(|value| format!("{:016x}", value.to_bits())))
+                            .collect::<Vec<_>>()
+                    );
                     leash_fields(&mut out, name, pick, pick.size, false, "");
                     if let Some((width, height, eye_height)) = pick.baby {
                         out["baby_width"] = json!(hex(width));
@@ -20101,6 +20108,19 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             if kind.ends_with("_boat") || kind.ends_with("_raft") {
                 player.face_boat(bits32(ride, "y_rot")?);
             }
+            if kind.ends_with("horse") || kind.ends_with("donkey") || kind.ends_with("mule") {
+                // `AbstractHorse.addPassenger`: the rider looks the way the horse does.
+                player.set_rotation(bits32(ride, "y_rot")?, 0.0);
+                // A tamed horse in a saddle, as the oracle makes it.
+                world.apply_entity_equipment(
+                    id,
+                    voxel_world::EquipmentSlot::Saddle,
+                    Some(voxel_world::ClientItemStackState::new(
+                        1,
+                        voxel_game::item::id_of("minecraft:saddle").ok_or("no saddle item")?,
+                    )),
+                );
+            }
             ridden = Some(id);
         }
         let mut ticks = Vec::new();
@@ -20223,6 +20243,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             let sent = if let Some(vehicle_id) = ridden {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
                 // passenger, which hands the boat the keys for the next tick.
+                world.set_rider_controls(player.controller());
                 world.tick_entities();
                 let mut sent: Vec<voxel_world::local_player::ServerboundMovement> = world
                     .take_paddle_packets()
@@ -20231,12 +20252,17 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                         voxel_world::local_player::ServerboundMovement::PaddleBoat { left, right }
                     })
                     .collect();
-                let Some(view) = world.boat_view(vehicle_id) else {
+                let Some(view) = world.vehicle_view(vehicle_id) else {
                     return Err("the boat is gone".into());
                 };
                 match player.tick_riding(&world, keys, &view) {
                     Ok(rode) => {
-                        world.set_boat_input(vehicle_id, rode.boat_input);
+                        if view.kind == voxel_world::VehicleKind::Boat {
+                            world.set_boat_input(vehicle_id, rode.boat_input);
+                        }
+                        if let Some(amount) = rode.jump {
+                            world.on_player_jump(vehicle_id, amount);
+                        }
                         sent.extend(rode.sent);
                         sent
                     }
@@ -20346,38 +20372,50 @@ fn movement_result(request: &Value) -> Result<Value, String> {
 /// What the world keeps of a vehicle the player rides, after a tick.
 fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String> {
     use voxel_world::Status;
-    let boat = world
+    let vehicle = world
         .entities()
         .find(|entity| entity.id() == vehicle_id)
-        .ok_or("the boat is gone")?;
-    let (x, y, z) = boat.position();
-    let (mx, my, mz) = boat.motion();
-    let ride = boat.boat_ride();
-    let (paddle_left, paddle_right) = boat.paddle_state();
+        .ok_or("the vehicle is gone")?;
+    let (x, y, z) = vehicle.position();
+    let (mx, my, mz) = vehicle.motion();
     let double = |value: f64| format!("{:016x}", value.to_bits());
     let single = |value: f32| format!("{:08x}", value.to_bits());
-    Ok(json!({
+    let mut report = json!({
         "x": double(x), "y": double(y), "z": double(z),
         "motion_x": double(mx), "motion_y": double(my), "motion_z": double(mz),
-        "y_rot": single(boat.rotation().0),
-        "x_rot": single(boat.rotation().1),
-        "on_ground": boat.on_ground(),
-        "horizontal_collision": ride.horizontal_collision,
-        "status": match ride.status {
+        "y_rot": single(vehicle.rotation().0),
+        "x_rot": single(vehicle.rotation().1),
+        "on_ground": vehicle.on_ground(),
+    });
+    if vehicle.is_boat() {
+        let ride = vehicle.boat_ride();
+        let (paddle_left, paddle_right) = vehicle.paddle_state();
+        report["horizontal_collision"] = json!(ride.horizontal_collision);
+        report["vertical_collision"] = json!(ride.vertical_collision);
+        report["fall_distance"] = json!(double(ride.fall_distance));
+        report["status"] = json!(match ride.status {
             Some(Status::InWater) => "IN_WATER",
             Some(Status::UnderWater) => "UNDER_WATER",
             Some(Status::UnderFlowingWater) => "UNDER_FLOWING_WATER",
             Some(Status::OnLand) => "ON_LAND",
             Some(Status::InAir) => "IN_AIR",
             None => "null",
-        },
-        "delta_rotation": single(boat.boat_delta_rotation()),
-        "paddle_left": paddle_left && !boat.passenger_ids().is_empty(),
-        "paddle_right": paddle_right && !boat.passenger_ids().is_empty(),
-        "water_level": double(ride.water_level),
-        "land_friction": single(ride.land_friction),
-        "last_yd": double(ride.last_yd),
-    }))
+        });
+        report["delta_rotation"] = json!(single(vehicle.boat_delta_rotation()));
+        report["paddle_left"] = json!(paddle_left && !vehicle.passenger_ids().is_empty());
+        report["paddle_right"] = json!(paddle_right && !vehicle.passenger_ids().is_empty());
+        report["water_level"] = json!(double(ride.water_level));
+        report["land_friction"] = json!(single(ride.land_friction));
+        report["last_yd"] = json!(double(ride.last_yd));
+    } else {
+        let ride = vehicle.mount_ride();
+        report["horizontal_collision"] = json!(ride.horizontal_collision);
+        report["vertical_collision"] = json!(ride.vertical_collision);
+        report["fall_distance"] = json!(double(ride.fall_distance));
+        report["pending_jump"] = json!(single(ride.jump_pending_scale));
+        report["y_head_rot"] = json!(single(vehicle.rotation().0));
+    }
+    Ok(report)
 }
 
 /// `experience_orb`: the quad an orb is drawn as.

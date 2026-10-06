@@ -678,6 +678,8 @@ pub struct ClientEntity {
     pub(crate) boat_input: BoatInput,
     /// What a boat the local player rides keeps between ticks (status, water level, fall).
     pub(crate) boat_ride: crate::boat_ride::RideState,
+    /// The same of a saddled horse the local player rides.
+    pub(crate) mount_ride: crate::mount_ride::MountState,
     pub(crate) paddle_left: bool,
     pub(crate) paddle_right: bool,
     pub(crate) head_rotation_target_bits: u32,
@@ -2182,6 +2184,18 @@ impl ClientEntity {
     /// What a boat the local player rides keeps between ticks.
     pub fn boat_ride(&self) -> crate::boat_ride::RideState {
         self.boat_ride
+    }
+
+    /// What a saddled horse the local player rides keeps between ticks.
+    pub fn mount_ride(&self) -> crate::mount_ride::MountState {
+        self.mount_ride
+    }
+
+    /// Whether this is a horse, donkey, mule or undead horse in a saddle, which the player on it
+    /// steers (`AbstractHorse.getControllingPassenger`).
+    pub fn is_controllable_horse(&self) -> bool {
+        crate::mount_ride::is_horse_type(self.type_id)
+            && self.equipment(EquipmentSlot::Saddle).is_some()
     }
 
     /// Whether this is a boat, a chest boat or a raft.

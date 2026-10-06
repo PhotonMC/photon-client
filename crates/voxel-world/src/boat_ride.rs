@@ -516,7 +516,7 @@ impl BoatBody {
                 floor_f64(self.position.z),
             );
             if !level.info(below).is_water() && ya < 0.0 {
-                self.ride.fall_distance -= ya;
+                self.ride.fall_distance -= f64::from(ya as f32);
             }
         }
     }
@@ -686,24 +686,6 @@ impl BoatBody {
     }
 }
 
-/// What the local player's own tick needs to know of the boat it rides, as the boat's tick left it.
-#[derive(Debug, Clone, Copy)]
-pub struct BoatView {
-    pub vehicle_id: i32,
-    /// The boat's registry type, and where it and its box's top are.
-    pub type_id: i32,
-    pub position: Vec3,
-    pub y_rot: f32,
-    pub delta_rotation: f32,
-    pub max_y: f64,
-    /// `AbstractBoat.isUnderWater`.
-    pub under_water: bool,
-    /// Where the rider is carried to (`getPassengerRidingPosition`), and how the boat turns it.
-    pub rider_position: Vec3,
-    pub on_ground: bool,
-    pub horizontal_collision: bool,
-}
-
 /// Whether a paddle at this turn makes its stroke sound this tick (`AbstractBoat.tick`'s test of
 /// the paddle's position against the start of its sweep).
 fn paddle_makes_sound(position: f32) -> bool {
@@ -714,14 +696,6 @@ fn paddle_makes_sound(position: f32) -> bool {
 }
 
 impl ClientWorld {
-    /// The boat the local player is the first passenger of, if it rides one.
-    pub fn ridden_boat_of_local_player(&self) -> Option<i32> {
-        let player_id = self.local_player.as_ref()?.id;
-        let vehicle_id = self.entity_vehicle_id(player_id)?;
-        let boat = self.entities.get(&vehicle_id)?;
-        (boat.is_boat() && boat.passenger_ids.first() == Some(&player_id)).then_some(vehicle_id)
-    }
-
     /// `AbstractBoat.tick` for the boat the local player rides, between this tick's start and its
     /// movement. Its paddles are queued to be told to the server.
     pub(crate) fn tick_ridden_boat(&mut self, entity_id: i32) {
@@ -809,34 +783,6 @@ impl ClientWorld {
     /// The paddles the ridden boat's ticks told of since last asked, each to be sent to the server.
     pub fn take_paddle_packets(&mut self) -> Vec<(bool, bool)> {
         std::mem::take(&mut self.paddle_packets)
-    }
-
-    /// What the local player's tick reads of the boat it rides.
-    pub fn boat_view(&self, vehicle_id: i32) -> Option<BoatView> {
-        let player = self.local_player.as_ref()?;
-        let boat = self
-            .entities
-            .get(&vehicle_id)
-            .filter(|boat| boat.is_boat())?;
-        let pick = voxel_data::entity_type::pick(boat.type_id)?;
-        let (width, height, _) = pick.size;
-        let (x, y, z) = boat.position();
-        let bb = ClientEntityDimensions::scalable(width, height)
-            .scale(boat.scale(), boat.scale())
-            .make_bounding_box(Vec3::new(x, y, z));
-        let rider = self.boat_rider_position(vehicle_id, player.id)?;
-        Some(BoatView {
-            vehicle_id,
-            type_id: boat.type_id,
-            position: Vec3::new(x, y, z),
-            y_rot: f32::from_bits(boat.y_rot_bits),
-            delta_rotation: f32::from_bits(boat.delta_rotation_bits),
-            max_y: bb.max_y,
-            under_water: boat.boat_ride.status.is_some_and(Status::is_under_water),
-            rider_position: rider,
-            on_ground: boat.on_ground,
-            horizontal_collision: boat.boat_ride.horizontal_collision,
-        })
     }
 }
 

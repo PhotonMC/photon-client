@@ -58,6 +58,7 @@ fn unsupported<T>(what: impl Into<String>) -> Result<T, Unsupported> {
 pub enum PlayerCommandAction {
     StartSprinting = 1,
     StopSprinting = 2,
+    StartRidingJump = 3,
 }
 
 /// A packet the tick asks the connection to send.
@@ -67,6 +68,8 @@ pub enum ServerboundMovement {
     PlayerCommand {
         entity_id: i32,
         action: PlayerCommandAction,
+        /// The action's datum: a riding jump's charge, in hundredths.
+        data: i32,
     },
     PlayerAbilities {
         flying: bool,
@@ -150,10 +153,14 @@ impl ServerboundMovement {
                     | u8::from(input.shift) << 5
                     | u8::from(input.sprint) << 6,
             ),
-            Self::PlayerCommand { entity_id, action } => {
+            Self::PlayerCommand {
+                entity_id,
+                action,
+                data,
+            } => {
                 var_int(&mut output, entity_id);
                 var_int(&mut output, action as i32);
-                var_int(&mut output, 0);
+                var_int(&mut output, data);
             }
             Self::PlayerAbilities { flying } => output.push(if flying { 2 } else { 0 }),
             Self::MovePlayerPos {
@@ -244,7 +251,11 @@ pub(crate) struct Movement {
 struct Riding {
     vehicle_max_y: f64,
     vehicle_under_water: bool,
+    /// Whether the vehicle changes the box the player's fluids are found in (a boat does).
+    modifies_fluid_box: bool,
     can_sprint: bool,
+    /// Whether the jump key charges a jump of the vehicle (`PlayerRideableJumping.canJump`).
+    can_jump: bool,
 }
 
 /// What one tick of the player sitting in a boat gives the session: the packets to send, and the
@@ -253,6 +264,9 @@ struct Riding {
 pub struct RideTick {
     pub sent: Vec<ServerboundMovement>,
     pub boat_input: crate::entity::BoatInput,
+    /// The jump the rider let go of, as `PlayerRideableJumping.onPlayerJump` is told it
+    /// (the charge, in hundredths).
+    pub jump: Option<i32>,
 }
 
 /// The tags and classes movement tests of a block.
@@ -276,7 +290,7 @@ pub(crate) struct StateInfo {
     pub(crate) name: &'static str,
     pub(crate) friction: f32,
     pub(crate) speed_factor: f32,
-    jump_factor: f32,
+    pub(crate) jump_factor: f32,
     pub(crate) bounce: f32,
     pub(crate) flags: u16,
     pub(crate) fluid: Fluid,
@@ -349,7 +363,7 @@ pub(crate) struct Level<'a> {
 }
 
 impl Level<'_> {
-    fn state_id(&self, pos: BlockPos) -> Option<i32> {
+    pub(crate) fn state_id(&self, pos: BlockPos) -> Option<i32> {
         self.world.block_state_at(pos.x, pos.y, pos.z)
     }
 
@@ -760,6 +774,11 @@ pub struct LocalPlayer {
     walk: crate::living::WalkAnimation,
     /// What the vehicle the player sits in makes of it, while it rides.
     riding: Option<Riding>,
+    /// `LocalPlayer.jumpRidingTicks` and `jumpRidingScale`: how long the jump key has charged a
+    /// mount's jump, and how hard that is; the jump let go of this tick, for the mount.
+    jump_riding_ticks: i32,
+    jump_riding_scale: f32,
+    ride_jump: Option<i32>,
     /// The first-person hand's lagging view: it chases the rotation by
     /// half the gap each tick.
     x_bob: f32,
@@ -882,6 +901,9 @@ impl LocalPlayer {
             y_head_rot_old: y_rot,
             walk: crate::living::WalkAnimation::default(),
             riding: None,
+            jump_riding_ticks: 0,
+            jump_riding_scale: 0.0,
+            ride_jump: None,
             x_bob: 0.0,
             y_bob: 0.0,
             x_bob_old: 0.0,
@@ -1263,22 +1285,35 @@ impl LocalPlayer {
         Ok(std::mem::take(&mut self.sent))
     }
 
-    /// One client tick of the player sitting in a boat the world has already ticked: what
-    /// `LocalPlayer.rideTick` does (the boat's own tick came first, as the level ticks the vehicle
-    /// before its passengers), with the packets `LocalPlayer.tick` sends of a passenger.
+    /// What the mount the player rides reads of it (`controller.xxa`, `zza` and where it looks).
+    pub fn controller(&self) -> crate::Controller {
+        crate::Controller {
+            xxa: self.xxa,
+            zza: self.zza,
+            y_rot: self.y_rot,
+            x_rot: self.x_rot,
+        }
+    }
+
+    /// One client tick of the player sitting in a vehicle the world has already ticked: what
+    /// `LocalPlayer.rideTick` does (the vehicle's own tick came first, as the level ticks the
+    /// vehicle before its passengers), with the packets `LocalPlayer.tick` sends of a passenger.
     pub fn tick_riding(
         &mut self,
         world: &ClientWorld,
         keys: Input,
-        boat: &crate::boat_ride::BoatView,
+        boat: &crate::VehicleView,
     ) -> Result<RideTick, Unsupported> {
         let level = Level { world };
         self.sent.clear();
+        self.ride_jump = None;
         self.input.set_key_states(keys);
         self.riding = Some(Riding {
             vehicle_max_y: boat.max_y,
             vehicle_under_water: boat.under_water,
-            can_sprint: false,
+            modifies_fluid_box: boat.kind == crate::VehicleKind::Boat,
+            can_sprint: boat.can_sprint,
+            can_jump: boat.can_jump,
         });
         // `ClientLevel.tickPassenger`: the old position first, then the count; `Entity.rideTick`
         // stills the player before its own tick.
@@ -1307,7 +1342,7 @@ impl LocalPlayer {
         self.sent.push(ServerboundMovement::MoveVehicle {
             position: boat.position,
             y_rot: boat.y_rot,
-            x_rot: 0.0,
+            x_rot: boat.x_rot,
             on_ground: boat.on_ground,
         });
         if self.sprinting != self.was_sprinting {
@@ -1318,6 +1353,7 @@ impl LocalPlayer {
                 } else {
                     PlayerCommandAction::StopSprinting
                 },
+                data: 0,
             });
             self.was_sprinting = self.sprinting;
         }
@@ -1327,17 +1363,25 @@ impl LocalPlayer {
         let keys = self.input.key_presses;
         let boat_input =
             crate::entity::BoatInput::new(keys.left, keys.right, keys.forward, keys.backward);
-        self.position_in_boat(boat);
+        if boat.kind == crate::VehicleKind::Boat {
+            self.position_in_boat(boat);
+        } else {
+            // `Entity.positionRider`, and `AbstractHorse.positionRider` turning the rider's body
+            // with the horse's.
+            self.set_pos(boat.rider_position);
+            self.y_body_rot = boat.y_rot;
+        }
         self.riding = None;
         Ok(RideTick {
             sent: std::mem::take(&mut self.sent),
             boat_input,
+            jump: self.ride_jump.take(),
         })
     }
 
     /// `AbstractBoat.positionRider` for the player: carried to its seat, turned as the boat turns
     /// and held within a quarter turn of where the boat faces (`clampRotation`).
-    fn position_in_boat(&mut self, boat: &crate::boat_ride::BoatView) {
+    fn position_in_boat(&mut self, boat: &crate::VehicleView) {
         self.set_pos(boat.rider_position);
         self.y_rot += boat.delta_rotation;
         self.y_head_rot += boat.delta_rotation;
@@ -1554,6 +1598,39 @@ impl LocalPlayer {
                 let rise = input_ya as f32 * self.abilities.flying_speed() * 3.0_f32;
                 self.delta = self.delta.add_components(0.0, f64::from(rise), 0.0);
             }
+        }
+
+        // `jumpableVehicle`: holding the jump key charges a jump of the mount (a saddled horse),
+        // which letting go of it makes, and tells the server of.
+        if self.riding.is_some_and(|riding| riding.can_jump) {
+            if self.jump_riding_ticks < 0 {
+                self.jump_riding_ticks += 1;
+                if self.jump_riding_ticks == 0 {
+                    self.jump_riding_scale = 0.0;
+                }
+            }
+            if was_jumping && !self.input.key_presses.jump {
+                self.jump_riding_ticks = -10;
+                let charge = floor_f64(f64::from(self.jump_riding_scale * 100.0));
+                self.ride_jump = Some(charge);
+                self.sent.push(ServerboundMovement::PlayerCommand {
+                    entity_id: self.entity_id,
+                    action: PlayerCommandAction::StartRidingJump,
+                    data: charge,
+                });
+            } else if !was_jumping && self.input.key_presses.jump {
+                self.jump_riding_ticks = 0;
+                self.jump_riding_scale = 0.0;
+            } else if was_jumping {
+                self.jump_riding_ticks += 1;
+                if self.jump_riding_ticks < 10 {
+                    self.jump_riding_scale = self.jump_riding_ticks as f32 * 0.1;
+                } else {
+                    self.jump_riding_scale = 0.8 + 2.0 / (self.jump_riding_ticks - 9) as f32 * 0.1;
+                }
+            }
+        } else {
+            self.jump_riding_scale = 0.0;
         }
 
         // AbstractClientPlayer.aiStep: the bob eases towards the ground speed.
@@ -2427,99 +2504,22 @@ impl LocalPlayer {
         walk_inside_blocks(self, level, movements)
     }
 
-    /// What a block the player is inside does to it. Honey, a cobweb, a berry bush, powder snow
-    /// and a bubble column act; the other blocks have no effect on a player here.
+    /// What a block the player is inside does to it (see [`living_inside_effect`]).
     fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit) {
-        let InsideVisit {
-            pos,
-            state,
-            ref info,
-            precise,
-        } = *visit;
-        match info.name {
-            "minecraft:honey_block" if self.is_sliding_down_honey(pos) => {
-                self.do_honey_slide();
-            }
-            "minecraft:cobweb" => {
-                self.make_stuck_in_block(Vec3::new(0.25, f64::from(0.05_f32), 0.25));
-            }
-            "minecraft:sweet_berry_bush" => {
-                self.make_stuck_in_block(Vec3::new(f64::from(0.8_f32), 0.75, f64::from(0.8_f32)));
-            }
-            "minecraft:powder_snow" => {
-                if level.info(self.block_position()).name == "minecraft:powder_snow" {
-                    self.make_stuck_in_block(Vec3::new(
-                        f64::from(0.9_f32),
-                        1.5,
-                        f64::from(0.9_f32),
-                    ));
-                }
-            }
-            "minecraft:bubble_column" if precise => {
-                let drag_down = property(state, "drag") == Some("true");
-                let above = pos.offset(0, 1, 0);
-                let above_state = level.state_id(above);
-                let nothing_above = above_state.is_none_or(|above_state| {
-                    level
-                        .world
-                        .block_state_registry
-                        .collision_shape(above_state)
-                        .is_empty()
-                        && crate::block::state_or_air(i64::from(above_state))
-                            .fluid
-                            .is_empty()
-                });
-                let delta = self.delta;
-                let y = if nothing_above {
-                    if drag_down {
-                        (delta.y - 0.03).max(-0.9)
-                    } else {
-                        (delta.y + 0.1).min(1.8)
-                    }
-                } else {
-                    self.fall_distance = 0.0;
-                    if drag_down {
-                        (delta.y - 0.03).max(-0.3)
-                    } else {
-                        (delta.y + 0.06).min(0.7)
-                    }
-                };
-                self.delta = Vec3::new(delta.x, y, delta.z);
-            }
-            _ => {}
-        }
-    }
-
-    /// `Entity.makeStuckInBlock`.
-    fn make_stuck_in_block(&mut self, speed_multiplier: Vec3) {
-        self.fall_distance = 0.0;
-        self.stuck_speed_multiplier = speed_multiplier;
-    }
-
-    fn do_honey_slide(&mut self) {
-        let old_delta_y = |delta_y: f64| delta_y / f64::from(0.98_f32) + 0.08;
-        let new_delta_y = |delta_y: f64| (delta_y - 0.08) * f64::from(0.98_f32);
-        let delta = self.delta;
-        self.delta = if old_delta_y(delta.y) < -0.13 {
-            let factor = -0.05 / old_delta_y(delta.y);
-            Vec3::new(delta.x * factor, new_delta_y(-0.05), delta.z * factor)
-        } else {
-            Vec3::new(delta.x, new_delta_y(-0.05), delta.z)
-        };
-        self.fall_distance = 0.0;
-    }
-
-    fn is_sliding_down_honey(&self, pos: BlockPos) -> bool {
-        if self.on_ground || self.position.y > f64::from(pos.y) + 0.9375 - 1.0e-7 {
-            return false;
-        }
-        if self.delta.y / f64::from(0.98_f32) + 0.08 >= -0.08 {
-            return false;
-        }
-        let dx = (f64::from(pos.x) + 0.5 - self.position.x).abs();
-        let dz = (f64::from(pos.z) + 0.5 - self.position.z).abs();
-        let overlap = 0.4375 + f64::from(self.dimensions.width() / 2.0);
-        dx + 1.0e-7 > overlap || dz + 1.0e-7 > overlap
+        let block_pos = self.block_position();
+        living_inside_effect(
+            level,
+            visit,
+            LivingEffects {
+                delta: &mut self.delta,
+                fall_distance: &mut self.fall_distance,
+                stuck: &mut self.stuck_speed_multiplier,
+                position: self.position,
+                on_ground: self.on_ground,
+                width: self.dimensions.width(),
+                block_pos,
+            },
+        );
     }
 
     fn update_fluid_interaction(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
@@ -2564,7 +2564,7 @@ impl LocalPlayer {
         let Some(riding) = self.riding else {
             return Some(area);
         };
-        if riding.vehicle_under_water {
+        if !riding.modifies_fluid_box || riding.vehicle_under_water {
             return Some(area);
         }
         if riding.vehicle_max_y >= area.max_y {
@@ -2691,6 +2691,7 @@ impl LocalPlayer {
             self.sent.push(ServerboundMovement::PlayerCommand {
                 entity_id: self.entity_id,
                 action,
+                data: 0,
             });
             self.was_sprinting = self.sprinting;
         }
@@ -2878,6 +2879,116 @@ pub fn state_has_fluid(state_id: i32) -> bool {
     !crate::block::state_or_air(i64::from(state_id))
         .fluid
         .is_empty()
+}
+
+/// A living body as the blocks it is inside act on it.
+pub(crate) struct LivingEffects<'a> {
+    pub(crate) delta: &'a mut Vec3,
+    pub(crate) fall_distance: &'a mut f64,
+    pub(crate) stuck: &'a mut Vec3,
+    pub(crate) position: Vec3,
+    pub(crate) on_ground: bool,
+    pub(crate) width: f32,
+    /// The block the body's feet are in.
+    pub(crate) block_pos: BlockPos,
+}
+
+/// What a block a living entity is inside does to it: honey slides it, a cobweb or a berry bush
+/// holds it, powder snow holds it only when its own block is powder snow, and a bubble column
+/// carries it. The other blocks have no effect here.
+pub(crate) fn living_inside_effect(
+    level: &Level<'_>,
+    visit: &InsideVisit,
+    body: LivingEffects<'_>,
+) {
+    let InsideVisit {
+        pos,
+        state,
+        ref info,
+        precise,
+    } = *visit;
+    let make_stuck = |body: &mut LivingEffects<'_>, speed_multiplier: Vec3| {
+        *body.fall_distance = 0.0;
+        *body.stuck = speed_multiplier;
+    };
+    let mut body = body;
+    match info.name {
+        "minecraft:honey_block" if is_sliding_down_honey(&body, pos) => {
+            let old_delta_y = |delta_y: f64| delta_y / f64::from(0.98_f32) + 0.08;
+            let new_delta_y = |delta_y: f64| (delta_y - 0.08) * f64::from(0.98_f32);
+            let delta = *body.delta;
+            *body.delta = if old_delta_y(delta.y) < -0.13 {
+                let factor = -0.05 / old_delta_y(delta.y);
+                Vec3::new(delta.x * factor, new_delta_y(-0.05), delta.z * factor)
+            } else {
+                Vec3::new(delta.x, new_delta_y(-0.05), delta.z)
+            };
+            *body.fall_distance = 0.0;
+        }
+        "minecraft:cobweb" => {
+            make_stuck(&mut body, Vec3::new(0.25, f64::from(0.05_f32), 0.25));
+        }
+        "minecraft:sweet_berry_bush" => {
+            make_stuck(
+                &mut body,
+                Vec3::new(f64::from(0.8_f32), 0.75, f64::from(0.8_f32)),
+            );
+        }
+        "minecraft:powder_snow" => {
+            if level.info(body.block_pos).name == "minecraft:powder_snow" {
+                make_stuck(
+                    &mut body,
+                    Vec3::new(f64::from(0.9_f32), 1.5, f64::from(0.9_f32)),
+                );
+            }
+        }
+        "minecraft:bubble_column" if precise => {
+            let drag_down = property(state, "drag") == Some("true");
+            let above = pos.offset(0, 1, 0);
+            let above_state = level.state_id(above);
+            let nothing_above = above_state.is_none_or(|above_state| {
+                level
+                    .world
+                    .block_state_registry
+                    .collision_shape(above_state)
+                    .is_empty()
+                    && crate::block::state_or_air(i64::from(above_state))
+                        .fluid
+                        .is_empty()
+            });
+            let delta = *body.delta;
+            let y = if nothing_above {
+                if drag_down {
+                    (delta.y - 0.03).max(-0.9)
+                } else {
+                    (delta.y + 0.1).min(1.8)
+                }
+            } else {
+                *body.fall_distance = 0.0;
+                if drag_down {
+                    (delta.y - 0.03).max(-0.3)
+                } else {
+                    (delta.y + 0.06).min(0.7)
+                }
+            };
+            *body.delta = Vec3::new(delta.x, y, delta.z);
+        }
+        _ => {}
+    }
+}
+
+/// `HoneyBlock.isSlidingDown`.
+fn is_sliding_down_honey(body: &LivingEffects<'_>, pos: BlockPos) -> bool {
+    if body.on_ground || body.position.y > f64::from(pos.y) + 0.9375 - 1.0e-7 {
+        return false;
+    }
+    if body.delta.y / f64::from(0.98_f32) + 0.08 >= -0.08 {
+        return false;
+    }
+    let dx = (f64::from(pos.x) + 0.5 - body.position.x).abs();
+    let dz = (f64::from(pos.z) + 0.5 - body.position.z).abs();
+    let overlap = 0.4375 + f64::from(body.width / 2.0);
+    dx + 1.0e-7 > overlap || dz + 1.0e-7 > overlap
 }
 
 /// A block the walk reached, and what its visit needs to act on.
@@ -3189,7 +3300,7 @@ fn furthest_corner(direction: Vec3) -> [i32; 3] {
     }
 }
 
-fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
+pub(crate) fn compute_modified_friction(friction: f32, modifier: f32) -> f32 {
     (1.0_f32 - (1.0_f32 - friction) * modifier).clamp(0.0, 1.0)
 }
 

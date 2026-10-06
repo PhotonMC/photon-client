@@ -32,7 +32,11 @@ pub mod block_rules;
 pub mod block_state;
 pub mod boat;
 mod boat_ride;
-pub use boat_ride::{BoatView, RideState, Status};
+mod mount_ride;
+mod vehicle_ride;
+pub use boat_ride::{RideState, Status};
+pub use mount_ride::{Controller, MountState};
+pub use vehicle_ride::{VehicleKind, VehicleView};
 mod border;
 pub mod breeze;
 pub mod cat;
@@ -145,6 +149,8 @@ pub struct ClientWorld {
     game_time: u64,
     /// The paddles each ridden boat's tick told the server of, until the session sends them.
     paddle_packets: Vec<(bool, bool)>,
+    /// What the player on a mount steers it with, as of its last tick.
+    rider_controls: mount_ride::Controller,
     /// `ClientLevel.skyFlashTime`: ticks the sky still flashes for.
     sky_flash_time: i32,
     /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
@@ -210,6 +216,7 @@ impl ClientWorld {
             local_chunk: None,
             game_time: 0,
             paddle_packets: Vec::new(),
+            rider_controls: mount_ride::Controller::default(),
             sky_flash_time: 0,
             rain_level_bits: 0,
             thunder_level_bits: 0,
@@ -1928,19 +1935,34 @@ impl ClientWorld {
         // One read of the entity decides every branch below; the reference
         // evaluates these conditions against the pre-tick state, so they are
         // resolved before the mutable tick borrow is taken.
-        let Some((boat_is_non_authoritative, projectile_kind, projectile_path_is_open, ridden)) =
-            self.entities.get(&entity_id).map(|entity| {
-                let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
-                let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
-                let kind = vanilla_projectile_kind(entity.type_id);
-                let path_open = kind.is_some_and(|kind| {
-                    self.projectile_path_is_open(
-                        entity.position(),
-                        kind.next_position(entity.position(), entity.motion(), entity.no_gravity),
-                    )
-                });
-                (is_boat && !authoritative, kind, path_open, authoritative)
-            })
+        let Some((
+            boat_is_non_authoritative,
+            projectile_kind,
+            projectile_path_is_open,
+            (ridden, ridden_mount),
+        )) = self.entities.get(&entity_id).map(|entity| {
+            let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
+            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
+            let kind = vanilla_projectile_kind(entity.type_id);
+            let path_open = kind.is_some_and(|kind| {
+                self.projectile_path_is_open(
+                    entity.position(),
+                    kind.next_position(entity.position(), entity.motion(), entity.no_gravity),
+                )
+            });
+            // A saddled horse is driven by the player in its first seat.
+            let mount = entity.is_controllable_horse()
+                && self
+                    .local_player
+                    .as_ref()
+                    .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id));
+            (
+                is_boat && !authoritative,
+                kind,
+                path_open,
+                (authoritative, mount),
+            )
+        })
         else {
             return;
         };
@@ -1964,13 +1986,26 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
+        }
+        // The level ticks a mount's physics (`super.tick`) before its own `tick` counts its
+        // rearing and eases its animations.
+        if ridden_mount {
+            self.tick_ridden_mount(entity_id);
+        }
+        {
+            let entity = self
+                .entities
+                .get_mut(&entity_id)
+                .expect("entity position was checked above");
             if ridden {
                 entity.tick_boat_start();
             } else {
                 entity.tick_boat(boat_under_water);
             }
             let living = entity.living_kind();
-            entity.tick_ai_step(living, in_water, targets);
+            // A mount the player steers is moved by the player's client, not eased to the
+            // server's packets, nor slowed as a mob the client does not move is.
+            entity.tick_ai_step(living.filter(|_| !ridden_mount), in_water, targets);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
             }
@@ -1983,21 +2018,8 @@ impl ClientWorld {
                 entity.motion_y_bits = 0.0_f64.to_bits();
                 entity.motion_z_bits = 0.0_f64.to_bits();
             }
-            match projectile_kind {
-                // The orb ticks either way and takes the blocked path as input;
-                // the others only advance while their path stays open.
-                Some(VanillaProjectileKind::ExperienceOrb) => {
-                    entity.tick_experience_orb(projectile_path_is_open);
-                }
-                Some(kind) if projectile_path_is_open => match kind {
-                    VanillaProjectileKind::Snowball => entity.tick_snowball(),
-                    VanillaProjectileKind::Arrow => entity.tick_arrow(),
-                    VanillaProjectileKind::PrimedTnt => entity.tick_primed_tnt(),
-                    VanillaProjectileKind::FallingBlock => entity.tick_falling_block(),
-                    VanillaProjectileKind::Firework => entity.tick_firework(),
-                    VanillaProjectileKind::ExperienceOrb => unreachable!("handled above"),
-                },
-                _ => {}
+            if let Some(kind) = projectile_kind {
+                tick_projectile(entity, kind, projectile_path_is_open);
             }
         }
         if ridden {
@@ -3439,6 +3461,7 @@ impl ClientWorld {
                 delta_rotation_bits: 0.0_f32.to_bits(),
                 boat_input: BoatInput::EMPTY,
                 boat_ride: boat_ride::RideState::default(),
+                mount_ride: mount_ride::MountState::default(),
                 paddle_left: false,
                 paddle_right: false,
                 head_rotation_target_bits: entity.rotation.2.to_bits(),
@@ -4836,5 +4859,19 @@ fn block_attached_position(type_id: i32, (x, y, z): (f64, f64, f64)) -> (f64, f6
         )
     } else {
         (x, y, z)
+    }
+}
+
+/// What a projectile does of its own in a tick: the orb ticks either way and takes the blocked path
+/// as input; the others only advance while their path stays open.
+fn tick_projectile(entity: &mut ClientEntity, kind: VanillaProjectileKind, path_is_open: bool) {
+    match kind {
+        VanillaProjectileKind::ExperienceOrb => entity.tick_experience_orb(path_is_open),
+        _ if !path_is_open => {}
+        VanillaProjectileKind::Snowball => entity.tick_snowball(),
+        VanillaProjectileKind::Arrow => entity.tick_arrow(),
+        VanillaProjectileKind::PrimedTnt => entity.tick_primed_tnt(),
+        VanillaProjectileKind::FallingBlock => entity.tick_falling_block(),
+        VanillaProjectileKind::Firework => entity.tick_firework(),
     }
 }

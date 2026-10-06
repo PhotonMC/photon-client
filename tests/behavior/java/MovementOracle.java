@@ -1958,6 +1958,17 @@ public final class MovementOracle {
                 out.addProperty("width", Oracle.bits(size.width()));
                 out.addProperty("height", Oracle.bits(size.height()));
                 out.addProperty("eye_height", Oracle.bits(size.eyeHeight()));
+                // Where each passenger sits (`EntityAttachment.PASSENGER`, not yet turned).
+                var seats = new JsonArray();
+                for (int seat = 0; seat < 8; seat++) {
+                    var point = size.attachments().getNullable(
+                        net.minecraft.world.entity.EntityAttachment.PASSENGER, seat, 0.0F);
+                    if (point == null) {
+                        break;
+                    }
+                    seats.add(vectorBits(point));
+                }
+                out.add("passengers", seats);
                 leashSupport(out, entity, "");
                 if (entity instanceof net.minecraft.world.entity.Mob mob) {
                     mob.setBaby(true);
@@ -2087,6 +2098,12 @@ public final class MovementOracle {
             vehicle = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
                 net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
             vehicle.setId(ride.get("id").getAsInt());
+            if (vehicle instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
+                // A tamed horse in a saddle: the one a player controls.
+                horse.setTamed(true);
+                horse.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+            }
             vehicle.snapTo(Oracle.f64(ride, "x"), Oracle.f64(ride, "y"), Oracle.f64(ride, "z"),
                 Oracle.f32(ride, "y_rot"), 0.0F);
             if (ride.has("motion_x")) {
@@ -2538,6 +2555,12 @@ public final class MovementOracle {
         out.addProperty("x_rot", Oracle.bits(vehicle.getXRot()));
         out.addProperty("on_ground", vehicle.onGround());
         out.addProperty("horizontal_collision", vehicle.horizontalCollision);
+        out.addProperty("vertical_collision", vehicle.verticalCollision);
+        out.addProperty("fall_distance", Oracle.bits(vehicle.fallDistance));
+        if (vehicle instanceof net.minecraft.world.entity.animal.equine.AbstractHorse) {
+            out.addProperty("pending_jump", Oracle.bits((float) getField(vehicle, "playerJumpPendingScale")));
+            out.addProperty("y_head_rot", Oracle.bits(((net.minecraft.world.entity.LivingEntity) vehicle).yHeadRot));
+        }
         if (vehicle instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat boat) {
             out.addProperty("status", String.valueOf(getField(boat, "status")));
             out.addProperty("delta_rotation", Oracle.bits((float) getField(boat, "deltaRotation")));

@@ -146,6 +146,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](client-light-engine-conformance.md)
 - [T40e — Yıldırım — client-parity](client-lightning-bolt-parity-conformance.md)
 - [T38b — Minecart ailesi (eski davranış) — client-parity](client-minecart-parity-conformance.md)
+- [T44b1 — Oyuncunun eyerli atı sürmesi: `travelRidden`, `AbstractHorse.tickRidden`, atlama yükü, `PlayerCommand` — client-parity](client-mount-ride-parity-conformance.md)
 - [T35e — Nautilus ve zombi nautilus — client-parity](client-nautilus-parity-conformance.md)
 - [T62 — Ogg/Vorbis çözümü — client-parity](client-ogg-decoding-parity-conformance.md)
 - [T40h — Tablo — client-parity](client-painting-parity-conformance.md)

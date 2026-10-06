@@ -148,6 +148,10 @@ pub struct HorseState {
     mouth_bits: u32,
     mouth_old_bits: u32,
     tail_counter: i32,
+    /// `AbstractHorse.standCounter`: ticks left of a rear, and `allowStandSliding`: a rider's jump
+    /// let it rear while it is held still.
+    stand_counter: i32,
+    allow_stand_sliding: bool,
     /// `Mob.ambientSoundTime`.
     ambient_sound_time: i32,
     random: TailRandom,
@@ -174,6 +178,8 @@ impl HorseState {
             mouth_bits: 0,
             mouth_old_bits: 0,
             tail_counter: 0,
+            stand_counter: 0,
+            allow_stand_sliding: false,
             ambient_sound_time: 0,
             random: TailRandom(RandomSource::create(seed)),
         }
@@ -187,6 +193,23 @@ impl HorseState {
 
     pub(crate) fn set_flags(&mut self, flags: u8) {
         self.flags = flags;
+    }
+
+    /// `AbstractHorse.standIfPossible` on a client that is its authority: it rears for twenty ticks
+    /// (`setStanding`, which also stops its grazing).
+    pub(crate) fn stand_if_possible(&mut self) {
+        self.flags &= !FLAG_EATING;
+        self.flags |= FLAG_STANDING;
+        self.stand_counter = 20;
+    }
+
+    /// `AbstractHorse.allowStandSliding`.
+    pub fn allow_stand_sliding(&self) -> bool {
+        self.allow_stand_sliding
+    }
+
+    pub(crate) fn set_allow_stand_sliding(&mut self, allow: bool) {
+        self.allow_stand_sliding = allow;
     }
 
     /// One client tick: `aiStep` may start a tail swish; `tick` counts it out
@@ -214,6 +237,14 @@ impl HorseState {
                 self.tail_counter = 0;
             }
         }
+        // `tick`: a rear counts out.
+        if self.stand_counter > 0 {
+            self.stand_counter -= 1;
+            if self.stand_counter <= 0 {
+                self.flags &= !FLAG_STANDING;
+                self.stand_counter = 0;
+            }
+        }
         let (eat, stand, mouth) = (
             f32::from_bits(self.eat_bits),
             f32::from_bits(self.stand_bits),
@@ -231,6 +262,7 @@ impl HorseState {
             self.eat_old_bits = eat.to_bits();
             (stand + ((1.0 - stand) * 0.4 + 0.05)).min(1.0)
         } else {
+            self.allow_stand_sliding = false;
             (stand + ((0.8 * stand * stand * stand - stand) * 0.6 - 0.05)).max(0.0)
         };
         self.eat_bits = eat.to_bits();
@@ -260,6 +292,16 @@ impl HorseState {
     /// `getEatAnim`: how far the head is down to graze, between two ticks.
     pub fn eat_animation(&self, partial: f32) -> f32 {
         lerp(self.eat_old_bits, self.eat_bits, partial)
+    }
+
+    /// `standAnimO`: how far the animal was reared a tick ago, which a rider's seat reads.
+    pub fn stand_animation_old(&self) -> f32 {
+        f32::from_bits(self.stand_old_bits)
+    }
+
+    /// Whether the animal rears (`AbstractHorse.isStanding`).
+    pub fn is_standing(&self) -> bool {
+        self.flags & FLAG_STANDING != 0
     }
 
     /// `getStandAnim`: how far the animal is reared.

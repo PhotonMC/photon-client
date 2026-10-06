@@ -246,6 +246,8 @@ pub struct EntityPick {
     pub leash: Option<Leash>,
     /// `supportQuadLeashAsHolder`: a holder that four lines tie to.
     pub quad_holder: bool,
+    /// Where each passenger sits (`EntityAttachment.PASSENGER`), before the entity's turn.
+    pub passengers: &'static [(f64, f64, f64)],
 }
 
 /// How a leashable type takes a leash.

@@ -13560,6 +13560,68 @@ def movement_cases():
         "rows": ride_rows,
     }
 
+    # Riding a horse: a tamed horse in a saddle, steered by the player's keys and look, jumping
+    # when the jump key is let go of (`AbstractHorse.tickRidden`, `LocalPlayer.jumpableVehicle`).
+    def horse(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, kind="minecraft:horse"):
+        return ride(label, blocks, ticks, boat=start, y_rot=y_rot, kind=kind)
+
+    def looking(ticks, *angles):
+        """Each tick's look as `(y_rot, x_rot)`, the last held on."""
+        for index, tick in enumerate(ticks):
+            yaw, pitch = angles[min(index * len(angles) // max(len(ticks), 1), len(angles) - 1)]
+            tick["y_rot"] = float_bits(yaw)
+            tick["x_rot"] = float_bits(pitch)
+        return ticks
+
+    step = [{"x": x, "y": 64, "z": 3, "block": "minecraft:stone"} for x in range(-3, 4)]
+    fence = [{"x": x, "y": 64, "z": 3, "block": "minecraft:oak_fence"} for x in range(-3, 4)]
+    stairs = [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_stairs", "properties": {"facing": "north"}}
+              for x in range(-2, 3) for z in (3, 4)]
+    ladder_wall = column(0, 3, 64, 68)
+    horse_rows = [
+        horse("horse-idle", floor(), keys(30)),
+        horse("horse-forward", floor(), keys(50, forward=True)),
+        horse("horse-backward", floor(), keys(30, backward=True)),
+        horse("horse-strafe", floor(), keys(30, left=True) + keys(30, right=True)),
+        horse("horse-diagonal", floor(), keys(40, forward=True, left=True)),
+        horse("horse-sprint-key", floor(), keys(30, forward=True, sprint=True)),
+        horse("horse-sneak", floor(), keys(20, forward=True, sneak=True)),
+        horse("horse-turn", floor(), turned(keys(40, forward=True), y_rot=-90.0)),
+        horse("horse-look", floor(), looking(keys(40, forward=True), (0.0, 0.0), (35.0, 40.0), (-80.0, -60.0))),
+        horse("horse-small-jump", floor(), keys(10) + keys(3, jump=True) + keys(30)),
+        horse("horse-full-jump", floor(), keys(10) + keys(15, jump=True) + keys(40)),
+        horse("horse-jump-forward", floor(), keys(8, forward=True) + keys(10, forward=True, jump=True)
+              + keys(40, forward=True)),
+        horse("horse-two-jumps", floor(), keys(10) + keys(5, jump=True) + keys(25) + keys(8, jump=True) + keys(30)),
+        horse("horse-step-up", floor() + step, keys(30, forward=True)),
+        horse("horse-fence", floor() + fence, keys(30, forward=True)),
+        horse("horse-stairs", floor() + stairs, keys(30, forward=True)),
+        horse("horse-wall", floor() + ladder_wall, keys(30, forward=True)),
+        horse("horse-water", floor() + lake, keys(40, forward=True), start=(0.5, 64.2, -8.5)),
+        horse("horse-deep-water", floor() + deep_lake, keys(40, forward=True) + keys(20), start=(0.5, 65.0, 0.5)),
+        horse("horse-swim-jump", floor() + deep_lake, keys(10) + keys(10, jump=True) + keys(30), start=(0.5, 65.0, 0.5)),
+        horse("horse-ice", floor(block="minecraft:ice"), keys(30, forward=True) + keys(30)),
+        horse("horse-slime", floor(block="minecraft:slime_block"), keys(10) + keys(10, jump=True) + keys(50)),
+        horse("horse-honey", floor(block="minecraft:honey_block"), keys(30, forward=True)),
+        horse("horse-soul-sand", floor(block="minecraft:soul_sand"), keys(30, forward=True)),
+        horse("horse-cobweb", floor() + [{"x": 0, "y": 64, "z": z, "block": "minecraft:cobweb"} for z in (1, 2, 3)],
+              keys(30, forward=True)),
+        horse("horse-falls", floor(), keys(40), start=(0.5, 75.0, 0.5)),
+        horse("horse-bubbles", floor() + bubbles, keys(40)),
+        horse("horse-ladder", floor() + column(0, 2, 64, 70, "minecraft:ladder", {"facing": "north"}) + ladder_wall[:0],
+              keys(30, forward=True)),
+        horse("donkey", floor(), keys(30, forward=True), kind="minecraft:donkey"),
+        horse("mule-jump", floor(), keys(5) + keys(10, jump=True) + keys(30), kind="minecraft:mule"),
+        horse("skeleton-horse", floor(), keys(30, forward=True), kind="minecraft:skeleton_horse"),
+        horse("zombie-horse", floor(), keys(30, forward=True), kind="minecraft:zombie_horse"),
+    ]
+    yield {
+        "case_id": "movement/ride-horse",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": horse_rows,
+    }
+
     # Breaking: the attack key as `handleKeybinds` spends it, into the
     # reference's own game mode. The target is named, not picked. Each tick
     # reports the game mode's destroy state, the crack stage the level keeps,

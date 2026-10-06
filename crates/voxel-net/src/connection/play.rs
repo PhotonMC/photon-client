@@ -284,8 +284,9 @@ impl PlaySession {
         let boat_y_rot = self
             .trace
             .world
-            .ridden_boat_of_local_player()
-            .and_then(|id| self.trace.world.boat_view(id))
+            .ridden_vehicle_of_local_player()
+            .and_then(|id| self.trace.world.vehicle_view(id))
+            .filter(|view| view.kind == voxel_world::VehicleKind::Boat)
             .map(|view| view.y_rot);
         if let Some(player) = self.player.as_mut() {
             player.turn(y_rot_delta, x_rot_delta);
@@ -1253,13 +1254,16 @@ impl PlaySession {
             .map_or(0, |stack| stack.item_registry_id());
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
-        let ridden = self.trace.world.ridden_boat_of_local_player();
+        let ridden = self.trace.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
             if let Some(player) = self.player.as_ref() {
                 let position = player.position();
                 self.trace
                     .world
                     .set_local_player_chunk(position.x, position.z);
+            }
+            if let Some(player) = self.player.as_ref() {
+                self.trace.world.set_rider_controls(player.controller());
             }
             self.trace.world.tick_entities();
             for (left, right) in self.trace.world.take_paddle_packets() {
@@ -1270,13 +1274,18 @@ impl PlaySession {
             && let Some(player) = self.player.as_mut()
         {
             player.set_main_hand_item(main_hand);
-            let ticked = match ridden.and_then(|id| self.trace.world.boat_view(id)) {
+            let ticked = match ridden.and_then(|id| self.trace.world.vehicle_view(id)) {
                 Some(view) => player
                     .tick_riding(&self.trace.world, keys, &view)
                     .map(|rode| {
-                        self.trace
-                            .world
-                            .set_boat_input(view.vehicle_id, rode.boat_input);
+                        if view.kind == voxel_world::VehicleKind::Boat {
+                            self.trace
+                                .world
+                                .set_boat_input(view.vehicle_id, rode.boat_input);
+                        }
+                        if let Some(amount) = rode.jump {
+                            self.trace.world.on_player_jump(view.vehicle_id, amount);
+                        }
                         rode.sent
                     }),
                 None => player.tick(&self.trace.world, keys),
@@ -1498,15 +1507,20 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
                 if let Ok(packet) = parse_set_passengers_packet(payload) {
-                    let was_aboard = self.trace.world.ridden_boat_of_local_player();
+                    let was_aboard = self.trace.world.ridden_vehicle_of_local_player();
                     entities::passengers(&mut self.trace.world, &packet);
-                    // A player who has just boarded a boat looks the way it faces.
+                    // A player who has just boarded looks the way the boat or the horse faces.
                     if was_aboard.is_none()
-                        && let Some(vehicle) = self.trace.world.ridden_boat_of_local_player()
-                        && let Some(view) = self.trace.world.boat_view(vehicle)
+                        && let Some(vehicle) = self.trace.world.ridden_vehicle_of_local_player()
+                        && let Some(view) = self.trace.world.vehicle_view(vehicle)
                         && let Some(player) = self.player.as_mut()
                     {
-                        player.face_boat(view.y_rot);
+                        match view.kind {
+                            voxel_world::VehicleKind::Boat => player.face_boat(view.y_rot),
+                            voxel_world::VehicleKind::Horse => {
+                                player.set_rotation(view.y_rot, view.x_rot);
+                            }
+                        }
                     }
                 }
             }
