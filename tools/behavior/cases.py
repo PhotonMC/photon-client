@@ -15558,8 +15558,11 @@ def entity_held_item_cases():
     def row(label, kind, baby=False, right="empty", left="empty", holds=(False, False),
             main="right", head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
             age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False,
-            head=None):
+            head=None, used=0.0, charge=0.0, using=False, hand="main", passenger=False, gliding=False, speed=1.0):
         out = {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
+                "ticks_using_item": float_bits(used), "max_crossbow_charge": float_bits(charge),
+                "using_item": using, "use_hand": hand, "passenger": passenger, "fall_flying": gliding,
+                "speed_value": float_bits(speed),
                 "right_pose": right, "left_pose": left, "main_arm": main,
                 "holds_right": holds[0], "holds_left": holds[1],
                 "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
@@ -15591,6 +15594,55 @@ def entity_held_item_cases():
                 holds=(True, True), main="left", head_y_rot=12.0, x_rot=-8.0),
             row("offhand-two-handed", kind, right="item", left="bow_and_arrow", holds=(True, True)),
         ]
+        # The remaining arm poses, either arm, looking about and crouching.
+        for pose in ("block", "throw_trident", "crossbow_hold", "spyglass", "toot_horn", "brush"):
+            for arm, other in (("right", "left"), ("left", "right")):
+                sides = {arm: pose, other: "item"}
+                for look, (yaw, pitch, crouch) in {"level": (0.0, 0.0, False), "up": (-35.5, -48.0, False),
+                                                   "down": (40.0, 70.0, True), "wide": (95.0, 12.0, False)}.items():
+                    rows.append(row(f"{pose}-{arm}-{look}", kind, right=sides.get("right", "empty"),
+                                    left=sides.get("left", "empty"), holds=(True, True),
+                                    head_y_rot=yaw, x_rot=pitch, crouching=crouch, age=5.5))
+        for arm, other in (("right", "left"), ("left", "right")):
+            for used in (0.0, 3.0, 12.5, 25.0, 40.0):
+                sides = {arm: "crossbow_charge", other: "item"}
+                rows.append(row(f"crossbow-charge-{arm}-{used}", kind, right=sides.get("right", "empty"),
+                                left=sides.get("left", "empty"), holds=(True, True), used=used,
+                                charge=25.0, head_y_rot=10.0, x_rot=-20.0))
+            rows.append(row(f"crossbow-hold-both-{arm}", kind, right="crossbow_hold", left="crossbow_hold",
+                            holds=(True, True), head_y_rot=-15.0, x_rot=25.0))
+        # An item in use: the arm of the hand using it is posed first, for either main arm.
+        for pose in ("bow_and_arrow", "block", "spyglass", "toot_horn", "brush", "crossbow_charge",
+                     "throw_trident"):
+            for main, hand in (("right", "main"), ("right", "off"), ("left", "main"), ("left", "off")):
+                right_arm = (main == "right") == (hand == "main")
+                sides = {"right": pose if right_arm else "item", "left": "item" if right_arm else pose}
+                rows.append(row(f"using-{pose}-{main}-{hand}", kind, right=sides["right"], left=sides["left"],
+                                holds=(True, True), main=main, using=True, hand=hand, used=9.0,
+                                charge=25.0, head_y_rot=14.0, x_rot=-18.0, age=7.25))
+        rows += [
+            row("using-swimming", kind, right="bow_and_arrow", left="item", holds=(True, True), using=True,
+                swim=0.6, walk_position=3.0, walk_speed=0.4, age=2.5, head_y_rot=5.0, x_rot=10.0),
+            row("not-using-swimming", kind, right="bow_and_arrow", left="item", holds=(True, True),
+                swim=0.6, walk_position=3.0, walk_speed=0.4, age=2.5, head_y_rot=5.0, x_rot=10.0),
+            row("spyglass-swimming", kind, right="spyglass", left="item", holds=(True, True), using=True,
+                swim=0.4, walk_position=15.0, walk_speed=0.4, age=2.5),
+            row("passenger", kind, right="item", left="item", holds=(True, True), passenger=True,
+                walk_position=2.0, walk_speed=0.3, age=11.0),
+            row("passenger-bow", kind, right="bow_and_arrow", left="item", holds=(True, True), passenger=True,
+                using=True, head_y_rot=-10.0, x_rot=15.0),
+            row("passenger-crouching", kind, right="item", holds=(True, False), passenger=True,
+                crouching=True),
+            row("gliding", kind, right="item", left="item", holds=(True, True), gliding=True,
+                head_y_rot=12.0, x_rot=33.0),
+            row("gliding-fast", kind, right="item", left="item", holds=(True, True), gliding=True,
+                walk_position=4.0, walk_speed=0.5, speed=3.5, x_rot=-12.0),
+            row("slowed-limbs", kind, right="item", left="item", holds=(True, True),
+                walk_position=4.0, walk_speed=0.5, speed=3.5, x_rot=-12.0),
+            row("gliding-walking", kind, right="item", left="item", holds=(True, True), gliding=True,
+                walk_position=4.0, walk_speed=0.5, x_rot=-12.0),
+            row("gliding-swim", kind, right="item", holds=(True, False), gliding=True, swim=0.5,
+                walk_position=3.0, walk_speed=0.4, x_rot=20.0)]
     for kind in ("zombie", "piglin"):
         for baby in (False, True):
             rows += [

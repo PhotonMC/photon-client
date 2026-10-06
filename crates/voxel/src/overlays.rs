@@ -309,6 +309,55 @@ impl Default for RemoteModels {
     }
 }
 
+/// The model state of a remote player: its arms and what they use, its riding and gliding, and
+/// how it walks, swims and swings.
+fn remote_render_state(
+    session: &PlaySession,
+    (entity, snapshot): (&voxel_world::ClientEntity, &voxel_world::EntitySnapshot),
+    partial: f32,
+) -> PlayerRenderState {
+    let world = session.world();
+    let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
+    let main_left = entity.main_arm_is_left();
+    let arms = crate::arm_poses::arm_state(session, entity, partial);
+    // `HumanoidMobRenderer.extractHumanoidRenderState`: a glider's limbs swing slower the
+    // faster it flies.
+    let gliding = entity.is_fall_flying();
+    let speed_value = if gliding {
+        let (mx, my, mz) = entity.motion();
+        let squared = (mx * mx + my * my + mz * mz) as f32 / 0.2;
+        (squared * (squared * squared)).max(1.0)
+    } else {
+        1.0
+    };
+    PlayerRenderState {
+        right_arm_pose: arms.right,
+        left_arm_pose: arms.left,
+        is_using_item: arms.using_item,
+        use_item_main_hand: arms.use_main_hand,
+        ticks_using_item: arms.ticks_using_item,
+        max_crossbow_charge_duration: arms.max_crossbow_charge,
+        is_passenger: world.entity_vehicle_id(entity.id()).is_some(),
+        is_fall_flying: gliding,
+        speed_value,
+        main_arm: if main_left { Arm::Left } else { Arm::Right },
+        head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+        x_rot: snapshot.pitch,
+        walk_position: snapshot.walk_position,
+        walk_speed: snapshot.walk_speed,
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        swim_amount: snapshot.swim_amount,
+        crouching,
+        attack_time: snapshot.attack_time,
+        attack_arm: if snapshot.attack_arm_left {
+            Arm::Left
+        } else {
+            Arm::Right
+        },
+        ..Default::default()
+    }
+}
+
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
 /// two ticks, as the first-person renderer is for the local player's own
@@ -340,30 +389,11 @@ pub fn remote_players(
             &mut models.wide
         };
         let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
-        let main_left = entity.main_arm_is_left();
         let (right, left) = (
             entity.item_held_by_arm(false),
             entity.item_held_by_arm(true),
         );
-        let state = PlayerRenderState {
-            right_arm_pose: held_arm_pose(right),
-            left_arm_pose: held_arm_pose(left),
-            main_arm: if main_left { Arm::Left } else { Arm::Right },
-            head_y_rot: voxel_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
-            x_rot: snapshot.pitch,
-            walk_position: snapshot.walk_position,
-            walk_speed: snapshot.walk_speed,
-            age_in_ticks: entity.tick_count() as f32 + partial,
-            swim_amount: snapshot.swim_amount,
-            crouching,
-            attack_time: snapshot.attack_time,
-            attack_arm: if snapshot.attack_arm_left {
-                Arm::Left
-            } else {
-                Arm::Right
-            },
-            ..Default::default()
-        };
+        let state = remote_render_state(session, (entity, &snapshot), partial);
         model.setup_anim(&state);
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);

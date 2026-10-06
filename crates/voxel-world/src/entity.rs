@@ -158,6 +158,8 @@ impl Tracking {
 pub(crate) struct EntityState {
     pub(crate) hurt_time: i32,
     pub(crate) death_time: i32,
+    /// How many ticks the item in use has been used (`getTicksUsingItem`, whole).
+    pub(crate) using_item_ticks: i32,
     pub(crate) variant: Option<i32>,
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.
@@ -1889,6 +1891,15 @@ impl ClientEntity {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
     }
 
+    /// `LivingEntity.getTicksUsingItem(partialTick)`: how long the item in use has been used.
+    pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
+        if self.is_using_item() {
+            self.living.using_item_ticks as f32 + partial_tick
+        } else {
+            0.0
+        }
+    }
+
     pub fn used_item_is_off_hand(&self) -> bool {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_OFF_HAND)
     }
@@ -3514,6 +3525,11 @@ impl ClientEntity {
     /// What a living entity does each tick besides moving: hurt and death,
     /// its pose, its swing, and what its kind does of its own.
     pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
+        self.living.using_item_ticks = if self.is_using_item() {
+            self.living.using_item_ticks.saturating_add(1)
+        } else {
+            0
+        };
         self.tick_hurt_and_death(tick_death);
         self.tick_living_pose(kind);
         self.tick_swing(kind);

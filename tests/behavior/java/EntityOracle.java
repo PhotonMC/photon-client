@@ -279,6 +279,14 @@ public final class EntityOracle {
             humanoidFields(state, row);
             state.isBaby = baby;
             state.isCrouching = row.get("crouching").getAsBoolean();
+            state.isUsingItem = row.get("using_item").getAsBoolean();
+            state.useItemHand = row.get("use_hand").getAsString().equals("off")
+                ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND;
+            state.isPassenger = row.get("passenger").getAsBoolean();
+            state.isFallFlying = row.get("fall_flying").getAsBoolean();
+            state.speedValue = Oracle.f32(row, "speed_value");
+            state.ticksUsingItem = Oracle.f32(row, "ticks_using_item");
+            state.maxCrossbowChargeDuration = Oracle.f32(row, "max_crossbow_charge");
             state.mainArm = row.get("main_arm").getAsString().equals("left")
                 ? net.minecraft.world.entity.HumanoidArm.LEFT
                 : net.minecraft.world.entity.HumanoidArm.RIGHT;

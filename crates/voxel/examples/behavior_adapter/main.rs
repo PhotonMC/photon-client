@@ -24238,11 +24238,7 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
     use voxel_render::mob_model::{MobModel, PiglinState, SkeletonState, ZombieState};
     use voxel_render::player_model::{Arm, ArmPose, Part, PlayerModel};
-    let arm_pose = |text: &str| match text {
-        "item" => ArmPose::Item,
-        "bow_and_arrow" => ArmPose::BowAndArrow,
-        _ => ArmPose::Empty,
-    };
+    let arm_pose = |text: &str| ArmPose::named(text).unwrap_or_default();
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let kind = row["kind"].as_str().ok_or("kind")?;
@@ -24257,6 +24253,13 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
             },
             right_arm_pose: arm_pose(row["right_pose"].as_str().ok_or("right_pose")?),
             left_arm_pose: arm_pose(row["left_pose"].as_str().ok_or("left_pose")?),
+            is_using_item: flag("using_item"),
+            use_item_main_hand: row["use_hand"].as_str() != Some("off"),
+            is_passenger: flag("passenger"),
+            is_fall_flying: flag("fall_flying"),
+            speed_value: f32_field(row, "speed_value")?,
+            ticks_using_item: f32_field(row, "ticks_using_item")?,
+            max_crossbow_charge_duration: f32_field(row, "max_crossbow_charge")?,
             ..humanoid_state(row)?
         };
         let aggressive = flag("aggressive");

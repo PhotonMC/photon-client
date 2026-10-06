@@ -25,3 +25,6 @@ Saldırı sallaması (T43).
 `docs/client-held-item-parity-conformance.md` sapma listesi, `docs/index.md`.
 
 ## Devir notu
+- `ArmPose` on poz (mızrak hariç) + `HumanoidModel.setupAnim` kullanım dalı, yolcu/süzülme/`speedValue`, dürbünde soluk almama: `entity/held-item-pose` ~110 yeni satır, bit bit eşit.
+- Oyunda: `arm_poses.rs` uzaktaki oyuncunun pozunu eşya sınıfından/bileşenden çıkarır (`getArmPose`), `ClientEntity::ticks_using_item`, yolcu ve süzülme bayrakları modele geçer.
+- Açık → T41d2: mızrak, piglin, yerel oyuncunun kendi kullanımı; poz çıkarımı Java'ya karşı karşılaştırılmadı.
