@@ -145,7 +145,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40g2](T40g2-cerceve-haritasi.md) | Çerçevedeki haritanın içeriği (`MapItemData`, `MapRenderer`) | L | T40g | açık |
 | [T40h](T40h-tablo.md) | Tablo | M | T40 | bitti (f75db4a8) |
 | [T40i](T40i-display.md) | Block ve item display'leri | L | T40 | bitti (302fc404) |
-| [T40i2](T40i2-metin-display.md) | Metin display'i | L | T40i | bitti |
+| [T40i2](T40i2-metin-display.md) | Metin display'i | L | T40i | bitti (dbf5c822) |
 | [T40i3](T40i3-display-golge-ayiklama.md) | Display gölgesi, ayıklama ve parıltı | M | T40i, T42 | bitti (9313bd89) |
 | [T41](T41-ekipman-katmanlari.md) | Ekipman katmanları: `SetEquipment`, elde eşya, zırh, kafa eşyası, pelerin/elytra | L | T28, T22 | bölündü (d20fb045) |
 | [T41b](T41b-zirh-katmani.md) | Zırh katmanı (`HumanoidArmorLayer`, boya, süs, parıltı) | L | T41 | bitti (c2bf0545) |
