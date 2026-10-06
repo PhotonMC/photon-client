@@ -13615,11 +13615,47 @@ def movement_cases():
         horse("skeleton-horse", floor(), keys(30, forward=True), kind="minecraft:skeleton_horse"),
         horse("zombie-horse", floor(), keys(30, forward=True), kind="minecraft:zombie_horse"),
     ]
+    horse_rows.append(horse("horse-unsaddled", floor(), keys(30, forward=True) + keys(10, jump=True)))
+    horse_rows[-1]["ride"]["unsaddled"] = True
     yield {
         "case_id": "movement/ride-horse",
         "family": "movement",
         "operation": "local_player_ticks",
         "rows": horse_rows,
+    }
+
+    # Riding a pig: saddled and steered with a carrot on a stick it goes straight ahead where the
+    # rider looks (`Pig.getRiddenInput`); otherwise the rider only sits in it.
+    def pig(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, saddled=True, stick="minecraft:carrot_on_a_stick"):
+        row = ride(label, blocks, ticks, boat=start, y_rot=y_rot, kind="minecraft:pig")
+        row["ride"]["saddled"] = saddled
+        if stick:
+            row["ride"]["holding"] = stick
+        return row
+
+    pig_rows = [
+        pig("pig-straight", floor(), keys(50)),
+        pig("pig-keys-ignored", floor(), keys(20, backward=True) + keys(20, left=True) + keys(10, jump=True)),
+        pig("pig-steer", floor(), looking(keys(60), (0.0, 0.0), (60.0, 20.0), (-120.0, -40.0))),
+        pig("pig-turn", floor(), turned(keys(40), y_rot=-90.0)),
+        pig("pig-no-stick", floor(), keys(30, forward=True), stick=None),
+        pig("pig-other-item", floor(), keys(30), stick="minecraft:stick"),
+        pig("pig-unsaddled", floor(), keys(30)),
+        pig("pig-slab", floor() + [{"x": x, "y": 64, "z": 3, "block": "minecraft:stone_slab"} for x in range(-3, 4)], keys(30)),
+        pig("pig-wall", floor() + ladder_wall, keys(30)),
+        pig("pig-ladder", floor() + column(0, 2, 64, 70, "minecraft:ladder", {"facing": "north"}), keys(30)),
+        pig("pig-water", floor() + lake, keys(40), start=(0.5, 64.2, -8.5)),
+        pig("pig-deep-water", floor() + deep_lake, keys(40) + keys(20), start=(0.5, 65.0, 0.5)),
+        pig("pig-ice", floor(block="minecraft:ice"), keys(40)),
+        pig("pig-honey", floor(block="minecraft:honey_block"), keys(30)),
+        pig("pig-cobweb", floor() + [{"x": 0, "y": 64, "z": z, "block": "minecraft:cobweb"} for z in (1, 2, 3)], keys(30)),
+        pig("pig-falls", floor(), keys(30), start=(0.5, 75.0, 0.5)),
+    ]
+    yield {
+        "case_id": "movement/ride-pig",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": pig_rows,
     }
 
     # Breaking: the attack key as `handleKeybinds` spends it, into the

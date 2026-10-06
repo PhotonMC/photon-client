@@ -15,11 +15,20 @@ use crate::fluid::{self, FluidTracker, LAVA_FLOW_SCALE, Pushed, WATER_FLOW_SCALE
 use crate::java_math;
 use crate::local_player::{
     InsideBody, InsideVisit, Level, LivingEffects, Movement, Unsupported,
-    compute_modified_friction, flag, living_inside_effect, walk_inside_blocks,
+    compute_modified_friction, flag, living_inside_effect, property, walk_inside_blocks,
 };
 
 /// `(float) (Math.PI / 180.0)`.
 const DEG_TO_RAD: f32 = (std::f64::consts::PI / 180.0) as f32;
+
+/// Which mount it is, for the parts of its tick that differ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MountKind {
+    /// A saddled horse, donkey, mule or undead horse.
+    Horse,
+    /// A saddled pig steered with a carrot on a stick.
+    Pig,
+}
 
 /// What a ridden mount keeps from one tick to the next beyond its place and motion.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -61,6 +70,8 @@ pub struct Controller {
     pub zza: f32,
     pub y_rot: f32,
     pub x_rot: f32,
+    /// Whether a hand of the player holds a carrot on a stick, which steers a saddled pig.
+    pub holds_carrot_on_a_stick: bool,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -81,6 +92,7 @@ pub(crate) struct Attributes {
 /// The mount as one tick reads and changes it.
 #[derive(Debug, Clone)]
 pub(crate) struct MountBody {
+    pub(crate) kind: MountKind,
     pub(crate) position: Vec3,
     pub(crate) old_position: Vec3,
     pub(crate) delta: Vec3,
@@ -106,6 +118,7 @@ pub(crate) struct MountBody {
 
 impl MountBody {
     pub(crate) fn new(
+        kind: MountKind,
         position: Vec3,
         old_position: Vec3,
         dimensions: ClientEntityDimensions,
@@ -113,6 +126,7 @@ impl MountBody {
         state: MountState,
     ) -> Self {
         Self {
+            kind,
             position,
             old_position,
             delta: Vec3::ZERO,
@@ -194,6 +208,10 @@ impl MountBody {
     /// `AbstractHorse.getRiddenInput`: still while it rears, otherwise the rider's keys, sideways
     /// at half and backwards at a quarter.
     fn ridden_input(&self) -> Vec3 {
+        // `Pig.getRiddenInput`: always straight ahead; the stick's rider only steers.
+        if self.kind == MountKind::Pig {
+            return Vec3::new(0.0, 0.0, 1.0);
+        }
         if self.on_ground
             && self.state.jump_pending_scale == 0.0
             && self.standing
@@ -214,7 +232,8 @@ impl MountBody {
     fn tick_ridden(&mut self, level: &Level<'_>, ridden_input: Vec3) {
         self.x_rot = (self.controller.x_rot * 0.5) % 360.0;
         self.y_rot = self.controller.y_rot % 360.0;
-        if self.on_ground {
+        // A pig has no jump to carry out (`Pig.tickRidden`).
+        if self.kind == MountKind::Horse && self.on_ground {
             if self.state.jump_pending_scale > 0.0 {
                 self.execute_riders_jump(level, self.state.jump_pending_scale, ridden_input);
             }
@@ -341,7 +360,11 @@ impl MountBody {
             }
             self.move_relative(speed, input);
             self.move_self(level, self.delta)?;
-            let movement = self.delta.multiply_components(
+            let mut movement = self.delta;
+            if self.state.horizontal_collision && self.on_climbable(level) {
+                movement = Vec3::new(movement.x, 0.2, movement.z);
+            }
+            let movement = movement.multiply_components(
                 f64::from(slow_down),
                 f64::from(0.8_f32),
                 f64::from(slow_down),
@@ -394,10 +417,14 @@ impl MountBody {
     ) -> Result<Vec3, Unsupported> {
         let speed = self.friction_influenced_speed(friction);
         self.move_relative(speed, input);
-        // A horse never climbs (`AbstractHorse.onClimbable`), so neither the ladder's clamp nor its
-        // lift applies.
+        self.delta = self.handle_on_climbable(level, self.delta);
         self.move_self(level, self.delta)?;
-        Ok(self.delta)
+        let mut movement = self.delta;
+        // `jumping` is the mount's own, which only its AI sets.
+        if self.state.horizontal_collision && self.on_climbable(level) {
+            movement = Vec3::new(movement.x, 0.2, movement.z);
+        }
+        Ok(movement)
     }
 
     /// `LivingEntity.getFrictionInfluencedSpeed`: in the air a mount a player rides goes at a
@@ -413,6 +440,44 @@ impl MountBody {
         } else {
             speed * 0.1
         }
+    }
+
+    /// `LivingEntity.handleOnClimbable`.
+    fn handle_on_climbable(&mut self, level: &Level<'_>, delta: Vec3) -> Vec3 {
+        if !self.on_climbable(level) {
+            return delta;
+        }
+        self.state.fall_distance = 0.0;
+        let max = f64::from(0.15_f32);
+        Vec3::new(
+            java_math::clamp(delta.x, -max, max),
+            java_math::max(delta.y, -max),
+            java_math::clamp(delta.z, -max, max),
+        )
+    }
+
+    /// `LivingEntity.onClimbable`; `AbstractHorse` overrides it to never.
+    fn on_climbable(&self, level: &Level<'_>) -> bool {
+        if self.kind == MountKind::Horse {
+            return false;
+        }
+        let pos = self.block_position();
+        let info = level.info(pos);
+        if info.flags & flag::CLIMBABLE != 0 {
+            return true;
+        }
+        if info.flags & flag::TRAPDOOR != 0 {
+            let state = level.state_id(pos);
+            if property(state, "open") == Some("true") {
+                let below_pos = BlockPos::new(pos.x, pos.y - 1, pos.z);
+                let below = level.info(below_pos);
+                if below.flags & flag::LADDER != 0 {
+                    return property(level.state_id(below_pos), "facing")
+                        == property(state, "facing");
+                }
+            }
+        }
+        false
     }
 
     /// `Entity.moveRelative`.
@@ -706,6 +771,22 @@ pub(crate) fn is_horse_type(type_id: i32) -> bool {
 }
 
 impl ClientWorld {
+    /// Which mount the local player drives this entity as, if it does: a saddled horse it sits
+    /// in the first seat of, or a saddled pig it steers with a carrot on a stick.
+    pub(crate) fn mount_kind_of(&self, entity: &crate::entity::ClientEntity) -> Option<MountKind> {
+        let player = self.local_player.as_ref()?;
+        if entity.passenger_ids.first() != Some(&player.id) {
+            return None;
+        }
+        if entity.is_controllable_horse() {
+            Some(MountKind::Horse)
+        } else if entity.is_saddled_pig() && self.rider_controls.holds_carrot_on_a_stick {
+            Some(MountKind::Pig)
+        } else {
+            None
+        }
+    }
+
     /// What the rider's keys make of the mount's input, as the next tick of the mount reads them.
     pub fn set_rider_controls(&mut self, controls: Controller) {
         self.rider_controls = controls;
@@ -750,9 +831,18 @@ impl ClientWorld {
         let dimensions = ClientEntityDimensions::scalable(width, height)
             .with_eye_height(eye_height)
             .scale(entity.scale(), entity.scale());
+        let Some(kind) = self.mount_kind_of(entity) else {
+            return;
+        };
         let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);
         let attributes = Attributes {
-            speed: attribute("minecraft:movement_speed", 0.7) as f32,
+            // `getRiddenSpeed`: a pig's is its speed times 0.225 (and its boost, which is one here).
+            speed: match kind {
+                MountKind::Horse => attribute("minecraft:movement_speed", 0.7) as f32,
+                MountKind::Pig => {
+                    (attribute("minecraft:movement_speed", 0.25) * 0.225 * 1.0) as f32
+                }
+            },
             gravity: attribute("minecraft:gravity", 0.08),
             step_height: attribute("minecraft:step_height", 0.6) as f32,
             jump_strength: attribute("minecraft:jump_strength", 0.42) as f32,
@@ -763,6 +853,7 @@ impl ClientWorld {
         let (x, y, z) = entity.position();
         let (ox, oy, oz) = entity.previous_position();
         let mut body = MountBody::new(
+            kind,
             Vec3::new(x, y, z),
             Vec3::new(ox, oy, oz),
             dimensions,
@@ -780,7 +871,7 @@ impl ClientWorld {
         body.allow_stand_sliding = entity
             .horse()
             .is_some_and(|horse| horse.allow_stand_sliding());
-        body.floats_when_ridden = true;
+        body.floats_when_ridden = kind == MountKind::Horse;
         body.controller = self.rider_controls;
         if body.tick(&Level { world: self }).is_err() {
             return;

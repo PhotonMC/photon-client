@@ -14,6 +14,10 @@ pub enum VehicleKind {
     Boat,
     /// A saddled horse, donkey, mule or undead horse.
     Horse,
+    /// A pig, saddled or not.
+    Pig,
+    /// Any other vehicle, which the server moves.
+    Other,
 }
 
 /// What the local player's tick reads of the vehicle it rides.
@@ -21,6 +25,8 @@ pub enum VehicleKind {
 pub struct VehicleView {
     pub vehicle_id: i32,
     pub kind: VehicleKind,
+    /// Whether the local player is the vehicle's authority (it drives it).
+    pub controlled: bool,
     pub type_id: i32,
     pub position: Vec3,
     pub y_rot: f32,
@@ -51,16 +57,15 @@ pub(crate) fn rotate_y(point: Vec3, radians: f32) -> Vec3 {
 }
 
 impl ClientWorld {
-    /// The vehicle the local player is the controlling (first) passenger of, if it is one it can
-    /// drive: a boat, or a saddled horse.
+    /// The vehicle the local player sits in, whether it drives it or not.
     pub fn ridden_vehicle_of_local_player(&self) -> Option<i32> {
         let player_id = self.local_player.as_ref()?.id;
         let vehicle_id = self.entity_vehicle_id(player_id)?;
         let vehicle = self.entities.get(&vehicle_id)?;
-        if vehicle.passenger_ids.first() != Some(&player_id) {
-            return None;
-        }
-        (vehicle.is_boat() || vehicle.is_controllable_horse()).then_some(vehicle_id)
+        vehicle
+            .passenger_ids
+            .contains(&player_id)
+            .then_some(vehicle_id)
     }
 
     /// What the local player's tick reads of the vehicle it rides.
@@ -78,6 +83,7 @@ impl ClientWorld {
             return Some(VehicleView {
                 vehicle_id,
                 kind: VehicleKind::Boat,
+                controlled: vehicle.passenger_ids.first() == Some(&player.id),
                 type_id: vehicle.type_id,
                 position,
                 y_rot: f32::from_bits(vehicle.y_rot_bits),
@@ -92,28 +98,42 @@ impl ClientWorld {
                 can_jump: false,
             });
         }
-        if !vehicle.is_controllable_horse() {
-            return None;
-        }
+        let driven = self.mount_kind_of(vehicle);
+        let kind = if vehicle.is_horse() {
+            VehicleKind::Horse
+        } else if driven == Some(crate::MountKind::Pig) || vehicle.is_pig() {
+            VehicleKind::Pig
+        } else {
+            VehicleKind::Other
+        };
         let y_rot = f32::from_bits(vehicle.y_rot_bits);
-        // `AbstractHorse.getPassengerAttachmentPoint`: the type's seat, and, rearing, up and back.
-        let seat = voxel_data::entity_type::pick(vehicle.type_id)?
-            .passengers
-            .first()
+        // `getDefaultPassengerAttachmentPoint`: the type's seat for this passenger's place, turned
+        // with the vehicle; `AbstractHorse` adds, rearing, up and back.
+        let seats = voxel_data::entity_type::pick(vehicle.type_id)?.passengers;
+        let index = vehicle
+            .passenger_ids
+            .iter()
+            .position(|&id| id == player.id)
+            .unwrap_or(0);
+        let seat = seats
+            .get(index.min(seats.len().saturating_sub(1)))
             .map_or(Vec3::ZERO, |&(x, y, z)| Vec3::new(x, y, z));
-        let stand_old = vehicle
-            .horse()
-            .map_or(0.0, |horse| horse.stand_animation_old());
         let turn = -y_rot * (std::f64::consts::PI / 180.0) as f32;
-        let attachment = rotate_y(seat, turn).add_vec3(rotate_y(
+        let mut attachment = rotate_y(seat, turn);
+        if kind == VehicleKind::Horse {
+            let stand_old = vehicle
+                .horse()
+                .map_or(0.0, |horse| horse.stand_animation_old());
             // Doubles times the float standing animation, times the scale of one.
-            Vec3::new(
-                0.0,
-                0.15 * f64::from(stand_old) * 1.0,
-                -0.7 * f64::from(stand_old) * 1.0,
-            ),
-            turn,
-        ));
+            attachment = attachment.add_vec3(rotate_y(
+                Vec3::new(
+                    0.0,
+                    0.15 * f64::from(stand_old) * 1.0,
+                    -0.7 * f64::from(stand_old) * 1.0,
+                ),
+                turn,
+            ));
+        }
         // `Entity.positionRider`: the seat, less where the rider's own attachment point is.
         let rider = Vec3::new(
             position.x + attachment.x,
@@ -122,7 +142,8 @@ impl ClientWorld {
         );
         Some(VehicleView {
             vehicle_id,
-            kind: VehicleKind::Horse,
+            kind,
+            controlled: driven.is_some(),
             type_id: vehicle.type_id,
             position,
             y_rot,
@@ -135,7 +156,7 @@ impl ClientWorld {
             under_water: true,
             // Only a camel and a player can sprint (`Entity.canSprint`).
             can_sprint: false,
-            can_jump: true,
+            can_jump: driven == Some(crate::MountKind::Horse),
         })
     }
 }

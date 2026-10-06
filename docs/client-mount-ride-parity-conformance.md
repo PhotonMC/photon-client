@@ -44,3 +44,14 @@ Tekne için bkz. [T44a](client-boat-ride-parity-conformance.md).
 - Atın veri bayrakları (kalkma, otlama) sunucudan gelir; istemcinin kendi kalkması yirmi tik sayılır.
 - Diğer binekler (eyerli domuz, strider, deve, minecart…): [T44c](tasks/T44c-diger-bineklar.md).
 - `LocalPlayer` ile `MountBody` ayrı `LivingEntity` hareket portlarıdır (oyuncu ve mob); ortaklaştırılması açık.
+
+## Eyerli domuz ve yönetilmeyen yolcu (T44c1)
+
+`movement/ride-pig`: 16 satır gerçek `Pig` ile bit bit eşit (havuçlu sopa elde, eyerli): düz ileri gider ve binicinin
+bakışıyla döner (`getRiddenInput` hep ileri, `tickRidden`, hız `özellik·0,225`), tuşlar yok sayılır, sopasız veya başka
+eşyayla ya da eyersiz domuzda binici yalnız oturur; düşüş, merdiven (domuz tırmanır), basamak/duvar, su, buz, bal, ağ.
+`movement/ride-horse` eyersiz at satırıyla genişledi. Yönetilmeyen araçta (eyersiz at, sopasız domuz, teknenin ikinci
+koltuğu) binici `rideTick` ile koltuğa oturur, `Rot` paketi yollar, `MoveVehicle` yollamaz ve araç sunucudan gelen
+konumla ilerler (`controlled` bayrağı; koltuk noktası tür tablosundan, yolcu sırasına göre). Sapma: havuçlu sopanın
+hızlandırması (`boost`, rastgele süre) istemcide yok; sopa yalnız ana ele bakılır, sol el (off hand) envanter yuvası 45
+okunur ama oracle'da yalnız ana el sınandı.

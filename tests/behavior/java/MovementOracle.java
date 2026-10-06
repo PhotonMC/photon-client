@@ -2098,14 +2098,35 @@ public final class MovementOracle {
             vehicle = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
                 net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
             vehicle.setId(ride.get("id").getAsInt());
+            if (ride.has("saddled") && ride.get("saddled").getAsBoolean()
+                    && vehicle instanceof net.minecraft.world.entity.Mob saddled) {
+                saddled.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+            }
+            if (ride.has("holding")) {
+                // What the rider holds in the selected slot (a stick steers a pig).
+                var held = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(ride.get("holding").getAsString()));
+                player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(held));
+            }
             if (vehicle instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
                 // A tamed horse in a saddle: the one a player controls.
                 horse.setTamed(true);
-                horse.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
-                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+                if (!ride.has("unsaddled")) {
+                    horse.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+                }
             }
             vehicle.snapTo(Oracle.f64(ride, "x"), Oracle.f64(ride, "y"), Oracle.f64(ride, "z"),
                 Oracle.f32(ride, "y_rot"), 0.0F);
+            if (vehicle instanceof net.minecraft.world.entity.LivingEntity living) {
+                // The constructor turns the head at random; the add-entity packet sets it.
+                float facing = Oracle.f32(ride, "y_rot");
+                living.yBodyRot = facing;
+                living.yHeadRot = facing;
+                living.yBodyRotO = facing;
+                living.yHeadRotO = facing;
+            }
             if (ride.has("motion_x")) {
                 vehicle.setDeltaMovement(
                     Oracle.f64(ride, "motion_x"), Oracle.f64(ride, "motion_y"), Oracle.f64(ride, "motion_z"));

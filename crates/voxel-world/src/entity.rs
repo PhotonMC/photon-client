@@ -2191,6 +2191,22 @@ impl ClientEntity {
         self.mount_ride
     }
 
+    /// Whether this is a horse, donkey, mule or undead horse, saddled or not.
+    pub fn is_horse(&self) -> bool {
+        crate::mount_ride::is_horse_type(self.type_id)
+    }
+
+    /// Whether this is a pig.
+    pub fn is_pig(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:pig")
+    }
+
+    /// Whether this is a pig in a saddle (which a carrot on a stick steers).
+    pub fn is_saddled_pig(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:pig")
+            && self.equipment(EquipmentSlot::Saddle).is_some()
+    }
+
     /// Whether this is a horse, donkey, mule or undead horse in a saddle, which the player on it
     /// steers (`AbstractHorse.getControllingPassenger`).
     pub fn is_controllable_horse(&self) -> bool {

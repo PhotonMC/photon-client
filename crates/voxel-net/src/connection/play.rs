@@ -278,6 +278,15 @@ impl PlaySession {
         self.player.as_mut()
     }
 
+    /// The registry id of what the off hand holds (air when empty).
+    fn off_hand_item(&self) -> i32 {
+        self.trace
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot(45))
+            .map_or(0, |stack| stack.item_registry_id())
+    }
+
     /// The mouse turns the player (`Entity.turn`), who in a boat is then held within a quarter
     /// turn of where the boat faces (`onPassengerTurned`).
     pub fn turn_player(&mut self, y_rot_delta: f64, x_rot_delta: f64) {
@@ -1254,6 +1263,16 @@ impl PlaySession {
             .map_or(0, |stack| stack.item_registry_id());
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
+        // What the rider steers with: its input, its look, and the stick in its hands.
+        if let Some(player) = self.player.as_ref() {
+            let mut controls = player.controller();
+            controls.holds_carrot_on_a_stick =
+                [main_hand, self.off_hand_item()].into_iter().any(|item| {
+                    voxel_world::block_rules::item(item)
+                        .is_some_and(|item| item.name == "minecraft:carrot_on_a_stick")
+                });
+            self.trace.world.set_rider_controls(controls);
+        }
         let ridden = self.trace.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
             if let Some(player) = self.player.as_ref() {
@@ -1261,9 +1280,6 @@ impl PlaySession {
                 self.trace
                     .world
                     .set_local_player_chunk(position.x, position.z);
-            }
-            if let Some(player) = self.player.as_ref() {
-                self.trace.world.set_rider_controls(player.controller());
             }
             self.trace.world.tick_entities();
             for (left, right) in self.trace.world.take_paddle_packets() {
@@ -1278,7 +1294,7 @@ impl PlaySession {
                 Some(view) => player
                     .tick_riding(&self.trace.world, keys, &view)
                     .map(|rode| {
-                        if view.kind == voxel_world::VehicleKind::Boat {
+                        if view.kind == voxel_world::VehicleKind::Boat && view.controlled {
                             self.trace
                                 .world
                                 .set_boat_input(view.vehicle_id, rode.boat_input);
@@ -1520,6 +1536,8 @@ impl PlaySession {
                             voxel_world::VehicleKind::Horse => {
                                 player.set_rotation(view.y_rot, view.x_rot);
                             }
+                            // Any other vehicle leaves its rider looking where it did.
+                            voxel_world::VehicleKind::Pig | voxel_world::VehicleKind::Other => {}
                         }
                     }
                 }

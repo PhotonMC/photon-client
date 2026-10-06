@@ -1292,6 +1292,7 @@ impl LocalPlayer {
             zza: self.zza,
             y_rot: self.y_rot,
             x_rot: self.x_rot,
+            holds_carrot_on_a_stick: false,
         }
     }
 
@@ -1339,12 +1340,14 @@ impl LocalPlayer {
             on_ground: self.on_ground,
             horizontal_collision: self.horizontal_collision,
         });
-        self.sent.push(ServerboundMovement::MoveVehicle {
-            position: boat.position,
-            y_rot: boat.y_rot,
-            x_rot: boat.x_rot,
-            on_ground: boat.on_ground,
-        });
+        if boat.controlled {
+            self.sent.push(ServerboundMovement::MoveVehicle {
+                position: boat.position,
+                y_rot: boat.y_rot,
+                x_rot: boat.x_rot,
+                on_ground: boat.on_ground,
+            });
+        }
         if self.sprinting != self.was_sprinting {
             self.sent.push(ServerboundMovement::PlayerCommand {
                 entity_id: self.entity_id,
@@ -1363,13 +1366,17 @@ impl LocalPlayer {
         let keys = self.input.key_presses;
         let boat_input =
             crate::entity::BoatInput::new(keys.left, keys.right, keys.forward, keys.backward);
-        if boat.kind == crate::VehicleKind::Boat {
-            self.position_in_boat(boat);
-        } else {
+        match boat.kind {
+            crate::VehicleKind::Boat => self.position_in_boat(boat),
             // `Entity.positionRider`, and `AbstractHorse.positionRider` turning the rider's body
             // with the horse's.
-            self.set_pos(boat.rider_position);
-            self.y_body_rot = boat.y_rot;
+            crate::VehicleKind::Horse => {
+                self.set_pos(boat.rider_position);
+                self.y_body_rot = boat.y_rot;
+            }
+            crate::VehicleKind::Pig | crate::VehicleKind::Other => {
+                self.set_pos(boat.rider_position);
+            }
         }
         self.riding = None;
         Ok(RideTick {

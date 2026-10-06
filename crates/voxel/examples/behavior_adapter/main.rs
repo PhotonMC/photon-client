@@ -20085,6 +20085,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         }
         // A vehicle the player rides, put aboard as the server's passengers packet does.
         let mut ridden = None;
+        let mut held_stick = false;
         if let Some(ride) = row.get("ride") {
             let kind = string(ride, "type")?;
             let id = i32_field(ride, "id")?;
@@ -20099,7 +20100,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 y: bits64(ride, "y")?,
                 z: bits64(ride, "z")?,
                 movement: (motion("motion_x"), motion("motion_y"), motion("motion_z")),
-                rotation: (bits32(ride, "y_rot")?, 0.0, 0.0),
+                rotation: (bits32(ride, "y_rot")?, 0.0, bits32(ride, "y_rot")?),
                 data: 0,
             }) || !world.apply_entity_passengers(id, &[player.entity_id()])
             {
@@ -20108,10 +20109,35 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             if kind.ends_with("_boat") || kind.ends_with("_raft") {
                 player.face_boat(bits32(ride, "y_rot")?);
             }
-            if kind.ends_with("horse") || kind.ends_with("donkey") || kind.ends_with("mule") {
+            if (kind.ends_with("horse") || kind.ends_with("donkey") || kind.ends_with("mule"))
+                && ride.get("unsaddled").is_none()
+            {
                 // `AbstractHorse.addPassenger`: the rider looks the way the horse does.
                 player.set_rotation(bits32(ride, "y_rot")?, 0.0);
                 // A tamed horse in a saddle, as the oracle makes it.
+                world.apply_entity_equipment(
+                    id,
+                    voxel_world::EquipmentSlot::Saddle,
+                    Some(voxel_world::ClientItemStackState::new(
+                        1,
+                        voxel_game::item::id_of("minecraft:saddle").ok_or("no saddle item")?,
+                    )),
+                );
+            }
+            // What the rider holds in the selected slot, and a saddle where the row has one.
+            if let Some(name) = ride["holding"].as_str() {
+                let item =
+                    voxel_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+                world.apply_local_player_container_slot(
+                    0,
+                    0,
+                    36,
+                    Some(&voxel_world::ClientItemStackState::new(1, item)),
+                );
+                player.set_main_hand_item(item);
+                held_stick = name == "minecraft:carrot_on_a_stick";
+            }
+            if ride["saddled"].as_bool().unwrap_or(false) {
                 world.apply_entity_equipment(
                     id,
                     voxel_world::EquipmentSlot::Saddle,
@@ -20243,7 +20269,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             let sent = if let Some(vehicle_id) = ridden {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
                 // passenger, which hands the boat the keys for the next tick.
-                world.set_rider_controls(player.controller());
+                let mut controls = player.controller();
+                controls.holds_carrot_on_a_stick = held_stick;
+                world.set_rider_controls(controls);
                 world.tick_entities();
                 let mut sent: Vec<voxel_world::local_player::ServerboundMovement> = world
                     .take_paddle_packets()
@@ -20257,7 +20285,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 };
                 match player.tick_riding(&world, keys, &view) {
                     Ok(rode) => {
-                        if view.kind == voxel_world::VehicleKind::Boat {
+                        if view.kind == voxel_world::VehicleKind::Boat && view.controlled {
                             world.set_boat_input(vehicle_id, rode.boat_input);
                         }
                         if let Some(amount) = rode.jump {
@@ -20412,8 +20440,10 @@ fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String>
         report["horizontal_collision"] = json!(ride.horizontal_collision);
         report["vertical_collision"] = json!(ride.vertical_collision);
         report["fall_distance"] = json!(double(ride.fall_distance));
-        report["pending_jump"] = json!(single(ride.jump_pending_scale));
-        report["y_head_rot"] = json!(single(vehicle.rotation().0));
+        if !vehicle.is_saddled_pig() {
+            report["pending_jump"] = json!(single(ride.jump_pending_scale));
+            report["y_head_rot"] = json!(single(vehicle.rotation().2));
+        }
     }
     Ok(report)
 }

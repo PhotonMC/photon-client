@@ -35,7 +35,7 @@ mod boat_ride;
 mod mount_ride;
 mod vehicle_ride;
 pub use boat_ride::{RideState, Status};
-pub use mount_ride::{Controller, MountState};
+pub use mount_ride::{Controller, MountKind, MountState};
 pub use vehicle_ride::{VehicleKind, VehicleView};
 mod border;
 pub mod breeze;
@@ -1951,11 +1951,7 @@ impl ClientWorld {
                 )
             });
             // A saddled horse is driven by the player in its first seat.
-            let mount = entity.is_controllable_horse()
-                && self
-                    .local_player
-                    .as_ref()
-                    .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id));
+            let mount = self.mount_kind_of(entity).is_some();
             (
                 is_boat && !authoritative,
                 kind,

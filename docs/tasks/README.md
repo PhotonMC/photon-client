@@ -165,7 +165,9 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T44a](T44a-tekne-surusu.md) | Oyuncunun tekneyi sürmesi (tekne tiki, yolcu tiki, `MoveVehicle`, `PaddleBoat`) | L | T38 | bitti (a3b30282) |
 | [T44b](T44b-binek-hayvanlar-minecart.md) | Binek hayvanlar ve minecart sürüşü (at ailesi, domuz, deve, strider, minecart), binme/inme | L | T44a, T31 | bölündü (T44b1, T44c) |
 | [T44b1](T44b1-eyerli-at.md) | Oyuncunun eyerli atı sürmesi (at, eşek, katır, iskelet ve zombi atı; atlama yükü) | L | T44a, T31 | bitti (7606cdb6) |
-| [T44c](T44c-diger-bineklar.md) | Öteki binekler: eyerli domuz, strider, deve, minecart; binme/inme | L | T44b1 | açık |
+| [T44c](T44c-diger-bineklar.md) | Öteki binekler: eyerli domuz, strider, deve, minecart; binme/inme | L | T44b1 | bölündü (T44c1, T44c2) |
+| [T44c1](T44c1-domuz-yolcu.md) | Eyerli domuz ve yönetilmeyen araçta yolcu | M | T44b1 | bitti |
+| [T44c2](T44c2-strider-deve-minecart.md) | Strider (lavda yürüme), deve, minecart; binme/inme | L | T44c1 | açık |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | bitti (fd8d309d) |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
