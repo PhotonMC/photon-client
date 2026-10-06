@@ -266,7 +266,7 @@ pub fn player_model(
         fall_flying: None,
         auto_spin: None,
     };
-    Hands {
+    let hands = Hands {
         base: &voxel_render::player_renderer::placement_pose(&placement),
         root: &model.root,
         hand_shift: if model.slim { 0.5 } else { 0.0 },
@@ -276,9 +276,17 @@ pub fn player_model(
         left: stacks.1,
         head: worn.head_item(armor),
         head_transforms: HEAD_TRANSFORMS,
-    }
-    .collect(held);
+        eye: None,
+    };
+    hands.collect(held);
+    let skull = hands.skull();
     let mut vertices = voxel_render::player_renderer::player_vertices(model, &placement);
+    vertices.extend(armor.skull_vertices(
+        skull,
+        pose.walk_position,
+        textures,
+        (placement.light, false),
+    ));
     vertices.extend(wear(
         armor,
         worn,
@@ -434,7 +442,7 @@ pub fn remote_players(
             legs: entity.equipment(EquipmentSlot::Legs),
             feet: entity.equipment(EquipmentSlot::Feet),
         };
-        Hands {
+        let hands = Hands {
             base: &voxel_render::player_renderer::placement_pose(&placement),
             root: &model.root,
             hand_shift: if model.slim { 0.5 } else { 0.0 },
@@ -444,8 +452,16 @@ pub fn remote_players(
             left,
             head: worn.head_item(armor),
             head_transforms: HEAD_TRANSFORMS,
-        }
-        .collect(held);
+            eye: crate::arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
+        };
+        hands.collect(held);
+        let skull = hands.skull();
+        vertices.extend(armor.skull_vertices(
+            skull,
+            snapshot.walk_position,
+            textures,
+            (placement.light, snapshot.red_overlay),
+        ));
         vertices.extend(voxel_render::player_renderer::player_vertices(
             model, &placement,
         ));

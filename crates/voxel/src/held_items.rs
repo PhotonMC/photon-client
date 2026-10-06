@@ -2,11 +2,12 @@
 //! its arm's hand is, drawn like the items lying in the world.
 
 use voxel_render::biome_tint::BiomeTints;
-use voxel_render::held_item::{hand_pose, head_item_pose};
+use voxel_render::held_item::{hand_pose, head_item_pose, held_to_eye_pose};
 use voxel_render::item_entity::item_layer_vertices;
 use voxel_render::joml::Pose;
 use voxel_render::player_model::{Arm, Part};
 use voxel_render::scene::Vertex;
+use voxel_render::skull::{SkullKind, skull_pose};
 use voxel_render::world_mesh::BlockRenderer;
 use voxel_world::ClientItemStackState;
 
@@ -114,12 +115,35 @@ pub struct Hands<'a> {
     /// `CustomHeadLayer.Transforms`: its offset and its horizontal scale.
     pub head: Option<&'a ClientItemStackState>,
     pub head_transforms: (f32, f32),
+    /// The arm whose stack is held to the eye instead of in the hand (`renderItemHeldToEye`).
+    pub eye: Option<Arm>,
 }
 
 /// `CustomHeadLayer.Transforms.DEFAULT` less its skull offset.
 pub const HEAD_TRANSFORMS: (f32, f32) = (0.0, 1.0);
 
+/// The skull a head stack shows, if it is one (`AbstractSkullBlock.getType` of its block).
+pub fn skull_of(stack: &ClientItemStackState) -> Option<SkullKind> {
+    voxel_world::block_rules::item(stack.item_registry_id())
+        .and_then(|item| SkullKind::of_item(item.name))
+}
+
 impl Hands<'_> {
+    /// The skull on the head, and the pose it is drawn from (`CustomHeadLayer`'s `wornHeadType`
+    /// branch; a skull is a model, not an item).
+    pub fn skull(&self) -> Option<(SkullKind, Pose)> {
+        let kind = skull_of(self.head?)?;
+        let head = self
+            .root
+            .children()
+            .iter()
+            .find(|part| part.name() == "head")?;
+        Some((
+            kind,
+            skull_pose(self.base, self.root, head, (0.0, self.head_transforms.1)),
+        ))
+    }
+
     /// Adds each held stack, the right arm's first.
     pub fn collect(&self, out: &mut Vec<HeldItem>) {
         for (side, stack) in [(Arm::Right, self.right), (Arm::Left, self.left)] {
@@ -134,6 +158,21 @@ impl Hands<'_> {
             let Some(arm) = self.root.children().iter().find(|part| part.name() == name) else {
                 continue;
             };
+            if self.eye == Some(side)
+                && let Some(head) = self
+                    .root
+                    .children()
+                    .iter()
+                    .find(|part| part.name() == "head")
+            {
+                out.push(HeldItem {
+                    stack: Carried::Stack(stack.clone()),
+                    pose: held_to_eye_pose(self.base, self.root, head, side),
+                    place: Place::Head,
+                    light: self.light,
+                });
+                continue;
+            }
             out.push(HeldItem {
                 stack: Carried::Stack(stack.clone()),
                 pose: hand_pose(self.base, self.root, arm, side, self.hand_shift, self.baby),
@@ -146,7 +185,7 @@ impl Hands<'_> {
             });
         }
         if let (Some(stack), Some(head)) = (
-            self.head,
+            self.head.filter(|stack| skull_of(stack).is_none()),
             self.root
                 .children()
                 .iter()

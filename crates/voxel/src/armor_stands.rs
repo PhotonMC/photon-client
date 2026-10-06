@@ -65,7 +65,7 @@ pub fn remote_armor_stands(
             models.model(&format!("{prefix}#main")),
         ) {
             model.setup_armor_stand(&state, true);
-            Hands {
+            let hands = Hands {
                 base: &placement_pose(&placed),
                 root: model.root(),
                 hand_shift: 0.0,
@@ -75,9 +75,16 @@ pub fn remote_armor_stands(
                 left: entity.item_held_by_arm(true),
                 head: worn.head_item(armor),
                 head_transforms: HEAD_TRANSFORMS,
-            }
-            .collect(held);
+                eye: None,
+            };
+            hands.collect(held);
             vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(armor.skull_vertices(
+                hands.skull(),
+                0.0,
+                textures,
+                (placed.light, false),
+            ));
         }
         vertices.extend(armor.vertices(
             worn,

@@ -17,4 +17,6 @@
 `docs/client-held-item-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- `voxel-render::skull` (tür, model, doku, `skull_pose`), `MobModel::setup_skull`, `held_to_eye_pose`/`eye_held_arm`; oyunda `Hands::{skull, eye}`, `Armor::skull_vertices`, `arm_poses::eye_arm`.
+- Oracle: `entity/held-item-pose` +84 satır (kafatası 64, dürbün 20), bit bit eşit; canlıda ejderha ve creeper başlı zombiler görüldü.
+- Açık: profili olan oyuncu kafası (PLAN-M9), köylü/cadı kafatası ofseti, yerel oyuncunun dürbünü.

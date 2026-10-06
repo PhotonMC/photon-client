@@ -28,6 +28,39 @@ pub fn hand_pose(
     pose
 }
 
+/// `PlayerItemInHandLayer.submitArmWithItem`'s test: which arm's item a player holds to the eye
+/// (a spyglass in use, not swinging), if either.
+pub fn eye_held_arm(
+    (using_item, use_main_hand): (bool, bool),
+    (main_arm, attack_time): (Arm, f32),
+    held_on_head: bool,
+    arm: Arm,
+) -> bool {
+    // The hand an arm holds in: the main hand for the main arm.
+    let main_hand = arm == main_arm;
+    held_on_head && using_item && use_main_hand == main_hand && attack_time < 1.0e-5
+}
+
+/// `PlayerItemInHandLayer.renderItemHeldToEye`: from the model's root to the head, whose pitch is
+/// held between up a little and straight down, then as a head item sits, out to the side of the
+/// eye (before the layer's own `translate(-0.5)`).
+pub fn held_to_eye_pose(base: &Pose, root: &Part, head: &Part, side: Arm) -> Pose {
+    let mut pose = *base;
+    root.translate_and_rotate(&mut pose);
+    let mut tilted = head.clone();
+    let pi = std::f64::consts::PI;
+    tilted.x_rot = head.x_rot.clamp((-pi / 6.0) as f32, (pi / 2.0) as f32);
+    tilted.translate_and_rotate(&mut pose);
+    pose.translate(0.0, -0.25, 0.0);
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        180.0,
+    )));
+    pose.scale(0.625, -0.625, -0.625);
+    let out = if side == Arm::Left { -2.5 } else { 2.5 };
+    pose.translate(out / 16.0, -0.0625, 0.0);
+    pose
+}
+
 /// What `ItemInHandLayer.submitArmWithItem` does after the model has moved the
 /// pose to the hand: lay the item along the arm and into the palm.
 fn in_hand(pose: &mut Pose, left: bool, baby: bool) {

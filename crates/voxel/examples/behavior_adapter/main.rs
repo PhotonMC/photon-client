@@ -24423,7 +24423,7 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                 .ok_or("no such layer")
         };
         let slim = kind == "player_slim";
-        let (quads, (poses, head_poses)) = if kind.starts_with("player") {
+        let (quads, (poses, head_poses, skull_quads)) = if kind.starts_with("player") {
             let mut model = PlayerModel::new(slim);
             model.setup_anim(&humanoid);
             let poses = held_poses(&model.root, row, if slim { 0.5 } else { 0.0 }, baby);
@@ -24483,10 +24483,11 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
             row: &Value,
             hand_shift: f32,
             baby: bool,
-        ) -> (Vec<Vec<String>>, Vec<Vec<String>>) {
+        ) -> (Vec<Vec<String>>, Vec<Vec<String>>, Option<Vec<String>>) {
             let hex = |value: f32| format!("{:08x}", value.to_bits());
             let mut poses = Vec::new();
             let mut head_poses = Vec::new();
+            let mut skull_quads = None;
             if let Some(scale) = row.get("head_scale") {
                 let bits = |value: &Value| {
                     value
@@ -24506,6 +24507,28 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                     head,
                     (bits(&row["head_y_offset"]), bits(scale)),
                 );
+                if let Some(kind) = row["skull"].as_str().and_then(|name| match name {
+                    "skeleton" => Some(voxel_render::skull::SkullKind::Skeleton),
+                    "wither_skeleton" => Some(voxel_render::skull::SkullKind::WitherSkeleton),
+                    "player" => Some(voxel_render::skull::SkullKind::Player),
+                    "zombie" => Some(voxel_render::skull::SkullKind::Zombie),
+                    "creeper" => Some(voxel_render::skull::SkullKind::Creeper),
+                    "piglin" => Some(voxel_render::skull::SkullKind::Piglin),
+                    "dragon" => Some(voxel_render::skull::SkullKind::Dragon),
+                    _ => None,
+                }) {
+                    let mut skull = voxel_render::mob_model::MobModel::bake(
+                        voxel_data::entity_model::layer(kind.layer()).expect("the skull's layer"),
+                    );
+                    skull.setup_skull(kind, bits(&row["skull_animation"]));
+                    let skull_pose = voxel_render::skull::skull_pose(
+                        &Pose::default(),
+                        root,
+                        head,
+                        (bits(&row["head_skull_y"]), bits(scale)),
+                    );
+                    skull_quads = Some(sorted_quads(skull.render(&skull_pose)));
+                }
                 pose.translate(-0.5, -0.5, -0.5);
                 head_poses.push(
                     (0..4)
@@ -24527,6 +24550,43 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                     .find(|part| part.name() == name)
                     .expect("the model has its arms");
                 let mut pose = hand_pose(&Pose::default(), root, arm, side, hand_shift, baby);
+                // A spyglass in use is held to the eye instead.
+                if row["kind"]
+                    .as_str()
+                    .is_some_and(|kind| kind.starts_with("player"))
+                    && row["eye_item"].as_bool().unwrap_or(false)
+                    && voxel_render::held_item::eye_held_arm(
+                        (
+                            row["using_item"].as_bool().unwrap_or(false),
+                            row["use_hand"].as_str() != Some("off"),
+                        ),
+                        (
+                            if row["main_arm"].as_str() == Some("left") {
+                                Arm::Left
+                            } else {
+                                Arm::Right
+                            },
+                            row["attack_time"]
+                                .as_str()
+                                .and_then(|text| u32::from_str_radix(text, 16).ok())
+                                .map_or(0.0, f32::from_bits),
+                        ),
+                        true,
+                        side,
+                    )
+                {
+                    let head = root
+                        .children()
+                        .iter()
+                        .find(|part| part.name() == "head")
+                        .expect("the model has a head");
+                    pose = voxel_render::held_item::held_to_eye_pose(
+                        &Pose::default(),
+                        root,
+                        head,
+                        side,
+                    );
+                }
                 // `ItemTransform.NO_TRANSFORM.apply` of the layer.
                 pose.translate(-0.5, -0.5, -0.5);
                 // Column by column, as `Matrix4f.get` writes them.
@@ -24537,11 +24597,14 @@ fn held_item_pose_result(request: &Value) -> Result<Value, String> {
                         .collect(),
                 );
             }
-            (poses, head_poses)
+            (poses, head_poses, skull_quads)
         }
         let mut described = json!({"label": row["label"], "quads": quads, "poses": poses});
         if row.get("head_scale").is_some() {
             described["head_poses"] = json!(head_poses);
+        }
+        if let Some(skull) = skull_quads {
+            described["skull_quads"] = json!(skull);
         }
         out.push(described);
     }

@@ -171,6 +171,7 @@ pub fn remote_illagers(
             left: entity.item_held_by_arm(true).filter(|_| hands),
             head: entity.equipment(EquipmentSlot::Head),
             head_transforms: HEAD_TRANSFORMS,
+            eye: None,
         }
         .collect(held);
         vertices.extend(mob_vertices(model, &placed, rect));

@@ -15662,7 +15662,7 @@ def entity_held_item_cases():
     def row(label, kind, baby=False, right="empty", left="empty", holds=(False, False),
             main="right", head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
             age=0.0, attack=0.0, swim=0.0, crouching=False, aggressive=False, bow=False,
-            head=None, used=0.0, charge=0.0, using=False, hand="main", passenger=False, gliding=False, speed=1.0):
+            head=None, used=0.0, charge=0.0, using=False, hand="main", passenger=False, gliding=False, speed=1.0, skull=None, skull_anim=0.0, eye=False):
         out = {"label": f"{kind}{'-baby' if baby else ''}-{label}", "kind": kind, "baby": baby,
                 "ticks_using_item": float_bits(used), "max_crossbow_charge": float_bits(charge),
                 "using_item": using, "use_hand": hand, "passenger": passenger, "fall_flying": gliding,
@@ -15677,6 +15677,10 @@ def entity_held_item_cases():
         if head is not None:
             out.update({"head_y_offset": float_bits(head[0]), "head_skull_y": float_bits(head[1]),
                         "head_scale": float_bits(head[2])})
+        if skull is not None:
+            out.update({"skull": skull, "skull_animation": float_bits(skull_anim)})
+        if eye:
+            out["eye_item"] = True
         return out
 
     rows = []
@@ -15779,6 +15783,41 @@ def entity_held_item_cases():
                 row("head-item-crouching", kind, baby, head=transforms, crouching=True, age=3.0),
             ]
     rows.append(row("head-item-villager-transforms", "zombie", head=(-0.1171875, -0.07421875, 1.0),
+                    walk_position=7.3, walk_speed=0.83))
+    # A skull on the head: each kind, the walk's swing of a piglin's ears and a dragon's jaw, the head
+    # turned, sneaking, and the renderers' transforms.
+    skulls = ("skeleton", "wither_skeleton", "player", "zombie", "creeper", "piglin", "dragon")
+    for kind, transforms in (("player", default), ("player_slim", default), ("zombie", default),
+                             ("skeleton", default), ("piglin", (0.0, 0.0, 1.0019531))):
+        for baby in ((False, True) if kind in ("zombie", "piglin") else (False,)):
+            for skull in skulls:
+                rows.append(row(f"skull-{skull}", kind, baby, head=transforms, skull=skull, skull_anim=3.7))
+            rows.append(row("skull-piglin-walking", kind, baby, head=transforms, skull="piglin",
+                            skull_anim=12.25, head_y_rot=-35.5, x_rot=48.0))
+            rows.append(row("skull-dragon-walking", kind, baby, head=transforms, skull="dragon",
+                            skull_anim=21.5, crouching=True, age=3.0))
+    # A spyglass in use is held to the eye (a player's only), from either hand, looking about, and when
+    # it is not (swinging, another hand, not in use).
+    for kind in ("player", "player_slim"):
+        for main in ("right", "left"):
+            for hand in ("main", "off"):
+                for label, yaw, pitch in (("level", 0.0, 0.0), ("up", -35.5, -60.0), ("down", 20.0, 80.0),
+                                          ("far-down", 5.0, 120.0)):
+                    right_arm = (main == "right") == (hand == "main")
+                    sides = {"right": "spyglass" if right_arm else "item",
+                             "left": "item" if right_arm else "spyglass"}
+                    rows.append(row(f"eye-{main}-{hand}-{label}", kind, right=sides["right"], left=sides["left"],
+                                    holds=(True, True), main=main, using=True, hand=hand, eye=True,
+                                    head_y_rot=yaw, x_rot=pitch, age=4.5))
+        rows += [
+            row("eye-swinging", kind, right="spyglass", left="item", holds=(True, True), using=True,
+                eye=True, attack=0.3, age=4.5),
+            row("eye-not-in-use", kind, right="spyglass", left="item", holds=(True, True), eye=True),
+            row("eye-crouching", kind, right="spyglass", left="item", holds=(True, True), using=True,
+                eye=True, crouching=True, head_y_rot=10.0, x_rot=-20.0),
+            row("eye-no-eye-item", kind, right="spyglass", left="item", holds=(True, True), using=True,
+                head_y_rot=10.0, x_rot=-20.0)]
+    rows.append(row("skull-villager-transforms", "zombie", head=(-0.1171875, -0.07421875, 1.0), skull="zombie",
                     walk_position=7.3, walk_speed=0.83))
     yield {
         "case_id": "entity/held-item-pose",

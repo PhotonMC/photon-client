@@ -736,12 +736,9 @@ fn remote_humanoids(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let (mut humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
+        let (humanoid, holding_bow, arm_pose) =
+            humanoid_state(session, entity, &snapshot, (kind, partial));
         let aggressive = entity.is_aggressive();
-        let arm_pose = piglin_arm_pose(session, entity, kind);
-        humanoid.ticks_using_item = entity.ticks_using_item(partial);
-        humanoid.max_crossbow_charge_duration =
-            crate::arm_poses::charge_duration_of_use(session, entity);
         let placement = placement(world, &snapshot, view, kind.scale * entity.scale());
         // What it wears, in the armor models of its build, posed as it is.
         let worn = Worn {
@@ -751,6 +748,7 @@ fn remote_humanoids(
             feet: entity.equipment(EquipmentSlot::Feet),
         };
         let mut first = true;
+        let mut skull = None;
         for (layer, texture) in model_layers(kind, baby).into_iter().flatten() {
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
                 continue;
@@ -763,7 +761,7 @@ fn remote_humanoids(
             );
             if first {
                 first = false;
-                Hands {
+                let hands = Hands {
                     base: &placement_pose(&placement),
                     root: model.root(),
                     hand_shift: if matches!(kind.family, Family::Skeleton) {
@@ -782,41 +780,25 @@ fn remote_humanoids(
                     } else {
                         HEAD_TRANSFORMS
                     },
-                }
-                .collect(held);
+                    eye: None,
+                };
+                hands.collect(held);
+                skull = hands.skull();
             }
             vertices.extend(mob_vertices(model, &placement, rect));
         }
-        let layer = if baby {
-            kind.baby_layer
-        } else {
-            kind.adult_layer
-        };
-        let prefix = layer.strip_suffix("#main").unwrap_or(layer);
-        vertices.extend(armor.vertices(
-            worn,
-            (prefix, baby),
+        vertices.extend(armor.skull_vertices(
+            skull,
+            snapshot.walk_position,
             textures,
-            &|model| {
-                pose_humanoid(
-                    model,
-                    kind,
-                    (humanoid, aggressive, holding_bow),
-                    (entity, arm_pose),
-                )
-            },
-            &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
+            (placement.light, snapshot.red_overlay),
         ));
-        // `WingsLayer`: an elytra on the chest, grown or baby.
-        vertices.extend(armor.wings(
-            worn.chest,
-            (
-                baby,
-                entity.is_crouching(),
-                entity.elytra_rotations(partial),
-            ),
-            textures,
-            &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
+        vertices.extend(worn_layers(
+            armor,
+            (worn, textures),
+            (entity, kind, baby),
+            (humanoid, aggressive, holding_bow, arm_pose),
+            (&placement, partial),
         ));
         vertices.extend(profession_layers(
             (models, textures),
@@ -826,6 +808,67 @@ fn remote_humanoids(
             &placement,
         ));
     }
+    vertices
+}
+
+/// What a humanoid mob's model is posed from: its walk, arms and use, whether it holds a bow, and a
+/// piglin's arm pose.
+fn humanoid_state(
+    session: &PlaySession,
+    entity: &voxel_world::ClientEntity,
+    snapshot: &voxel_world::EntitySnapshot,
+    (kind, partial): (&HumanoidKind, f32),
+) -> (PlayerRenderState, bool, PiglinArmPose) {
+    let (mut humanoid, holding_bow) = humanoid_pose(entity, snapshot, kind, partial);
+    humanoid.ticks_using_item = entity.ticks_using_item(partial);
+    humanoid.max_crossbow_charge_duration =
+        crate::arm_poses::charge_duration_of_use(session, entity);
+    (
+        humanoid,
+        holding_bow,
+        piglin_arm_pose(session, entity, kind),
+    )
+}
+
+/// What a humanoid mob wears over its model: its armor and its wings, posed as it is.
+fn worn_layers(
+    armor: &mut Armor,
+    (worn, textures): (Worn, &EntityTextures),
+    (entity, kind, baby): (&voxel_world::ClientEntity, &HumanoidKind, bool),
+    (humanoid, aggressive, holding_bow, arm_pose): (PlayerRenderState, bool, bool, PiglinArmPose),
+    (placement, partial): (&MobPlacement, f32),
+) -> Vec<Vertex> {
+    let layer = if baby {
+        kind.baby_layer
+    } else {
+        kind.adult_layer
+    };
+    let prefix = layer.strip_suffix("#main").unwrap_or(layer);
+    let mut vertices = armor.vertices(
+        worn,
+        (prefix, baby),
+        textures,
+        &|model| {
+            pose_humanoid(
+                model,
+                kind,
+                (humanoid, aggressive, holding_bow),
+                (entity, arm_pose),
+            )
+        },
+        &|model, rect, colour| mob_vertices_coloured(model, placement, rect, colour),
+    );
+    // `WingsLayer`: an elytra on the chest, grown or baby.
+    vertices.extend(armor.wings(
+        worn.chest,
+        (
+            baby,
+            entity.is_crouching(),
+            entity.elytra_rotations(partial),
+        ),
+        textures,
+        &|model, rect, colour| mob_vertices_coloured(model, placement, rect, colour),
+    ));
     vertices
 }
 

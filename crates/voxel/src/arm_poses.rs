@@ -169,6 +169,53 @@ pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> 
     }
 }
 
+/// `PlayerItemInHandLayer.submitArmWithItem`: the arm whose spyglass is held to the eye, if one is.
+pub fn eye_arm(
+    arms: &ArmState,
+    (main_arm, attack_time): (Arm, f32),
+    (right, left): (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
+) -> Option<Arm> {
+    let is_spyglass = |stack: Option<&ClientItemStackState>| {
+        stack.is_some_and(|stack| {
+            voxel_world::block_rules::item(stack.item_registry_id())
+                .is_some_and(|item| item.class == ItemClass::SpyglassItem)
+        })
+    };
+    [(Arm::Right, right), (Arm::Left, left)]
+        .into_iter()
+        .find(|(side, stack)| {
+            voxel_render::held_item::eye_held_arm(
+                (arms.using_item, arms.use_main_hand),
+                (main_arm, attack_time),
+                is_spyglass(*stack),
+                *side,
+            )
+        })
+        .map(|(side, _)| side)
+}
+
+/// [`eye_arm`] of a remote player.
+pub fn eye_arm_of(
+    session: &PlaySession,
+    entity: &ClientEntity,
+    attack_time: f32,
+    partial: f32,
+) -> Option<Arm> {
+    let main_arm = if entity.main_arm_is_left() {
+        Arm::Left
+    } else {
+        Arm::Right
+    };
+    eye_arm(
+        &arm_state(session, entity, partial),
+        (main_arm, attack_time),
+        (
+            entity.item_held_by_arm(false),
+            entity.item_held_by_arm(true),
+        ),
+    )
+}
+
 /// `AvatarRenderer.extractFlightData`: how far a gliding player has tipped forward, and which way
 /// the flight turns it (the movement against the look, when both have a heading).
 pub(crate) fn fall_flying(
@@ -268,5 +315,33 @@ mod tests {
     fn a_crossbow_with_nothing_loaded_is_not_held_up() {
         assert!(!is_charged_crossbow(&stack("minecraft:crossbow")));
         assert!(!is_charged_crossbow(&stack("minecraft:bow")));
+    }
+
+    #[test]
+    fn a_spyglass_in_use_is_held_to_the_eye_by_the_arm_that_uses_it() {
+        let arms = |using, main| ArmState {
+            right: ArmPose::Spyglass,
+            left: ArmPose::Item,
+            using_item: using,
+            use_main_hand: main,
+            ticks_using_item: 3.0,
+            max_crossbow_charge: 25.0,
+        };
+        let spyglass = stack("minecraft:spyglass");
+        let stick = stack("minecraft:stick");
+        let stacks = (Some(&spyglass), Some(&stick));
+        assert_eq!(
+            eye_arm(&arms(true, true), (Arm::Right, 0.0), stacks),
+            Some(Arm::Right)
+        );
+        // Not in use, swinging, or used by the other hand: held in the hand.
+        assert_eq!(eye_arm(&arms(false, true), (Arm::Right, 0.0), stacks), None);
+        assert_eq!(eye_arm(&arms(true, true), (Arm::Right, 0.3), stacks), None);
+        assert_eq!(eye_arm(&arms(true, false), (Arm::Right, 0.0), stacks), None);
+        // A left-handed player's off hand is the right one.
+        assert_eq!(
+            eye_arm(&arms(true, false), (Arm::Left, 0.0), stacks),
+            Some(Arm::Right)
+        );
     }
 }

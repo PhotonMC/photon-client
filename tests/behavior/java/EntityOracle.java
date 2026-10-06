@@ -294,6 +294,10 @@ public final class EntityOracle {
                 row.get("right_pose").getAsString().toUpperCase());
             state.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.valueOf(
                 row.get("left_pose").getAsString().toUpperCase());
+            if (row.has("eye_item") && row.get("eye_item").getAsBoolean()) {
+                // A spyglass in use is held to the eye.
+                ((net.minecraft.client.renderer.entity.state.AvatarRenderState) state).heldOnHead.newLayer();
+            }
             if (row.get("holds_right").getAsBoolean()) {
                 state.rightHandItemState.newLayer();
             }
@@ -351,6 +355,39 @@ public final class EntityOracle {
                 new net.minecraft.client.renderer.entity.layers.CustomHeadLayer(parent, null, null, transforms)
                     .submit(new com.mojang.blaze3d.vertex.PoseStack(), headCollector, 0, state, 0.0F, 0.0F);
                 out.add("head_poses", headPoses);
+                if (row.has("skull")) {
+                    // A skull on the head, by the real layer and the real skull model: the quads where
+                    // the layer draws them.
+                    state.headItem.clear();
+                    state.wornHeadType = net.minecraft.world.level.block.SkullBlock.Types.valueOf(
+                        row.get("skull").getAsString().toUpperCase(java.util.Locale.ROOT));
+                    state.wornHeadAnimationPos = Oracle.f32(row, "skull_animation");
+                    var skullQuads = new JsonArray();
+                    var skullCollector = (net.minecraft.client.renderer.SubmitNodeCollector)
+                        java.lang.reflect.Proxy.newProxyInstance(
+                            EntityOracle.class.getClassLoader(),
+                            new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                            (proxy, method, args) -> {
+                                if (method.getName().equals("submitModel")
+                                        && args[0] instanceof net.minecraft.client.model.object.skull.SkullModelBase skull) {
+                                    skull.setupAnim((net.minecraft.client.model.object.skull.SkullModelBase.State) args[1]);
+                                    var capture = new Capture();
+                                    skull.root().render((com.mojang.blaze3d.vertex.PoseStack) args[2], capture, 0, 0);
+                                    var quads = new java.util.ArrayList<String>();
+                                    for (int i = 0; i < capture.vertices.size(); i += 4) {
+                                        quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+                                    }
+                                    java.util.Collections.sort(quads);
+                                    quads.forEach(skullQuads::add);
+                                }
+                                return null;
+                            });
+                    var modelSet = new net.minecraft.client.model.geom.EntityModelSet(
+                        net.minecraft.client.model.geom.LayerDefinitions.createRoots());
+                    new net.minecraft.client.renderer.entity.layers.CustomHeadLayer(parent, modelSet, null, transforms)
+                        .submit(new com.mojang.blaze3d.vertex.PoseStack(), skullCollector, 0, state, 0.0F, 0.0F);
+                    out.add("skull_quads", skullQuads);
+                }
             }
             rows.add(out);
         }

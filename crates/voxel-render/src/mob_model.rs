@@ -2418,6 +2418,46 @@ impl MobModel {
         }
     }
 
+    /// `SkullModel.setupAnim` and its piglin's and dragon's: the head faces straight ahead (the
+    /// layer gives the skull no turn), a piglin's ears swing and a dragon's jaw works with the
+    /// walk (`animation_pos`).
+    pub fn setup_skull(&mut self, kind: crate::skull::SkullKind, animation_pos: f32) {
+        use crate::skull::SkullKind;
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        match kind {
+            SkullKind::Piglin => {
+                if let Some(head) = self.root.child_mut("head") {
+                    head.y_rot = 0.0;
+                    head.x_rot = 0.0;
+                    // `Math.cos` of a float's double, not the table `Mth.cos` reads.
+                    let ear = |value: f32| f64::from(value).cos();
+                    if let Some(left) = head.child_mut("left_ear") {
+                        left.z_rot = (-(ear(animation_pos * pi * 0.2 * 1.2) + 2.5)) as f32 * 0.2;
+                    }
+                    if let Some(right) = head.child_mut("right_ear") {
+                        right.z_rot = (ear(animation_pos * pi * 0.2) + 2.5) as f32 * 0.2;
+                    }
+                }
+            }
+            SkullKind::Dragon => {
+                if let Some(head) = self.root.child_mut("head") {
+                    if let Some(jaw) = head.child_mut("jaw") {
+                        jaw.x_rot = (f64::from(animation_pos * pi * 0.2).sin() + 1.0) as f32 * 0.2;
+                    }
+                    head.y_rot = 0.0;
+                    head.x_rot = 0.0;
+                }
+            }
+            _ => {
+                if let Some(head) = self.root.child_mut("head") {
+                    head.y_rot = 0.0;
+                    head.x_rot = 0.0;
+                }
+            }
+        }
+    }
+
     /// Move the whole model (`PoseStack.translate` before its own pose), in model units.
     pub fn shift_root(&mut self, [x, y, z]: [f32; 3]) {
         self.root.x += x;

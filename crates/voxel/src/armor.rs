@@ -9,6 +9,7 @@ use voxel_render::entity_textures::{EntityTextures, TextureRect};
 use voxel_render::equipment::{EquipmentInfo, parse_equipment_info};
 use voxel_render::mob_model::MobModel;
 use voxel_render::scene::Vertex;
+use voxel_render::skull::SkullKind;
 use voxel_render::trim::{PalettedPermutations, TrimData, permute, sprite_path};
 use voxel_world::ClientItemStackState;
 
@@ -193,10 +194,11 @@ impl Armor {
 
     /// The paths (under `textures/`) of every texture a humanoid's armor wears.
     pub fn textures(&self) -> Vec<String> {
-        let mut paths: Vec<String> = self
-            .infos
-            .values()
-            .flat_map(|info| {
+        // The skulls a head wears are drawn in their own mobs' textures.
+        let skulls = SkullKind::ALL.map(|kind| kind.texture().to_owned());
+        let mut paths: Vec<String> = skulls
+            .into_iter()
+            .chain(self.infos.values().flat_map(|info| {
                 [HUMANOID, LEGGINGS, BABY, WINGS]
                     .into_iter()
                     .chain(SIMPLE)
@@ -205,7 +207,7 @@ impl Armor {
                             .iter()
                             .map(move |layer| layer.texture_path(layer_type))
                     })
-            })
+            }))
             .collect();
         paths.sort();
         paths.dedup();
@@ -276,6 +278,36 @@ impl Armor {
             }
         }
         vertices
+    }
+
+    /// `CustomHeadLayer`'s skull: the skull's model, posed by the wearer's walk (a piglin's ears and a
+    /// dragon's jaw follow it), in its texture, from the pose the layer leaves.
+    pub fn skull_vertices(
+        &mut self,
+        skull: Option<(SkullKind, voxel_render::joml::Pose)>,
+        animation_pos: f32,
+        textures: &EntityTextures,
+        (light, red_overlay): (i32, bool),
+    ) -> Vec<Vertex> {
+        let Some((kind, pose)) = skull else {
+            return Vec::new();
+        };
+        let Some(rect) = textures.rect(kind.texture()) else {
+            return Vec::new();
+        };
+        if !self.models.contains_key(kind.layer()) {
+            let Some(layer) = voxel_data::entity_model::layer(kind.layer()) else {
+                return Vec::new();
+            };
+            self.models
+                .insert(kind.layer().to_owned(), MobModel::bake(layer));
+        }
+        let model = self
+            .models
+            .get_mut(kind.layer())
+            .expect("the model was just built");
+        model.setup_skull(kind, animation_pos);
+        voxel_render::mob_model::mob_vertices_posed(model, &pose, rect, (light, red_overlay))
     }
 
     /// `WingsLayer`: the wings of what is worn on the chest (an elytra), spread by the wearer's

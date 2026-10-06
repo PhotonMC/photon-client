@@ -225,6 +225,11 @@ impl Play {
                 .map(str::to_owned)
                 .chain(villagers::textures())
                 .chain(armor.textures())
+                // A texture two layers share is packed once.
+                .scan(std::collections::HashSet::new(), |seen, name| {
+                    Some(seen.insert(name.clone()).then_some(name))
+                })
+                .flatten()
                 .map(|name| {
                     let image = texture(&root, &name, "entity texture")?;
                     Ok((name, image))
