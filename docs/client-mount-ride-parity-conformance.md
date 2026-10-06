@@ -80,3 +80,16 @@ Kapsanan: düz, koşu, yön, kısa/çift/yukarı bakarak/koşarken koşu, oturan
 derin su, suda oturan, buz, balçık, düşme, `CamelHusk`.
 Sapmalar (kayıtlı): çit sınırı ve basamak dışında entity itişi/çarpışması yok; bebek ve ölçekli deve koltuğu sınanmadı;
 ses yok; ikinci yolcu koltuğu (`index != 0`) oracle'da yok; minecart yolcusu ve binme/inme akışı T44c4'e bırakıldı.
+
+## Minecart yolcusu, binme ve inme (T44c4)
+
+`movement/ride-minecart`: 6 satır gerçek `Minecart` ve `MinecartChest` ile bit bit eşit: sunucunun yürüttüğü araçta yolcu
+koltukta oturur (tür tablosundan koltuk, aracın yönüyle döner), kendi tuşları aracı oynatmaz; duran, tuşlu, bakışlı, sandıklı,
+hareket vektörlü ve havada araç. Eski (deneysel olmayan) minecart davranışı; yeni davranış T38c'dedir.
+Binme/inme akışı istemci tarafında yalnız paket işleyicileridir ve `play.rs` birim testiyle kapanır (oracle'sız,
+`client-parity` değil): `SetPassengers` ile binen oyuncuya `mount.onboard` ("Press Left Shift to Dismount") eylem çubuğu
+iletisi gelir; araç yolcusuyla silinirse (`RemoveEntities`) kimliği anılır, `Teleport` o kimliğe gelirse oyuncuyu taşır ve
+sunucuya `PosRot` gönderilir, aracın yeniden eklenmesi ya da yeniden binme anıyı siler. Ayrıca `PlayerPosition` yolcuyu
+artık yerinden oynatmaz (`handleMovePlayer`: `isPassenger` ise konum uygulanmaz) ve cevap oyuncunun gerçek konumunu taşır.
+Sapma: inme konumu (`getDismountLocationForPassenger`) sunucuda hesaplanır, istemcide yok; araç yolcusuyla silinmeden önce
+dolaylı yolcu (araç içinde araç) zinciri testte yok; mızrak/bineğe özel `mount.onboard` yok.

@@ -13747,6 +13747,25 @@ def movement_cases():
         "rows": strider_rows,
     }
 
+    # Riding a minecart, which the server moves: the rider sits at its seat and keeps its own
+    # keys to itself, with the minecart standing, rolled to a heading or off the ground.
+    minecart_rows = [
+        ride("minecart-idle", floor(), keys(30), kind="minecraft:minecart"),
+        ride("minecart-keys", floor(), keys(20, forward=True, left=True) + keys(10, jump=True, sneak=True),
+             kind="minecraft:minecart"),
+        ride("minecart-look", floor(), looking(keys(40), (0.0, 0.0), (90.0, 20.0), (-45.0, -60.0)),
+             kind="minecraft:minecart", y_rot=70.0),
+        ride("minecart-chest", floor(), keys(20), kind="minecraft:chest_minecart", y_rot=-30.0),
+        ride("minecart-motion", floor(), keys(30), kind="minecraft:minecart", motion=(0.2, 0.0, 0.1)),
+        ride("minecart-air", floor(), keys(40), kind="minecraft:minecart", boat=(0.5, 70.0, 0.5)),
+    ]
+    yield {
+        "case_id": "movement/ride-minecart",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": minecart_rows,
+    }
+
     # Breaking: the attack key as `handleKeybinds` spends it, into the
     # reference's own game mode. The target is named, not picked. Each tick
     # reports the game mode's destroy state, the crack stage the level keeps,

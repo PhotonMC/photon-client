@@ -17,4 +17,9 @@
 `docs/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+Minecart: `ride-minecart` 6 satır gerçek Minecart/MinecartChest ile bit bit eşit (duran araç; kayıt conformance belgesinde).
+Binme/inme: `mount.onboard` eylem çubuğu iletisi, araç yolcusuyla silinince `Teleport`ın oyuncuya uygulanması
+(`removedPlayerVehicleId`) ve yolcuya `PlayerPosition` uygulanmaması — `play.rs` birim testi, oracle yok.
+Oracle'da `enabledFeatures` aracı yaratmadan önce kurulmalı (minecart kurucusu okur).
+Sapma: inme konumu sunucuda; dolaylı yolcu zinciri ve `mount.onboard` ekran görüntüsü yalnız canlıda (domuz) görüldü.
+Açık: minecart'ın kendi hareketi T38c.

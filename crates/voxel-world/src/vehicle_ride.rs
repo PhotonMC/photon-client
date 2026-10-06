@@ -68,6 +68,36 @@ impl ClientWorld {
             .then_some(vehicle_id)
     }
 
+    /// `Entity.hasIndirectPassenger(player)`: whether the local player sits in this entity, or in
+    /// something that sits in it.
+    pub fn entity_carries_local_player(&self, entity_id: i32) -> bool {
+        let Some(player_id) = self.local_player.as_ref().map(|player| player.id) else {
+            return false;
+        };
+        let mut current = self.entity_vehicle_id(player_id);
+        // A vehicle chain is never this deep; the bound only keeps a bad packet from looping.
+        for _ in 0..64 {
+            match current {
+                Some(id) if id == entity_id => return true,
+                Some(id) => current = self.entity_vehicle_id(id),
+                None => return false,
+            }
+        }
+        false
+    }
+
+    /// `Entity.isPassenger` for the local player.
+    pub fn local_player_is_passenger(&self) -> bool {
+        self.local_player
+            .as_ref()
+            .is_some_and(|player| player.vehicle_id.is_some())
+    }
+
+    /// Whether the level has an entity of this id.
+    pub fn has_entity(&self, entity_id: i32) -> bool {
+        self.entities.contains_key(&entity_id)
+    }
+
     /// What the local player's tick reads of the vehicle it rides.
     pub fn vehicle_view(&self, vehicle_id: i32) -> Option<VehicleView> {
         let player = self.local_player.as_ref()?;

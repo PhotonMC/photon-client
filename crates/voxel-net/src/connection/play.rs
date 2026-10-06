@@ -122,6 +122,8 @@ pub struct PlaySession {
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
     hud_events: Vec<HudEvent>,
+    /// The vehicle the server removed with the local player aboard (`removedPlayerVehicleId`).
+    removed_player_vehicle: Option<i32>,
     scoreboard: voxel_game::scoreboard::Scoreboard,
     waypoints: voxel_game::waypoint::WaypointManager,
     /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`), which
@@ -223,6 +225,7 @@ impl PlaySession {
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
+            removed_player_vehicle: None,
             scoreboard: voxel_game::scoreboard::Scoreboard::default(),
             waypoints: voxel_game::waypoint::WaypointManager::default(),
             permission_level: 0,
@@ -1500,6 +1503,9 @@ impl PlaySession {
             // cannot place.
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
                 if let Ok(packet) = parse_add_entity_packet(payload) {
+                    if self.removed_player_vehicle == Some(packet.entity_id) {
+                        self.removed_player_vehicle = None;
+                    }
                     entities::add(&mut self.trace.world, &packet);
                 }
             }
@@ -1520,6 +1526,15 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
                 if let Ok(packet) = parse_remove_entities_packet(payload) {
+                    // `handleRemoveEntities`: a vehicle that goes with its rider aboard is
+                    // remembered, for a teleport the server may still address to it.
+                    for &id in &packet.entity_ids {
+                        if self.trace.world.has_entity(id)
+                            && self.trace.world.entity_carries_local_player(id)
+                        {
+                            self.removed_player_vehicle = Some(id);
+                        }
+                    }
                     entities::remove(&mut self.trace.world, &packet);
                 }
             }
@@ -1527,6 +1542,26 @@ impl PlaySession {
                 if let Ok(packet) = parse_set_passengers_packet(payload) {
                     let was_aboard = self.trace.world.ridden_vehicle_of_local_player();
                     entities::passengers(&mut self.trace.world, &packet);
+                    if self
+                        .player_id
+                        .is_some_and(|id| packet.passenger_ids.contains(&id))
+                    {
+                        self.removed_player_vehicle = None;
+                    }
+                    // `handleSetEntityPassengersPacket`: boarding tells the rider how to get off.
+                    if was_aboard != Some(packet.vehicle_id)
+                        && self.trace.world.ridden_vehicle_of_local_player()
+                            == Some(packet.vehicle_id)
+                    {
+                        self.hud_events.push(HudEvent::ActionBar(
+                            voxel_game::text::Component::translatable_with(
+                                "mount.onboard",
+                                vec![voxel_game::text::Component::translatable(
+                                    "key.keyboard.left.shift",
+                                )],
+                            ),
+                        ));
+                    }
                     // A player who has just boarded looks the way the boat or the horse faces.
                     if was_aboard.is_none()
                         && let Some(vehicle) = self.trace.world.ridden_vehicle_of_local_player()
@@ -1551,6 +1586,12 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
                 if let Ok(packet) = parse_entity_teleport_packet(payload) {
+                    if !self.trace.world.has_entity(packet.entity_id)
+                        && self.removed_player_vehicle == Some(packet.entity_id)
+                    {
+                        // The vehicle is gone: the teleport meant for it moves the rider.
+                        self.move_former_rider(&packet)?;
+                    }
                     entities::teleport(&mut self.trace.world, &packet);
                 }
             }
@@ -2136,16 +2177,15 @@ impl PlaySession {
     }
 
     /// `ClientPacketListener.handleMovePlayer`.
-    fn handle_player_position(
-        &mut self,
-        packet: PlayerPositionPacket,
-    ) -> Result<(), ConnectionError> {
+    /// `setValuesFromPositionPacket` for the local player: a rider stays where its vehicle puts it.
+    fn place_player(&mut self, packet: &PlayerPositionPacket) {
+        let passenger = self.trace.world.local_player_is_passenger();
         let current = self.player.as_ref().map(|player| {
             let position = player.position();
             let (y_rot, x_rot) = player.rotation();
             (position.x, position.y, position.z, y_rot, x_rot)
         });
-        let absolute = resolve_player_position(packet, current);
+        let absolute = resolve_player_position(*packet, current);
         let position = Vec3::new(absolute.0, absolute.1, absolute.2);
         let known_health = self.health_received.then_some(self.status.health);
         let player = self.player.get_or_insert_with(|| {
@@ -2187,11 +2227,54 @@ impl PlaySession {
                     0.0
                 },
         );
-        player.apply_teleport(position, delta, absolute.3, absolute.4);
+        if !passenger {
+            player.apply_teleport(position, delta, absolute.3, absolute.4);
+        }
+    }
+
+    /// `handleMovePlayer`: where the server puts the player, which it accepts and answers with
+    /// where the player now is.
+    fn handle_player_position(
+        &mut self,
+        packet: PlayerPositionPacket,
+    ) -> Result<(), ConnectionError> {
+        self.place_player(&packet);
         self.send(PLAY_SERVERBOUND_ACCEPT_TELEPORTATION_PACKET_ID, |output| {
             wire::write_varint(packet.teleport_id, output);
             Ok(())
         })?;
+        self.send_player_pos_rot()
+    }
+
+    /// `handleTeleportEntity` for a vehicle that was removed under its rider: the rider is moved
+    /// in its place and tells the server where it is.
+    fn move_former_rider(
+        &mut self,
+        packet: &EntityTeleportObservation,
+    ) -> Result<(), ConnectionError> {
+        self.place_player(&PlayerPositionPacket {
+            teleport_id: 0,
+            x: packet.x,
+            y: packet.y,
+            z: packet.z,
+            delta_x: packet.delta_x,
+            delta_y: packet.delta_y,
+            delta_z: packet.delta_z,
+            y_rot: packet.y_rot,
+            x_rot: packet.x_rot,
+            relative_flags: packet.relative_flags,
+        });
+        self.send_player_pos_rot()
+    }
+
+    /// The `PosRot` the player sends after a teleport: where it is now, in the air, free of walls.
+    fn send_player_pos_rot(&mut self) -> Result<(), ConnectionError> {
+        let Some(player) = self.player.as_ref() else {
+            return Ok(());
+        };
+        let position = player.position();
+        let (y_rot, x_rot) = player.rotation();
+        let absolute = (position.x, position.y, position.z, y_rot, x_rot);
         self.send(PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID, |output| {
             encode_move_player_pos_rot(output, absolute, 0)
         })
@@ -2380,5 +2463,63 @@ mod tests {
         let half = session.entity_snapshot(7, 0.5).unwrap().position;
         assert!((half.0 - (old.0 + new.0) / 2.0).abs() < 1e-9);
         assert!(session.entity_snapshot(99, 0.5).is_none());
+    }
+
+    #[test]
+    fn a_rider_is_told_how_to_dismount_and_follows_a_vehicle_removed_under_it() {
+        let (mut session, _far_end) = detached();
+        session.player_id = Some(1);
+        session.trace.world.set_local_player_id(1);
+        session.player = Some(LocalPlayer::new(
+            1,
+            Vec3::new(8.0, 64.0, 8.0),
+            0.0,
+            0.0,
+            session.game_mode,
+            session.auto_jump,
+        ));
+        let minecart = voxel_data::entity_type::id("minecraft:minecart").unwrap() as u32;
+        session.handle(&add_entity_of_type(1, 156, 8.0)).unwrap();
+        session
+            .handle(&add_entity_of_type(7, minecart, 8.0))
+            .unwrap();
+        let mut passengers = varint(PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID as u32);
+        passengers.extend(varint(7));
+        passengers.extend(varint(1));
+        passengers.extend(varint(1));
+        session.handle(&passengers).unwrap();
+        assert_eq!(session.world().ridden_vehicle_of_local_player(), Some(7));
+        assert!(matches!(
+            session.drain_hud().as_slice(),
+            [HudEvent::ActionBar(message)] if matches!(
+                &message.content,
+                voxel_game::text::Content::Translatable { key, .. } if key == "mount.onboard"
+            )
+        ));
+        // The server removes the minecart with the player in it, then moves "it".
+        let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
+        remove.extend(varint(1));
+        remove.extend(varint(7));
+        session.handle(&remove).unwrap();
+        assert_eq!(session.removed_player_vehicle, Some(7));
+        let mut teleport = varint(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID as u32);
+        teleport.extend(varint(7));
+        for value in [20.0_f64, 70.0, -4.0, 0.0, 0.0, 0.0] {
+            teleport.extend(value.to_be_bytes());
+        }
+        for value in [90.0_f32, 10.0] {
+            teleport.extend(value.to_be_bytes());
+        }
+        teleport.extend(0_i32.to_be_bytes());
+        teleport.push(0);
+        session.handle(&teleport).unwrap();
+        let player = session.player.as_ref().unwrap();
+        let at = player.position();
+        assert_eq!((at.x, at.y, at.z), (20.0, 70.0, -4.0));
+        // Boarding again forgets the minecart that went.
+        session
+            .handle(&add_entity_of_type(7, minecart, 8.0))
+            .unwrap();
+        assert_eq!(session.removed_player_vehicle, None);
     }
 }

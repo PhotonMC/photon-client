@@ -2093,6 +2093,10 @@ public final class MovementOracle {
         net.minecraft.world.entity.Entity vehicle = null;
         if (row.has("ride")) {
             var ride = row.getAsJsonObject("ride");
+            // A boat asks (and a minecart, which reads the features as it is made) for the teams of what it could push (no team here), and sounds ask the camera.
+            setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
+            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            setField(minecraft, "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
             var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
                 net.minecraft.resources.Identifier.parse(ride.get("type").getAsString()));
             vehicle = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
@@ -2142,10 +2146,6 @@ public final class MovementOracle {
                     Oracle.f64(ride, "motion_x"), Oracle.f64(ride, "motion_y"), Oracle.f64(ride, "motion_z"));
             }
             vehicle.syncPacketPositionCodec(vehicle.getX(), vehicle.getY(), vehicle.getZ());
-            // A boat asks for the teams of what it could push (no team here), and sounds ask the camera.
-            setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
-            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
-            setField(minecraft, "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
             level.addEntity(vehicle);
             level.addEntity(player);
             setField(minecraft, "level", level);
