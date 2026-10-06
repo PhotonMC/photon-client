@@ -169,7 +169,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T44c1](T44c1-domuz-yolcu.md) | Eyerli domuz ve yönetilmeyen araçta yolcu | M | T44b1 | bitti (db4b6e7b) |
 | [T44c2](T44c2-strider-deve-minecart.md) | Strider (lavda yürüme), deve, minecart; binme/inme | L | T44c1 | bölündü (7a02f132) |
 | [T44c3](T44c3-deve-minecart.md) | Deve (koşu, oturma) sürüşü | M | T44c2 | bitti (2ba44475) |
-| [T44c4](T44c4-minecart-binme-inme.md) | Minecart yolcusu ve binme/inme | M | T44c3 | açık |
+| [T44c4](T44c4-minecart-binme-inme.md) | Minecart yolcusu ve binme/inme | M | T44c3 | bitti (37f8c4ea) |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | bitti (fd8d309d) |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
