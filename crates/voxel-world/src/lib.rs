@@ -31,6 +31,8 @@ mod block_entity;
 pub mod block_rules;
 pub mod block_state;
 pub mod boat;
+mod boat_ride;
+pub use boat_ride::{BoatView, RideState, Status};
 mod border;
 pub mod breeze;
 pub mod cat;
@@ -141,6 +143,8 @@ pub struct ClientWorld {
     /// (`Minecraft.player.chunkPosition()`); unknown until it does.
     local_chunk: Option<(i32, i32)>,
     game_time: u64,
+    /// The paddles each ridden boat's tick told the server of, until the session sends them.
+    paddle_packets: Vec<(bool, bool)>,
     /// `ClientLevel.skyFlashTime`: ticks the sky still flashes for.
     sky_flash_time: i32,
     /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
@@ -205,6 +209,7 @@ impl ClientWorld {
             server_simulation_distance: 3,
             local_chunk: None,
             game_time: 0,
+            paddle_packets: Vec::new(),
             sky_flash_time: 0,
             rain_level_bits: 0,
             thunder_level_bits: 0,
@@ -1548,8 +1553,14 @@ impl ClientWorld {
         }
     }
 
-    fn position_entity_passenger(&mut self, vehicle_id: i32, passenger_id: i32) {
-        let Some(passenger_type_id) = self
+    /// `getPassengerRidingPosition` of a boat for a passenger: where the boat carries it, from
+    /// where the boat stands and faces and how many ride with it.
+    pub(crate) fn boat_rider_position(
+        &self,
+        vehicle_id: i32,
+        passenger_id: i32,
+    ) -> Option<voxel_core::math::Vec3> {
+        let passenger_type_id = self
             .entities
             .get(&passenger_id)
             .map(|entity| entity.type_id)
@@ -1558,41 +1569,27 @@ impl ClientWorld {
                     .as_ref()
                     .filter(|player| player.id == passenger_id)
                     .map(|_| VANILLA_PLAYER_ENTITY_TYPE_ID)
-            })
-        else {
-            return;
-        };
-        let Some((
-            vehicle_type_id,
-            vehicle_position,
-            vehicle_y_rot,
-            passenger_index,
-            passenger_count,
-        )) = self.entities.get(&vehicle_id).and_then(|vehicle| {
-            let passenger_index = vehicle
-                .passenger_ids
-                .iter()
-                .position(|&entity_id| entity_id == passenger_id)?;
-            Some((
-                vehicle.type_id,
-                vehicle.position(),
-                f32::from_bits(vehicle.y_rot_bits),
-                passenger_index,
-                vehicle.passenger_ids.len(),
-            ))
-        })
-        else {
-            return;
-        };
-        let Some((ride_height, single_passenger_z_offset)) = VANILLA_BOAT_PASSENGER_GEOMETRY
+            })?;
+        let (vehicle_type_id, vehicle_position, vehicle_y_rot, passenger_index, passenger_count) =
+            self.entities.get(&vehicle_id).and_then(|vehicle| {
+                let passenger_index = vehicle
+                    .passenger_ids
+                    .iter()
+                    .position(|&entity_id| entity_id == passenger_id)?;
+                Some((
+                    vehicle.type_id,
+                    vehicle.position(),
+                    f32::from_bits(vehicle.y_rot_bits),
+                    passenger_index,
+                    vehicle.passenger_ids.len(),
+                ))
+            })?;
+        let (ride_height, single_passenger_z_offset) = VANILLA_BOAT_PASSENGER_GEOMETRY
             .iter()
             .find(|&&(type_id, _, _)| type_id == vehicle_type_id)
             .map(|&(_, ride_height, single_passenger_z_offset)| {
                 (f64::from(ride_height), f64::from(single_passenger_z_offset))
-            })
-        else {
-            return;
-        };
+            })?;
         let passenger_is_baby = self
             .entities
             .get(&passenger_id)
@@ -1623,6 +1620,18 @@ impl ClientWorld {
             vehicle_position.1 + ride_height - passenger_vehicle_attachment_y,
             vehicle_position.2 + rotated_z,
         );
+        Some(voxel_core::math::Vec3::new(
+            target_position.0,
+            target_position.1,
+            target_position.2,
+        ))
+    }
+
+    fn position_entity_passenger(&mut self, vehicle_id: i32, passenger_id: i32) {
+        let Some(target) = self.boat_rider_position(vehicle_id, passenger_id) else {
+            return;
+        };
+        let target_position = (target.x, target.y, target.z);
         let previous_entity_position = self.entities.get(&passenger_id).map(ClientEntity::position);
         if let Some(passenger) = self.entities.get_mut(&passenger_id) {
             passenger.set_position(target_position);
@@ -1919,30 +1928,19 @@ impl ClientWorld {
         // One read of the entity decides every branch below; the reference
         // evaluates these conditions against the pre-tick state, so they are
         // resolved before the mutable tick borrow is taken.
-        let Some((
-            boat_is_non_authoritative,
-            projectile_kind,
-            projectile_path_is_open,
-            boat_in_air,
-            boat_control,
-        )) = self.entities.get(&entity_id).map(|entity| {
-            let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
-            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
-            let kind = vanilla_projectile_kind(entity.type_id);
-            let path_open = kind.is_some_and(|kind| {
-                self.projectile_path_is_open(
-                    entity.position(),
-                    kind.next_position(entity.position(), entity.motion(), entity.no_gravity),
-                )
-            });
-            (
-                is_boat && !authoritative,
-                kind,
-                path_open,
-                authoritative && self.boat_is_in_air(entity),
-                authoritative.then_some((entity.boat_input, !entity.passenger_ids.is_empty())),
-            )
-        })
+        let Some((boat_is_non_authoritative, projectile_kind, projectile_path_is_open, ridden)) =
+            self.entities.get(&entity_id).map(|entity| {
+                let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
+                let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
+                let kind = vanilla_projectile_kind(entity.type_id);
+                let path_open = kind.is_some_and(|kind| {
+                    self.projectile_path_is_open(
+                        entity.position(),
+                        kind.next_position(entity.position(), entity.motion(), entity.no_gravity),
+                    )
+                });
+                (is_boat && !authoritative, kind, path_open, authoritative)
+            })
         else {
             return;
         };
@@ -1966,7 +1964,11 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
-            entity.tick_boat(boat_under_water);
+            if ridden {
+                entity.tick_boat_start();
+            } else {
+                entity.tick_boat(boat_under_water);
+            }
             let living = entity.living_kind();
             entity.tick_ai_step(living, in_water, targets);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -1997,15 +1999,9 @@ impl ClientWorld {
                 },
                 _ => {}
             }
-            if boat_in_air {
-                entity.tick_boat_float_in_air();
-            }
-            if let Some((input, has_passengers)) = boat_control {
-                entity.tick_boat_control(input, has_passengers);
-            }
-            if boat_in_air {
-                entity.move_by_motion();
-            }
+        }
+        if ridden {
+            self.tick_ridden_boat(entity_id);
         }
         if self.discard_spent_entity(entity_id) {
             return;
@@ -2046,36 +2042,6 @@ impl ClientWorld {
         {
             entity.ticking = in_loaded_chunk;
         }
-    }
-
-    fn boat_is_in_air(&self, entity: &ClientEntity) -> bool {
-        let position = entity.position();
-        let min_x = voxel_core::math::floor_f64(position.0 - VANILLA_BOAT_HALF_WIDTH);
-        let max_x = voxel_core::math::ceil_f64(position.0 + VANILLA_BOAT_HALF_WIDTH);
-        let min_y = voxel_core::math::floor_f64(position.1 - 0.001) - 1;
-        let max_y = voxel_core::math::ceil_f64(position.1 + VANILLA_BOAT_HEIGHT) + 1;
-        let min_z = voxel_core::math::floor_f64(position.2 - VANILLA_BOAT_HALF_WIDTH);
-        let max_z = voxel_core::math::ceil_f64(position.2 + VANILLA_BOAT_HALF_WIDTH);
-
-        for x in min_x..max_x {
-            for y in min_y..max_y {
-                for z in min_z..max_z {
-                    let Some((_, fluid_count)) = self.section_counts_at(
-                        x.div_euclid(16),
-                        y.div_euclid(16),
-                        z.div_euclid(16),
-                    ) else {
-                        return false;
-                    };
-                    if fluid_count != 0
-                        || self.block_state_at(x, y, z) != Some(VANILLA_AIR_BLOCK_STATE_ID)
-                    {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
     }
 
     fn boat_is_local_instance_authoritative(&self, entity: &ClientEntity) -> bool {
@@ -3472,6 +3438,7 @@ impl ClientWorld {
                 old_y_body_rot_bits: entity.rotation.0.to_bits(),
                 delta_rotation_bits: 0.0_f32.to_bits(),
                 boat_input: BoatInput::EMPTY,
+                boat_ride: boat_ride::RideState::default(),
                 paddle_left: false,
                 paddle_right: false,
                 head_rotation_target_bits: entity.rotation.2.to_bits(),

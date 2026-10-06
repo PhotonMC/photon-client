@@ -1908,10 +1908,9 @@ impl Controls {
             WindowEvent::CursorPos(x, y) => {
                 if self.captured
                     && let Some((last_x, last_y)) = self.last_cursor
-                    && let Some(player) = session.player_mut()
                 {
                     let (turn_x, turn_y) = turn_by(&self.options, (x - last_x, y - last_y));
-                    player.turn(turn_x, turn_y);
+                    session.turn_player(turn_x, turn_y);
                 }
                 self.last_cursor = Some((x, y));
             }

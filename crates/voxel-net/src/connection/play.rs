@@ -38,6 +38,8 @@ const PLAY_SERVERBOUND_PONG_PACKET_ID: i32 = 45;
 const PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID: i32 = 30;
 const PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID: i32 = 32;
 const PLAY_SERVERBOUND_MOVE_PLAYER_STATUS_ONLY_PACKET_ID: i32 = 33;
+const PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID: i32 = 34;
+const PLAY_SERVERBOUND_PADDLE_BOAT_PACKET_ID: i32 = 35;
 const PLAY_SERVERBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 40;
 const PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID: i32 = 42;
 const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
@@ -274,6 +276,23 @@ impl PlaySession {
 
     pub fn player_mut(&mut self) -> Option<&mut LocalPlayer> {
         self.player.as_mut()
+    }
+
+    /// The mouse turns the player (`Entity.turn`), who in a boat is then held within a quarter
+    /// turn of where the boat faces (`onPassengerTurned`).
+    pub fn turn_player(&mut self, y_rot_delta: f64, x_rot_delta: f64) {
+        let boat_y_rot = self
+            .trace
+            .world
+            .ridden_boat_of_local_player()
+            .and_then(|id| self.trace.world.boat_view(id))
+            .map(|view| view.y_rot);
+        if let Some(player) = self.player.as_mut() {
+            player.turn(y_rot_delta, x_rot_delta);
+            if let Some(y_rot) = boat_y_rot {
+                player.clamp_in_boat(y_rot);
+            }
+        }
     }
 
     /// Whether the level is ready and the player is being ticked.
@@ -1232,11 +1251,37 @@ impl PlaySession {
             .local_player()
             .and_then(|state| state.inventory_slot((36 + self.status.selected_slot) as i16))
             .map_or(0, |stack| stack.item_registry_id());
+        // The level ticks a vehicle before its passengers: a boat the player rides moves first
+        // (and tells the server of its paddles), then the player sits in it.
+        let ridden = self.trace.world.ridden_boat_of_local_player();
+        if ridden.is_some() {
+            if let Some(player) = self.player.as_ref() {
+                let position = player.position();
+                self.trace
+                    .world
+                    .set_local_player_chunk(position.x, position.z);
+            }
+            self.trace.world.tick_entities();
+            for (left, right) in self.trace.world.take_paddle_packets() {
+                self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
+            }
+        }
         if self.loaded
             && let Some(player) = self.player.as_mut()
         {
             player.set_main_hand_item(main_hand);
-            match player.tick(&self.trace.world, keys) {
+            let ticked = match ridden.and_then(|id| self.trace.world.boat_view(id)) {
+                Some(view) => player
+                    .tick_riding(&self.trace.world, keys, &view)
+                    .map(|rode| {
+                        self.trace
+                            .world
+                            .set_boat_input(view.vehicle_id, rode.boat_input);
+                        rode.sent
+                    }),
+                None => player.tick(&self.trace.world, keys),
+            };
+            match ticked {
                 Ok(sent) => {
                     for packet in sent {
                         self.send_movement(packet)?;
@@ -1258,7 +1303,9 @@ impl PlaySession {
                 .world
                 .set_local_player_chunk(position.x, position.z);
         }
-        self.trace.world.tick_entities();
+        if ridden.is_none() {
+            self.trace.world.tick_entities();
+        }
         self.trace.world.tick_sky_flash();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.game_time + 1);
@@ -1297,6 +1344,8 @@ impl PlaySession {
             ServerboundMovement::MovePlayerStatusOnly { .. } => {
                 PLAY_SERVERBOUND_MOVE_PLAYER_STATUS_ONLY_PACKET_ID
             }
+            ServerboundMovement::MoveVehicle { .. } => PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID,
+            ServerboundMovement::PaddleBoat { .. } => PLAY_SERVERBOUND_PADDLE_BOAT_PACKET_ID,
         };
         let body = packet.encode_body();
         self.send(id, |output| {
@@ -1449,7 +1498,16 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
                 if let Ok(packet) = parse_set_passengers_packet(payload) {
+                    let was_aboard = self.trace.world.ridden_boat_of_local_player();
                     entities::passengers(&mut self.trace.world, &packet);
+                    // A player who has just boarded a boat looks the way it faces.
+                    if was_aboard.is_none()
+                        && let Some(vehicle) = self.trace.world.ridden_boat_of_local_player()
+                        && let Some(view) = self.trace.world.boat_view(vehicle)
+                        && let Some(player) = self.player.as_mut()
+                    {
+                        player.face_boat(view.y_rot);
+                    }
                 }
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {

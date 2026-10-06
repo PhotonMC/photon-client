@@ -28,4 +28,4 @@ At eğitimi/iksir etkileri, ses.
 Çok paketli; tekne (T38) ve at (T31) çizilmeden anlamlı sınanamaz. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-(boş)
+- Bölündü: tekne sürüşü [T44a](T44a-tekne-surusu.md) (bitti), öteki araçlar [T44b](T44b-binek-hayvanlar-minecart.md).

@@ -3601,132 +3601,6 @@ fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
 }
 
 #[test]
-fn boat_control_applies_java_input_delta_and_paddles() {
-    let rows = [
-        (
-            "left",
-            BoatInput::new(true, false, false, false),
-            0xbf80_0000,
-            0x4110_0000,
-            0x3fbf_ccc0_8100_0000,
-            0xbfcf_5e2d_1900_0000,
-            (false, true),
-        ),
-        (
-            "right",
-            BoatInput::new(false, true, false, false),
-            0x3f80_0000,
-            0x4130_0000,
-            0x3fbf_c17d_a440_0000,
-            0xbfcf_5f2b_3300_0000,
-            (true, false),
-        ),
-        (
-            "forward",
-            BoatInput::new(false, false, true, false),
-            0x0000_0000,
-            0x4120_0000,
-            0x3fbe_38e6_d800_0000,
-            0xbfca_f52e_e000_0000,
-            (true, true),
-        ),
-        (
-            "backward",
-            BoatInput::new(false, false, false, true),
-            0x0000_0000,
-            0x4120_0000,
-            0x3fc0_1c71_9280_0000,
-            0xbfd0_50ad_1200_0000,
-            (false, false),
-        ),
-        (
-            "both_turn",
-            BoatInput::new(true, true, false, false),
-            0x0000_0000,
-            0x4120_0000,
-            0x3fc0_0000_0000_0000,
-            0xbfd0_0000_0000_0000,
-            (false, false),
-        ),
-        (
-            "left_forward",
-            BoatInput::new(true, false, true, false),
-            0xbf80_0000,
-            0x4110_0000,
-            0x3fbe_6604_0800_0000,
-            0xbfca_f168_c800_0000,
-            (true, true),
-        ),
-    ];
-
-    for (
-        name,
-        input,
-        expected_delta,
-        expected_yaw,
-        expected_motion_x,
-        expected_motion_z,
-        expected_paddles,
-    ) in rows
-    {
-        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
-        let (mut blocks, biomes) = section(0, 0);
-        blocks[12 * 256 + 2 * 16 + 2] = 1;
-        world.replace_chunk(
-            0,
-            0,
-            [SectionInput {
-                non_empty_block_count: 1,
-                fluid_count: 0,
-                block_states: &blocks,
-                biomes: &biomes,
-            }],
-        );
-        assert!(world.apply_entity(EntityInput {
-            entity_id: 37,
-            uuid: Uuid::new(1, 37),
-            type_id: 89,
-            x: 2.0,
-            y: 12.0,
-            z: 2.0,
-            movement: (0.125, 0.0, -0.25),
-            rotation: (10.0, 0.0, 0.0),
-            data: 0,
-        }));
-        assert!(world.apply_entity(EntityInput {
-            entity_id: 38,
-            uuid: Uuid::new(1, 38),
-            type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
-            x: 2.0,
-            y: 12.0,
-            z: 2.0,
-            movement: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0),
-            data: 0,
-        }));
-        world.set_local_player_id(38);
-        assert!(world.apply_entity_passengers(37, &[38]));
-        assert!(
-            world.set_boat_input(37, input),
-            "{name}: boat input rejected"
-        );
-
-        world.tick();
-
-        let boat = world.entity_at(37).expect("controlled boat");
-        assert_eq!(
-            boat.boat_delta_rotation().to_bits(),
-            expected_delta,
-            "{name}"
-        );
-        assert_eq!(boat.rotation().0.to_bits(), expected_yaw, "{name}");
-        assert_eq!(boat.motion().0.to_bits(), expected_motion_x, "{name}");
-        assert_eq!(boat.motion().2.to_bits(), expected_motion_z, "{name}");
-        assert_eq!(boat.paddle_state(), expected_paddles, "{name}");
-    }
-}
-
-#[test]
 fn boat_control_delta_rotation_reaches_passenger_tick() {
     let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
     let (mut blocks, biomes) = section(0, 0);
@@ -3764,12 +3638,14 @@ fn boat_control_delta_rotation_reaches_passenger_tick() {
     assert_eq!(passenger.rotation(), (1.0, 0.0, 1.0));
     assert_eq!(passenger.previous_rotation(), (0.0, 0.0, 0.0));
     assert_eq!(passenger.body_y_rotation(), 1.0);
+    // The boat moved as it ticked, and the passenger is carried to where it now stands.
+    let boat = world.entity_at(37).expect("boat").position();
     let radians = f64::from(-(std::f32::consts::PI / 180.0_f32));
     let passenger_z_offset = f64::from(-0.6_f32);
     let expected_position = (
-        2.0 + passenger_z_offset * f64::from(mth_sin_f64(radians)),
-        12.1875,
-        2.0 + passenger_z_offset * f64::from(mth_cos_f64(radians)),
+        boat.0 + passenger_z_offset * f64::from(mth_sin_f64(radians)),
+        boat.1 + 0.1875,
+        boat.2 + passenger_z_offset * f64::from(mth_cos_f64(radians)),
     );
     assert_eq!(passenger.position(), expected_position);
 }

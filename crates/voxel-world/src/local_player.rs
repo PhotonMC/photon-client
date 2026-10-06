@@ -93,6 +93,18 @@ pub enum ServerboundMovement {
         on_ground: bool,
         horizontal_collision: bool,
     },
+    /// `ServerboundMoveVehiclePacket`: where the vehicle the player is the authority of is.
+    MoveVehicle {
+        position: Vec3,
+        y_rot: f32,
+        x_rot: f32,
+        on_ground: bool,
+    },
+    /// `ServerboundPaddleBoatPacket`: which paddles of the boat it rides row.
+    PaddleBoat {
+        left: bool,
+        right: bool,
+    },
 }
 
 impl ServerboundMovement {
@@ -106,6 +118,8 @@ impl ServerboundMovement {
             Self::MovePlayerPosRot { .. } => "minecraft:move_player_pos_rot",
             Self::MovePlayerRot { .. } => "minecraft:move_player_rot",
             Self::MovePlayerStatusOnly { .. } => "minecraft:move_player_status_only",
+            Self::MoveVehicle { .. } => "minecraft:move_vehicle",
+            Self::PaddleBoat { .. } => "minecraft:paddle_boat",
         }
     }
 
@@ -182,6 +196,23 @@ impl ServerboundMovement {
             } => {
                 output.push(move_flags(on_ground, horizontal_collision));
             }
+            Self::MoveVehicle {
+                position,
+                y_rot,
+                x_rot,
+                on_ground,
+            } => {
+                output.extend_from_slice(&position.x.to_be_bytes());
+                output.extend_from_slice(&position.y.to_be_bytes());
+                output.extend_from_slice(&position.z.to_be_bytes());
+                output.extend_from_slice(&y_rot.to_be_bytes());
+                output.extend_from_slice(&x_rot.to_be_bytes());
+                output.push(u8::from(on_ground));
+            }
+            Self::PaddleBoat { left, right } => {
+                output.push(u8::from(left));
+                output.push(u8::from(right));
+            }
         }
         output
     }
@@ -199,18 +230,36 @@ use crate::fluid::{FluidTracker, LAVA_FLOW_SCALE, WATER_FLOW_SCALE};
 
 /// A stretch of movement recorded for the block-effects pass.
 #[derive(Debug, Clone, Copy)]
-struct Movement {
-    from: Vec3,
-    to: Vec3,
+pub(crate) struct Movement {
+    pub(crate) from: Vec3,
+    pub(crate) to: Vec3,
     /// The movement asked for, when the move was split per axis.
-    original: Option<Vec3>,
+    pub(crate) original: Option<Vec3>,
+}
+
+/// What the vehicle the player rides tells its tick: the top of the vehicle's box and whether the
+/// vehicle is under water (`modifyPassengerFluidInteractionBox`), and whether it can be sprinted
+/// in (`Entity.canSprint`).
+#[derive(Debug, Clone, Copy)]
+struct Riding {
+    vehicle_max_y: f64,
+    vehicle_under_water: bool,
+    can_sprint: bool,
+}
+
+/// What one tick of the player sitting in a boat gives the session: the packets to send, and the
+/// keys to hand the boat (`AbstractBoat.setInput`).
+#[derive(Debug, Clone)]
+pub struct RideTick {
+    pub sent: Vec<ServerboundMovement>,
+    pub boat_input: crate::entity::BoatInput,
 }
 
 /// The tags and classes movement tests of a block.
 mod sounds;
 pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
 
-mod flag {
+pub(crate) mod flag {
     pub const CLIMBABLE: u16 = 1 << 0;
     pub const FENCE: u16 = 1 << 1;
     pub const WALL: u16 = 1 << 2;
@@ -228,8 +277,8 @@ pub(crate) struct StateInfo {
     pub(crate) friction: f32,
     pub(crate) speed_factor: f32,
     jump_factor: f32,
-    bounce: f32,
-    flags: u16,
+    pub(crate) bounce: f32,
+    pub(crate) flags: u16,
     pub(crate) fluid: Fluid,
     own_height: f32,
     falling: bool,
@@ -408,12 +457,13 @@ impl Level<'_> {
         }
     }
 
-    fn has_chunk_at(&self, pos: BlockPos) -> bool {
-        self.world
-            .contains_chunk(pos.x.div_euclid(16), pos.z.div_euclid(16))
+    /// `ClientLevel.hasChunk`, which `Level.hasChunkAt` asks: the client level answers yes for
+    /// every chunk, loaded or not.
+    fn has_chunk_at(&self, _pos: BlockPos) -> bool {
+        true
     }
 
-    fn collision_shape(&self, pos: BlockPos) -> VoxelShape {
+    pub(crate) fn collision_shape(&self, pos: BlockPos) -> VoxelShape {
         match self.state_id(pos) {
             Some(state) => self
                 .world
@@ -462,7 +512,7 @@ impl Level<'_> {
             .collect())
     }
 
-    fn no_collision(&self, area: Aabb, fall_distance: f64) -> Result<bool, Unsupported> {
+    pub(crate) fn no_collision(&self, area: Aabb, fall_distance: f64) -> Result<bool, Unsupported> {
         Ok(self.block_collisions(area, fall_distance)?.is_empty())
     }
 
@@ -564,7 +614,7 @@ impl Level<'_> {
 
     /// Whether `clip` with `ClipContext.Block.FALLDAMAGE_RESETTING` and
     /// `ClipContext.Fluid.WATER` hits anything between the two points.
-    fn clip_hits_fall_reset(&self, from: Vec3, to: Vec3) -> bool {
+    pub(crate) fn clip_hits_fall_reset(&self, from: Vec3, to: Vec3) -> bool {
         if from.x == to.x && from.y == to.y && from.z == to.z {
             return false;
         }
@@ -708,6 +758,8 @@ pub struct LocalPlayer {
     y_head_rot_old: f32,
     /// `WalkAnimationState`: how fast and how far the limbs have swung.
     walk: crate::living::WalkAnimation,
+    /// What the vehicle the player sits in makes of it, while it rides.
+    riding: Option<Riding>,
     /// The first-person hand's lagging view: it chases the rotation by
     /// half the gap each tick.
     x_bob: f32,
@@ -829,6 +881,7 @@ impl LocalPlayer {
             y_head_rot: y_rot,
             y_head_rot_old: y_rot,
             walk: crate::living::WalkAnimation::default(),
+            riding: None,
             x_bob: 0.0,
             y_bob: 0.0,
             x_bob_old: 0.0,
@@ -1210,9 +1263,117 @@ impl LocalPlayer {
         Ok(std::mem::take(&mut self.sent))
     }
 
+    /// One client tick of the player sitting in a boat the world has already ticked: what
+    /// `LocalPlayer.rideTick` does (the boat's own tick came first, as the level ticks the vehicle
+    /// before its passengers), with the packets `LocalPlayer.tick` sends of a passenger.
+    pub fn tick_riding(
+        &mut self,
+        world: &ClientWorld,
+        keys: Input,
+        boat: &crate::boat_ride::BoatView,
+    ) -> Result<RideTick, Unsupported> {
+        let level = Level { world };
+        self.sent.clear();
+        self.input.set_key_states(keys);
+        self.riding = Some(Riding {
+            vehicle_max_y: boat.max_y,
+            vehicle_under_water: boat.under_water,
+            can_sprint: false,
+        });
+        // `ClientLevel.tickPassenger`: the old position first, then the count; `Entity.rideTick`
+        // stills the player before its own tick.
+        self.old_position = self.position;
+        self.tick_count += 1;
+        self.delta = Vec3::ZERO;
+        self.walk_dist_old = self.walk_dist;
+        let ticked = self.player_tick(&level);
+        if let Err(error) = ticked {
+            self.riding = None;
+            return Err(error);
+        }
+        if self.last_sent_input != self.input.key_presses {
+            self.sent
+                .push(ServerboundMovement::PlayerInput(self.input.key_presses));
+            self.last_sent_input = self.input.key_presses;
+        }
+        // A passenger tells the server which way it looks, and, when it is the vehicle's
+        // authority, where the vehicle is.
+        self.sent.push(ServerboundMovement::MovePlayerRot {
+            y_rot: self.y_rot,
+            x_rot: self.x_rot,
+            on_ground: self.on_ground,
+            horizontal_collision: self.horizontal_collision,
+        });
+        self.sent.push(ServerboundMovement::MoveVehicle {
+            position: boat.position,
+            y_rot: boat.y_rot,
+            x_rot: 0.0,
+            on_ground: boat.on_ground,
+        });
+        if self.sprinting != self.was_sprinting {
+            self.sent.push(ServerboundMovement::PlayerCommand {
+                entity_id: self.entity_id,
+                action: if self.sprinting {
+                    PlayerCommandAction::StartSprinting
+                } else {
+                    PlayerCommandAction::StopSprinting
+                },
+            });
+            self.was_sprinting = self.sprinting;
+        }
+        // `LivingEntity.rideTick` and then the boat: the fall is forgiven, and the boat is handed the
+        // keys, before `positionRider` carries the player to its seat and turns it with the boat.
+        self.fall_distance = 0.0;
+        let keys = self.input.key_presses;
+        let boat_input =
+            crate::entity::BoatInput::new(keys.left, keys.right, keys.forward, keys.backward);
+        self.position_in_boat(boat);
+        self.riding = None;
+        Ok(RideTick {
+            sent: std::mem::take(&mut self.sent),
+            boat_input,
+        })
+    }
+
+    /// `AbstractBoat.positionRider` for the player: carried to its seat, turned as the boat turns
+    /// and held within a quarter turn of where the boat faces (`clampRotation`).
+    fn position_in_boat(&mut self, boat: &crate::boat_ride::BoatView) {
+        self.set_pos(boat.rider_position);
+        self.y_rot += boat.delta_rotation;
+        self.y_head_rot += boat.delta_rotation;
+        let (_, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
+            self.y_rot, self.y_rot, boat.y_rot,
+        );
+        self.y_rot = y_rot;
+        self.y_head_rot = self.y_rot;
+        self.y_body_rot = boat.y_rot;
+    }
+
+    /// `ClientPacketListener.handleSetEntityPassengersPacket` for a player who has just boarded a
+    /// boat: it looks the way the boat faces.
+    pub fn face_boat(&mut self, boat_y_rot: f32) {
+        self.y_rot = boat_y_rot;
+        self.y_head_rot = boat_y_rot;
+    }
+
+    /// `AbstractBoat.onPassengerTurned`, after the mouse turned the player: held within a quarter
+    /// turn of where the boat faces.
+    pub fn clamp_in_boat(&mut self, boat_y_rot: f32) {
+        let (_, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
+            self.y_rot, self.y_rot, boat_y_rot,
+        );
+        self.y_rot = y_rot;
+        self.y_head_rot = y_rot;
+        self.y_body_rot = boat_y_rot;
+    }
+
+    fn is_passenger(&self) -> bool {
+        self.riding.is_some()
+    }
+
     fn player_tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         self.no_physics = self.is_spectator();
-        if self.is_spectator() {
+        if self.is_spectator() || self.is_passenger() {
             self.on_ground = false;
             self.check_supporting_block(level, false, None)?;
         }
@@ -1302,6 +1463,7 @@ impl LocalPlayer {
         let had_forward_impulse = self.input.move_vector().y > 1.0e-5;
         self.crouching = !self.abilities.flying
             && !self.is_swimming()
+            && !self.is_passenger()
             && self.can_fit(level, ClientEntityPose::Crouching)?
             && (self.is_shift_key_down() || !self.can_fit(level, ClientEntityPose::Standing)?);
         self.input.tick();
@@ -1455,7 +1617,7 @@ impl LocalPlayer {
             self.input.move_vector(),
             LocalPlayerInputModifiers {
                 using_item: false,
-                passenger: false,
+                passenger: self.is_passenger(),
                 item_use_speed_multiplier: 1.0,
                 moving_slowly: self.is_moving_slowly(),
                 sneaking_movement_factor: SNEAKING_SPEED as f32,
@@ -1503,11 +1665,19 @@ impl LocalPlayer {
         // moved across the ground this tick.
         let x = self.position.x - self.old_position.x;
         let z = self.position.z - self.old_position.z;
-        self.walk.follow((x * x + z * z).sqrt(), false);
+        if self.is_passenger() {
+            self.walk.stop();
+        } else {
+            self.walk.follow((x * x + z * z).sqrt(), false);
+        }
         Ok(())
     }
 
     fn player_travel(&mut self, level: &Level<'_>, input: Vec3) -> Result<(), Unsupported> {
+        // `Player.travel`: a passenger travels as any living entity does.
+        if self.is_passenger() {
+            return self.living_travel(level, input);
+        }
         if self.is_swimming() {
             let look_y = self.look_angle().y;
             let multiplier = if look_y < -0.2 { 0.085 } else { 0.06 };
@@ -2247,155 +2417,77 @@ impl LocalPlayer {
         self.check_inside_blocks(level, &movements)
     }
 
-    /// `Entity.checkInsideBlocks`: walk the blocks each movement passed
-    /// through, in the reference's per-axis split, and let the ones that act
-    /// on an entity inside them act. Honey is ported; the other blocks that
-    /// move the player are refused until they are.
+    /// `Entity.checkInsideBlocks` for the player: the shared walk, with the blocks that act on a
+    /// player acting as they are visited.
     fn check_inside_blocks(
         &mut self,
         level: &Level<'_>,
         movements: &[Movement],
     ) -> Result<(), Unsupported> {
-        let mut visited = std::collections::HashSet::new();
-        for movement in movements {
-            let mut pos = movement.from;
-            let delta = movement.to.subtract_vec3(movement.from);
-            let mut max_iterations = 16;
-            if let Some(original) = movement.original.filter(|_| delta.length_squared() > 0.0) {
-                for axis in
-                    voxel_core::direction::Direction::axis_step_order(original.x, original.z)
-                {
-                    let axis_move = delta.get(axis);
-                    if axis_move != 0.0 {
-                        let to = pos.with(axis, pos.get(axis) + axis_move);
-                        max_iterations -= self.check_inside_between(
-                            level,
-                            pos,
-                            to,
-                            &mut visited,
-                            max_iterations,
-                        )?;
-                        pos = to;
-                    }
-                }
-            } else {
-                max_iterations -=
-                    self.check_inside_between(level, movement.from, movement.to, &mut visited, 16)?;
-            }
-            if max_iterations <= 0 {
-                self.check_inside_between(level, movement.to, movement.to, &mut visited, 1)?;
-            }
-        }
-        Ok(())
+        walk_inside_blocks(self, level, movements)
     }
 
-    fn check_inside_between(
-        &mut self,
-        level: &Level<'_>,
-        from: Vec3,
-        to: Vec3,
-        visited: &mut std::collections::HashSet<(i32, i32, i32)>,
-        max_iterations: i32,
-    ) -> Result<i32, Unsupported> {
-        let at_target = self
-            .dimensions
-            .make_bounding_box(to)
-            .deflate(f64::from(1.0e-5_f32));
-        let moved_far = from.distance_to_sqr(to) > 0.999_990_000_000_252_6_f64.powi(2);
-        let mut last_iteration = 0;
-        for (pos, iteration) in blocks_intersected_between(from, to, at_target) {
-            if iteration >= max_iterations {
-                break;
+    /// What a block the player is inside does to it. Honey, a cobweb, a berry bush, powder snow
+    /// and a bubble column act; the other blocks have no effect on a player here.
+    fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit) {
+        let InsideVisit {
+            pos,
+            state,
+            ref info,
+            precise,
+        } = *visit;
+        match info.name {
+            "minecraft:honey_block" if self.is_sliding_down_honey(pos) => {
+                self.do_honey_slide();
             }
-            last_iteration = iteration;
-            let state = level.state_id(pos);
-            let info = level.info(pos);
-            if info.is_air() {
-                continue;
+            "minecraft:cobweb" => {
+                self.make_stuck_in_block(Vec3::new(0.25, f64::from(0.05_f32), 0.25));
             }
-            // `getEntityInsideCollisionShape`: the whole block, except powder
-            // snow, whose own collision shape counts when it has one.
-            let inside_block = match state {
-                Some(state) if is_block(state, "minecraft:powder_snow") => {
-                    let shape = powder_snow_collision_shape(self.fall_distance);
-                    shape.is_empty() || {
-                        let boxes: Vec<Aabb> = shape
-                            .to_aabbs()
-                            .into_iter()
-                            .map(|aabb| aabb.move_by_block_pos(pos))
-                            .collect();
-                        self.dimensions
-                            .make_bounding_box(from)
-                            .collided_along_vector(to.subtract_vec3(from), &boxes)
-                    }
-                }
-                _ => true,
-            };
-            // Only a block the player is not fully inside can miss, and the
-            // one such block, powder snow, holds no fluid whose effects
-            // (fire) would still need the visit.
-            if !inside_block || !visited.insert((pos.x, pos.y, pos.z)) {
-                continue;
+            "minecraft:sweet_berry_bush" => {
+                self.make_stuck_in_block(Vec3::new(f64::from(0.8_f32), 0.75, f64::from(0.8_f32)));
             }
-            let precise = moved_far || at_target.intersects_block_pos(pos);
-            match info.name {
-                "minecraft:honey_block" if self.is_sliding_down_honey(pos) => {
-                    self.do_honey_slide();
-                }
-                "minecraft:cobweb" => {
-                    self.make_stuck_in_block(Vec3::new(0.25, f64::from(0.05_f32), 0.25));
-                }
-                "minecraft:sweet_berry_bush" => {
+            "minecraft:powder_snow" => {
+                if level.info(self.block_position()).name == "minecraft:powder_snow" {
                     self.make_stuck_in_block(Vec3::new(
-                        f64::from(0.8_f32),
-                        0.75,
-                        f64::from(0.8_f32),
+                        f64::from(0.9_f32),
+                        1.5,
+                        f64::from(0.9_f32),
                     ));
                 }
-                "minecraft:powder_snow" => {
-                    if level.info(self.block_position()).name == "minecraft:powder_snow" {
-                        self.make_stuck_in_block(Vec3::new(
-                            f64::from(0.9_f32),
-                            1.5,
-                            f64::from(0.9_f32),
-                        ));
-                    }
-                }
-                "minecraft:bubble_column" if precise => {
-                    let drag_down = property(state, "drag") == Some("true");
-                    let above = pos.offset(0, 1, 0);
-                    let above_state = level.state_id(above);
-                    let nothing_above = above_state.is_none_or(|above_state| {
-                        level
-                            .world
-                            .block_state_registry
-                            .collision_shape(above_state)
-                            .is_empty()
-                            && crate::block::state_or_air(i64::from(above_state))
-                                .fluid
-                                .is_empty()
-                    });
-                    let delta = self.delta;
-                    let y = if nothing_above {
-                        if drag_down {
-                            (delta.y - 0.03).max(-0.9)
-                        } else {
-                            (delta.y + 0.1).min(1.8)
-                        }
-                    } else {
-                        self.fall_distance = 0.0;
-                        if drag_down {
-                            (delta.y - 0.03).max(-0.3)
-                        } else {
-                            (delta.y + 0.06).min(0.7)
-                        }
-                    };
-                    self.delta = Vec3::new(delta.x, y, delta.z);
-                }
-                _ => {}
             }
+            "minecraft:bubble_column" if precise => {
+                let drag_down = property(state, "drag") == Some("true");
+                let above = pos.offset(0, 1, 0);
+                let above_state = level.state_id(above);
+                let nothing_above = above_state.is_none_or(|above_state| {
+                    level
+                        .world
+                        .block_state_registry
+                        .collision_shape(above_state)
+                        .is_empty()
+                        && crate::block::state_or_air(i64::from(above_state))
+                            .fluid
+                            .is_empty()
+                });
+                let delta = self.delta;
+                let y = if nothing_above {
+                    if drag_down {
+                        (delta.y - 0.03).max(-0.9)
+                    } else {
+                        (delta.y + 0.1).min(1.8)
+                    }
+                } else {
+                    self.fall_distance = 0.0;
+                    if drag_down {
+                        (delta.y - 0.03).max(-0.3)
+                    } else {
+                        (delta.y + 0.06).min(0.7)
+                    }
+                };
+                self.delta = Vec3::new(delta.x, y, delta.z);
+            }
+            _ => {}
         }
-        Ok(last_iteration + 1)
     }
 
     /// `Entity.makeStuckInBlock`.
@@ -2431,10 +2523,11 @@ impl LocalPlayer {
     }
 
     fn update_fluid_interaction(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
-        let found = crate::fluid::scan(
+        let found = crate::fluid::scan_in(
             level,
+            self.fluid_interaction_box(),
             (
-                self.bounding_box,
+                self.bounding_box.min_y,
                 self.position,
                 self.dimensions.eye_height(),
             ),
@@ -2463,6 +2556,26 @@ impl LocalPlayer {
         Ok(())
     }
 
+    /// `Entity.getFluidInteractionBox`: the box a thousandth smaller, which the vehicle the player
+    /// sits in may change (`AbstractBoat.modifyPassengerFluidInteractionBox`: only what is above
+    /// the boat's top, and none of it while the boat's top is above the player's own).
+    fn fluid_interaction_box(&self) -> Option<Aabb> {
+        let area = self.bounding_box.deflate(0.001);
+        let Some(riding) = self.riding else {
+            return Some(area);
+        };
+        if riding.vehicle_under_water {
+            return Some(area);
+        }
+        if riding.vehicle_max_y >= area.max_y {
+            return None;
+        }
+        let min_y = java_math::max(area.min_y, riding.vehicle_max_y);
+        Some(Aabb::new(
+            area.min_x, min_y, area.min_z, area.max_x, area.max_y, area.max_z,
+        ))
+    }
+
     fn apply_current(&mut self, tracker: FluidTracker, scale: f64) {
         self.delta =
             crate::fluid::apply_current(tracker, self.delta, scale, crate::fluid::Pushed::Player);
@@ -2472,10 +2585,11 @@ impl LocalPlayer {
         if self.abilities.flying {
             self.swimming = false;
         } else if self.is_swimming() {
-            self.swimming = self.sprinting && self.is_in_water();
+            self.swimming = self.sprinting && self.is_in_water() && !self.is_passenger();
         } else {
             self.swimming = self.sprinting
                 && self.is_under_water()
+                && !self.is_passenger()
                 && level.info(self.block_position()).is_water();
         }
     }
@@ -2491,13 +2605,14 @@ impl LocalPlayer {
         } else {
             ClientEntityPose::Standing
         };
-        let actual = if self.is_spectator() || self.can_fit(level, desired)? {
-            desired
-        } else if self.can_fit(level, ClientEntityPose::Crouching)? {
-            ClientEntityPose::Crouching
-        } else {
-            ClientEntityPose::Swimming
-        };
+        let actual =
+            if self.is_spectator() || self.is_passenger() || self.can_fit(level, desired)? {
+                desired
+            } else if self.can_fit(level, ClientEntityPose::Crouching)? {
+                ClientEntityPose::Crouching
+            } else {
+                ClientEntityPose::Swimming
+            };
         self.set_pose(actual);
         Ok(())
     }
@@ -2713,6 +2828,10 @@ impl LocalPlayer {
     }
 
     fn is_sprinting_possible(&self, allowed_in_shallow_water: bool) -> bool {
+        // A passenger sprints only in a vehicle that can be (and it is its authority).
+        if self.riding.is_some_and(|riding| !riding.can_sprint) {
+            return false;
+        }
         // No blindness, and a full food bar or the ability to fly.
         allowed_in_shallow_water || !(self.is_in_water() && !self.is_under_water())
     }
@@ -2759,6 +2878,128 @@ pub fn state_has_fluid(state_id: i32) -> bool {
     !crate::block::state_or_air(i64::from(state_id))
         .fluid
         .is_empty()
+}
+
+/// A block the walk reached, and what its visit needs to act on.
+pub(crate) struct InsideVisit {
+    pub(crate) pos: BlockPos,
+    pub(crate) state: Option<i32>,
+    pub(crate) info: StateInfo,
+    /// `isPrecise`: the entity's box really overlaps the block, or it moved a long way.
+    pub(crate) precise: bool,
+}
+
+/// A body whose movement is walked for the blocks it passes through (`Entity.checkInsideBlocks`).
+pub(crate) trait InsideBody {
+    /// The body's box with its feet at a position.
+    fn box_at(&self, position: Vec3) -> Aabb;
+    /// The collision shape powder snow has for this body, which depends on how far it has fallen.
+    fn powder_snow_shape(&self) -> VoxelShape;
+    /// What the block does to the body.
+    fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit);
+}
+
+impl InsideBody for LocalPlayer {
+    fn box_at(&self, position: Vec3) -> Aabb {
+        self.dimensions.make_bounding_box(position)
+    }
+
+    fn powder_snow_shape(&self) -> VoxelShape {
+        powder_snow_collision_shape(self.fall_distance)
+    }
+
+    fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit) {
+        LocalPlayer::inside_block_effect(self, level, visit);
+    }
+}
+
+/// `Entity.checkInsideBlocks`: walk the blocks each movement passed through, in the reference's
+/// per-axis split, and let the ones that act on a body inside them act.
+pub(crate) fn walk_inside_blocks<B: InsideBody>(
+    body: &mut B,
+    level: &Level<'_>,
+    movements: &[Movement],
+) -> Result<(), Unsupported> {
+    let mut visited = std::collections::HashSet::new();
+    for movement in movements {
+        let mut pos = movement.from;
+        let delta = movement.to.subtract_vec3(movement.from);
+        let mut max_iterations = 16;
+        if let Some(original) = movement.original.filter(|_| delta.length_squared() > 0.0) {
+            for axis in voxel_core::direction::Direction::axis_step_order(original.x, original.z) {
+                let axis_move = delta.get(axis);
+                if axis_move != 0.0 {
+                    let to = pos.with(axis, pos.get(axis) + axis_move);
+                    max_iterations -=
+                        walk_inside_between(body, level, (pos, to), &mut visited, max_iterations);
+                    pos = to;
+                }
+            }
+        } else {
+            max_iterations -=
+                walk_inside_between(body, level, (movement.from, movement.to), &mut visited, 16);
+        }
+        if max_iterations <= 0 {
+            walk_inside_between(body, level, (movement.to, movement.to), &mut visited, 1);
+        }
+    }
+    Ok(())
+}
+
+fn walk_inside_between<B: InsideBody>(
+    body: &mut B,
+    level: &Level<'_>,
+    (from, to): (Vec3, Vec3),
+    visited: &mut std::collections::HashSet<(i32, i32, i32)>,
+    max_iterations: i32,
+) -> i32 {
+    let at_target = body.box_at(to).deflate(f64::from(1.0e-5_f32));
+    let moved_far = from.distance_to_sqr(to) > 0.999_990_000_000_252_6_f64.powi(2);
+    let mut last_iteration = 0;
+    for (pos, iteration) in blocks_intersected_between(from, to, at_target) {
+        if iteration >= max_iterations {
+            break;
+        }
+        last_iteration = iteration;
+        let state = level.state_id(pos);
+        let info = level.info(pos);
+        if info.is_air() {
+            continue;
+        }
+        // `getEntityInsideCollisionShape`: the whole block, except powder snow, whose own
+        // collision shape counts when it has one.
+        let inside_block = match state {
+            Some(state) if is_block(state, "minecraft:powder_snow") => {
+                let shape = body.powder_snow_shape();
+                shape.is_empty() || {
+                    let boxes: Vec<Aabb> = shape
+                        .to_aabbs()
+                        .into_iter()
+                        .map(|aabb| aabb.move_by_block_pos(pos))
+                        .collect();
+                    body.box_at(from)
+                        .collided_along_vector(to.subtract_vec3(from), &boxes)
+                }
+            }
+            _ => true,
+        };
+        // Only a block the body is not fully inside can miss, and the one such block, powder
+        // snow, holds no fluid whose effects (fire) would still need the visit.
+        if !inside_block || !visited.insert((pos.x, pos.y, pos.z)) {
+            continue;
+        }
+        let precise = moved_far || at_target.intersects_block_pos(pos);
+        body.inside_block_effect(
+            level,
+            &InsideVisit {
+                pos,
+                state,
+                info,
+                precise,
+            },
+        );
+    }
+    last_iteration + 1
 }
 
 /// `BlockGetter.forEachBlockIntersectedBetween`, as the blocks it visits and
@@ -2979,7 +3220,7 @@ fn is_block(state_id: i32, name: &str) -> bool {
 
 /// `PowderSnowBlock.getCollisionShape` for a player without leather boots:
 /// nothing until it has fallen more than 2.5 blocks, then a floor 0.9 high.
-fn powder_snow_collision_shape(fall_distance: f64) -> VoxelShape {
+pub(crate) fn powder_snow_collision_shape(fall_distance: f64) -> VoxelShape {
     if fall_distance > 2.5 {
         Shapes::box_shape(0.0, 0.0, 0.0, 1.0, f64::from(0.9_f32), 1.0)
             .expect("the falling powder snow shape is a valid box")
@@ -2988,7 +3229,7 @@ fn powder_snow_collision_shape(fall_distance: f64) -> VoxelShape {
     }
 }
 
-fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {
+pub(crate) fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {
     let (block, offset) = registry::block_for_state(state_id? as u32)?;
     block
         .properties_at(offset)?

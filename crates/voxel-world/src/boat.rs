@@ -47,6 +47,12 @@ impl BoatState {
     /// damage running down, then the bubble column's shaking and the paddles
     /// (`paddling` is whether each is rowing with someone to row it).
     pub(crate) fn tick(&mut self, under_water: bool, paddling: [bool; 2], tick_count: i32) {
+        self.tick_start(under_water);
+        self.tick_end(paddling, tick_count);
+    }
+
+    /// The part of the tick before the boat's own movement: the hit's time and damage run down.
+    pub(crate) fn tick_start(&mut self, under_water: bool) {
         self.is_under_water = under_water;
         if self.hurt_time > 0 {
             self.hurt_time -= 1;
@@ -54,6 +60,10 @@ impl BoatState {
         if self.damage > 0.0 {
             self.damage -= 1.0;
         }
+    }
+
+    /// The part after it: the bubble column's shaking and the paddles.
+    pub(crate) fn tick_end(&mut self, paddling: [bool; 2], tick_count: i32) {
         // `tickBubbleColumn`.
         if self.bubble_time > 0 {
             self.bubble_multiplier += 0.05;
@@ -67,6 +77,11 @@ impl BoatState {
         for (position, rows) in self.paddle_positions.iter_mut().zip(paddling) {
             *position = if rows { *position + PADDLE_STEP } else { 0.0 };
         }
+    }
+
+    /// How far a paddle has turned (`paddlePositions`).
+    pub(crate) fn paddle_position(&self, side: usize) -> f32 {
+        self.paddle_positions[side]
     }
 
     /// `getBubbleAngle`.

@@ -4,9 +4,8 @@ use super::*;
 
 use voxel_core::aabb::Aabb;
 use voxel_core::math::{
-    MTH_DEG_TO_RAD, Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64,
-    mth_rot_lerp_f32, mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32,
-    wrap_degrees_f32,
+    Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
+    mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32, wrap_degrees_f32,
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -677,6 +676,8 @@ pub struct ClientEntity {
     pub(crate) old_y_body_rot_bits: u32,
     pub(crate) delta_rotation_bits: u32,
     pub(crate) boat_input: BoatInput,
+    /// What a boat the local player rides keeps between ticks (status, water level, fall).
+    pub(crate) boat_ride: crate::boat_ride::RideState,
     pub(crate) paddle_left: bool,
     pub(crate) paddle_right: bool,
     pub(crate) head_rotation_target_bits: u32,
@@ -1532,71 +1533,6 @@ impl ClientEntity {
         self.motion_z_bits = movement.2.to_bits();
     }
 
-    pub(crate) fn tick_boat_float_in_air(&mut self) {
-        let current_motion = self.motion();
-        let vertical_speed = if self.no_gravity {
-            0.0
-        } else {
-            -VANILLA_BOAT_GRAVITY
-        };
-        let motion = (
-            current_motion.0 * f64::from(VANILLA_BOAT_AIR_FRICTION),
-            current_motion.1 + vertical_speed,
-            current_motion.2 * f64::from(VANILLA_BOAT_AIR_FRICTION),
-        );
-        self.motion_x_bits = motion.0.to_bits();
-        self.motion_y_bits = motion.1.to_bits();
-        self.motion_z_bits = motion.2.to_bits();
-        self.delta_rotation_bits = (f32::from_bits(self.delta_rotation_bits) * 0.9_f32).to_bits();
-    }
-
-    pub(crate) fn move_by_motion(&mut self) {
-        let current_position = self.position();
-        let motion = self.motion();
-        self.set_position((
-            current_position.0 + motion.0,
-            current_position.1 + motion.1,
-            current_position.2 + motion.2,
-        ));
-    }
-
-    pub(crate) fn tick_boat_control(&mut self, input: BoatInput, has_passengers: bool) {
-        if !has_passengers {
-            return;
-        }
-
-        let mut delta_rotation = f32::from_bits(self.delta_rotation_bits);
-        if input.left {
-            delta_rotation -= 1.0_f32;
-        }
-        if input.right {
-            delta_rotation += 1.0_f32;
-        }
-
-        let mut acceleration = 0.0_f32;
-        if input.right != input.left && !input.forward && !input.backward {
-            acceleration += 0.005_f32;
-        }
-
-        let y_rot = f32::from_bits(self.y_rot_bits) + delta_rotation;
-        if input.forward {
-            acceleration += 0.04_f32;
-        }
-        if input.backward {
-            acceleration -= 0.005_f32;
-        }
-
-        let x_acceleration = mth_sin_f64(f64::from(-y_rot * MTH_DEG_TO_RAD)) * acceleration;
-        let z_acceleration = mth_cos_f64(f64::from(y_rot * MTH_DEG_TO_RAD)) * acceleration;
-        let current_motion = self.motion();
-        self.delta_rotation_bits = delta_rotation.to_bits();
-        self.y_rot_bits = y_rot.to_bits();
-        self.motion_x_bits = (current_motion.0 + f64::from(x_acceleration)).to_bits();
-        self.motion_z_bits = (current_motion.2 + f64::from(z_acceleration)).to_bits();
-        self.paddle_left = (input.right && !input.left) || input.forward;
-        self.paddle_right = (input.left && !input.right) || input.forward;
-    }
-
     pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
         if self.is_shulker() {
             self.shulker_set_pos(position, block_of(self.position()));
@@ -2243,6 +2179,11 @@ impl ClientEntity {
         self.living.allay_dancing
     }
 
+    /// What a boat the local player rides keeps between ticks.
+    pub fn boat_ride(&self) -> crate::boat_ride::RideState {
+        self.boat_ride
+    }
+
     /// Whether this is a boat, a chest boat or a raft.
     pub fn is_boat(&self) -> bool {
         vanilla_boat_max_passengers(self.type_id).is_some()
@@ -2275,6 +2216,21 @@ impl ClientEntity {
         self.boat
             .get_or_insert_with(Default::default)
             .tick(under_water, paddling, tick_count);
+    }
+
+    /// The part of a ridden boat's tick before its own movement.
+    pub(crate) fn tick_boat_start(&mut self) {
+        self.boat
+            .get_or_insert_with(Default::default)
+            .tick_start(false);
+    }
+
+    /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
+    pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
+        let tick_count = self.tick_count;
+        self.boat
+            .get_or_insert_with(Default::default)
+            .tick_end(paddling, tick_count);
     }
 
     /// A boat's data: its hit, paddles and bubbles.

@@ -51,8 +51,26 @@ pub(crate) fn scan(
     (bounding_box, position, eye_height): (Aabb, Vec3, f32),
     ignore_current: bool,
 ) -> Result<Fluids, Unsupported> {
+    scan_in(
+        level,
+        Some(bounding_box.deflate(0.001)),
+        (bounding_box.min_y, position, eye_height),
+        ignore_current,
+    )
+}
+
+/// [`scan`] of a given interaction box (`Entity.getFluidInteractionBox`, which a vehicle may
+/// change or take away for its passenger), with where the entity's feet are.
+pub(crate) fn scan_in(
+    level: &Level<'_>,
+    area: Option<Aabb>,
+    (entity_y, position, eye_height): (f64, Vec3, f32),
+    ignore_current: bool,
+) -> Result<Fluids, Unsupported> {
     let mut fluids = Fluids::default();
-    let area = bounding_box.deflate(0.001);
+    let Some(area) = area else {
+        return Ok(fluids);
+    };
     let x0 = floor_f64(area.min_x);
     let y0 = floor_f64(area.min_y);
     let z0 = floor_f64(area.min_z);
@@ -62,7 +80,6 @@ pub(crate) fn scan(
     if !has_fluid_and_loaded(level, (x0 - 1, y0, z0 - 1), (x1 + 1, y1, z1 + 1)) {
         return Ok(fluids);
     }
-    let entity_y = bounding_box.min_y;
     let eye_x = floor_f64(position.x);
     let eye_y = position.y + f64::from(eye_height);
     let eye_z = floor_f64(position.z);

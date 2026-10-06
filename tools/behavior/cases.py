@@ -13472,6 +13472,94 @@ def movement_cases():
         "rows": rows,
     }
 
+    # Riding a boat: the player sits in it as the server's passengers packet puts it there, and the
+    # level ticks the boat (its own `tick`, then the rider through `rideTick`). Each tick reports the
+    # player and the boat, and the packets sent: the input, the rotation, the vehicle's position and
+    # the paddles.
+    def ride(label, blocks, ticks, boat=(0.5, 64.0, 0.5), y_rot=0.0, motion=None, kind="minecraft:oak_boat"):
+        row = scene(label, blocks, ticks, start=boat)
+        row["ride"] = {"type": kind, "id": 8, "x": float_bits(boat[0], "f64"),
+                       "y": float_bits(boat[1], "f64"), "z": float_bits(boat[2], "f64"),
+                       "y_rot": float_bits(y_rot)}
+        if motion is not None:
+            row["ride"].update({"motion_x": float_bits(motion[0], "f64"),
+                                "motion_y": float_bits(motion[1], "f64"),
+                                "motion_z": float_bits(motion[2], "f64")})
+        return row
+
+    lake = [{"x": x, "y": 64, "z": z, "block": "minecraft:water"}
+            for x in range(-12, 13) for z in range(-12, 13)]
+    deep_lake = lake + [{"x": x, "y": 65, "z": z, "block": "minecraft:water"}
+                        for x in range(-12, 13) for z in range(-12, 13)]
+    shore = [{"x": x, "y": 64, "z": z, "block": "minecraft:water"}
+             for x in range(-12, 13) for z in range(-12, 0)]
+    ride_rows = [
+        ride("boat-water-idle", floor() + lake, keys(30), boat=(0.5, 64.2, 0.5)),
+        ride("boat-water-forward", floor() + lake, keys(40, forward=True), boat=(0.5, 64.2, 0.5)),
+        ride("boat-water-backward", floor() + lake, keys(30, backward=True), boat=(0.5, 64.2, 0.5)),
+        ride("boat-water-turn-left", floor() + lake, keys(30, left=True), boat=(0.5, 64.2, 0.5), y_rot=30.0),
+        ride("boat-water-turn-right-forward", floor() + lake, keys(40, right=True, forward=True),
+             boat=(0.5, 64.2, 0.5), y_rot=-45.0),
+        ride("boat-water-both-turns", floor() + lake, keys(20, left=True, right=True),
+             boat=(0.5, 64.2, 0.5)),
+        ride("boat-water-input-changes", floor() + lake,
+             keys(8, forward=True) + keys(8, forward=True, left=True) + keys(8) + keys(8, backward=True),
+             boat=(0.5, 64.2, 0.5)),
+        ride("boat-water-motion", floor() + lake, keys(30), boat=(0.5, 64.2, 0.5), motion=(0.2, 0.0, -0.1)),
+        ride("boat-drops-into-water", floor() + lake, keys(40), boat=(0.5, 68.0, 0.5)),
+        ride("boat-drops-onto-land", floor(), keys(30), boat=(0.5, 66.0, 0.5)),
+        ride("boat-land-forward", floor(), keys(40, forward=True), boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-turn", floor(), keys(30, right=True, forward=True), boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-ice", floor(block="minecraft:ice"), keys(40, forward=True), boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-blue-ice", floor(block="minecraft:blue_ice"), keys(40, forward=True) + keys(10),
+             boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-slime", floor(block="minecraft:slime_block"), keys(30, forward=True),
+             boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-honey", floor(block="minecraft:honey_block"), keys(20, forward=True),
+             boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-soul-sand", floor(block="minecraft:soul_sand"), keys(20, forward=True),
+             boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-lily-pad", floor() + [{"x": 0, "y": 64, "z": 0, "block": "minecraft:lily_pad"}],
+             keys(10), boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-fence", floor() + [{"x": x, "y": 64, "z": 3, "block": "minecraft:oak_fence"}
+                                           for x in range(-3, 4)], keys(30, forward=True),
+             boat=(0.5, 64.0, 0.5)),
+        ride("boat-land-stair", floor() + [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_stairs",
+                                            "properties": {"facing": "north"}}
+                                           for x in range(-2, 3) for z in range(2, 4)],
+             keys(30, forward=True), boat=(0.5, 64.0, 0.5)),
+        ride("boat-drops-onto-slime", floor(block="minecraft:slime_block"), keys(60),
+             boat=(0.5, 70.0, 0.5)),
+        ride("boat-in-cobweb", floor() + [{"x": 0, "y": y, "z": 0, "block": "minecraft:cobweb"}
+                                          for y in (64, 65)], keys(30), boat=(0.5, 68.0, 0.5)),
+        ride("boat-in-powder-snow", floor() + [{"x": 0, "y": 64, "z": 0, "block": "minecraft:powder_snow"}],
+             keys(30), boat=(0.5, 66.0, 0.5)),
+        ride("boat-into-wall", floor() + lake + wall, keys(40, forward=True), boat=(0.5, 64.2, 0.5)),
+        ride("boat-shore", floor() + shore, keys(50, forward=True), boat=(0.5, 64.2, -6.5), y_rot=0.0),
+        ride("boat-under-water", floor() + deep_lake, keys(30), boat=(0.5, 64.0, 0.5)),
+        ride("boat-surface", floor() + deep_lake, keys(30), boat=(0.5, 65.5, 0.5)),
+        ride("boat-surface-forward", floor() + deep_lake, keys(40, forward=True) + keys(20, left=True, forward=True),
+             boat=(0.5, 65.5, 0.5), y_rot=20.0),
+        ride("boat-drops-into-deep-water", floor() + deep_lake, keys(50), boat=(0.5, 72.0, 0.5)),
+        ride("boat-sprint-sneak-jump", floor() + deep_lake,
+             keys(8, forward=True, sprint=True) + keys(8, sneak=True) + keys(8, jump=True)
+             + keys(8, forward=True, sneak=True, jump=True), boat=(0.5, 65.5, 0.5)),
+        ride("boat-turn-then-keep-going", floor() + deep_lake,
+             keys(30, forward=True, left=True) + keys(30, forward=True), boat=(0.5, 65.5, 0.5)),
+        ride("boat-under-flowing-water", floor() + stream, keys(30), boat=(0.5, 64.1, -0.5)),
+        ride("boat-bubble-column", floor() + bubbles, keys(40), boat=(0.5, 64.0, 0.5)),
+        ride("boat-chest", floor() + lake, keys(20, forward=True), boat=(0.5, 64.2, 0.5),
+             kind="minecraft:oak_chest_boat"),
+        ride("raft", floor() + lake, keys(20, forward=True), boat=(0.5, 64.2, 0.5),
+             kind="minecraft:bamboo_raft"),
+    ]
+    yield {
+        "case_id": "movement/ride-boat",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": ride_rows,
+    }
+
     # Breaking: the attack key as `handleKeybinds` spends it, into the
     # reference's own game mode. The target is named, not picked. Each tick
     # reports the game mode's destroy state, the crack stage the level keeps,

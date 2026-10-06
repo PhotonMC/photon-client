@@ -2077,6 +2077,37 @@ public final class MovementOracle {
                 level.addEntity(entity);
             }
         }
+        // A vehicle the player rides, as the server's passengers packet makes it: the player is put
+        // aboard and, on a boat, turned the way the boat faces.
+        net.minecraft.world.entity.Entity vehicle = null;
+        if (row.has("ride")) {
+            var ride = row.getAsJsonObject("ride");
+            var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(ride.get("type").getAsString()));
+            vehicle = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+            vehicle.setId(ride.get("id").getAsInt());
+            vehicle.snapTo(Oracle.f64(ride, "x"), Oracle.f64(ride, "y"), Oracle.f64(ride, "z"),
+                Oracle.f32(ride, "y_rot"), 0.0F);
+            if (ride.has("motion_x")) {
+                vehicle.setDeltaMovement(
+                    Oracle.f64(ride, "motion_x"), Oracle.f64(ride, "motion_y"), Oracle.f64(ride, "motion_z"));
+            }
+            vehicle.syncPacketPositionCodec(vehicle.getX(), vehicle.getY(), vehicle.getZ());
+            // A boat asks for the teams of what it could push (no team here), and sounds ask the camera.
+            setField(listener, "scoreboard", new net.minecraft.world.scores.Scoreboard());
+            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            setField(minecraft, "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
+            level.addEntity(vehicle);
+            level.addEntity(player);
+            setField(minecraft, "level", level);
+            player.startRiding(vehicle, true, false);
+            if (vehicle instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat) {
+                player.yRotO = vehicle.getYRot();
+                player.setYRot(vehicle.getYRot());
+                player.setYHeadRot(vehicle.getYRot());
+            }
+        }
         var startAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod("startAttack");
         startAttack.setAccessible(true);
         var continueAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod(
@@ -2106,8 +2137,11 @@ public final class MovementOracle {
             // The level ticks its entities, not the entity itself: it saves
             // the old position and rotation and counts the tick first, and
             // both are read during the tick.
-            level.tickNonPassenger(player);
+            level.tickNonPassenger(vehicle != null ? vehicle : player);
             var described = describe(player, wire.sent);
+            if (vehicle != null) {
+                described.add("vehicle", describeVehicle(vehicle));
+            }
             if (input.has("attack")) {
                 described.add("breaking", breakingState(minecraft, level, gameMode, player,
                     input.getAsJsonObject("attack")));
@@ -2487,6 +2521,31 @@ public final class MovementOracle {
             }
             out.addProperty(layer == net.minecraft.world.level.LightLayer.BLOCK ? "block" : "sky",
                 values.toString());
+        }
+        return out;
+    }
+
+    /** What the level keeps of a vehicle the player rides, after a tick. */
+    private static JsonObject describeVehicle(net.minecraft.world.entity.Entity vehicle) throws Exception {
+        var out = new JsonObject();
+        out.addProperty("x", Oracle.bits(vehicle.getX()));
+        out.addProperty("y", Oracle.bits(vehicle.getY()));
+        out.addProperty("z", Oracle.bits(vehicle.getZ()));
+        out.addProperty("motion_x", Oracle.bits(vehicle.getDeltaMovement().x));
+        out.addProperty("motion_y", Oracle.bits(vehicle.getDeltaMovement().y));
+        out.addProperty("motion_z", Oracle.bits(vehicle.getDeltaMovement().z));
+        out.addProperty("y_rot", Oracle.bits(vehicle.getYRot()));
+        out.addProperty("x_rot", Oracle.bits(vehicle.getXRot()));
+        out.addProperty("on_ground", vehicle.onGround());
+        out.addProperty("horizontal_collision", vehicle.horizontalCollision);
+        if (vehicle instanceof net.minecraft.world.entity.vehicle.boat.AbstractBoat boat) {
+            out.addProperty("status", String.valueOf(getField(boat, "status")));
+            out.addProperty("delta_rotation", Oracle.bits((float) getField(boat, "deltaRotation")));
+            out.addProperty("paddle_left", boat.getPaddleState(0));
+            out.addProperty("paddle_right", boat.getPaddleState(1));
+            out.addProperty("water_level", Oracle.bits((double) getField(boat, "waterLevel")));
+            out.addProperty("land_friction", Oracle.bits((float) getField(boat, "landFriction")));
+            out.addProperty("last_yd", Oracle.bits((double) getField(boat, "lastYd")));
         }
         return out;
     }

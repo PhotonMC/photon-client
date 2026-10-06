@@ -20076,6 +20076,33 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 );
             }
         }
+        // A vehicle the player rides, put aboard as the server's passengers packet does.
+        let mut ridden = None;
+        if let Some(ride) = row.get("ride") {
+            let kind = string(ride, "type")?;
+            let id = i32_field(ride, "id")?;
+            world.set_local_player_id(player.entity_id());
+            let motion = |key: &str| bits64(ride, key).unwrap_or(0.0);
+            if !world.apply_entity(EntityInput {
+                entity_id: id,
+                uuid: Uuid::new(0, id as u64),
+                type_id: voxel_data::entity_type::id(kind)
+                    .ok_or_else(|| format!("unknown entity type {kind}"))?,
+                x: bits64(ride, "x")?,
+                y: bits64(ride, "y")?,
+                z: bits64(ride, "z")?,
+                movement: (motion("motion_x"), motion("motion_y"), motion("motion_z")),
+                rotation: (bits32(ride, "y_rot")?, 0.0, 0.0),
+                data: 0,
+            }) || !world.apply_entity_passengers(id, &[player.entity_id()])
+            {
+                return Err(format!("the {kind} could not be boarded"));
+            }
+            if kind.ends_with("_boat") || kind.ends_with("_raft") {
+                player.face_boat(bits32(ride, "y_rot")?);
+            }
+            ridden = Some(id);
+        }
         let mut ticks = Vec::new();
         let mut failure = None;
         for tick in row["ticks"].as_array().ok_or("ticks must be an array")? {
@@ -20193,11 +20220,38 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     .map_or(0, |stack| stack.item_registry_id());
                 player.set_main_hand_item(main_hand);
             }
-            let sent = match player.tick(&world, keys) {
-                Ok(sent) => sent,
-                Err(error) => {
-                    failure = Some(error.to_string());
-                    break;
+            let sent = if let Some(vehicle_id) = ridden {
+                // The level ticks the vehicle (which tells the server of its paddles), then its
+                // passenger, which hands the boat the keys for the next tick.
+                world.tick_entities();
+                let mut sent: Vec<voxel_world::local_player::ServerboundMovement> = world
+                    .take_paddle_packets()
+                    .into_iter()
+                    .map(|(left, right)| {
+                        voxel_world::local_player::ServerboundMovement::PaddleBoat { left, right }
+                    })
+                    .collect();
+                let Some(view) = world.boat_view(vehicle_id) else {
+                    return Err("the boat is gone".into());
+                };
+                match player.tick_riding(&world, keys, &view) {
+                    Ok(rode) => {
+                        world.set_boat_input(vehicle_id, rode.boat_input);
+                        sent.extend(rode.sent);
+                        sent
+                    }
+                    Err(error) => {
+                        failure = Some(error.to_string());
+                        break;
+                    }
+                }
+            } else {
+                match player.tick(&world, keys) {
+                    Ok(sent) => sent,
+                    Err(error) => {
+                        failure = Some(error.to_string());
+                        break;
+                    }
                 }
             };
             let position = player.position();
@@ -20239,6 +20293,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 "hand_y_bob": format!("{:08x}", player.hand_bob(0.5).1.to_bits()),
                 "sent": packets,
             });
+            if let Some(vehicle_id) = ridden {
+                described["vehicle"] = vehicle_report(&world, vehicle_id)?;
+            }
             if let Some(attack) = tick.get("attack") {
                 let stage = world
                     .destroying_blocks()
@@ -20284,6 +20341,43 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         }
     }
     Ok(json!({"rows": out}))
+}
+
+/// What the world keeps of a vehicle the player rides, after a tick.
+fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String> {
+    use voxel_world::Status;
+    let boat = world
+        .entities()
+        .find(|entity| entity.id() == vehicle_id)
+        .ok_or("the boat is gone")?;
+    let (x, y, z) = boat.position();
+    let (mx, my, mz) = boat.motion();
+    let ride = boat.boat_ride();
+    let (paddle_left, paddle_right) = boat.paddle_state();
+    let double = |value: f64| format!("{:016x}", value.to_bits());
+    let single = |value: f32| format!("{:08x}", value.to_bits());
+    Ok(json!({
+        "x": double(x), "y": double(y), "z": double(z),
+        "motion_x": double(mx), "motion_y": double(my), "motion_z": double(mz),
+        "y_rot": single(boat.rotation().0),
+        "x_rot": single(boat.rotation().1),
+        "on_ground": boat.on_ground(),
+        "horizontal_collision": ride.horizontal_collision,
+        "status": match ride.status {
+            Some(Status::InWater) => "IN_WATER",
+            Some(Status::UnderWater) => "UNDER_WATER",
+            Some(Status::UnderFlowingWater) => "UNDER_FLOWING_WATER",
+            Some(Status::OnLand) => "ON_LAND",
+            Some(Status::InAir) => "IN_AIR",
+            None => "null",
+        },
+        "delta_rotation": single(boat.boat_delta_rotation()),
+        "paddle_left": paddle_left && !boat.passenger_ids().is_empty(),
+        "paddle_right": paddle_right && !boat.passenger_ids().is_empty(),
+        "water_level": double(ride.water_level),
+        "land_friction": single(ride.land_friction),
+        "last_yd": double(ride.last_yd),
+    }))
 }
 
 /// `experience_orb`: the quad an orb is drawn as.

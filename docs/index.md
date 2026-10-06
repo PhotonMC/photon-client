@@ -103,6 +103,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T35f — Aksolotl — client-parity](client-axolotl-parity-conformance.md)
 - [T64a — Blok sesleri ve oyuncunun hareket sesleri — client-parity (tablo) · server-conformance (tetikler)](client-block-sounds-conformance.md)
 - [T38 — Tekneler, sandıklı tekneler ve sallar — client-parity](client-boat-parity-conformance.md)
+- [T44a — Oyuncunun tekneyi sürmesi: `AbstractBoat.tick`, `LocalPlayer.rideTick`, `MoveVehicle`, `PaddleBoat` — client-parity](client-boat-ride-parity-conformance.md)
 - [T36e — Breeze — client-parity](client-breeze-parity-conformance.md)
 - [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)
 - [T39d — Rüzgâr yükleri ve ejderha topu — client-parity](client-charges-parity-conformance.md)
