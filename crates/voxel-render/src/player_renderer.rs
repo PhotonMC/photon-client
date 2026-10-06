@@ -70,6 +70,16 @@ pub fn skin_textures() -> impl Iterator<Item = &'static str> {
     DEFAULT_SKINS.iter().map(|skin| skin.texture)
 }
 
+/// A gliding player (`AvatarRenderState.isFallFlying`): how far it has tipped forward, and which
+/// way the flight turns it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FallFlying {
+    /// `fallFlyingScale`: the tip grows with the time spent gliding.
+    pub scale: f32,
+    /// `flyingYRot`, in radians, when the movement and the look both have a heading.
+    pub y_rot: Option<f32>,
+}
+
 /// Where and how a posed player model is placed.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
@@ -92,6 +102,10 @@ pub struct Placement {
     pub death_time: f32,
     /// Drawn with the hurt overlay (`hasRedOverlay`).
     pub red_overlay: bool,
+    /// Gliding, which tips the player forward in place of swimming.
+    pub fall_flying: Option<FallFlying>,
+    /// `isAutoSpinAttack` (a riptide): the age in ticks the player spins by.
+    pub auto_spin: Option<f32>,
 }
 
 /// The pose the model is drawn from: `LivingEntityRenderer.submit` for a
@@ -119,8 +133,28 @@ pub fn placement_pose(placement: &Placement) -> Pose {
             roll,
         )));
     }
-    // `AvatarRenderer.setupRotations`: the swimmer tips forward.
-    if placement.swim_amount > 0.0 {
+    // `LivingEntityRenderer.setupRotations`: a riptide spin, unless the player is dying.
+    if placement.death_time <= 0.0
+        && let Some(age) = placement.auto_spin
+    {
+        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+            -90.0 - placement.x_rot,
+        )));
+        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+            age * -75.0,
+        )));
+    }
+    // `AvatarRenderer.setupRotations`: a glider tips forward, else a swimmer does.
+    if let Some(flying) = placement.fall_flying {
+        if placement.auto_spin.is_none() {
+            pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+                flying.scale * (-90.0 - placement.x_rot),
+            )));
+        }
+        if let Some(y_rot) = flying.y_rot {
+            pose.rotate(&Quaternion::rotation_y(y_rot));
+        }
+    } else if placement.swim_amount > 0.0 {
         let target = if placement.in_water {
             -90.0 - placement.x_rot
         } else {
@@ -226,6 +260,8 @@ pub fn gui_player_vertices(
         skin,
         death_time: 0.0,
         red_overlay: false,
+        fall_flying: None,
+        auto_spin: None,
     });
     // `rotation`: a half turn about z, then the pitch about x; the model is
     // lifted so its middle sits in the box.
@@ -497,6 +533,8 @@ mod tests {
                 skin: [0.0, 0.0, 1.0, 1.0],
                 death_time: 0.0,
                 red_overlay: false,
+                fall_flying: None,
+                auto_spin: None,
             },
         );
         let lowest = vertices

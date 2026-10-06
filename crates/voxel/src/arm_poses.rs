@@ -169,6 +169,44 @@ pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> 
     }
 }
 
+/// `AvatarRenderer.extractFlightData`: how far a gliding player has tipped forward, and which way
+/// the flight turns it (the movement against the look, when both have a heading).
+pub(crate) fn fall_flying(
+    entity: &ClientEntity,
+    snapshot: &voxel_world::EntitySnapshot,
+    partial: f32,
+) -> Option<voxel_render::player_renderer::FallFlying> {
+    if !entity.is_fall_flying() {
+        return None;
+    }
+    let time = entity.fall_flying_ticks() as f32 + partial;
+    let (px, _, pz) = entity.previous_motion();
+    let (cx, _, cz) = entity.motion();
+    let partial = f64::from(partial);
+    let movement = (px + partial * (cx - px), pz + partial * (cz - pz));
+    // `Entity.getViewVector`: the look's heading.
+    let look = voxel_core::math::Vec3::direction_from_rotation_components(
+        snapshot.pitch,
+        snapshot.head_yaw,
+    );
+    let (movement_len, look_len) = (
+        movement.0 * movement.0 + movement.1 * movement.1,
+        look.x * look.x + look.z * look.z,
+    );
+    let y_rot =
+        (movement_len > f64::from(1.0e-5_f32) && look_len > f64::from(1.0e-5_f32)).then(|| {
+            let (mn, ln) = (movement_len.sqrt(), look_len.sqrt());
+            let dot = (movement.0 / mn) * (look.x / ln) + (movement.1 / mn) * (look.z / ln);
+            let sign = movement.0 * look.z - movement.1 * look.x;
+            let heading = if sign == 0.0 { 0.0 } else { sign.signum() };
+            (heading * dot.abs().min(1.0).acos()) as f32
+        });
+    Some(voxel_render::player_renderer::FallFlying {
+        scale: (time * time / 100.0).clamp(0.0, 1.0),
+        y_rot,
+    })
+}
+
 /// `CrossbowItem.getChargeDuration` of the stack the entity is using: the plain duration when it
 /// uses nothing.
 pub(crate) fn charge_duration_of_use(session: &PlaySession, entity: &ClientEntity) -> f32 {

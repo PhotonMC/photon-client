@@ -1,14 +1,14 @@
-# T41f3 — Kafatası modelleri, gözde dürbün ve süzülme eğimi
+# T41f3 — Oyuncunun gövde dönüşü: süzülme eğimi ve riptide
 
-**Amaç:** kafadaki kafatası modelleri (`SkullBlockRenderer`, `*_head#main` katmanları, `submitSkull`), `PlayerItemInHandLayer.renderItemHeldToEye` (dürbün) ve süzülen oyuncunun gövde eğimi (`AvatarRenderer.setupRotations`, `fallFlyingScale`).
-**Bağımlılık:** T41f2. **Boy:** M.
+**Amaç:** `AvatarRenderer.setupRotations` ve `LivingEntityRenderer.setupRotations`'ı gerçek yığınla karşılaştır; süzülen (`fallFlyingScale`, `flyingYRot`) ve riptide dönen oyuncunun gövdesi.
+**Bağımlılık:** T41f2. **Boy:** S.
 
 ## Oku
-- Java: `client/renderer/blockentity/SkullBlockRenderer.java`, `client/model/object/skull/*.java`, `client/renderer/entity/layers/{CustomHeadLayer,PlayerItemInHandLayer}.java`, `client/renderer/entity/player/AvatarRenderer.java`.
-- Rust: `crates/voxel/src/{armor,held_items,overlays}.rs`, `voxel-render/src/held_item.rs`.
+- Java: `client/renderer/entity/player/AvatarRenderer.java` (`setupRotations`, `extractFlightData`), `client/renderer/entity/LivingEntityRenderer.java`, `client/renderer/entity/state/AvatarRenderState.java`.
+- Rust: `voxel-render/src/player_renderer.rs` (`placement_pose`), `crates/voxel/src/{arm_poses,overlays}.rs`.
 
 ## Oracle
-`held_item_pose` kalıbı; kafatası modelleri model tablosundan.
+`entity/avatar-pose` (gerçek `setupRotations` + `submit`'in sonu).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.
@@ -17,4 +17,5 @@
 `docs/client-held-item-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+- `Placement::{fall_flying, auto_spin}`; `entity/avatar-pose` 26 satır bit bit eşit (ölüm, yüzme, sürünme, süzülme ve yönü, riptide). Oyunda `fall_flying_ticks`/`previous_motion` sayaçları ve `arm_poses::fall_flying`; süzülme durumunun çıkarımı Java'ya karşı karşılaştırılmadı, canlı gözlem yok.
+- Açık → [T41f4](T41f4-kafatasi-durbun.md).

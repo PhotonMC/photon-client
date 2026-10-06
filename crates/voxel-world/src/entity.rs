@@ -162,6 +162,10 @@ pub(crate) struct EntityState {
     pub(crate) using_item_ticks: i32,
     /// `LivingEntity.elytraAnimationState`.
     pub(crate) elytra: crate::elytra::ElytraState,
+    /// `LivingEntity.fallFlyTicks`: how long the entity has glided.
+    pub(crate) fall_fly_ticks: i32,
+    /// `ClientAvatarState.deltaMovementOnPreviousTick`.
+    pub(crate) previous_motion: [u64; 3],
     pub(crate) variant: Option<i32>,
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.
@@ -1895,6 +1899,17 @@ impl ClientEntity {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
     }
 
+    /// `LivingEntity.getFallFlyingTicks`.
+    pub fn fall_flying_ticks(&self) -> i32 {
+        self.living.fall_fly_ticks
+    }
+
+    /// `ClientAvatarState.deltaMovementOnPreviousTick`.
+    pub fn previous_motion(&self) -> (f64, f64, f64) {
+        let [x, y, z] = self.living.previous_motion.map(f64::from_bits);
+        (x, y, z)
+    }
+
     /// `ElytraAnimationState.getRotX/Y/Z`: how far the wings are spread.
     pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
         self.living.elytra.rotations(partial_tick)
@@ -3541,6 +3556,13 @@ impl ClientEntity {
     pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
         self.living.using_item_ticks = if self.is_using_item() {
             self.living.using_item_ticks.saturating_add(1)
+        } else {
+            0
+        };
+        let (mx, my, mz) = self.motion();
+        self.living.previous_motion = [mx.to_bits(), my.to_bits(), mz.to_bits()];
+        self.living.fall_fly_ticks = if self.is_fall_flying() {
+            self.living.fall_fly_ticks.saturating_add(1)
         } else {
             0
         };

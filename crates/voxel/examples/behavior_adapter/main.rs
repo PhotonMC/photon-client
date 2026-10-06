@@ -22377,6 +22377,41 @@ fn fishing_hook_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `avatar_pose`: where a player is put, by the body's turn, the dying, swimming and gliding.
+fn avatar_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::player_renderer::{FallFlying, Placement, placement_pose};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+        let float = |key: &str| f32_field(row, key);
+        let gliding = flag("fall_flying");
+        let placement = Placement {
+            feet: [float("feet_x")?, float("feet_y")?, float("feet_z")?],
+            body_rot: float("body_rot")?,
+            x_rot: float("x_rot")?,
+            swim_amount: float("swim_amount")?,
+            in_water: flag("in_water"),
+            visually_swimming: flag("visually_swimming"),
+            crouching: flag("crouching"),
+            light: 0,
+            skin: [0.0, 0.0, 1.0, 1.0],
+            death_time: float("death_time")?,
+            red_overlay: false,
+            fall_flying: gliding.then(|| {
+                let ticks = float("fall_flying_ticks").unwrap_or(0.0);
+                FallFlying {
+                    scale: (ticks * ticks / 100.0).clamp(0.0, 1.0),
+                    y_rot: flag("apply_flying_y_rot").then(|| float("flying_y_rot").unwrap_or(0.0)),
+                }
+            }),
+            auto_spin: flag("spin_attack").then(|| float("age_in_ticks").unwrap_or(0.0)),
+        };
+        let pose = placement_pose(&placement);
+        out.push(json!({"label": row["label"], "pose": matrix_bits(&pose)}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `elytra_model`: the elytra models posed by the wings' spread, drawn.
 fn elytra_model_result(request: &Value) -> Result<Value, String> {
     use voxel_render::mob_model::MobModel;
@@ -24757,6 +24792,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "fishing_hook" => return fishing_hook_result(request),
         "leash_strip" => return leash_strip_result(request),
         "elytra_model" => return elytra_model_result(request),
+        "avatar_pose" => return avatar_pose_result(request),
         "primed_tnt_pose" => return primed_tnt_pose_result(request),
         "lightning_bolt" => return lightning_bolt_result(request),
         "painting_geometry" => return painting_geometry_result(request),

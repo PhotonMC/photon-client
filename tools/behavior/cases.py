@@ -15420,6 +15420,7 @@ def entity_cases():
     yield from entity_fishing_hook_cases()
     yield from entity_leash_cases()
     yield from entity_elytra_cases()
+    yield from entity_avatar_pose_cases()
     yield from entity_primed_tnt_cases()
     yield from entity_lightning_bolt_cases()
     yield from entity_painting_geometry_cases()
@@ -17212,6 +17213,43 @@ def entity_elytra_cases():
                          "rot_x": float_bits(spread[0]), "rot_y": float_bits(spread[1]),
                          "rot_z": float_bits(spread[2])})
     yield {"case_id": "entity/elytra-model", "family": "entity", "operation": "elytra_model", "rows": rows}
+
+
+def entity_avatar_pose_cases():
+    """Where the real `AvatarRenderer` puts a player: standing, sneaking, turned, dying, swimming (in water
+    and crawling), gliding (new, long, past the full tip, with and without a heading, spinning) and
+    combinations that prefer one over another."""
+    def row(label, body=0.0, pitch=0.0, swim=0.0, water=False, crawling=False, crouching=False, death=0.0,
+            glide=False, spin=False, ticks=0.0, heading=None, feet=(10.5, 64.0, -3.5), age=0.0):
+        return {"label": label, "body_rot": float_bits(body), "x_rot": float_bits(pitch),
+                "swim_amount": float_bits(swim), "in_water": water, "visually_swimming": crawling,
+                "crouching": crouching, "death_time": float_bits(death), "fall_flying": glide,
+                "spin_attack": spin, "fall_flying_ticks": float_bits(ticks),
+                "apply_flying_y_rot": heading is not None,
+                "flying_y_rot": float_bits(heading if heading is not None else 0.0),
+                "age_in_ticks": float_bits(age), "feet_x": float_bits(feet[0]), "feet_y": float_bits(feet[1]),
+                "feet_z": float_bits(feet[2])}
+    rows = [
+        row("standing"), row("turned", body=123.5), row("negative-turn", body=-77.25),
+        row("sneaking", crouching=True, body=40.0), row("far", feet=(-100.25, 70.5, 33.75), body=10.0),
+        row("dying-early", death=2.0), row("dying-late", death=18.0), row("dead", death=40.0, body=33.0),
+        row("swim-water", swim=0.6, water=True, pitch=-20.0, body=15.0),
+        row("swim-water-down", swim=1.0, water=True, pitch=45.0),
+        row("swim-air", swim=0.4, pitch=30.0), row("crawl", swim=1.0, crawling=True, pitch=10.0, body=-60.0),
+        row("crawl-water", swim=1.0, crawling=True, water=True, pitch=-45.0),
+        row("glide-new", glide=True, ticks=0.0, pitch=-30.0), row("glide-early", glide=True, ticks=2.5, pitch=-30.0),
+        row("glide-mid", glide=True, ticks=6.0, pitch=15.0, body=75.0),
+        row("glide-full", glide=True, ticks=10.0, pitch=40.0), row("glide-long", glide=True, ticks=300.0, pitch=-70.0),
+        row("glide-heading-left", glide=True, ticks=12.0, pitch=-10.0, heading=0.7, body=20.0),
+        row("glide-heading-right", glide=True, ticks=12.0, pitch=-10.0, heading=-1.2),
+        row("glide-heading-partial", glide=True, ticks=4.0, pitch=25.0, heading=2.9, body=-30.0),
+        row("glide-spinning", glide=True, spin=True, ticks=12.0, pitch=-10.0, age=7.5),
+        row("glide-and-swim", glide=True, swim=0.8, water=True, ticks=12.0, pitch=-10.0),
+        row("glide-sneaking", glide=True, crouching=True, ticks=12.0, pitch=-10.0),
+        row("glide-dying", glide=True, death=10.0, ticks=12.0, pitch=-10.0, body=5.0),
+        row("spin-alone", spin=True, pitch=-20.0, age=9.0), row("spin-dying", spin=True, death=5.0, age=9.0),
+    ]
+    yield {"case_id": "entity/avatar-pose", "family": "entity", "operation": "avatar_pose", "rows": rows}
 
 
 def entity_fishing_hook_cases():

@@ -263,6 +263,8 @@ pub fn player_model(
         skin: view.skin,
         death_time: 0.0,
         red_overlay: false,
+        fall_flying: None,
+        auto_spin: None,
     };
     Hands {
         base: &voxel_render::player_renderer::placement_pose(&placement),
@@ -421,6 +423,10 @@ pub fn remote_players(
             skin: rect,
             death_time: snapshot.death_time,
             red_overlay: snapshot.red_overlay,
+            fall_flying: crate::arm_poses::fall_flying(entity, &snapshot, partial),
+            auto_spin: entity
+                .is_auto_spin_attack()
+                .then(|| entity.tick_count() as f32 + partial),
         };
         let worn = Worn {
             head: entity.equipment(EquipmentSlot::Head),

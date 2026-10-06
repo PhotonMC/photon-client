@@ -4117,6 +4117,60 @@ public final class EntityOracle {
         state.swimAmount = Oracle.f32(row, "swim_amount");
     }
 
+    /**
+     * Where the real `AvatarRenderer` puts a player: the feet, the body's turn (death, gliding, swimming
+     * included) from its own `setupRotations`, then the flip and the scale `LivingEntityRenderer.submit`
+     * ends with; the matrix the model is drawn from.
+     */
+    private static JsonObject avatarPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.player.AvatarRenderer.class);
+        var rotations = net.minecraft.client.renderer.entity.player.AvatarRenderer.class.getDeclaredMethod(
+            "setupRotations", net.minecraft.client.renderer.entity.state.AvatarRenderState.class,
+            com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
+        rotations.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.entity.state.AvatarRenderState();
+            float bodyRot = Oracle.f32(row, "body_rot");
+            state.xRot = Oracle.f32(row, "x_rot");
+            state.swimAmount = Oracle.f32(row, "swim_amount");
+            state.isInWater = row.get("in_water").getAsBoolean();
+            state.isVisuallySwimming = row.get("visually_swimming").getAsBoolean();
+            state.isCrouching = row.get("crouching").getAsBoolean();
+            state.deathTime = Oracle.f32(row, "death_time");
+            state.isFallFlying = row.get("fall_flying").getAsBoolean();
+            state.isAutoSpinAttack = row.get("spin_attack").getAsBoolean();
+            state.fallFlyingTimeInTicks = Oracle.f32(row, "fall_flying_ticks");
+            state.shouldApplyFlyingYRot = row.get("apply_flying_y_rot").getAsBoolean();
+            state.flyingYRot = Oracle.f32(row, "flying_y_rot");
+            state.ageInTicks = Oracle.f32(row, "age_in_ticks");
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            // `EntityRenderDispatcher.submit`: where the feet are, a crouching player a little lower.
+            stack.translate(Oracle.f32(row, "feet_x"),
+                Oracle.f32(row, "feet_y") + (state.isCrouching ? -2.0F / 16.0F : 0.0F), Oracle.f32(row, "feet_z"));
+            stack.pushPose();
+            stack.scale(1.0F, 1.0F, 1.0F);
+            rotations.invoke(renderer, state, stack, bodyRot, 1.0F);
+            stack.scale(-1.0F, -1.0F, 1.0F);
+            stack.scale(0.9375F, 0.9375F, 0.9375F);
+            stack.translate(0.0F, -1.501F, 0.0F);
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("pose", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The elytra models posed by the real `ElytraModel.setupAnim`, drawn. */
     private static JsonObject elytraModel(final JsonObject request) throws Exception {
         var rows = new JsonArray();
@@ -4862,6 +4916,9 @@ public final class EntityOracle {
         }
         if (operation.equals("parrot_textures")) {
             return parrotTextures(request);
+        }
+        if (operation.equals("avatar_pose")) {
+            return avatarPose(request);
         }
         if (operation.equals("elytra_model")) {
             return elytraModel(request);

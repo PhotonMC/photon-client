@@ -46,6 +46,6 @@ Elytra (T41f): `entity/elytra-model` 8 satır gerçek `ElytraModel.setupAnim`'e 
 
 - Büyü parıltısı (`armorEntityGlint`) çizilmiyor ve eşya yamasındaki `equippable` okunmuyor ([T41e2](tasks/T41e2-zirh-parilti-equippable.md)). Dekal desenli süs (`decal: true`; vanilla'da yok) süs katmanı gibi çizilir, derinlik eşitliği yok.
 - Boya yamadan okunur.
-- Oyuncu dokusu/pelerin dokusu (PLAN-M9), süzülen oyuncunun gövde eğimi ve kafatası modelleri ([T41f3](tasks/T41f3-kafatasi-durbun-suzulme.md)); yerel oyuncu süzülmez; pelerin T41c'de; at/kurt/lama gövde zırhı,
+- Oyuncu dokusu/pelerin dokusu (PLAN-M9), kafatası modelleri ([T41f4](tasks/T41f4-kafatasi-durbun.md)); yerel oyuncu süzülmez; pelerin T41c'de; at/kurt/lama gövde zırhı,
   eyer katmanları ilgili aile görevlerinde. Zırh askısı T40'ta.
 - Oyuncu zırhı için `wearing` yamaları (gizli ayrıntılar: `hide_tooltip`) etkisiz.

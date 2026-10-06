@@ -46,6 +46,10 @@ poz); zombi ve piglin yetişkin/bebek için üçer poz; zombi saldırgan ve sola
 için yay, yaylı saldırgan (sağ ve solak), kılıçlı saldırgan. Aile içi türler tablo
 satırıdır; eşyanın görüntü dönüşümü ayrıca `model/display-*` ailesiyle kapalıdır.
 
+## Oyuncunun gövde dönüşü (T41f3)
+
+`entity/avatar-pose` 26 satır: gerçek `AvatarRenderer.setupRotations` ile `LivingEntityRenderer.submit`'in sonu (ayaklar, çömelme kayması, gövde dönüşü, ölüm yatışı, riptide dönüşü, yüzme ve sürünme eğimi, süzülme eğimi ve yönü) gerçek yığında; model matrisi bit bit eşit. Süzülmede eğim `fallFlyingScale = clamp(t²/100)` ile büyür, süzülme yönü (`flyingYRot`) hareketin ve bakışın yatay yönünden. Oyunda `ClientEntity::{fall_flying_ticks, previous_motion}` sayılır, `arm_poses::fall_flying` durumu kurar; uzaktaki oyuncuda çizilir (yerel oyuncu süzülmez). Süzülme durumunun çıkarımı (kare, hareket, bakış) Java'ya karşı karşılaştırılmadı.
+
 ## Sapmalar (açık)
 
 - Uzaktaki oyuncunun kol pozları (`AvatarRenderer.getArmPose`: blok, yay, trident, arbalet doldurma/tutma, dürbün, boru, fırça) ve `HumanoidModel.setupAnim`'in kullanım dalı (kullanılan elin kolu önce), yolcu, süzülme (`speedValue` dahil) ve dürbünde soluk almama gerçek modele karşı karşılaştırıldı (`entity/held-item-pose`). Kullanım süresi istemcide sayılır (`ticks_using_item`); arbalet doldurma süresi hızlı doldurma büyüsünden. Pozu eşyadan çıkarma (kullanım animasyonu, yüklü arbalet) birim testli, Java'ya karşı karşılaştırılmadı.
