@@ -150,7 +150,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41e2](T41e2-zirh-parilti-equippable.md) | Zırh büyü parıltısı ve `equippable` yaması | M | T41e | açık |
 | [T41c](T41c-kafa-pelerin-elytra.md) | Kafa eşyası, pelerin, elytra, dürbün | M | T41 | bölündü (kafa eşyası: 4c7e5a5a) |
 | [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | bölündü (ce6f64c8) |
-| [T41f2](T41f2-kafatasi-yerel-elytra.md) | Yerel oyuncunun ve mobların elytrası | S | T41f | bitti (HASH) |
+| [T41f2](T41f2-kafatasi-yerel-elytra.md) | Yerel oyuncunun ve mobların elytrası | S | T41f | bitti (1fc20242) |
 | [T41f3](T41f3-kafatasi-durbun-suzulme.md) | Kafatası modelleri, gözde dürbün ve süzülme eğimi | M | T41f2 | açık |
 | [T41g](T41g-koylu-cadi-esya.md) | Köylü, tüccar ve cadının tuttuğu ve taktığı eşya | S | T34b, T41c | bitti (2b8c193d) |
 | [T41d](T41d-kullanim-pozlari.md) | Eşya kullanım pozları ve silah kol pozları | M | T41 | bölündü (acbea4de) |
