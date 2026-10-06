@@ -14,4 +14,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-(boş)
+- Yapıldı: `item_values::equippable_of` (yama ekler/kaldırırsa yama, yoksa eşya tablosu; yuva ve varlık kimliği), `Armor::asset_for` onu kullanır. Kayıt: `docs/client-armor-parity-conformance.md`. Canlıda görüldü.
+- Oracle: `entity/item-equippable` 8 satır (gerçek `ItemStack.get(EQUIPPABLE)`).
+- Sapma: yalnız yuva ve varlık kimliği okunur (ses, kamera katmanı, izin verilen varlıklar, bayraklar katmanlarca okunmaz); eşya bölümlerindeki öteki okuyucular (`container_menu.rs`) hâlâ tablodan okur, yamaya bakmaz.

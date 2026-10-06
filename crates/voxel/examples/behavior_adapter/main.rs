@@ -23298,6 +23298,24 @@ fn item_foil_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `item_equippable`: the slot and the equipment asset a stack is worn as, from its patch.
+fn item_equippable_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let item = voxel_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
+        let patch = hex_bytes(string(row, "patch")?)?;
+        let found = voxel_game::item_values::equippable_of(item as i32, &patch);
+        out.push(json!({
+            "label": row["label"],
+            "slot": found.as_ref().map_or("none", |found| found.slot),
+            "asset": found
+                .and_then(|found| found.asset)
+                .unwrap_or_else(|| "none".to_owned()),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `glint_layers`: the pipeline the armor's glint is drawn with, its texture, and the matrix that
 /// moves the texture.
 fn glint_layers_result(request: &Value) -> Result<Value, String> {
@@ -25559,6 +25577,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_frame_pose" => return item_frame_pose_result(request),
         "display_pose" => return display_pose_result(request),
         "item_foil" => return item_foil_result(request),
+        "item_equippable" => return item_equippable_result(request),
         "glint_layers" => return glint_layers_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),

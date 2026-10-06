@@ -15935,6 +15935,7 @@ def entity_cases():
     yield from entity_item_frame_pose_cases()
     yield from entity_display_pose_cases()
     yield from entity_glint_cases()
+    yield from entity_equippable_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17776,6 +17777,33 @@ def entity_glint_cases():
                 for millis, speed in [(0, 0.5), (1234, 0.5), (27500, 0.5), (55000, 0.5), (1_000_000, 0.5),
                                       (987654321, 0.5), (5000, 0.0), (5000, 1.0), (123456, 0.25)]]
     yield {"case_id": "entity/glint-layers", "family": "entity", "operation": "glint_layers", "rows": matrices}
+
+
+def entity_equippable_cases():
+    """The `equippable` component of real stacks: the item's own (from its definition), a patch that
+    gives it another asset, a slot and an asset to an item that is not worn, no asset at all, a sound
+    the patch names whole, and a patch that removes it. The component's wire form: the slot's id, the
+    equip sound (a registry id plus one, or zero and the event), the asset (a flag and its name), the
+    camera overlay and the allowed entities (each a flag), five flags and the shearing sound."""
+    def name(text):
+        return format(len(text), "02x") + text.encode().hex()
+
+    def equippable(slot, asset, sound="01", shearing="01"):
+        body = format(slot, "02x") + sound + ("01" + name(asset) if asset else "00") + "00" + "00" + "01" + "01" + "00" + "00" + "00" + shearing
+        return "0100" + "20" + body
+
+    rows = [{"label": "equippable-default-chestplate", "item": "minecraft:diamond_chestplate", "patch": "0000"},
+            {"label": "equippable-default-stick", "item": "minecraft:stick", "patch": "0000"},
+            {"label": "equippable-other-asset", "item": "minecraft:leather_helmet",
+             "patch": equippable(4, "minecraft:netherite")},
+            {"label": "equippable-on-a-stick", "item": "minecraft:stick", "patch": equippable(3, "minecraft:gold")},
+            {"label": "equippable-no-asset", "item": "minecraft:iron_boots", "patch": equippable(1, None)},
+            {"label": "equippable-whole-sound", "item": "minecraft:stick",
+             "patch": equippable(2, "minecraft:chainmail", sound="00" + name("minecraft:entity.pig.ambient") + "00")},
+            {"label": "equippable-whole-sound-range", "item": "minecraft:stick",
+             "patch": equippable(7, "minecraft:saddle", sound="00" + name("minecraft:x") + "013f800000")},
+            {"label": "equippable-removed", "item": "minecraft:diamond_chestplate", "patch": "0001" + "20"}]
+    yield {"case_id": "entity/item-equippable", "family": "entity", "operation": "item_equippable", "rows": rows}
 
 
 def entity_arrow_cases():

@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use voxel_game::item_values::Values;
+use voxel_game::item_values::{Values, equippable_of};
 use voxel_render::entity_textures::{EntityTextures, TextureRect};
 use voxel_render::equipment::{EquipmentInfo, parse_equipment_info};
 use voxel_render::mob_model::MobModel;
@@ -452,16 +452,13 @@ impl Armor {
         self.asset_for(stack, slot.name())
     }
 
-    /// The equipment asset a stack is worn as in the slot of this name.
+    /// The equipment asset a stack is worn as in the slot of this name (its `equippable` component,
+    /// the stack's own over the item's).
     fn asset_for(&self, stack: &ClientItemStackState, slot: &str) -> Option<String> {
-        let item = usize::try_from(stack.item_registry_id())
-            .ok()
-            .and_then(|index| voxel_data::item::registry::ITEMS.get(index))?;
-        let equip = item
-            .equippable
-            .as_ref()
+        let equip = equippable_of(stack.item_registry_id(), stack.patch_bytes())
             .filter(|equip| equip.slot == slot)?;
-        let asset = equip.asset?.strip_prefix("minecraft:")?;
+        let asset = equip.asset?;
+        let asset = asset.strip_prefix("minecraft:")?;
         self.infos.contains_key(asset).then(|| asset.to_owned())
     }
 }

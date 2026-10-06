@@ -3064,6 +3064,39 @@ public final class EntityOracle {
         return result;
     }
 
+    /**
+     * The `equippable` component of real stacks: the stack's patch (as the wire carries it) over the
+     * item's own, as the slot's name and the equipment asset it names.
+     */
+    private static JsonObject itemEquippable(final JsonObject request) throws Exception {
+        var registries = Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("item").getAsString()));
+            var stack = item.getDefaultInstance();
+            var patch = row.get("patch").getAsString();
+            var bytes = new byte[patch.length() / 2];
+            for (int index = 0; index < bytes.length; index++) {
+                bytes[index] = (byte) Integer.parseInt(patch.substring(index * 2, index * 2 + 2), 16);
+            }
+            var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), registries);
+            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+            var equippable = stack.get(net.minecraft.core.component.DataComponents.EQUIPPABLE);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("slot", equippable == null ? "none" : equippable.slot().getSerializedName());
+            out.addProperty("asset", equippable == null || equippable.assetId().isEmpty() ? "none"
+                : equippable.assetId().get().identifier().toString());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The texture each parrot variant wears (`ParrotRenderer.getVariantTexture`), by id. */
     private static JsonObject parrotTextures(final JsonObject request) {
         var rows = new JsonArray();
@@ -5268,6 +5301,9 @@ public final class EntityOracle {
         }
         if (operation.equals("display_light")) {
             return displayLight(request);
+        }
+        if (operation.equals("item_equippable")) {
+            return itemEquippable(request);
         }
         if (operation.equals("item_foil")) {
             return itemFoil(request);

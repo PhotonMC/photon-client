@@ -278,6 +278,45 @@ impl Values {
         entries
     }
 
+    /// Whether the stack's patch removes a component (so the item's own is gone).
+    pub fn removes(&self, component: i32) -> bool {
+        self.patch
+            .as_ref()
+            .is_some_and(|patch| patch.removed.contains(&component))
+    }
+
+    /// The `equippable` component a stack's patch adds, as far as the layers read it: the slot's
+    /// name and the equipment asset (`Equippable.STREAM_CODEC`, whose sound holders come first).
+    fn patched_equippable(&self) -> Option<Equippable> {
+        let mut cursor = Cursor {
+            data: self.raw(ids::EQUIPPABLE)?,
+        };
+        let slot = match cursor.varint().ok()? {
+            1 => "feet",
+            2 => "legs",
+            3 => "chest",
+            4 => "head",
+            5 => "offhand",
+            6 => "body",
+            7 => "saddle",
+            _ => "mainhand",
+        };
+        // `SoundEvent.STREAM_CODEC`: a registry id plus one, or the event itself (its name, and a
+        // fixed range if it has one).
+        if cursor.varint().ok()? == 0 {
+            cursor.identifier().ok()?;
+            cursor.optional(Cursor::float).ok()?;
+        }
+        let asset = if cursor.boolean().ok()? {
+            let length = cursor.count().ok()?;
+            let name = cursor.data.get(..length)?;
+            Some(String::from_utf8_lossy(name).into_owned())
+        } else {
+            None
+        };
+        Some(Equippable { slot, asset })
+    }
+
     /// `ItemStack.hasFoil`: the glint override if the stack has one, else whether it has any
     /// enchantment (`Item.isFoil`).
     pub fn has_foil(&self) -> bool {
@@ -526,4 +565,31 @@ mod tests {
         assert_eq!(values.dyed_color(), None);
         assert_eq!(values.potion_color_or(7), 7);
     }
+}
+
+/// What a worn stack is equipped as (`Equippable`): the slot's name and the equipment asset, if it
+/// names one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Equippable {
+    pub slot: &'static str,
+    pub asset: Option<String>,
+}
+
+/// `ItemStack.get(DataComponents.EQUIPPABLE)`: the stack's patch over the item's own.
+pub fn equippable_of(item: i32, patch: &[u8]) -> Option<Equippable> {
+    let values = Values::new(item, patch);
+    if let Some(equippable) = values.patched_equippable() {
+        return Some(equippable);
+    }
+    if values.removes(ids::EQUIPPABLE) {
+        return None;
+    }
+    let item = usize::try_from(item)
+        .ok()
+        .and_then(|index| voxel_data::item::registry::ITEMS.get(index))?;
+    let equip = item.equippable.as_ref()?;
+    Some(Equippable {
+        slot: equip.slot,
+        asset: equip.asset.map(str::to_owned),
+    })
 }

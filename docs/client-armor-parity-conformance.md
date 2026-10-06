@@ -44,10 +44,12 @@ Elytra (T41f): `entity/elytra-model` 8 satır gerçek `ElytraModel.setupAnim`'e 
 
 Büyü parıltısı (T41e2): `entity/item-foil` 8 satır gerçek `ItemStack.hasFoil`'e karşı (her eşyanın varsayılanı, ayrıca bileşen yamasıyla büyü, parıltı geçersiz kılması açık/kapalı, geçersiz kılmanın kaldırılması, boş büyü; yama telin kendi biçiminde, Java yamayı gerçek codec'le çözer) ve `entity/glint-layers` 9 satır gerçek `RenderTypes.armorEntityGlint`'e karşı (boru hattı: `glint`, ışık ve blend `GLINT`, derinlik `EQUAL` ve yazmaz, çift yüz, doku `misc/enchanted_glint_armor`; doku matrisi `setupGlintTexturing` zaman ve parıltı hızı verilerek 16 sayı bit bit). `hasFoil`: parıltı geçersiz kılması varsa o, yoksa büyü bileşeni boş değil. Oyunda giyilen parçanın ilk çizilen katmanı (`renderFoil`) ikinci kez, doku koordinatı katmanın 0–1 uzayından glint matrisiyle (`ötele(−o0, o1)`, `Z(π/18)`, `0,16` ölçek) glint dokusuna taşınarak ve doku tekrar ederek çizilir (`Armor::glint`, `PipelineKind::Glint`: ışıksız, sis ve parıltı gücüyle sönen, rengiyle eklenen); zırh ve elytra. Canlı: büyülü ve parıltı geçersiz kılınmış zırh askılarında parıltı görüldü.
 
+`equippable` yaması (T41e3): `entity/item-equippable` 8 satır gerçek `ItemStack.get(EQUIPPABLE)`'e karşı (eşyanın kendi bileşeni, yamanın başka varlık vermesi, giyilmeyen eşyaya yuva ve varlık, varlıksız, ses bütün olarak yazılı (menzilli ve menzilsiz), yamanın bileşeni kaldırması; yama telin biçiminde, Java gerçek codec'le çözer). `Equippable.STREAM_CODEC`'ten katmanların okuduğu iki alan (yuva ve varlık kimliği) okunur; önce ekipman sesi (kayıt numarası artı bir, ya da sıfır ve olayın kendisi) atlanır. `equippable_of`: yama ekler ya da kaldırırsa yama, yoksa eşya tablosu; `Armor::asset_for` zırh, elytra ve eyer katmanları için bunu kullanır. Canlı: `equippable` bileşenli bir çubuk zırh askısında altın göğüslük olarak görüldü.
+
 ## Sapmalar (açık)
 
 - Parıltı gücü seçeneği varsayılan (0,75) ve parıltı hızı varsayılan (0,5) sabittir (seçenek ekranı bağlı değil); parıltı derinlik eşitliği yerine büyük-eşit testi kullanır (aynı üçgenler modelin en yakın olduğu yerde geçer); eyer ve öteki `simple_layer` katmanlarında, kafa eşyasında ve elde taşınan eşyada parıltı yok.
-- Eşya yamasındaki `equippable` okunmuyor ([T41e3](tasks/T41e3-equippable-yamasi.md)). Dekal desenli süs (`decal: true`; vanilla'da yok) süs katmanı gibi çizilir, derinlik eşitliği yok.
+- Dekal desenli süs (`decal: true`; vanilla'da yok) süs katmanı gibi çizilir, derinlik eşitliği yok.
 - Boya yamadan okunur.
 - Oyuncu dokusu/pelerin dokusu (PLAN-M9), kafatası modelleri ([T41f4](tasks/T41f4-kafatasi-durbun.md)); yerel oyuncu süzülmez; pelerin T41c'de; at/kurt/lama gövde zırhı,
   eyer katmanları ilgili aile görevlerinde. Zırh askısı T40'ta.
