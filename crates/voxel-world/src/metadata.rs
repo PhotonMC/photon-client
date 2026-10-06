@@ -161,18 +161,19 @@ pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32
     voxel_core::wire::read_varint(&mut value).ok()
 }
 
-/// A piglin's baby and dancing flags (`Piglin.DATA_BABY_ID`,
-/// `DATA_IS_DANCING`), when the data holds them.
+/// A piglin's baby, dancing and crossbow-charging flags (`Piglin.DATA_BABY_ID`,
+/// `DATA_IS_DANCING`, `DATA_IS_CHARGING_CROSSBOW`), when the data holds them.
 pub(crate) fn piglin_flags_from_metadata(
     type_id: i32,
     metadata: &[u8],
-) -> (Option<bool>, Option<bool>) {
+) -> (Option<bool>, Option<bool>, Option<bool>) {
     if voxel_data::entity_type::name(type_id) != Some("minecraft:piglin") {
-        return (None, None);
+        return (None, None, None);
     }
     (
         metadata_boolean_value(metadata, PIGLIN_BABY_DATA_ID),
         metadata_boolean_value(metadata, PIGLIN_DANCING_DATA_ID),
+        metadata_boolean_value(metadata, PIGLIN_CHARGING_CROSSBOW_DATA_ID),
     )
 }
 

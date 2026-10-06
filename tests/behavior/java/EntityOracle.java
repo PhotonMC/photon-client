@@ -4147,7 +4147,6 @@ public final class EntityOracle {
             String id = row.get("layer").getAsString();
             var root = bakedLayer(id);
             boolean baby = id.contains("_baby");
-            boolean dancing = row.get("dancing").getAsBoolean();
             net.minecraft.client.model.Model<?> model;
             if (id.startsWith("minecraft:zombified_piglin")) {
                 var state = new net.minecraft.client.renderer.entity.state.ZombifiedPiglinRenderState();
@@ -4163,9 +4162,12 @@ public final class EntityOracle {
                 var state = new net.minecraft.client.renderer.entity.state.PiglinRenderState();
                 humanoidFields(state, row);
                 state.isBaby = baby;
-                if (dancing) {
-                    state.armPose = net.minecraft.world.entity.monster.piglin.PiglinArmPose.DANCING;
-                }
+                state.armPose = net.minecraft.world.entity.monster.piglin.PiglinArmPose.valueOf(
+                    row.get("arm_pose").getAsString().toUpperCase());
+                state.mainArm = row.get("main_arm").getAsString().equals("left")
+                    ? net.minecraft.world.entity.HumanoidArm.LEFT : net.minecraft.world.entity.HumanoidArm.RIGHT;
+                state.ticksUsingItem = Oracle.f32(row, "ticks_using_item");
+                state.maxCrossbowChageDuration = Oracle.f32(row, "max_crossbow_charge");
                 var piglin = baby
                     ? new net.minecraft.client.model.monster.piglin.BabyPiglinModel(root)
                     : new net.minecraft.client.model.monster.piglin.AdultPiglinModel(root);

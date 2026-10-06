@@ -24421,11 +24421,23 @@ fn piglin_model_result(request: &Value) -> Result<Value, String> {
         let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
         let mut model = MobModel::bake(layer);
         model.setup_piglin(&PiglinState {
-            humanoid: humanoid_state(row)?,
+            humanoid: voxel_render::player_model::PlayerRenderState {
+                main_arm: if row["main_arm"].as_str() == Some("left") {
+                    voxel_render::player_model::Arm::Left
+                } else {
+                    voxel_render::player_model::Arm::Right
+                },
+                ticks_using_item: f32_field(row, "ticks_using_item")?,
+                max_crossbow_charge_duration: f32_field(row, "max_crossbow_charge")?,
+                ..humanoid_state(row)?
+            },
             aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
             zombified: id.starts_with("minecraft:zombified_piglin"),
             baby: id.contains("_baby"),
-            dancing: row["dancing"].as_bool().ok_or("dancing")?,
+            arm_pose: voxel_render::mob_model::PiglinArmPose::named(
+                row["arm_pose"].as_str().ok_or("arm_pose")?,
+            )
+            .ok_or("unknown piglin arm pose")?,
         });
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }

@@ -56,7 +56,7 @@ fn use_animation(stack: &ClientItemStackState) -> UseAnimation {
 }
 
 /// `CrossbowItem.isCharged`: the stack holds a projectile.
-fn is_charged_crossbow(stack: &ClientItemStackState) -> bool {
+pub(crate) fn is_charged_crossbow(stack: &ClientItemStackState) -> bool {
     let is_crossbow = voxel_world::block_rules::item(stack.item_registry_id())
         .is_some_and(|item| item.class == ItemClass::CrossbowItem);
     is_crossbow
@@ -167,6 +167,17 @@ pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> 
             in_use.filter(|_| entity.is_using_item()),
         ),
     }
+}
+
+/// `CrossbowItem.getChargeDuration` of the stack the entity is using: the plain duration when it
+/// uses nothing.
+pub(crate) fn charge_duration_of_use(session: &PlaySession, entity: &ClientEntity) -> f32 {
+    let in_use = if entity.used_item_is_off_hand() {
+        entity.equipment(EquipmentSlot::OffHand)
+    } else {
+        entity.equipment(EquipmentSlot::MainHand)
+    };
+    crossbow_charge_duration(session, in_use.filter(|_| entity.is_using_item()))
 }
 
 #[cfg(test)]

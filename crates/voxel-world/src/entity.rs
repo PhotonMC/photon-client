@@ -164,6 +164,8 @@ pub(crate) struct EntityState {
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.
     pub(crate) dancing: bool,
+    /// A piglin's crossbow-charging flag.
+    pub(crate) charging_crossbow: bool,
     /// An avatar's main arm is the left.
     pub(crate) main_arm_left: bool,
     /// A villager's type, profession and level (registry ids), once told.
@@ -1921,6 +1923,11 @@ impl ClientEntity {
     /// set, or none while it wears the default.
     pub fn variant(&self) -> Option<i32> {
         self.living.variant
+    }
+
+    /// `Piglin.isChargingCrossbow`.
+    pub fn is_charging_crossbow(&self) -> bool {
+        self.living.charging_crossbow
     }
 
     /// Whether a piglin dances (`Piglin.isDancing`).

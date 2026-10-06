@@ -145,6 +145,7 @@ pub const COW_VARIANT_DATA_ID: u8 = 18;
 pub const COW_VARIANT_SERIALIZER_ID: i32 = 23;
 /// Where a piglin's baby and dancing flags sit among its data (booleans).
 pub const PIGLIN_BABY_DATA_ID: u8 = 17;
+pub const PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 pub const PIGLIN_DANCING_DATA_ID: u8 = 19;
 /// Where an avatar's main arm sits among its data, and the serializer that
 /// carries it (`HumanoidArm`, an id: left is zero).

@@ -49,7 +49,8 @@ satırıdır; eşyanın görüntü dönüşümü ayrıca `model/display-*` ailes
 ## Sapmalar (açık)
 
 - Uzaktaki oyuncunun kol pozları (`AvatarRenderer.getArmPose`: blok, yay, trident, arbalet doldurma/tutma, dürbün, boru, fırça) ve `HumanoidModel.setupAnim`'in kullanım dalı (kullanılan elin kolu önce), yolcu, süzülme (`speedValue` dahil) ve dürbünde soluk almama gerçek modele karşı karşılaştırıldı (`entity/held-item-pose`). Kullanım süresi istemcide sayılır (`ticks_using_item`); arbalet doldurma süresi hızlı doldurma büyüsünden. Pozu eşyadan çıkarma (kullanım animasyonu, yüklü arbalet) birim testli, Java'ya karşı karşılaştırılmadı.
-- Mızrak (`SPEAR` pozu, `SpearAnimations`, saldırı sallaması), yerel oyuncunun kendi kullanımı (istemci izlemiyor, model tutmada kalır), piglinin silah/arbalet/hayranlık pozları (`PiglinArmPose`) ve bir yama `blocks_attacks`'ı kaldırırsa kalkan sayılması yok ([T41d2](tasks/T41d2-mizrak-piglin-yerel-kullanim.md)).
+- Piglinin kol pozları (`PiglinArmPose`: silah yukarıda ve aşağı sallama, arbalet tutma/doldurma, hayranlık, dans) `entity/piglin-model`'de gerçek modele karşı karşılaştırıldı; pozun çıkarımı (`Piglin.getArmPose`) karşılaştırılmadı.
+- Mızrak (`SPEAR` pozu, `SpearAnimations`, saldırı sallaması), yerel oyuncunun kendi kullanımı (istemci izlemiyor, model tutmada kalır) ve bir yama `blocks_attacks`'ı kaldırırsa kalkan sayılması yok ([T41d3](tasks/T41d3-mizrak-yerel-kullanim.md)).
 - Yerel oyuncunun ana kolu seçenek olarak okunmuyor (sağ sayılır); üçüncü şahıs
   yerel oyuncu eşyası envanterden alınır, sunucunun yankısından değil.
 - Eşya dokuları blok atlasından, ışık entity konumundan alınır; kafatası modelleri

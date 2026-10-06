@@ -315,7 +315,7 @@ impl Part {
         }
     }
 
-    fn child(&mut self, name: &str) -> &mut Part {
+    pub(crate) fn child(&mut self, name: &str) -> &mut Part {
         self.children
             .iter_mut()
             .find(|child| child.name == name)
@@ -515,6 +515,8 @@ pub struct PlayerRenderState {
     pub is_fall_flying: bool,
     /// `speedValue`: one, or how fast a glider flies, which slows its limbs' swing.
     pub speed_value: f32,
+    /// A piglin with a melee weapon swings it down (`PiglinModel.setupAttackAnimation`).
+    pub swing_weapon_down: bool,
 }
 
 impl Default for PlayerRenderState {
@@ -540,6 +542,7 @@ impl Default for PlayerRenderState {
             is_passenger: false,
             is_fall_flying: false,
             speed_value: 1.0,
+            swing_weapon_down: false,
         }
     }
 }
@@ -748,7 +751,9 @@ pub fn humanoid_anim(root: &mut Part, state: &PlayerRenderState) {
     let attack_time = state.attack_time;
     // The reference swings unless the time is at most zero, so a NaN
     // time swings too.
-    if attack_time > 0.0 || attack_time.is_nan() {
+    if state.swing_weapon_down && attack_time > 0.0 {
+        swing_weapon_down(root, state.main_arm, attack_time, state.age_in_ticks);
+    } else if attack_time > 0.0 || attack_time.is_nan() {
         let mut body_y_rot = sin(f64::from(attack_time).sqrt() as f32 * (PI * 2.0) as f32) * 0.2;
         if state.attack_arm == Arm::Left {
             body_y_rot *= -1.0;
@@ -865,6 +870,77 @@ fn pose_arms(root: &mut Part, state: &PlayerRenderState) {
     }
 }
 
+/// `AnimationUtils.animateCrossbowCharge`: the arm that holds the crossbow and the one that pulls.
+pub(crate) fn animate_crossbow_charge(
+    root: &mut Part,
+    (max_duration, ticks_using_item): (f32, f32),
+    holding_in_right_arm: bool,
+) {
+    let pi = std::f64::consts::PI;
+    let (holding, pulling) = if holding_in_right_arm {
+        ("right_arm", "left_arm")
+    } else {
+        ("left_arm", "right_arm")
+    };
+    root.child(holding).y_rot = if holding_in_right_arm { -0.8 } else { 0.8 };
+    root.child(holding).x_rot = -0.970_796_35;
+    let held_x = root.child(holding).x_rot;
+    let use_ticks = ticks_using_item.clamp(0.0, max_duration);
+    let alpha = use_ticks / max_duration;
+    let sign = if holding_in_right_arm { 1.0 } else { -1.0 };
+    let pull = root.child(pulling);
+    pull.y_rot = (0.4 + alpha * (0.85 - 0.4)) * sign;
+    pull.x_rot = held_x + alpha * ((-pi / 2.0) as f32 - held_x);
+}
+
+/// `AnimationUtils.animateCrossbowHold`.
+pub(crate) fn animate_crossbow_hold(root: &mut Part, holding_in_right_arm: bool) {
+    let pi = std::f64::consts::PI;
+    let (head_x, head_y) = {
+        let head = root.child("head");
+        (head.x_rot, head.y_rot)
+    };
+    let (holding, shooting) = if holding_in_right_arm {
+        ("right_arm", "left_arm")
+    } else {
+        ("left_arm", "right_arm")
+    };
+    root.child(holding).y_rot = (if holding_in_right_arm { -0.3 } else { 0.3 }) + head_y;
+    root.child(shooting).y_rot = (if holding_in_right_arm { 0.6 } else { -0.6 }) + head_y;
+    root.child(holding).x_rot = (-pi / 2.0) as f32 + head_x + 0.1;
+    root.child(shooting).x_rot = -1.5 + head_x;
+}
+
+/// `AnimationUtils.swingWeaponDown`.
+fn swing_weapon_down(root: &mut Part, main_arm: Arm, attack_time: f32, age: f32) {
+    let pi = std::f64::consts::PI as f32;
+    let sin = |value: f32| mth_sin_f64(f64::from(value));
+    let cos = |value: f32| mth_cos_f64(f64::from(value));
+    let attack2 = sin(attack_time * pi);
+    let attack = sin((1.0 - (1.0 - attack_time) * (1.0 - attack_time)) * pi);
+    root.child("right_arm").z_rot = 0.0;
+    root.child("left_arm").z_rot = 0.0;
+    root.child("right_arm").y_rot = (std::f64::consts::PI / 20.0) as f32;
+    root.child("left_arm").y_rot = (-std::f64::consts::PI / 20.0) as f32;
+    if main_arm == Arm::Right {
+        root.child("right_arm").x_rot = -1.884_955_8 + cos(age * 0.09) * 0.15;
+        root.child("left_arm").x_rot = -0.0 + cos(age * 0.19) * 0.5;
+        root.child("right_arm").x_rot += attack2 * 2.2 - attack * 0.4;
+        root.child("left_arm").x_rot += attack2 * 1.2 - attack * 0.4;
+    } else {
+        root.child("right_arm").x_rot = -0.0 + cos(age * 0.19) * 0.5;
+        root.child("left_arm").x_rot = -1.884_955_8 + cos(age * 0.09) * 0.15;
+        root.child("right_arm").x_rot += attack2 * 1.2 - attack * 0.4;
+        root.child("left_arm").x_rot += attack2 * 2.2 - attack * 0.4;
+    }
+    // `bobArms`.
+    for (name, scale) in [("right_arm", 1.0_f32), ("left_arm", -1.0)] {
+        let arm = root.child(name);
+        arm.z_rot += scale * (cos(age * 0.09) * 0.05 + 0.05);
+        arm.x_rot += scale * (sin(age * 0.067) * 0.05);
+    }
+}
+
 /// `HumanoidModel.poseRightArm` and `poseLeftArm`.
 fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
     let pi = std::f64::consts::PI;
@@ -908,37 +984,12 @@ fn pose_arm(root: &mut Part, state: &PlayerRenderState, arm: Arm) {
             part.x_rot = part.x_rot * 0.5 - pi as f32;
             part.y_rot = 0.0;
         }
-        ArmPose::CrossbowCharge => {
-            // `AnimationUtils.animateCrossbowCharge`: the arm in this pose holds, the other pulls.
-            let (holding, pulling) = if right {
-                ("right_arm", "left_arm")
-            } else {
-                ("left_arm", "right_arm")
-            };
-            root.child(holding).y_rot = if right { -0.8 } else { 0.8 };
-            root.child(holding).x_rot = -0.970_796_35;
-            let held_x = root.child(holding).x_rot;
-            let use_ticks = state
-                .ticks_using_item
-                .clamp(0.0, state.max_crossbow_charge_duration);
-            let alpha = use_ticks / state.max_crossbow_charge_duration;
-            let sign = if right { 1.0 } else { -1.0 };
-            let pull = root.child(pulling);
-            pull.y_rot = (0.4 + alpha * (0.85 - 0.4)) * sign;
-            pull.x_rot = held_x + alpha * ((-pi / 2.0) as f32 - held_x);
-        }
-        ArmPose::CrossbowHold => {
-            // `AnimationUtils.animateCrossbowHold`.
-            let (holding, shooting) = if right {
-                ("right_arm", "left_arm")
-            } else {
-                ("left_arm", "right_arm")
-            };
-            root.child(holding).y_rot = (if right { -0.3 } else { 0.3 }) + head_y;
-            root.child(shooting).y_rot = (if right { 0.6 } else { -0.6 }) + head_y;
-            root.child(holding).x_rot = (-pi / 2.0) as f32 + head_x + 0.1;
-            root.child(shooting).x_rot = -1.5 + head_x;
-        }
+        ArmPose::CrossbowCharge => animate_crossbow_charge(
+            root,
+            (state.max_crossbow_charge_duration, state.ticks_using_item),
+            right,
+        ),
+        ArmPose::CrossbowHold => animate_crossbow_hold(root, right),
         ArmPose::Spyglass => {
             let part = root.child(name);
             let crouch = if state.crouching {

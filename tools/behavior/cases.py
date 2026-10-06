@@ -15518,8 +15518,11 @@ def entity_piglin_cases():
     `ZombifiedPiglinModel.setupAnim` and drawn: the ears flapping with the walk,
     the arms of a zombified piglin held out, and a piglin dancing."""
     def pose(label, layer, head_y_rot=0.0, x_rot=0.0, walk_position=0.0, walk_speed=0.0,
-             age=0.0, attack=0.0, aggressive=False, dancing=False, swim=0.0):
+             age=0.0, attack=0.0, aggressive=False, dancing=False, swim=0.0, pose=None, main="right",
+             used=0.0, charge=25.0):
         return {"label": f"{layer}-{label}", "layer": layer,
+                "arm_pose": pose or ("dancing" if dancing else "default"), "main_arm": main,
+                "ticks_using_item": float_bits(used), "max_crossbow_charge": float_bits(charge),
                 "head_y_rot": float_bits(head_y_rot), "x_rot": float_bits(x_rot),
                 "walk_position": float_bits(walk_position), "walk_speed": float_bits(walk_speed),
                 "age_in_ticks": float_bits(age), "attack_time": float_bits(attack),
@@ -15538,6 +15541,22 @@ def entity_piglin_cases():
             pose("swimming", layer, swim=0.5, age=4.0, walk_position=2.0, walk_speed=0.4),
         ]
         if "zombified" not in layer:
+            for arm in ("right", "left"):
+                rows += [
+                    pose(f"melee-{arm}", layer, pose="attacking_with_melee_weapon", main=arm, age=11.0,
+                         walk_position=2.0, walk_speed=0.3),
+                    pose(f"melee-swing-{arm}", layer, pose="attacking_with_melee_weapon", main=arm,
+                         attack=0.35, age=11.0, aggressive=True),
+                    pose(f"melee-swing-late-{arm}", layer, pose="attacking_with_melee_weapon", main=arm,
+                         attack=0.85, age=3.5, head_y_rot=10.0, x_rot=-5.0),
+                    pose(f"crossbow-hold-{arm}", layer, pose="crossbow_hold", main=arm, head_y_rot=-14.0,
+                         x_rot=20.0),
+                    pose(f"admiring-{arm}", layer, pose="admiring_item", main=arm, age=7.0,
+                         head_y_rot=30.0, x_rot=-12.0),
+                    pose(f"admiring-swing-{arm}", layer, pose="admiring_item", main=arm, attack=0.4),
+                ]
+                rows += [pose(f"crossbow-charge-{arm}-{used}", layer, pose="crossbow_charge", main=arm,
+                              used=used) for used in (0.0, 6.0, 12.5, 25.0, 40.0)]
             rows += [pose("dancing", layer, dancing=True, age=15.0),
                      pose("dancing-late", layer, dancing=True, age=333.3, head_y_rot=10.0)]
     yield {

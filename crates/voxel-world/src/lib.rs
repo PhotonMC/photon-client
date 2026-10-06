@@ -967,6 +967,11 @@ impl ClientWorld {
         &mut self.recipe_book
     }
 
+    /// Whether an item is in an item tag (`ItemStack.is(TagKey)`).
+    pub fn item_in_tag(&self, item: i32, tag: &str) -> bool {
+        self.block_state_registry.item_tags().contains(item, tag)
+    }
+
     /// `handleUpdateRecipes`'s stonecutter half.
     pub fn apply_stonecutter_recipes(&mut self, entries: Vec<StonecutterEntry>) {
         self.stonecutter = Arc::new(entries);
@@ -3918,7 +3923,11 @@ impl ClientWorld {
         if let Some(value) = orb_value_from_metadata(entity.type_id, metadata) {
             entity.living.orb_value = Some(value);
         }
-        let (piglin_baby, piglin_dancing) = piglin_flags_from_metadata(entity.type_id, metadata);
+        let (piglin_baby, piglin_dancing, piglin_charging) =
+            piglin_flags_from_metadata(entity.type_id, metadata);
+        if let Some(charging) = piglin_charging {
+            entity.living.charging_crossbow = charging;
+        }
         if let Some(baby) = piglin_baby {
             entity.baby = baby;
         }

@@ -1074,7 +1074,34 @@ pub struct PiglinState {
     pub aggressive: bool,
     pub zombified: bool,
     pub baby: bool,
-    pub dancing: bool,
+    pub arm_pose: PiglinArmPose,
+}
+
+/// `PiglinArmPose`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PiglinArmPose {
+    #[default]
+    Default,
+    Dancing,
+    AttackingWithMeleeWeapon,
+    CrossbowHold,
+    CrossbowCharge,
+    AdmiringItem,
+}
+
+impl PiglinArmPose {
+    /// The pose with this name in the reference's enum, lower-cased.
+    pub fn named(name: &str) -> Option<Self> {
+        Some(match name {
+            "default" => Self::Default,
+            "dancing" => Self::Dancing,
+            "attacking_with_melee_weapon" => Self::AttackingWithMeleeWeapon,
+            "crossbow_hold" => Self::CrossbowHold,
+            "crossbow_charge" => Self::CrossbowCharge,
+            "admiring_item" => Self::AdmiringItem,
+            _ => return None,
+        })
+    }
 }
 
 /// The arms of `IllagerModel.setupAnim`'s arm pose: each arm's rotations
@@ -4413,7 +4440,11 @@ impl MobModel {
         let sin = |value: f32| mth_sin_f64(f64::from(value));
         let cos = |value: f32| mth_cos_f64(f64::from(value));
         let pi = std::f64::consts::PI as f32;
-        let humanoid = &state.humanoid;
+        let mut humanoid = state.humanoid;
+        // `PiglinModel.setupAttackAnimation`: a melee weapon swings down.
+        humanoid.swing_weapon_down =
+            !state.zombified && state.arm_pose == PiglinArmPose::AttackingWithMeleeWeapon;
+        let humanoid = &humanoid;
         humanoid_anim(&mut self.root, humanoid);
         let default_angle =
             if state.baby { 5.0_f32 } else { 30.0 } * (std::f64::consts::PI / 180.0) as f32;
@@ -4429,7 +4460,7 @@ impl MobModel {
         }
         if state.zombified {
             self.animate_zombie_arms(humanoid, state.aggressive);
-        } else if state.dancing {
+        } else if state.arm_pose == PiglinArmPose::Dancing {
             let dance = humanoid.age_in_ticks / 60.0;
             let degrees = (std::f64::consts::PI / 180.0) as f32;
             if let Some(head) = self.root.child_mut("head") {
@@ -4453,6 +4484,41 @@ impl MobModel {
             }
             if let Some(body) = self.root.child_mut("body") {
                 body.y += sin(dance * 40.0) * 0.35;
+            }
+        } else {
+            let main_right = humanoid.main_arm == crate::player_model::Arm::Right;
+            match state.arm_pose {
+                PiglinArmPose::AttackingWithMeleeWeapon if humanoid.attack_time == 0.0 => {
+                    // `holdWeaponHigh`.
+                    let arm = if main_right { "right_arm" } else { "left_arm" };
+                    self.root.child(arm).x_rot = -1.8;
+                }
+                PiglinArmPose::CrossbowHold => {
+                    crate::player_model::animate_crossbow_hold(&mut self.root, main_right)
+                }
+                PiglinArmPose::CrossbowCharge => crate::player_model::animate_crossbow_charge(
+                    &mut self.root,
+                    (
+                        humanoid.max_crossbow_charge_duration,
+                        humanoid.ticks_using_item,
+                    ),
+                    main_right,
+                ),
+                PiglinArmPose::AdmiringItem => {
+                    let head = self.root.child("head");
+                    head.x_rot = 0.5;
+                    head.y_rot = 0.0;
+                    if main_right {
+                        let arm = self.root.child("left_arm");
+                        arm.y_rot = 0.5;
+                        arm.x_rot = -0.9;
+                    } else {
+                        let arm = self.root.child("right_arm");
+                        arm.y_rot = -0.5;
+                        arm.x_rot = -0.9;
+                    }
+                }
+                _ => {}
             }
         }
     }

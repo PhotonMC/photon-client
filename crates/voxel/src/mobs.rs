@@ -7,8 +7,8 @@ use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::mob_model::{
-    ChickenState, MobModel, MobPlacement, PiglinState, QuadrupedState, SkeletonState, ZombieState,
-    mob_vertices, mob_vertices_coloured, placement_pose,
+    ChickenState, MobModel, MobPlacement, PiglinArmPose, PiglinState, QuadrupedState,
+    SkeletonState, ZombieState, mob_vertices, mob_vertices_coloured, placement_pose,
 };
 use voxel_render::player_model::{Arm, ArmPose, PlayerRenderState};
 use voxel_render::scene::Vertex;
@@ -736,8 +736,12 @@ fn remote_humanoids(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let (humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
+        let (mut humanoid, holding_bow) = humanoid_pose(entity, &snapshot, kind, partial);
         let aggressive = entity.is_aggressive();
+        let arm_pose = piglin_arm_pose(session, entity, kind);
+        humanoid.ticks_using_item = entity.ticks_using_item(partial);
+        humanoid.max_crossbow_charge_duration =
+            crate::arm_poses::charge_duration_of_use(session, entity);
         let placement = placement(world, &snapshot, view, kind.scale * entity.scale());
         // What it wears, in the armor models of its build, posed as it is.
         let worn = Worn {
@@ -751,7 +755,12 @@ fn remote_humanoids(
             let (Some(rect), Some(model)) = (textures.rect(texture), models.model(layer)) else {
                 continue;
             };
-            pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity);
+            pose_humanoid(
+                model,
+                kind,
+                (humanoid, aggressive, holding_bow),
+                (entity, arm_pose),
+            );
             if first {
                 first = false;
                 Hands {
@@ -788,7 +797,14 @@ fn remote_humanoids(
             worn,
             (prefix, baby),
             textures,
-            &|model| pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity),
+            &|model| {
+                pose_humanoid(
+                    model,
+                    kind,
+                    (humanoid, aggressive, holding_bow),
+                    (entity, arm_pose),
+                )
+            },
             &|model, rect, colour| mob_vertices_coloured(model, &placement, rect, colour),
         ));
         if let Some(folder) = kind.profession_folder {
@@ -798,7 +814,12 @@ fn remote_humanoids(
                 else {
                     continue;
                 };
-                pose_humanoid(model, kind, (humanoid, aggressive, holding_bow), entity);
+                pose_humanoid(
+                    model,
+                    kind,
+                    (humanoid, aggressive, holding_bow),
+                    (entity, arm_pose),
+                );
                 vertices.extend(mob_vertices(model, &placement, rect));
             }
         }
@@ -871,12 +892,60 @@ fn model_layers(kind: &HumanoidKind, baby: bool) -> [Option<(&'static str, &'sta
     ]
 }
 
+/// `Piglin.getArmPose` and `PiglinBrute.getArmPose`: what the arms do, by what is held and what
+/// the piglin is doing.
+fn piglin_arm_pose(
+    session: &PlaySession,
+    entity: &voxel_world::ClientEntity,
+    kind: &HumanoidKind,
+) -> PiglinArmPose {
+    let Family::Piglin { zombified: false } = kind.family else {
+        return PiglinArmPose::Default;
+    };
+    let main = entity.equipment(EquipmentSlot::MainHand);
+    let off = entity.equipment(EquipmentSlot::OffHand);
+    let melee = entity.is_aggressive()
+        && main.is_some_and(|stack| {
+            voxel_game::item_values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+                .has(voxel_data::item::component_types::TOOL)
+        });
+    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:piglin_brute") {
+        return if melee {
+            PiglinArmPose::AttackingWithMeleeWeapon
+        } else {
+            PiglinArmPose::Default
+        };
+    }
+    if entity.is_dancing() {
+        PiglinArmPose::Dancing
+    } else if off.is_some_and(|stack| {
+        session
+            .world()
+            .item_in_tag(stack.item_registry_id(), "minecraft:piglin_loved")
+    }) {
+        PiglinArmPose::AdmiringItem
+    } else if melee {
+        PiglinArmPose::AttackingWithMeleeWeapon
+    } else if entity.is_charging_crossbow() {
+        PiglinArmPose::CrossbowCharge
+    } else if [main, off]
+        .into_iter()
+        .flatten()
+        .any(|stack| is_item(stack, "minecraft:crossbow"))
+        && main.is_some_and(crate::arm_poses::is_charged_crossbow)
+    {
+        PiglinArmPose::CrossbowHold
+    } else {
+        PiglinArmPose::Default
+    }
+}
+
 /// The model's `setupAnim` of the family.
 fn pose_humanoid(
     model: &mut MobModel,
     kind: &HumanoidKind,
     (humanoid, aggressive, holding_bow): (PlayerRenderState, bool, bool),
-    entity: &voxel_world::ClientEntity,
+    (entity, arm_pose): (&voxel_world::ClientEntity, PiglinArmPose),
 ) {
     match kind.family {
         Family::Zombie { drowned } => model.setup_zombie(&ZombieState {
@@ -894,7 +963,7 @@ fn pose_humanoid(
             aggressive,
             zombified,
             baby: entity.is_baby(),
-            dancing: entity.is_dancing(),
+            arm_pose,
         }),
     }
 }
