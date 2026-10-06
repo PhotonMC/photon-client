@@ -151,7 +151,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | açık |
 | [T41g](T41g-koylu-cadi-esya.md) | Köylü, tüccar ve cadının tuttuğu ve taktığı eşya | S | T34b, T41c | bitti (2b8c193d) |
 | [T41d](T41d-kullanim-pozlari.md) | Eşya kullanım pozları ve silah kol pozları | M | T41 | bölündü (acbea4de) |
-| [T41d2](T41d2-mizrak-piglin-yerel-kullanim.md) | Piglinin kol pozları | S | T41d | bitti (HASH) |
+| [T41d2](T41d2-mizrak-piglin-yerel-kullanim.md) | Piglinin kol pozları | S | T41d | bitti (9c0b8c20) |
 | [T41d3](T41d3-mizrak-yerel-kullanim.md) | Mızrak pozları ve yerel oyuncunun eşya kullanımı | M | T41d | açık |
 | [T42](T42-entity-golgesi.md) | Entity gölgesi (`submitShadow`) | M | T24 | bitti (d2c2f477) |
 | [T43](T43-keyframe-animasyon-ve-animate.md) | `KeyframeAnimation` oynatıcısı, `Animate` paketi ve `EntityEvent` çizim durumları | L | T24 | bölündü (66840389) |
