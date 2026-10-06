@@ -151,7 +151,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T41c](T41c-kafa-pelerin-elytra.md) | Kafa eşyası, pelerin, elytra, dürbün | M | T41 | bölündü (kafa eşyası: 4c7e5a5a) |
 | [T41f](T41f-elytra-kafatasi.md) | Elytra, kafatası modelleri, gözde dürbün | M | T41c | bölündü (ce6f64c8) |
 | [T41f2](T41f2-kafatasi-yerel-elytra.md) | Yerel oyuncunun ve mobların elytrası | S | T41f | bitti (1fc20242) |
-| [T41f3](T41f3-kafatasi-durbun-suzulme.md) | Oyuncunun gövde dönüşü: süzülme eğimi ve riptide | S | T41f2 | bitti (HASH) |
+| [T41f3](T41f3-kafatasi-durbun-suzulme.md) | Oyuncunun gövde dönüşü: süzülme eğimi ve riptide | S | T41f2 | bitti (aefb3f3a) |
 | [T41f4](T41f4-kafatasi-durbun.md) | Kafatası modelleri ve gözde dürbün | M | T41f3 | açık |
 | [T41g](T41g-koylu-cadi-esya.md) | Köylü, tüccar ve cadının tuttuğu ve taktığı eşya | S | T34b, T41c | bitti (2b8c193d) |
 | [T41d](T41d-kullanim-pozlari.md) | Eşya kullanım pozları ve silah kol pozları | M | T41 | bölündü (acbea4de) |
