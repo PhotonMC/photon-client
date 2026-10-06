@@ -140,7 +140,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T40e](T40e-yildirim.md) | Yıldırım | S | T40 | bitti (1749897d) |
 | [T40j](T40j-gokyuzu-cakmasi.md) | Yıldırımın gökyüzü çakması (`skyFlashTime`) | S | T40e | bitti (10fca2a4) |
 | [T40f](T40f-bag-dugumu.md) | Bağ düğümü (yalnız düğüm; çizgi T40k) | S | T40 | bitti (de557daf) |
-| [T40k](T40k-bag-cizgisi.md) | Bağ çizgisi (`SetEntityLink`, `LeashFeatureRenderer`) | M | T40f | açık |
+| [T40k](T40k-bag-cizgisi.md) | Bağ çizgisi (`SetEntityLink`, `LeashFeatureRenderer`) | M | T40f | bitti (fdcd2c0e) |
 | [T40g](T40g-esya-cercevesi.md) | Eşya çerçevesi | L | T40 | açık |
 | [T40h](T40h-tablo.md) | Tablo | M | T40 | bitti (f75db4a8) |
 | [T40i](T40i-display.md) | Display entity'leri | L | T40 | açık |
