@@ -134,6 +134,15 @@ impl ClientWorld {
                 turn,
             ));
         }
+        if voxel_data::entity_type::name(vehicle.type_id) == Some("minecraft:strider") {
+            // `Strider.getPassengerAttachmentPoint` on a client: the seat bobs with its stride.
+            let walk = vehicle.walk_animation();
+            let anim_speed = 0.25_f32.min(walk.speed());
+            let anim_pos = walk.position();
+            let offset =
+                0.12_f32 * (mth_cos_f64(f64::from(anim_pos * 1.5)) as f32) * 2.0 * anim_speed;
+            attachment = attachment.add_components(0.0, f64::from(offset * 1.0), 0.0);
+        }
         // `Entity.positionRider`: the seat, less where the rider's own attachment point is.
         let rider = Vec3::new(
             position.x + attachment.x,

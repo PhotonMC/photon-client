@@ -200,7 +200,7 @@ impl ClientWorld {
             on_ground_no_blocks: entity.tracking.support.no_blocks,
             no_gravity: entity.no_gravity,
         };
-        let Some(step) = item_step(&Level { world: self }, &state) else {
+        let Some(step) = item_step(&Level::new(self), &state) else {
             return;
         };
         let entity = self
@@ -231,7 +231,7 @@ impl ClientWorld {
         let position = Vec3::new(x, y, z);
         let mut main_supporting_block = entity.tracking.support.main_block;
         let mut on_ground_no_blocks = entity.tracking.support.no_blocks;
-        let checked = Level { world: self }.check_supporting_block(
+        let checked = Level::new(self).check_supporting_block(
             (&mut main_supporting_block, &mut on_ground_no_blocks),
             (item_box(position), position, 0.0),
             entity.on_ground,

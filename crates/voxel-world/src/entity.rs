@@ -2201,6 +2201,59 @@ impl ClientEntity {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:pig")
     }
 
+    /// `Strider.setSuffocating`: the flag, and the cold's modifier on the movement speed (a third
+    /// less of the base).
+    pub(crate) fn set_strider_suffocating(&mut self, suffocating: bool) {
+        self.living.strider_suffocating = suffocating;
+        let Some((id, _)) = voxel_data::entity_type::attribute("minecraft:movement_speed") else {
+            return;
+        };
+        let Ok(attribute_id) = i32::try_from(id) else {
+            return;
+        };
+        let position = self
+            .attributes
+            .iter()
+            .position(|state| state.attribute_id == attribute_id);
+        let modifier_id = "minecraft:suffocating";
+        if suffocating {
+            let modifier =
+                ClientAttributeModifierState::new(modifier_id.to_string(), f64::from(-0.34_f32), 1);
+            match position {
+                Some(index) => {
+                    let modifiers = &mut self.attributes[index].modifiers;
+                    modifiers.retain(|existing| existing.id != modifier_id);
+                    modifiers.push(modifier);
+                }
+                None => {
+                    let base = voxel_data::entity_type::name(self.type_id)
+                        .and_then(|name| {
+                            voxel_data::entity_type::default_attribute(
+                                name,
+                                "minecraft:movement_speed",
+                            )
+                        })
+                        .unwrap_or(0.0);
+                    self.attributes.push(ClientAttributeState::new(
+                        attribute_id,
+                        base,
+                        vec![modifier],
+                    ));
+                }
+            }
+        } else if let Some(index) = position {
+            self.attributes[index]
+                .modifiers
+                .retain(|existing| existing.id != modifier_id);
+        }
+    }
+
+    /// Whether this is a strider in a saddle (which a warped fungus on a stick steers).
+    pub fn is_saddled_strider(&self) -> bool {
+        voxel_data::entity_type::name(self.type_id) == Some("minecraft:strider")
+            && self.equipment(EquipmentSlot::Saddle).is_some()
+    }
+
     /// Whether this is a pig in a saddle (which a carrot on a stick steers).
     pub fn is_saddled_pig(&self) -> bool {
         voxel_data::entity_type::name(self.type_id) == Some("minecraft:pig")

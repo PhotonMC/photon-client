@@ -28,6 +28,8 @@ pub enum MountKind {
     Horse,
     /// A saddled pig steered with a carrot on a stick.
     Pig,
+    /// A saddled strider steered with a warped fungus on a stick, which walks on lava.
+    Strider,
 }
 
 /// What a ridden mount keeps from one tick to the next beyond its place and motion.
@@ -43,6 +45,9 @@ pub struct MountState {
     /// `AbstractHorse.playerJumpPendingScale`: how hard the rider asked to jump, until the horse
     /// is on the ground to do it.
     pub jump_pending_scale: f32,
+    /// How deep the lava it stands in reached at the last look (`getFluidHeight(LAVA)`), which a
+    /// strider's warmth reads the next tick.
+    pub lava_height: f64,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -58,6 +63,7 @@ impl Default for MountState {
             stuck_speed_multiplier: (0.0, 0.0, 0.0),
             no_jump_delay: 0,
             jump_pending_scale: 0.0,
+            lava_height: 0.0,
         }
     }
 }
@@ -72,6 +78,8 @@ pub struct Controller {
     pub x_rot: f32,
     /// Whether a hand of the player holds a carrot on a stick, which steers a saddled pig.
     pub holds_carrot_on_a_stick: bool,
+    /// Likewise for a warped fungus on a stick, which steers a saddled strider.
+    pub holds_warped_fungus_on_a_stick: bool,
 }
 
 /// The values are finite, so the comparison is a total one.
@@ -183,6 +191,7 @@ impl MountBody {
     /// blocks it passed through do to it.
     pub(crate) fn tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         self.update_fluid_interaction(level)?;
+        self.state.lava_height = self.lava.height;
         // `LivingEntity.aiStep`: a small motion is none, for a mob on each axis.
         self.state.no_jump_delay = (self.state.no_jump_delay - 1).max(0);
         let delta = self.delta;
@@ -195,7 +204,34 @@ impl MountBody {
         self.state.no_jump_delay = 0;
         self.travel_ridden(level)?;
         self.apply_effects_from_blocks(level);
+        if self.kind == MountKind::Strider {
+            self.float_strider(level);
+        }
         Ok(())
+    }
+
+    /// The level as this mount's collisions see it: a strider's feet stand on lava.
+    fn seen_by<'a>(&self, level: &Level<'a>) -> Level<'a> {
+        if self.kind == MountKind::Strider {
+            level.standing_on_lava_at(self.position.y)
+        } else {
+            *level
+        }
+    }
+
+    /// `Strider.floatStrider`: in lava, it is held up by the lava's surface (on the ground) when
+    /// its feet are above it, and otherwise rises, slowed.
+    fn float_strider(&mut self, level: &Level<'_>) {
+        if !self.is_in_lava() {
+            return;
+        }
+        let block = self.block_position();
+        let above = level.info(BlockPos::new(block.x, block.y + 1, block.z));
+        if self.position.y > f64::from(block.y) + 0.5 - f64::from(1.0e-5_f32) && !above.is_lava() {
+            self.on_ground = true;
+        } else {
+            self.delta = self.delta.scale(0.5).add_components(0.0, 0.05, 0.0);
+        }
     }
 
     /// `LivingEntity.travelRidden`.
@@ -209,7 +245,7 @@ impl MountBody {
     /// at half and backwards at a quarter.
     fn ridden_input(&self) -> Vec3 {
         // `Pig.getRiddenInput`: always straight ahead; the stick's rider only steers.
-        if self.kind == MountKind::Pig {
+        if matches!(self.kind, MountKind::Pig | MountKind::Strider) {
             return Vec3::new(0.0, 0.0, 1.0);
         }
         if self.on_ground
@@ -309,8 +345,10 @@ impl MountBody {
 
     /// `LivingEntity.travel`: in a fluid, or in the air.
     fn travel(&mut self, level: &Level<'_>, input: Vec3) -> Result<(), Unsupported> {
-        // `setSpeed(getRiddenSpeed())`: the movement speed attribute.
-        if self.is_in_water() || self.is_in_lava() {
+        // `shouldTravelInFluid`: a strider does not travel in the lava it stands on.
+        let stands_on_fluid = self.kind == MountKind::Strider
+            && level.info(self.block_position()).fluid == Fluid::Lava;
+        if (self.is_in_water() || self.is_in_lava()) && !stands_on_fluid {
             self.travel_in_fluid(level, input)
         } else {
             self.travel_in_air(level, input)
@@ -399,7 +437,9 @@ impl MountBody {
         if self.state.horizontal_collision {
             let lift = movement.y + f64::from(0.6_f32) - self.position.y + old_y;
             let moved = self.bounding_box().move_by(movement.x, lift, movement.z);
-            if level.no_collision(moved, self.state.fall_distance)?
+            if self
+                .seen_by(level)
+                .no_collision(moved, self.state.fall_distance)?
                 && !contains_any_liquid(level, moved)
             {
                 self.delta = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
@@ -527,7 +567,7 @@ impl MountBody {
         self.state.vertical_collision_below = self.state.vertical_collision && delta.y < 0.0;
         self.on_ground = self.state.vertical_collision_below;
         let moved_box = self.bounding_box();
-        level.check_supporting_block(
+        self.seen_by(level).check_supporting_block(
             (&mut self.supporting_block, &mut self.on_ground_no_blocks),
             (moved_box, self.position, self.state.fall_distance),
             self.on_ground,
@@ -558,6 +598,7 @@ impl MountBody {
     /// `Entity.collide`: the blocks stop the move, and a mount on the ground steps up what its
     /// step height lets it.
     fn collide(&self, level: &Level<'_>, movement: Vec3) -> Result<Vec3, Unsupported> {
+        let level = &self.seen_by(level);
         let aabb = self.bounding_box();
         let movement_step = if movement.length_squared() == 0.0 {
             movement
@@ -602,6 +643,11 @@ impl MountBody {
     /// `LivingEntity.checkFallDamage` on a client: the fluids are looked at again, and a fall adds
     /// up until the ground ends it.
     fn check_fall_damage(&mut self, level: &Level<'_>, ya: f64) -> Result<(), Unsupported> {
+        // `Strider.checkFallDamage`: in lava a fall is forgiven.
+        if self.kind == MountKind::Strider && self.is_in_lava() {
+            self.state.fall_distance = 0.0;
+            return Ok(());
+        }
         if !self.is_in_water() {
             self.update_fluid_interaction(level)?;
         }
@@ -782,6 +828,9 @@ impl ClientWorld {
             Some(MountKind::Horse)
         } else if entity.is_saddled_pig() && self.rider_controls.holds_carrot_on_a_stick {
             Some(MountKind::Pig)
+        } else if entity.is_saddled_strider() && self.rider_controls.holds_warped_fungus_on_a_stick
+        {
+            Some(MountKind::Strider)
         } else {
             None
         }
@@ -834,6 +883,16 @@ impl ClientWorld {
         let Some(kind) = self.mount_kind_of(entity) else {
             return;
         };
+        if kind == MountKind::Strider {
+            // `Strider.tick`: it takes the cold or the warmth before it moves.
+            let suffocating = strider_is_suffocating(self, entity);
+            if let Some(strider) = self.entities.get_mut(&entity_id) {
+                strider.set_strider_suffocating(suffocating);
+            }
+        }
+        let Some(entity) = self.entities.get(&entity_id) else {
+            return;
+        };
         let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);
         let attributes = Attributes {
             // `getRiddenSpeed`: a pig's is its speed times 0.225 (and its boost, which is one here).
@@ -841,6 +900,13 @@ impl ClientWorld {
                 MountKind::Horse => attribute("minecraft:movement_speed", 0.7) as f32,
                 MountKind::Pig => {
                     (attribute("minecraft:movement_speed", 0.25) * 0.225 * 1.0) as f32
+                }
+                // `Strider.getRiddenSpeed`: slower while it is cold (suffocating).
+                MountKind::Strider => {
+                    let suffocating = entity.is_suffocating();
+                    (attribute("minecraft:movement_speed", 0.175)
+                        * f64::from(if suffocating { 0.35_f32 } else { 0.55_f32 })
+                        * 1.0) as f32
                 }
             },
             gravity: attribute("minecraft:gravity", 0.08),
@@ -873,7 +939,7 @@ impl ClientWorld {
             .is_some_and(|horse| horse.allow_stand_sliding());
         body.floats_when_ridden = kind == MountKind::Horse;
         body.controller = self.rider_controls;
-        if body.tick(&Level { world: self }).is_err() {
+        if body.tick(&Level::new(self)).is_err() {
             return;
         }
         let entity = self
@@ -897,6 +963,23 @@ impl ClientWorld {
         };
         entity.mount_ride = body.state;
     }
+}
+
+/// `Strider.tick`'s setting of the suffocating flag: cold unless it is in or on a warm block or in
+/// lava (the depth it last looked at; a strider that rides a warm one is not a case here).
+fn strider_is_suffocating(world: &ClientWorld, strider: &crate::entity::ClientEntity) -> bool {
+    let level = Level::new(world);
+    let (x, y, z) = strider.position();
+    let inside = BlockPos::new(floor_f64(x), floor_f64(y), floor_f64(z));
+    let on = level.on_pos(strider.tracking.support.main_block, Vec3::new(x, y, z), 0.2);
+    let warm = |pos: BlockPos| {
+        let state = crate::block::state_or_air(level.state_id(pos).map_or(0, i64::from));
+        world
+            .block_state_registry
+            .tags()
+            .contains(usize::from(state.block), "minecraft:strider_warm_blocks")
+    };
+    !(warm(inside) || warm(on) || strider.mount_ride.lava_height > 0.0)
 }
 
 #[cfg(test)]

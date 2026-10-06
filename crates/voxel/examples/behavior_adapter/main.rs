@@ -20085,7 +20085,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
         }
         // A vehicle the player rides, put aboard as the server's passengers packet does.
         let mut ridden = None;
-        let mut held_stick = false;
+        let mut held_stick = "";
         if let Some(ride) = row.get("ride") {
             let kind = string(ride, "type")?;
             let id = i32_field(ride, "id")?;
@@ -20135,7 +20135,7 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                     Some(&voxel_world::ClientItemStackState::new(1, item)),
                 );
                 player.set_main_hand_item(item);
-                held_stick = name == "minecraft:carrot_on_a_stick";
+                held_stick = name;
             }
             if ride["saddled"].as_bool().unwrap_or(false) {
                 world.apply_entity_equipment(
@@ -20270,7 +20270,9 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
                 // passenger, which hands the boat the keys for the next tick.
                 let mut controls = player.controller();
-                controls.holds_carrot_on_a_stick = held_stick;
+                controls.holds_carrot_on_a_stick = held_stick == "minecraft:carrot_on_a_stick";
+                controls.holds_warped_fungus_on_a_stick =
+                    held_stick == "minecraft:warped_fungus_on_a_stick";
                 world.set_rider_controls(controls);
                 world.tick_entities();
                 let mut sent: Vec<voxel_world::local_player::ServerboundMovement> = world
@@ -20440,7 +20442,7 @@ fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String>
         report["horizontal_collision"] = json!(ride.horizontal_collision);
         report["vertical_collision"] = json!(ride.vertical_collision);
         report["fall_distance"] = json!(double(ride.fall_distance));
-        if !vehicle.is_saddled_pig() {
+        if vehicle.is_horse() {
             report["pending_jump"] = json!(single(ride.jump_pending_scale));
             report["y_head_rot"] = json!(single(vehicle.rotation().2));
         }

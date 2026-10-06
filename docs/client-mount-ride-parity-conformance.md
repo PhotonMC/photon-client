@@ -55,3 +55,15 @@ koltuğu) binici `rideTick` ile koltuğa oturur, `Rot` paketi yollar, `MoveVehic
 konumla ilerler (`controlled` bayrağı; koltuk noktası tür tablosundan, yolcu sırasına göre). Sapma: havuçlu sopanın
 hızlandırması (`boost`, rastgele süre) istemcide yok; sopa yalnız ana ele bakılır, sol el (off hand) envanter yuvası 45
 okunur ama oracle'da yalnız ana el sınandı.
+
+## Strider (T44c2)
+
+`movement/ride-strider`: 17 satır gerçek `Strider` ile bit bit eşit (savaş sopası yerine çarpık mantarlı sopa elde, eyerli):
+düz ileri gider ve binicinin bakışıyla döner (`getRiddenInput`), soğukken (`isSuffocating`) yavaş, sıcak blokta (magma),
+lavda ve lav üstünde hızlı (`getRiddenSpeed`: özellik × 0,35 / 0,55; soğukluk ayrıca hız özelliğine `-0,34` çarpan
+ekler, `Strider.setSuffocating`); lavın kaynak bloğunun üstünde durur (`canStandOnFluid`, `getLiquidCollisionShape`: yarım
+yüksek sütun; çarpışma, dayanak bloğu ve `shouldTravelInFluid` buna göre), lava düşünce ya da lavın içindeyken yüzeye
+çıkar (`floatStrider`), lavda düşme affedilir (`checkFallDamage`). Kapsanan: kara, duvar, basamak, lav havuzu (yürüme,
+girme, derin, çatı altı, kıyı), içine batma, düşme, magma zemini, su, buz, ağ; sopasız ve eyersiz. Koltuk yürüyüşle
+oynar (istemci `getPassengerAttachmentPoint`). Sapma: çarpık mantarlı sopanın hızlandırması (`boost`) yok; strider bineği
+`Strider`a binen strider (sıcak binek) durumu yok.

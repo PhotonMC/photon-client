@@ -352,14 +352,35 @@ impl StateInfo {
         matches!(self.fluid, Fluid::Water | Fluid::FlowingWater)
     }
 
-    fn is_lava(&self) -> bool {
+    pub(crate) fn is_lava(&self) -> bool {
         matches!(self.fluid, Fluid::Lava | Fluid::FlowingLava)
     }
 }
 
 /// The level as the tick reads it.
+#[derive(Clone, Copy)]
 pub(crate) struct Level<'a> {
     pub(crate) world: &'a ClientWorld,
+    /// The height of the feet of an entity that can stand on lava (`EntityCollisionContext` of a
+    /// strider): the lava's source blocks below it then hold it up.
+    pub(crate) lava_stand: Option<f64>,
+}
+
+impl<'a> Level<'a> {
+    pub(crate) fn new(world: &'a ClientWorld) -> Self {
+        Self {
+            world,
+            lava_stand: None,
+        }
+    }
+
+    /// The level as seen by an entity that can stand on lava, with its feet at `bottom`.
+    pub(crate) fn standing_on_lava_at(self, bottom: f64) -> Self {
+        Self {
+            lava_stand: Some(bottom),
+            ..self
+        }
+    }
 }
 
 impl Level<'_> {
@@ -477,6 +498,21 @@ impl Level<'_> {
         true
     }
 
+    /// `LiquidBlock.getCollisionShape` for an entity that can stand on lava: a source block of lava
+    /// has the half-high column of `Strider.getLiquidCollisionShape` where the entity's feet are
+    /// above it and no lava lies on top of it.
+    fn lava_surface_shape(&self, state: i32, at: [i32; 3], bottom: f64) -> Option<VoxelShape> {
+        let info = StateInfo::of(Some(state), self.world.block_state_registry.tags());
+        if info.fluid != Fluid::Lava {
+            return None;
+        }
+        let above = self.info(BlockPos::new(at[0], at[1] + 1, at[2]));
+        if above.is_lava() || bottom <= f64::from(at[1]) + 0.5 - f64::from(1.0e-5_f32) {
+            return None;
+        }
+        Shapes::box_shape(0.0, 0.0, 0.0, 1.0, 0.5, 1.0).ok()
+    }
+
     pub(crate) fn collision_shape(&self, pos: BlockPos) -> VoxelShape {
         match self.state_id(pos) {
             Some(state) => self
@@ -499,6 +535,10 @@ impl Level<'_> {
         let collisions = self.world.collect_block_collisions_with(area, |state, at| {
             Some(if is_block(state, "minecraft:powder_snow") {
                 powder_snow_collision_shape(fall_distance)
+            } else if let Some(bottom) = self.lava_stand
+                && let Some(shape) = self.lava_surface_shape(state, at, bottom)
+            {
+                shape
             } else {
                 registry.collision_shape_at(state, at)
             })
@@ -1264,7 +1304,7 @@ impl LocalPlayer {
         world: &ClientWorld,
         keys: Input,
     ) -> Result<Vec<ServerboundMovement>, Unsupported> {
-        let level = Level { world };
+        let level = Level::new(world);
         self.sent.clear();
         self.input.set_key_states(keys);
 
@@ -1293,6 +1333,7 @@ impl LocalPlayer {
             y_rot: self.y_rot,
             x_rot: self.x_rot,
             holds_carrot_on_a_stick: false,
+            holds_warped_fungus_on_a_stick: false,
         }
     }
 
@@ -1305,7 +1346,7 @@ impl LocalPlayer {
         keys: Input,
         boat: &crate::VehicleView,
     ) -> Result<RideTick, Unsupported> {
-        let level = Level { world };
+        let level = Level::new(world);
         self.sent.clear();
         self.ride_jump = None;
         self.input.set_key_states(keys);

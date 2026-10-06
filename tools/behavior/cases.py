@@ -13658,6 +13658,51 @@ def movement_cases():
         "rows": pig_rows,
     }
 
+    # Riding a strider: steered with a warped fungus on a stick, it goes straight ahead where the
+    # rider looks, warm (fast) in or on warm blocks and in lava, cold (slow) elsewhere, and stands on
+    # the surface of lava (`Strider.canStandOnFluid`, `floatStrider`).
+    def strider(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, saddled=True,
+                stick="minecraft:warped_fungus_on_a_stick"):
+        row = ride(label, blocks, ticks, boat=start, y_rot=y_rot, kind="minecraft:strider")
+        row["ride"]["saddled"] = saddled
+        if stick:
+            row["ride"]["holding"] = stick
+        return row
+
+    def lava_pool(depth=1, low=-5, high=5):
+        return [{"x": x, "y": 64 + level, "z": z, "block": "minecraft:lava"}
+                for x in range(low, high + 1) for z in range(low, high + 1) for level in range(depth)]
+
+    strider_rows = [
+        strider("strider-cold-land", floor(), keys(40)),
+        strider("strider-no-stick", floor(), keys(20), stick=None),
+        strider("strider-unsaddled", floor(), keys(20), saddled=False),
+        strider("strider-steer", floor(), looking(keys(60), (0.0, 0.0), (70.0, 15.0), (-110.0, -30.0))),
+        strider("strider-wall", floor() + ladder_wall, keys(30)),
+        strider("strider-step", floor() + [{"x": x, "y": 64, "z": 3, "block": "minecraft:stone_slab"}
+                                          for x in range(-3, 4)], keys(30)),
+        strider("strider-lava-walk", floor() + lava_pool(), keys(50), start=(0.5, 64.5, -3.5)),
+        strider("strider-onto-lava", floor() + lava_pool(), keys(60), start=(0.5, 64.0, -9.5)),
+        strider("strider-lava-deep", floor() + lava_pool(3), keys(50), start=(0.5, 66.6, -3.5)),
+        strider("strider-sinks-in", floor() + lava_pool(2), keys(40), start=(0.5, 64.2, -3.5)),
+        strider("strider-falls-into-lava", floor() + lava_pool(), keys(40), start=(0.5, 75.0, 0.5)),
+        strider("strider-lava-roof", floor() + lava_pool(2) + [{"x": x, "y": 67, "z": z, "block": "minecraft:stone"}
+                                                         for x in range(-5, 6) for z in range(-5, 6)],
+                keys(40), start=(0.5, 65.0, -3.5)),
+        strider("strider-lava-edge", floor() + lava_pool(1, 0, 5), keys(60), start=(-3.5, 64.0, 2.5), y_rot=-90.0),
+        strider("strider-warm-floor", floor(block="minecraft:magma_block"), keys(40)),
+        strider("strider-water", floor() + lake, keys(40), start=(0.5, 64.2, -8.5)),
+        strider("strider-ice", floor(block="minecraft:ice"), keys(40)),
+        strider("strider-cobweb", floor() + [{"x": 0, "y": 64, "z": z, "block": "minecraft:cobweb"} for z in (1, 2, 3)],
+                keys(30)),
+    ]
+    yield {
+        "case_id": "movement/ride-strider",
+        "family": "movement",
+        "operation": "local_player_ticks",
+        "rows": strider_rows,
+    }
+
     # Breaking: the attack key as `handleKeybinds` spends it, into the
     # reference's own game mode. The target is named, not picked. Each tick
     # reports the game mode's destroy state, the crack stage the level keeps,

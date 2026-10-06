@@ -1778,7 +1778,7 @@ impl ClientWorld {
             .scale(entity.scale(), entity.scale())
             .make_bounding_box(voxel_core::math::Vec3::new(x, y, z));
         let top = area.max_y + 0.001;
-        let level = local_player::Level { world: self };
+        let level = local_player::Level::new(self);
         for bx in voxel_core::math::floor_f64(area.min_x)..voxel_core::math::ceil_f64(area.max_x) {
             for by in voxel_core::math::floor_f64(area.max_y)..voxel_core::math::ceil_f64(top) {
                 for bz in
@@ -1814,7 +1814,7 @@ impl ClientWorld {
         let (x, y, z) = entity.position();
         let position = voxel_core::math::Vec3::new(x, y, z);
         let found = fluid::scan(
-            &local_player::Level { world: self },
+            &local_player::Level::new(self),
             (
                 dimensions.make_bounding_box(position),
                 position,

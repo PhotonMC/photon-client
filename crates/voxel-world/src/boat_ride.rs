@@ -736,7 +736,7 @@ impl ClientWorld {
                     .is_some_and(|passenger| passenger.is_player())
         });
         body.paddles = (entity.paddle_left, entity.paddle_right);
-        let level = Level { world: self };
+        let level = Level::new(self);
         let Ok(paddles) = body.tick(&level) else {
             return;
         };

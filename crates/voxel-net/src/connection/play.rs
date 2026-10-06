@@ -1266,11 +1266,13 @@ impl PlaySession {
         // What the rider steers with: its input, its look, and the stick in its hands.
         if let Some(player) = self.player.as_ref() {
             let mut controls = player.controller();
-            controls.holds_carrot_on_a_stick =
+            let holds = |name: &str| {
                 [main_hand, self.off_hand_item()].into_iter().any(|item| {
-                    voxel_world::block_rules::item(item)
-                        .is_some_and(|item| item.name == "minecraft:carrot_on_a_stick")
-                });
+                    voxel_world::block_rules::item(item).is_some_and(|item| item.name == name)
+                })
+            };
+            controls.holds_carrot_on_a_stick = holds("minecraft:carrot_on_a_stick");
+            controls.holds_warped_fungus_on_a_stick = holds("minecraft:warped_fungus_on_a_stick");
             self.trace.world.set_rider_controls(controls);
         }
         let ridden = self.trace.world.ridden_vehicle_of_local_player();
