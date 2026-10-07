@@ -3,8 +3,8 @@
 //! attack indicator do anything; the others hold a value on their widget and
 //! nothing follows.
 
-use voxel_game::option::{IntRange, SliderableEnum};
-use voxel_game::options::AttackIndicator;
+use voxel_game::option::{IntRange, MappedIntRange, SliderableEnum};
+use voxel_game::options::{AttackIndicator, FRAMERATE_LIMIT_DEFAULT, InactivityFpsLimit};
 use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::cycle::CycleButton;
@@ -29,6 +29,9 @@ const MAX_ANISOTROPY: u8 = CUSTOMISING | 2;
 const EXCLUSIVE_FULLSCREEN: u8 = 3;
 const GRAPHICS_API: u8 = 4;
 const ATTACK_INDICATOR: u8 = 5;
+const FRAMERATE_LIMIT: u8 = 6;
+const VSYNC: u8 = 7;
+const INACTIVITY_FPS_LIMIT: u8 = 8;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -85,6 +88,37 @@ fn anisotropy(caption: &Component, value: &i32) -> Component {
     }
 }
 
+/// The frame rate limit's slider steps: tens, from 10 to 260.
+type FramerateValues = MappedIntRange<i32, fn(i32) -> i32, fn(&i32) -> i32>;
+
+fn framerate_values() -> FramerateValues {
+    IntRange::new(1, 26).xmap(
+        (|value| value * 10) as fn(i32) -> i32,
+        (|value: &i32| value / 10) as fn(&i32) -> i32,
+        true,
+    )
+}
+
+/// The options the screen shows and hands back; the default is the game's own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VideoValues {
+    pub attack_indicator: AttackIndicator,
+    pub framerate_limit: i32,
+    pub vsync: bool,
+    pub inactivity_fps_limit: InactivityFpsLimit,
+}
+
+impl Default for VideoValues {
+    fn default() -> Self {
+        Self {
+            attack_indicator: AttackIndicator::Crosshair,
+            framerate_limit: FRAMERATE_LIMIT_DEFAULT,
+            vsync: true,
+            inactivity_fps_limit: InactivityFpsLimit::Afk,
+        }
+    }
+}
+
 /// `UNLIMITED_FRAMERATE_CUTOFF` is 260.
 fn framerate(caption: &Component, value: &i32) -> Component {
     if *value == 260 {
@@ -136,27 +170,27 @@ fn translated_value(value: &Named) -> Component {
 }
 
 /// `displayOptions`, with the GUI scale a cycle button of `0..=max`.
-fn display_options(gui_scale: i32, max_gui_scale: i32) -> Vec<(u8, Build)> {
+fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
-            PLAIN,
+            FRAMERATE_LIMIT,
             slider(
                 "options.framerateLimit",
-                IntRange::new(1, 26).xmap(|value| value * 10, |value: &i32| value / 10, true),
+                framerate_values(),
                 framerate,
-                120,
+                display.framerate_limit,
             ),
         ),
-        (PLAIN, boolean("options.vsync", true)),
+        (VSYNC, boolean("options.vsync", display.vsync)),
         (
-            PLAIN,
+            INACTIVITY_FPS_LIMIT,
             named_tip(
                 "options.inactivityFpsLimit",
                 &[
-                    "options.inactivityFpsLimit.minimized",
-                    "options.inactivityFpsLimit.afk",
+                    InactivityFpsLimit::Minimized.caption_key(),
+                    InactivityFpsLimit::Afk.caption_key(),
                 ],
-                "options.inactivityFpsLimit.afk",
+                display.inactivity_fps_limit.caption_key(),
             ),
         ),
         (
@@ -445,7 +479,7 @@ impl VideoSettingsScreen {
         in_world: bool,
         gui_scale: i32,
         max_gui_scale: i32,
-        attack_indicator: AttackIndicator,
+        values: VideoValues,
     ) -> Self {
         let screen = SubScreen::new(font, lang, size, "options.videoTitle", in_world, |list| {
             list.add_header(font, lang, "options.video.display.header");
@@ -459,7 +493,7 @@ impl VideoSettingsScreen {
                     -1,
                 ),
             );
-            list.add_small(lang, display_options(gui_scale, max_gui_scale));
+            list.add_small(lang, display_options(gui_scale, max_gui_scale, &values));
             list.add_header(font, lang, "options.video.quality.header");
             list.add_big(
                 lang,
@@ -479,7 +513,7 @@ impl VideoSettingsScreen {
             );
             list.add_small(lang, quality_options());
             list.add_header(font, lang, "options.video.preferences.header");
-            list.add_small(lang, preference_options(attack_indicator));
+            list.add_small(lang, preference_options(values.attack_indicator));
         });
         let style = Style {
             colour: Some(RESTART_COLOUR),
@@ -535,14 +569,33 @@ impl VideoSettingsScreen {
         self.screen.list.scroll_amount()
     }
 
-    /// What the attack indicator's button says.
-    pub fn attack_indicator(&self) -> AttackIndicator {
-        self.screen
-            .list
-            .find(ATTACK_INDICATOR)
-            .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
-            .and_then(|button| AttackIndicator::from_caption_key(button.value()))
-            .unwrap_or(AttackIndicator::Crosshair)
+    /// What the buttons and the slider say, over `fallback` for any that is missing.
+    pub fn values(&self, fallback: VideoValues) -> VideoValues {
+        let list = &self.screen.list;
+        VideoValues {
+            attack_indicator: list
+                .find(ATTACK_INDICATOR)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
+                .and_then(|button| AttackIndicator::from_caption_key(button.value()))
+                .unwrap_or(fallback.attack_indicator),
+            framerate_limit: list
+                .find(FRAMERATE_LIMIT)
+                .and_then(|control| {
+                    control
+                        .as_any()
+                        .downcast_ref::<OptionSlider<FramerateValues>>()
+                })
+                .map_or(fallback.framerate_limit, |slider| *slider.value()),
+            vsync: list
+                .find(VSYNC)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                .map_or(fallback.vsync, |button| *button.value()),
+            inactivity_fps_limit: list
+                .find(INACTIVITY_FPS_LIMIT)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
+                .and_then(|button| InactivityFpsLimit::from_caption_key(button.value()))
+                .unwrap_or(fallback.inactivity_fps_limit),
+        }
     }
 
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
@@ -684,15 +737,8 @@ mod tests {
     #[test]
     fn done_leaves_and_a_gui_scale_press_asks_the_window_for_a_size() {
         let Some((font, lang)) = assets() else { return };
-        let mut screen = VideoSettingsScreen::new(
-            &font,
-            &lang,
-            (427, 240),
-            true,
-            2,
-            2,
-            AttackIndicator::Crosshair,
-        );
+        let mut screen =
+            VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, VideoValues::default());
         let mut asked = Vec::new();
         let mut resize = |scale: i32| {
             asked.push(scale);

@@ -61,7 +61,7 @@ mod validation;
 
 use bytes::as_bytes;
 use frame::transition;
-use swapchain::clamp_extent;
+use swapchain::{choose_present_mode, clamp_extent};
 pub use validation::validation_findings;
 
 /// No terrain fog: every distance out of reach, as the reference's empty
@@ -211,6 +211,8 @@ pub struct BackendDescription {
     pub image_count: u32,
     /// Swapchain extent in pixels.
     pub extent: vk::Extent2D,
+    /// How the swapchain presents: FIFO waits for the display, IMMEDIATE does not.
+    pub present_mode: vk::PresentModeKHR,
 }
 
 /// The query pool the scene's pass timestamps are written to, and what turns
@@ -631,6 +633,8 @@ pub struct VulkanBackend {
     /// The terrain fog's colour and its four distances.
     fog: [f32; 8],
     render_finished: Vec<vk::Semaphore>,
+    /// Whether frames wait for the display; the swapchain's present mode follows.
+    vsync: bool,
     /// The validation layer's messenger, with `VOXEL_VALIDATION`.
     validation: Option<validation::Validation>,
     /// The pipeline cache, null until [`VulkanBackend::use_pipeline_cache`], and its file.

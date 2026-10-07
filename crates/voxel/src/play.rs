@@ -20,6 +20,7 @@ use crate::controls::Controls;
 use crate::dropped_items::{WorldItemLayers, world_items};
 use crate::falling_blocks::falling_blocks;
 use crate::fishing_hooks::{HookView, fishing_hooks};
+use crate::frame_limiter::{FrameLimiter, is_input};
 use crate::gui::Gui;
 use crate::held_items::held_item_vertices;
 use crate::item_layers::ItemLayerCache;
@@ -33,6 +34,7 @@ use crate::sky::{Sky, SkyCamera};
 use crate::sound::SoundSystem;
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
 use crate::{mobs, villagers};
+use voxel_game::options::UNLIMITED_FRAMERATE_CUTOFF;
 use voxel_game::pick::pick;
 use voxel_world::local_player::LocalPlayer;
 
@@ -144,6 +146,8 @@ struct Play {
     profile: Option<FrameProfile>,
     /// `VOXEL_BENCH`: the frames kept for a report.
     bench: Option<Bench>,
+    /// How long a frame lasts at the least, and what lowers the rate.
+    limiter: FrameLimiter,
 }
 
 impl Play {
@@ -258,7 +262,21 @@ impl Play {
             Ok("front") => CameraType::ThirdPersonFront,
             _ => CameraType::FirstPerson,
         };
-        let controls = Controls::new(camera_type, script.is_none());
+        let mut controls = Controls::new(camera_type, script.is_none());
+        // A measuring run is not held to the player's limit, and a test can set either option
+        // without touching the options file.
+        if env::var_os("VOXEL_BENCH").is_some() {
+            controls.options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
+        }
+        if let Ok(value) = env::var("VOXEL_VSYNC") {
+            controls.options.enable_vsync = value != "0";
+        }
+        if let Some(limit) = env::var("VOXEL_MAX_FPS")
+            .ok()
+            .and_then(|text| text.parse().ok())
+        {
+            controls.options.framerate_limit = limit;
+        }
         let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
         let language = &controls.options.language_code;
         let mut gui = Gui::load(
@@ -319,6 +337,7 @@ impl Play {
             frames: 0,
             profile: FrameProfile::from_env(),
             bench: Bench::from_env(),
+            limiter: FrameLimiter::new(Instant::now()),
         })
     }
 
@@ -327,6 +346,9 @@ impl Play {
         while !self.surface.should_close() {
             let frame_start = Instant::now();
             for event in self.surface.poll() {
+                if is_input(&event) {
+                    self.limiter.input_received(frame_start);
+                }
                 self.controls.handle(
                     event,
                     &mut self.session,
@@ -343,6 +365,7 @@ impl Play {
                 self.controls
                     .rebuild_menus(&self.surface, &self.screen_assets);
             }
+            self.backend.set_vsync(self.controls.options.enable_vsync);
             self.fit_swapchain()?;
             let now = Instant::now();
             let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
@@ -387,6 +410,14 @@ impl Play {
             if let Flow::Stop = self.draw([frame_start, ticked], frame_ticks, script_done)? {
                 break;
             }
+            let options = &self.controls.options;
+            let limit = self.limiter.limit(
+                options.framerate_limit,
+                options.inactivity_fps_limit,
+                self.surface.is_iconified(),
+                Instant::now(),
+            );
+            self.limiter.wait(limit);
         }
         println!(
             "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={}",
@@ -877,6 +908,8 @@ impl Play {
                 loaded_chunks: self.session.world().loaded_chunk_count(),
                 entities: self.session.entity_count(),
                 validation: voxel_render::validation_findings(),
+                present_mode: format!("{:?}", self.backend.description().present_mode),
+                framerate_limit: self.controls.options.framerate_limit,
             })?;
         }
         if let Ok(path) = capture {

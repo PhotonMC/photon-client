@@ -766,7 +766,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     row["in_world"].as_bool().unwrap_or(false),
                     gui_scale,
                     max_scale,
-                    voxel_game::options::AttackIndicator::Crosshair,
+                    voxel_render::gui::video::VideoValues::default(),
                 );
                 let mut last = (0.0, 0.0);
                 let mut clock = 0_u64;

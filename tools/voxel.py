@@ -591,7 +591,7 @@ def bench_summary(report):
         passes = "" if gpu["pass_breakdown_resolved"] else " (no per-pass breakdown on this driver)"
         gpu_text = f" gpu_scene={triple(gpu['scene'])}{passes}"
     return (f"frames={report['frames']} work_ms={triple(report['work_ms'])} "
-            f"work_fps={report['work_fps']:.0f}{gpu_text}")
+            f"work_fps={report['work_fps']:.0f} wall_fps={report['wall_fps']:.1f}{gpu_text}")
 
 
 def bench(args):
@@ -615,6 +615,9 @@ def bench(args):
                             "VOXEL_BENCH": str(path), "VOXEL_BENCH_WARMUP": str(args.warmup)})
         if args.validation:
             environment["VOXEL_VALIDATION"] = "1"
+        environment["VOXEL_VSYNC"] = "0" if args.vsync == "off" else "1"
+        if args.fps_limit:
+            environment["VOXEL_MAX_FPS"] = str(args.fps_limit)
         result = subprocess.run([str(binary), "play", args.address, *args.size], cwd=ROOT,
                                 env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if result.returncode != 0 or not path.exists():
@@ -627,7 +630,8 @@ def bench(args):
             findings = reports[-1]["validation"]
             say(f"validation: {findings['errors']} errors, {findings['warnings']} warnings (see {path.with_suffix('.log')})")
     first = reports[0]
-    say(f"{first['device']} {first['extent'][0]}x{first['extent'][1]} render_distance={first['render_distance']} "
+    say(f"{first['device']} {first['extent'][0]}x{first['extent'][1]} present={first['present_mode']} "
+        f"render_distance={first['render_distance']} "
         f"chunks={first['loaded_chunks']} entities={first['entities']}")
     # The frame is pinned at the display's refresh time under FIFO, so its p50
     # alone proves little: the waits, the meshing span and the GPU's scene time
@@ -686,6 +690,10 @@ def main():
     bench_parser.add_argument("--warmup", type=float, default=10, help="seconds left out at the start")
     bench_parser.add_argument("--size", nargs=2, default=["1280", "720"], metavar=("WIDTH", "HEIGHT"))
     bench_parser.add_argument("--no-build", action="store_true", help="skip `cargo build --release`")
+    bench_parser.add_argument("--vsync", choices=["on", "off"], default="on",
+                              help="wait for the display (default on)")
+    bench_parser.add_argument("--fps-limit", type=int,
+                              help="hold to this frame rate (default: no limit, to measure the work)")
     bench_parser.add_argument("--validation", action="store_true",
                               help="run with the Vulkan validation layer and report what it finds")
     bench_parser.set_defaults(run=bench)

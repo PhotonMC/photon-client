@@ -27,6 +27,7 @@ mod felines;
 mod fish;
 mod fishing_hooks;
 mod foxes;
+mod frame_limiter;
 mod frogs;
 mod golems;
 mod guardians;

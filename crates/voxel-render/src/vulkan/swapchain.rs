@@ -2,7 +2,43 @@
 
 use super::*;
 
+/// The present mode for vsync on or off, from what the surface supports, by the reference's own
+/// preference (`GpuSurface.PresentMode.getSupportedVsyncMode`). FIFO is always supported.
+pub(super) fn choose_present_mode(
+    supported: &[vk::PresentModeKHR],
+    vsync: bool,
+) -> vk::PresentModeKHR {
+    let preferred: &[vk::PresentModeKHR] = if vsync {
+        &[vk::PresentModeKHR::FIFO_RELAXED, vk::PresentModeKHR::FIFO]
+    } else {
+        &[
+            vk::PresentModeKHR::IMMEDIATE,
+            vk::PresentModeKHR::MAILBOX,
+            vk::PresentModeKHR::FIFO,
+        ]
+    };
+    preferred
+        .iter()
+        .copied()
+        .find(|mode| supported.contains(mode))
+        .unwrap_or(vk::PresentModeKHR::FIFO)
+}
+
 impl VulkanBackend {
+    /// Show frames as the display refreshes (`true`) or as soon as they are drawn. The swapchain
+    /// is made again with the mode that fits, at the next [`Self::resize`].
+    pub fn set_vsync(&mut self, vsync: bool) {
+        if self.vsync != vsync {
+            self.vsync = vsync;
+            self.out_of_date = true;
+        }
+    }
+
+    /// Whether frames are shown as the display refreshes.
+    pub fn vsync(&self) -> bool {
+        self.vsync
+    }
+
     /// Whether the swapchain no longer fits the window and wants
     /// [`Self::resize`].
     pub fn out_of_date(&self) -> bool {
@@ -19,6 +55,10 @@ impl VulkanBackend {
 
     /// Rebuild the swapchain, and what is sized by it, for a new window
     /// size. A zero size (a minimised window) is left for later.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Vulkan objects created in the order the API requires"
+    )]
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), VulkanError> {
         if width == 0 || height == 0 {
             return Ok(());
@@ -39,6 +79,15 @@ impl VulkanBackend {
             if extent.width == 0 || extent.height == 0 {
                 return Ok(());
             }
+            let present_mode = choose_present_mode(
+                &self
+                    .surface_instance
+                    .get_physical_device_surface_present_modes(self.physical_device, self.surface)
+                    .map_err(|result| {
+                        VulkanError::Call("vkGetPhysicalDeviceSurfacePresentModes", result)
+                    })?,
+                self.vsync,
+            );
             let swapchain_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(self.surface)
                 .min_image_count(REQUESTED_IMAGE_COUNT.max(capabilities.min_image_count))
@@ -52,7 +101,7 @@ impl VulkanBackend {
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                 .pre_transform(capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                .present_mode(vk::PresentModeKHR::FIFO)
+                .present_mode(present_mode)
                 .clipped(true)
                 .old_swapchain(self.swapchain);
             let swapchain = self
@@ -109,6 +158,7 @@ impl VulkanBackend {
             }
             self.description.extent = extent;
             self.description.image_count = self.images.len() as u32;
+            self.description.present_mode = present_mode;
 
             if let Some(depth) = self.depth.take() {
                 self.device.destroy_image_view(depth.view, None);
@@ -217,5 +267,45 @@ pub(super) fn clamp_extent(
             capabilities.min_image_extent.height,
             capabilities.max_image_extent.height,
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ALL: [vk::PresentModeKHR; 4] = [
+        vk::PresentModeKHR::IMMEDIATE,
+        vk::PresentModeKHR::MAILBOX,
+        vk::PresentModeKHR::FIFO,
+        vk::PresentModeKHR::FIFO_RELAXED,
+    ];
+
+    #[test]
+    fn vsync_takes_relaxed_fifo_then_fifo() {
+        assert_eq!(
+            choose_present_mode(&ALL, true),
+            vk::PresentModeKHR::FIFO_RELAXED
+        );
+        assert_eq!(
+            choose_present_mode(&ALL[..3], true),
+            vk::PresentModeKHR::FIFO
+        );
+    }
+
+    #[test]
+    fn no_vsync_takes_immediate_then_mailbox_then_fifo() {
+        assert_eq!(
+            choose_present_mode(&ALL, false),
+            vk::PresentModeKHR::IMMEDIATE
+        );
+        assert_eq!(
+            choose_present_mode(&ALL[1..], false),
+            vk::PresentModeKHR::MAILBOX
+        );
+        assert_eq!(
+            choose_present_mode(&ALL[2..], false),
+            vk::PresentModeKHR::FIFO
+        );
     }
 }

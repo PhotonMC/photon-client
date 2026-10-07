@@ -234,7 +234,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [V02](V02-shader-dosyalari.md) | Shader dosyaları, build-time SPIR-V, pipeline cache | M | V01 | bitti |
 | [V03](V03-kare-ucusta.md) | İki kare uçuşta, halka tampon, `RenderType` tablosu | L | V01 | bölündü |
 | [V03b](V03b-render-type-tablosu.md) | `RenderType` tablosu ve `DrawList` | M | V03 | açık |
-| [V04](V04-present-modu.md) | Present modu ve kare sınırı | S | V03 | açık |
+| [V04](V04-present-modu.md) | Present modu ve kare sınırı | S | V03 | bitti |
 | [V05](V05-indexed-kompakt-vertex.md) | Indexed quad ve kompakt köşe formatı | L | V03 | açık |
 | [V06](V06-multi-draw.md) | Bölümler için indirect/multi-draw | L | V05 | açık |
 | [A01](A01-newtype-degerler.md) | `JavaF64`/`DVec3` ve kimlik newtype'ları | M | – | açık |

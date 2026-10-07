@@ -60,7 +60,9 @@ python3 tools/voxel.py server --stop
 - **`bench`:** Çalışan test sunucusuna sabit bir betikle (yerinde durup dört
   yöne dönen 40 sn) bağlanıp kare süresi raporunu `.data/runs/bench/` altına
   yazıyor. Seçenekler: `address`, `--repeat N` (art arda koşular p50 ile
-  karşılaştırılır, %5 ve üstü fark hata), `--warmup`, `--size`, `--name`.
+  karşılaştırılır, %5 ve üstü fark hata), `--warmup`, `--size`, `--name`,
+  `--vsync on|off`, `--fps-limit N` (varsayılan sınırsız: işin kendisi ölçülür),
+  `--validation` (Vulkan doğrulama katmanı; hata sayısı rapora girer).
   Sunucuyu kendisi başlatmaz.
 
 `--decompile` bu makinede çalıştırılmadı. Komut satırı referans kaynakları

@@ -40,12 +40,17 @@ pub struct RunInfo {
     pub entities: usize,
     /// What the validation layer reported (errors, warnings), when it was on.
     pub validation: (u32, u32),
+    /// How the swapchain presents, and the frame rate limit the run held to.
+    pub present_mode: String,
+    pub framerate_limit: i32,
 }
 
 pub struct Bench {
     path: String,
     warmup: Duration,
     first_frame: Option<Instant>,
+    /// When the last measured frame ended, for the frames per second of the wall clock.
+    last_frame: Option<Instant>,
     samples: Vec<Sample>,
 }
 
@@ -62,6 +67,7 @@ impl Bench {
             path,
             warmup,
             first_frame: None,
+            last_frame: None,
             samples: Vec::new(),
         })
     }
@@ -77,6 +83,7 @@ impl Bench {
             return;
         }
         let ms = |from: Instant, to: Instant| (to - from).as_secs_f64() * 1000.0;
+        self.last_frame = Some(drawn);
         self.samples.push(Sample {
             cpu: [
                 ms(start, ticked),
@@ -111,6 +118,8 @@ impl Bench {
         let _ = writeln!(out, "  \"device\": {:?},", info.device);
         let _ = writeln!(out, "  \"extent\": [{}, {}],", info.extent.0, info.extent.1);
         let _ = writeln!(out, "  \"render_distance\": {},", info.render_distance);
+        let _ = writeln!(out, "  \"present_mode\": {:?},", info.present_mode);
+        let _ = writeln!(out, "  \"framerate_limit\": {},", info.framerate_limit);
         let _ = writeln!(out, "  \"loaded_chunks\": {},", info.loaded_chunks);
         let _ = writeln!(out, "  \"entities\": {},", info.entities);
         let _ = writeln!(
@@ -120,8 +129,19 @@ impl Bench {
         );
         let _ = writeln!(out, "  \"warmup_s\": {},", self.warmup.as_secs_f64());
         let _ = writeln!(out, "  \"frames\": {frames},");
-        // Wall-clock FPS is not reported: a vsynced swapchain makes it the
-        // display's refresh rate. The frame's work is what to compare.
+        // Frames per second of the wall clock, which a vsynced swapchain or a limit holds to the
+        // display's rate or its own; the frame's work is what to compare otherwise.
+        let measured = self
+            .first_frame
+            .zip(self.last_frame)
+            .map_or(0.0, |(first, last)| {
+                (last - first).as_secs_f64() - self.warmup.as_secs_f64()
+            });
+        let _ = writeln!(
+            out,
+            "  \"wall_fps\": {:.1},",
+            frames as f64 / measured.max(1e-9)
+        );
         let _ = writeln!(out, "  \"work_fps\": {:.1},", 1000.0 / work.mean);
         let _ = writeln!(out, "  \"work_ms\": {},", work.json());
         let _ = writeln!(out, "  \"frame_ms\": {},", total.json());

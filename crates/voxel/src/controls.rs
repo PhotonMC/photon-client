@@ -20,7 +20,7 @@ use voxel_render::gui::pause::{PauseAction, PauseScreen};
 use voxel_render::gui::screen::{KeyMods, KeyResult};
 use voxel_render::gui::slider::SliderKey;
 use voxel_render::gui::sound_options::SoundOptionsScreen;
-use voxel_render::gui::video::VideoSettingsScreen;
+use voxel_render::gui::video::{VideoSettingsScreen, VideoValues};
 use voxel_render::window::WindowSurface;
 
 use crate::screens::{
@@ -305,8 +305,18 @@ impl Controls {
             true,
             self.options.gui_scale,
             scale.calculate_scale(0, false),
-            self.options.attack_indicator,
+            Self::video_values(&self.options),
         ));
+    }
+
+    /// The options the video screen shows, as the options hold them.
+    fn video_values(options: &voxel_game::options::Options) -> VideoValues {
+        VideoValues {
+            attack_indicator: options.attack_indicator,
+            framerate_limit: options.framerate_limit,
+            vsync: options.enable_vsync,
+            inactivity_fps_limit: options.inactivity_fps_limit,
+        }
     }
 
     /// `OptionsSubScreen.onClose` and `removed`: back to the options screen,
@@ -764,7 +774,11 @@ impl Controls {
             }
             _ => {}
         }
-        self.options.attack_indicator = video.attack_indicator();
+        let shown = video.values(Self::video_values(&self.options));
+        self.options.attack_indicator = shown.attack_indicator;
+        self.options.framerate_limit = shown.framerate_limit;
+        self.options.enable_vsync = shown.vsync;
+        self.options.inactivity_fps_limit = shown.inactivity_fps_limit;
         if done {
             self.close_video();
         }

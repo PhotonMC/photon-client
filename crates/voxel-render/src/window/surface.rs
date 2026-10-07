@@ -150,6 +150,11 @@ impl WindowSurface {
         self.window.should_close()
     }
 
+    /// Whether the window is minimised.
+    pub fn is_iconified(&self) -> bool {
+        self.window.is_iconified()
+    }
+
     /// Ask the window to close on the next poll.
     pub fn request_close(&mut self) {
         self.window.set_should_close(true);

@@ -41,6 +41,48 @@ impl ChatVisibility {
     }
 }
 
+/// `InactivityFpsLimit`: when the frame rate is lowered for a window nobody is using.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InactivityFpsLimit {
+    Minimized,
+    Afk,
+}
+
+impl InactivityFpsLimit {
+    pub const ALL: [Self; 2] = [Self::Minimized, Self::Afk];
+
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Minimized => "minimized",
+            Self::Afk => "afk",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Minimized => "options.inactivityFpsLimit.minimized",
+            Self::Afk => "options.inactivityFpsLimit.afk",
+        }
+    }
+
+    pub fn from_caption_key(key: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.caption_key() == key)
+    }
+}
+
+/// `framerateLimit`'s default, and the value from which the limit is off.
+pub const FRAMERATE_LIMIT_DEFAULT: i32 = 120;
+pub const UNLIMITED_FRAMERATE_CUTOFF: i32 = 260;
+
 /// `AttackIndicatorStatus`: where the attack strength is shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttackIndicator {
@@ -180,6 +222,11 @@ fn mouse_wheel_step(value: f64) -> Option<f64> {
 pub struct Options {
     /// `fov`: 30 to 110 degrees.
     pub fov: i32,
+    /// `enableVsync`: wait for the display to refresh before showing a frame.
+    pub enable_vsync: bool,
+    /// `framerateLimit` (`maxFps`): 10 to 260, from 260 on no limit.
+    pub framerate_limit: i32,
+    pub inactivity_fps_limit: InactivityFpsLimit,
     /// `guiScale`: 0 picks the largest that fits.
     pub gui_scale: i32,
     /// `invertXMouse`.
@@ -221,6 +268,9 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             fov: FOV_DEFAULT,
+            enable_vsync: true,
+            framerate_limit: FRAMERATE_LIMIT_DEFAULT,
+            inactivity_fps_limit: InactivityFpsLimit::Afk,
             gui_scale: 0,
             invert_mouse_x: false,
             save_chat_drafts: false,
@@ -253,8 +303,11 @@ impl Default for Options {
 /// An option of the file, in the order `processOptions` goes through them.
 #[derive(Debug, Clone, Copy)]
 enum Key {
+    EnableVsync,
     Fov,
     GuiScale,
+    MaxFps,
+    InactivityFpsLimit,
     InvertXMouse,
     InvertYMouse,
     MouseSensitivity,
@@ -279,9 +332,12 @@ enum Key {
     SoundCategory(SoundSource),
 }
 
-const KEYS: [(&str, Key); 34] = [
+const KEYS: [(&str, Key); 37] = [
+    ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
+    ("maxFps", Key::MaxFps),
+    ("inactivityFpsLimit", Key::InactivityFpsLimit),
     ("invertXMouse", Key::InvertXMouse),
     ("invertYMouse", Key::InvertYMouse),
     ("mouseSensitivity", Key::MouseSensitivity),
@@ -550,6 +606,23 @@ impl Options {
                     }
                 }
             }
+            Key::EnableVsync => self.enable_vsync = boolean().unwrap_or(self.enable_vsync),
+            Key::MaxFps => {
+                // `Codec.intRange(10, 260)`.
+                if let Json::Number(number) = json {
+                    let limit = int_value(number);
+                    if (10..=UNLIMITED_FRAMERATE_CUTOFF).contains(&limit) {
+                        self.framerate_limit = limit;
+                    }
+                }
+            }
+            Key::InactivityFpsLimit => {
+                if let Json::Text(name) = &json
+                    && let Some(value) = InactivityFpsLimit::from_serialized(name)
+                {
+                    self.inactivity_fps_limit = value;
+                }
+            }
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
             Key::SaveChatDrafts => {
                 self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
@@ -612,6 +685,9 @@ impl Options {
     /// The value the file holds for an option.
     fn write(&self, key: Key) -> String {
         match key {
+            Key::EnableVsync => self.enable_vsync.to_string(),
+            Key::MaxFps => self.framerate_limit.to_string(),
+            Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
             Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
@@ -849,5 +925,25 @@ mod tests {
             loaded("attackIndicator:true").attack_indicator,
             AttackIndicator::Crosshair
         );
+    }
+
+    #[test]
+    fn the_display_options_read_and_write_as_the_game_does() {
+        let mut options = loaded("enableVsync:false\nmaxFps:30\ninactivityFpsLimit:\"minimized\"");
+        assert!(!options.enable_vsync);
+        assert_eq!(options.framerate_limit, 30);
+        assert_eq!(options.inactivity_fps_limit, InactivityFpsLimit::Minimized);
+        // A limit outside `intRange(10, 260)` and a value that is not a name leave the option.
+        let refused = loaded("maxFps:5\ninactivityFpsLimit:\"never\"");
+        assert_eq!(refused.framerate_limit, FRAMERATE_LIMIT_DEFAULT);
+        assert_eq!(refused.inactivity_fps_limit, InactivityFpsLimit::Afk);
+        assert_eq!(loaded("maxFps:260").framerate_limit, 260);
+        options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
+        let path = std::env::temp_dir().join(format!("voxel-display-{}.txt", std::process::id()));
+        options.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("enableVsync:false\n"));
+        assert!(text.contains("maxFps:260\n"));
+        assert!(text.contains("inactivityFpsLimit:\"minimized\"\n"));
     }
 }

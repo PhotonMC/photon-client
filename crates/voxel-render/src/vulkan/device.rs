@@ -153,6 +153,14 @@ impl VulkanBackend {
 
             let swapchain_device = ash::khr::swapchain::Device::new(&instance, &device);
             let dynamic_rendering = ash::khr::dynamic_rendering::Device::new(&instance, &device);
+            let present_mode = choose_present_mode(
+                &surface_instance
+                    .get_physical_device_surface_present_modes(physical_device, surface)
+                    .map_err(|result| {
+                        VulkanError::Call("vkGetPhysicalDeviceSurfacePresentModes", result)
+                    })?,
+                true,
+            );
             let swapchain_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(surface)
                 .min_image_count(REQUESTED_IMAGE_COUNT.max(capabilities.min_image_count))
@@ -166,7 +174,7 @@ impl VulkanBackend {
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                 .pre_transform(capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                .present_mode(vk::PresentModeKHR::FIFO)
+                .present_mode(present_mode)
                 .clipped(true);
             let swapchain = swapchain_device
                 .create_swapchain(&swapchain_info, None)
@@ -271,6 +279,7 @@ impl VulkanBackend {
                 api_version: properties.api_version,
                 surface_format,
                 image_count: images.len() as u32,
+                present_mode,
                 extent,
             };
 
@@ -354,6 +363,7 @@ impl VulkanBackend {
                 lightmap: DEFAULT_LIGHTMAP,
                 fog: NO_FOG,
                 render_finished,
+                vsync: true,
                 validation,
                 pipeline_cache: vk::PipelineCache::null(),
                 pipeline_cache_path: None,
