@@ -43,5 +43,8 @@ pub(super) unsafe fn transition(
 }
 
 mod draw_calls;
+mod passes;
 mod scene;
 mod sync;
+
+use passes::{ENTITY_RUNS, PASSES, Pass, Run, Sampled};

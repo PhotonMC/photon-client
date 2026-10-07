@@ -22,4 +22,7 @@ Senkronizasyon, yeni çizim türü.
 Bu görev dosyasının devir notu.
 
 ## Devir notu
-(boş)
+- `vulkan/frame/passes.rs`: `Pass` ve `PASSES` (çizim sırası, her geçişten sonra yazılan zaman damgası `stamp_after`), `Run` ve `ENTITY_RUNS` (entity/yüzey çizimlerinin sırası) ile her çalıştırmanın boru hattı ve örnekleyeceği set (`Run::pipeline`, `Run::sampled`). Üç birim testi sırayı sabitler (gökyüzü ilk, GUI son, arazi < entity < yarı saydam < bulut < hava < el; damgalar 1…7).
+- `record_scene` 575 satırdan ~70'e indi: görüntüleme kurulumu `begin_rendering`, sonra `for pass in PASSES` ve geçiş başına küçük işlev (`record_sky/terrain/translucent/clouds/weather/hand/gui`). Tek tür çizimleri `draw_run` (Run → bind pipeline, set, push, vertex tamponu, draw) yapar; `record_dissolve`, `record_maps`, `record_flat_shapes`, `draw_triangles` kalktı, çıplak çağrılar `draw_vertices`/`bind_state`'e indi.
+- Görev metninden sapma: tür yapısı `RenderType { pipeline, layout, descriptor, blend, depth }` yerine iki sıralı tablo (`Pass`, `Run`); boru hattı bağlamı (`Pipeline` = boru hattı + yerleşim) V01b'de oluştu, harmanlama/derinlik durumu boru hattı oluşturmada (`PipelineKind`) kaldı. Java `RenderTypes` adlarıyla eşleme yapılmadı.
+- Doğrulama: `bench --validation` 0 hata 0 uyarı; makine sessiz değildi (ekran 60/120 Hz arasında oynadı, koşular arası fark %29), bu yüzden taban ve yeni ikili aynı oturumda arka arkaya koşuldu: taban 8.63/8.33 ms, yeni 4.17/8.35 ms (p50) — gerileme yok. `shot` karelerinde gökyüzü, arazi, bayraklar, bulut, ok, el + eşya ve GUI doğru.
