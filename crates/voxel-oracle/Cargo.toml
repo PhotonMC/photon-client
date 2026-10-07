@@ -1,0 +1,22 @@
+[package]
+name = "voxel-oracle"
+description = "The Rust side of the behavior runner: a JSONL adapter the Java oracle's records are compared against."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+voxel-core.workspace = true
+voxel-data.workspace = true
+voxel-world.workspace = true
+voxel-audio.workspace = true
+voxel-game.workspace = true
+voxel-net.workspace = true
+voxel-render.workspace = true
+glfw.workspace = true
+serde_json = "1.0.151"
+
+[lints]
+workspace = true

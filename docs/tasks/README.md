@@ -20,7 +20,7 @@ GUI görevleri bu beş adımı izler; görev dosyaları "G" diye anar.
 
 1. Java: `tests/behavior/java/GuiOracle.java` — operation yöntemi ekle (örnek `pauseScreen`, `grep -n "pauseScreen"`), `switch` koluna bağla (~485–496). Gerçek Java ekranı Unsafe/yansıma sahtelerle kurulur (`screen(...)`, `set/get` yardımcıları üstte).
 2. `tools/behavior/cases/gui/` — konuya göre modülde `gui_<ad>_cases()` üreticisi (örnek `gui_pause_screen_cases`, `screens.py`); `cases/gui/__init__.py` içindeki `gui_generators` zincirine ekle.
-3. Rust: `crates/voxel/examples/behavior_adapter/gui.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
+3. Rust: `crates/voxel-oracle/src/gui.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
 4. `docs/gui-oracle.md` kapsam tablosuna operation satırı.
 5. `python3 tools/voxel.py parity --capture --family gui` yeşil olana dek yinele. Fark çıkarsa Rust'ı düzelt; beklenen değeri Rust çıktısından türetme.
 

@@ -36,7 +36,7 @@ def parity_summary(capture, families):
     command = [sys.executable, "tools/behavior/run.py", "capture" if capture else "compare"]
     for family in families:
         command += ["--family", family]
-    adapter = "target/release/examples/behavior_adapter"
+    adapter = "target/release/voxel-oracle"
     if capture:
         _, lines = run_captured(command)
         last = parse_report(lines)

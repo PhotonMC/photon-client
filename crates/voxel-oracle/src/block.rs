@@ -291,7 +291,7 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                 // fixture, is read by this port, and both forms are written
                 // back from what it read.
                 const PATCHES: &str =
-                    include_str!("../../../../tests/behavior/fixtures/item-default-patches.txt");
+                    include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
                 let items: Vec<Value> = PATCHES
                     .lines()
                     .map(|line| {

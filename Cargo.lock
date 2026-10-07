@@ -1089,7 +1089,6 @@ version = "0.1.0"
 dependencies = [
  "glfw",
  "log",
- "serde_json",
  "voxel-audio",
  "voxel-core",
  "voxel-data",
@@ -1135,6 +1134,21 @@ dependencies = [
  "voxel-core",
  "voxel-data",
  "voxel-game",
+ "voxel-world",
+]
+
+[[package]]
+name = "voxel-oracle"
+version = "0.1.0"
+dependencies = [
+ "glfw",
+ "serde_json",
+ "voxel-audio",
+ "voxel-core",
+ "voxel-data",
+ "voxel-game",
+ "voxel-net",
+ "voxel-render",
  "voxel-world",
 ]
 

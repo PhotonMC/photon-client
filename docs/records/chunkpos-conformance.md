@@ -32,7 +32,7 @@ Bu sözleşme yalnızca stream binary biçimini kapsar. `ChunkPos.CODEC`, region
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::pack` ve `ChunkPos::unpack`, iki 32 bit alanın yerleşimini taşır. `read_chunkpos`, yeterli veri yoksa slice'ı değiştirmeden `BufferUnderflow` döndürür; `write_chunkpos` aynı packed long'u big-endian olarak ekler. JSONL adapter bu API'yi [behavior_adapter.rs](../../crates/voxel/examples/behavior_adapter/main.rs) üzerinden çağırır; beklenen değer Java oracle'dan gelir.
+`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::pack` ve `ChunkPos::unpack`, iki 32 bit alanın yerleşimini taşır. `read_chunkpos`, yeterli veri yoksa slice'ı değiştirmeden `BufferUnderflow` döndürür; `write_chunkpos` aynı packed long'u big-endian olarak ekler. JSONL adapter bu API'yi [behavior_adapter.rs](../../crates/voxel-oracle/src/main.rs) üzerinden çağırır; beklenen değer Java oracle'dan gelir.
 
 
 ## Client-parity doğrulaması
