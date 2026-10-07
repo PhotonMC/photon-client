@@ -511,7 +511,7 @@ impl MountBody {
             let moved = self.bounding_box().move_by(movement.x, lift, movement.z);
             if self
                 .seen_by(level)
-                .no_collision(moved, self.state.fall_distance)?
+                .no_collision(moved, self.state.fall_distance, self.position)?
                 && !contains_any_liquid(level, moved)
             {
                 self.delta = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
@@ -675,8 +675,11 @@ impl MountBody {
         let movement_step = if movement.length_squared() == 0.0 {
             movement
         } else {
-            let colliders =
-                level.colliders(aabb.expand_towards_vec3(movement), self.state.fall_distance)?;
+            let colliders = level.colliders(
+                aabb.expand_towards_vec3(movement),
+                self.state.fall_distance,
+                self.position,
+            )?;
             collide_entity_movement(movement, aabb, &colliders)
         };
         let x_collision = movement.x != movement_step.x;
@@ -698,7 +701,8 @@ impl MountBody {
             if !on_ground_after_collision {
                 step_up_area = step_up_area.expand_towards(0.0, f64::from(-1.0e-5_f32), 0.0);
             }
-            let colliders = level.colliders(step_up_area, self.state.fall_distance)?;
+            let colliders =
+                level.colliders(step_up_area, self.state.fall_distance, self.position)?;
             return Ok(select_step_up_movement(
                 movement,
                 movement_step,

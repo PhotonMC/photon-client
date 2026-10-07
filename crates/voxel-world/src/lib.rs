@@ -3334,6 +3334,27 @@ impl ClientWorld {
             })
     }
 
+    /// `CollisionGetter.borderCollision` / `Entity.collectColliders`: the world border's shape when
+    /// the source stands close inside it (`WorldBorder.isInsideCloseToBorder`), `None` otherwise.
+    pub fn border_collider(&self, source: Vec3, bounding_box: Aabb) -> Option<VoxelShape> {
+        let border = &self.world_border;
+        let margin = abs_max_f64(bounding_box.x_size(), bounding_box.z_size()).max(1.0);
+        let min_x = border.min_x(0.0);
+        let max_x = border.max_x(0.0);
+        let min_z = border.min_z(0.0);
+        let max_z = border.max_z(0.0);
+        let distance = (source.x - min_x)
+            .min(max_x - source.x)
+            .min(source.z - min_z)
+            .min(max_z - source.z);
+        let inside_close = distance < margin * 2.0
+            && source.x >= min_x - margin
+            && source.x < max_x + margin
+            && source.z >= min_z - margin
+            && source.z < max_z + margin;
+        inside_close.then(|| border.collision_shape())
+    }
+
     /// Return whether the query has no collision with the current world border.
     pub fn no_border_collision(
         &self,
@@ -3343,27 +3364,9 @@ impl ClientWorld {
         let Some(source) = source else {
             return true;
         };
-
-        let border = &self.world_border;
-        let margin = abs_max_f64(bounding_box.x_size(), bounding_box.z_size()).max(1.0);
-        let min_x = border.min_x(0.0);
-        let max_x = border.max_x(0.0);
-        let min_z = border.min_z(0.0);
-        let max_z = border.max_z(0.0);
-        let distance = (source.position.x - min_x)
-            .min(max_x - source.position.x)
-            .min(source.position.z - min_z)
-            .min(max_z - source.position.z);
-        let inside_close = distance < margin * 2.0
-            && source.position.x >= min_x - margin
-            && source.position.x < max_x + margin
-            && source.position.z >= min_z - margin
-            && source.position.z < max_z + margin;
-        if !inside_close {
+        let Some(border_shape) = self.border_collider(source.position, bounding_box) else {
             return true;
-        }
-
-        let border_shape = border.collision_shape();
+        };
         let query_shape = Shapes::create_from_aabb(bounding_box)
             .expect("ClientWorld collision queries require normalized bounds");
         !Shapes::join_is_not_empty(&border_shape, &query_shape, BooleanOp::And)

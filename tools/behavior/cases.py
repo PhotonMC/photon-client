@@ -13310,8 +13310,8 @@ def movement_cases():
         return ticks
 
     def scene(label, blocks, ticks, start=(0.5, 64.0, 0.5), y_rot=0.0, x_rot=0.0,
-              game_mode="survival", auto_jump=False):
-        return {
+              game_mode="survival", auto_jump=False, border=None):
+        row = {
             "label": label,
             "blocks": blocks,
             "chunk_radius": 1,
@@ -13325,6 +13325,10 @@ def movement_cases():
             "auto_jump": auto_jump,
             "ticks": ticks,
         }
+        if border is not None:
+            row["border"] = {"x": float_bits(border[0], "f64"), "z": float_bits(border[1], "f64"),
+                             "size": float_bits(border[2], "f64")}
+        return row
 
     wall = [b for x in range(-3, 4) for b in column(x, 4, 64, 66)]
     slab_step = [{"x": x, "y": 64, "z": z, "block": "minecraft:stone_slab"}
@@ -13469,6 +13473,15 @@ def movement_cases():
             {"damage": "minecraft:lava"}, {"death": True}, {}])]),
         scene("ride-bubble-column", floor() + bubbles, keys(40), start=(0.5, 64.0, 0.5)),
         scene("sink-in-bubble-column", floor() + bubbles, keys(30), start=(1.5, 69.0, 0.5)),
+        scene("walk-into-border", floor(), keys(30, forward=True), border=(0.5, 0.5, 6.0)),
+        scene("sprint-jump-into-border", floor(),
+              keys(10, forward=True, sprint=True) + keys(20, forward=True, sprint=True, jump=True),
+              border=(0.5, 0.5, 6.0)),
+        scene("slide-along-border-corner", floor(),
+              keys(24, forward=True, right=True) if False else keys(24, forward=True, left=True),
+              border=(0.5, 0.5, 5.0), y_rot=45.0),
+        scene("start-outside-border", floor(), keys(10, forward=True), border=(40.5, 40.5, 6.0)),
+        scene("crouch-in-border", floor(), keys(20, forward=True, sneak=True), border=(0.5, 0.5, 4.0)),
     ]
     yield {
         "case_id": "movement/local-player-ticks",

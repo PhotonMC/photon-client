@@ -2110,6 +2110,37 @@ impl PlaySession {
                     packet.carried_item.as_ref(),
                 );
             }
+            PLAY_CLIENTBOUND_INITIALIZE_BORDER_PACKET_ID => {
+                let packet = parse_initialize_border_packet(payload)?;
+                self.trace.world.apply_world_border_initialize(packet);
+            }
+            PLAY_CLIENTBOUND_SET_BORDER_CENTER_PACKET_ID => {
+                let mut input = payload;
+                let x = read_f64(&mut input, "set border center")?;
+                let z = read_f64(&mut input, "set border center")?;
+                self.trace.world.apply_world_border_center(x, z);
+            }
+            PLAY_CLIENTBOUND_SET_BORDER_LERP_SIZE_PACKET_ID => {
+                let (old_size, new_size, time) = parse_set_border_lerp_size_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_world_border_lerp_size(old_size, new_size, time);
+            }
+            PLAY_CLIENTBOUND_SET_BORDER_SIZE_PACKET_ID => {
+                let mut input = payload;
+                let size = read_f64(&mut input, "set border size")?;
+                self.trace.world.apply_world_border_size(size);
+            }
+            PLAY_CLIENTBOUND_SET_BORDER_WARNING_DELAY_PACKET_ID => {
+                let mut input = payload;
+                let time = read_varint(&mut input, "set border warning delay")?;
+                self.trace.world.apply_world_border_warning_time(time);
+            }
+            PLAY_CLIENTBOUND_SET_BORDER_WARNING_DISTANCE_PACKET_ID => {
+                let mut input = payload;
+                let blocks = read_varint(&mut input, "set border warning distance")?;
+                self.trace.world.apply_world_border_warning_blocks(blocks);
+            }
             PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID => {
                 let (container_id, state) = parse_merchant_offers_packet(payload)?;
                 self.merchant = Some((container_id, state));

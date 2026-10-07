@@ -125,7 +125,7 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
             delta
         } else {
             let colliders = level
-                .colliders(bounding_box.expand_towards_vec3(delta), 0.0)
+                .colliders(bounding_box.expand_towards_vec3(delta), 0.0, position)
                 .ok()?;
             collide_entity_movement(delta, bounding_box, &colliders)
         };

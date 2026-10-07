@@ -20348,6 +20348,10 @@ fn movement_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let label = string(row, "label")?;
         let mut world = movement_world(row)?;
+        if let Some(border) = row.get("border") {
+            world.apply_world_border_center(bits64(border, "x")?, bits64(border, "z")?);
+            world.apply_world_border_size(bits64(border, "size")?);
+        }
         let game_mode = match string(row, "game_mode")? {
             "survival" => ClientPlayerGameMode::Survival,
             "creative" => ClientPlayerGameMode::Creative,

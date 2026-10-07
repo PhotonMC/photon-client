@@ -192,7 +192,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T82](T82-spawner-vault-kafes.md) | Spawner, vault ve deneme spawner'ı çizimi | M | T79, T24 | açık |
 | [T83](T83-hasar-ve-etki-orturleri.md) | Hasarda kameranın eğilmesi (`bobHurt`) | M | – | bitti (4641bad8) |
 | [T83b](T83b-ekran-orturleri.md) | Ekran örtüleri ve etki sisleri | M | T83 | açık |
-| [T84](T84-dunya-siniri.md) | Dünya sınırı | M | – | açık |
+| [T84](T84-dunya-siniri.md) | Dünya sınırı: paketler ve çarpışma | M | – | bitti (HASH) |
+| [T84b](T84b-sinir-cizimi.md) | Dünya sınırının çizimi | M | T84 | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (f64024d2) |
 | [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | bitti (12e5d8ea) |

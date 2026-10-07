@@ -58,12 +58,13 @@ use super::{
     parse_entity_equipment_packet, parse_entity_event_packet, parse_entity_metadata_packet,
     parse_entity_position_sync_packet, parse_entity_teleport_packet,
     parse_forget_level_chunk_packet, parse_game_event_packet, parse_hurt_animation_packet,
-    parse_light_update_packet, parse_login_packet, parse_map_item_data_packet,
-    parse_merchant_offers_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
-    parse_move_entity_rot_packet, parse_move_minecart_packet, parse_open_screen_packet,
-    parse_optional_item_stack, parse_player_abilities_packet, parse_player_position_packet,
-    parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
-    parse_rotate_head_packet, parse_section_data, parse_set_chunk_cache_center_packet,
+    parse_initialize_border_packet, parse_light_update_packet, parse_login_packet,
+    parse_map_item_data_packet, parse_merchant_offers_packet, parse_move_entity_pos_packet,
+    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_move_minecart_packet,
+    parse_open_screen_packet, parse_optional_item_stack, parse_player_abilities_packet,
+    parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
+    parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
+    parse_set_border_lerp_size_packet, parse_set_chunk_cache_center_packet,
     parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet, parse_set_health_packet,
     parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
     parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
@@ -2761,6 +2762,44 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn the_border_packets_carry_doubles_and_a_varlong_lerp() {
+    use voxel_core::wire::write_varint;
+    let mut payload = Vec::new();
+    for value in [10.5_f64, -3.25, 100.0, 40.0] {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    // A lerp of 300 ticks (a var long), then the absolute maximum, warning blocks and time.
+    payload.extend_from_slice(&[0xAC, 0x02]);
+    for value in [29_999_984, 5, 15] {
+        write_varint(value, &mut payload);
+    }
+    let init = parse_initialize_border_packet(&payload).unwrap();
+    assert_eq!((init.center_x, init.center_z), (10.5, -3.25));
+    assert_eq!(
+        (init.old_size, init.new_size, init.lerp_time),
+        (100.0, 40.0, 300)
+    );
+    assert_eq!(
+        (
+            init.absolute_max_size,
+            init.warning_blocks,
+            init.warning_time
+        ),
+        (29_999_984, 5, 15)
+    );
+    let mut lerp = Vec::new();
+    for value in [60.0_f64, 20.0] {
+        lerp.extend_from_slice(&value.to_be_bytes());
+    }
+    lerp.push(40);
+    assert_eq!(
+        parse_set_border_lerp_size_packet(&lerp).unwrap(),
+        (60.0, 20.0, 40)
+    );
+    assert!(parse_set_border_lerp_size_packet(&lerp[..16]).is_err());
 }
 
 #[test]

@@ -344,7 +344,7 @@ impl BoatBody {
             let moved = self
                 .bounding_box()
                 .move_by(0.0, target_y - self.position.y, 0.0);
-            if level.no_collision(moved, self.ride.fall_distance)? {
+            if level.no_collision(moved, self.ride.fall_distance, self.position)? {
                 self.set_pos(Vec3::new(self.position.x, target_y, self.position.z));
                 self.delta = self.delta.multiply_components(1.0, 0.0, 1.0);
                 self.ride.last_yd = 0.0;
@@ -435,8 +435,11 @@ impl BoatBody {
         let movement = if delta.length_squared() == 0.0 {
             delta
         } else {
-            let colliders =
-                level.colliders(bb.expand_towards_vec3(delta), self.ride.fall_distance)?;
+            let colliders = level.colliders(
+                bb.expand_towards_vec3(delta),
+                self.ride.fall_distance,
+                self.position,
+            )?;
             collide_entity_movement(delta, bb, &colliders)
         };
         let movement_length = movement.length_squared();

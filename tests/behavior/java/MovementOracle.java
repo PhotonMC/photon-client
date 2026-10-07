@@ -299,6 +299,13 @@ public final class MovementOracle {
                 net.minecraft.world.Difficulty.PEACEFUL, false, false),
             net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
 
+        if (row.has("border")) {
+            // The world border the server set, as the packets leave it.
+            var border = row.getAsJsonObject("border");
+            level.getWorldBorder().setCenter(Oracle.f64(border, "x"), Oracle.f64(border, "z"));
+            level.getWorldBorder().setSize(Oracle.f64(border, "size"));
+        }
+
         var minecraft = (net.minecraft.client.Minecraft)
             unsafe.allocateInstance(net.minecraft.client.Minecraft.class);
         var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");

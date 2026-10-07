@@ -554,20 +554,39 @@ impl Level<'_> {
         Ok(out)
     }
 
+    /// `Entity.collectColliders`: the world border's shape if `source` stands close inside it,
+    /// then the blocks'.
     pub(crate) fn colliders(
         &self,
         area: Aabb,
         fall_distance: f64,
+        source: Vec3,
     ) -> Result<Vec<VoxelShape>, Unsupported> {
-        Ok(self
-            .block_collisions(area, fall_distance)?
+        let mut out: Vec<VoxelShape> = self
+            .world
+            .border_collider(source, area)
             .into_iter()
-            .map(|(_, shape)| shape)
-            .collect())
+            .collect();
+        out.extend(
+            self.block_collisions(area, fall_distance)?
+                .into_iter()
+                .map(|(_, shape)| shape),
+        );
+        Ok(out)
     }
 
-    pub(crate) fn no_collision(&self, area: Aabb, fall_distance: f64) -> Result<bool, Unsupported> {
-        Ok(self.block_collisions(area, fall_distance)?.is_empty())
+    /// `CollisionGetter.noCollision(source, area)`: no block, and not the world border.
+    pub(crate) fn no_collision(
+        &self,
+        area: Aabb,
+        fall_distance: f64,
+        source: Vec3,
+    ) -> Result<bool, Unsupported> {
+        Ok(self.block_collisions(area, fall_distance)?.is_empty()
+            && self.world.no_border_collision(
+                Some(crate::collision::ClientWorldCollisionSource { position: source }),
+                area,
+            ))
     }
 
     fn collides_with_suffocating_block(&self, area: Aabb) -> bool {
@@ -2060,7 +2079,7 @@ impl LocalPlayer {
         if self.horizontal_collision {
             let lift = movement.y + f64::from(0.6_f32) - self.position.y + old_y;
             let moved = self.bounding_box.move_by(movement.x, lift, movement.z);
-            if level.no_collision(moved, self.fall_distance)?
+            if level.no_collision(moved, self.fall_distance, self.position)?
                 && !self.contains_any_liquid(level, moved)
             {
                 self.delta = Vec3::new(movement.x, f64::from(0.3_f32), movement.z);
@@ -2344,8 +2363,11 @@ impl LocalPlayer {
         let movement_step = if movement.length_squared() == 0.0 {
             movement
         } else {
-            let colliders =
-                level.colliders(aabb.expand_towards_vec3(movement), self.fall_distance)?;
+            let colliders = level.colliders(
+                aabb.expand_towards_vec3(movement),
+                self.fall_distance,
+                self.position,
+            )?;
             collide_entity_movement(movement, aabb, &colliders)
         };
         let x_collision = movement.x != movement_step.x;
@@ -2364,7 +2386,7 @@ impl LocalPlayer {
             if !on_ground_after_collision {
                 step_up_area = step_up_area.expand_towards(0.0, f64::from(-1.0e-5_f32), 0.0);
             }
-            let colliders = level.colliders(step_up_area, self.fall_distance)?;
+            let colliders = level.colliders(step_up_area, self.fall_distance, self.position)?;
             return Ok(select_step_up_movement(
                 movement,
                 movement_step,
@@ -2459,6 +2481,7 @@ impl LocalPlayer {
                 bb.max_z - 1.0e-7 + delta_z,
             ),
             self.fall_distance,
+            self.position,
         )
     }
 
@@ -2601,7 +2624,7 @@ impl LocalPlayer {
         let right_end = seg_end.add_vec3(right_offset);
 
         let mut obstacle_height = f32::from_bits(1);
-        'boxes: for shape in level.colliders(test_box, self.fall_distance)? {
+        'boxes: for (_, shape) in level.block_collisions(test_box, self.fall_distance)? {
             for bounds in shape.to_aabbs() {
                 if bounds.intersects_vec3(left_begin, left_end)
                     || bounds.intersects_vec3(right_begin, right_end)
@@ -2816,6 +2839,7 @@ impl LocalPlayer {
                 .make_bounding_box(self.position)
                 .deflate(1.0e-7),
             self.fall_distance,
+            self.position,
         )
     }
 
