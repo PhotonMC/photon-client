@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md`.
+`docs/records/client-held-item-parity-conformance.md`.
 
 ## Devir notu
 - `PiglinArmPose` + `setup_piglin` altı poz (silah yukarıda/`swingWeaponDown`, arbalet tutma/doldurma ortak `AnimationUtils` işlevleriyle, hayranlık, dans); `entity/piglin-model` ~60 yeni satır bit bit eşit.

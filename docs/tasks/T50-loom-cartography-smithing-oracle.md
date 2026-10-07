@@ -16,7 +16,7 @@ G tarifi; `container_screen` satırlarına loom (desen listesi, kaydırma, seçi
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 
 ## Belgeler
-`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+`docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
 - Yapıldı: `container_screen` oracle'ına cartography (boş, kâğıt, cam) ve smithing (boş, netherite şablonu, süs şablonu + zırh) satırları; smithing'in `CyclingSlotBackground`'u Rust'ta (`Screen::tick`, `ScreenDraw::partial`, şablona göre taban/ek simgeleri, 30 tikte bir dönüş ve 4 tikte solma; oyunda `play.rs` her tikte ekranı tikler).

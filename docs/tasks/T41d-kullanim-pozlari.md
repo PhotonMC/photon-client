@@ -22,7 +22,7 @@
 Saldırı sallaması (T43).
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md` sapma listesi, `docs/index.md`.
+`docs/records/client-held-item-parity-conformance.md` sapma listesi, `docs/index.md`.
 
 ## Devir notu
 - `ArmPose` on poz (mızrak hariç) + `HumanoidModel.setupAnim` kullanım dalı, yolcu/süzülme/`speedValue`, dürbünde soluk almama: `entity/held-item-pose` ~110 yeni satır, bit bit eşit.

@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md`.
+`docs/records/client-held-item-parity-conformance.md`.
 
 ## Devir notu
 - `Placement::{fall_flying, auto_spin}`; `entity/avatar-pose` 26 satır bit bit eşit (ölüm, yüzme, sürünme, süzülme ve yönü, riptide). Oyunda `fall_flying_ticks`/`previous_motion` sayaçları ve `arm_poses::fall_flying`; süzülme durumunun çıkarımı Java'ya karşı karşılaştırılmadı, canlı gözlem yok.

@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/player/LocalPlayer.java`.
-- Rust: `crates/voxel-world/src/entity.rs` (tekne/yolcu dalları, `set_boat_input`), `crates/voxel-world/src/local_player.rs`, `crates/voxel-net/src/connection/play.rs` (`keys`/tik gönderimi), `docs/client-world-entity-boat-control-conformance.md` (tekne denetim kaydı).
+- Rust: `crates/voxel-world/src/entity.rs` (tekne/yolcu dalları, `set_boat_input`), `crates/voxel-world/src/local_player.rs`, `crates/voxel-net/src/connection/play.rs` (`keys`/tik gönderimi), `docs/records/client-world-entity-boat-control-conformance.md` (tekne denetim kaydı).
 
 ## Yapılacaklar
-1. Tekne/yolcu dalları üstünde (`docs/client-world-entity-boat-control-conformance.md`): araç kontrolü `LocalPlayer.rideTick` dalı.
+1. Tekne/yolcu dalları üstünde (`docs/records/client-world-entity-boat-control-conformance.md`): araç kontrolü `LocalPlayer.rideTick` dalı.
 2. Paketler: `ServerboundPlayerInput`, `ServerboundPlayerCommand`, `ServerboundPaddleBoat`, `ServerboundMoveVehicle` ve karşılıkları.
 3. Yolcunun kamera/poz kuralları (`getPassengerRidingPosition`, T21'de var).
 

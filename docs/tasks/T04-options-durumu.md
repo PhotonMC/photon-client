@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/Options.java` (2011 satır — **bütün okuma**; `grep -n "processOptions\|private final OptionInstance<.*> \(fov\|guiScale\|sensitivity\|chatOpacity\|chatScale\|chatWidth\|chatHeightFocused\|chatHeightUnfocused\|chatLineSpacing\|textBackgroundOpacity\|chatVisibility\|language\|invertMouse\|mouseWheelSensitivity\|renderDistance\|hideGui\)\|public void load\|public void save"` ile çapaları bul, her biri için ~40 satırlık pencere), `.data/minecraft/source/net/minecraft/client/OptionInstance.java` (`ValueSet`, `IntRange`, `UnitDouble`, `CaptionBasedToString`; `grep -n "class\|record\|enum"`).
-- Rust: `crates/voxel-game/src/option.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
+- Rust: `crates/voxel-game/src/option.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/records/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
 - Bağlanacak yerler: `crates/voxel-render/src/camera.rs` (FOV), `crates/voxel/src/controls.rs` (~880 duyarlılık), `crates/voxel-render/src/gui/chat.rs` (WIDTH 320, LINES_*, sabitler), `crates/voxel-render/src/window/scale.rs` (GUI ölçeği — zaten `gui_scale` parametreli mi bak).
 - Örnek dosya: `command_history.txt` yazımı `controls.rs`/`chat.rs`'de (oyun dizini çözümü; aynı konumu kullan).
 
@@ -26,7 +26,7 @@ Yeni ailesiz: `option_values` ailesine **gerekirse** `fov`/`chat_*` aralık sat�
 Ekranlar, ses/grafik/erişilebilirlik alanları, tuş atamaları.
 
 ## Belgeler
-`docs/remaining-work.md` M6 "Ayarlar" satırı; `docs/option-values-conformance.md` değişmez.
+`docs/remaining-work.md` M6 "Ayarlar" satırı; `docs/records/option-values-conformance.md` değişmez.
 
 ## Devir notu
 - `voxel-game/src/options.rs`: `Options` (15 alan, Java varsayılan/aralık/anahtar sırası), `load`/`save` (`version:4903` önde, okunan satırlar yerinde güncellenir, bilinmeyen anahtarlar korunur, eksik bilinen anahtarlar sona yazılır), `java_double` (Gson/`Double.toString` biçimi). Kodek davranışı DFU `JsonOps` baytkodundan doğrulandı (sayı≠bool); `ChatVisibility` buraya taşındı, `voxel-net` yeniden dışa aktarır.

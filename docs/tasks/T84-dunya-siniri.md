@@ -19,5 +19,5 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-- Yapıldı: altı sınır paketi canlı oturumda işleniyor; sınırın çarpışma şekli yerel oyuncunun, binekler ve yerdeki eşyanın hareketine giriyor (`Level::{colliders, no_collision}` kaynak konumu alır); oracle'a `border` alanı ve 5 satır, gerçek `LocalPlayer` ile eşit. Kayıt: [`client-world-border-live-parity-conformance.md`](../client-world-border-live-parity-conformance.md).
+- Yapıldı: altı sınır paketi canlı oturumda işleniyor; sınırın çarpışma şekli yerel oyuncunun, binekler ve yerdeki eşyanın hareketine giriyor (`Level::{colliders, no_collision}` kaynak konumu alır); oracle'a `border` alanı ve 5 satır, gerçek `LocalPlayer` ile eşit. Kayıt: [`client-world-border-live-parity-conformance.md`](../records/client-world-border-live-parity-conformance.md).
 - Kalan: sınırın çizimi [T84b](T84b-sinir-cizimi.md)'ye ayrıldı.

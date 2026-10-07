@@ -25,7 +25,7 @@ Ticaret ekranı, sesler, köylü kafa eşyası/çapraz kol eşyası (T41d ile).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı (bölündü): dört illager (`setup_illager`, her kol pozu, `voxel/src/illagers.rs`: poz seçimi, eldeki eşya ve kafa katmanı) ve cadı (`setup_witch`, `villagers.rs`); `Raider.IS_CELEBRATING` 16, büyü baytı 17. Kayıt: `docs/client-illager-witch-parity-conformance.md`.
+- Yapıldı (bölündü): dört illager (`setup_illager`, her kol pozu, `voxel/src/illagers.rs`: poz seçimi, eldeki eşya ve kafa katmanı) ve cadı (`setup_witch`, `villagers.rs`); `Raider.IS_CELEBRATING` 16, büyü baytı 17. Kayıt: `docs/records/client-illager-witch-parity-conformance.md`.
 - Oracle: `entity/illager-model` 21, `witch-model` 5 satır; `variant-fields` iki yeni satır.
 - Sapma: arbalet doldurma pozu (kullanım tiki yok), illusioner yansımaları, `WitchItemLayer` yok.
 - Açık: golemler, enderman, zombi köylü (T34c).

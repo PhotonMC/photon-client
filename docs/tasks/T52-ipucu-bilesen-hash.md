@@ -16,7 +16,7 @@ Java: `network/HashedStack.java`, `network/HashedPatchMap.java`, `world/inventor
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 
 ## Belgeler
-`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+`docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
 (boş)

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/strider/{StriderModel,AdultStriderModel,BabyStriderModel}.java`, `client/renderer/entity/StriderRenderer.java`, `client/renderer/entity/state/StriderRenderState.java`, `world/entity/monster/Strider.java` (istemci: `DATA_SUFFOCATING`, `DATA_SADDLE_ID`/eyer ekipmanı, `isRidden`).
-- Rust: `crates/voxel/src/hoglins.rs` ve `bears.rs` (kalıp), `voxel-render/src/mob_model.rs` (`setup_hoglin`), `docs/client-hoglin-parity-conformance.md`; eyer için `crates/voxel/src/farm_animals.rs` (domuz/at eyeri).
+- Rust: `crates/voxel/src/hoglins.rs` ve `bears.rs` (kalıp), `voxel-render/src/mob_model.rs` (`setup_hoglin`), `docs/records/client-hoglin-parity-conformance.md`; eyer için `crates/voxel/src/farm_animals.rs` (domuz/at eyeri).
 
 ## Yapılacaklar
 1. `setup_strider` (bacak/saç salınımı `ageInTicks` ile, binici varken hız sönümü).
@@ -21,10 +21,10 @@
 Strider davranışı ve binme kontrolü (T44), sesler.
 
 ## Belgeler
-`docs/index.md` satırı, yeni `docs/client-strider-parity-conformance.md`.
+`docs/index.md` satırı, yeni `docs/records/client-strider-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: `setup_strider` (yetişkin, bebek, eyer katmanı modeli), `Armor::simple_layer` (genel basit ekipman katmanı: strider eyeri), `voxel-world` boğulma verisi ve `is_vehicle`, `crates/voxel/src/striders.rs`. Kayıt: `docs/client-strider-parity-conformance.md`.
+- Yapıldı: `setup_strider` (yetişkin, bebek, eyer katmanı modeli), `Armor::simple_layer` (genel basit ekipman katmanı: strider eyeri), `voxel-world` boğulma verisi ve `is_vehicle`, `crates/voxel/src/striders.rs`. Kayıt: `docs/records/client-strider-parity-conformance.md`.
 - Oracle: `strider-model` 18, `strider-textures` 4, `living-entity-animations` 2 (yapay zekâsız), `variant-fields` +1; harness'a `mob_flags`, `strider_data` olayları.
 - Sapma: yapay zekâlı strider boğulmayı kendi hesaplamıyor (sunucu verisi); titreme T32i; eyer sırası ve ses yok.
 - Açık: T32i titreme (boğulan strider de eklendi).

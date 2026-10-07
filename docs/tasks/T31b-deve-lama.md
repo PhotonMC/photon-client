@@ -24,7 +24,7 @@ Eyer, binme (T44), tükürük mermisi (T39).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `setup_camel` (baş sınırları, yürüyüş, beş animasyon durumu), `CamelState`/`HorseState::tick_camel` (pozdan durumlar, koşu bitişi), deve yürüyüş override'ı, `SetTime` ile oyun zamanı, `setup_llama`, lama çeşit verisi; `farm_animals.rs` (deve, kabuk, lama, tüccar lamasi). Kayıt: `docs/client-camel-llama-parity-conformance.md`.
+- Yapıldı: `setup_camel` (baş sınırları, yürüyüş, beş animasyon durumu), `CamelState`/`HorseState::tick_camel` (pozdan durumlar, koşu bitişi), deve yürüyüş override'ı, `SetTime` ile oyun zamanı, `setup_llama`, lama çeşit verisi; `farm_animals.rs` (deve, kabuk, lama, tüccar lamasi). Kayıt: `docs/records/client-camel-llama-parity-conformance.md`.
 - Oracle: `camel-model` 24, `llama-model` 10, `living-entity-animations` 5 deve satırı; `variant-fields` üç satır. Canlı: deve, bebek deve, lamalar `shot` ile görüldü.
 - Sapma: suda olma, koşu bekleme süresi, halı katmanı yok.
 - Açık: eyer/halı/zırh katmanları (ekipman görevi), binme (T44).

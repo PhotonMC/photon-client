@@ -28,7 +28,7 @@ Eşya tutma ve zırh (T41), silah kullanma yapay zekâsı (sunucu).
 Skeleton dalı açar; stray/bogged/parched/wither iskeleti tablo satırı. Piglin ikinci dal. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı: `MobModel::setup_skeleton` (saldırgan yaysız kol pozu), `setup_piglin` (kulaklar, dans, zombifiye kollar), `mobs.rs` humanoid tablosu 12 tür (stray/bogged dış katmanları), `Piglin.DATA_BABY_ID`/`DATA_IS_DANCING` (17/19, oracle'la doğrulandı) dünyaya. Kayıt: `docs/client-skeleton-piglin-parity-conformance.md`.
+- Yapıldı: `MobModel::setup_skeleton` (saldırgan yaysız kol pozu), `setup_piglin` (kulaklar, dans, zombifiye kollar), `mobs.rs` humanoid tablosu 12 tür (stray/bogged dış katmanları), `Piglin.DATA_BABY_ID`/`DATA_IS_DANCING` (17/19, oracle'la doğrulandı) dünyaya. Kayıt: `docs/records/client-skeleton-piglin-parity-conformance.md`.
 - Oracle: `entity/skeleton-model` 63 + `entity/piglin-model` 47 satır (gerçek model sınıfları). Canlı: altı tür yan yana.
 - Sapma: elde eşya yok (iskelet yay tutuyor sayılır, T41), `attackTime` sıfır (T43), mantar/titreme bayrakları yok, mob yüzme tiklenmiyor.
 - Açık: yok.

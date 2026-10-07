@@ -28,6 +28,6 @@ Sürüş (T44), ray fiziği sunucu tarafında, sesler; minecart (T38b).
 Tekne dalı + minecart dalı; türevler tablo satırı. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı: `setup_boat`, `voxel-render/boat.rs` (`boat_pose`, `boat_vertices`, `Quaternion::angle_axis`), `voxel-world/boat.rs` (vuruş sönmesi, kabarcık, kürek konumları, su altı durumu), `crates/voxel/src/boats.rs`; oracle sahnesi yaşayan olmayan varlıkları da tikler. Kayıt: `docs/client-boat-parity-conformance.md`.
+- Yapıldı: `setup_boat`, `voxel-render/boat.rs` (`boat_pose`, `boat_vertices`, `Quaternion::angle_axis`), `voxel-world/boat.rs` (vuruş sönmesi, kabarcık, kürek konumları, su altı durumu), `crates/voxel/src/boats.rs`; oracle sahnesi yaşayan olmayan varlıkları da tikler. Kayıt: `docs/records/client-boat-parity-conformance.md`.
 - Bulgu: `Quaternionf.setAngleAxis` ekseni normalleştirmez (`(1,0,1)` ekseninde kabarcık dönüşü).
 - Bölündü: minecart T38b'de. Sapma: su yaması çizilmez (derinlik-yalnız çizim yok), yolcu ile kürek çekme oracle'sız. Canlı gözlem yapılmadı.

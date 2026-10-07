@@ -24,5 +24,5 @@ Mob ses olayları (aile görevlerinde), altyazılar.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı (T64a): `SoundType` tablosu (oracle'dan), adım/yüzme/vuruş/kırma (`LevelEvent` 2001)/koyma sesleri. Kayıt: `docs/client-block-sounds-conformance.md`.
+- Yapıldı (T64a): `SoundType` tablosu (oracle'dan), adım/yüzme/vuruş/kırma (`LevelEvent` 2001)/koyma sesleri. Kayıt: `docs/records/client-block-sounds-conformance.md`.
 - Kalan → [T64b](T64b-ses-tetikleri-kalan.md): atlama/iniş, hasar, ortam, yağmur, müzik, tetiklerin oracle'ı.

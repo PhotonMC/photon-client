@@ -28,6 +28,6 @@ Parçacıklar ve sesler, mermi çarpışması (sunucu).
 Ok ailesi, fırlatılan eşya ailesi, ateş topu ailesi üç dal; geri kalanı tek tek küçük. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı yalnız ok ve spektral ok: `ArrowModel` (titreme), `arrow_pose`, `AbstractArrow` istemci durumu (`shakeTime`, yerde, iksir rengi), `entityCutoutCull` için CPU'da yüz ayıklama, `arrows.rs` çizici. Kayıt: `docs/client-arrow-parity-conformance.md`.
+- Yapıldı yalnız ok ve spektral ok: `ArrowModel` (titreme), `arrow_pose`, `AbstractArrow` istemci durumu (`shakeTime`, yerde, iksir rengi), `entityCutoutCull` için CPU'da yüz ayıklama, `arrows.rs` çizici. Kayıt: `docs/records/client-arrow-parity-conformance.md`.
 - Bölündü: [T39b](T39b-trident.md) trident, [T39c](T39c-firlatilan-esya.md) fırlatılan eşyalar ve havai fişek, [T39d](T39d-atesler-ruzgar-yukleri.md) ateş topları ve rüzgâr yükleri, [T39e](T39e-shulker-mermisi-tukuruk-disler.md) shulker mermisi, lama tükürüğü, evoker dişleri, [T39f](T39f-olta-samandirasi.md) olta şamandırası.
 - Sapma: saplanma çarpışması ve kritik parçacıklar yok; canlı: üç ok `summon` ile görüldü.

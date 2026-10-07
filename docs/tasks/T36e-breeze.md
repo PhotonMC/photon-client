@@ -17,6 +17,6 @@
 Sesler, parçacıklar, rüzgâr topu (T39), davranışlar.
 
 ## Devir notu
-- Yapıldı: `setup_breeze` (üç katman, altı animasyon), `voxel-world/breeze.rs` (poz ve tik durum makinesi), `mob_vertices_scrolled` (kaydırılan ve tekrarlayan rüzgâr; sınırdan kesme) ve `mob_vertices_emissive`, entity gölgelendiricisine iki bant içi işaret (sıfır normal, negatif ışık), `monsters.rs` tablosuna breeze. Kayıt: `docs/client-breeze-parity-conformance.md`.
+- Yapıldı: `setup_breeze` (üç katman, altı animasyon), `voxel-world/breeze.rs` (poz ve tik durum makinesi), `mob_vertices_scrolled` (kaydırılan ve tekrarlayan rüzgâr; sınırdan kesme) ve `mob_vertices_emissive`, entity gölgelendiricisine iki bant içi işaret (sıfır normal, negatif ışık), `monsters.rs` tablosuna breeze. Kayıt: `docs/records/client-breeze-parity-conformance.md`.
 - Karar: yeni boru hattı yerine entity gölgelendiricisine iki işaret; gölgelendirici derlenmesi bir birim testle denetlenir.
 - Sapma: gözlerin derinlik yazmaması ve rüzgâr sıralaması yok; doku yolları oracle'sız. Canlı gözlem yapılmadı.

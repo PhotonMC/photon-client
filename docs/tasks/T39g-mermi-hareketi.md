@@ -17,7 +17,7 @@ Her tür için Java'nın istemci tikini (konum + hareket, sürtünme, yer çekim
 Partiküller ve sesler.
 
 ## Belgeler
-`docs/client-small-projectiles-parity-conformance.md` sapma satırını güncelle.
+`docs/records/client-small-projectiles-parity-conformance.md` sapma satırını güncelle.
 
 ## Devir notu
 `flight.rs`: zarar veren mermilerin, shulker mermisinin ve tükürüğün istemci tiki; `projectile_ticks` oracle'ı (MovementOracle) gerçek varlığa karşı bit bit eşit. Kayıt `client-small-projectiles-parity-conformance.md` sonunda.

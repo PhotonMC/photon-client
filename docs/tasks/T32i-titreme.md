@@ -21,7 +21,7 @@ Gerçek `LivingEntityRenderer.setupRotations` ile (`entity/…-render` kalıbı)
 Boğulan zombi (`isUnderWaterConverting`) vb. diğer dönüşüm titremeleri ayrı görev olabilir; sesler.
 
 ## Belgeler
-`docs/index.md` yeni satır gerekmez; `docs/client-hoglin-parity-conformance.md` sapma satırı güncellenir.
+`docs/index.md` yeni satır gerekmez; `docs/records/client-hoglin-parity-conformance.md` sapma satırı güncellenir.
 
 ## Devir notu
 - Yapıldı: `EntitySnapshot.{age_in_ticks, shaking}` (`ClientEntity::is_shaking`: donmuş | hoglin dönüşüyor | strider boğuluyor), `MobPlacement.shaking`, `DimensionEnvironment.piglins_zombify` (kayıt `attributes` alanı: düz değer ve `BooleanModifier`, yoksa varsayılan doğru), hoglin `DATA_IMMUNE_TO_ZOMBIFICATION` (kimlik 18).

@@ -4,7 +4,7 @@
 **Bağımlılık:** T21. **Boy:** M.
 
 ## Oku
-- Rust: `crates/voxel-world/src/lib.rs` (`tick_entity_once` ~1488–1560: `tick_position_interpolation`, `tick_motion_interpolation`, `tick_head_rotation`; `apply_entity_move`/`apply_entity_teleport`'in `lerpTo` kolu), `crates/voxel-world/src/entity.rs` (`interpolation_steps`, `interpolation_target_position`), `docs/client-world-entity-transform-parity-conformance.md` (yalnız "kapsam").
+- Rust: `crates/voxel-world/src/lib.rs` (`tick_entity_once` ~1488–1560: `tick_position_interpolation`, `tick_motion_interpolation`, `tick_head_rotation`; `apply_entity_move`/`apply_entity_teleport`'in `lerpTo` kolu), `crates/voxel-world/src/entity.rs` (`interpolation_steps`, `interpolation_target_position`), `docs/records/client-world-entity-transform-parity-conformance.md` (yalnız "kapsam").
 - Java: `.data/minecraft/source/net/minecraft/world/entity/LivingEntity.java` (`lerpTo`, `aiStep`, `lerpSteps`/`InterpolationHandler`), `Entity.java` (`moveOrInterpolateTo`), `InterpolationHandler.java`, `ClientLevel.java` (`tickNonPassenger`).
 
 ## Yapılacaklar

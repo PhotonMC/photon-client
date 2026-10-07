@@ -512,7 +512,7 @@ def check(args):
     good, line = parity_summary(args.capture, args.family)
     print(line)
     ok = ok and good
-    for script in ("generate-doc-index.py", "check-doc-cells.py"):
+    for script in ("generate-doc-index.py", "check-doc-cells.py", "check-doc-links.py"):
         code, lines = run_captured([sys.executable, f"tools/{script}"])
         if code != 0:
             ok = False

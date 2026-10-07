@@ -20,10 +20,10 @@ Katman satırları gerçek render türünün ölçülebilir alanlarına (ışık
 Patlama parçacığı (PLAN-M8); parlayan dış hat.
 
 ## Belgeler
-`docs/index.md` satırı, yeni kayıt; `docs/client-golem-enderman-parity-conformance.md` "enderman gözleri yok" sapması yeni kayda atıfla kalkar.
+`docs/index.md` satırı, yeni kayıt; `docs/records/client-golem-enderman-parity-conformance.md` "enderman gözleri yok" sapması yeni kayda atıfla kalkar.
 
 ## Devir notu
-- Yapıldı: `voxel-render/src/render_types.rs` (`EYES` hattı olguları, `eyes_texture`), `mob_vertices_glow`, `VulkanBackend::set_entity_glow` (gölge hattı, `glow` tamponu), `MobModels::glow`, `monsters.rs` göz katmanı. Kayıt: `docs/client-eyes-layer-parity-conformance.md`.
+- Yapıldı: `voxel-render/src/render_types.rs` (`EYES` hattı olguları, `eyes_texture`), `mob_vertices_glow`, `VulkanBackend::set_entity_glow` (gölge hattı, `glow` tamponu), `MobModels::glow`, `monsters.rs` göz katmanı. Kayıt: `docs/records/client-eyes-layer-parity-conformance.md`.
 - Oracle: `entity/eyes-layers` 2 satır (gerçek `SpiderEyesLayer`/`EnderEyesLayer`, render türünün hattı yansımayla). Canlı: örümcek kırmızı, enderman mor gözler `shot` ile görüldü.
 - Sapma: hat yüz elemesi yapmıyor (gözlenebilir fark yok).
 - Açık: enerji girdabı ve şarjlı creeper (T33d).

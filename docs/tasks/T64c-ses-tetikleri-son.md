@@ -11,7 +11,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-block-sounds-conformance.md`.
+`docs/records/client-block-sounds-conformance.md`.
 
 ## Devir notu
 - Yapıldı: hasar türü → etki → ses tablosu oracle'dan (`sound/damage-effects`, `tools/generate/damage_effects.py`, `voxel-data::damage_effect`; her koşuda karşılaştırılır), `ClientboundDamageEventPacket` türünün çözümü (`parse_damage_event_packet`; ad, `minecraft:damage_type` kayıt sırasından), `LocalPlayer::{handle_damage_event, handle_death_event}` (yürüme hızı 1,5, `invulnerableTime`, `hurtTime`, ses). Oracle: `movement/local-player-ticks` `hurt-and-die` satırı (gerçek `handleDamageEvent`).

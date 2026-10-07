@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-mount-ride-parity-conformance.md`.
+`docs/records/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
 - `MountKind::Strider`: lav yüzeyi çarpışması (`Level::standing_on_lava_at`), `floatStrider`, soğukluk bayrağı ve hız özelliği çarpanı, yürüyüşle oynayan koltuk; 17 satır gerçek Java'ya karşı bit bit eşit; canlıda lav üstünde sürüldü.

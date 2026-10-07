@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md`.
+`docs/records/client-held-item-parity-conformance.md`.
 
 ## Devir notu
 - `voxel-render::spear_animation` (`Ease` dokuz eğri, `UseParams`, el/eşya dönüşleri), `voxel-data::spear` (yedi mızrağın süreleri, gerçek kayıt defteriyle `entity/spear-table`), `HandMotion` ile `hand_pose`; `entity/held-item-pose` +138 satır gerçek model ve katmana karşı bit bit eşit.

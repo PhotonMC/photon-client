@@ -22,7 +22,7 @@
 `docs/tasks/T15-sohbet-kalanlari.md` açık satırı kapanır.
 
 ## Devir notu
-- Yapıldı: orta tık (`pick_key`, betikte `pick`) → `Outgoing::PickItemFromBlock/Entity` (paket 36/37; blok ve entity birlikte, Java `pickBlockOrEntity` tek işlev), ctrl ile `includeData`; `SuggestContext.selected_entities` + `PlaySession::selected_entities`, entity argümanı (oyuncu-dışı) UUID önerir; `Uuid::to_string_java`. Kayıt: `docs/client-pick-item-suggestion-parity-conformance.md`.
+- Yapıldı: orta tık (`pick_key`, betikte `pick`) → `Outgoing::PickItemFromBlock/Entity` (paket 36/37; blok ve entity birlikte, Java `pickBlockOrEntity` tek işlev), ctrl ile `includeData`; `SuggestContext.selected_entities` + `PlaySession::selected_entities`, entity argümanı (oyuncu-dışı) UUID önerir; `Uuid::to_string_java`. Kayıt: `docs/records/client-pick-item-suggestion-parity-conformance.md`.
 - Oracle: `movement/entity-aim` +9 satır (Java penceresi tuşsuz, handle 1), `gui/command-suggest` +12 satır. Canlı: yaratıcı kipte domuza orta tık, ele domuz yumurtası geldi.
 - Sapma: ctrl'li `includeData` oracle'da yok (birim test); tuş eşlemesi sabit Button3.
 - Açık: yok.

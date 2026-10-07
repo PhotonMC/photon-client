@@ -16,9 +16,9 @@ Menü: `movement/container-clicks` (ödeme yuvası kuralı, hızlı taşıma); e
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 
 ## Belgeler
-`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+`docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-- Yapıldı: `MenuKind::Beacon` (ödeme yuvası, `quickMoveStack`), `BeaconPanel` (düğmelerin yerleşimi, durumu, tıklaması), `ScreenAction::{SetBeacon, Close}` (+ fare tıklamasıyla kapanınca imleç yakalanır), `encode_set_beacon`/`PlaySession::set_beacon`, `ScreenDraw::{partial, widget_tooltips}`. Kayıt: `docs/generic-container-conformance.md` "İşaret ışığı".
+- Yapıldı: `MenuKind::Beacon` (ödeme yuvası, `quickMoveStack`), `BeaconPanel` (düğmelerin yerleşimi, durumu, tıklaması), `ScreenAction::{SetBeacon, Close}` (+ fare tıklamasıyla kapanınca imleç yakalanır), `encode_set_beacon`/`PlaySession::set_beacon`, `ScreenDraw::{partial, widget_tooltips}`. Kayıt: `docs/records/generic-container-conformance.md` "İşaret ışığı".
 - Oracle: `container_screen` `beacon-*` satırları (veri sonradan gelirse ekranın `dataChanged`'i için oracle `data_after` alanı); `container-clicks` 2 satır.
 - Sapma: ipucu gecikmesiz; yük eşyaları simgeleri çizilmiyor; gerçek sunucuyla bakılmadı. Açık: efekt kimliğini sunucunun kayıt sırası yerine istemcinin `MOB_EFFECTS` sırasıyla kodluyoruz (aynı sıra, protokol kayıtları aynı).

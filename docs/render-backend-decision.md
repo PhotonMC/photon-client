@@ -93,7 +93,7 @@ yapılandırması" şartı bu yüzden zorunludur.
 ## Bağımlılık eklenmesi
 
 Hiçbir GPU veya pencere bağımlılığı bu kayıtla birlikte eklenmez. İlk render
-dilimi ([P05.d.1 window ölçek matematiği](window-gui-scale-conformance.md))
+dilimi ([P05.d.1 window ölçek matematiği](records/window-gui-scale-conformance.md))
 GPU gerektirmez ve saf tamsayı/çift duyarlık davranışıdır. `glfw`, `ash`,
 `shaderc` bağımlılıkları, onları gerçekten kullanan ilk dilimle birlikte ve
 kendi gerekçesiyle eklenir.

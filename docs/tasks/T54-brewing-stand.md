@@ -16,9 +16,9 @@ Menü: `movement/container-clicks` simya satırları; ekran: `container_screen` 
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 
 ## Belgeler
-`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+`docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-- Yapıldı: menü (`MenuKind::Brewing`, yuva kuralları, `quickMoveStack`), eşya tanımına `brewing_ingredient` (oracle'dan, `items.py`), ekran (yakıt çubuğu, ok, kabarcıklar, simgeler), `Frame::sprite_cut` (kısmi sprite'ı çizim günlüğüne kaydeden). Kayıt: `docs/generic-container-conformance.md` "Simya standı".
+- Yapıldı: menü (`MenuKind::Brewing`, yuva kuralları, `quickMoveStack`), eşya tanımına `brewing_ingredient` (oracle'dan, `items.py`), ekran (yakıt çubuğu, ok, kabarcıklar, simgeler), `Frame::sprite_cut` (kısmi sprite'ı çizim günlüğüne kaydeden). Kayıt: `docs/records/generic-container-conformance.md` "Simya standı".
 - Ek düzeltme: açık kabın `ContainerSetData` değerleri menüye 4 yerine 10 tane taşınıyor (büyü masasının 4–9. değerleri).
 - Açık: kaynama ve yakıtı sunucu yürütür (istemci tahmini yok); canlı gözlem yapılmadı.

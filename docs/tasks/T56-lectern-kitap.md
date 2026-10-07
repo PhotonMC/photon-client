@@ -16,9 +16,9 @@ Java: `client/gui/screens/inventory/{LecternScreen,BookViewScreen,PageButton}.ja
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 
 ## Belgeler
-`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+`docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-- Yapıldı: `MenuKind::Lectern`, `BookScreen` (sayfa, numara, düğmeler, tuşlar, `change_page`), `Values::book_pages` (yazılı ve yazılabilir kitap), `Style::shadow` (`withoutShadow`; gölge rengi), `ContainerScreen`ın `may_build` bilgisi. Kayıt: `docs/generic-container-conformance.md` "Kürsü ve kitap görünümü".
+- Yapıldı: `MenuKind::Lectern`, `BookScreen` (sayfa, numara, düğmeler, tuşlar, `change_page`), `Values::book_pages` (yazılı ve yazılabilir kitap), `Style::shadow` (`withoutShadow`; gölge rengi), `ContainerScreen`ın `may_build` bilgisi. Kayıt: `docs/records/generic-container-conformance.md` "Kürsü ve kitap görünümü".
 - Oracle: `container_screen` `lectern-*` 8 satır (gerçek `LecternScreen`; oracle'a `book_pages` eşyası, `userPropertiesFuture`).
 - Açık: oyuncunun elindeki kitabı açan `OpenBook` paketi ve kitap düzenleme/imzalama ekranları ([PLAN-M6](PLAN-M3d.md)); `run_command` tıklaması; sayfa sesi.

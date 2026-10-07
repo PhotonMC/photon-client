@@ -17,7 +17,7 @@
 Sesler, parçacıklar, davranışlar; elde tutulan eşya (T36d).
 
 ## Devir notu
-- Yapıldı: `setup_bat`, `setup_vex`, `setup_allay`; `voxel-world/{bat,allay}.rs` (yarasanın durumları ve yukarıdaki bloğa yapışması, allay'ın eşya ve dans ilerlemesi); vex yüklenme bayrağı; veriler 16/16/16; `monsters.rs` tablosuna üç tür (vex ve allay'da blok ışığı 15, vex'te yüklenme dokusu). Kayıt: `docs/client-flier-parity-conformance.md`.
+- Yapıldı: `setup_bat`, `setup_vex`, `setup_allay`; `voxel-world/{bat,allay}.rs` (yarasanın durumları ve yukarıdaki bloğa yapışması, allay'ın eşya ve dans ilerlemesi); vex yüklenme bayrağı; veriler 16/16/16; `monsters.rs` tablosuna üç tür (vex ve allay'da blok ışığı 15, vex'te yüklenme dokusu). Kayıt: `docs/records/client-flier-parity-conformance.md`.
 - Bulgu: vex ve allay'ın `entityTranslucent` çizimi için yeni boru hattı gerekmedi; entity boru hattı zaten harmanlıyor.
 - Bölündü: elde tutulan eşya T36d'de.
 - Sapma: yarasanın kutusu izlenmez; doku yolları oracle'sız. Canlı gözlem yapılmadı.

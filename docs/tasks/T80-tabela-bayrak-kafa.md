@@ -19,6 +19,6 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-Bölündü: çan bu görevde yapıldı (`BellRenderer`, bit bit eşit; sallanma `BlockEvent` 1 ile). Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Bölündü: çan bu görevde yapıldı (`BellRenderer`, bit bit eşit; sallanma `BlockEvent` 1 ile). Kayıt: [client-chest-parity-conformance.md](../records/client-chest-parity-conformance.md).
 Kalan: kafa/kafatası [T80b](T80b-kafa-blogu.md), bayrak [T80c](T80c-bayrak-blogu.md), tabela [T80d](T80d-tabela-blogu.md).
 Sapma: çanın yankılanması (yakın baskıncı bulunca ses ve parçacık) yok: baskıncı etiketi ve `LevelParticles` gerekir.

@@ -794,7 +794,7 @@ mod tests {
     use super::*;
 
     /// `AbstractBoat.controlBoat` against the numbers the reference gives from the same start
-    /// (`docs/client-world-entity-boat-control-conformance.md`): input flags, `deltaRotation`, yaw,
+    /// (`docs/records/client-world-entity-boat-control-conformance.md`): input flags, `deltaRotation`, yaw,
     /// the motion's x and z, and the paddles.
     #[test]
     fn control_applies_java_input_delta_and_paddles() {

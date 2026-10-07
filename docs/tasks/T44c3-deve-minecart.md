@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-mount-ride-parity-conformance.md`.
+`docs/records/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
 Deve bitti: `ride-camel` 24 satır gerçek Camel/CamelHusk ile bit bit eşit (koşu, oturma/kalkma, koltuk, su). Kayıt

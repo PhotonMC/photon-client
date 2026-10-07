@@ -20,6 +20,6 @@ Sesler, düğme/heykel dönüşümü.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `CopperGolemAnimations` (beş `AnimationState`, boşta bekleme, `Mob.baseTick` çekilişi), veri 16/17 (hava, durum), `setup_copper_golem` (bakış, yürüyüş ve eşyalı yürüyüş, kol sınırı, beş animasyon), `copper_golems.rs` (aşamaya göre doku, parlayan gözler). Kayıt: `docs/client-copper-golem-parity-conformance.md`.
+- Yapıldı: `CopperGolemAnimations` (beş `AnimationState`, boşta bekleme, `Mob.baseTick` çekilişi), veri 16/17 (hava, durum), `setup_copper_golem` (bakış, yürüyüş ve eşyalı yürüyüş, kol sınırı, beş animasyon), `copper_golems.rs` (aşamaya göre doku, parlayan gözler). Kayıt: `docs/records/client-copper-golem-parity-conformance.md`.
 - Oracle: `entity/copper-golem-model` 45, `living-entity-animations`'a 19 gerçek `CopperGolem` tiki satırı, `data-ids` 2 satır. Oracle'a başsız ses için kamera kuklası eklendi.
 - Ayrıldı → T34f: eldeki eşya, antendeki blok, kafa eşyası katmanları. Sapma: gölge ve sesler yok; canlı gözlem yapılmadı.

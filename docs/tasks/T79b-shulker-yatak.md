@@ -19,6 +19,6 @@ Başka blok entity aileleri (T80–T82).
 Yeni contract/parity kaydı, `docs/index.md`.
 
 ## Devir notu
-Yapılan: shulker kutusu (`ShulkerBoxRenderer`: yön, renk, kapak ilerlemesi) gerçek renderer'a bit bit eşit; kapak `BlockEvent` 1 ile sürülür. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Yapılan: shulker kutusu (`ShulkerBoxRenderer`: yön, renk, kapak ilerlemesi) gerçek renderer'a bit bit eşit; kapak `BlockEvent` 1 ile sürülür. Kayıt: [client-chest-parity-conformance.md](../records/client-chest-parity-conformance.md).
 Java'dan sapma: yatak için iş yok (26.2'de blok modeli); kapak açılırken komşu güncellemesi ve varlık itme yok.
 Açık: kapak hareketi canlıda denenmedi.

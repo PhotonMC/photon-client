@@ -14,7 +14,7 @@ Model ve durum T41f'in oracle'ında; burada yalnız bağlama (canlı gözlem).
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: elytralı zombi.
 
 ## Belgeler
-`docs/client-armor-parity-conformance.md`.
+`docs/records/client-armor-parity-conformance.md`.
 
 ## Devir notu
 - `LocalPlayer` kendi `ElytraState`'ini tikler (bu port'ta oyuncu süzülmez), `Armor::wings` yerel ve mob modellerine de bağlandı; canlıda elytralı zombinin arkasında kanatlar görüldü. Yerel oyuncu için karşılaştırma yok.

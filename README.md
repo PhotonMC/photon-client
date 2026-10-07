@@ -1,33 +1,72 @@
 # voxel-client
 
-Minecraft Java Edition istemcisinin Rust ile sıfırdan yeniden uygulanması için hazırlık deposu. `voxel-client` geçici proje adıdır; Minecraft ile resmî bağlantısı yoktur.
+A from-scratch reimplementation of the **Minecraft: Java Edition client in Rust**, built to match the Java client's behavior exactly: mechanics, physics, movement, timing, camera, animation, textures, UI and sound.
 
-Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; uzun vadeli uyumluluk hedefi [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin). Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. Güncel bağlantı baseline'ı resmi vanilla 26.2 server ile login, configuration, ilk chunk ve ilk oyuncu konumu düzeltmesini doğruladı; chunk wire gövdesi de yapısal olarak tüketiliyor. Mekanik uyumluluk ve oynanabilir istemci henüz yok.
+`voxel-client` is a working title. This project is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
 
-Orijinal kaynak ve assetler yalnızca yerelde referans ve test girdisi olarak kullanılacak. Git'e, GitHub'a, derleme çıktısına veya dağıtım paketine eklenmeyecek. İstemci ileride kullanıcının seçtiği yerel asset klasörünü okuyacak; kurulum orijinal asset içermeyecek veya otomatik indirmeyecek.
+## Why
 
-## Mevcut aşama
+The goal is parity you cannot feel, not a "better" client. Anything that merely feels nicer, plus Bedrock behavior, is out of scope. The server is not part of this project; the long-term compatibility target is [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin), a Rust server.
 
-Referans Minecraft Java Edition 26.2, protokol 776 ve Java 25 olarak sabittir. Headless Java oracle ve Rust adapter dilimleri, her biri kendi birleşik contract/parity kaydında izlenen küçük adımlarla ilerler.
+Parity is checked mechanically instead of by playing the game. For every behavior slice the Java reference is read line by line, run headless as an *oracle*, and its output is captured. The Rust implementation must then reproduce that capture bit for bit on the same input. Expected values are never derived from the Rust output.
 
-Kapsamın kesin listesi ve capture kimlikleri [davranış runner'ında](docs/behavior-runner.md), kaynak kararları [source review'da](docs/source-review.md), açık bağımlılıklar [roadmap](docs/roadmap.md) ve [kalan test planında](docs/remaining-test-plan.md) bulunur. Bu genel bakışta hareketli test toplamı tutulmaz; yeni dilim eski durum paragraflarını güncellemeden kendi kanıtını ekler.
+## Status
 
-2026-09-12 tarihli [yön düzeltmesi](docs/course-correction-2026-09-12.md) kanıt sınıflarını (`client-parity` / `server-conformance`) ayırır ve item component varyant serisini durdurur. P08 istemci dünya kopyası başladı; P06–P08 ve P12–P13 altındaki canlı sunucu kayıtları `server-conformance` sınıfındadır ve bölümü kapatmazlar.
+**Pre-alpha, not a playable client.** The pinned reference is Java Edition **26.2**, protocol **776**, Java **25**.
 
-Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla bağlantı probe'u ve Pumpkin karşılaştırması [birleşik oyun oturumu kaydında](docs/game-connection-conformance.md) tutulur. Pencere/input, dünya state'i, hareket, render, ses ve GUI için istemciye bağlı doğrulamalar sonraki roadmap bölümlerindedir.
+The `play` mode connects to a server, receives chunks and entities, and lets you walk around the world with rendered terrain, many entity models, several screens (pause, options, inventories) and sound. It does not yet have, among other things, a main menu or server list, particles, online-mode authentication, resource packs, or complete block-entity and screen-overlay rendering. Do not expect to play survival with it.
 
-## Yerel çalıştırma
+Two kinds of evidence are kept apart on purpose:
 
-Referans oyunu `.data/` altına indirmek, test sunucusunu ve istemciyi
-başlatmak için `python3 tools/voxel.py` kullanılır (Linux, macOS, Windows);
-ayrıntı [yerel kurulum belgesinde](docs/local-setup.md). İndirilenler yalnız
-geliştirme makinesinde kalır, dağıtılan istemciye girmez.
+- `client-parity`: the Java client and the Rust code were compared on the same input.
+- `server-conformance`: a live server accepted the packets Rust produced. This shows wire compatibility only, not client parity.
 
-## Belgeler
+Work is tracked as small tasks in [`docs/tasks/`](docs/tasks/README.md); the [roadmap](docs/roadmap.md) and [remaining test plan](docs/remaining-test-plan.md) hold the long-term scope. There is no screenshot in this repository on purpose: every frame contains Mojang's assets, which are never committed.
 
-Tüm davranış sözleşmeleri, parity/conformance kayıtları ve çalışma belgeleri
-[belge dizininde](docs/index.md) tutulur. Dizin, `docs/` içeriğinden
-`tools/generate-doc-index.py` ile üretilir. Crate katmanları, kod düzeni ve
-karmaşıklık sınırları [kodlama standartlarındadır](docs/coding-standards.md).
+## Assets and legal
 
-Her AI aracı işe başlamadan `AGENTS.md` dosyasını okumalıdır. Claude, Gemini ve Copilot giriş dosyaları aynı kurallara yönlendirir. Talimat dosyalarını otomatik okumayan araçlarda `AGENTS.md` görev bağlamına açıkça verilmelidir; bu dosyalar modellerin davranışını teknik olarak zorlayan bir mekanizma değildir.
+The original game's code and assets are **not included, not downloaded by an installer, and never committed**. They are used locally as test and reference input only, under `.data/`, which is ignored by Git. In the future the client will read an asset folder that you select yourself. Continuous integration never receives the reference or any derived output.
+
+## Build and run
+
+Requirements:
+
+- Rust (the exact toolchain is pinned in `rust-toolchain.toml`), CMake and a C/C++ compiler (GLFW and shaderc are built from source).
+- A Vulkan driver (MoltenVK on macOS).
+- Python 3.9+ and Java 25 for the local tooling and the reference server.
+
+```sh
+cargo build --workspace
+python3 tools/voxel.py setup                      # fetch the pinned game into .data/ from Mojang's servers
+python3 tools/voxel.py server --accept-eula --background
+python3 tools/voxel.py play --user Walker
+```
+
+`setup` downloads the game from Mojang's official distribution and checks every file against the published hash. You are responsible for accepting the Minecraft EULA. Details are in the [local setup guide](docs/local-setup.md) (Turkish).
+
+## Tests
+
+```sh
+cargo test --workspace --lib --bins --tests   # unit tests, no game files needed
+python3 tools/voxel.py check                  # the full commit gate: fmt, build, test, clippy, parity, docs
+python3 tools/voxel.py parity --family gui    # Java-vs-Rust comparison for one family
+```
+
+The full gate and the parity runs need the local `.data/` reference. See [behavior testing](docs/behavior-testing.md) and the [behavior runner](docs/behavior-runner.md).
+
+## Documentation
+
+Most documents are written in Turkish; the repository is still being prepared for a wider audience.
+
+- [Document index](docs/index.md), with per-slice contract and parity records under [`docs/records/`](docs/records/).
+- [Coding standards](docs/coding-standards.md): crate layers, layout and complexity limits.
+- [`AGENTS.md`](AGENTS.md): the single rule set for every AI coding agent working here.
+- [Önceki Türkçe README](docs/tr/README.md).
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+
+## License
+
+Licensed under either of [Apache License 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option. This covers this repository's own code only; it grants no rights to Mojang's code or assets.

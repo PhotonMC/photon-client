@@ -24,7 +24,7 @@ Hız özniteliğinin hareket etkisi (P10), etki (`MobEffect`) kaynaklı değişt
 `docs/index.md` satırı; `client-golem-enderman-parity-conformance.md` "can üst sınırı 100" sapması kalkar.
 
 ## Devir notu
-- Yapıldı: gerçek `DefaultAttributes` tablosu (`entity_attributes.py`, `ATTRIBUTE_RANGES`/`ENTITY_ATTRIBUTES`), `ClientEntity.attributes` ve `apply_entity_attributes` (canlı oturum ve probe yolu), `attribute_value`/`max_health`/`scale`; demir golem çatlağı ve `placement` ölçeği bunları kullanır. Kayıt: `docs/client-entity-attributes-parity-conformance.md`.
+- Yapıldı: gerçek `DefaultAttributes` tablosu (`entity_attributes.py`, `ATTRIBUTE_RANGES`/`ENTITY_ATTRIBUTES`), `ClientEntity.attributes` ve `apply_entity_attributes` (canlı oturum ve probe yolu), `attribute_value`/`max_health`/`scale`; demir golem çatlağı ve `placement` ölçeği bunları kullanır. Kayıt: `docs/records/client-entity-attributes-parity-conformance.md`.
 - Oracle: `entity/attributes` (iki tablo), `living-entity-animations` 5 satır (gerçek paket işleyicisi ve varlık). Canlı: max_health'i 30 olan demir golem çatlaksız, 20/100 olan çatlaklı görüldü.
 - Sapma: bebek ölçeği öznitelik değil; oyuncunun öznitelikleri değişmedi.
 

@@ -16,10 +16,10 @@ Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dö
 Başka blok entity aileleri.
 
 ## Belgeler
-`docs/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
+`docs/records/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
 
 ## Devir notu
-Yapılan: bayrak bloğu (direk, bayrak, düz katman ve ilk on altı desen, boya, evre) gerçek `BannerRenderer`'a bit bit eşit. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Yapılan: bayrak bloğu (direk, bayrak, düz katman ve ilk on altı desen, boya, evre) gerçek `BannerRenderer`'a bit bit eşit. Kayıt: [client-chest-parity-conformance.md](../records/client-chest-parity-conformance.md).
 Ek: canlı oturum `BlockEntityData` ve parça blok entity'lerini dünyaya işlemiyordu; işliyor, blok türü değişince eski blok entity'si düşüyor.
 Sapma: alfa kesimi yüzde ona (Java'da yok); satır içi (veri paketi) desenler çizilmez.
 Açık: sallanma canlıda hareket olarak izlenmedi.

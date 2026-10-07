@@ -14,7 +14,7 @@
 4. Kafa dönüşü (`RotateHead`) ve gövde dönüşü (`yBodyRot` yumuşatma `LivingEntity.tickHeadTurn` — client-parity'de var mı bak; yoksa görevde belgeli sapma).
 
 ## Oracle
-Model eklem dönüşümleri için mevcut `player_model` birim/oracle kaydı (`docs/player-model-conformance.md`). Yürüme animasyonu için küçük oracle: `WalkAnimationState` tik dizisi → `position(partial)`, `speed(partial)` (entity ailesine satır).
+Model eklem dönüşümleri için mevcut `player_model` birim/oracle kaydı (`docs/records/player-model-conformance.md`). Yürüme animasyonu için küçük oracle: `WalkAnimationState` tik dizisi → `position(partial)`, `speed(partial)` (entity ailesine satır).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ikinci istemci (`VOXEL_USER=Tester`, başka süreç) yürürken görünür; ekran görüntüsünü bir kez oku.

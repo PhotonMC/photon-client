@@ -84,7 +84,7 @@ yapıyor.
 
 İkisi de artık bağlı: `FolderAssets` sprite'ın yanındaki `.png.mcmeta`
 dosyasını okuyor, `build_atlas` saydamlığı piksellerden ölçüyor ve
-[mip üretimi](mipmap-conformance.md) gerçek stratejiyle çalışıyor.
+[mip üretimi](records/mipmap-conformance.md) gerçek stratejiyle çalışıyor.
 
 ## Sampler — beklenmedik bir bulgu
 

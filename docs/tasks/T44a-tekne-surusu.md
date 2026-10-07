@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: tekne `summon` + `ride` ile, ileri ve dönüş.
 
 ## Belgeler
-`docs/client-boat-ride-parity-conformance.md`, `docs/index.md`.
+`docs/records/client-boat-ride-parity-conformance.md`, `docs/index.md`.
 
 ## Devir notu
 - `boat_ride.rs`: `getStatus`/`floatBoat`/`controlBoat`/`move`/blok etkileri (bal, ağ, toz kar, kabarcık sütunu) gerçek tekneye karşı 40 satır bit bit eşit; oyuncu tarafı `LocalPlayer::tick_riding` (yolcu kapıları: yerde değil, çömelme/yüzme/sprint yok, akışkan kutusu, yürüme durur).

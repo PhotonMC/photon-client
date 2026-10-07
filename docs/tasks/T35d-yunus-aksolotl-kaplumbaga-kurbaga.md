@@ -17,6 +17,6 @@
 Nautilus ve gardiyan (T35e), sesler, parçacıklar, davranışlar.
 
 ## Devir notu
-- Yapıldı: yunus ve kaplumbağa (yetişkin ve bebek): `setup_dolphin`, `setup_turtle`, `dolphin_item_pose`, `crates/voxel/src/{dolphins,turtles}.rs`, kaplumbağa verisi 18/19 ve suda olma izlemesi, `is_moving_horizontally`. Kayıt: `docs/client-sea-animals-parity-conformance.md`.
+- Yapıldı: yunus ve kaplumbağa (yetişkin ve bebek): `setup_dolphin`, `setup_turtle`, `dolphin_item_pose`, `crates/voxel/src/{dolphins,turtles}.rs`, kaplumbağa verisi 18/19 ve suda olma izlemesi, `is_moving_horizontally`. Kayıt: `docs/records/client-sea-animals-parity-conformance.md`.
 - Bölündü: aksolotl [T35f](T35f-aksolotl.md), kurbağa ve iribaş [T35g](T35g-kurbaga-iribas.md).
 - Sapma: bebek kaplumbağanın yüz atması (`entityCutoutCull`) ayırt edilmiyor; ses, parçacık, gölge yok.

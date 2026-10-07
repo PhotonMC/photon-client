@@ -17,7 +17,7 @@
 Sesler, parçacıklar (`ElderGuardianParticle`), saldırı davranışı; ışın ve hedefe bakış (T35i).
 
 ## Devir notu
-- Yapıldı: `setup_guardian` (diken nefesi, göz, kuyruk), `voxel-world/guardian.rs` (kuyruk/diken animasyonu, ışın sayacı), veriler 16/17, `crates/voxel/src/guardians.rs`. Kayıt: `docs/client-guardian-parity-conformance.md`.
+- Yapıldı: `setup_guardian` (diken nefesi, göz, kuyruk), `voxel-world/guardian.rs` (kuyruk/diken animasyonu, ışın sayacı), veriler 16/17, `crates/voxel/src/guardians.rs`. Kayıt: `docs/records/client-guardian-parity-conformance.md`.
 - Bulgu: `Mob.baseTick` her tik aynı rastgele kaynaktan bir değer çeker; karadaki dikenler bunsuz uyuşmuyordu.
 - Bölündü: ışın çizimi, hedefe bakış denetimi ve karadaki çırpınış T35i'de; o zamana dek karadaki diken değerleri yalnız bu dallar çalışmıyorken Java ile eşleşir.
 - Sapma: doku yolları oracle'sız; ses, parçacık, gölge yok. Canlı gözlem yapılmadı.

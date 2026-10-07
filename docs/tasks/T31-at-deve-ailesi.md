@@ -29,7 +29,7 @@ At dalı açar; eşek/katır/iskelet/zombi atı ölçek+doku satırı; lama ayr�
 
 ## Devir notu
 (boş)
-- Yapıldı (bölündü): `setup_equine` (yedi model, baby donkey iç içe), `voxel-world/src/horse.rs` (otlama/şahlanma/ağız animasyonları, kuyruk, ambiyans yoklamasının rastgele çekimleri), çeşit/işaret/sandık verisi, işaret katmanı; `farm_animals.rs`. Kayıt: `docs/client-horse-parity-conformance.md`.
+- Yapıldı (bölündü): `setup_equine` (yedi model, baby donkey iç içe), `voxel-world/src/horse.rs` (otlama/şahlanma/ağız animasyonları, kuyruk, ambiyans yoklamasının rastgele çekimleri), çeşit/işaret/sandık verisi, işaret katmanı; `farm_animals.rs`. Kayıt: `docs/records/client-horse-parity-conformance.md`.
 - Oracle: `equine-model` 80, `living-entity-animations` 7 at satırı; `variant-fields` üç satır. Canlı: sekiz kadar at, eşek, katır ve ölü at `shot` ile görüldü.
 - Sapma: suda olma izlenmiyor, işaret katmanı varlık hattıyla, eyer/zırh yok.
 - Açık: deve ve lama (T31b).

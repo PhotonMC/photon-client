@@ -28,7 +28,7 @@ Tüm mob animasyon tanımları (ilgili aile görevlerinde kullanılır).
 Altyapıdır: T31 (deve), T35, T37 bunun üstüne yazılır. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı (bölündü): `Animate` paketi (kimlik 2; eylem 0/3 sallama), `LivingEntity.swing`/`updateSwingTime`/`getAttackAnim` (`living::SwingState`; yalnız oyuncu ve `Monster` ilerletir, `monster` türün tablosunda), `EntityEvent` 10 (koyun yemesi), `entity_snapshot.attack_time/attack_arm_left` uzak oyuncu ve insansı mob çizimine bağlandı; sabit süre 6. Kayıt: `docs/client-animate-swing-parity-conformance.md`.
+- Yapıldı (bölündü): `Animate` paketi (kimlik 2; eylem 0/3 sallama), `LivingEntity.swing`/`updateSwingTime`/`getAttackAnim` (`living::SwingState`; yalnız oyuncu ve `Monster` ilerletir, `monster` türün tablosunda), `EntityEvent` 10 (koyun yemesi), `entity_snapshot.attack_time/attack_arm_left` uzak oyuncu ve insansı mob çizimine bağlandı; sabit süre 6. Kayıt: `docs/records/client-animate-swing-parity-conformance.md`.
 - Oracle: `movement/living-entity-animations` 14 satır (gerçek `ClientPacketListener` + gerçek tik; tavuğun gerçek `aiStep`'i dahil) ve `entity-pick-table`'a `monster`.
 - Sapma: sallama süresi eşya/etki okumaz (mızrak, acele), eylem 2/4/5 yok.
 - Açık: `KeyframeAnimation` + `AnimationState` oynatıcısı (T43b).

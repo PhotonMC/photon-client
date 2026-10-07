@@ -11,6 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: fitil durumu (`MAX_FUSE` 18, tik, sıfırda kalır), `SulfurCubeScale` ve `tnt_swell_amount`/`tnt_is_lit` (T40b TNT'si de kullanır), iç gövde (fitil yanıksa beyaz) ve kabuk ayrı sıralı translucent, küçük model bebek bayrağıyla. Kayıt: `docs/client-sulfur-cube-parity-conformance.md`.
+- Yapıldı: fitil durumu (`MAX_FUSE` 18, tik, sıfırda kalır), `SulfurCubeScale` ve `tnt_swell_amount`/`tnt_is_lit` (T40b TNT'si de kullanır), iç gövde (fitil yanıksa beyaz) ve kabuk ayrı sıralı translucent, küçük model bebek bayrağıyla. Kayıt: `docs/records/client-sulfur-cube-parity-conformance.md`.
 - Oracle: `cube-mob-rotations`'a 36, `living-entity-animations`'a 3 satır; `sulfur_fuse` olayı.
 - Kalan: taşıdığı blok ve squish'in sıfırlanması (T37b2). Canlı gözlem yapılmadı.

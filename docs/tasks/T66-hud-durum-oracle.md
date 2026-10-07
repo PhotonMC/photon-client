@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/gui/Hud.java` (`extractPlayerHealth`, `extractHearts`, `extractFood`, `extractAirBubbles`, `HeartType`), `client/gui/contextualbar/{ContextualBar,ExperienceBar}.java`.
-- Rust: `crates/voxel-render/src/gui/hud.rs` (`player_health`, `contextual_bar`), `docs/hud-conformance.md`.
+- Rust: `crates/voxel-render/src/gui/hud.rs` (`player_health`, `contextual_bar`), `docs/records/hud-conformance.md`.
 
 ## Yapılacaklar
 `GuiOracle.hudHotbar`'ın sahnesini ayır, `hud_status` işlemini ekle: gerçek `LocalPlayer`'a can, en yüksek can, emilim, zırh, yiyecek/doygunluk, hava, etkiler (yenilenme, zehir, solgunluk, açlık), donma, zorlu mod, dokunulmazlık ve deneyim ver; kare adımlarıyla (tik, milisaniye, can) yanıp sönmeyi sürdür. Rust: `Hud::status` kamusal.
@@ -20,7 +20,7 @@
 Araç canı, atlama çubuğu, konum çubuğu (kendi oracle'ı var), efekt simgeleri, seçili eşya adı.
 
 ## Belgeler
-`docs/hud-conformance.md`, `docs/gui-oracle.md`.
+`docs/records/hud-conformance.md`, `docs/gui-oracle.md`.
 
 ## Devir notu
 - `GuiOracle.hudScene` (ortak sahne) + `hudStatus`; `hud_status` 150 satır, ilk denemede bit bit eşit çıktı (yalnız Java'da emilim `MAX_ABSORPTION` ile sınırlıydı: oracle özniteliği yükseltir).

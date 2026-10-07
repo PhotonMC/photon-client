@@ -11,6 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `Shulker.setPos` yakalama (`snapTo`/`set_position`), açıklık sıfırlama, 6 tiklik kayma ve `getRenderPosition` çizim kayması, arayüzsüz (null) interpolasyon, açıklığa/yüze bağlı kutu (çarpışma ve hedefleme), biniş/iniş kancaları. Kayıt: `docs/client-shulker-parity-conformance.md`.
+- Yapıldı: `Shulker.setPos` yakalama (`snapTo`/`set_position`), açıklık sıfırlama, 6 tiklik kayma ve `getRenderPosition` çizim kayması, arayüzsüz (null) interpolasyon, açıklığa/yüze bağlı kutu (çarpışma ve hedefleme), biniş/iniş kancaları. Kayıt: `docs/records/client-shulker-parity-conformance.md`.
 - Oracle: `living-entity-animations`'a 9 satır; olay `passengers`, `sync` (yaşayan varlık oracle'ı), shulker ayrıntısına konum/kutu/kayma; Java yolcuyu aracı üzerinden tikler.
 - Java'dan sapma ve açık: `onPeekAmountChange` itmesi, yolcu listesi yinelenince gövde sıfırlaması, `shouldRender` görüş genişletmesi (kayıtta).

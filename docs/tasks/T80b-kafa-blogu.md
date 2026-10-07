@@ -16,9 +16,9 @@ Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dö
 Başka blok entity aileleri.
 
 ## Belgeler
-`docs/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
+`docs/records/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
 
 ## Devir notu
-Yapılan: yerleştirilmiş kafa/kafatası blokları (yedi tür, ayakta ve duvarda, güçlü ejderha/piglin animasyonu) gerçek `SkullBlockRenderer`'a bit bit eşit. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Yapılan: yerleştirilmiş kafa/kafatası blokları (yedi tür, ayakta ve duvarda, güçlü ejderha/piglin animasyonu) gerçek `SkullBlockRenderer`'a bit bit eşit. Kayıt: [client-chest-parity-conformance.md](../records/client-chest-parity-conformance.md).
 Sapma: oyuncu kafası profili çözülmez (hep varsayılan görünüm; görünüm indirmesi M9'a bağlı).
 Açık: güçlü animasyon canlıda denenmedi.

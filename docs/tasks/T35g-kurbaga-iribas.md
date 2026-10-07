@@ -17,6 +17,6 @@
 Sesler, parçacıklar, davranışlar; aksolotl (T35f).
 
 ## Devir notu
-- Yapıldı: `voxel-world/frog.rs` (poz → zıplama/vıraklama/dil durumları, suda boşta durma, ×25 adım hedefi), çeşit 18 (`frog` çeşit tablosu oracle'dan), `setup_frog` ve `setup_tadpole`, `crates/voxel/src/frogs.rs`. Kayıt: `docs/client-frog-parity-conformance.md`.
+- Yapıldı: `voxel-world/frog.rs` (poz → zıplama/vıraklama/dil durumları, suda boşta durma, ×25 adım hedefi), çeşit 18 (`frog` çeşit tablosu oracle'dan), `setup_frog` ve `setup_tadpole`, `crates/voxel/src/frogs.rs`. Kayıt: `docs/records/client-frog-parity-conformance.md`.
 - Bulgu: kurbağanın çeşit verisi 18'dedir (17 değil); poz verisi her geldiğinde durum yeniden başlar.
 - Sapma: dil hedefi, ses, parçacık, gölge yok; iribaş doku yolu oracle'sız. Canlı gözlem yapılmadı.

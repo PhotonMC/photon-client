@@ -24,4 +24,9 @@ Dilim kayıtlarının çevirisi.
 Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 
 ## Devir notu
-(boş)
+- Kök `README.md` İngilizce yazıldı; eski Türkçe README `docs/tr/README.md`'ye taşındı (bağlantıları `../` ile düzeltildi). Ekran görüntüsü bilerek yok: her kare Mojang asset'i içerir, depoya girmez.
+- `CONTRIBUTING.md` ve `SECURITY.md` eklendi. SECURITY GitHub özel güvenlik bildirimine dayanır; depo sahibi bunu Security sekmesinden açmalı (e-posta uydurulmadı).
+- `tools/move-records.py` 641 kaydı (`*-conformance.md` 632, `*-record.md` 9) `docs/records/`'a taşıdı; Markdown bağlantılarını eski konuma göre çözüp yeniden yazdı, `docs/<ad>.md` metin anmalarını (kod yorumu, AGENTS, görevler) güncelledi. Betik idempotent; yeniden çalıştırmak "nothing to move" der.
+- `tools/check-doc-links.py` yeni: göreli Markdown bağlantılarını denetler, kapıya (`voxel.py check`) bağlandı. Öncesinde iki kırık bağlantı vardı (`chunkpos`, `game-connection`), düzeltildi.
+- Dizin üreticisi `docs/records/`'ı da tarıyor.
+- Açık: belgelerin çoğu hâlâ Türkçe (Q02b); README'deki yerel kurulum bağlantısı "(Turkish)" diye işaretli.

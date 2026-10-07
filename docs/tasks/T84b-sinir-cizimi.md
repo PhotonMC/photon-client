@@ -14,7 +14,7 @@ Gerçek `WorldBorderRenderer` köşe/UV/alfa kaydı (`border_quads` operation'ı
 `tools/voxel.py check --capture` → `CHECK OK`; canlıda sınıra bakılır (`tools/voxel.py shot`) bir kez.
 
 ## Belgeler
-`docs/client-world-border-live-parity-conformance.md`.
+`docs/records/client-world-border-live-parity-conformance.md`.
 
 ## Devir notu
 (boş)

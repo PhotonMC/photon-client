@@ -14,9 +14,9 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-armor-parity-conformance.md`.
+`docs/records/client-armor-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: `ItemStack.hasFoil` (`Values::has_foil`), glint doku matrisi ve boru hattı bilgisi (`render_types::{GLINT, glint_texture_matrix}`), `PipelineKind::Glint` (Vulkan, yeni gölgelendirici), zırh ve elytra katmanının ilk katmanında parıltı (`Armor::glint`). Kayıt: `docs/client-armor-parity-conformance.md`. Canlıda görüldü.
+- Yapıldı: `ItemStack.hasFoil` (`Values::has_foil`), glint doku matrisi ve boru hattı bilgisi (`render_types::{GLINT, glint_texture_matrix}`), `PipelineKind::Glint` (Vulkan, yeni gölgelendirici), zırh ve elytra katmanının ilk katmanında parıltı (`Armor::glint`). Kayıt: `docs/records/client-armor-parity-conformance.md`. Canlıda görüldü.
 - Oracle: `entity/item-foil` (gerçek `hasFoil`, her eşya + yamalar), `entity/glint-layers` (gerçek render türü ve doku matrisi); `entity` ailesine `netty-transport` eklendi (gerçek `Minecraft` sınıfı için).
 - Sapma: derinlik `EQUAL` yerine büyük-eşit; parıltı gücü/hızı seçenekleri sabit varsayılan; eyer/kafa/el eşyasında parıltı yok; `equippable` yaması T41e3.

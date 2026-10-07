@@ -17,7 +17,7 @@
 Sesler, bağın kopması (sunucu işi).
 
 ## Belgeler
-`docs/client-leash-knot-parity-conformance.md` sapma satırını güncelle.
+`docs/records/client-leash-knot-parity-conformance.md` sapma satırını güncelle.
 
 ## Devir notu
 - `SetEntityLink` (kimlik 100) → `ClientWorld::set_leash_holder`; bağlanabilirlik, dörtlü bağlantı ve dörtlü tutucu bayrakları `entity_picks.rs`'e (oracle'dan), bağlanma noktası formülleri `voxel-data::leash` (yetişkin/yavru, deve animasyonu dahil) — pick tablosu oracle'ı her tür için bit bit karşılaştırır.

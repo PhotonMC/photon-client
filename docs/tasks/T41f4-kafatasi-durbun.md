@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md`.
+`docs/records/client-held-item-parity-conformance.md`.
 
 ## Devir notu
 - `voxel-render::skull` (tür, model, doku, `skull_pose`), `MobModel::setup_skull`, `held_to_eye_pose`/`eye_held_arm`; oyunda `Hands::{skull, eye}`, `Armor::skull_vertices`, `arm_poses::eye_arm`.

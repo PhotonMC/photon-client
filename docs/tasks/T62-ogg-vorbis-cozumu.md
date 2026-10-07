@@ -25,5 +25,5 @@ Gerçek `JOrbisAudioStream` ile birkaç gerçek ses nesnesi (kısa, uzun, mono, 
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: yeni `voxel-audio` crate'i (`lewton` 0.10.2), `OggStream`/`LoopingOggStream`/`decode_ogg`, `sound/decode` oracle'ı (gerçek `JOrbisAudioStream`; örnekler yerelde `reference-pcm/`). Kayıt: `docs/client-ogg-decoding-parity-conformance.md`.
+- Yapıldı: yeni `voxel-audio` crate'i (`lewton` 0.10.2), `OggStream`/`LoopingOggStream`/`decode_ogg`, `sound/decode` oracle'ı (gerçek `JOrbisAudioStream`; örnekler yerelde `reference-pcm/`). Kayıt: `docs/records/client-ogg-decoding-parity-conformance.md`.
 - Sapma: bit eşitliği yok, her örnek ±1 içinde (%0,045 farklı); JOrbis portu kararı gerekçe doğarsa ayrı görev.

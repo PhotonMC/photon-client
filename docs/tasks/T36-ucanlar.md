@@ -28,7 +28,7 @@ Parçacıklar (blaze/ghast ateş topu T39), sesler.
 Emissive katmanı ortak altyapıdır; sonraki görevler (T37) kullanır. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı: `setup_blaze`, `setup_ghast`, `setup_phantom`; `MobPlacement.hook_translate` (phantom'un kaldırması); `monsters.rs` tablosuna üç tür (blaze'de blok ışığı 15, ghast'ta yükleme dokusu, phantom'da ölçek, eğim ve gözler); veriler 16/16. Kayıt: `docs/client-airborne-parity-conformance.md`.
+- Yapıldı: `setup_blaze`, `setup_ghast`, `setup_phantom`; `MobPlacement.hook_translate` (phantom'un kaldırması); `monsters.rs` tablosuna üç tür (blaze'de blok ışığı 15, ghast'ta yükleme dokusu, phantom'da ölçek, eğim ve gözler); veriler 16/16. Kayıt: `docs/records/client-airborne-parity-conformance.md`.
 - Karar: ışıksız göz katmanı için yeni boru hattı gerekmedi; T33c'nin `mob_vertices_glow` yolu kullanıldı (`eyes_texture` tablosuna phantom eklendi).
 - Bölündü: yarasa/vex/allay T36b'de; papağan/breeze/mutlu ghast T36c'de.
 - Sapma: blaze ışığı ve doku yolları oracle'sız; phantom'un kutusu büyümez. Canlı gözlem yapılmadı.

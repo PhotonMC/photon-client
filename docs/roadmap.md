@@ -40,7 +40,7 @@ P00–P03'ün ilk dilimleri grafik, ses veya Pumpkin kurulumu beklemez. P01/P03'
 | Bölüm | Ön koşul | Küçük dilimler | Önce yazılacak davranış testleri ve karşılaştırılan çıktı |
 | --- | --- | --- | --- |
 | **P09 Çarpışma ve çevre sorguları** | P01, P08 | a: blok/entity/world-border shape toplama; b: eksen sırasıyla çözüm; c: step-up adayları; d: pose ve sığma/kenar kontrolleri | Tam blok, slab, merdiven, dar köşe, düşük tavan, blok sınırı ve birden fazla collider. Çözülen delta, AABB, on-ground, collision flag'leri ve seçilen step yüksekliği. P09.a–P09.* kayıtları [belge dizinindedir](index.md) ve `client-parity` sınıfındadır. Genel fizik engine'i eşitlik kanıtı sayılmaz. |
-| **P10 Yerel hareket** | P02, P05, P08–P09 | a: input çarpanları ve kare hareket düzeltmesi; b: yürüme/sprint/zıplama/crouch; c: su/lav/merdiven ve farklı yüzeyler; d: uçuş/elytra/auto-jump; e: araç kontrolü ve attribute/effect etkileşimi | P10.a–P10.g arası input, `applyInput`, sprint, friction ve travel dalları `client-parity` olarak geçti; kayıtlar [belge dizinindedir](index.md). Tick başına konum, hız, pose ve tetik zamanları; LocalPlayer tick bileşimi [kendi kaydında](local-player-tick-conformance.md) pinli, taşınmamış dallar orada listeli. Her hareket modu ayrı dilim; örnek liste tüm block/entity varyantları yerine geçmez. |
+| **P10 Yerel hareket** | P02, P05, P08–P09 | a: input çarpanları ve kare hareket düzeltmesi; b: yürüme/sprint/zıplama/crouch; c: su/lav/merdiven ve farklı yüzeyler; d: uçuş/elytra/auto-jump; e: araç kontrolü ve attribute/effect etkileşimi | P10.a–P10.g arası input, `applyInput`, sprint, friction ve travel dalları `client-parity` olarak geçti; kayıtlar [belge dizinindedir](index.md). Tick başına konum, hız, pose ve tetik zamanları; LocalPlayer tick bileşimi [kendi kaydında](records/local-player-tick-conformance.md) pinli, taşınmamış dallar orada listeli. Her hareket modu ayrı dilim; örnek liste tüm block/entity varyantları yerine geçmez. |
 | **P11 Hareket senkronizasyonu** | P06–P08, P10 | a: input/sprint değişim paketleri; b: konum/rotasyon/status seçimi; c: teleport ve göreli düzeltme; d: remote entity interpolasyonu ve araç paketleri | Kontrollü üç paketlik vanilla movement probe'u ile ilk packet kabulü; hareket eşiğinin altı/eşiti/üstü, 20 tick hatırlatması, yalnızca rotasyon veya flag değişimi; teleport sırasında binme ve prediction. Son durumun yanında paket türü, alanları, sırası ve gönderim tick'i. |
 | **P12 Hedefleme, eylem ve prediction** | P09–P11 | a: blok/entity pick ve reach; b: saldırı/elle vurma; c: kırma başlat/devam/iptal; d: yerleştirme/eşya kullanımı; e: sequence ack, rollback ve teleport etkileşimi | Blok eylemi ack'i, kırma başlat/iptal/durdur, hardness ve tool progress, menzil reddi, boş-el ve consumable `use_item`/`use_item_on` akışları `server-conformance` sınıfında geçti; kayıtlar kendi birleşik conformance dosyalarındadır. Açık: hit sonucu, animasyon/ses tetikleri, istemci tarafı blok/eşya tahmini, iki el önceliği, gecikmiş ack ve P09–P11'e bağlı genel hedefleme. Otoriter sunucu sonucunu istemcide yeniden üretme; bölüm `client-parity` kaydı olmadan kapanmaz. |
 | **P13 Envanter ve container davranışı** | P03, P07, P12 | a: item stack/component ve cursor; b: pickup/quick-move/swap/throw; c: drag dağıtımı ve çift tıklama; d: server state-id/slot düzeltmeleri; e: creative ve özel menü işlemleri | Pickup/quick-move/swap/throw, drag, double-click, state-id ve `HashedStack` prediction dalları `server-conformance` olarak geçti; kayıtlar [belge dizinindedir](index.md). Item component prediction'ı tek kayıttır; component başına dilim açılmaz. Açık: istemci container menu/slot modeli, özel menüler ve `client-parity`. |
@@ -120,39 +120,39 @@ section edge case'leri, attribute gameplay etkileri, ışık propagation/relight
 kalan semantic metadata ve serializer alanları, pose/scale/dimensions'a bağlı
 entity attachment'ları, nested controlling passenger çözümü, su/kara boat friction/buoyancy, collision/movement packet'leri,
 genel motion integration, gerçek entity tick yürütmesi ve tam entity lifecycle
-hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](client-world-entity-snowball-tick-conformance.md)
-sınırlı olarak, remote Player position interpolation [P08.ar server-conformance kaydında](client-world-entity-player-interpolation-conformance.md) ve aynı Java istemci state'i [P08.ar.1 client-parity kaydında](client-world-entity-player-interpolation-parity-conformance.md),
-uzaklık üstü snap [P08.as server-conformance kaydında](client-world-entity-player-snap-conformance.md) ve aynı Java snap state'i [P08.as.1 client-parity kaydında](client-world-entity-player-snap-parity-conformance.md),
-motion interpolation [P08.at server-conformance kaydında](client-world-entity-player-motion-conformance.md)
-ve aynı Java motion state'i [P08.at.1 client-parity kaydında](client-world-entity-player-motion-parity-conformance.md),
-teleport delta/relative motion [P08.au server-conformance kaydında](client-world-entity-teleport-delta-conformance.md)
-ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](client-world-entity-teleport-delta-parity-conformance.md), araç/passenger ilişki state'i
-[P08.av server-conformance kaydında](client-world-entity-passengers-conformance.md) ve aynı Java ilişki state'i [P08.av.1 client-parity kaydında](client-world-entity-passengers-parity-conformance.md), passenger tick/rideTick
-[P08.aw server-conformance kaydında](client-world-entity-passenger-tick-conformance.md) ve aynı Java tick state'i [P08.aw.1 client-parity kaydında](client-world-entity-passenger-tick-parity-conformance.md), passenger seat `positionRider`
-[P08.ax server-conformance kaydında](client-world-entity-passenger-position-conformance.md) ve aynı Java seat state'i [P08.ax.1 client-parity kaydında](client-world-entity-passenger-position-parity-conformance.md), Player vehicle attachment
-[P08.ay server-conformance kaydında](client-world-entity-passenger-player-conformance.md) ve aynı remote Player state'i [P08.ay.1 client-parity kaydında](client-world-entity-passenger-player-position-parity-conformance.md), chest boat/raft geometry
-[P08.az server-conformance kaydında](client-world-entity-passenger-boat-family-conformance.md) ve aynı dört family state'i [P08.az.1 client-parity kaydında](client-world-entity-passenger-boat-family-position-parity-conformance.md), boat passenger rotation clamp
-[P08.ba server-conformance kaydında](client-world-entity-passenger-rotation-conformance.md) ve aynı Java clamp state'i [P08.ba.1 client-parity kaydında](client-world-entity-passenger-rotation-parity-conformance.md), Breeze `CAN_TURN_IN_BOATS` istisnası
-[P08.bb server-conformance kaydında](client-world-entity-passenger-boat-turn-exemption-conformance.md) ve aynı Java Breeze exemption state'i [P08.bb.1 client-parity kaydında](client-world-entity-passenger-boat-turn-exemption-parity-conformance.md), Animal passenger rotation offset'i
-[P08.bc server-conformance kaydında](client-world-entity-passenger-animal-rotation-conformance.md) ve aynı Java Animal rotation state'i [P08.bc.1 client-parity kaydında](client-world-entity-passenger-animal-rotation-parity-conformance.md), Animal passenger vehicle attachment/seat offset'i
-[P08.bd server-conformance kaydında](client-world-entity-passenger-animal-position-conformance.md) ve aynı Java single-passenger state'i [P08.bd.1 client-parity kaydında](client-world-entity-passenger-animal-position-parity-conformance.md), `Entity.turn` → boat `onPassengerTurned` callback'i
-[P08.be server-conformance kaydında](client-world-entity-passenger-turn-conformance.md) ve aynı Java direct-turn state'i [P08.be.1 client-parity kaydında](client-world-entity-passenger-turn-parity-conformance.md), pinned living body/head dispatch'i
-[P08.bf kaydında](client-world-entity-passenger-living-conformance.md), default vehicle attachment
-[P08.bg kaydında](client-world-entity-passenger-generic-position-conformance.md), boat input/nonzero `deltaRotation`
-[P08.bh kaydında](client-world-entity-boat-control-conformance.md) ve Zombie baby `VEHICLE` attachment
-[P08.bi kaydında](client-world-entity-passenger-baby-attachment-conformance.md), local boat `IN_AIR` tick'i
-[P08.bj kaydında](client-world-entity-boat-air-conformance.md) ve remote boat authority dalı
-[P08.bk kaydında](client-world-entity-boat-remote-authority-conformance.md) `server-conformance`, aynı remote authority state'i ise
-[P08.bk.1 client-parity kaydında](client-world-entity-boat-remote-authority-parity-conformance.md) doğrulanarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
+hâlâ ön koşuldur. Snowball free-flight tick alt dalı [P08.aq kaydında](records/client-world-entity-snowball-tick-conformance.md)
+sınırlı olarak, remote Player position interpolation [P08.ar server-conformance kaydında](records/client-world-entity-player-interpolation-conformance.md) ve aynı Java istemci state'i [P08.ar.1 client-parity kaydında](records/client-world-entity-player-interpolation-parity-conformance.md),
+uzaklık üstü snap [P08.as server-conformance kaydında](records/client-world-entity-player-snap-conformance.md) ve aynı Java snap state'i [P08.as.1 client-parity kaydında](records/client-world-entity-player-snap-parity-conformance.md),
+motion interpolation [P08.at server-conformance kaydında](records/client-world-entity-player-motion-conformance.md)
+ve aynı Java motion state'i [P08.at.1 client-parity kaydında](records/client-world-entity-player-motion-parity-conformance.md),
+teleport delta/relative motion [P08.au server-conformance kaydında](records/client-world-entity-teleport-delta-conformance.md)
+ve aynı Java teleport state'i [P08.au.1 client-parity kaydında](records/client-world-entity-teleport-delta-parity-conformance.md), araç/passenger ilişki state'i
+[P08.av server-conformance kaydında](records/client-world-entity-passengers-conformance.md) ve aynı Java ilişki state'i [P08.av.1 client-parity kaydında](records/client-world-entity-passengers-parity-conformance.md), passenger tick/rideTick
+[P08.aw server-conformance kaydında](records/client-world-entity-passenger-tick-conformance.md) ve aynı Java tick state'i [P08.aw.1 client-parity kaydında](records/client-world-entity-passenger-tick-parity-conformance.md), passenger seat `positionRider`
+[P08.ax server-conformance kaydında](records/client-world-entity-passenger-position-conformance.md) ve aynı Java seat state'i [P08.ax.1 client-parity kaydında](records/client-world-entity-passenger-position-parity-conformance.md), Player vehicle attachment
+[P08.ay server-conformance kaydında](records/client-world-entity-passenger-player-conformance.md) ve aynı remote Player state'i [P08.ay.1 client-parity kaydında](records/client-world-entity-passenger-player-position-parity-conformance.md), chest boat/raft geometry
+[P08.az server-conformance kaydında](records/client-world-entity-passenger-boat-family-conformance.md) ve aynı dört family state'i [P08.az.1 client-parity kaydında](records/client-world-entity-passenger-boat-family-position-parity-conformance.md), boat passenger rotation clamp
+[P08.ba server-conformance kaydında](records/client-world-entity-passenger-rotation-conformance.md) ve aynı Java clamp state'i [P08.ba.1 client-parity kaydında](records/client-world-entity-passenger-rotation-parity-conformance.md), Breeze `CAN_TURN_IN_BOATS` istisnası
+[P08.bb server-conformance kaydında](records/client-world-entity-passenger-boat-turn-exemption-conformance.md) ve aynı Java Breeze exemption state'i [P08.bb.1 client-parity kaydında](records/client-world-entity-passenger-boat-turn-exemption-parity-conformance.md), Animal passenger rotation offset'i
+[P08.bc server-conformance kaydında](records/client-world-entity-passenger-animal-rotation-conformance.md) ve aynı Java Animal rotation state'i [P08.bc.1 client-parity kaydında](records/client-world-entity-passenger-animal-rotation-parity-conformance.md), Animal passenger vehicle attachment/seat offset'i
+[P08.bd server-conformance kaydında](records/client-world-entity-passenger-animal-position-conformance.md) ve aynı Java single-passenger state'i [P08.bd.1 client-parity kaydında](records/client-world-entity-passenger-animal-position-parity-conformance.md), `Entity.turn` → boat `onPassengerTurned` callback'i
+[P08.be server-conformance kaydında](records/client-world-entity-passenger-turn-conformance.md) ve aynı Java direct-turn state'i [P08.be.1 client-parity kaydında](records/client-world-entity-passenger-turn-parity-conformance.md), pinned living body/head dispatch'i
+[P08.bf kaydında](records/client-world-entity-passenger-living-conformance.md), default vehicle attachment
+[P08.bg kaydında](records/client-world-entity-passenger-generic-position-conformance.md), boat input/nonzero `deltaRotation`
+[P08.bh kaydında](records/client-world-entity-boat-control-conformance.md) ve Zombie baby `VEHICLE` attachment
+[P08.bi kaydında](records/client-world-entity-passenger-baby-attachment-conformance.md), local boat `IN_AIR` tick'i
+[P08.bj kaydında](records/client-world-entity-boat-air-conformance.md) ve remote boat authority dalı
+[P08.bk kaydında](records/client-world-entity-boat-remote-authority-conformance.md) `server-conformance`, aynı remote authority state'i ise
+[P08.bk.1 client-parity kaydında](records/client-world-entity-boat-remote-authority-parity-conformance.md) doğrulanarak ilerletilmiştir; P08 `client-parity` ile kapanmadan
 bu bağımlılıklar açılmaz.
 
 P08.t.1 ticking eligibility'nin Java istemci state eşleşmesi [kendi
-client-parity kaydında](client-world-entity-ticking-parity-conformance.md)
-doğrulandı; canlı chunk/tick akışı [P08.t server-conformance kaydında](client-world-tick-conformance.md) tutulur.
+client-parity kaydında](records/client-world-entity-ticking-parity-conformance.md)
+doğrulandı; canlı chunk/tick akışı [P08.t server-conformance kaydında](records/client-world-tick-conformance.md) tutulur.
 
 P08.u.1 transform history ve position/body/head interpolation state'i [kendi
-client-parity kaydında](client-world-entity-transform-parity-conformance.md)
-doğrulandı; vanilla bağlantı kanıtı [P08.u server-conformance kaydında](client-world-entity-transform-conformance.md)
+client-parity kaydında](records/client-world-entity-transform-parity-conformance.md)
+doğrulandı; vanilla bağlantı kanıtı [P08.u server-conformance kaydında](records/client-world-entity-transform-conformance.md)
 tutulur.
 
 P12/P13 altında yeni item component varyantı açılmaz; gerekçe ve bağlayıcı
@@ -165,6 +165,6 @@ Headless Java oracle, JSONL runner ve Rust adapter ilk davranış dilimleri içi
 
 P01'deki yeni yardımcılar Java kaynak incelemesi ve kendi parity belgeleriyle sırayla ele alınır. P02/P03'ün istemciye bağlanan frame, registry ve packet akışları ilgili bağımlılıklar hazır olduğunda ilerler. Kesin açık helper listesi [source review](source-review.md) içinde tutulur.
 
-İnsan tarafından elle oynanması gereken ayrı bir kabul süreci tasarlanmıyor. P06–P08 için ilk gerçek vanilla 26.2 bağlantı/world-delivery probe'u ve Pumpkin karşılaştırması [birleşik oyun oturumu kaydında](game-connection-conformance.md) çalışır durumdadır; chunk ve ışık packet gövdesinin, heightmap/light sınırlarının ve section palette storage layout'unun yapısal tüketimi [ayrı P08 kaydında](chunk-packet-conformance.md), sorgulanabilir ilk `ClientWorld` state'i ise [P08.a/b kaydında](client-world-state-conformance.md) doğrulanmıştır. Bu probe oynanabilir istemci değildir; P05 pencere/input, dinamik dünya yaşam döngüsü, disconnect/reconnect, hareket, eylem, inventory, kamera, render, ses ve GUI katmanlarının kontrollü harness'leri hâlâ kurulacaktır.
+İnsan tarafından elle oynanması gereken ayrı bir kabul süreci tasarlanmıyor. P06–P08 için ilk gerçek vanilla 26.2 bağlantı/world-delivery probe'u ve Pumpkin karşılaştırması [birleşik oyun oturumu kaydında](records/game-connection-conformance.md) çalışır durumdadır; chunk ve ışık packet gövdesinin, heightmap/light sınırlarının ve section palette storage layout'unun yapısal tüketimi [ayrı P08 kaydında](records/chunk-packet-conformance.md), sorgulanabilir ilk `ClientWorld` state'i ise [P08.a/b kaydında](records/client-world-state-conformance.md) doğrulanmıştır. Bu probe oynanabilir istemci değildir; P05 pencere/input, dinamik dünya yaşam döngüsü, disconnect/reconnect, hareket, eylem, inventory, kamera, render, ses ve GUI katmanlarının kontrollü harness'leri hâlâ kurulacaktır.
 
 Kalan ilk gerçek istemci engelleri pencere ve input, dinamik chunk/client world state, disconnect/reconnect ve kontrollü frame/audio/network capture ortamıdır. [Kalan test planı](remaining-test-plan.md) her engelin ön koşulunu ve beklenen gözlemi taşır.

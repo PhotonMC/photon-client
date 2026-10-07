@@ -24,6 +24,6 @@ Killer Bunny davranışı, binme, sesler.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `setup_rabbit`, `RabbitState` (zıplama ve boşta eğme durumları, olay 1, `jump_completion`), çeşit verisi ve dokular (`farm_animals.rs`). Kayıt: `docs/client-keyframe-animation-parity-conformance.md`.
+- Yapıldı: `setup_rabbit`, `RabbitState` (zıplama ve boşta eğme durumları, olay 1, `jump_completion`), çeşit verisi ve dokular (`farm_animals.rs`). Kayıt: `docs/records/client-keyframe-animation-parity-conformance.md`.
 - Oracle: `rabbit-model` 12, `living-entity-animations` 5 tavşan satırı (gerçek `Rabbit` tiki; bekleme ve tohum sabit). Canlı: dört çeşit `shot` ile görüldü.
 - Sapma: tasma izlenmiyor, "Toast" dokusu yok, bekleme tohumsuz (referans gibi).

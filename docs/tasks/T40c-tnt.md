@@ -8,7 +8,7 @@
 - Rust: `crates/voxel/src/minecarts.rs` (aynı beyaz blok), `crates/voxel-render/src/minecart.rs` (`tnt_swell_amount`, `tnt_is_lit`), `crates/voxel-world/src/entity.rs` (`tick_primed_tnt`).
 
 ## Oracle
-Gerçek renderer/model sınıfı ve durumu (örnek: `docs/client-arrow-parity-conformance.md`, `docs/client-minecart-parity-conformance.md`).
+Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
@@ -20,5 +20,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `primed_tnt.rs` (fitil, blok, sayaç; fitil bitince entity silinir), `primed_tnt_pose`, `remote_primed_tnt`. Kayıt: `docs/client-primed-tnt-parity-conformance.md`.
+- Yapıldı: `primed_tnt.rs` (fitil, blok, sayaç; fitil bitince entity silinir), `primed_tnt_pose`, `remote_primed_tnt`. Kayıt: `docs/records/client-primed-tnt-parity-conformance.md`.
 - Sapma: sayaç gerçek tike karşı karşılaştırılmadı (birim test); partikül yok.

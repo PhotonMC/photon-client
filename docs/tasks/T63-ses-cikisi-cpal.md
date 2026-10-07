@@ -25,5 +25,5 @@ HRTF, aygıt listesi/değişimi (`ALC_SOFT_system_events`), OpenAL Soft bağlama
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `voxel-audio` mikser/çıkış/kanal (`cpal` 0.18.2), `voxel::sound` (motor + paketler + dinleyici + `options.txt` seviyeleri). Kayıt: `docs/client-sound-output-conformance.md` (server-conformance; duyulan eşitlik yok).
+- Yapıldı: `voxel-audio` mikser/çıkış/kanal (`cpal` 0.18.2), `voxel::sound` (motor + paketler + dinleyici + `options.txt` seviyeleri). Kayıt: `docs/records/client-sound-output-conformance.md` (server-conformance; duyulan eşitlik yok).
 - Açık: kulakla doğrulama kullanıcıda; akış beslemesi iş parçacığı; aygıt kaynak sayısı sorulmuyor; T64 (tetikler), T65 (ayar ekranı).

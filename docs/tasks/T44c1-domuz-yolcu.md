@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-mount-ride-parity-conformance.md`.
+`docs/records/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
 - `MountKind::Pig`, `Controller.holds_carrot_on_a_stick` (oturum ana el ve yuva 45'e bakar), tırmanma geri geldi (domuz tırmanır, at tırmanmaz); `VehicleView.controlled` ve `VehicleKind::{Pig, Other}`; yolcu koltuğu tür tablosundan.

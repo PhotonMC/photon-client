@@ -24,6 +24,6 @@ Kullanım pozları (T41d).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `crossed_arms_item_pose`, `witch_potion_pose`, `Place::Ground`, `HeldItem::stack`; köylü/tüccar/cadı eşyaları ve kafa eşyası çizilir. Kayıt: `docs/client-villager-held-parity-conformance.md`.
+- Yapıldı: `crossed_arms_item_pose`, `witch_potion_pose`, `Place::Ground`, `HeldItem::stack`; köylü/tüccar/cadı eşyaları ve kafa eşyası çizilir. Kayıt: `docs/records/client-villager-held-parity-conformance.md`.
 - Oracle: `entity/villager-held-layers` 9 satır. Canlı: zümrüt, iksir, elmas ve balkabağı başlıklar `shot` ile görüldü.
 - Sapma: yok (zombi köylü eşyası T28/T41 yolunda).

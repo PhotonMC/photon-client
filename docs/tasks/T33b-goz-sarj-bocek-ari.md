@@ -23,7 +23,7 @@ Arı sesi (PLAN-M7), patlama parçacığı (PLAN-M8).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `setup_segmented` (gümüş balığı, endermite; `getFlipDegrees` 180), `setup_bee`, arı tiki (yuvarlanma) ve verisi (bayrak, öfke bitişi), sekiz doku; `monsters.rs` ve `farm_animals.rs`. Kayıt: `docs/client-insects-parity-conformance.md`.
+- Yapıldı: `setup_segmented` (gümüş balığı, endermite; `getFlipDegrees` 180), `setup_bee`, arı tiki (yuvarlanma) ve verisi (bayrak, öfke bitişi), sekiz doku; `monsters.rs` ve `farm_animals.rs`. Kayıt: `docs/records/client-insects-parity-conformance.md`.
 - Oracle: `segmented-model` 8, `bee-model` 14, `living-entity-animations` 6 arı satırı; `variant-fields` iki satır. Canlı: `shot` ile görüldü (arı ayrıntısı doğrulanamadı, poz oracle'da).
 - Sapma: iğne dokusu ve sokma animasyonu yok.
 

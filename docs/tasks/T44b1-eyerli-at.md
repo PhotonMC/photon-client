@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: eyerli at `summon` + `ride`.
 
 ## Belgeler
-`docs/client-mount-ride-parity-conformance.md`, `docs/index.md`.
+`docs/records/client-mount-ride-parity-conformance.md`, `docs/index.md`.
 
 ## Devir notu
 - `mount_ride.rs`: mob için `LivingEntity` hareketi (`MountBody`: hava/su/lav, basamak, sekme, blok etkileri; ortak `living_inside_effect`), at için `getRiddenInput`/`tickRidden`/`executeRidersJump`, kalkma sayacı (`horse.rs`); `vehicle_ride.rs`: ortak `VehicleView`, koltuk (`EntityAttachment.PASSENGER` tablosu oracle'dan). 33 satır bit bit eşit.

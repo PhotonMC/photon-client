@@ -16,7 +16,7 @@ Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dö
 Başka blok entity aileleri.
 
 ## Belgeler
-`docs/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
+`docs/records/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
 
 ## Devir notu
 (boş)

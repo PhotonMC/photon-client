@@ -7,7 +7,7 @@
 - Java: `client/renderer/entity/{LeashKnotRenderer,EntityRenderer}.java`, `client/model/object/leash/LeashKnotModel.java`, `world/entity/decoration/LeashFenceKnotEntity.java`.
 
 ## Oracle
-Gerçek renderer/model sınıfı ve durumu (örnek: `docs/client-arrow-parity-conformance.md`, `docs/client-minecart-parity-conformance.md`).
+Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
@@ -19,4 +19,4 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: düğümün modeli ve pose'u (`bullets.rs`). Kayıt: `docs/client-leash-knot-parity-conformance.md`. Bağ çizgisi ve `SetEntityLink` T40k'ye ayrıldı.
+- Yapıldı: düğümün modeli ve pose'u (`bullets.rs`). Kayıt: `docs/records/client-leash-knot-parity-conformance.md`. Bağ çizgisi ve `SetEntityLink` T40k'ye ayrıldı.

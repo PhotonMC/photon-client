@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/sounds/MusicManager.java`, `client/renderer/LevelEventHandler.java`, `world/entity/LivingEntity.java` (`playHurtSound`), `client/resources/sounds/{Underwater,BiomeAmbient}*Handler.java`.
-- Rust: `crates/voxel-world/src/local_player/sounds.rs`, `crates/voxel/src/sound.rs`, `docs/client-block-sounds-conformance.md`.
+- Rust: `crates/voxel-world/src/local_player/sounds.rs`, `crates/voxel/src/sound.rs`, `docs/records/client-block-sounds-conformance.md`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.
@@ -14,7 +14,7 @@
 Mob sesleri (aile görevlerinde), altyazılar.
 
 ## Belgeler
-`docs/client-block-sounds-conformance.md` sapma listesi.
+`docs/records/client-block-sounds-conformance.md` sapma listesi.
 
 ## Devir notu
 (boş)

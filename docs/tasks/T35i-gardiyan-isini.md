@@ -17,7 +17,7 @@ Gerçek `renderBeam`, `submitCustomGeometry` ile verilen köşe tüketicisinden 
 Sesler, parçacık çizimi, saldırı davranışı; hedefe bakış ve çırpınış (T35j).
 
 ## Devir notu
-- Yapıldı: `voxel-render/guardian_beam.rs` (`guardian_beam`: gerçek köşeler; `beam_triangles`: doku tekrarını keserek entity boru hattına), `ışın` çizimi `crates/voxel/src/guardians.rs`, saldırı ölçeği. Kayıt: `docs/client-guardian-beam-parity-conformance.md`.
+- Yapıldı: `voxel-render/guardian_beam.rs` (`guardian_beam`: gerçek köşeler; `beam_triangles`: doku tekrarını keserek entity boru hattına), `ışın` çizimi `crates/voxel/src/guardians.rs`, saldırı ölçeği. Kayıt: `docs/records/client-guardian-beam-parity-conformance.md`.
 - Bulgu yok; geometri 14 satırda ilk denemede eşleşti (`acos`/`atan2` Rust `f64`).
 - Bölündü: hedefe bakış, parçacık çekilişleri ve karadaki çırpınış T35j'de.
 - Sapma: görüş alanı elemesi yok; yerel oyuncunun boyu kutudan. Canlı gözlem yapılmadı.

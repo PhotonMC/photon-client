@@ -22,7 +22,7 @@
 Kafa eşyası/pelerin (T41c).
 
 ## Belgeler
-`docs/client-armor-parity-conformance.md` sapma listesi.
+`docs/records/client-armor-parity-conformance.md` sapma listesi.
 
 ## Devir notu
 - Yalnız süs yapıldı: `voxel-render::trim` (veri paketi desen/malzeme, `PalettedPermutations` eşlemesi, sprite adı), `Armor::{trim_images, set_trim_registries, trim_texture}`, süs atlası entity dokusuna eklenir, süs katmanı zırhın üstüne.

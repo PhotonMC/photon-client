@@ -11,5 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `trident_pose` ve `setup_trident`, `arrows.rs`'e trident dalı (arka yüz ayıklama yok). Kayıt: `docs/client-trident-parity-conformance.md`.
+- Yapıldı: `trident_pose` ve `setup_trident`, `arrows.rs`'e trident dalı (arka yüz ayıklama yok). Kayıt: `docs/records/client-trident-parity-conformance.md`.
 - Sapma: büyü parıltısı yok (T41e parıltı hattı); `ID_FOIL`/`ID_LOYALTY` okunmuyor.

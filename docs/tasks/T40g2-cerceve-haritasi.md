@@ -11,5 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `MapItemData` paketi ve istemci harita deposu (`voxel-world/map.rs`), `MapColor` ve süs türü tabloları (oracle'dan, `map_data.rs`), `MapRenderer` geometrisi (`voxel-render/map.rs`; gerçek `MapRenderer.render`'a karşı) ve çerçevenin harita dalı (poz, ışık, model `map=true`), Vulkan'da harita görüntüsü ve iki yeni arabellek, oyunda `item_frames::MapTextures`. Kayıt: `docs/client-item-frame-parity-conformance.md`. Canlıda görüldü.
+- Yapıldı: `MapItemData` paketi ve istemci harita deposu (`voxel-world/map.rs`), `MapColor` ve süs türü tabloları (oracle'dan, `map_data.rs`), `MapRenderer` geometrisi (`voxel-render/map.rs`; gerçek `MapRenderer.render`'a karşı) ve çerçevenin harita dalı (poz, ışık, model `map=true`), Vulkan'da harita görüntüsü ve iki yeni arabellek, oyunda `item_frames::MapTextures`. Kayıt: `docs/records/client-item-frame-parity-conformance.md`. Canlıda görüldü.
 - Açık: süs adları, 16 harita yuvası, elde taşınan harita.

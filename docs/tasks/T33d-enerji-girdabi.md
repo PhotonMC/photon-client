@@ -24,7 +24,7 @@ Patlama parçacığı (PLAN-M8).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `ENERGY_SWIRL` hattı (`Swirl`, `swirl_buffer`, toplamalı harman, `fract` ile sarma), `mob_vertices_swirl`, `render_types::{ENERGY_SWIRL, POWER_*, swirl_offset}`, `Creeper.DATA_IS_POWERED` (17), şarjlı creeper (`creeper#armor`). Kayıt: `docs/client-energy-swirl-parity-conformance.md`.
+- Yapıldı: `ENERGY_SWIRL` hattı (`Swirl`, `swirl_buffer`, toplamalı harman, `fract` ile sarma), `mob_vertices_swirl`, `render_types::{ENERGY_SWIRL, POWER_*, swirl_offset}`, `Creeper.DATA_IS_POWERED` (17), şarjlı creeper (`creeper#armor`). Kayıt: `docs/records/client-energy-swirl-parity-conformance.md`.
 - Oracle: `entity/swirl-layers` 10 satır (gerçek `CreeperPowerLayer`), `creeper#armor` model satırları, `variant-fields` bir satır. Canlı: şarjlı creeper mavi girdapla `shot` ile görüldü.
 - Sapma: sarma shader'da `fract`; renk sabit.
 

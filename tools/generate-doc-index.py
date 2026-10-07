@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Generate the repository's document index from the files in docs/."""
+"""Generate the repository's document index from docs/ and docs/records/."""
 
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
+RECORDS = DOCS / "records"
 INDEX = DOCS / "index.md"
 
 CORE_NAMES = {
@@ -36,7 +37,7 @@ def title(path: Path) -> str:
 
 def grouped_documents() -> list[tuple[str, list[Path]]]:
     documents = sorted(
-        (path for path in DOCS.glob("*.md") if path.name != INDEX.name),
+        (path for path in [*DOCS.glob("*.md"), *RECORDS.glob("*.md")] if path.name != INDEX.name),
         key=lambda path: path.name,
     )
     core = [path for path in documents if path.name in CORE_NAMES]
@@ -60,11 +61,11 @@ def main() -> None:
         "# Belge dizini",
         "",
         "Davranış kayıtları tek dosyada sözleşme ve kanıt bölümleriyle tutulur.",
-        "Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.",
+        "Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğinden üretilir.",
     ]
     for heading, documents in grouped_documents():
         lines.extend(["", f"## {heading}", ""])
-        lines.extend(f"- [{title(path)}]({path.name})" for path in documents)
+        lines.extend(f"- [{title(path)}]({path.relative_to(DOCS).as_posix()})" for path in documents)
     INDEX.write_text("\n".join(lines).rstrip() + "\n")
 
 

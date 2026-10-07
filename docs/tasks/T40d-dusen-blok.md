@@ -8,7 +8,7 @@
 - Rust: `crates/voxel-render/src/world_mesh.rs` (blok mesh'i), `crates/voxel/src/overlays.rs` (`cracks`, blok quad'ları).
 
 ## Oracle
-Gerçek renderer/model sınıfı ve durumu (örnek: `docs/client-arrow-parity-conformance.md`, `docs/client-minecart-parity-conformance.md`).
+Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
@@ -20,5 +20,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `mesh_moving_block`, `set_moving_blocks`, `falling_blocks.rs`, entity `start_block`. Kayıt: `docs/client-falling-block-parity-conformance.md` (server-conformance).
+- Yapıldı: `mesh_moving_block`, `set_moving_blocks`, `falling_blocks.rs`, entity `start_block`. Kayıt: `docs/records/client-falling-block-parity-conformance.md` (server-conformance).
 - Sapma: Java karşılaştırması yok; `cutoutLeaves`/`forceOpaque` yok; gölge yok.

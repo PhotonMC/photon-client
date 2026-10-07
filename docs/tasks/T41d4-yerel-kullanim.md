@@ -14,9 +14,9 @@ Gerçek `LocalPlayer` sahnesi (`MovementOracle.buildScene`) ile sallama süresi 
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-held-item-parity-conformance.md`.
+`docs/records/client-held-item-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: yerel sallama süresi (`LocalPlayer::current_swing_duration`: mızrak, hız/kanal gücü, yorgunluk), el seçen sallama (ikinci elin kolu), kullanım bayrağı ve sayacı (`HandState`, `ClientWorld::local_hand_state`), üçüncü şahıs kolları uzak oyuncularla ortak koddan (`arm_poses::arm_state_of`). Kayıt: `docs/client-held-item-parity-conformance.md`.
+- Yapıldı: yerel sallama süresi (`LocalPlayer::current_swing_duration`: mızrak, hız/kanal gücü, yorgunluk), el seçen sallama (ikinci elin kolu), kullanım bayrağı ve sayacı (`HandState`, `ClientWorld::local_hand_state`), üçüncü şahıs kolları uzak oyuncularla ortak koddan (`arm_poses::arm_state_of`). Kayıt: `docs/records/client-held-item-parity-conformance.md`.
 - Oracle: yerel oyuncu satırlarına sallama ve kullanım alanları (gerçek `LocalPlayer`); satırlar: hız, kanal gücü, yorgunluk, ikinci el koyma/kullanma.
 - Açık: kendi kullanımını başlatma (ön tahmin), kullanırken yavaşlama ve koşma kesilmesi, yerel mızrağın saldırısı ve vuruş sesi, uzaktaki varlıkların etkileri. Üçüncü şahıs canlıda bakılmadı.

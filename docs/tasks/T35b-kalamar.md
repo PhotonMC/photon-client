@@ -11,6 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `SquidState` (tik), mob suda olma durumu (`mob_in_water`, `tracks_water`: yalnız kalamar), `LivingEntity.aiStep`'in hareket azalması ve eşiği (bütün mob'lar), `GlowSquid` karanlık tikleri, `setup_squid`, `SquidTurns` (çizim dönüşü), `squids.rs`. Kayıt: `docs/client-squid-parity-conformance.md`.
+- Yapıldı: `SquidState` (tik), mob suda olma durumu (`mob_in_water`, `tracks_water`: yalnız kalamar), `LivingEntity.aiStep`'in hareket azalması ve eşiği (bütün mob'lar), `GlowSquid` karanlık tikleri, `setup_squid`, `SquidTurns` (çizim dönüşü), `squids.rs`. Kayıt: `docs/records/client-squid-parity-conformance.md`.
 - Oracle: `entity/squid-model` 16, `squid-rotations` 8, `glow-squid-light` 24, `living-entity-animations`'a 10 kalamar satırı. Oracle'ın varlık başlangıç yönü artık sabit (paketteki gibi).
 - Sapma: akıntıyla itilme (öteki su canlıları için) yok; mürekkep, ses, gölge yok; canlı gözlem yapılmadı.

@@ -14,7 +14,7 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-mount-ride-parity-conformance.md`.
+`docs/records/client-mount-ride-parity-conformance.md`.
 
 ## Devir notu
 Minecart: `ride-minecart` 6 satır gerçek Minecart/MinecartChest ile bit bit eşit (duran araç; kayıt conformance belgesinde).

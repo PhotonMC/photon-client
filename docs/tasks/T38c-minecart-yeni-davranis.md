@@ -12,5 +12,5 @@
 
 ## Devir notu
 - Yapıldı: `minecart_improvements` bayrağı yapılandırmada okunur (`ClientWorld::set_minecart_improvements`); bundan sonra eklenen minecart'lar `TrackLerp` taşır (`voxel-world/minecart_track.rs`: `lerpSteps`, `currentLerpSteps`, `getCurrentLerpStep` ve tek girişlik belleği); `MoveMinecartAlongTrack` (kimlik 55) ayrıştırılıp adımlar eklenir; konum/dönüş paketleri yeni davranışta yaklaşım olmadan hemen koyar; çizim `newExtractState`/`getRenderOffset`/`newRender`.
-- Kanıt: `entity/minecart-pose` +4 satır, `living-entity-animations` +6 satır (gerçek `Minecart` + gerçek `handleMinecartAlongTrack`; ağırlıksız adımlarda bellek eskiliği dahil). Kayıt: `docs/client-minecart-parity-conformance.md`.
+- Kanıt: `entity/minecart-pose` +4 satır, `living-entity-animations` +6 satır (gerçek `Minecart` + gerçek `handleMinecartAlongTrack`; ağırlıksız adımlarda bellek eskiliği dahil). Kayıt: `docs/records/client-minecart-parity-conformance.md`.
 - Sapma/açık: istemcinin `onRails` bayrağı tutulmaz (yalnız ses, T64b); yeni davranışın sunucu kolu (`moveAlongTrack`, itme/toplama) sunucunundur, yazılmadı. Oracle'da çizim konumu `getRenderOffset` + dağıtıcı toplamı değil, bileşenleri ayrı ayrı (oynatma yeri) karşılaştırılır.

@@ -20,5 +20,5 @@ Gerçek çıkış (T63), çözme (T62), oyun tetikleri (T64).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `voxel-game::sound_engine` (play/stop/tick/duraklatma/kazanç; `Channel` arayüzü), Java'da gerçek `SoundEngine`'in sahte kanallarla koşturulduğu oracle (`sound/engine`, sahteler `tests/behavior/java/com/mojang/blaze3d/audio/`). Kayıt: `docs/client-sound-engine-parity-conformance.md`.
+- Yapıldı: `voxel-game::sound_engine` (play/stop/tick/duraklatma/kazanç; `Channel` arayüzü), Java'da gerçek `SoundEngine`'in sahte kanallarla koşturulduğu oracle (`sound/engine`, sahteler `tests/behavior/java/com/mojang/blaze3d/audio/`). Kayıt: `docs/records/client-sound-engine-parity-conformance.md`.
 - Sapma: havuz sayımı sahtede yazıldı; `SoundEventListener` ve `EntityBoundSoundInstance` yok. Sıradaki: T63 (cpal çıkışı) bu arayüzü bağlar.

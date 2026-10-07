@@ -4,7 +4,7 @@
 **Kanıt sınıfı:** `server-conformance`
 
 Bu kayıt istemci eşitliği göstermez. Gösterdiği şey, [pinli LocalPlayer
-tick'inin](local-player-tick-conformance.md) canlı bir vanilla sunucuda
+tick'inin](records/local-player-tick-conformance.md) canlı bir vanilla sunucuda
 sürüldüğünde sunucunun gönderilen hareketleri kabul etmesi.
 
 ## Ne yapıldı

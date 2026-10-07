@@ -14,7 +14,7 @@
 Sesler.
 
 ## Belgeler
-`docs/client-lightning-bolt-parity-conformance.md` sapma satırını güncelle.
+`docs/records/client-lightning-bolt-parity-conformance.md` sapma satırını güncelle.
 
 ## Devir notu
 - `ClientWorld::sky_flash_time` (ışıklı bolt tikinde 2, `tick_sky_flash` ile azalır; `Minecraft.tick` sırası: önce entity'ler, sonra seviye tiki); `Environment::evaluate(…, sky_flash)` son katman olarak gökyüzü rengini ve ışık çarpanını değiştirir; seçenek `hideLightningFlashes` (`options.txt`).

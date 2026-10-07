@@ -7,7 +7,7 @@
 - Java: `client/renderer/entity/LightningBoltRenderer.java`, `world/entity/LightningBolt.java`.
 
 ## Oracle
-Gerçek renderer/model sınıfı ve durumu (örnek: `docs/client-arrow-parity-conformance.md`, `docs/client-minecart-parity-conformance.md`).
+Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
@@ -19,5 +19,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `lightning_bolt` (geometri, oracle'da köşe köşe), `voxel-world::lightning` (tohum, parlama, silinme), `lightning_bolts.rs` (eklemeli hat). Kayıt: `docs/client-lightning-bolt-parity-conformance.md`.
+- Yapıldı: `lightning_bolt` (geometri, oracle'da köşe köşe), `voxel-world::lightning` (tohum, parlama, silinme), `lightning_bolts.rs` (eklemeli hat). Kayıt: `docs/records/client-lightning-bolt-parity-conformance.md`.
 - Sapma: tohum entity kimliğinden; sayaç gerçek tike karşı karşılaştırılmadı; gökyüzü çakması yok → T40j.

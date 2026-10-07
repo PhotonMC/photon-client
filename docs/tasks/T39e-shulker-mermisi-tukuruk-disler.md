@@ -11,5 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: üç model + pose'lar, `evoker_fangs.rs` (olay 4, sayaç), `bullets.rs`; kabuk için entity gölgelendiricisinde `shade ≥ 64` = harmanlı alfa. Kayıt: `docs/client-small-projectiles-parity-conformance.md`.
+- Yapıldı: üç model + pose'lar, `evoker_fangs.rs` (olay 4, sayaç), `bullets.rs`; kabuk için entity gölgelendiricisinde `shade ≥ 64` = harmanlı alfa. Kayıt: `docs/records/client-small-projectiles-parity-conformance.md`.
 - Sapma: fangs durumu gerçek tike karşı karşılaştırılmadı (birim test); kabuk alfası/sırası oracle'sız; istemci hareket tahmini yok → T39g.

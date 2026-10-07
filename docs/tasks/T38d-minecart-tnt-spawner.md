@@ -11,6 +11,6 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: tnt minecart'ın fitili (`MinecartTNT` olay 70, istemci tiki), şişme ve beyaz bindirme (`tnt_swell_amount`, `tnt_is_lit`, `block_swell`), oracle satırları (pose ve bindirme, gerçek tik). Kayıt: `docs/client-minecart-parity-conformance.md` ("TNT minecart").
+- Yapıldı: tnt minecart'ın fitili (`MinecartTNT` olay 70, istemci tiki), şişme ve beyaz bindirme (`tnt_swell_amount`, `tnt_is_lit`, `block_swell`), oracle satırları (pose ve bindirme, gerçek tik). Kayıt: `docs/records/client-minecart-parity-conformance.md` ("TNT minecart").
 - Bulgu: spawner minecart istemcide yaratık göstermez (doğurma verisi sunucudan gelmez); düz blok olarak kalır, ek iş yok.
 - Açık: sandık minecart'ın sandığı blok varlık modeli gelince (PLAN-M8) bağlanacak.

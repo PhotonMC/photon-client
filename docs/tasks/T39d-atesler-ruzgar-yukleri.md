@@ -11,5 +11,5 @@
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `setup_wind_charge`, `mob_vertices_scrolled_posed`, `dragon_fireball_quad`; oyunda `charges.rs`. Kayıt: `docs/client-charges-parity-conformance.md`.
+- Yapıldı: `setup_wind_charge`, `mob_vertices_scrolled_posed`, `dragon_fireball_quad`; oyunda `charges.rs`. Kayıt: `docs/records/client-charges-parity-conformance.md`.
 - Sapma: kayma değeri oracle'da yok; dış çizgi yok; rüzgâr yükü canlıda görülemedi (sunucu hemen siliyor).

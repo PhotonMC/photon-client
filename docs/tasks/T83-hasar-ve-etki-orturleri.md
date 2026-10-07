@@ -19,5 +19,5 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-- Yapıldı: `GameRenderer.bobHurt` (hasarda ve ölürken kamera eğimi, el pozu dahil) gerçek Java'ya bit bit eşit; `HurtAnimation` yaw'ı yerel oyuncuya. Kayıt: [`client-camera-hurt-parity-conformance.md`](../client-camera-hurt-parity-conformance.md).
+- Yapıldı: `GameRenderer.bobHurt` (hasarda ve ölürken kamera eğimi, el pozu dahil) gerçek Java'ya bit bit eşit; `HurtAnimation` yaw'ı yerel oyuncuya. Kayıt: [`client-camera-hurt-parity-conformance.md`](../records/client-camera-hurt-parity-conformance.md).
 - Kalan: ekran örtüleri ve etki sisleri [T83b](T83b-ekran-orturleri.md)'ye ayrıldı.

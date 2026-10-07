@@ -25,14 +25,14 @@ block_state_at(x,y,z) → durum numarası
 ```
 
 Zincirdeki her halka ayrı ayrı pinli:
-[kayıt defteri](block-registry-conformance.md),
-[blockstate](blockstate-conformance.md),
-[model dosyası](model-file-parse-conformance.md),
+[kayıt defteri](records/block-registry-conformance.md),
+[blockstate](records/blockstate-conformance.md),
+[model dosyası](records/model-file-parse-conformance.md),
 [atlas](atlas-layout-and-mip-upload.md),
-[mip](mipmap-conformance.md),
-[UV kilidi](uv-lock-conformance.md),
-[cullface](cullface-conformance.md),
-[tonlama](block-tint-conformance.md).
+[mip](records/mipmap-conformance.md),
+[UV kilidi](records/uv-lock-conformance.md),
+[cullface](records/cullface-conformance.md),
+[tonlama](records/block-tint-conformance.md).
 
 ## Ölçülen sonuç
 

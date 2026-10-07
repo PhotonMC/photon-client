@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/fox/{FoxModel,AdultFoxModel,BabyFoxModel}.java`, `client/renderer/entity/FoxRenderer.java`, `client/renderer/entity/layers/FoxHeldItemLayer.java`, `client/renderer/entity/state/FoxRenderState.java`, `world/entity/animal/fox/Fox.java` (istemci: `getHeadRollAngle`, `getCrouchAmount`, `isSitting`, `isFaceplanted`, `isPouncing`, bayraklar, `tick`).
-- Rust: `crates/voxel/src/felines.rs` ve `bears.rs` (kalıp), `voxel-render/src/mob_model.rs` (`setup_feline`, `setup_polar_bear`), `voxel-world/src/{cat,polar_bear}.rs`, `docs/client-polar-bear-parity-conformance.md`, `crates/voxel/src/held_items.rs`.
+- Rust: `crates/voxel/src/felines.rs` ve `bears.rs` (kalıp), `voxel-render/src/mob_model.rs` (`setup_feline`, `setup_polar_bear`), `voxel-world/src/{cat,polar_bear}.rs`, `docs/records/client-polar-bear-parity-conformance.md`, `crates/voxel/src/held_items.rs`.
 
 ## Yapılacaklar
 1. `setup_fox` (yetişkin + bebek poz farkları; `legMotionPos` modelin kendi durumudur: yüz üstüyken her çizimde artar).
@@ -23,10 +23,10 @@
 Tilki davranışı/yapay zekâsı (sunucu), güven listesi, sesler.
 
 ## Belgeler
-`docs/index.md` satırı, yeni `docs/client-fox-parity-conformance.md`.
+`docs/index.md` satırı, yeni `docs/records/client-fox-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: `setup_fox` (yetişkin + bebek: yürüme/anahtar kare, çömelme, uyku, oturma, zıplama, yüz üstü), `fox_item_pose` (ağızdaki eşya), `MobPlacement.pitch`, `voxel-world/src/fox.rs` (bayraklar, çeşit, ilgi açısı, çömelme miktarı), `voxel_data::entity_type::fox_texture`, `crates/voxel/src/foxes.rs`. Kayıt: `docs/client-fox-parity-conformance.md`.
+- Yapıldı: `setup_fox` (yetişkin + bebek: yürüme/anahtar kare, çömelme, uyku, oturma, zıplama, yüz üstü), `fox_item_pose` (ağızdaki eşya), `MobPlacement.pitch`, `voxel-world/src/fox.rs` (bayraklar, çeşit, ilgi açısı, çömelme miktarı), `voxel_data::entity_type::fox_texture`, `crates/voxel/src/foxes.rs`. Kayıt: `docs/records/client-fox-parity-conformance.md`.
 - Oracle: `fox-model` 26 (eşya matrisiyle), `fox-textures` 8, `living-entity-animations` 5, `variant-fields` +2.
 - Sapma: `legMotionPos` canlıda karedir (oracle ilk pozu); parçacık ve ses yok; güvenilen varlıklar okunmuyor.
 - Açık: T32f panda, T32g ravager, T32h strider, T32i titreme.

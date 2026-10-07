@@ -24,7 +24,7 @@ Keçi çarpması/ram sesleri, tavşan Killer Bunny, binme.
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: `setup_goat`, keçi zamanlayıcısı (`animal.rs`) ve boynuz/mooshroom verisi, `entity_block::mooshroom_mushroom_poses`, `voxel/src/farm_animals.rs`. Kayıt: `docs/client-goat-mooshroom-parity-conformance.md`.
+- Yapıldı: `setup_goat`, keçi zamanlayıcısı (`animal.rs`) ve boynuz/mooshroom verisi, `entity_block::mooshroom_mushroom_poses`, `voxel/src/farm_animals.rs`. Kayıt: `docs/records/client-goat-mooshroom-parity-conformance.md`.
 - Oracle: `goat-model` 14, mantar ineği `quadruped-model` 14, `block-layers` 2, `living-entity-animations` 3 keçi satırı; `variant-fields` üç satır. Canlı: keçi (yetişkin, bebek) ve iki mooshroom `shot` ile görüldü.
 - Sapma: tavşan yok (T30c); parlayan görünmezde dış hat yok.
 

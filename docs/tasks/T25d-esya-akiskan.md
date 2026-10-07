@@ -19,10 +19,10 @@
 Kabarcık sütunu, blok içi etkiler (ağ vb.), dünya sınırı.
 
 ## Belgeler
-`docs/client-world-entity-item-tick-parity-conformance.md` sapma listesini güncelle.
+`docs/records/client-world-entity-item-tick-parity-conformance.md` sapma listesini güncelle.
 
 ## Devir notu
-- Yapıldı: `voxel-world/fluid.rs` (`EntityFluidInteraction` taraması ve `Tracker.applyCurrentTo`; oyuncu ve eşya ortak), `item_physics.rs` akışkan kolları (tik başında ve sonunda tarama + akıntı, 0.99/0.95 yavaşlama ve yükselme, yerçekimi yerine). Oracle'a `item_entity_ticks` +19 satır (havuz, sığ, yüzey eşiği, dere/şelale, lav, karışık). Kayıt `docs/client-world-entity-item-tick-parity-conformance.md` "Akışkan".
+- Yapıldı: `voxel-world/fluid.rs` (`EntityFluidInteraction` taraması ve `Tracker.applyCurrentTo`; oyuncu ve eşya ortak), `item_physics.rs` akışkan kolları (tik başında ve sonunda tarama + akıntı, 0.99/0.95 yavaşlama ve yükselme, yerçekimi yerine). Oracle'a `item_entity_ticks` +19 satır (havuz, sığ, yüzey eşiği, dere/şelale, lav, karışık). Kayıt `docs/records/client-world-entity-item-tick-parity-conformance.md` "Akışkan".
 - Java'dan sapma: yok bilinen; `FAST_LAVA` ortamı yok. Bulgu: oyuncu için yazılmış ortak işlev ortalama alıyordu, Java entity'de normalize eder; oracle yakaladı.
 - Oracle: sahnede su sıçrama parçacığı kamera ve motor ister; oracle sahte kamera ve parçacık motoru verir (`DroppingParticleEngine.createParticle`).
 - Canlı: su havuzu yayılıp oyuncuyu kapladı; eşyalar yüzüp toplandı, çökme yok (görsel fark oracle ile kanıtlı).

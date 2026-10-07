@@ -14,7 +14,7 @@ Gerçek `ScreenEffectRenderer`/`fog` sayısal çıktısı ve `gui` ailesinde ör
 `tools/voxel.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/client-camera-hurt-parity-conformance.md`, `docs/remaining-work.md` §8.
+`docs/records/client-camera-hurt-parity-conformance.md`, `docs/remaining-work.md` §8.
 
 ## Devir notu
 (boş)
