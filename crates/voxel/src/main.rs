@@ -8,6 +8,7 @@ mod assets;
 mod atmosphere;
 mod axolotls;
 mod bears;
+mod bench;
 mod block_entities;
 mod boats;
 mod bullets;

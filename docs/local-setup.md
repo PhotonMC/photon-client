@@ -57,6 +57,11 @@ python3 tools/voxel.py server --stop
   `--fullscreen`, `--camera back|front`, `--profile`. Diğer `VOXEL_*`
   değişkenleri ortamdan olduğu gibi geçiyor.
 - **`rcon`:** Komutları sırayla gönderip yanıtları yazıyor.
+- **`bench`:** Çalışan test sunucusuna sabit bir betikle (yerinde durup dört
+  yöne dönen 40 sn) bağlanıp kare süresi raporunu `.data/runs/bench/` altına
+  yazıyor. Seçenekler: `address`, `--repeat N` (art arda koşular p50 ile
+  karşılaştırılır, %5 ve üstü fark hata), `--warmup`, `--size`, `--name`.
+  Sunucuyu kendisi başlatmaz.
 
 `--decompile` bu makinede çalıştırılmadı. Komut satırı referans kaynakları
 üreten eski `decompile.sh` ile aynı.

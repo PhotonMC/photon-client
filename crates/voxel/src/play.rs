@@ -15,6 +15,7 @@ use voxel_render::world_mesh::BlockRenderer;
 use crate::animated_atlas::AnimatedAtlas;
 use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
+use crate::bench::{Bench, RunInfo};
 use crate::controls::Controls;
 use crate::dropped_items::{WorldItemLayers, world_items};
 use crate::falling_blocks::falling_blocks;
@@ -141,6 +142,8 @@ struct Play {
     sound: Option<SoundSystem>,
     frames: u64,
     profile: Option<FrameProfile>,
+    /// `VOXEL_BENCH`: the frames kept for a report.
+    bench: Option<Bench>,
 }
 
 impl Play {
@@ -315,6 +318,7 @@ impl Play {
             sound,
             frames: 0,
             profile: FrameProfile::from_env(),
+            bench: Bench::from_env(),
         })
     }
 
@@ -835,12 +839,15 @@ impl Play {
         let built = Instant::now();
         self.backend.draw_scene(colour, frame.view_projection)?;
         self.frames += 1;
-        if let Some(profile) = self.profile.as_mut() {
+        if self.profile.is_some() || self.bench.is_some() {
             let drawn = Instant::now();
-            profile.record(
-                [frame_start, ticked, meshed, built, drawn],
-                &mut self.sections,
-            );
+            let spans = [frame_start, ticked, meshed, built, drawn];
+            if let Some(profile) = self.profile.as_mut() {
+                profile.record(spans, &mut self.sections);
+            }
+            if let Some(bench) = self.bench.as_mut() {
+                bench.record(spans, &self.backend);
+            }
         }
         Ok(Flow::Next)
     }
@@ -861,6 +868,16 @@ impl Play {
             return Ok(Flow::Next);
         }
         report_end(&self.session, self.ticks, frame.rotation)?;
+        if let Some(bench) = &self.bench {
+            let extent = self.backend.extent();
+            bench.write(&RunInfo {
+                device: self.backend.description().device_name.clone(),
+                extent,
+                render_distance: frame.render_distance,
+                loaded_chunks: self.session.world().loaded_chunk_count(),
+                entities: self.session.entity_count(),
+            })?;
+        }
         if let Ok(path) = capture {
             let captured = self.backend.capture_scene(colour, frame.view_projection)?;
             ppm::write(&path, captured.width, captured.height, &captured.rgba)?;

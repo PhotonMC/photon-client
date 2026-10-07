@@ -21,6 +21,7 @@ pub mod entity_block;
 pub mod entity_textures;
 pub mod equipment;
 pub mod fishing;
+pub mod frame_timing;
 pub mod geometry;
 pub mod guardian_beam;
 pub mod gui;
@@ -72,6 +73,7 @@ pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher
 pub use blockstate::{
     BlockStateFile, Condition, Operation, Selector, Term, Variant, parse_block_state,
 };
+pub use frame_timing::{BackendTimings, GPU_PASSES, GpuTimings};
 pub use geometry::{
     FaceUvs, Quadrant, WindingError, approximate_nearest_direction, closest_direction,
     default_face_uv, face_vertex_uv, face_vertices, recalculate_winding, triangle_normal,

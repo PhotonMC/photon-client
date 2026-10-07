@@ -38,6 +38,7 @@ use std::ffi::{CStr, CString};
 
 use ash::vk;
 
+use crate::frame_timing::{BackendTimings, GpuTimings, TIMESTAMP_COUNT};
 use crate::png::DecodedImage;
 use crate::scene::{BlockVertex, Mesh, Vertex};
 
@@ -1115,6 +1116,20 @@ pub struct BackendDescription {
     pub extent: vk::Extent2D,
 }
 
+/// The query pool the scene's pass timestamps are written to, and what turns
+/// its ticks into time.
+struct TimestampQueries {
+    pool: vk::QueryPool,
+    /// Nanoseconds one tick lasts.
+    period_ns: f64,
+    /// How many bits of a tick the queue writes.
+    valid_bits: u32,
+    /// Whether the last submitted frame wrote a scene's timestamps not yet read.
+    pending: bool,
+    /// The last frame read back.
+    last: Option<GpuTimings>,
+}
+
 /// Depth attachment matching the swapchain extent.
 struct DepthTarget {
     image: vk::Image,
@@ -1459,6 +1474,12 @@ pub struct VulkanBackend {
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
+    /// GPU timestamp queries, when the device and queue can write them.
+    timestamps: Option<TimestampQueries>,
+    /// The CPU time of the last frame, by span.
+    timings: BackendTimings,
+    /// The time spent waiting for the frame in flight since the last frame was submitted.
+    fence_wait: std::cell::Cell<std::time::Duration>,
     description: BackendDescription,
 }
 
@@ -1678,6 +1699,29 @@ impl VulkanBackend {
                 )
                 .map_err(|result| VulkanError::Call("vkCreateFence", result))?;
 
+            let valid_bits = instance.get_physical_device_queue_family_properties(physical_device)
+                [queue_family as usize]
+                .timestamp_valid_bits;
+            let timestamps =
+                if valid_bits > 0 && properties.limits.timestamp_compute_and_graphics == vk::TRUE {
+                    let pool = device
+                        .create_query_pool(
+                            &vk::QueryPoolCreateInfo::default()
+                                .query_type(vk::QueryType::TIMESTAMP)
+                                .query_count(TIMESTAMP_COUNT),
+                            None,
+                        )
+                        .map_err(|result| VulkanError::Call("vkCreateQueryPool", result))?;
+                    Some(TimestampQueries {
+                        pool,
+                        period_ns: f64::from(properties.limits.timestamp_period),
+                        valid_bits,
+                        pending: false,
+                        last: None,
+                    })
+                } else {
+                    None
+                };
             let device_name = CStr::from_ptr(properties.device_name.as_ptr())
                 .to_string_lossy()
                 .into_owned();
@@ -1768,6 +1812,9 @@ impl VulkanBackend {
                 image_available,
                 render_finished,
                 in_flight,
+                timestamps,
+                timings: BackendTimings::default(),
+                fence_wait: std::cell::Cell::default(),
                 description,
             })
         }
@@ -2245,6 +2292,7 @@ impl VulkanBackend {
                 .layer_count(1)
                 .color_attachments(&colour_attachment)
                 .depth_attachment(&depth_attachment);
+            self.stamp(0);
             self.dynamic_rendering
                 .cmd_begin_rendering(self.command_buffer, &rendering);
             let extent = self.description.extent;
@@ -2326,6 +2374,7 @@ impl VulkanBackend {
                 &[],
             );
             let matrix: [f32; 16] = std::array::from_fn(|i| view_projection[i / 4][i % 4]);
+            self.stamp(1);
             // The terrain shaders also take the lightmap's inputs, the
             // camera and the fog.
             let mut terrain_push = [0.0_f32; 40];
@@ -2349,6 +2398,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
+            self.stamp(2);
             // Dropped items and the blocks on entities, opaque, before the
             // entities so that a translucent shell (a sulfur cube's) blends
             // over the block inside it: the items' quads in the block atlas,
@@ -2414,6 +2464,7 @@ impl VulkanBackend {
                     .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
             }
             self.record_flat_shapes(scene, &terrain_push);
+            self.stamp(3);
             // The aimed block's outline over the solid world.
             if let Some(buffer) = self.outline_buffer.as_ref()
                 && self.outline_count > 0
@@ -2467,6 +2518,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_draw(self.command_buffer, self.breaking_count, 1, 0, 0);
             }
+            self.stamp(4);
             // Translucent faces last, the farthest section first, so nearer
             // water blends over farther.
             let mut translucent: Vec<&SectionBuffers> = self
@@ -2513,6 +2565,7 @@ impl VulkanBackend {
                     0,
                 );
             }
+            self.stamp(5);
             // The clouds after the terrain, tested against and writing depth.
             if let Some(clouds) = self.cloud_buffer.as_ref()
                 && clouds.visible
@@ -2575,6 +2628,7 @@ impl VulkanBackend {
                         .cmd_draw(self.command_buffer, count, 1, first, 0);
                 }
             }
+            self.stamp(6);
             // The first-person hand last, over a cleared depth, with its own
             // projection and the camera at the origin of its view space.
             if let Some(buffer) = self.hand_buffer.as_ref()
@@ -2666,6 +2720,7 @@ impl VulkanBackend {
                     );
                 }
             }
+            self.stamp(7);
             // The GUI over everything, run by run in its blends.
             if let (Some(buffer), Some(set)) = (self.gui_buffer.as_ref(), scene.gui_set)
                 && !self.gui_batches.is_empty()
@@ -2757,6 +2812,7 @@ impl VulkanBackend {
             }
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
+            self.stamp(8);
         }
     }
 
@@ -3485,9 +3541,7 @@ impl VulkanBackend {
         // SAFETY: the fence wait leaves the GPU done with every section, and `take` empties each
         // list, so every range goes back to the arena once.
         unsafe {
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             for (_, section) in std::mem::take(&mut self.sections) {
                 self.destroy_section(section);
             }
@@ -3783,6 +3837,73 @@ impl VulkanBackend {
                 size,
                 used: 0,
             })
+        }
+    }
+
+    /// Wait until the frame in flight has finished. The wait is counted against the frame being
+    /// built, since that is the frame that stood still for it.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
+    unsafe fn wait_in_flight(&self) -> Result<(), VulkanError> {
+        let start = std::time::Instant::now();
+        // SAFETY: live handles; the fence is waited on, never reset, here.
+        let waited = unsafe {
+            self.device
+                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+        };
+        self.fence_wait.set(self.fence_wait.get() + start.elapsed());
+        waited.map_err(|result| VulkanError::Call("vkWaitForFences", result))
+    }
+
+    /// Write a timestamp after the work recorded so far, if the device can.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording, with the timestamp queries reset in it.
+    unsafe fn stamp(&self, query: u32) {
+        if let Some(queries) = &self.timestamps {
+            // SAFETY: recording (see `# Safety`), and the pool is live and owned by `self`.
+            unsafe {
+                self.device.cmd_write_timestamp(
+                    self.command_buffer,
+                    vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                    queries.pool,
+                    query,
+                );
+            }
+        }
+    }
+
+    /// Read back the last frame's timestamps, if it wrote any.
+    ///
+    /// # Safety
+    ///
+    /// The caller has waited on `in_flight`, so that frame has finished.
+    unsafe fn read_timestamps(&mut self) {
+        let Some(queries) = self.timestamps.as_mut().filter(|queries| queries.pending) else {
+            return;
+        };
+        queries.pending = false;
+        let mut ticks = [0_u64; TIMESTAMP_COUNT as usize];
+        // SAFETY: live pool; the frame that wrote it has finished (see `# Safety`). A pass the
+        // frame did not reach leaves the query unavailable and the call fails, which keeps the
+        // previous reading.
+        let read = unsafe {
+            self.device.get_query_pool_results(
+                queries.pool,
+                0,
+                &mut ticks,
+                vk::QueryResultFlags::TYPE_64,
+            )
+        };
+        if read.is_ok() {
+            queries.last = Some(GpuTimings::from_ticks(
+                &ticks,
+                queries.valid_bits,
+                queries.period_ns,
+            ));
         }
     }
 
@@ -4108,9 +4229,7 @@ impl VulkanBackend {
         // before it is overwritten.
         unsafe {
             // The previous frame may still be sampling the atlas.
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let mut staged = Vec::new();
             let mut copies = Vec::with_capacity(regions.len());
             let mut deepest = 0;
@@ -4412,6 +4531,17 @@ impl VulkanBackend {
                 self.device.free_memory(depth.memory, None);
             }
         }
+    }
+
+    /// The CPU time the last frame spent in the backend, by span.
+    pub fn timings(&self) -> BackendTimings {
+        self.timings
+    }
+
+    /// The GPU's time in each pass of the last frame whose timestamps have
+    /// been read back, or nothing when the device cannot write timestamps.
+    pub fn gpu_timings(&self) -> Option<GpuTimings> {
+        self.timestamps.as_ref().and_then(|queries| queries.last)
     }
 
     /// What the backend selected.
@@ -4918,9 +5048,7 @@ impl VulkanBackend {
         // is replaced only when too small, and the mapping covers `size` bytes of its host-
         // visible, coherent memory, which is at most its capacity, written before the unmap.
         unsafe {
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let size = bytes.len();
             if slot.as_ref().is_none_or(|buffer| buffer.capacity < size) {
                 if let Some(old) = slot.take() {
@@ -4956,9 +5084,7 @@ impl VulkanBackend {
         // SAFETY: as `fill_bytes`: the fence wait comes first, and the two copies are contiguous
         // within the mapped `size`.
         unsafe {
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let size = std::mem::size_of::<Vertex>() * (rain.len() + snow.len());
             if self
                 .weather_buffer
@@ -5008,9 +5134,7 @@ impl VulkanBackend {
         // buffer's capacity.
         unsafe {
             // The previous frame may still be reading the buffer.
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let bytes = as_bytes(vertices);
             if self
                 .cloud_buffer
@@ -5091,9 +5215,7 @@ impl VulkanBackend {
         // buffer's capacity.
         unsafe {
             // The previous frame may still be reading the buffer.
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let bytes = as_bytes(vertices);
             if self
                 .sky_buffer
@@ -5181,9 +5303,8 @@ impl VulkanBackend {
         // its resources are recycled; the command buffer is begun here and ended before the
         // submit, and the readback is mapped only after the fence has signalled.
         unsafe {
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
+            self.read_timestamps();
             for section in std::mem::take(&mut self.retired) {
                 self.destroy_section(section);
             }
@@ -5193,6 +5314,7 @@ impl VulkanBackend {
                 self.make_readback()?;
             }
 
+            let acquire_start = std::time::Instant::now();
             let (index, _) = match self.swapchain_device.acquire_next_image(
                 self.swapchain,
                 u64::MAX,
@@ -5206,6 +5328,7 @@ impl VulkanBackend {
                 }
                 Err(result) => return Err(VulkanError::Call("vkAcquireNextImageKHR", result)),
             };
+            self.timings.acquire = acquire_start.elapsed();
             self.device
                 .reset_fences(&[self.in_flight])
                 .map_err(|result| VulkanError::Call("vkResetFences", result))?;
@@ -5223,6 +5346,15 @@ impl VulkanBackend {
                         .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT),
                 )
                 .map_err(|result| VulkanError::Call("vkBeginCommandBuffer", result))?;
+            let record_start = std::time::Instant::now();
+            if let Some(queries) = &self.timestamps {
+                self.device.cmd_reset_query_pool(
+                    self.command_buffer,
+                    queries.pool,
+                    0,
+                    TIMESTAMP_COUNT,
+                );
+            }
             self.record_staged_copies();
 
             transition(
@@ -5309,7 +5441,9 @@ impl VulkanBackend {
             self.device
                 .end_command_buffer(self.command_buffer)
                 .map_err(|result| VulkanError::Call("vkEndCommandBuffer", result))?;
+            self.timings.record = record_start.elapsed();
 
+            let submit_start = std::time::Instant::now();
             let wait_semaphores = [self.image_available];
             let wait_stages = [vk::PipelineStageFlags::TRANSFER];
             let command_buffers = [self.command_buffer];
@@ -5336,13 +5470,17 @@ impl VulkanBackend {
                 | Err(vk::Result::SUBOPTIMAL_KHR) => self.out_of_date = true,
                 Err(result) => return Err(VulkanError::Call("vkQueuePresentKHR", result)),
             }
+            self.timings.submit_present = submit_start.elapsed();
+            self.timings.fence_wait = self.fence_wait.take();
+            let wrote_scene = self.scene.is_some();
+            if let Some(queries) = self.timestamps.as_mut() {
+                queries.pending = wrote_scene;
+            }
 
             if !capture {
                 return Ok(None);
             }
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            self.wait_in_flight()?;
             let byte_count =
                 (self.description.extent.width * self.description.extent.height * 4) as usize;
             let memory = self.readback.expect("made for the capture").1;
@@ -5427,6 +5565,9 @@ impl Drop for VulkanBackend {
             }
             self.device.destroy_semaphore(self.image_available, None);
             self.device.destroy_fence(self.in_flight, None);
+            if let Some(queries) = self.timestamps.take() {
+                self.device.destroy_query_pool(queries.pool, None);
+            }
             self.device.destroy_command_pool(self.command_pool, None);
             self.free_readback();
             self.swapchain_device
