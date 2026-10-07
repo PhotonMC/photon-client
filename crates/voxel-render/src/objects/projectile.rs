@@ -40,7 +40,9 @@ pub fn trident_pose(base: &Pose, y_rot: f32, x_rot: f32) -> Pose {
 /// has both faces of each at the same place, and only the one toward the eye is drawn.
 pub fn cull_back_faces(vertices: Vec<Vertex>, camera: [f32; 3]) -> Vec<Vertex> {
     vertices
-        .chunks_exact(6)
+        .as_chunks::<6>()
+        .0
+        .iter()
         .filter(|quad| {
             let [nx, ny, nz, _] = quad[0].tint;
             let at = quad[0].position;

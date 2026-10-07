@@ -192,7 +192,13 @@ pub fn permute(
         return None;
     }
     let mut palette: HashMap<[u8; 3], [u8; 4]> = HashMap::new();
-    for (key, value) in keys.rgba.chunks_exact(4).zip(values.rgba.chunks_exact(4)) {
+    for (key, value) in keys
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(values.rgba.as_chunks::<4>().0.iter())
+    {
         if key[3] != 0 {
             palette.insert(
                 [key[0], key[1], key[2]],
@@ -201,7 +207,7 @@ pub fn permute(
         }
     }
     let mut out = image.clone();
-    for pixel in out.rgba.chunks_exact_mut(4) {
+    for pixel in out.rgba.as_chunks_mut::<4>().0.iter_mut() {
         if pixel[3] == 0 {
             continue;
         }

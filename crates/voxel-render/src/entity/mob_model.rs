@@ -174,7 +174,9 @@ mod tests {
         let placement = MobPlacement::default();
         let area = |vertices: &[Vertex]| -> f32 {
             vertices
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|triangle| {
                     let [a, b, c] = [triangle[0].uv, triangle[1].uv, triangle[2].uv];
                     ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])).abs() / 2.0
@@ -220,11 +222,11 @@ mod tests {
         };
         let mut shell = mob_vertices(&outer, &placement, [0.0, 0.0, 1.0, 1.0]);
         sort_translucent_quads(&mut shell, [0.0; 3]);
-        let distance = |quad: &[Vertex]| -> f32 {
+        let distance = |quad: &[Vertex; 6]| -> f32 {
             let centre = |axis: usize| (quad[0].position[axis] + quad[2].position[axis]) / 2.0;
             centre(0).powi(2) + centre(1).powi(2) + centre(2).powi(2)
         };
-        let distances: Vec<f32> = shell.chunks_exact(6).map(distance).collect();
+        let distances: Vec<f32> = shell.as_chunks::<6>().0.iter().map(distance).collect();
         assert_eq!(distances.len(), 6);
         assert!(
             distances.windows(2).all(|pair| pair[0] >= pair[1]),

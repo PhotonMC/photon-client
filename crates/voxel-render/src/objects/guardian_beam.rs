@@ -126,7 +126,7 @@ pub fn beam_triangles(beam: &Beam, texture: TextureRect) -> Vec<Vertex> {
     );
     let light = crate::block::light::light_uv(BEAM_LIGHT);
     let mut triangles = Vec::new();
-    for quad in beam.vertices.chunks_exact(4) {
+    for quad in beam.vertices.as_chunks::<4>().0.iter() {
         for corners in repeats(quad) {
             for index in [0, 1, 2, 0, 2, 3] {
                 let (position, coordinate) = corners[index];

@@ -113,8 +113,9 @@ pub fn remote_paintings(
         );
         let pose = painting_pose(&base, direction.data2d());
         let lights = block_lights(world, center, direction, size);
-        for quad in
-            painting_vertices(&pose, size, &lights, (sprite(front), sprite(back))).chunks_exact(4)
+        for quad in painting_vertices(&pose, size, &lights, (sprite(front), sprite(back)))
+            .as_chunks::<4>()
+            .0
         {
             vertices.extend([0, 1, 2, 0, 2, 3].map(|index| vertex(&quad[index])));
         }

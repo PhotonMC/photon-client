@@ -170,7 +170,9 @@ pub fn sort_translucent_quads(vertices: &mut [Vertex], camera: [f32; 3]) {
         x * x + y * y + z * z
     };
     let mut quads: Vec<(f32, [Vertex; 6])> = vertices
-        .chunks_exact(6)
+        .as_chunks::<6>()
+        .0
+        .iter()
         .map(|quad| {
             (
                 key(quad),
@@ -180,7 +182,7 @@ pub fn sort_translucent_quads(vertices: &mut [Vertex], camera: [f32; 3]) {
         .collect();
     // A stable sort, as the reference's merge sort is.
     quads.sort_by(|a, b| b.0.total_cmp(&a.0));
-    for (slot, (_, quad)) in vertices.chunks_exact_mut(6).zip(quads) {
+    for (slot, (_, quad)) in vertices.as_chunks_mut::<6>().0.iter_mut().zip(quads) {
         slot.copy_from_slice(&quad);
     }
 }

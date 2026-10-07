@@ -70,7 +70,7 @@ impl ArmorStandState {
             if let Some((ROTATIONS_SERIALIZER_ID, value)) = find_metadata_field(metadata, data_id)
                 && let Some(bytes) = value.get(..12)
             {
-                for (axis, chunk) in pose.iter_mut().zip(bytes.chunks_exact(4)) {
+                for (axis, chunk) in pose.iter_mut().zip(bytes.as_chunks::<4>().0.iter()) {
                     *axis = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 }
             }

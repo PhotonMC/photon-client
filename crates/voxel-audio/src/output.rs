@@ -65,7 +65,7 @@ impl Output {
         }
         for (frame, pair) in data
             .chunks_exact_mut(channels.max(1))
-            .zip(stereo.chunks_exact(2))
+            .zip(stereo.as_chunks::<2>().0.iter())
         {
             frame.fill(0.0);
             frame[0] = pair[0];

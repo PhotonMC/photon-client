@@ -112,7 +112,9 @@ pub(super) fn palette_permutation_result(request: &Value) -> Result<Value, Strin
         // The reference prints each pixel as `0xAARRGGBB`.
         let pixels: String = mapped
             .rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| format!("{:02x}{:02x}{:02x}{:02x}", p[3], p[0], p[1], p[2]))
             .collect();
         out.push(json!({"label": row["label"], "outcome": "mapped", "pixels": pixels}));

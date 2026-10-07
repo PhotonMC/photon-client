@@ -60,7 +60,7 @@ pub fn string_vertices(pose: &Pose, offset: [f32; 3]) -> Vec<StringVertex> {
 /// two triangles, its ends pulled a little towards `camera` as every line is.
 pub fn string_strips(vertices: &[StringVertex], camera: [f32; 3], width: f32) -> Vec<LineVertex> {
     let mut strips = Vec::new();
-    for segment in vertices.chunks_exact(2) {
+    for segment in vertices.as_chunks::<2>().0.iter() {
         let vertex = |end: StringVertex, side: f32| LineVertex {
             position: crate::block::outline::pull_towards(end.position, camera),
             colour: COLOUR,

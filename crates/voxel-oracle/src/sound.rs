@@ -359,7 +359,9 @@ pub(super) fn sound_decode_result(request: &Value) -> Result<Value, String> {
         })?;
         let within = expected.len() == pcm.samples.len() * 2
             && expected
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .zip(&pcm.samples)
                 .all(|(bytes, sample)| {
                     (i32::from(i16::from_le_bytes([bytes[0], bytes[1]])) - i32::from(*sample)).abs()

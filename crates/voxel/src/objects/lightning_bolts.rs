@@ -31,7 +31,7 @@ pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: Fra
             (y - f64::from(view.origin[1])) as f32,
             (z - f64::from(view.origin[2])) as f32,
         );
-        for quad in lightning_bolt(&base, state.seed()).chunks_exact(4) {
+        for quad in lightning_bolt(&base, state.seed()).as_chunks::<4>().0 {
             models
                 .rays
                 .extend([0, 1, 2, 0, 2, 3].map(|index| ray_vertex(quad[index])));

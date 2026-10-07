@@ -279,7 +279,7 @@ impl GuiFrame {
         }
         let first = mark.vertices;
         let (left, top, right, bottom) = (left as f32, top as f32, right as f32, bottom as f32);
-        for quad in self.vertices[first..].chunks_exact_mut(6) {
+        for quad in self.vertices[first..].as_chunks_mut::<6>().0.iter_mut() {
             let xs = quad.iter().map(|vertex| vertex.position[0]);
             let ys = quad.iter().map(|vertex| vertex.position[1]);
             let (x0, x1) = (
