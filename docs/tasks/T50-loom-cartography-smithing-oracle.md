@@ -19,4 +19,6 @@ Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 `docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-(boş)
+- Yapıldı: `container_screen` oracle'ına cartography (boş, kâğıt, cam) ve smithing (boş, netherite şablonu, süs şablonu + zırh) satırları; smithing'in `CyclingSlotBackground`'u Rust'ta (`Screen::tick`, `ScreenDraw::partial`, şablona göre taban/ek simgeleri, 30 tikte bir dönüş ve 4 tikte solma; oyunda `play.rs` her tikte ekranı tikler).
+- Sapma: Java simgeleri `containerTick`'ten sonra çizer, oracle smithing için bir kez tikler. Oracle `AtlasManager`'sız olduğundan dolu loom (afiş desenleri) satırı yok; cartography'de harita yok. Zırh askısı önizlemesi çizilmiyor.
+- Açık: loom desen listesi oracle'ı (afiş atlası kurulumu), harita önizlemesi (T40g2'nin `MapRenderer`'ı ile), zırh askısı önizlemesi.

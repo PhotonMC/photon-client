@@ -179,7 +179,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (f64024d2) |
-| [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | açık |
+| [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | bitti (HASH) |
 | [T51](T51-anvil-sonuc-tahmini.md) | Örs ve taş çarkı sonucunun istemci tahmini | L | – | açık |
 | [T52](T52-ipucu-bilesen-hash.md) | Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması | M | – | açık |
 | [T53](T53-beacon.md) | İşaret ışığı menüsü ve ekranı (`SetBeacon`) | M | T50 | açık |

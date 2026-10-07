@@ -460,6 +460,9 @@ impl Play {
             sound.apply_volumes(&self.controls.options);
             sound.tick(self.session.world(), false);
         }
+        if let Some(screen) = self.controls.screen.as_mut() {
+            screen.tick(self.session.active_menu());
+        }
         let session = &mut self.session;
         // `Minecraft.handleKeybinds`: the attack key is spent before the
         // player moves, aiming the way `GameRenderer.pick` aims.

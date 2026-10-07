@@ -289,6 +289,12 @@ impl GenericScreen {
 }
 
 impl Screen for GenericScreen {
+    fn tick(&mut self, menu: &ContainerMenu) {
+        if self.kind == MenuKind::Smithing {
+            self.extras.tick_smithing(menu);
+        }
+    }
+
     fn resize(&mut self, width: i32, height: i32) {
         self.layout = ContainerLayout::new(width, height, image(self.kind));
         if let Some(book) = &mut self.book {
@@ -495,6 +501,9 @@ impl Screen for GenericScreen {
         );
         self.hovered = self.hovered_slot(mouse);
         let kind = self.kind;
+        if kind == MenuKind::Smithing {
+            self.extras.draw_smithing_icons(draw, menu, (left, top));
+        }
         if let Some(slot) = self.hovered {
             self.layout
                 .highlight(draw, slot_position(kind, slot), false);

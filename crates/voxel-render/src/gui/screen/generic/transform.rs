@@ -65,8 +65,6 @@ pub(super) fn empty_icon(kind: MenuKind, index: usize) -> Option<&'static str> {
         (MenuKind::Loom, 1) => Some("container/slot/dye"),
         (MenuKind::Loom, 2) => Some("container/slot/banner_pattern"),
         (MenuKind::Enchantment, 1) => Some("container/slot/lapis_lazuli"),
-        // The template slot cycles two icons; the first is shown.
-        (MenuKind::Smithing, 0) => Some("container/slot/smithing_template_armor_trim"),
         _ => None,
     }
 }
@@ -109,7 +107,96 @@ pub(super) struct Extras {
     /// uneditable).
     named_item: Option<(String, bool)>,
     queued: Vec<ScreenAction>,
+    /// The smithing table's three slot backgrounds that cycle their icons.
+    cycling: [CyclingIcons; 3],
 }
+
+/// `CyclingSlotBackground`: the icons an empty slot shows in turn, a new one every 30 ticks and
+/// faded in over the first four.
+#[derive(Debug, Clone, Default)]
+struct CyclingIcons {
+    icons: &'static [&'static str],
+    tick: i32,
+    index: usize,
+}
+
+impl CyclingIcons {
+    fn tick(&mut self, icons: &'static [&'static str]) {
+        if self.icons != icons {
+            self.icons = icons;
+            self.index = 0;
+        }
+        if !self.icons.is_empty() {
+            self.tick += 1;
+            if self.tick % 30 == 0 {
+                self.index = (self.index + 1) % self.icons.len();
+            }
+        }
+    }
+
+    fn draw(&self, draw: &mut ScreenDraw<'_, '_>, (x, y): (i32, i32)) {
+        if self.icons.is_empty() {
+            return;
+        }
+        let transition = self.icons.len() > 1 && self.tick >= 30;
+        let alpha = if transition {
+            ((self.tick % 30) as f32 + draw.partial).min(4.0) / 4.0
+        } else {
+            1.0
+        };
+        if alpha < 1.0 {
+            let previous = (self.index + self.icons.len() - 1) % self.icons.len();
+            self.icon(draw, self.icons[previous], 1.0 - alpha, (x, y));
+        }
+        self.icon(draw, self.icons[self.index], alpha, (x, y));
+    }
+
+    /// `blitSprite` in `ARGB.white(alpha)`.
+    fn icon(&self, draw: &mut ScreenDraw<'_, '_>, name: &str, alpha: f32, (x, y): (i32, i32)) {
+        let channel = (alpha * 255.0).floor() as u32;
+        draw.frame.sprite_tinted(
+            draw.atlas,
+            name,
+            (x, y, 16, 16),
+            channel << 24 | 0x00FF_FFFF,
+        );
+    }
+}
+
+/// The icons the empty slots of the smithing table cycle through, by template (`SmithingTemplateItem`).
+const TEMPLATE_ICONS: [&str; 2] = [
+    "container/slot/smithing_template_armor_trim",
+    "container/slot/smithing_template_netherite_upgrade",
+];
+const TRIM_BASE: [&str; 4] = [
+    "container/slot/helmet",
+    "container/slot/chestplate",
+    "container/slot/leggings",
+    "container/slot/boots",
+];
+const TRIM_ADDITION: [&str; 7] = [
+    "container/slot/ingot",
+    "container/slot/redstone_dust",
+    "container/slot/lapis_lazuli",
+    "container/slot/quartz",
+    "container/slot/diamond",
+    "container/slot/emerald",
+    "container/slot/amethyst_shard",
+];
+const UPGRADE_BASE: [&str; 11] = [
+    "container/slot/helmet",
+    "container/slot/sword",
+    "container/slot/chestplate",
+    "container/slot/pickaxe",
+    "container/slot/leggings",
+    "container/slot/axe",
+    "container/slot/boots",
+    "container/slot/hoe",
+    "container/slot/shovel",
+    "container/slot/nautilus_armor",
+    "container/slot/spear",
+];
+const UPGRADE_ADDITION: [&str; 1] = ["container/slot/ingot"];
 
 impl Extras {
     pub(super) fn new() -> Self {
@@ -131,6 +218,42 @@ impl Extras {
             item_name: None,
             named_item: None,
             queued: Vec::new(),
+            cycling: Default::default(),
+        }
+    }
+
+    /// `SmithingScreen.containerTick`: the icons of the three slots, for the template in the first.
+    pub(super) fn tick_smithing(&mut self, menu: &ContainerMenu) {
+        let template =
+            menu.slots.first().and_then(Option::as_ref).map(|stack| {
+                voxel_data::item::registry::ITEMS[stack.item_registry_id() as usize].name
+            });
+        let (base, addition): (&'static [&'static str], &'static [&'static str]) = match template {
+            Some("minecraft:netherite_upgrade_smithing_template") => {
+                (&UPGRADE_BASE, &UPGRADE_ADDITION)
+            }
+            Some(name) if name.ends_with("_armor_trim_smithing_template") => {
+                (&TRIM_BASE, &TRIM_ADDITION)
+            }
+            _ => (&[], &[]),
+        };
+        self.cycling[0].tick(&TEMPLATE_ICONS);
+        self.cycling[1].tick(base);
+        self.cycling[2].tick(addition);
+    }
+
+    /// The icons of the empty smithing slots, behind everything else the screen draws.
+    pub(super) fn draw_smithing_icons(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        (left, top): (i32, i32),
+    ) {
+        for (index, icons) in self.cycling.iter().enumerate() {
+            let empty = menu.slots.get(index).is_none_or(Option::is_none);
+            if let (true, Some((x, y))) = (empty, slot_position(MenuKind::Smithing, index)) {
+                icons.draw(draw, (left + x, top + y));
+            }
         }
     }
 }

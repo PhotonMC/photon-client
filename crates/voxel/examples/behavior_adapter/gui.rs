@@ -1426,6 +1426,10 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 let (width, height) = (int("width"), int("height"));
                 let mut screen = GenericScreen::new(menu.kind, width, height, titles);
                 let mouse = (f64::from(int("mouse_x")), f64::from(int("mouse_y")));
+                // The smithing table's empty slots show their icons once it has ticked.
+                if menu.kind == voxel_game::container_menu::MenuKind::Smithing {
+                    screen.tick(&menu);
+                }
                 let mut steps = Vec::new();
                 let mut keys = vec![String::new()];
                 keys.extend(
@@ -1482,6 +1486,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                         book: &book,
                         tags: &tags,
                         control_held: false,
+                        partial: 0.0,
                     };
                     screen.build(&mut draw, &menu, mouse);
                     steps.push(json!({

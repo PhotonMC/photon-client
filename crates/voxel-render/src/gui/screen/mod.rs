@@ -44,6 +44,8 @@ pub struct ScreenDraw<'a, 'b> {
     pub tags: &'a voxel_world::block::tags::ItemTags,
     /// `Minecraft.hasControlDown`: the recipe book's clock stops while it is.
     pub control_held: bool,
+    /// The fraction of the tick the frame is drawn at.
+    pub partial: f32,
 }
 
 /// A click a screen asks the session to run.
@@ -144,6 +146,9 @@ pub trait Screen {
     /// A click a script asks for on a slot of the screen's layout, or -999
     /// outside it.
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction;
+
+    /// `AbstractContainerScreen.containerTick`, once a client tick.
+    fn tick(&mut self, _menu: &ContainerMenu) {}
 
     /// `extractRenderState`.
     fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64));

@@ -2734,6 +2734,12 @@ public final class GuiOracle {
                     case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
                         (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
                         Component.translatable("container.grindstone_title"));
+                    case "minecraft:cartography_table" -> new net.minecraft.client.gui.screens.inventory.CartographyTableScreen(
+                        (net.minecraft.world.inventory.CartographyTableMenu) menu, inventory,
+                        Component.translatable("container.cartography_table"));
+                    case "minecraft:smithing" -> new net.minecraft.client.gui.screens.inventory.SmithingScreen(
+                        (net.minecraft.world.inventory.SmithingMenu) menu, inventory,
+                        Component.translatable("container.upgrade"));
                     case "minecraft:enchantment" -> new net.minecraft.client.gui.screens.inventory.EnchantmentScreen(
                         (net.minecraft.world.inventory.EnchantmentMenu) menu, inventory,
                         Component.translatable("container.enchant"));
@@ -2746,6 +2752,13 @@ public final class GuiOracle {
             var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(screen);
+            if (menu instanceof net.minecraft.world.inventory.SmithingMenu) {
+                // Its empty slots show their icons once the screen has ticked.
+                var tick = net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class
+                    .getDeclaredMethod("containerTick");
+                tick.setAccessible(true);
+                tick.invoke(screen);
+            }
             if (row.has("sync_slot")) {
                 // The server's update of a slot, as the screen hears it.
                 int slot = row.get("sync_slot").getAsInt();
