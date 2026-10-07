@@ -178,7 +178,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
-| [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (HASH) |
+| [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (f64024d2) |
 | [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | açık |
 | [T51](T51-anvil-sonuc-tahmini.md) | Örs ve taş çarkı sonucunun istemci tahmini | L | – | açık |
 | [T52](T52-ipucu-bilesen-hash.md) | Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması | M | – | açık |
