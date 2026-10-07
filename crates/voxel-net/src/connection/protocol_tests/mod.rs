@@ -117,7 +117,10 @@ fn write_component_fixture(codec: InventoryComponentCodec, output: &mut Vec<u8>)
 }
 
 mod entities;
-mod inventory;
-mod misc;
+mod inventory_1;
+mod inventory_2;
+mod inventory_3;
+mod misc_1;
+mod misc_2;
 mod player;
 mod world;
