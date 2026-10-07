@@ -23671,6 +23671,47 @@ fn chest_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// `shulker_box_pose`: where, with what lid, light and texture a shulker box is drawn.
+fn shulker_box_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::MobModel;
+    use voxel_render::shulker_box::{LAYER, box_pose, texture};
+    let layer = voxel_data::entity_model::layer(LAYER).ok_or("no such layer")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(row[key].as_str().ok_or(key.to_owned())?, 16)
+                    .map_err(|error| error.to_string())?,
+            ))
+        };
+        let facing =
+            voxel_core::direction::Direction::from_name(row["facing"].as_str().ok_or("facing")?)
+                .ok_or("facing")?;
+        let mut base = Pose::default();
+        base.translate(float("x")?, float("y")?, float("z")?);
+        let pose = box_pose(&base, facing);
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        let mut model = MobModel::bake(layer);
+        model.setup_shulker_box(float("progress")?);
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": matrix,
+            "progress": format!("{:08x}", float("progress")?.to_bits()),
+            "light": row["light"],
+            "texture": texture(row["color"].as_str()),
+            "quads": posed_quads(&model),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
 fn camera_hurt_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
@@ -25942,6 +25983,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "camera_hurt" => return camera_hurt_result(request),
         "chest_model" => return chest_model_result(request),
         "chest_pose" => return chest_pose_result(request),
+        "shulker_box_pose" => return shulker_box_pose_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),

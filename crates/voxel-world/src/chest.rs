@@ -1,8 +1,9 @@
-//! The chests the client draws (`ChestBlockEntity`, `EnderChestBlockEntity`): which blocks they
-//! are, the partner half of a double chest, and the lid that opens and shuts as the server's
-//! block events say.
+//! The chests and shulker boxes the client draws (`ChestBlockEntity`, `EnderChestBlockEntity`,
+//! `ShulkerBoxBlockEntity`): which blocks they are, the partner half of a double chest, and the
+//! lid that opens and shuts as the server's block events say.
 
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use voxel_core::direction::Direction;
 use voxel_data::block::classes::BlockClass;
@@ -34,21 +35,100 @@ impl ChestLid {
     }
 }
 
-/// Whether a block state is a chest's (the blocks `ChestBlock` and `EnderChestBlock` make).
-pub(crate) fn is_chest_state(state_id: i32) -> bool {
-    use std::sync::OnceLock;
-    static CHEST_BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
-    let chests = CHEST_BLOCKS.get_or_init(|| {
+/// `ShulkerBoxBlockEntity`'s lid: how far the box is open, which a block event starts and the
+/// tick carries on at a tenth a tick.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct ShulkerLid {
+    status: ShulkerStatus,
+    progress: f32,
+    progress_old: f32,
+}
+
+/// `ShulkerBoxBlockEntity.AnimationStatus`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum ShulkerStatus {
+    #[default]
+    Closed,
+    Opening,
+    Opened,
+    Closing,
+}
+
+impl ShulkerLid {
+    /// `updateAnimation` (without the neighbour updates and the pushing of entities).
+    fn tick(&mut self) {
+        self.progress_old = self.progress;
+        match self.status {
+            ShulkerStatus::Closed => self.progress = 0.0,
+            ShulkerStatus::Opening => {
+                self.progress += 0.1;
+                if self.progress >= 1.0 {
+                    self.status = ShulkerStatus::Opened;
+                    self.progress = 1.0;
+                }
+            }
+            ShulkerStatus::Opened => self.progress = 1.0,
+            ShulkerStatus::Closing => {
+                self.progress -= 0.1;
+                if self.progress <= 0.0 {
+                    self.status = ShulkerStatus::Closed;
+                    self.progress = 0.0;
+                }
+            }
+        }
+    }
+
+    /// `triggerEvent` for event 1: a count of one opens the box, none shuts it.
+    fn trigger(&mut self, count: u8) {
+        if count == 0 {
+            self.status = ShulkerStatus::Closing;
+        }
+        if count == 1 {
+            self.status = ShulkerStatus::Opening;
+        }
+    }
+
+    /// `getProgress`: `Mth.lerp(a, old, now)`.
+    fn progress(&self, partial: f32) -> f32 {
+        self.progress_old + partial * (self.progress - self.progress_old)
+    }
+}
+
+/// A table of which blocks are of some classes, by the block's registry id.
+fn is_of_classes(
+    state_id: i32,
+    classes: &[BlockClass],
+    table: &'static OnceLock<Vec<bool>>,
+) -> bool {
+    let blocks = table.get_or_init(|| {
         voxel_data::block::registry::BLOCKS
             .iter()
-            .map(|block| {
-                block.class.is(BlockClass::ChestBlock)
-                    || block.class.is(BlockClass::EnderChestBlock)
-            })
+            .map(|block| classes.iter().any(|class| block.class.is(*class)))
             .collect()
     });
     let block = crate::block::state_or_air(i64::from(state_id)).block;
-    chests.get(usize::from(block)).copied().unwrap_or(false)
+    blocks.get(usize::from(block)).copied().unwrap_or(false)
+}
+
+/// Whether a block state is a chest's (the blocks `ChestBlock` and `EnderChestBlock` make).
+pub(crate) fn is_chest_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(
+        state_id,
+        &[BlockClass::ChestBlock, BlockClass::EnderChestBlock],
+        &BLOCKS,
+    )
+}
+
+/// Whether a block state is a shulker box's.
+pub(crate) fn is_shulker_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::ShulkerBoxBlock], &BLOCKS)
+}
+
+/// Whether a block state has a lid the client draws.
+pub(crate) fn is_lidded_state(state_id: i32) -> bool {
+    is_chest_state(state_id) || is_shulker_state(state_id)
 }
 
 /// The chest blocks of a chunk's sections.
@@ -63,7 +143,7 @@ pub(crate) fn chests_of(
             continue;
         }
         for index in 0..4096 {
-            if section.block_states.get(index).is_some_and(is_chest_state) {
+            if section.block_states.get(index).is_some_and(is_lidded_state) {
                 found.insert((
                     chunk_x * 16 + (index % 16) as i32,
                     section_y * 16 + (index / 256) as i32,
@@ -87,15 +167,34 @@ pub struct ChestView {
     pub partner: Option<(i32, i32, i32)>,
 }
 
+/// What a shulker box block is, for drawing it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ShulkerBoxView {
+    /// The dye of the box (`red`), none for the undyed one.
+    pub color: Option<&'static str>,
+    pub facing: Direction,
+}
+
 /// The lids the server has opened, by block.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct ChestLids(pub(crate) HashMap<(i32, i32, i32), ChestLid>);
+pub(crate) struct ChestLids {
+    pub(crate) chests: HashMap<(i32, i32, i32), ChestLid>,
+    pub(crate) shulkers: HashMap<(i32, i32, i32), ShulkerLid>,
+}
 
 impl ChestLids {
     pub(crate) fn tick(&mut self) {
-        for lid in self.0.values_mut() {
+        for lid in self.chests.values_mut() {
             lid.tick();
         }
+        for lid in self.shulkers.values_mut() {
+            lid.tick();
+        }
+    }
+
+    pub(crate) fn remove(&mut self, pos: &(i32, i32, i32)) {
+        self.chests.remove(pos);
+        self.shulkers.remove(pos);
     }
 }
 
@@ -165,7 +264,7 @@ impl ClientWorld {
     ) -> f32 {
         let own = |pos: (i32, i32, i32)| {
             self.chest_lids
-                .0
+                .chests
                 .get(&pos)
                 .map_or(0.0, |lid| lid.openness(partial))
         };
@@ -175,14 +274,55 @@ impl ClientWorld {
         }
     }
 
-    /// `ClientLevel.blockEvent` on a chest: event 1 opens the lid for a positive count, shuts it
-    /// for none.
+    /// The shulker box at a block.
+    pub fn shulker_box_view(&self, x: i32, y: i32, z: i32) -> Option<ShulkerBoxView> {
+        let state = self.block_state_at(x, y, z)?;
+        if !is_shulker_state(state) {
+            return None;
+        }
+        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        // `minecraft:shulker_box` is undyed, the rest are `minecraft:<dye>_shulker_box`.
+        let color = name
+            .strip_prefix("minecraft:")
+            .and_then(|name| name.strip_suffix("_shulker_box"));
+        // `ShulkerBoxRenderer.extractRenderState`: a box without a facing faces up.
+        let facing = crate::local_player::property(Some(state), "facing")
+            .and_then(Direction::from_name)
+            .unwrap_or(Direction::Up);
+        Some(ShulkerBoxView { color, facing })
+    }
+
+    /// How far a shulker box is open (`getProgress`).
+    pub fn shulker_box_progress(&self, pos: (i32, i32, i32), partial: f32) -> f32 {
+        self.chest_lids
+            .shulkers
+            .get(&pos)
+            .map_or(0.0, |lid| lid.progress(partial))
+    }
+
+    /// `ClientLevel.blockEvent` on a chest or a shulker box: event 1 opens the lid for a positive
+    /// count, shuts it for none (a box opens for one only).
     pub fn apply_chest_block_event(&mut self, pos: (i32, i32, i32), event: u8, count: u8) -> bool {
-        if event != 1 || self.chest_view(pos.0, pos.1, pos.2).is_none() {
+        if event != 1 {
             return false;
         }
-        self.chest_lids.0.entry(pos).or_default().should_be_open = count > 0;
-        true
+        if self.chest_view(pos.0, pos.1, pos.2).is_some() {
+            self.chest_lids
+                .chests
+                .entry(pos)
+                .or_default()
+                .should_be_open = count > 0;
+            return true;
+        }
+        if self.shulker_box_view(pos.0, pos.1, pos.2).is_some() {
+            self.chest_lids
+                .shulkers
+                .entry(pos)
+                .or_default()
+                .trigger(count);
+            return true;
+        }
+        false
     }
 
     /// The chests, double ones once each half, around a block column within a distance in chunks.
@@ -202,7 +342,29 @@ impl ClientWorld {
 
 #[cfg(test)]
 mod tests {
-    use super::ChestLid;
+    use super::{ChestLid, ShulkerLid};
+
+    #[test]
+    fn shulker_lid_opens_then_stays_open_and_closes() {
+        let mut lid = ShulkerLid::default();
+        lid.trigger(1);
+        for _ in 0..9 {
+            lid.tick();
+        }
+        assert!(lid.progress < 1.0);
+        lid.tick();
+        lid.tick();
+        assert_eq!(lid.progress, 1.0);
+        // Another opener changes nothing; the last one leaving closes it.
+        lid.trigger(2);
+        lid.tick();
+        assert_eq!(lid.progress, 1.0);
+        lid.trigger(0);
+        for _ in 0..11 {
+            lid.tick();
+        }
+        assert_eq!(lid.progress, 0.0);
+    }
 
     #[test]
     fn lid_opens_a_tenth_a_tick_and_closes_the_same_way() {

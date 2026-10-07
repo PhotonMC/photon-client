@@ -48,6 +48,7 @@ pub mod rotation;
 pub mod scene;
 pub mod section_workers;
 pub mod shadow;
+pub mod shulker_box;
 pub mod skull;
 pub mod sky;
 pub mod spear_animation;

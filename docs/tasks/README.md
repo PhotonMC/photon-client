@@ -187,7 +187,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T77](T77-esya-parcaciklari.md) | Eşya parçacıkları ve eşya toplama animasyonu | M | T70, T25 | açık |
 | [T78](T78-seviye-olaylari.md) | `LevelEvent` ve `BlockEvent` işleyicileri | L | T71, T64b | açık |
 | [T79](T79-blok-entity-cizici-iskeleti.md) | Blok entity çizici iskeleti ve sandık ailesi | L | – | bitti (864fe2b0) |
-| [T79b](T79b-shulker-yatak.md) | Shulker kutusu ve yatak çizimi | M | T79 | açık |
+| [T79b](T79b-shulker-yatak.md) | Shulker kutusu çizimi | M | T79 | bitti |
 | [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | açık |
 | [T81](T81-isin-ve-portal-blok-entity.md) | Işın, portal ve efektli blok entity'ler | M | T79 | açık |
 | [T82](T82-spawner-vault-kafes.md) | Spawner, vault ve deneme spawner'ı çizimi | M | T79, T24 | açık |

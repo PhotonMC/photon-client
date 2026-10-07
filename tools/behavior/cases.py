@@ -16071,6 +16071,7 @@ def entity_cases():
     yield from entity_equippable_cases()
     yield from entity_camera_hurt_cases()
     yield from entity_chest_cases()
+    yield from entity_shulker_box_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17973,6 +17974,25 @@ def entity_chest_cases():
                       "open": float_bits(open_), "light": 240, "x": float_bits(-4.5),
                       "y": float_bits(2.0), "z": float_bits(-0.5)})
     yield {"case_id": "entity/chest-pose", "family": "entity", "operation": "chest_pose", "rows": poses}
+
+
+def entity_shulker_box_cases():
+    """Where the real `ShulkerBoxRenderer` draws a box of each colour, facing and lid progress, and
+    the model with the lid set for it."""
+    colors = ["white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+              "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"]
+    rows = []
+    for facing in ("down", "up", "north", "south", "west", "east"):
+        for progress in (0.0, 0.3, 1.0):
+            rows.append({"label": f"{facing} {progress}", "color": None, "facing": facing,
+                         "progress": float_bits(progress), "light": 0xF000F0 - 17,
+                         "x": float_bits(3.0), "y": float_bits(-1.25), "z": float_bits(7.5)})
+    for color in colors:
+        rows.append({"label": color, "color": color, "facing": "up", "progress": float_bits(0.5),
+                     "light": 15728880, "x": float_bits(0.0), "y": float_bits(0.0),
+                     "z": float_bits(0.0)})
+    yield {"case_id": "entity/shulker-box-pose", "family": "entity", "operation": "shulker_box_pose",
+           "rows": rows}
 
 
 def entity_equippable_cases():

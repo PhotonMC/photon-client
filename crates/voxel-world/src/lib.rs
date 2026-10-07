@@ -96,7 +96,7 @@ pub mod wolf;
 pub use block_entity::*;
 pub use block_state::*;
 pub use border::*;
-pub use chest::ChestView;
+pub use chest::{ChestView, ShulkerBoxView};
 pub use chunk::*;
 pub use collision::*;
 pub use constants::*;
@@ -3407,9 +3407,9 @@ impl ClientWorld {
         // empty or not, and of a change in how light passes the block.
         let is_empty = section.has_only_air();
         // A chest block has its own block entity on the client, and a lid that goes with it.
-        self.chest_lids.0.remove(&(x, y, z));
+        self.chest_lids.remove(&(x, y, z));
         if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
-            if chest::is_chest_state(state_id) {
+            if chest::is_lidded_state(state_id) {
                 chunk.chests.insert((x, y, z));
             } else {
                 chunk.chests.remove(&(x, y, z));

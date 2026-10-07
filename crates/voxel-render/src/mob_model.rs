@@ -2816,6 +2816,18 @@ impl MobModel {
         }
     }
 
+    /// `ShulkerBoxModel.setupAnim`: the lid rises half a block and turns three quarters of a
+    /// circle as the box opens.
+    pub fn setup_shulker_box(&mut self, progress: f32) {
+        self.root.reset();
+        if let Some(lid) = self.root.child_mut("lid") {
+            lid.x = 0.0;
+            lid.y = 24.0 - progress * 0.5 * 16.0;
+            lid.z = 0.0;
+            lid.y_rot = 270.0 * progress * (std::f64::consts::PI / 180.0) as f32;
+        }
+    }
+
     /// `AbstractBoatModel.setupAnim`: each paddle swings by the time it has
     /// rowed (the right one mirrored).
     pub fn setup_boat(&mut self, state: &crate::boat::BoatRenderState) {

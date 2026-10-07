@@ -1,4 +1,4 @@
-# T79 — Sandık blok entity çizimi — [client-parity]
+# T79 — Sandık ve shulker kutusu blok entity çizimi — [client-parity]
 
 Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
@@ -15,5 +15,14 @@ Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::ches
 ## Sapmalar ve açık kalanlar
 
 - Noel dokusu (`CHRISTMAS`) modelde ve oracle'da var, oyunda tarih denetimi yok: yalnız normal doku kullanılır.
-- Sandık sesleri (açılış/kapanış) [T78](tasks/T78-seviye-olaylari.md)'dedir; shulker kutusu ve yatak çizimi bu görevin kalanı olan [T79b](tasks/T79b-shulker-yatak.md)'dedir.
+- Sandık sesleri (açılış/kapanış) [T78](tasks/T78-seviye-olaylari.md)'dedir.
 - Canlıda tek, çift, tuzaklı, bakır ve ender sandığı görüldü; kapak hareketi canlıda ayrıca denenmedi (kapak denetleyicisi birim testle sınandı).
+
+## Shulker kutusu (T79b)
+
+Gerçek `ShulkerBoxRenderer.submit` ile Rust `voxel_render::shulker_box` aynı girdide karşılaştırılır (`entity/shulker-box-pose`, 34 satır: altı yön × üç ilerleme, on altı renk): matris, ilerleme, ışık, doku ve kapağı o ilerlemeye kurulmuş modelin dörtgenleri.
+
+- `ShulkerBoxRenderer`: kutu "yukarı"dan yönüne `Direction.getRotation` ile döner, blokdan bir tık küçüktür (`0,9995`); kapak `24 − ilerleme·8` yüksekliğe çıkar ve `270°·ilerleme` döner. Doku rengin kendisi, boyasız kutuda `entity/shulker/shulker`.
+- Kapak `ShulkerBoxBlockEntity`'dir: `BlockEvent` 1 ve veri 1 açar, 0 kapatır; tikte onda bir ilerler. Yön özelliği yoksa kutu yukarı bakar.
+- Sapma: kapağın açılırken yaptığı komşu güncellemeleri ve üstündeki varlıkları itmesi (`moveCollidedEntities`) istemcide yok; kapalı/açık durumdaki çarpışma şekli değişmez. Kapak hareketi canlıda denenmedi.
+- Yatak ayrı bir blok entity çizicisi gerektirmez: 26.2'de normal blok modelidir (`BedRenderState` kullanılmıyor).

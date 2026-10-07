@@ -1,4 +1,4 @@
-# T79b — Shulker kutusu ve yatak çizimi
+# T79b — Shulker kutusu çizimi
 
 **Amaç:** T79'un kalanı: `ShulkerBoxRenderer` (kapak açısı, `ShulkerBoxBlockEntity` animasyonu, renkli dokular) ve yatak (`BedRenderer`, `BedRenderState`) blok entity çizimi.
 **Bağımlılık:** T79. **Boy:** M.
@@ -19,4 +19,6 @@ Başka blok entity aileleri (T80–T82).
 Yeni contract/parity kaydı, `docs/index.md`.
 
 ## Devir notu
-(boş)
+Yapılan: shulker kutusu (`ShulkerBoxRenderer`: yön, renk, kapak ilerlemesi) gerçek renderer'a bit bit eşit; kapak `BlockEvent` 1 ile sürülür. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Java'dan sapma: yatak için iş yok (26.2'de blok modeli); kapak açılırken komşu güncellemesi ve varlık itme yok.
+Açık: kapak hareketi canlıda denenmedi.
