@@ -65,13 +65,13 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                 }
                 match string(event, "type")? {
                     "damage" => {
-                        world.apply_entity_damage_event(entity_id);
+                        world.entities_mut().apply_damage_event(entity_id);
                     }
                     "hurt" => {
-                        world.apply_entity_hurt_animation(entity_id);
+                        world.entities_mut().apply_hurt_animation(entity_id);
                     }
                     "death" => {
-                        world.apply_entity_death_event(entity_id);
+                        world.entities_mut().apply_death_event(entity_id);
                     }
                     "move" => {
                         world.apply_entity_move(voxel_world::EntityMoveInput {
@@ -107,7 +107,9 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                         world.apply_entity_metadata(entity_id, &data);
                     }
                     "animate" => {
-                        world.apply_entity_animate(entity_id, i32_field(event, "action")? as u8);
+                        world
+                            .entities_mut()
+                            .apply_animate(entity_id, i32_field(event, "action")? as u8);
                     }
                     "bee_data" => {
                         let mut data = Vec::new();
@@ -179,7 +181,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                             let id = voxel_data::item::registry::index(name).unwrap_or(0);
                             voxel_world::ClientItemStackState::new(1, id as i32)
                         });
-                        world.apply_entity_equipment(
+                        world.entities_mut().apply_equipment(
                             entity_id,
                             voxel_world::EquipmentSlot::MainHand,
                             stack,
@@ -300,9 +302,9 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     "seed" => {
                         let seed = i64_field(event, "seed")?;
                         if name == "minecraft:panda" {
-                            world.fix_panda_seed(entity_id, seed);
+                            world.entities_mut().fix_panda_seed(entity_id, seed);
                         } else {
-                            world.fix_horse_seed(entity_id, seed);
+                            world.entities_mut().fix_horse_seed(entity_id, seed);
                         }
                     }
                     "copper_golem_data" => {
@@ -321,12 +323,14 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                         world.apply_entity_metadata(entity_id, &data);
                     }
                     "entity_motion" => {
-                        world.apply_entity_motion(voxel_world::EntityMotionInput {
-                            entity_id,
-                            x: bits64(event, "x")?,
-                            y: bits64(event, "y")?,
-                            z: bits64(event, "z")?,
-                        });
+                        world
+                            .entities_mut()
+                            .apply_motion(voxel_world::EntityMotionInput {
+                                entity_id,
+                                x: bits64(event, "x")?,
+                                y: bits64(event, "y")?,
+                                z: bits64(event, "z")?,
+                            });
                     }
                     "passengers" => {
                         let riders: Vec<i32> = event["riders"]
@@ -448,7 +452,11 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                             )
                             .map_err(|error| error.to_string())?,
                         );
-                        world.fix_guardian_random(entity_id, tail, i64_field(event, "seed")?);
+                        world.entities_mut().fix_guardian_random(
+                            entity_id,
+                            tail,
+                            i64_field(event, "seed")?,
+                        );
                     }
                     "guardian_data" => {
                         let mut data = Vec::new();
@@ -727,7 +735,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                         world.apply_entity_metadata(entity_id, &data);
                         if let Some(name) = event["item"].as_str() {
                             let id = voxel_data::item::registry::index(name).unwrap_or(0);
-                            world.apply_entity_item_stack(
+                            world.entities_mut().apply_item_stack(
                                 entity_id,
                                 Some(voxel_world::ClientItemStackState::new(1, id as i32)),
                             );
@@ -872,13 +880,17 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                         let speed = u32::from_str_radix(string(event, "speed")?, 16)
                             .map(f32::from_bits)
                             .map_err(|error| error.to_string())?;
-                        world.fix_squid_tentacle_speed(entity_id, speed);
+                        world
+                            .entities_mut()
+                            .fix_squid_tentacle_speed(entity_id, speed);
                     }
                     "copper_golem_idle" => {
-                        world.fix_copper_golem_seed(entity_id, i64_field(event, "seed")?);
+                        world
+                            .entities_mut()
+                            .fix_copper_golem_seed(entity_id, i64_field(event, "seed")?);
                     }
                     "rabbit_idle" => {
-                        world.fix_rabbit_idle(
+                        world.entities_mut().fix_rabbit_idle(
                             entity_id,
                             i32_field(event, "timeout")?,
                             i64_field(event, "seed")?,
@@ -909,7 +921,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                                 modifiers,
                             ));
                         }
-                        world.apply_entity_attributes(entity_id, &changed);
+                        world.entities_mut().apply_attributes(entity_id, &changed);
                     }
                     "entity_event" => {
                         world.apply_entity_event(entity_id, i32_field(event, "event")? as i8);
@@ -918,7 +930,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                 }
             }
             world.tick_entities();
-            let entity = world.entity_at(entity_id).ok_or("entity vanished")?;
+            let entity = world.entities().at(entity_id).ok_or("entity vanished")?;
             let hex = |value: f32| format!("{:08x}", value.to_bits());
             let mut described = json!({
                 "hurt_time": entity.hurt_time(),

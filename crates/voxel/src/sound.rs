@@ -174,6 +174,7 @@ impl SoundSystem {
         // `EntityBoundSoundInstance`: it starts where the entity is; a sound for an entity that is not there is not played.
         let Some(position) = world
             .entities()
+            .all()
             .find(|found| found.id() == entity)
             .map(|found| found.position())
         else {
@@ -219,6 +220,7 @@ impl SoundSystem {
             for (id, position) in followed.iter_mut() {
                 *position = world
                     .entities()
+                    .all()
                     .find(|entity| entity.id() == *id)
                     .map(|entity| entity.position());
             }

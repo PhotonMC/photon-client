@@ -304,7 +304,7 @@ mod tests {
         }
         step.push(1);
         session.handle(&step).unwrap();
-        let moved = session.world().entity_at(7).unwrap().position();
+        let moved = session.world().entities().at(7).unwrap().position();
         assert!((moved.0 - 9.0).abs() < 1e-9, "{moved:?}");
         // An entity packet that does not parse leaves the session alone.
         let mut broken = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
@@ -315,7 +315,7 @@ mod tests {
         remove.extend(varint(7));
         session.handle(&remove).unwrap();
         assert_eq!(session.entity_count(), 1);
-        assert!(session.world().entity_at(7).is_none());
+        assert!(session.world().entities().at(7).is_none());
     }
 
     #[test]
@@ -330,14 +330,14 @@ mod tests {
         }
         step.push(1);
         session.handle(&step).unwrap();
-        let before = session.world().entity_at(7).unwrap().tick_count();
+        let before = session.world().entities().at(7).unwrap().tick_count();
         session.tick(Input::EMPTY).unwrap();
         session.tick(Input::EMPTY).unwrap();
-        let after = session.world().entity_at(7).unwrap().tick_count();
+        let after = session.world().entities().at(7).unwrap().tick_count();
         assert_eq!(after, before + 2);
         // Between two ticks the entity is drawn between where it was and is.
         let (old, new) = {
-            let entity = session.world().entity_at(7).unwrap();
+            let entity = session.world().entities().at(7).unwrap();
             (entity.previous_position(), entity.position())
         };
         let half = session.entity_snapshot(7, 0.5).unwrap().position;

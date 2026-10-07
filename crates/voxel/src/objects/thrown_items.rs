@@ -28,7 +28,7 @@ pub fn thrown_items(
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     let rocket = voxel_data::entity_type::id("minecraft:firework_rocket");
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let look = entity.thrown_item_look();
         if look.is_none() && Some(entity.type_id) != rocket {
             continue;

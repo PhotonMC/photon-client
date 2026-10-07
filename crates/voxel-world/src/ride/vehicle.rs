@@ -61,7 +61,7 @@ impl ClientWorld {
     pub fn ridden_vehicle_of_local_player(&self) -> Option<i32> {
         let player_id = self.local_player.as_ref()?.id;
         let vehicle_id = self.entity_vehicle_id(player_id)?;
-        let vehicle = self.entities.get(&vehicle_id)?;
+        let vehicle = self.entities.at(vehicle_id)?;
         vehicle
             .passenger_ids
             .contains(&player_id)
@@ -101,7 +101,7 @@ impl ClientWorld {
     /// What the local player's tick reads of the vehicle it rides.
     pub fn vehicle_view(&self, vehicle_id: i32) -> Option<VehicleView> {
         let player = self.local_player.as_ref()?;
-        let vehicle = self.entities.get(&vehicle_id)?;
+        let vehicle = self.entities.at(vehicle_id)?;
         let (x, y, z) = vehicle.position();
         let position = Vec3::new(x, y, z);
         if vehicle.is_boat() {

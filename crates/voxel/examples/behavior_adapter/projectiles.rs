@@ -101,18 +101,23 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
                         world.apply_entity_ground_state(entity_id, on_ground);
                     }
                     "motion" => {
-                        world.apply_entity_motion(voxel_world::EntityMotionInput {
-                            entity_id,
-                            x: bits64(event, "motion_x")?,
-                            y: bits64(event, "motion_y")?,
-                            z: bits64(event, "motion_z")?,
-                        });
+                        world
+                            .entities_mut()
+                            .apply_motion(voxel_world::EntityMotionInput {
+                                entity_id,
+                                x: bits64(event, "motion_x")?,
+                                y: bits64(event, "motion_y")?,
+                                z: bits64(event, "motion_z")?,
+                            });
                     }
                     other => return Err(format!("unknown event {other}")),
                 }
             }
             world.tick_entities();
-            let entity = world.entity_at(entity_id).ok_or("item entity vanished")?;
+            let entity = world
+                .entities()
+                .at(entity_id)
+                .ok_or("item entity vanished")?;
             let (x, y, z) = entity.position();
             let (motion_x, motion_y, motion_z) = entity.motion();
             ticks.push(json!({
@@ -190,7 +195,7 @@ pub(super) fn projectile_ticks_result(request: &Value) -> Result<Value, String> 
         let mut ticks = Vec::new();
         for _ in 0..i32_field(row, "tick_count")? {
             world.tick_entities();
-            let described = match world.entity_at(entity_id) {
+            let described = match world.entities().at(entity_id) {
                 Some(entity) => {
                     let (x, y, z) = entity.position();
                     let (mx, my, mz) = entity.motion();

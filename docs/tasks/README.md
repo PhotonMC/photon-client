@@ -245,7 +245,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [A02](A02-entity-kind.md) | `ClientEntity` → `EntityBase` + `EntityKind` enum | L | A01 | bitti |
 | [A03](A03-extract-dispatch.md) | Extract → render state → tek geçişli dispatcher | L | A02 | açık |
 | [A04](A04-paket-enum-listener.md) | Tipli paket enum'u, listener, izlemeyi üretimden ayırma | L | A01 | açık |
-| [A05](A05-clientworld-bolme.md) | `ClientWorld` alt sistemlere bölme | M | A02 | açık |
+| [A05](A05-clientworld-bolme.md) | `ClientWorld` alt sistemlere bölme | M | A02 | bölündü (A05b, 87ff5126) |
+| [A05b](A05b-chunk-isik-hava.md) | `Chunks`, ışık, hava ve düzey bilgisi alt sistemleri | M | A05 | açık |
 | [A06](A06-dev-dosyalar.md) | Dev dosyaları ve oracle adaptörünü bölme | M | – | bölündü |
 | [A06b](A06b-dev-islevler.md) | Tek dev işlev olan dosyalar ve oracle adaptörünün crate'i | L | A06 | açık |
 | [D01](D01-generated-envanter.md) | Üretilmiş tabloların envanteri ve sınıflandırması | S | – | bitti |

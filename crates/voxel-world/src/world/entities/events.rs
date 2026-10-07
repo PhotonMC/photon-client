@@ -13,46 +13,11 @@ impl ClientWorld {
             <= self.server_simulation_distance
     }
 
-    /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
-    pub fn apply_entity_damage_event(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        entity.walk.set_speed(1.5);
-        entity.living.hurt_time = 10;
-        true
-    }
-
-    /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
-    pub fn apply_entity_hurt_animation(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        entity.living.hurt_time = 10;
-        true
-    }
-
-    /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
-    /// player: it dies (health spent), the sound aside.
-    /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
-    /// from bed, the critical-hit particles) are not carried out.
-    pub fn apply_entity_animate(&mut self, entity_id: i32, action: u8) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
-            return false;
-        }
-        let durations = entity.swing_durations();
-        entity.living.swing.swing(action == 3, durations);
-        true
-    }
-
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
     pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {
         let game_time = self.game_time;
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         if event == 2 && entity.living_kind().is_some() {
@@ -133,9 +98,46 @@ impl ClientWorld {
         }
         false
     }
+}
 
-    pub fn apply_entity_death_event(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+impl Entities {
+    /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
+    pub fn apply_damage_event(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.walk.set_speed(1.5);
+        entity.living.hurt_time = 10;
+        true
+    }
+
+    /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
+    pub fn apply_hurt_animation(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+            return false;
+        };
+        entity.living.hurt_time = 10;
+        true
+    }
+
+    /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
+    /// player: it dies (health spent), the sound aside.
+    /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
+    /// from bed, the critical-hit particles) are not carried out.
+    pub fn apply_animate(&mut self, entity_id: i32, action: u8) -> bool {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+            return false;
+        };
+        if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
+            return false;
+        }
+        let durations = entity.swing_durations();
+        entity.living.swing.swing(action == 3, durations);
+        true
+    }
+
+    pub fn apply_death_event(&mut self, entity_id: i32) -> bool {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         if entity.is_player() {
@@ -161,7 +163,7 @@ impl ClientWorld {
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.
     pub fn set_leash_holder(&mut self, entity_id: i32, holder_id: i32) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         if voxel_data::leash::leash_of(entity.type_id).is_none() {

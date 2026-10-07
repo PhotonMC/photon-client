@@ -86,7 +86,7 @@ pub fn remote_villagers(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let is_villager = entity.type_id == villager;
         if !is_villager && entity.type_id != trader {
             continue;
@@ -188,7 +188,7 @@ pub fn remote_witches(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let (true, Some(snapshot), Some(rect), Some(model)) = (
             entity.type_id == witch,
             world.entity_snapshot(entity.id(), partial),

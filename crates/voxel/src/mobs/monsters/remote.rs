@@ -125,7 +125,7 @@ pub fn remote_monsters(
     let mut vertices = Vec::new();
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(monster) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)

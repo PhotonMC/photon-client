@@ -52,7 +52,7 @@ pub fn remote_minecarts(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.is_minecart()) {
+    for entity in world.entities().all().filter(|entity| entity.is_minecart()) {
         let Some(name) = voxel_data::entity_type::name(entity.type_id) else {
             continue;
         };
@@ -140,7 +140,11 @@ pub fn remote_minecarts(
 pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut Vec<HeldItem>)) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().filter(|entity| entity.is_primed_tnt()) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.is_primed_tnt())
+    {
         let (Some(snapshot), Some(own)) = (
             world.entity_snapshot(entity.id(), partial),
             entity.primed_tnt(),

@@ -18,9 +18,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ticking_count = trace
         .world
         .entities()
+        .all()
         .filter(|entity| entity.is_ticking())
         .count();
-    let tracked_count = trace.world.loaded_entity_count();
+    let tracked_count = trace.world.entities().count();
     let stopped_count = tracked_count.saturating_sub(ticking_count);
     let stopped_unload_count = trace
         .chunk_unload_observations

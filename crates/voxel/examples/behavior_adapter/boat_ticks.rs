@@ -6,7 +6,8 @@ pub(super) fn client_world_entity_boat_tick_state(
     entity_id: i32,
 ) -> Result<Value, String> {
     let entity = world
-        .entity_at(entity_id)
+        .entities()
+        .at(entity_id)
         .ok_or_else(|| "boat tick fixture entity disappeared".to_owned())?;
     let rotation = entity.rotation();
     let previous_rotation = entity.previous_rotation();

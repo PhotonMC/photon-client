@@ -1,3 +1,8 @@
+#![expect(
+    clippy::too_many_lines,
+    reason = "a probe scenario reads as one sequence of steps"
+)]
+
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -25,6 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (vehicle_id, passenger_id) = trace
         .world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == VANILLA_OAK_BOAT_ENTITY_TYPE_ID)
         .filter_map(|vehicle| {
             vehicle
@@ -33,9 +39,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .copied()
                 .find(|&candidate| {
                     candidate != local_player_id
-                        && trace.world.entity_at(candidate).is_some_and(|passenger| {
-                            passenger.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
-                        })
+                        && trace
+                            .world
+                            .entities()
+                            .at(candidate)
+                            .is_some_and(|passenger| {
+                                passenger.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
+                            })
                 })
                 .map(|passenger_id| (vehicle.id(), passenger_id))
         })
@@ -43,7 +53,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("vanilla did not retain a remote Zombie passenger on an oak boat")?;
     let before_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the selected remote oak boat")?;
     if before_vehicle.passenger_ids().contains(&local_player_id) {
         return Err("selected boat unexpectedly has the local player as passenger".into());
@@ -64,7 +75,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let after_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the remote oak boat after tick")?;
     if after_vehicle.position() != before_position
         || after_vehicle.rotation() != before_rotation
@@ -104,7 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("before_paddles={before_paddles:?}");
     println!("after_paddles={:?}", after_vehicle.paddle_state());
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

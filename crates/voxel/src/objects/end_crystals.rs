@@ -36,7 +36,11 @@ pub fn remote_end_crystals(
         return Vec::new();
     };
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == crystal) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == crystal)
+    {
         let (Some(snapshot), Some(rect), Some(beam_rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(TEXTURE),

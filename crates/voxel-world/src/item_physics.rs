@@ -183,7 +183,7 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
 impl ClientWorld {
     /// One client tick of a dropped item's movement.
     pub(crate) fn tick_item_entity(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         if entity.type_id != VANILLA_ITEM_ENTITY_TYPE_ID {
@@ -206,7 +206,7 @@ impl ClientWorld {
         };
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the item was read above");
         entity.set_position((step.position.x, step.position.y, step.position.z));
         entity.motion.x = JavaF64::new(step.delta.x);
@@ -222,7 +222,7 @@ impl ClientWorld {
     /// `Entity.setOnGround`'s `checkSupportingBlock`, for an item whose
     /// ground state a packet just set.
     pub(crate) fn check_item_supporting_block(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         if entity.type_id != VANILLA_ITEM_ENTITY_TYPE_ID {
@@ -243,7 +243,7 @@ impl ClientWorld {
         }
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the item was read above");
         entity.tracking.support = Support {
             main_block: main_supporting_block,

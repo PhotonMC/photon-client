@@ -1,3 +1,8 @@
+#![expect(
+    clippy::too_many_lines,
+    reason = "a probe scenario reads as one sequence of steps"
+)]
+
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -27,6 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vehicle_id = trace
         .world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == VANILLA_OAK_BOAT_ENTITY_TYPE_ID)
         .filter(|entity| entity.passenger_ids().contains(&local_player_id))
         .map(|entity| entity.id())
@@ -34,7 +40,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("vanilla did not retain the local player as an oak boat passenger")?;
     let before_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the selected oak boat")?;
     if !before_vehicle.is_no_gravity() {
         return Err("selected oak boat did not retain NoGravity metadata".into());
@@ -74,7 +81,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let after_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the oak boat after tick")?;
     if after_vehicle.motion().0.to_bits() != expected_motion.0.to_bits()
         || after_vehicle.motion().1.to_bits() != expected_motion.1.to_bits()
@@ -110,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "after_delta_rotation={}",
         after_vehicle.boat_delta_rotation()
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

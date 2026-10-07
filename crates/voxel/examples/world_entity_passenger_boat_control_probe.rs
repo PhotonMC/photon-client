@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vehicle_id = trace
         .world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == VANILLA_OAK_BOAT_ENTITY_TYPE_ID)
         .filter(|vehicle| vehicle.passenger_ids().contains(&local_player_id))
         .map(|vehicle| vehicle.id())
@@ -35,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let before_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the selected oak boat")?;
     let before_vehicle_rotation = before_vehicle.rotation();
     if before_vehicle_rotation.0 != 0.0 || before_vehicle_rotation.1 != 0.0 {
@@ -55,7 +57,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let after_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the oak boat after control")?;
     if after_vehicle.boat_delta_rotation() != 1.0
         || after_vehicle.rotation().0 != 1.0
@@ -80,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("delta_rotation={}", after_vehicle.boat_delta_rotation());
     println!("paddle_state={:?}", after_vehicle.paddle_state());
     println!("local_player_id={local_player_id}");
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

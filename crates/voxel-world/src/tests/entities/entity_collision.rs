@@ -128,11 +128,23 @@ fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_collision_state(8, false, false, false));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, false, false, false)
+    );
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_collision_state(8, true, true, false));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, true, false)
+    );
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(!world.apply_entity_living_collision_state(999, true, false, false));
+    assert!(
+        !world
+            .entities_mut()
+            .apply_living_collision_state(999, true, false, false)
+    );
 }
 
 #[test]
@@ -154,9 +166,17 @@ fn indexed_player_collision_respects_living_climbable_gate() {
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_collision_state(8, true, false, true));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, true)
+    );
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_collision_state(8, true, false, false));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, false)
+    );
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
 }
 
@@ -178,11 +198,15 @@ fn indexed_player_collision_respects_flying_ability_gate() {
     }
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
-    assert!(world.apply_entity_living_collision_state(8, true, false, true));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, true)
+    );
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_player_flying_state(8, true));
+    assert!(world.entities_mut().apply_player_flying_state(8, true));
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(!world.apply_entity_player_flying_state(7, true));
+    assert!(!world.entities_mut().apply_player_flying_state(7, true));
 }
 
 #[test]
@@ -203,14 +227,34 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
     }
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
 
-    assert!(world.apply_entity_living_collision_state(8, true, false, false));
-    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "north"));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, false)
+    );
+    assert!(
+        world
+            .entities_mut()
+            .apply_climbable_trapdoor_state(8, true, "north", true, "north")
+    );
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_climbable_trapdoor_state(8, false, "north", true, "north"));
+    assert!(
+        world
+            .entities_mut()
+            .apply_climbable_trapdoor_state(8, false, "north", true, "north")
+    );
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", true, "south"));
+    assert!(
+        world
+            .entities_mut()
+            .apply_climbable_trapdoor_state(8, true, "north", true, "south")
+    );
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_climbable_trapdoor_state(8, true, "north", false, "north"));
+    assert!(
+        world
+            .entities_mut()
+            .apply_climbable_trapdoor_state(8, true, "north", false, "north")
+    );
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
 }
 
@@ -237,7 +281,11 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
     assert!(world.block_state_registry().is_climbable_state(5726));
     assert!(!world.block_state_registry().is_climbable_state(1));
     assert!(!world.block_state_registry().is_climbable_state(99999));
-    assert!(world.apply_entity_living_collision_state(8, true, false, false));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, false)
+    );
     assert!(world.apply_entity_living_climbable_block_state(8, 5720));
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
     assert!(world.apply_entity_living_climbable_block_state(8, 1));
@@ -268,12 +316,17 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(world.block_state_registry().is_glide_through_state(8389));
     assert!(!world.block_state_registry().is_glide_through_state(1));
     assert!(!world.block_state_registry().is_glide_through_state(99999));
-    assert!(world.apply_entity_living_collision_state(8, true, false, false));
+    assert!(
+        world
+            .entities_mut()
+            .apply_living_collision_state(8, true, false, false)
+    );
     assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, false));
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
     assert!(
         !world
-            .entity_at(8)
+            .entities()
+            .at(8)
             .expect("player entity must exist")
             .is_fall_flying()
     );
@@ -282,7 +335,8 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
     assert!(
         world
-            .entity_at(8)
+            .entities()
+            .at(8)
             .expect("player entity must exist")
             .is_fall_flying()
     );
@@ -291,7 +345,8 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
     assert!(
         world
-            .entity_at(8)
+            .entities()
+            .at(8)
             .expect("player entity must exist")
             .is_fall_flying()
     );
@@ -300,7 +355,8 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(world.no_entity_collision_for_entity(Some(7), test_area));
     assert!(
         !world
-            .entity_at(8)
+            .entities()
+            .at(8)
             .expect("player entity must exist")
             .is_fall_flying()
     );

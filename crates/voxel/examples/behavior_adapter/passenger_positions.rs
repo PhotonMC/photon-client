@@ -9,7 +9,8 @@ pub(super) fn client_world_entity_passengers_state(
     let mut entities = Vec::with_capacity(entity_ids.len());
     for &entity_id in entity_ids {
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("passenger relation fixture entity disappeared")?;
         let mut state = json!({
             "entity_id": entity_id,

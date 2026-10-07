@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("stinger_count={}", player.stinger_count());
     println!("local_player_id={}", player.id());
     println!("local_player_position={:?}", player.position());
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

@@ -74,6 +74,7 @@ pub use recipes::{
 };
 pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
+pub use world::Entities;
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,10 +105,9 @@ pub struct ClientWorld {
     light_tasks: VecDeque<LightTask>,
     /// Sections the light tasks asked to redraw, besides the engine's own.
     light_dirty: Vec<light::SectionKey>,
-    entities: BTreeMap<i32, ClientEntity>,
+    entities: Entities,
     /// The maps the server has sent, by id (`ClientLevel.getMapData`).
     maps: BTreeMap<i32, map::MapData>,
-    entity_sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,

@@ -24,13 +24,14 @@ impl PlaySession {
         self.trace
             .world
             .entities()
+            .all()
             .filter(|entity| entity.is_ticking())
             .count()
     }
 
     /// How many entities the world holds besides the player.
     pub fn entity_count(&self) -> usize {
-        self.trace.world.entities().count()
+        self.trace.world.entities().all().count()
     }
 
     pub fn player(&self) -> Option<&LocalPlayer> {

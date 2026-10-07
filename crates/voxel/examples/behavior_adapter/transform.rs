@@ -91,7 +91,8 @@ pub(super) fn client_world_entity_ticking_eligibility_state(
         .local_player()
         .ok_or("ticking eligibility local player disappeared")?;
     let remote = world
-        .entity_at(remote_entity_id)
+        .entities()
+        .at(remote_entity_id)
         .ok_or("ticking eligibility remote entity disappeared")?;
     Ok(json!({
         "label": label,
@@ -233,7 +234,8 @@ pub(super) fn client_world_entity_transform_history_state(
         .local_player()
         .ok_or("transform history local player disappeared")?;
     let entity = world
-        .entity_at(entity_id)
+        .entities()
+        .at(entity_id)
         .ok_or("transform history entity disappeared")?;
     let player_position = player.position();
     let player_previous_position = player.previous_position();

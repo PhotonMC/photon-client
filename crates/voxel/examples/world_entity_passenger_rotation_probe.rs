@@ -134,14 +134,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "passenger_previous_rotation_after_tick={:?}",
         trace
             .world
-            .entity_at(observation.passenger_id)
+            .entities()
+            .at(observation.passenger_id)
             .map(|entity| entity.previous_rotation())
     );
     println!(
         "passenger_observation_count={}",
         trace.entity_passenger_tick_observations.len()
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

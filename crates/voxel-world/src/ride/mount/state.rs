@@ -154,7 +154,11 @@ mod tests {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        let horse = world.entities().find(|entity| entity.id() == 5).unwrap();
+        let horse = world
+            .entities()
+            .all()
+            .find(|entity| entity.id() == 5)
+            .unwrap();
         // The values a saddled horse's riding reads, as the type starts with them.
         for (name, value) in [
             ("minecraft:gravity", 0.08),

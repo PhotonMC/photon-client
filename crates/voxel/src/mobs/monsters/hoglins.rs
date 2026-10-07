@@ -46,7 +46,11 @@ pub fn remote_hoglins(
         let Some(type_id) = voxel_data::entity_type::id(name) else {
             continue;
         };
-        for entity in world.entities().filter(|entity| entity.type_id == type_id) {
+        for entity in world
+            .entities()
+            .all()
+            .filter(|entity| entity.type_id == type_id)
+        {
             let baby = entity.is_baby();
             let index = usize::from(baby);
             let (Some(snapshot), Some(rect), Some(model)) = (

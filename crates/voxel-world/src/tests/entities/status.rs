@@ -15,7 +15,7 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
         data: 0,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::air_supply),
+        world.entities().at(37).map(crate::ClientEntity::air_supply),
         Some(300)
     );
 
@@ -26,7 +26,7 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
     voxel_core::wire::write_varint(250, &mut air_metadata);
     air_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &air_metadata));
-    let entity = world.entity_at(37).expect("entity with air supply");
+    let entity = world.entities().at(37).expect("entity with air supply");
     assert_eq!(entity.air_supply(), 250);
     assert_eq!(entity.shared_flags(), 0);
 
@@ -40,14 +40,17 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
     voxel_core::wire::write_varint(-1, &mut combined_metadata);
     combined_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &combined_metadata));
-    let entity = world.entity_at(37).expect("entity with combined metadata");
+    let entity = world
+        .entities()
+        .at(37)
+        .expect("entity with combined metadata");
     assert_eq!(entity.air_supply(), -1);
     assert_eq!(entity.shared_flags(), 64);
     assert!(entity.is_glowing());
 
     assert!(world.apply_entity_metadata(37, &[0, 0, 0, 255]));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::air_supply),
+        world.entities().at(37).map(crate::ClientEntity::air_supply),
         Some(-1)
     );
 }
@@ -67,7 +70,10 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
         data: 0,
     }));
     assert_eq!(
-        world.entity_at(37).and_then(crate::ClientEntity::health),
+        world
+            .entities()
+            .at(37)
+            .and_then(crate::ClientEntity::health),
         None
     );
 
@@ -81,7 +87,7 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
     health_metadata.extend_from_slice(&7.5_f32.to_be_bytes());
     health_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &health_metadata));
-    let entity = world.entity_at(37).expect("living entity health");
+    let entity = world.entities().at(37).expect("living entity health");
     assert_eq!(entity.health(), Some(7.5));
     assert_eq!(entity.shared_flags(), 0);
 
@@ -93,12 +99,18 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
     zero_health_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &zero_health_metadata));
     assert_eq!(
-        world.entity_at(37).and_then(crate::ClientEntity::health),
+        world
+            .entities()
+            .at(37)
+            .and_then(crate::ClientEntity::health),
         Some(0.0)
     );
 
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
-    let entity = world.entity_at(37).expect("health after partial metadata");
+    let entity = world
+        .entities()
+        .at(37)
+        .expect("health after partial metadata");
     assert_eq!(entity.health(), Some(0.0));
     assert!(entity.is_no_gravity());
 }
@@ -118,7 +130,10 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
         data: 0,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::arrow_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::arrow_count),
         Some(0)
     );
 
@@ -130,19 +145,28 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
     arrow_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &arrow_metadata));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::arrow_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::arrow_count),
         Some(3)
     );
 
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::arrow_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::arrow_count),
         Some(3)
     );
 
     assert!(world.apply_entity_metadata(37, &[12, 0, 7, 255]));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::arrow_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::arrow_count),
         Some(3)
     );
 }
@@ -162,7 +186,10 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
         data: 0,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::stinger_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::stinger_count),
         Some(0)
     );
 
@@ -174,19 +201,28 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
     stinger_metadata.push(255);
     assert!(world.apply_entity_metadata(37, &stinger_metadata));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::stinger_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::stinger_count),
         Some(2)
     );
 
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::stinger_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::stinger_count),
         Some(2)
     );
 
     assert!(world.apply_entity_metadata(37, &[13, 0, 4, 255]));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::stinger_count),
+        world
+            .entities()
+            .at(37)
+            .map(crate::ClientEntity::stinger_count),
         Some(2)
     );
 }
@@ -205,12 +241,13 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
         rotation: (0.0, 0.0, 0.0),
         data: 0,
     }));
-    assert!(!world.entity_at(37).expect("entity").is_effect_ambient());
+    assert!(!world.entities().at(37).expect("entity").is_effect_ambient());
 
     assert!(world.apply_entity_metadata(37, &[10, 17, 0, 11, 8, 1, 255]));
     assert!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("ambient entity")
             .is_effect_ambient()
     );
@@ -218,7 +255,8 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
     assert!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("ambient entity after partial metadata")
             .is_effect_ambient()
     );
@@ -226,7 +264,8 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
     assert!(world.apply_entity_metadata(37, &[11, 0, 0, 255]));
     assert!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("ambient entity after wrong serializer")
             .is_effect_ambient()
     );
@@ -234,7 +273,8 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
     assert!(world.apply_entity_metadata(37, &[10, 17, 1, 0, 11, 8, 0, 255]));
     assert!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("ambient entity after unsupported particles")
             .is_effect_ambient()
     );
@@ -256,7 +296,8 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     }));
     assert!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity")
             .effect_particle_type_ids()
             .is_empty()
@@ -276,7 +317,8 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     assert!(world.apply_entity_metadata(37, &particle_metadata));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity with effect particle")
             .effect_particle_type_ids(),
         &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
@@ -285,7 +327,8 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity after partial particle metadata")
             .effect_particle_type_ids(),
         &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
@@ -294,7 +337,8 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     assert!(world.apply_entity_metadata(37, &[10, 0, 1, 255]));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity after wrong particle serializer")
             .effect_particle_type_ids(),
         &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
@@ -303,7 +347,8 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     assert!(world.apply_entity_metadata(37, &[10, 17, 1, 0, 255]));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity after unsupported particle type")
             .effect_particle_type_ids(),
         &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
@@ -324,7 +369,7 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
         rotation: (0.0, 0.0, 0.0),
         data: 0,
     }));
-    let entity = world.entity_at(37).expect("default sleeping entity");
+    let entity = world.entities().at(37).expect("default sleeping entity");
     assert_eq!(entity.sleeping_pos(), None);
     assert!(!entity.is_sleeping());
 
@@ -337,7 +382,7 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
     voxel_core::binary::write_blockpos(bed, &mut sleeping_metadata);
     sleeping_metadata.extend([3, 8, 1, 255]);
     assert!(world.apply_entity_metadata(37, &sleeping_metadata));
-    let entity = world.entity_at(37).expect("sleeping entity");
+    let entity = world.entities().at(37).expect("sleeping entity");
     assert_eq!(entity.sleeping_pos(), Some(bed));
     assert!(entity.is_sleeping());
     assert!(entity.is_custom_name_visible());
@@ -345,7 +390,8 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
     assert!(world.apply_entity_metadata(37, &[5, 8, 1, 255]));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("sleeping entity after partial metadata")
             .sleeping_pos(),
         Some(bed)
@@ -353,7 +399,11 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
 
     assert!(world.apply_entity_metadata(37, &[14, 11, 0, 255]));
     assert_eq!(
-        world.entity_at(37).expect("awake entity").sleeping_pos(),
+        world
+            .entities()
+            .at(37)
+            .expect("awake entity")
+            .sleeping_pos(),
         None
     );
 
@@ -363,7 +413,8 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
     assert!(world.apply_entity_metadata(37, &wrong_serializer));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity after wrong serializer")
             .sleeping_pos(),
         None
@@ -372,7 +423,8 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
     assert!(world.apply_entity_metadata(37, &[14, 11, 1, 0, 255]));
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .expect("entity after truncated sleeping position")
             .sleeping_pos(),
         None

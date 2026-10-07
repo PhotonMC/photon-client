@@ -77,7 +77,7 @@ fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
     assert_eq!(world.seed(), 776);
     assert_eq!(world.sea_level(), 32);
     assert_eq!(world.loaded_chunk_count(), 0);
-    assert_eq!(world.loaded_entity_count(), 0);
+    assert_eq!(world.entities().count(), 0);
     assert_eq!(world.game_time(), 0);
 
     world.replace_chunk(
@@ -96,5 +96,5 @@ fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
         DimensionEnvironment::for_builtin_dimension(input.key),
     ));
     assert_eq!(world.loaded_chunk_count(), 1);
-    assert_eq!(world.loaded_entity_count(), 0);
+    assert_eq!(world.entities().count(), 0);
 }

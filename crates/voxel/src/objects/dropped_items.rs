@@ -33,7 +33,7 @@ pub fn dropped_items(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         if entity.type_id != item_type {
             continue;
         }

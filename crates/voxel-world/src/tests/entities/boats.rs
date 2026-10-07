@@ -37,7 +37,7 @@ fn air_boat_float_applies_java_drag_gravity_and_position_step() {
 
         world.tick();
 
-        let boat = world.entity_at(37).expect("air boat");
+        let boat = world.entities().at(37).expect("air boat");
         assert_eq!(boat.motion().0.to_bits(), 0x3fcc_cccc_c000_0000, "{name}");
         assert_eq!(
             boat.motion().1.to_bits(),
@@ -96,7 +96,7 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
 
     world.tick();
 
-    let boat = world.entity_at(37).expect("remote boat");
+    let boat = world.entities().at(37).expect("remote boat");
     assert_eq!(boat.position(), (2.0, 12.0, 2.0));
     assert_eq!(boat.motion(), (0.0, 0.0, 0.0));
     assert_eq!(boat.rotation(), (0.0, 0.0, 0.0));

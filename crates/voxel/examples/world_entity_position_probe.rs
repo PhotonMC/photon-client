@@ -70,7 +70,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let final_position = trace
         .world
-        .entity_at(entity_id)
+        .entities()
+        .at(entity_id)
         .map(|entity| entity.position())
         .ok_or("applied entity position is not queryable in ClientWorld")?;
 
@@ -116,7 +117,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "world_entity_final_position=id:{},position:({},{},{})",
         entity_id, final_position.0, final_position.1, final_position.2
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());

@@ -35,6 +35,7 @@ pub fn remote_armadillos(
     let mut vertices = Vec::new();
     for entity in world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == armadillo)
     {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };

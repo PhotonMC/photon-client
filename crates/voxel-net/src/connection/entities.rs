@@ -33,7 +33,7 @@ pub(crate) fn add(world: &mut ClientWorld, packet: &AddEntityObservation) -> boo
 
 /// `handleSetEntityMotion`.
 pub(crate) fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) -> bool {
-    world.apply_entity_motion(EntityMotionInput {
+    world.entities_mut().apply_motion(EntityMotionInput {
         entity_id: packet.entity_id,
         x: packet.x,
         y: packet.y,
@@ -68,7 +68,9 @@ pub(crate) fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObserva
     let mut applied = false;
     for (ordinal, stack) in &packet.slots {
         if let Some(slot) = EquipmentSlot::from_ordinal(*ordinal) {
-            applied |= world.apply_entity_equipment(packet.entity_id, slot, stack.clone());
+            applied |= world
+                .entities_mut()
+                .apply_equipment(packet.entity_id, slot, stack.clone());
         }
     }
     applied
@@ -93,18 +95,20 @@ const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
     let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
     // A dropped item, a thrown item or a firework rocket keeps its stack in the same data.
-    let is_item = world.entity_at(packet.entity_id).is_some_and(|entity| {
+    let is_item = world.entities().at(packet.entity_id).is_some_and(|entity| {
         voxel_data::entity_type::id("minecraft:item") == Some(entity.type_id)
             || entity.thrown_item_look().is_some()
             || voxel_data::entity_type::id("minecraft:firework_rocket") == Some(entity.type_id)
     });
     // An item frame keeps its item after the direction `HangingEntity` has.
     let is_frame = world
-        .entity_at(packet.entity_id)
+        .entities()
+        .at(packet.entity_id)
         .is_some_and(|entity| entity.is_item_frame());
     let is_item_display = voxel_data::entity_type::id("minecraft:item_display").is_some_and(|id| {
         world
-            .entity_at(packet.entity_id)
+            .entities()
+            .at(packet.entity_id)
             .is_some_and(|entity| entity.type_id == id)
     });
     let stack_data_id = if is_frame {
@@ -119,7 +123,7 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
         && let Some((ITEM_STACK_SERIALIZER_ID, value)) =
             voxel_world::entity_metadata_field(&packet.metadata, stack_data_id)
     {
-        world.apply_entity_item_stack(
+        world.entities_mut().apply_item_stack(
             packet.entity_id,
             super::protocol::parse_entity_item_stack(value),
         );

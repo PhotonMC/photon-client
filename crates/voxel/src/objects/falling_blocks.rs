@@ -21,7 +21,7 @@ pub fn falling_blocks(
     let world = session.world();
     let partial = view.partial as f32;
     let mut blocks = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         if voxel_data::entity_type::name(entity.type_id) != Some("minecraft:falling_block") {
             continue;
         }

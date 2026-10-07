@@ -32,6 +32,7 @@ pub fn remote_bears(
     let mut vertices = Vec::new();
     for entity in world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == polar_bear)
     {
         let baby = entity.is_baby();

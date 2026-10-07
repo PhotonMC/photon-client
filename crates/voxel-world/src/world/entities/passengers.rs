@@ -38,7 +38,7 @@ impl ClientWorld {
                     .map(|_| VANILLA_PLAYER_ENTITY_TYPE_ID)
             })?;
         let (vehicle_type_id, vehicle_position, vehicle_y_rot, passenger_index, passenger_count) =
-            self.entities.get(&vehicle_id).and_then(|vehicle| {
+            self.entities.at(vehicle_id).and_then(|vehicle| {
                 let passenger_index = vehicle
                     .passenger_ids
                     .iter()
@@ -99,8 +99,8 @@ impl ClientWorld {
             return;
         };
         let target_position = (target.x, target.y, target.z);
-        let previous_entity_position = self.entities.get(&passenger_id).map(ClientEntity::position);
-        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+        let previous_entity_position = self.entities.at(passenger_id).map(ClientEntity::position);
+        if let Some(passenger) = self.entities.at_mut(passenger_id) {
             passenger.set_position(target_position);
         } else if let Some(player) = self
             .local_player
@@ -117,7 +117,7 @@ impl ClientWorld {
 
     pub(crate) fn clamp_entity_passenger_rotation(&mut self, vehicle_id: i32, passenger_id: i32) {
         let Some((vehicle_type_id, vehicle_y_rot, delta_rotation, passenger_count)) =
-            self.entities.get(&vehicle_id).map(|vehicle| {
+            self.entities.at(vehicle_id).map(|vehicle| {
                 (
                     vehicle.type_id,
                     vehicle.y_rot.get(),
@@ -156,7 +156,7 @@ impl ClientWorld {
                     270.0_f32
                 }
             });
-        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
+        if let Some(passenger) = self.entities.at_mut(passenger_id) {
             passenger.add_vanilla_boat_passenger_rotation(delta_rotation);
             passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, animal_rotation_offset);
         } else if let Some(player) = self
@@ -165,30 +165,6 @@ impl ClientWorld {
             .filter(|player| player.id == passenger_id)
         {
             player.add_vanilla_boat_passenger_rotation(delta_rotation);
-            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
-        }
-    }
-
-    pub(crate) fn clamp_entity_passenger_rotation_after_turn(
-        &mut self,
-        vehicle_id: i32,
-        passenger_id: i32,
-    ) {
-        let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
-            VANILLA_BOAT_PASSENGER_GEOMETRY
-                .iter()
-                .any(|&(type_id, _, _)| type_id == vehicle.type_id)
-                .then(|| vehicle.y_rot.get())
-        }) else {
-            return;
-        };
-        if let Some(passenger) = self.entities.get_mut(&passenger_id) {
-            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, None);
-        } else if let Some(player) = self
-            .local_player
-            .as_mut()
-            .filter(|player| player.id == passenger_id)
-        {
             player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
         }
     }
@@ -239,35 +215,6 @@ impl ClientWorld {
         false
     }
 
-    pub(crate) fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
-        let entity = self.entities.get(&entity_id)?;
-        if !entity.tracks_water() {
-            return None;
-        }
-        let pick = voxel_data::entity_type::pick(entity.type_id)?;
-        let (width, height, eye) = match pick.baby {
-            Some(baby) if entity.is_baby() => baby,
-            _ => pick.size,
-        };
-        let dimensions = ClientEntityDimensions::scalable(width, height)
-            .with_eye_height(eye)
-            .scale(entity.fish_dimension_scale(), entity.fish_dimension_scale())
-            .scale(entity.scale(), entity.scale());
-        let (x, y, z) = entity.position();
-        let position = voxel_core::math::Vec3::new(x, y, z);
-        let found = fluid::scan(
-            &local_player::Level::new(self),
-            (
-                dimensions.make_bounding_box(position),
-                position,
-                dimensions.eye_height(),
-            ),
-            true,
-        )
-        .ok()?;
-        Some(found.water.height > 0.0)
-    }
-
     pub(crate) fn boat_is_local_instance_authoritative(&self, entity: &ClientEntity) -> bool {
         self.local_player
             .as_ref()
@@ -302,7 +249,7 @@ impl ClientWorld {
             }
             self.detach_entity_from_vehicle(passenger_id);
             self.set_entity_vehicle_id(passenger_id, Some(vehicle_id));
-            if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+            if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
                 vehicle.passenger_ids.push(passenger_id);
             } else if let Some(player) = self
                 .local_player
@@ -316,7 +263,7 @@ impl ClientWorld {
     }
 
     pub fn entity_vehicle_id(&self, entity_id: i32) -> Option<i32> {
-        if let Some(entity) = self.entities.get(&entity_id) {
+        if let Some(entity) = self.entities.at(entity_id) {
             return entity.vehicle_id;
         }
         self.local_player
@@ -326,7 +273,7 @@ impl ClientWorld {
     }
 
     pub fn entity_passengers(&self, entity_id: i32) -> Option<&[i32]> {
-        if let Some(entity) = self.entities.get(&entity_id) {
+        if let Some(entity) = self.entities.at(entity_id) {
             return Some(&entity.passenger_ids);
         }
         self.local_player
@@ -335,30 +282,11 @@ impl ClientWorld {
             .map(|player| player.passenger_ids.as_slice())
     }
 
-    pub(crate) fn set_entity_vehicle_id(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
-        if let Some(entity) = self.entities.get_mut(&entity_id) {
-            if entity.is_shulker() && entity.vehicle_id != vehicle_id {
-                if vehicle_id.is_some() {
-                    entity.shulker_starts_riding();
-                } else {
-                    entity.shulker_stops_riding();
-                }
-            }
-            entity.vehicle_id = vehicle_id;
-        } else if let Some(player) = self
-            .local_player
-            .as_mut()
-            .filter(|player| player.id == entity_id)
-        {
-            player.vehicle_id = vehicle_id;
-        }
-    }
-
     pub(crate) fn detach_entity_from_vehicle(&mut self, entity_id: i32) {
         let Some(vehicle_id) = self.entity_vehicle_id(entity_id) else {
             return;
         };
-        if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+        if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
             vehicle
                 .passenger_ids
                 .retain(|&passenger_id| passenger_id != entity_id);
@@ -375,7 +303,7 @@ impl ClientWorld {
     }
 
     pub(crate) fn eject_entity_passengers(&mut self, vehicle_id: i32) {
-        let passengers = if let Some(vehicle) = self.entities.get_mut(&vehicle_id) {
+        let passengers = if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
             Some(std::mem::take(&mut vehicle.passenger_ids))
         } else if let Some(player) = self
             .local_player
@@ -412,5 +340,79 @@ impl ClientWorld {
             current = self.entity_vehicle_id(entity_id);
         }
         false
+    }
+}
+
+impl ClientWorld {
+    pub(crate) fn clamp_entity_passenger_rotation_after_turn(
+        &mut self,
+        vehicle_id: i32,
+        passenger_id: i32,
+    ) {
+        let Some(vehicle_y_rot) = self.entities.by_id.get(&vehicle_id).and_then(|vehicle| {
+            VANILLA_BOAT_PASSENGER_GEOMETRY
+                .iter()
+                .any(|&(type_id, _, _)| type_id == vehicle.type_id)
+                .then(|| vehicle.y_rot.get())
+        }) else {
+            return;
+        };
+        if let Some(passenger) = self.entities.at_mut(passenger_id) {
+            passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, None);
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == passenger_id)
+        {
+            player.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot);
+        }
+    }
+
+    pub(crate) fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
+        let entity = self.entities.by_id.get(&entity_id)?;
+        if !entity.tracks_water() {
+            return None;
+        }
+        let pick = voxel_data::entity_type::pick(entity.type_id)?;
+        let (width, height, eye) = match pick.baby {
+            Some(baby) if entity.is_baby() => baby,
+            _ => pick.size,
+        };
+        let dimensions = ClientEntityDimensions::scalable(width, height)
+            .with_eye_height(eye)
+            .scale(entity.fish_dimension_scale(), entity.fish_dimension_scale())
+            .scale(entity.scale(), entity.scale());
+        let (x, y, z) = entity.position();
+        let position = voxel_core::math::Vec3::new(x, y, z);
+        let found = fluid::scan(
+            &local_player::Level::new(self),
+            (
+                dimensions.make_bounding_box(position),
+                position,
+                dimensions.eye_height(),
+            ),
+            true,
+        )
+        .ok()?;
+        Some(found.water.height > 0.0)
+    }
+
+    pub(crate) fn set_entity_vehicle_id(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
+        if let Some(entity) = self.entities.at_mut(entity_id) {
+            if entity.is_shulker() && entity.vehicle_id != vehicle_id {
+                if vehicle_id.is_some() {
+                    entity.shulker_starts_riding();
+                } else {
+                    entity.shulker_stops_riding();
+                }
+            }
+            entity.vehicle_id = vehicle_id;
+        } else if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.vehicle_id = vehicle_id;
+        }
     }
 }

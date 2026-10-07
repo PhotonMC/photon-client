@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (vehicle_id, passenger_id) = trace
         .world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == VANILLA_OAK_BOAT_ENTITY_TYPE_ID)
         .filter_map(|vehicle| {
             vehicle
@@ -29,9 +30,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .iter()
                 .copied()
                 .find(|&candidate| {
-                    trace.world.entity_at(candidate).is_some_and(|passenger| {
-                        passenger.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID && passenger.is_baby()
-                    })
+                    trace
+                        .world
+                        .entities()
+                        .at(candidate)
+                        .is_some_and(|passenger| {
+                            passenger.type_id == VANILLA_ZOMBIE_ENTITY_TYPE_ID
+                                && passenger.is_baby()
+                        })
                 })
                 .map(|passenger_id| (vehicle.id(), passenger_id))
         })
@@ -40,11 +46,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the selected oak boat")?;
     let before_passenger = trace
         .world
-        .entity_at(passenger_id)
+        .entities()
+        .at(passenger_id)
         .ok_or("world lost the selected baby Zombie")?;
     if !before_passenger.is_baby() {
         return Err("selected Zombie did not retain baby metadata".into());
@@ -54,11 +62,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let after_vehicle = trace
         .world
-        .entity_at(vehicle_id)
+        .entities()
+        .at(vehicle_id)
         .ok_or("world lost the oak boat after tick")?;
     let after_passenger = trace
         .world
-        .entity_at(passenger_id)
+        .entities()
+        .at(passenger_id)
         .ok_or("world lost the baby Zombie after tick")?;
     let expected_position = (
         after_vehicle.position().0,
@@ -88,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         after_passenger.position()
     );
     println!("expected_position={expected_position:?}");
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

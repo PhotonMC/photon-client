@@ -12,7 +12,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let username = env::args().nth(2).unwrap_or_else(|| "P08Freeze".to_owned());
     let trace =
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
-    let Some(entity) = trace.world.entities().find(|entity| entity.is_freezing()) else {
+    let Some(entity) = trace
+        .world
+        .entities()
+        .all()
+        .find(|entity| entity.is_freezing())
+    else {
         return Err("vanilla freezing entity was not applied to ClientWorld".into());
     };
 
@@ -32,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "entity_metadata_length={}",
         entity.metadata().map_or(0, <[u8]>::len)
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

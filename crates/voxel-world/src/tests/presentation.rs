@@ -90,7 +90,7 @@ fn a_walking_mob_eases_to_each_step_and_faces_where_it_goes() {
         x_rot: None,
     }));
     // The step is not taken at once: three ticks bring the cow to it.
-    let z_after = |world: &ClientWorld| world.entity_at(9).unwrap().position().2;
+    let z_after = |world: &ClientWorld| world.entities().at(9).unwrap().position().2;
     assert_eq!(z_after(&world), 4.5);
     let mut seen = Vec::new();
     for _ in 0..3 {
@@ -128,8 +128,16 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
         }));
         let main = ClientItemStackState::new(1, 10);
         let off = ClientItemStackState::new(2, 11);
-        assert!(world.apply_entity_equipment(entity_id, EquipmentSlot::MainHand, Some(main)));
-        assert!(world.apply_entity_equipment(entity_id, EquipmentSlot::OffHand, Some(off)));
+        assert!(world.entities_mut().apply_equipment(
+            entity_id,
+            EquipmentSlot::MainHand,
+            Some(main)
+        ));
+        assert!(
+            world
+                .entities_mut()
+                .apply_equipment(entity_id, EquipmentSlot::OffHand, Some(off))
+        );
     }
     let id_of = |entity: &ClientEntity, left: bool| {
         entity
@@ -137,7 +145,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             .map(|stack| stack.item_registry_id())
     };
     // Right-handed: the main hand is the right arm's.
-    let entity = world.entity_at(5).expect("the player");
+    let entity = world.entities().at(5).expect("the player");
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
         (Some(10), Some(11))
@@ -152,7 +160,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             255,
         ],
     ));
-    let entity = world.entity_at(5).expect("the player");
+    let entity = world.entities().at(5).expect("the player");
     assert!(entity.main_arm_is_left());
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
@@ -168,15 +176,23 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             255,
         ],
     ));
-    let entity = world.entity_at(6).expect("the mob");
+    let entity = world.entities().at(6).expect("the mob");
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
         (Some(11), Some(10))
     );
     // An empty slot clears it.
-    assert!(world.apply_entity_equipment(6, EquipmentSlot::OffHand, None));
-    assert_eq!(id_of(world.entity_at(6).expect("the mob"), false), None);
-    assert!(!world.apply_entity_equipment(99, EquipmentSlot::Head, None));
+    assert!(
+        world
+            .entities_mut()
+            .apply_equipment(6, EquipmentSlot::OffHand, None)
+    );
+    assert_eq!(id_of(world.entities().at(6).expect("the mob"), false), None);
+    assert!(
+        !world
+            .entities_mut()
+            .apply_equipment(99, EquipmentSlot::Head, None)
+    );
 }
 
 #[test]
@@ -200,10 +216,11 @@ fn a_cat_lies_on_top_of_a_player_who_sleeps_within_two_blocks_of_it() {
     assert!(world.apply_entity_metadata(1, &[crate::CAT_LYING_DATA_ID, 8, 1, 255]));
     let lies_on_player = |world: &mut ClientWorld| {
         // No chunk is loaded here, which would leave the cat idle.
-        world.entities.get_mut(&1).unwrap().ticking = true;
+        world.entities.at_mut(1).unwrap().ticking = true;
         world.tick_entities();
         world
-            .entity_at(1)
+            .entities()
+            .at(1)
             .unwrap()
             .cat()
             .is_lying_on_top_of_sleeping_player()
@@ -251,9 +268,9 @@ fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
     let mut data = vec![crate::GUARDIAN_ATTACK_TARGET_DATA_ID, 1, 2, 255];
     assert!(world.apply_entity_metadata(1, &data));
     // No chunk is loaded here, which would leave the guardian idle.
-    world.entities.get_mut(&1).unwrap().ticking = true;
+    world.entities.at_mut(1).unwrap().ticking = true;
     world.tick_entities();
-    let (y_rot, x_rot, head) = world.entity_at(1).unwrap().rotation();
+    let (y_rot, x_rot, head) = world.entities().at(1).unwrap().rotation();
     assert_eq!((head, y_rot), (-90.0, -90.0));
     // The player's eyes are 1.195 blocks above the guardian's, six away.
     assert!(
@@ -261,11 +278,11 @@ fn a_guardian_turns_its_head_to_the_local_player_it_aims_at() {
         "{x_rot}"
     );
     // Aiming at nothing the world holds does not look: head and pitch stay.
-    let looked = world.entity_at(1).unwrap().rotation();
+    let looked = world.entities().at(1).unwrap().rotation();
     data[2] = 9;
     assert!(world.apply_entity_metadata(1, &data));
     world.tick_entities();
-    assert_eq!(world.entity_at(1).unwrap().rotation(), looked);
+    assert_eq!(world.entities().at(1).unwrap().rotation(), looked);
 }
 
 #[test]
@@ -321,13 +338,14 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     let swinging = |world: &ClientWorld| {
         world
             .entities()
+            .all()
             .find(|entity| entity.id() == 9)
             .unwrap()
             .swing_state()
             .is_swinging()
     };
     // An empty hand swings over six ticks, the first of which only starts it.
-    world.apply_entity_animate(9, 0);
+    world.entities_mut().apply_animate(9, 0);
     for _ in 0..6 {
         world.tick_entities();
     }
@@ -339,7 +357,7 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
         .iter()
         .position(|item| item.name == "minecraft:iron_spear")
         .unwrap();
-    world.apply_entity_equipment(
+    world.entities_mut().apply_equipment(
         9,
         crate::EquipmentSlot::MainHand,
         Some(ClientItemStackState::from_wire(
@@ -349,7 +367,7 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
             vec![],
         )),
     );
-    world.apply_entity_animate(9, 0);
+    world.entities_mut().apply_animate(9, 0);
     for _ in 0..19 {
         world.tick_entities();
     }
@@ -361,6 +379,7 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
     let since = |world: &ClientWorld| {
         world
             .entities()
+            .all()
             .find(|entity| entity.id() == 9)
             .unwrap()
             .ticks_since_kinetic_hit(world.game_time(), 0.5)
@@ -398,7 +417,7 @@ fn an_item_frame_keeps_the_turn_of_its_item() {
             data: 2,
         }));
         assert!(world.apply_entity_metadata(id, &[10, 1, 5, 255]));
-        let frame = world.entity_at(id).expect("the frame");
+        let frame = world.entities().at(id).expect("the frame");
         assert!(frame.is_item_frame());
         assert_eq!(frame.item_frame_rotation(), 5);
     }

@@ -138,7 +138,7 @@ pub fn leashes(session: &PlaySession, view: FrameView) -> Vec<Vertex> {
     let player = session.player();
     let game_time = world.game_time() as i64;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(holder_id) = entity.leash_holder_id() else {
             continue;
         };
@@ -154,7 +154,8 @@ pub fn leashes(session: &PlaySession, view: FrameView) -> Vec<Vertex> {
         let holder = match player {
             Some(player) if player.entity_id() == holder_id => local_holder(player, partial),
             _ => {
-                let Some(roper) = world.entities().find(|roper| roper.id() == holder_id) else {
+                let Some(roper) = world.entities().all().find(|roper| roper.id() == holder_id)
+                else {
                     continue;
                 };
                 let Some(roper_snapshot) = world.entity_snapshot(holder_id, partial) else {

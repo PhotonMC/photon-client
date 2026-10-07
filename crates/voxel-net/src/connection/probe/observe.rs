@@ -9,7 +9,7 @@ pub(super) fn observe_player_interpolation(
     if !trace.entity_interpolation_observations.is_empty() {
         return;
     }
-    let Some(entity) = trace.world.entity_at(entity_id) else {
+    let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
     if entity.type_id != 156 {
@@ -29,13 +29,13 @@ pub(super) fn observe_player_interpolation(
     let mut rotations_after_ticks = Vec::with_capacity(3);
     for _ in 0..3 {
         trace.world.tick();
-        let Some(entity) = trace.world.entity_at(entity_id) else {
+        let Some(entity) = trace.world.entities().at(entity_id) else {
             return;
         };
         positions_after_ticks.push(entity.position());
         rotations_after_ticks.push((entity.rotation().0, entity.rotation().1));
     }
-    let Some(entity) = trace.world.entity_at(entity_id) else {
+    let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
     trace
@@ -62,7 +62,7 @@ pub(super) fn observe_player_motion_interpolation(
     if !trace.entity_motion_interpolation_observations.is_empty() {
         return;
     }
-    let Some(entity) = trace.world.entity_at(entity_id) else {
+    let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
     if entity.type_id != 156
@@ -76,12 +76,12 @@ pub(super) fn observe_player_motion_interpolation(
     let mut motions_after_ticks = Vec::with_capacity(3);
     for _ in 0..3 {
         trace.world.tick();
-        let Some(entity) = trace.world.entity_at(entity_id) else {
+        let Some(entity) = trace.world.entities().at(entity_id) else {
             return;
         };
         motions_after_ticks.push(entity.motion());
     }
-    let Some(entity) = trace.world.entity_at(entity_id) else {
+    let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
     trace
@@ -107,7 +107,7 @@ pub(super) fn observe_player_position_snap(
     if !trace.entity_position_snap_observations.is_empty() {
         return;
     }
-    let Some(entity) = trace.world.entity_at(entity_id) else {
+    let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
     if entity.type_id != 156 || entity.interpolation_steps() != 0 {
@@ -167,7 +167,8 @@ pub(super) fn observe_world_entity_tick(
 ) -> Result<(), ConnectionError> {
     let entity = trace
         .world
-        .entity_at(observation.entity_id)
+        .entities()
+        .at(observation.entity_id)
         .ok_or(ConnectionError::Codec("world entity tick entity"))?;
     let before_position = entity.position();
     let before_motion = entity.motion();
@@ -175,7 +176,8 @@ pub(super) fn observe_world_entity_tick(
     trace.world.tick();
     let entity = trace
         .world
-        .entity_at(observation.entity_id)
+        .entities()
+        .at(observation.entity_id)
         .ok_or(ConnectionError::Codec("world entity tick result"))?;
     trace
         .world_entity_tick_observations
@@ -199,21 +201,24 @@ pub(super) fn observe_experience_orb_tick(
 ) -> Result<(), ConnectionError> {
     let entity = trace
         .world
-        .entity_at(observation.entity_id)
+        .entities()
+        .at(observation.entity_id)
         .ok_or(ConnectionError::Codec("experience orb tick entity"))?;
     let before_position = entity.position();
     let before_motion = entity.motion();
     trace.world.tick();
     let entity = trace
         .world
-        .entity_at(observation.entity_id)
+        .entities()
+        .at(observation.entity_id)
         .ok_or(ConnectionError::Codec("experience orb first tick result"))?;
     let after_first_tick_position = entity.position();
     let after_first_tick_motion = entity.motion();
     trace.world.tick();
     let entity = trace
         .world
-        .entity_at(observation.entity_id)
+        .entities()
+        .at(observation.entity_id)
         .ok_or(ConnectionError::Codec("experience orb second tick result"))?;
     trace
         .experience_orb_tick_observations

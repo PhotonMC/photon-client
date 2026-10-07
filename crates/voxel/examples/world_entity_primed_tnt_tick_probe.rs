@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("primed_tnt_after_tick_position={:?}", tick.after_position);
     println!("primed_tnt_after_tick_motion={:?}", tick.after_motion);
     println!("primed_tnt_tick_count={}", tick.tick_count);
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

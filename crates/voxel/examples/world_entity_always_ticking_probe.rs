@@ -32,7 +32,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         connect_and_world_entity_add_probe(address, &second_username, Duration::from_secs(60))?;
     let first = first.join().map_err(|_| "first vanilla probe panicked")??;
 
-    let Some(remote) = first.world.entities().find(|entity| entity.type_id == 156) else {
+    let Some(remote) = first
+        .world
+        .entities()
+        .all()
+        .find(|entity| entity.type_id == 156)
+    else {
         return Err("vanilla did not send the second player as entity type 156".into());
     };
     let remote_type_id = remote.type_id;
@@ -48,7 +53,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut world = first.world;
     let removed = world.unload_chunk(chunk_x, chunk_z);
     world.tick();
-    let Some(after_unload) = world.entities().find(|entity| entity.uuid == remote_id) else {
+    let Some(after_unload) = world
+        .entities()
+        .all()
+        .find(|entity| entity.uuid == remote_id)
+    else {
         return Err("remote player disappeared from ClientWorld during chunk unload".into());
     };
     if !removed
@@ -89,10 +98,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("tick_count_before_unload={tick_before_unload}");
     println!("tick_count_after_unload={}", after_unload.tick_count());
     println!("first_world_chunk_count={}", world.loaded_chunk_count());
-    println!("first_world_entity_count={}", world.loaded_entity_count());
+    println!("first_world_entity_count={}", world.entities().count());
     println!(
         "second_world_entity_count={}",
-        second.world.loaded_entity_count()
+        second.world.entities().count()
     );
     println!("first_received_packet_count={}", first.packets.len());
     println!("second_received_packet_count={}", second.packets.len());

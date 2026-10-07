@@ -31,7 +31,11 @@ pub fn remote_turtles(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == turtle) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == turtle)
+    {
         let baby = entity.is_baby();
         let index = usize::from(baby);
         let (Some(snapshot), Some(rect), Some(model)) = (

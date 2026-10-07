@@ -59,7 +59,11 @@ pub fn remote_shulkers(
         return Vec::new();
     };
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == type_id) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == type_id)
+    {
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(texture_of(entity.shulker_color())),

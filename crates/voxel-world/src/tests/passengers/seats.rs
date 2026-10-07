@@ -35,10 +35,10 @@ fn passenger_tick_uses_ride_tick_motion_reset_before_projectile_tick() {
     world.tick();
 
     assert_eq!(
-        world.entity_at(37).map(|entity| entity.tick_count()),
+        world.entities().at(37).map(|entity| entity.tick_count()),
         Some(1)
     );
-    let passenger = world.entity_at(38).expect("snowball passenger");
+    let passenger = world.entities().at(38).expect("snowball passenger");
     assert_eq!(passenger.tick_count(), 1);
     assert_eq!(passenger.motion().0, 0.0);
     assert_eq!(passenger.motion().2, 0.0);
@@ -88,7 +88,7 @@ fn passenger_tick_positions_snowball_on_regular_boat_seat() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("snowball passenger");
+    let passenger = world.entities().at(38).expect("snowball passenger");
     assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
     assert_eq!(passenger.position(), (2.0, 2.1875, 2.0));
     assert_eq!(passenger.motion().0, 0.0);
@@ -143,8 +143,8 @@ fn passenger_tick_positions_multiple_snowballs_by_boat_order() {
 
     world.tick();
 
-    let first = world.entity_at(38).expect("first snowball passenger");
-    let second = world.entity_at(39).expect("second snowball passenger");
+    let first = world.entities().at(38).expect("first snowball passenger");
+    let second = world.entities().at(39).expect("second snowball passenger");
     assert!((first.position().0 - 1.8).abs() < 1e-6);
     assert!((first.position().1 - 2.1875).abs() < 1e-6);
     assert!((first.position().2 - 2.0).abs() < 1e-6);
@@ -223,7 +223,8 @@ fn passenger_tick_positions_all_vanilla_boat_geometry_rows() {
         world.tick();
 
         let passenger = world
-            .entity_at(passenger_id)
+            .entities()
+            .at(passenger_id)
             .expect("boat geometry passenger");
         assert_eq!(
             passenger.position(),
@@ -266,7 +267,7 @@ fn passenger_tick_positions_remote_player_from_vehicle_attachment() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("remote player passenger");
+    let passenger = world.entities().at(38).expect("remote player passenger");
     assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
     assert_eq!(passenger.position(), (2.0, 1.5875, 2.0));
 }
@@ -317,7 +318,8 @@ fn passenger_tick_positions_generic_entity_vehicle_attachment() {
         world.tick();
 
         let passenger = world
-            .entity_at(passenger_id)
+            .entities()
+            .at(passenger_id)
             .expect("generic vehicle passenger");
         assert_eq!(passenger.previous_position(), (2.0, 12.0, 2.0));
         assert_eq!(passenger.position(), (2.0, expected_y, 2.0));
@@ -364,19 +366,19 @@ fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
 
     world.tick();
     assert_eq!(
-        world.entity_at(38).expect("adult zombie").position(),
+        world.entities().at(38).expect("adult zombie").position(),
         (2.0, 2.1875, 2.0)
     );
 
     assert!(world.apply_entity_metadata(38, &[16, 8, 1, 255]));
     world.tick();
-    let baby = world.entity_at(38).expect("baby zombie");
+    let baby = world.entities().at(38).expect("baby zombie");
     assert!(baby.is_baby());
     assert_eq!(baby.position(), (2.0, 2.0, 2.0));
 
     assert!(world.apply_entity_metadata(38, &[16, 8, 0, 255]));
     world.tick();
-    let adult = world.entity_at(38).expect("adult zombie after reset");
+    let adult = world.entities().at(38).expect("adult zombie after reset");
     assert!(!adult.is_baby());
     assert_eq!(adult.position(), (2.0, 2.1875, 2.0));
 }
@@ -454,7 +456,7 @@ fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() 
 
         world.tick();
 
-        let passenger = world.entity_at(animal_id).expect("Cow passenger");
+        let passenger = world.entities().at(animal_id).expect("Cow passenger");
         assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0 + expected_offset));
         assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
         assert_eq!(passenger.body_y_rotation(), expected_offset);
@@ -497,7 +499,7 @@ fn passenger_tick_positions_animal_on_full_boat_seat_offset() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("Cow passenger");
+    let passenger = world.entities().at(38).expect("Cow passenger");
     assert_eq!(
         passenger.position(),
         (2.0, 2.1875, 2.0 + f64::from(0.2_f32 + 0.2_f32))

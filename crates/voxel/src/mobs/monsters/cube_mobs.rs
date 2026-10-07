@@ -63,7 +63,11 @@ pub fn remote_cube_mobs(
             continue;
         };
         let magma = name == MAGMA_CUBE;
-        for entity in world.entities().filter(|entity| entity.type_id == type_id) {
+        for entity in world
+            .entities()
+            .all()
+            .filter(|entity| entity.type_id == type_id)
+        {
             let (Some(snapshot), Some(rect)) = (
                 world.entity_snapshot(entity.id(), partial),
                 textures.rect(texture_path),
@@ -119,7 +123,11 @@ pub fn remote_sulfur_cubes(
     let Some(type_id) = voxel_data::entity_type::id(SULFUR_CUBE) else {
         return vertices;
     };
-    for entity in world.entities().filter(|entity| entity.type_id == type_id) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == type_id)
+    {
         let baby = usize::from(entity.is_baby());
         let (Some(snapshot), Some(outer_rect), Some(inner_rect)) = (
             world.entity_snapshot(entity.id(), partial),

@@ -40,7 +40,7 @@ fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("remote player passenger");
+    let passenger = world.entities().at(38).expect("remote player passenger");
     assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
     assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 140.0));
     assert_eq!(passenger.body_y_rotation(), 0.0);
@@ -81,7 +81,7 @@ fn passenger_tick_leaves_breeze_rotation_unclamped() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("Breeze passenger");
+    let passenger = world.entities().at(38).expect("Breeze passenger");
     assert_eq!(passenger.rotation(), (170.0, 0.0, 170.0));
     assert_eq!(passenger.previous_rotation(), (170.0, 0.0, 170.0));
 }
@@ -118,7 +118,7 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("generic boat passenger");
+    let passenger = world.entities().at(38).expect("generic boat passenger");
     assert_eq!(passenger.rotation(), (105.0, 0.0, 170.0));
     assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
     assert_eq!(passenger.body_y_rotation(), 170.0);
@@ -161,7 +161,7 @@ fn passenger_tick_applies_animal_living_rotation_before_capacity_offset() {
 
         world.tick();
 
-        let passenger = world.entity_at(38).expect("Cow passenger");
+        let passenger = world.entities().at(38).expect("Cow passenger");
         assert_eq!(passenger.rotation(), (105.0, 0.0, expected_rotation));
         assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 170.0));
         assert_eq!(passenger.body_y_rotation(), expected_body);
@@ -203,7 +203,7 @@ fn passenger_turn_calls_boat_on_passenger_turned() {
 
     assert!(world.turn_entity(38, -100.0, 0.0));
 
-    let passenger = world.entity_at(38).expect("Player passenger");
+    let passenger = world.entities().at(38).expect("Player passenger");
     assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
     assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
     assert_eq!(passenger.body_y_rotation(), 0.0);
@@ -245,7 +245,7 @@ fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
 
     assert!(world.turn_entity(38, -100.0, 0.0));
 
-    let passenger = world.entity_at(38).expect("Breeze passenger");
+    let passenger = world.entities().at(38).expect("Breeze passenger");
     assert_eq!(passenger.rotation(), (105.0, 0.0, 105.0));
     assert_eq!(passenger.previous_rotation(), (105.0, 0.0, 168.75));
     assert_eq!(passenger.body_y_rotation(), 0.0);
@@ -286,12 +286,12 @@ fn boat_control_delta_rotation_reaches_passenger_tick() {
 
     world.tick();
 
-    let passenger = world.entity_at(38).expect("living boat passenger");
+    let passenger = world.entities().at(38).expect("living boat passenger");
     assert_eq!(passenger.rotation(), (1.0, 0.0, 1.0));
     assert_eq!(passenger.previous_rotation(), (0.0, 0.0, 0.0));
     assert_eq!(passenger.body_y_rotation(), 1.0);
     // The boat moved as it ticked, and the passenger is carried to where it now stands.
-    let boat = world.entity_at(37).expect("boat").position();
+    let boat = world.entities().at(37).expect("boat").position();
     let radians = f64::from(-(std::f32::consts::PI / 180.0_f32));
     let passenger_z_offset = f64::from(-0.6_f32);
     let expected_position = (
@@ -356,7 +356,7 @@ fn boat_authority_uses_first_passenger_only() {
 
     world.tick();
 
-    let boat = world.entity_at(37).expect("boat");
+    let boat = world.entities().at(37).expect("boat");
     assert_eq!(boat.position(), (2.0, 12.0, 2.0));
     assert_eq!(boat.motion(), (0.0, 0.0, 0.0));
     assert_eq!(boat.rotation(), (0.0, 0.0, 0.0));
@@ -407,7 +407,7 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
         let passenger_id = 100 + index as i32;
         assert!(world.apply_entity_passengers(37, &[passenger_id]));
         assert!(world.turn_entity(passenger_id, -100.0, 0.0));
-        let passenger = world.entity_at(passenger_id).expect("living passenger");
+        let passenger = world.entities().at(passenger_id).expect("living passenger");
         assert_eq!(
             passenger.rotation(),
             (

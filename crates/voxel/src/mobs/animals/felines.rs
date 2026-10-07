@@ -74,6 +74,7 @@ pub fn remote_felines(
     let mut vertices = Vec::new();
     for entity in world
         .entities()
+        .all()
         .filter(|entity| entity.type_id == cat || entity.type_id == ocelot)
     {
         let is_cat = entity.type_id == cat;

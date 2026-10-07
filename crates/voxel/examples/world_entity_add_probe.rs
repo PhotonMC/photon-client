@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .count();
     if trace.add_entity_observations.is_empty()
         || applied_count == 0
-        || trace.world.loaded_entity_count() == 0
+        || trace.world.entities().count() == 0
     {
         return Err("vanilla entity add was not applied to ClientWorld".into());
     }
@@ -29,14 +29,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         observation.applied_to_world
             && trace
                 .world
-                .entity_at(observation.entity_id)
+                .entities()
+                .at(observation.entity_id)
                 .is_some_and(|entity| entity.uuid == observation.uuid)
     }) else {
         return Err("vanilla entity UUID was not preserved in ClientWorld".into());
     };
     let entity = trace
         .world
-        .entity_at(first.entity_id)
+        .entities()
+        .at(first.entity_id)
         .expect("matched entity UUID implies queryable entity");
 
     println!("connection=ok");
@@ -63,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "world_entity={:?}",
         Some((entity.uuid, entity.type_id, entity.position(), entity.data))
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());

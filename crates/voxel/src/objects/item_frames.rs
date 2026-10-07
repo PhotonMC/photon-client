@@ -145,7 +145,11 @@ pub fn item_frames(
 ) -> Vec<Vertex> {
     let world = session.world();
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.is_item_frame()) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.is_item_frame())
+    {
         let glowing =
             voxel_data::entity_type::name(entity.type_id) == Some("minecraft:glow_item_frame");
         // `ClientboundAddEntityPacket.getData`: the way it faces; the block is its position.

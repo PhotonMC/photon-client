@@ -51,7 +51,7 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
     if id == player.entity_id() {
         return Some(local_eye());
     }
-    let entity = world.entity_at(id)?;
+    let entity = world.entities().at(id)?;
     let snapshot = world.entity_snapshot(id, partial)?;
     let (_, _, eye) = voxel_data::entity_type::pick(entity.type_id)?.size;
     let (x, y, z) = snapshot.position;
@@ -72,7 +72,7 @@ fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64;
             position.z,
         ]);
     }
-    let entity = world.entity_at(id)?;
+    let entity = world.entities().at(id)?;
     let snapshot = world.entity_snapshot(id, partial)?;
     let pick = voxel_data::entity_type::pick(entity.type_id)?;
     let (_, height, _) = match pick.baby {
@@ -131,7 +131,7 @@ pub fn remote_guardians(
     let guardian = voxel_data::entity_type::id("minecraft:guardian");
     let elder = voxel_data::entity_type::id("minecraft:elder_guardian");
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let is_elder = Some(entity.type_id) == elder;
         if !is_elder && Some(entity.type_id) != guardian {
             continue;

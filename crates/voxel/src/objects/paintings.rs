@@ -82,7 +82,7 @@ pub fn remote_paintings(
         return Vec::new();
     };
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         if voxel_data::entity_type::name(entity.type_id) != Some("minecraft:painting") {
             continue;
         }

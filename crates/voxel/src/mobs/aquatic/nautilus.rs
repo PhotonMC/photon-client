@@ -45,7 +45,7 @@ pub fn remote_nautiluses(
     let nautilus = voxel_data::entity_type::id("minecraft:nautilus");
     let zombie = voxel_data::entity_type::id("minecraft:zombie_nautilus");
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let is_zombie = Some(entity.type_id) == zombie;
         if !is_zombie && Some(entity.type_id) != nautilus {
             continue;

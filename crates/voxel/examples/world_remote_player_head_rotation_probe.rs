@@ -83,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .map(|observation| observation.y_head_rot)
         .collect();
-    let Some(remote_before_ticks) = trace.world.entity_at(remote_id) else {
+    let Some(remote_before_ticks) = trace.world.entities().at(remote_id) else {
         return Err("remote player disappeared before ClientWorld tick test".into());
     };
     let head_before_ticks = remote_before_ticks.rotation().2;
@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     world.tick();
     world.tick();
     world.tick();
-    let Some(remote_after_ticks) = world.entity_at(remote_id) else {
+    let Some(remote_after_ticks) = world.entities().at(remote_id) else {
         return Err("remote player disappeared while ticking ClientWorld".into());
     };
     let head_after_three_ticks = remote_after_ticks.rotation().2;
@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("remote_player_head_rotation_before_ticks={head_before_ticks}");
     println!("remote_player_head_rotation_target={expected_head_rotation}");
     println!("remote_player_head_rotation_after_three_ticks={head_after_three_ticks}");
-    println!("world_entity_count={}", world.loaded_entity_count());
+    println!("world_entity_count={}", world.entities().count());
     println!("world_chunk_count={}", world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

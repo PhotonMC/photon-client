@@ -37,7 +37,7 @@ pub fn remote_arrows(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let texture = match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:arrow") => {
                 if entity.arrow().is_some_and(|own| own.is_tipped()) {

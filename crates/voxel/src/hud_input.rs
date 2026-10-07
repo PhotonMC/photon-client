@@ -71,6 +71,7 @@ pub fn hud_input(
         session
             .world()
             .entities()
+            .all()
             .find(|entity| entity.id() == id)
             .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
     });

@@ -74,7 +74,7 @@ pub fn fishing_hooks(
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     let (mut sprites, mut lines) = (Vec::new(), Vec::new());
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         if voxel_data::entity_type::name(entity.type_id) != Some("minecraft:fishing_bobber") {
             continue;
         }
@@ -93,6 +93,7 @@ pub fn fishing_hooks(
         } else {
             let Some(owner) = world
                 .entities()
+                .all()
                 .find(|owner| owner.id() == owner_id && owner.is_player())
             else {
                 continue;

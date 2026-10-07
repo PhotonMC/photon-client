@@ -11,7 +11,7 @@ impl ClientWorld {
                 eye_height: dimensions.eye_height(),
             });
         }
-        let target = self.entities.get(&id)?;
+        let target = self.entities.at(id)?;
         target.living_kind()?;
         let dimensions = target.dimensions().scale(target.scale(), target.scale());
         Some(mobs::guardian::GuardianTarget {
@@ -35,7 +35,7 @@ impl ClientWorld {
         &self,
         entity_id: i32,
     ) -> Option<mobs::guardian::GuardianTarget> {
-        let id = self.entities.get(&entity_id)?.guardian_attack_target()?;
+        let id = self.entities.at(entity_id)?.guardian_attack_target()?;
         self.living_target(id)
     }
 
@@ -44,24 +44,34 @@ impl ClientWorld {
         entity::EntityTargets {
             guardian: self.guardian_target_of(entity_id),
             wither: self.wither_targets_of(entity_id),
-            dragon: self.dragon_crystals_of(entity_id),
+            dragon: self.entities().dragon_crystals(entity_id),
         }
     }
 
+    /// The two entities a wither's side heads look at, by the ids it holds.
+    pub(crate) fn wither_targets_of(
+        &self,
+        entity_id: i32,
+    ) -> [Option<mobs::guardian::GuardianTarget>; 2] {
+        let ids = self
+            .entities
+            .get(&entity_id)
+            .map_or([0; 2], ClientEntity::wither_targets);
+        ids.map(|id| (id > 0).then(|| self.living_target(id)).flatten())
+    }
+}
+
+impl Entities {
     /// `EnderDragon.checkCrystals`' look at the world: the nearest end crystal whose box
     /// meets the dragon's box made 32 blocks wider (by the distance between the two
     /// entities' places), and whether the crystal the dragon holds is still there.
-    pub(crate) fn dragon_crystals_of(&self, entity_id: i32) -> mobs::ender_dragon::DragonCrystals {
-        let Some(dragon) = self
-            .entities
-            .get(&entity_id)
-            .filter(|e| e.is_ender_dragon())
-        else {
+    pub(crate) fn dragon_crystals(&self, entity_id: i32) -> mobs::ender_dragon::DragonCrystals {
+        let Some(dragon) = self.by_id.get(&entity_id).filter(|e| e.is_ender_dragon()) else {
             return mobs::ender_dragon::DragonCrystals::default();
         };
         let current = dragon.ender_dragon().and_then(|own| own.nearest_crystal());
         let current_exists = current.is_some_and(|id| {
-            self.entities
+            self.by_id
                 .get(&id)
                 .is_some_and(ClientEntity::is_end_crystal)
         });
@@ -74,7 +84,7 @@ impl ClientWorld {
         );
         let mut nearest = None;
         let mut distance = f64::MAX;
-        for crystal in self.entities.values().filter(|e| e.is_end_crystal()) {
+        for crystal in self.by_id.values().filter(|e| e.is_end_crystal()) {
             let (cx, cy, cz) = crystal.position();
             let crystal_size = crystal.dimensions();
             let reach = f64::from(crystal_size.width()) / 2.0;
@@ -98,17 +108,5 @@ impl ClientWorld {
             nearest,
             current_exists,
         }
-    }
-
-    /// The two entities a wither's side heads look at, by the ids it holds.
-    pub(crate) fn wither_targets_of(
-        &self,
-        entity_id: i32,
-    ) -> [Option<mobs::guardian::GuardianTarget>; 2] {
-        let ids = self
-            .entities
-            .get(&entity_id)
-            .map_or([0; 2], ClientEntity::wither_targets);
-        ids.map(|id| (id > 0).then(|| self.living_target(id)).flatten())
     }
 }

@@ -185,7 +185,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 // `AbstractHorse.addPassenger`: the rider looks the way the horse does.
                 player.set_rotation(bits32(ride, "y_rot")?, 0.0);
                 // A tamed horse in a saddle, as the oracle makes it.
-                world.apply_entity_equipment(
+                world.entities_mut().apply_equipment(
                     id,
                     voxel_world::EquipmentSlot::Saddle,
                     Some(voxel_world::ClientItemStackState::new(
@@ -208,7 +208,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 held_stick = name;
             }
             if ride["saddled"].as_bool().unwrap_or(false) {
-                world.apply_entity_equipment(
+                world.entities_mut().apply_equipment(
                     id,
                     voxel_world::EquipmentSlot::Saddle,
                     Some(voxel_world::ClientItemStackState::new(

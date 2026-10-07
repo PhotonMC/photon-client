@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(first) = applied else {
         return Err("vanilla entity metadata was not applied to ClientWorld".into());
     };
-    if trace.world.entity_metadata_at(first.entity_id).is_none() {
+    if trace.world.entities().metadata(first.entity_id).is_none() {
         return Err("applied entity metadata is not queryable in ClientWorld".into());
     }
 
@@ -46,10 +46,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "world_entity_metadata_length={}",
         trace
             .world
-            .entity_metadata_at(first.entity_id)
+            .entities()
+            .metadata(first.entity_id)
             .map_or(0, <[u8]>::len)
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());

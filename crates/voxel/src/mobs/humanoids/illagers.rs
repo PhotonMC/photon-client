@@ -124,7 +124,7 @@ pub fn remote_illagers(
         .filter_map(|illager| Some((voxel_data::entity_type::id(illager.type_name)?, illager)))
         .collect();
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(illager) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)

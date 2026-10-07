@@ -45,7 +45,11 @@ pub fn remote_wolves(
     let world = session.world();
     let (partial, game_time) = (view.partial as f32, world.game_time());
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == wolf) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == wolf)
+    {
         let name = match entity.variant() {
             None => Some(DEFAULT_VARIANT),
             Some(id) => usize::try_from(id)

@@ -32,7 +32,7 @@ pub fn remote_armor_stands(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(snapshot) = world
             .entity_snapshot(entity.id(), partial)
             .filter(|_| entity.type_id == stand_type)

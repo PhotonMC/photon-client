@@ -28,9 +28,8 @@ impl ClientWorld {
             light: new_light_engine(dimension, true),
             light_tasks: VecDeque::new(),
             light_dirty: Vec::new(),
-            entities: BTreeMap::new(),
+            entities: Entities::default(),
             maps: BTreeMap::new(),
-            entity_sections: BTreeMap::new(),
             local_player: None,
             sounds: local_player::SoundQueue::default(),
             world_border: ClientWorldBorder::default(),
@@ -125,7 +124,7 @@ impl ClientWorld {
                 .map(|cache| cache.server_view_radius);
             self.chunks.clear();
             self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
-            self.entities.clear();
+            self.entities.by_id.clear();
             self.maps.clear();
             if let Some(player) = self.local_player.as_mut() {
                 player.vehicle_id = None;

@@ -155,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "remote_player_interpolation_tick_count={}",
         observation.tick_count
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

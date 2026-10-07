@@ -27,19 +27,21 @@ fn player_entities_keep_ticking_after_their_chunk_unloads() {
     }));
     assert!(
         world
-            .entity_at(42)
+            .entities()
+            .at(42)
             .is_some_and(|entity| { entity.is_always_ticking() && entity.is_ticking() })
     );
 
     assert!(world.unload_chunk(0, -3));
     assert!(
         world
-            .entity_at(42)
+            .entities()
+            .at(42)
             .is_some_and(|entity| { entity.is_always_ticking() && entity.is_ticking() })
     );
     world.tick();
     assert_eq!(
-        world.entity_at(42).map(crate::ClientEntity::tick_count),
+        world.entities().at(42).map(crate::ClientEntity::tick_count),
         Some(1)
     );
 }
@@ -139,36 +141,39 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         rotation: (12.5, -30.0, 45.0),
         data: 6,
     }));
-    assert_eq!(world.loaded_entity_count(), 1);
+    assert_eq!(world.entities().count(), 1);
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((1.25, 80.0, -35.5))
     );
-    assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(120));
-    assert_eq!(world.entity_at(37).map(|entity| entity.data), Some(6));
     assert_eq!(
-        world.entity_at(37).map(|entity| entity.uuid),
+        world.entities().at(37).map(|entity| entity.type_id),
+        Some(120)
+    );
+    assert_eq!(world.entities().at(37).map(|entity| entity.data), Some(6));
+    assert_eq!(
+        world.entities().at(37).map(|entity| entity.uuid),
         Some(Uuid::new(1, 2))
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::motion),
+        world.entities().at(37).map(crate::ClientEntity::motion),
         Some((0.125, -0.25, 0.5))
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::rotation),
+        world.entities().at(37).map(crate::ClientEntity::rotation),
         Some((12.5, -30.0, 45.0))
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::on_ground),
+        world.entities().at(37).map(crate::ClientEntity::on_ground),
         Some(false)
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::is_ticking),
+        world.entities().at(37).map(crate::ClientEntity::is_ticking),
         Some(true)
     );
     assert!(world.unload_chunk(0, -3));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::is_ticking),
+        world.entities().at(37).map(crate::ClientEntity::is_ticking),
         Some(false)
     );
     world.replace_chunk(
@@ -182,24 +187,24 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         }],
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::is_ticking),
+        world.entities().at(37).map(crate::ClientEntity::is_ticking),
         Some(true)
     );
-    assert_eq!(world.entity_metadata_at(37), None);
+    assert_eq!(world.entities().metadata(37), None);
     assert!(world.apply_entity_metadata(37, &[1, 0, 255]));
-    assert_eq!(world.entity_metadata_at(37), Some(&[1, 0, 255][..]));
+    assert_eq!(world.entities().metadata(37), Some(&[1, 0, 255][..]));
     assert!(!world.apply_entity_metadata(999, &[255]));
-    assert!(world.apply_entity_motion(EntityMotionInput {
+    assert!(world.entities_mut().apply_motion(EntityMotionInput {
         entity_id: 37,
         x: -0.5,
         y: 0.25,
         z: 0.75,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::motion),
+        world.entities().at(37).map(crate::ClientEntity::motion),
         Some((-0.5, 0.25, 0.75))
     );
-    assert!(!world.apply_entity_motion(EntityMotionInput {
+    assert!(!world.entities_mut().apply_motion(EntityMotionInput {
         entity_id: 999,
         x: 1.0,
         y: 2.0,
@@ -207,12 +212,12 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
     }));
     assert!(world.apply_entity_ground_state(37, true));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::on_ground),
+        world.entities().at(37).map(crate::ClientEntity::on_ground),
         Some(true)
     );
     assert!(world.apply_entity_ground_state(37, false));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::on_ground),
+        world.entities().at(37).map(crate::ClientEntity::on_ground),
         Some(false)
     );
     assert!(!world.apply_entity_ground_state(999, true));
@@ -225,7 +230,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         relative_x_rot: false,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::rotation),
+        world.entities().at(37).map(crate::ClientEntity::rotation),
         Some((90.0, -15.0, 135.0))
     );
     assert!(world.apply_entity_rotation(EntityRotationInput {
@@ -237,7 +242,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         relative_x_rot: true,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::rotation),
+        world.entities().at(37).map(crate::ClientEntity::rotation),
         Some((135.0, -5.0, 135.0))
     );
     assert!(!world.apply_entity_rotation(EntityRotationInput {
@@ -257,11 +262,11 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         relative_flags: 0,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((10.0, 20.0, 30.0))
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::is_ticking),
+        world.entities().at(37).map(crate::ClientEntity::is_ticking),
         Some(false)
     );
     assert!(world.apply_entity_position(EntityPositionInput {
@@ -272,7 +277,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         relative_flags: 0b111,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((10.5, 19.0, 32.0))
     );
     assert!(!world.apply_entity_position(EntityPositionInput {
@@ -292,7 +297,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         x_rot: None,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((11.0, 18.0, 32.0))
     );
     assert!(world.apply_entity_move(EntityMoveInput {
@@ -305,7 +310,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         x_rot: None,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((11.0, 18.0, 32.0))
     );
     world.replace_chunk(
@@ -328,7 +333,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         x_rot: None,
     }));
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::is_ticking),
+        world.entities().at(37).map(crate::ClientEntity::is_ticking),
         Some(true)
     );
 
@@ -343,19 +348,22 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
         rotation: (0.0, 0.0, 0.0),
         data: 0,
     }));
-    assert_eq!(world.loaded_entity_count(), 1);
-    assert_eq!(world.entity_at(37).map(|entity| entity.type_id), Some(71));
+    assert_eq!(world.entities().count(), 1);
     assert_eq!(
-        world.entity_at(37).map(|entity| entity.uuid),
+        world.entities().at(37).map(|entity| entity.type_id),
+        Some(71)
+    );
+    assert_eq!(
+        world.entities().at(37).map(|entity| entity.uuid),
         Some(Uuid::new(3, 4))
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::position),
+        world.entities().at(37).map(crate::ClientEntity::position),
         Some((-4.0, 65.0, 2.0))
     );
-    assert_eq!(world.entity_metadata_at(37), None);
+    assert_eq!(world.entities().metadata(37), None);
     assert!(world.remove_entity(37));
-    assert_eq!(world.loaded_entity_count(), 0);
+    assert_eq!(world.entities().count(), 0);
     assert!(!world.remove_entity(37));
 }
 
@@ -401,5 +409,5 @@ fn entity_passenger_state_replaces_previous_vehicle_and_cleans_relationships() {
     assert!(world.apply_entity_passengers(37, &[38]));
     assert!(world.remove_entity(37));
     assert_eq!(world.entity_vehicle_id(38), None);
-    assert_eq!(world.entity_at(37), None);
+    assert_eq!(world.entities().at(37), None);
 }

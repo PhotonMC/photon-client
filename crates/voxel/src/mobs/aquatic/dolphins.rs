@@ -36,7 +36,11 @@ pub fn remote_dolphins(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == dolphin) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == dolphin)
+    {
         let index = usize::from(entity.is_baby());
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),

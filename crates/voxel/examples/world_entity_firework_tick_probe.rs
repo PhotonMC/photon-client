@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("firework_before_tick_rotation={:?}", tick.before_rotation);
     println!("firework_after_tick_rotation={:?}", tick.after_rotation);
     println!("firework_tick_count={}", tick.tick_count);
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

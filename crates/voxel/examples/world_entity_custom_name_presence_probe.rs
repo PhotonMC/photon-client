@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(entity) = trace
         .world
         .entities()
+        .all()
         .find(|entity| entity.type_id == 85 && entity.has_custom_name())
     else {
         return Err("vanilla named minecart was not applied to ClientWorld".into());
@@ -38,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "entity_metadata_length={}",
         entity.metadata().map_or(0, <[u8]>::len)
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

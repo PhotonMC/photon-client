@@ -151,7 +151,7 @@ impl ClientWorld {
         inertia: f32,
         liquid_inertia: f32,
     ) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         // `applyInertia`: what the last tick found in the water decides it.
@@ -185,7 +185,7 @@ impl ClientWorld {
         let new_position = hit.or(block).unwrap_or(target);
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the projectile was read above");
         entity.motion.x = JavaF64::new(movement.x);
         entity.motion.y = JavaF64::new(movement.y);
@@ -202,7 +202,7 @@ impl ClientWorld {
     fn tick_shulker_bullet(&mut self, entity_id: i32) {
         self.check_left_owner_of(entity_id);
         self.tick_projectile_fluids(entity_id);
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         let movement = vec3(entity.motion());
@@ -215,7 +215,7 @@ impl ClientWorld {
     fn tick_llama_spit(&mut self, entity_id: i32) {
         self.check_left_owner_of(entity_id);
         self.tick_projectile_fluids(entity_id);
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let movement = vec3(entity.motion());
@@ -226,7 +226,7 @@ impl ClientWorld {
         let bounds = entity.bounding_box();
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the projectile was read above");
         update_rotation(entity);
         // It dies in blocks (no air in its box) and in water.
@@ -236,7 +236,7 @@ impl ClientWorld {
         }
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the projectile was read above");
         // `getAirDrag` and `getDefaultGravity` of the spit.
         let drag = f64::from(0.99_f32);
@@ -268,7 +268,7 @@ impl ClientWorld {
 
     /// `Projectile.checkLeftOwner` with the movement the entity has.
     fn check_left_owner_of(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let movement = vec3(entity.motion());
@@ -278,7 +278,7 @@ impl ClientWorld {
     /// `Projectile.checkLeftOwner`: once the projectile and its owner's boxes no longer meet, the
     /// owner can be hit.
     fn check_left_owner(&mut self, entity_id: i32, movement: Vec3) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         if entity.flight.left_owner {
@@ -294,11 +294,11 @@ impl ClientWorld {
             Some(owner) => !self
                 .family_of(self.root_vehicle_id(owner))
                 .into_iter()
-                .filter_map(|id| self.entities.get(&id))
+                .filter_map(|id| self.entities.at(id))
                 .filter(|member| member.is_pickable())
                 .any(|member| reach.intersects(member.bounding_box())),
         };
-        if let Some(entity) = self.entities.get_mut(&entity_id) {
+        if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.flight.left_owner = left;
         }
     }
@@ -324,7 +324,7 @@ impl ClientWorld {
     /// `Entity.updateFluidInteraction` of a projectile: whether it is in water for the next tick,
     /// and what a current adds to its movement.
     fn tick_projectile_fluids(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let Some(pick) = voxel_data::entity_type::pick(entity.type_id) else {
@@ -347,7 +347,7 @@ impl ClientWorld {
         }
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the projectile was read above");
         entity.living.in_water = found.water.height > 0.0;
         entity.motion.x = JavaF64::new(movement.x);
@@ -365,7 +365,7 @@ impl ClientWorld {
         search: Aabb,
         margin: f64,
     ) -> Option<Vec3> {
-        let flight = self.entities.get(&source)?.flight;
+        let flight = self.entities.at(source)?.flight;
         let owner_root = flight.owner.map(|owner| self.root_vehicle_id(owner));
         let mut nearest = f64::MAX;
         let mut location = None;

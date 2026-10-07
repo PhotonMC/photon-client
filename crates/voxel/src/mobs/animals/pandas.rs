@@ -40,7 +40,11 @@ pub fn remote_pandas(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == panda) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == panda)
+    {
         let baby = entity.is_baby();
         let own = entity.panda();
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {

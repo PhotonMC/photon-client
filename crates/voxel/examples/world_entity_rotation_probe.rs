@@ -147,7 +147,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.applied_head_rotation.unwrap_or_default()
         );
     }
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());

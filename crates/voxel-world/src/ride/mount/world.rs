@@ -33,7 +33,7 @@ impl ClientWorld {
     pub fn on_player_jump(&mut self, vehicle_id: i32, jump_amount: i32) {
         let Some(horse) = self
             .entities
-            .get_mut(&vehicle_id)
+            .at_mut(vehicle_id)
             .filter(|entity| entity.is_controllable_horse())
         else {
             return;
@@ -67,7 +67,7 @@ impl ClientWorld {
 
     /// `LivingEntity.tick` for the saddled horse the local player rides.
     pub(crate) fn tick_ridden_mount(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let Some(pick) = voxel_data::entity_type::pick(entity.type_id) else {
@@ -90,11 +90,11 @@ impl ClientWorld {
         if kind == MountKind::Strider {
             // `Strider.tick`: it takes the cold or the warmth before it moves.
             let suffocating = strider_is_suffocating(self, entity);
-            if let Some(strider) = self.entities.get_mut(&entity_id) {
+            if let Some(strider) = self.entities.at_mut(entity_id) {
                 strider.set_strider_suffocating(suffocating);
             }
         }
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let attributes = mount_attributes(entity, kind);
@@ -140,7 +140,7 @@ impl ClientWorld {
         let in_water = body.is_in_water();
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the mount was read above");
         entity.set_position((body.position.x, body.position.y, body.position.z));
         entity.motion.x = JavaF64::new(body.delta.x);

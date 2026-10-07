@@ -30,7 +30,11 @@ pub fn remote_sniffers(
         return Vec::new();
     };
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == sniffer) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == sniffer)
+    {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),

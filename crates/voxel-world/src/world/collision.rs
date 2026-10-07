@@ -42,7 +42,10 @@ impl ClientWorld {
         for section_x in x_min..=x_max {
             for section_y in y_min..=y_max {
                 for section_z in z_min..=z_max {
-                    if let Some(ids) = self.entity_sections.get(&(section_x, section_y, section_z))
+                    if let Some(ids) = self
+                        .entities
+                        .sections
+                        .get(&(section_x, section_y, section_z))
                     {
                         entity_ids.extend(ids.iter().copied());
                     }
@@ -51,7 +54,7 @@ impl ClientWorld {
         }
         entity_ids
             .into_iter()
-            .filter_map(|entity_id| self.entities.get(&entity_id))
+            .filter_map(|entity_id| self.entities.at(entity_id))
             .filter_map(|entity| {
                 let same_vehicle = source_entity_id.is_some_and(|source_id| {
                     source_id != entity.id()
@@ -230,7 +233,7 @@ impl ClientWorld {
     ) -> bool {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
         let source_type_id = source_entity_id
-            .and_then(|entity_id| self.entities.get(&entity_id).map(|entity| entity.type_id));
+            .and_then(|entity_id| self.entities.at(entity_id).map(|entity| entity.type_id));
         let source_position =
             source_entity_id.and_then(|entity_id| self.entity_position(entity_id));
         let candidates = self.indexed_entity_collision_candidates(

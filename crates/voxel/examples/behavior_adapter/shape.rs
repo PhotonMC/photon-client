@@ -942,7 +942,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                             rotation: (0.0, 0.0, 0.0),
                             data: 0,
                         });
-                        world.apply_entity_living_collision_state(
+                        world.entities_mut().apply_living_collision_state(
                             entity_id,
                             entity.get("alive").and_then(Value::as_bool).unwrap_or(true),
                             entity
@@ -954,7 +954,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                                 .and_then(Value::as_bool)
                                 .unwrap_or(false),
                         );
-                        world.apply_entity_player_flying_state(
+                        world.entities_mut().apply_player_flying_state(
                             entity_id,
                             entity
                                 .get("flying")
@@ -969,7 +969,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                                 .and_then(Value::as_str)
                                 .ok_or("climbable context kind must be a string")?;
                             if kind == "trapdoor_ladder" {
-                                world.apply_entity_living_climbable_trapdoor_state(
+                                world.entities_mut().apply_climbable_trapdoor_state(
                                     entity_id,
                                     context
                                         .get("trapdoor_open")
@@ -1099,7 +1099,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                             .get("label")
                             .and_then(Value::as_str)
                             .ok_or("label must be a string")?,
-                        "entity_count": world.loaded_entity_count(),
+                        "entity_count": world.entities().count(),
                         "no_entity_collision": world.no_entity_collision_for_entity(
                             source_entity_id,
                             test_area,
@@ -1157,7 +1157,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                             data: 0,
                         });
                         if type_id == 58 {
-                            world.apply_happy_ghast_collision_state(
+                            world.entities_mut().apply_happy_ghast_collision_state(
                                 entity_id,
                                 entity.get("baby").and_then(Value::as_bool).unwrap_or(false),
                                 entity.get("alive").and_then(Value::as_bool).unwrap_or(true),
@@ -1203,7 +1203,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                             .get("label")
                             .and_then(Value::as_str)
                             .ok_or("label must be a string")?,
-                        "entity_count": world.loaded_entity_count(),
+                        "entity_count": world.entities().count(),
                         "no_entity_collision": world.no_entity_collision_for_entity(
                             source_entity_id,
                             test_area,
@@ -1346,8 +1346,8 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
                                         .get("label")
                                         .and_then(Value::as_str)
                                         .ok_or("label must be a string")?,
-                                    "entity_count": world.loaded_entity_count(),
-                                    "section_count": world.indexed_entity_section_count(),
+                                    "entity_count": world.entities().count(),
+                                    "section_count": world.entities().section_count(),
                                     "no_entity_collision": world.no_entity_collision_for_entity(
                                         source_entity_id,
                                         test_area,

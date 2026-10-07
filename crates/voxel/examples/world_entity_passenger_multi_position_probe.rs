@@ -29,7 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 && observation.passenger_ids.iter().all(|&entity_id| {
                     trace
                         .world
-                        .entity_at(entity_id)
+                        .entities()
+                        .at(entity_id)
                         .is_some_and(|entity| entity.type_id == VANILLA_SNOWBALL_ENTITY_TYPE_ID)
                 })
         })
@@ -62,11 +63,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let first = trace
         .world
-        .entity_at(relation.passenger_ids[0])
+        .entities()
+        .at(relation.passenger_ids[0])
         .ok_or("first snowball passenger missing")?;
     let second = trace
         .world
-        .entity_at(relation.passenger_ids[1])
+        .entities()
+        .at(relation.passenger_ids[1])
         .ok_or("second snowball passenger missing")?;
     let first_expected = (
         vehicle.x,
@@ -102,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "passenger_observation_count={}",
         trace.entity_passengers_observations.len()
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

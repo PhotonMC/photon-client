@@ -15,7 +15,7 @@ impl ClientWorld {
     ) -> bool {
         let Some(track) = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .and_then(|entity| entity.kind.minecart_slot_mut())
             .and_then(|slot| slot.track.as_mut())
         else {

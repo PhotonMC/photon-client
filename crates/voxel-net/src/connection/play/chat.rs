@@ -77,7 +77,7 @@ impl PlaySession {
     /// entity the crosshair is on.
     pub fn selected_entities(&self) -> Vec<String> {
         self.aimed_entity
-            .and_then(|id| self.trace.world.entity_at(id))
+            .and_then(|id| self.trace.world.entities().at(id))
             .map(|entity| entity.uuid.to_string_java())
             .into_iter()
             .collect()

@@ -85,7 +85,7 @@ fn remote_fish(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.is_fish()) {
+    for entity in world.entities().all().filter(|entity| entity.is_fish()) {
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };

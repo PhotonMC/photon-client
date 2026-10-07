@@ -68,7 +68,7 @@ pub fn remote_golems(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let is_iron = entity.type_id == iron;
         if !is_iron && entity.type_id != snow {
             continue;

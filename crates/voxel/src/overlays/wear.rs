@@ -15,7 +15,7 @@ pub fn remote_players(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         // A player who only watches, or who is invisible, is not drawn.
         if !entity.is_player() || entity.is_spectator() || entity.is_invisible() {
             continue;
@@ -160,7 +160,7 @@ pub fn name_tags(
     };
     let orientation = camera_orientation(camera.rotation.0, camera.rotation.1);
     let (mut see_through, mut normal) = (Vec::new(), Vec::new());
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         if !entity.is_player() || entity.is_spectator() {
             continue;
         }
@@ -225,7 +225,11 @@ pub fn experience_orbs(
     let orientation =
         voxel_render::entity::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == orb_type) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == orb_type)
+    {
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
@@ -281,7 +285,7 @@ pub fn entity_shadows(
         id("minecraft:experience_orb"),
     );
     let mut casters: Vec<Caster> = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let type_id = Some(entity.type_id);
         let (radius, strength) = if entity.is_player() {
             if entity.is_spectator() || entity.is_invisible() {

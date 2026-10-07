@@ -41,7 +41,7 @@ pub fn remote_frogs(
     let frog = voxel_data::entity_type::id("minecraft:frog");
     let tadpole = voxel_data::entity_type::id("minecraft:tadpole");
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let is_frog = Some(entity.type_id) == frog;
         if !is_frog && Some(entity.type_id) != tadpole {
             continue;

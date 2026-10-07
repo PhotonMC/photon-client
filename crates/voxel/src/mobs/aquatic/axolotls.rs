@@ -52,7 +52,11 @@ pub fn remote_axolotls(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == axolotl) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == axolotl)
+    {
         let baby = entity.is_baby();
         let texture = TEXTURES[entity.axolotl_variant()][usize::from(baby)];
         let layer = if baby {

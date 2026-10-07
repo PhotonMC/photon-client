@@ -33,7 +33,11 @@ pub fn remote_happy_ghasts(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.type_id == ghast) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == ghast)
+    {
         let baby = entity.is_baby();
         let (layer, texture, harness) = if baby {
             (

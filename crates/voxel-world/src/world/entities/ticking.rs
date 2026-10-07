@@ -26,7 +26,7 @@ impl ClientWorld {
 
     pub(crate) fn tick_entity_tree(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
         if vehicle_id.is_some()
-            && let Some(entity) = self.entities.get_mut(&entity_id)
+            && let Some(entity) = self.entities.at_mut(entity_id)
         {
             entity.motion.x = JavaF64::new(0.0_f64);
             entity.motion.y = JavaF64::new(0.0_f64);
@@ -55,7 +55,7 @@ impl ClientWorld {
             projectile_path_is_open,
             (ridden, ridden_mount),
             flying,
-        )) = self.entities.get(&entity_id).map(|entity| {
+        )) = self.entities.at(entity_id).map(|entity| {
             let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
             let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
             let kind = vanilla_projectile_kind(entity.type_id);
@@ -79,7 +79,7 @@ impl ClientWorld {
             return;
         };
 
-        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
         else {
             return;
         };
@@ -94,7 +94,7 @@ impl ClientWorld {
         {
             let entity = self
                 .entities
-                .get_mut(&entity_id)
+                .at_mut(entity_id)
                 .expect("entity position was checked above");
             entity.capture_old_transform();
             entity.tick_count = entity.tick_count.wrapping_add(1);
@@ -113,7 +113,7 @@ impl ClientWorld {
         {
             let entity = self
                 .entities
-                .get_mut(&entity_id)
+                .at_mut(entity_id)
                 .expect("entity position was checked above");
             if ridden {
                 entity.tick_boat_start();
@@ -161,7 +161,7 @@ impl ClientWorld {
     pub(crate) fn update_ticking_flag(&mut self, entity_id: i32, position: (f64, f64, f64)) {
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let in_loaded_chunk = self.contains_chunk(chunk_x, chunk_z);
-        if let Some(entity) = self.entities.get_mut(&entity_id)
+        if let Some(entity) = self.entities.at_mut(entity_id)
             && entity.living_kind().is_some()
             && !entity.always_ticking
         {

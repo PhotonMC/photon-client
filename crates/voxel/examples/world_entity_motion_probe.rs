@@ -20,7 +20,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             && observation.applied_to_world
             && trace
                 .world
-                .entity_at(observation.entity_id)
+                .entities()
+                .at(observation.entity_id)
                 .is_some_and(|entity| entity.motion() == observation.movement)
     });
     let applied_motion = trace.entity_motion_observations.iter().find(|observation| {
@@ -65,7 +66,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.movement,
             trace
                 .world
-                .entity_at(observation.entity_id)
+                .entities()
+                .at(observation.entity_id)
                 .map(|entity| entity.motion())
         );
     }
@@ -79,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.applied_motion
         );
     }
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());

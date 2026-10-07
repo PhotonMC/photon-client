@@ -39,14 +39,16 @@ pub(super) fn client_world_entity_mob_flags_result(request: &Value) -> Result<Va
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("mob flags fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("mob flags fixture entity disappeared")?;
         states.push(client_world_entity_mob_flags_state(
             string(operation, "label")?,
@@ -94,14 +96,16 @@ pub(super) fn client_world_entity_arrow_count_result(request: &Value) -> Result<
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("arrow count fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("arrow count fixture entity disappeared")?;
         states.push(client_world_entity_arrow_count_state(
             string(operation, "label")?,
@@ -149,14 +153,16 @@ pub(super) fn client_world_entity_effect_ambience_result(request: &Value) -> Res
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("effect ambience fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("effect ambience fixture entity disappeared")?;
         states.push(client_world_entity_effect_ambience_state(
             string(operation, "label")?,
@@ -207,14 +213,16 @@ pub(super) fn client_world_entity_effect_particles_result(
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("effect particles fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("effect particles fixture entity disappeared")?;
         states.push(client_world_entity_effect_particles_state(
             string(operation, "label")?,
@@ -271,14 +279,16 @@ pub(super) fn client_world_entity_sleeping_position_result(
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("sleeping position fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("sleeping position fixture entity disappeared")?;
         states.push(client_world_entity_sleeping_position_state(
             string(operation, "label")?,
@@ -326,14 +336,16 @@ pub(super) fn client_world_entity_stinger_count_result(request: &Value) -> Resul
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("stinger count fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("stinger count fixture entity disappeared")?;
         states.push(client_world_entity_stinger_count_state(
             string(operation, "label")?,

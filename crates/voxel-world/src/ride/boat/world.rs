@@ -13,7 +13,7 @@ impl ClientWorld {
     /// `AbstractBoat.tick` for the boat the local player rides, between this tick's start and its
     /// movement. Its paddles are queued to be told to the server.
     pub(crate) fn tick_ridden_boat(&mut self, entity_id: i32) {
-        let Some(entity) = self.entities.get(&entity_id) else {
+        let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
         let Some(pick) = voxel_data::entity_type::pick(entity.type_id) else {
@@ -71,7 +71,7 @@ impl ClientWorld {
         }
         let entity = self
             .entities
-            .get_mut(&entity_id)
+            .at_mut(entity_id)
             .expect("the boat was read above");
         entity.set_position((body.position.x, body.position.y, body.position.z));
         entity.motion.x = JavaF64::new(body.delta.x);

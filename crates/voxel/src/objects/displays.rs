@@ -60,7 +60,7 @@ pub fn displays(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(display) = entity.display() else {
             continue;
         };
@@ -161,7 +161,7 @@ pub fn display_texts(
     let world = session.world();
     let partial = view.partial as f32;
     let (mut see_through, mut normal) = (Vec::new(), Vec::new());
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let Some(display) = entity.display() else {
             continue;
         };

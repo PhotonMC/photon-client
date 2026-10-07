@@ -6,6 +6,7 @@ mod chunks;
 mod collision;
 mod dimension;
 mod entities;
+pub use entities::Entities;
 mod lighting;
 mod local_player;
 mod minecarts;

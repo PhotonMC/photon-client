@@ -13,7 +13,11 @@ use crate::overlays::FrameView;
 pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: FrameView) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().filter(|entity| entity.is_lightning_bolt()) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.is_lightning_bolt())
+    {
         let (Some(state), Some(snapshot)) = (
             entity.lightning(),
             world.entity_snapshot(entity.id(), partial),

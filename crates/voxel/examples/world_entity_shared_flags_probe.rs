@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let flagged_entity = trace
         .world
         .entities()
+        .all()
         .find(|entity| entity.is_invisible() && entity.is_glowing());
     let flagged = flagged_entity
         .map(|entity| {
@@ -87,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("invisible={invisible}");
     println!("glowing={glowing}");
     println!("fall_flying={fall_flying}");
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

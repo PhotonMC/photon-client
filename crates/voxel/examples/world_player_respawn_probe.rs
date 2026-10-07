@@ -152,6 +152,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cleared_entity_count={}", respawn.cleared_entity_count);
     println!("world_dimension={}", trace.world.dimension_key());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     Ok(())
 }

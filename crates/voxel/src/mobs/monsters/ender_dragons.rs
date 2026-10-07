@@ -84,7 +84,11 @@ pub fn remote_ender_dragons(
     let (mut glow, mut dissolving, mut rays) = (Vec::new(), Vec::new(), Vec::new());
     let mut beams = Vec::new();
     let mut mask_offset = None;
-    for entity in world.entities().filter(|entity| entity.type_id == dragon) {
+    for entity in world
+        .entities()
+        .all()
+        .filter(|entity| entity.type_id == dragon)
+    {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
             textures.rect(TEXTURE),
@@ -160,7 +164,7 @@ fn crystal_beam_vertices(
     textures: &EntityTextures,
 ) -> Option<Vec<Vertex>> {
     let id = entity.ender_dragon()?.nearest_crystal()?;
-    let crystal = world.entity_at(id)?;
+    let crystal = world.entities().at(id)?;
     let rect = textures.rect(end_crystals::BEAM_TEXTURE)?;
     let (own, at) = (
         world.entity_snapshot(entity.id(), partial)?,

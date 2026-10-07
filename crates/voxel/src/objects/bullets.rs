@@ -44,7 +44,7 @@ pub fn remote_bullets(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities() {
+    for entity in world.entities().all() {
         let (layer, texture) = match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:shulker_bullet") => (BULLET_LAYER, BULLET),
             Some("minecraft:llama_spit") => (SPIT_LAYER, SPIT),

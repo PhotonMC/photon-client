@@ -59,7 +59,7 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
         if flag(row, "vehicle")? && !world.apply_entity_passengers(entity_id, &[rider_id]) {
             return Err("name tag passengers were rejected".into());
         }
-        let entity = world.entity_at(entity_id).ok_or("player vanished")?;
+        let entity = world.entities().at(entity_id).ok_or("player vanished")?;
         let camera = Vec3::new(
             bits64(row, "camera_x")?,
             bits64(row, "camera_y")?,

@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "P08EntityMobFlags".to_owned());
     let trace =
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
-    let Some(entity) = trace.world.entities().find(|entity| {
+    let Some(entity) = trace.world.entities().all().find(|entity| {
         let (x, _, z) = entity.position();
         entity.type_id == 70 && x == 49.5 && z == -35.5 && entity.is_no_ai()
     }) else {
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "entity_metadata_length={}",
         entity.metadata().map_or(0, <[u8]>::len)
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

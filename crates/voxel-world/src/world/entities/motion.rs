@@ -1,33 +1,10 @@
 use crate::*;
 
 impl ClientWorld {
-    /// Apply the three-tick head rotation interpolation target from a
-    /// clientbound RotateHead packet to an entity in the client world.
-    pub fn apply_entity_head_rotation(&mut self, entity_id: i32, y_head_rot: f32) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        if entity.living_kind().is_some() {
-            entity.head_rotation_target = JavaF32::new(y_head_rot);
-            entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
-        } else {
-            entity.y_head_rot = JavaF32::new(y_head_rot);
-        }
-        if let Some(player) = self
-            .local_player
-            .as_mut()
-            .filter(|player| player.id == entity_id)
-        {
-            player.head_rotation_target = JavaF32::new(y_head_rot);
-            player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
-        }
-        true
-    }
-
     /// Apply Java's `Entity.turn` deltas and notify a boat passenger's vehicle.
     pub fn turn_entity(&mut self, entity_id: i32, mouse_x: f64, mouse_y: f64) -> bool {
         let vehicle_id = self.entity_vehicle_id(entity_id);
-        if let Some(entity) = self.entities.get_mut(&entity_id) {
+        if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.turn(mouse_x, mouse_y);
         } else if let Some(player) = self
             .local_player
@@ -53,7 +30,7 @@ impl ClientWorld {
         let Some(resolved) = self.resolve_entity_position(&input) else {
             return false;
         };
-        let Some(entity) = self.entities.get(&input.entity_id) else {
+        let Some(entity) = self.entities.at(input.entity_id) else {
             return false;
         };
         let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
@@ -88,7 +65,7 @@ impl ClientWorld {
 
     pub fn apply_entity_teleport(&mut self, input: EntityTeleportInput) -> bool {
         let Some((current_motion, current_y_rot, current_x_rot)) =
-            self.entities.get(&input.entity_id).map(|entity| {
+            self.entities.at(input.entity_id).map(|entity| {
                 (
                     entity.motion(),
                     entity.interpolation_rotation().0,
@@ -134,7 +111,7 @@ impl ClientWorld {
             },
             EntityPositionUpdateMode::Teleport,
         );
-        if applied && let Some(entity) = self.entities.get_mut(&input.entity_id) {
+        if applied && let Some(entity) = self.entities.at_mut(input.entity_id) {
             entity.set_motion_if_finite(target_motion);
         }
         applied
@@ -163,7 +140,7 @@ impl ClientWorld {
         {
             let entity = self
                 .entities
-                .get_mut(&input.entity_id)
+                .at_mut(input.entity_id)
                 .expect("entity checked above");
             if let Some(position) = new_position {
                 entity.set_packet_base(position);
@@ -236,7 +213,7 @@ impl ClientWorld {
         target_rotation: Option<(f32, f32)>,
         mode: EntityPositionUpdateMode,
     ) -> bool {
-        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
         else {
             return false;
         };
@@ -244,7 +221,7 @@ impl ClientWorld {
         {
             let entity = self
                 .entities
-                .get_mut(&entity_id)
+                .at_mut(entity_id)
                 .expect("entity position was checked above");
             if mode == EntityPositionUpdateMode::PositionSync {
                 entity.set_packet_base(target_position);
@@ -285,25 +262,8 @@ impl ClientWorld {
         true
     }
 
-    pub fn apply_entity_motion(&mut self, input: EntityMotionInput) -> bool {
-        let Some(entity) = self.entities.get_mut(&input.entity_id) else {
-            return false;
-        };
-        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.motion_lerp_target.x = JavaF64::new(input.x);
-            entity.motion_lerp_target.y = JavaF64::new(input.y);
-            entity.motion_lerp_target.z = JavaF64::new(input.z);
-            entity.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
-        } else {
-            entity.motion.x = JavaF64::new(input.x);
-            entity.motion.y = JavaF64::new(input.y);
-            entity.motion.z = JavaF64::new(input.z);
-        }
-        true
-    }
-
     pub fn apply_entity_ground_state(&mut self, entity_id: i32, on_ground: bool) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.on_ground = on_ground;
@@ -313,7 +273,7 @@ impl ClientWorld {
 
     pub fn apply_entity_rotation(&mut self, input: EntityRotationInput) -> bool {
         {
-            let Some(entity) = self.entities.get_mut(&input.entity_id) else {
+            let Some(entity) = self.entities.at_mut(input.entity_id) else {
                 return false;
             };
             if (entity.has_interpolation_handler())
@@ -377,5 +337,49 @@ impl ClientWorld {
             None,
             EntityPositionUpdateMode::PositionSync,
         )
+    }
+}
+
+impl Entities {
+    pub fn apply_motion(&mut self, input: EntityMotionInput) -> bool {
+        let Some(entity) = self.by_id.get_mut(&input.entity_id) else {
+            return false;
+        };
+        if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            entity.motion_lerp_target.x = JavaF64::new(input.x);
+            entity.motion_lerp_target.y = JavaF64::new(input.y);
+            entity.motion_lerp_target.z = JavaF64::new(input.z);
+            entity.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
+        } else {
+            entity.motion.x = JavaF64::new(input.x);
+            entity.motion.y = JavaF64::new(input.y);
+            entity.motion.z = JavaF64::new(input.z);
+        }
+        true
+    }
+}
+
+impl ClientWorld {
+    /// Apply the three-tick head rotation interpolation target from a
+    /// clientbound RotateHead packet to an entity in the client world.
+    pub fn apply_entity_head_rotation(&mut self, entity_id: i32, y_head_rot: f32) -> bool {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return false;
+        };
+        if entity.living_kind().is_some() {
+            entity.head_rotation_target = JavaF32::new(y_head_rot);
+            entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+        } else {
+            entity.y_head_rot = JavaF32::new(y_head_rot);
+        }
+        if let Some(player) = self
+            .local_player
+            .as_mut()
+            .filter(|player| player.id == entity_id)
+        {
+            player.head_rotation_target = JavaF32::new(y_head_rot);
+            player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+        }
+        true
     }
 }

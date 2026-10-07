@@ -68,7 +68,8 @@ pub(super) fn client_world_entity_player_interpolation_result(
     let mut states = vec![client_world_entity_player_interpolation_state(
         "initial",
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("remote player interpolation fixture disappeared")?,
     )];
     for operation in request["operations"]
@@ -113,7 +114,8 @@ pub(super) fn client_world_entity_player_interpolation_result(
         states.push(client_world_entity_player_interpolation_state(
             string(operation, "label")?,
             world
-                .entity_at(entity_id)
+                .entities()
+                .at(entity_id)
                 .ok_or("remote player interpolation fixture disappeared")?,
         ));
     }
@@ -168,7 +170,8 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
     let mut states = vec![client_world_entity_player_interpolation_state(
         "initial",
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("remote player snap fixture disappeared")?,
     )];
     for operation in request["operations"]
@@ -206,7 +209,8 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
         states.push(client_world_entity_player_interpolation_state(
             string(operation, "label")?,
             world
-                .entity_at(entity_id)
+                .entities()
+                .at(entity_id)
                 .ok_or("remote player snap fixture disappeared")?,
         ));
     }
@@ -269,7 +273,8 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
     let mut states = vec![client_world_entity_player_motion_state(
         "initial",
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("remote player motion fixture disappeared")?,
     )];
     for operation in request["operations"]
@@ -283,7 +288,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
                         .get("target_motion")
                         .ok_or("target motion must be a vector")?,
                 )?;
-                if !world.apply_entity_motion(EntityMotionInput {
+                if !world.entities_mut().apply_motion(EntityMotionInput {
                     entity_id,
                     x: target.x,
                     y: target.y,
@@ -305,7 +310,8 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
         states.push(client_world_entity_player_motion_state(
             string(operation, "label")?,
             world
-                .entity_at(entity_id)
+                .entities()
+                .at(entity_id)
                 .ok_or("remote player motion fixture disappeared")?,
         ));
     }
@@ -355,7 +361,8 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
     let mut states = vec![client_world_entity_teleport_state(
         "initial",
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("remote entity teleport fixture disappeared")?,
     )];
     for operation in request["operations"]
@@ -405,7 +412,8 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
         states.push(client_world_entity_teleport_state(
             string(operation, "label")?,
             world
-                .entity_at(entity_id)
+                .entities()
+                .at(entity_id)
                 .ok_or("remote entity teleport fixture disappeared")?,
         ));
     }
@@ -463,7 +471,8 @@ pub(super) fn client_world_entity_player_head_rotation_result(
     }
 
     let entity = world
-        .entity_at(entity_id)
+        .entities()
+        .at(entity_id)
         .ok_or("remote player head fixture entity disappeared")?;
     let mut states = vec![client_world_entity_player_head_rotation_state(
         "initial", true, entity,
@@ -489,7 +498,8 @@ pub(super) fn client_world_entity_player_head_rotation_result(
             world.tick();
         }
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("remote player head fixture entity disappeared")?;
         states.push(client_world_entity_player_head_rotation_state(
             string(operation, "label")?,
@@ -518,7 +528,8 @@ pub(super) fn client_world_entity_tick_state(
         .iter()
         .map(|entity_id| {
             let entity = world
-                .entity_at(*entity_id)
+                .entities()
+                .at(*entity_id)
                 .ok_or_else(|| "entity tick fixture entity disappeared".to_owned())?;
             let rotation = entity.rotation();
             let previous_rotation = entity.previous_rotation();

@@ -94,7 +94,10 @@ impl PlaySession {
                 if let Some((source, holder)) =
                     parsed(parse_set_entity_link_packet(payload), "set_entity_link")
                 {
-                    self.trace.world.set_leash_holder(source, holder);
+                    self.trace
+                        .world
+                        .entities_mut()
+                        .set_leash_holder(source, holder);
                 }
             }
             PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
@@ -205,7 +208,7 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_ANIMATE_PACKET_ID => {
                 if let Some((id, action)) = parsed(parse_animate_packet(payload), "animate") {
-                    self.trace.world.apply_entity_animate(id, action);
+                    self.trace.world.entities_mut().apply_animate(id, action);
                 }
             }
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => {
@@ -221,7 +224,7 @@ impl PlaySession {
                     {
                         player.handle_death_event();
                     }
-                    self.trace.world.apply_entity_death_event(id);
+                    self.trace.world.entities_mut().apply_death_event(id);
                 } else {
                     self.trace.world.apply_entity_event(id, event);
                 }
@@ -235,7 +238,7 @@ impl PlaySession {
                 if let Some((id, damage_type)) =
                     parsed(parse_damage_event_packet(payload), "damage_event")
                 {
-                    self.trace.world.apply_entity_damage_event(id);
+                    self.trace.world.entities_mut().apply_damage_event(id);
                     if self.player_id == Some(id) {
                         let name = damage_type
                             .and_then(|index| {
@@ -253,7 +256,7 @@ impl PlaySession {
                 if let Some((id, yaw)) =
                     parsed(parse_hurt_animation_packet(payload), "hurt_animation")
                 {
-                    self.trace.world.apply_entity_hurt_animation(id);
+                    self.trace.world.entities_mut().apply_hurt_animation(id);
                     if self.player_id == Some(id)
                         && let Some(player) = self.player.as_mut()
                     {
@@ -390,7 +393,9 @@ impl PlaySession {
                 let packet = parse_update_attributes_packet(payload)?;
                 let world = &mut self.trace.world;
                 if !world.apply_local_player_attributes(packet.entity_id, &packet.attributes) {
-                    world.apply_entity_attributes(packet.entity_id, &packet.attributes);
+                    world
+                        .entities_mut()
+                        .apply_attributes(packet.entity_id, &packet.attributes);
                 }
             }
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => {

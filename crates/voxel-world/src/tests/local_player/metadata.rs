@@ -32,12 +32,12 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
         Some(35.0)
     );
     assert_eq!(
-        world.entity_at(42).map(|entity| entity.rotation().2),
+        world.entities().at(42).map(|entity| entity.rotation().2),
         Some(35.0)
     );
     world.tick();
     assert_eq!(
-        world.entity_at(42).map(|entity| entity.rotation().2),
+        world.entities().at(42).map(|entity| entity.rotation().2),
         Some(68.333336)
     );
     world.tick();
@@ -47,7 +47,7 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
         Some(135.0)
     );
     assert_eq!(
-        world.entity_at(42).map(|entity| entity.rotation().2),
+        world.entities().at(42).map(|entity| entity.rotation().2),
         Some(135.0)
     );
     assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));

@@ -70,7 +70,7 @@ pub fn remote_boats(
     let world = session.world();
     let partial = view.partial as f32;
     let mut vertices = Vec::new();
-    for entity in world.entities().filter(|entity| entity.is_boat()) {
+    for entity in world.entities().all().filter(|entity| entity.is_boat()) {
         let Some((layer, texture)) =
             voxel_data::entity_type::name(entity.type_id).and_then(model_of)
         else {

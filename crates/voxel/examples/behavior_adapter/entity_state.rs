@@ -45,7 +45,8 @@ pub(super) fn client_world_entity_shared_flags_result(request: &Value) -> Result
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("shared flags fixture entity disappeared")?;
         states.push(client_world_entity_shared_flags_state(
             string(operation, "label")?,
@@ -93,14 +94,16 @@ pub(super) fn client_world_entity_air_supply_result(request: &Value) -> Result<V
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("air supply fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("air supply fixture entity disappeared")?;
         states.push(client_world_entity_air_supply_state(
             string(operation, "label")?,
@@ -148,14 +151,16 @@ pub(super) fn client_world_entity_pose_result(request: &Value) -> Result<Value, 
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("pose fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("pose fixture entity disappeared")?;
         states.push(client_world_entity_pose_state(
             string(operation, "label")?,
@@ -206,14 +211,16 @@ pub(super) fn client_world_entity_ticks_frozen_result(request: &Value) -> Result
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("ticks frozen fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("ticks frozen fixture entity disappeared")?;
         states.push(client_world_entity_ticks_frozen_state(
             string(operation, "label")?,
@@ -262,14 +269,16 @@ pub(super) fn client_world_entity_custom_name_result(request: &Value) -> Result<
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("custom name fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("custom name fixture entity disappeared")?;
         states.push(client_world_entity_custom_name_state(
             string(operation, "label")?,
@@ -319,14 +328,16 @@ pub(super) fn client_world_entity_living_flags_result(request: &Value) -> Result
         "initial",
         true,
         world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("living flags fixture entity disappeared")?,
     )];
     for operation in operations {
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("living flags fixture entity disappeared")?;
         states.push(client_world_entity_living_flags_state(
             string(operation, "label")?,
@@ -377,7 +388,8 @@ pub(super) fn client_world_entity_health_result(request: &Value) -> Result<Value
         let metadata = decode_hex(string(operation, "metadata_hex")?)?;
         let accepted = world.apply_entity_metadata(entity_id, &metadata);
         let entity = world
-            .entity_at(entity_id)
+            .entities()
+            .at(entity_id)
             .ok_or("health fixture entity disappeared")?;
         states.push(client_world_entity_health_state(
             string(operation, "label")?,

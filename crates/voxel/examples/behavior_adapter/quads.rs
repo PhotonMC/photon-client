@@ -5,6 +5,7 @@ pub(super) fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Val
     use voxel_world::Status;
     let vehicle = world
         .entities()
+        .all()
         .find(|entity| entity.id() == vehicle_id)
         .ok_or("the vehicle is gone")?;
     let (x, y, z) = vehicle.position();

@@ -31,7 +31,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(0)
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::tick_count),
+        world.entities().at(37).map(crate::ClientEntity::tick_count),
         Some(0)
     );
 
@@ -41,7 +41,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(1)
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::tick_count),
+        world.entities().at(37).map(crate::ClientEntity::tick_count),
         Some(1)
     );
 
@@ -52,7 +52,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(2)
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::tick_count),
+        world.entities().at(37).map(crate::ClientEntity::tick_count),
         Some(1)
     );
 
@@ -72,7 +72,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(3)
     );
     assert_eq!(
-        world.entity_at(37).map(crate::ClientEntity::tick_count),
+        world.entities().at(37).map(crate::ClientEntity::tick_count),
         Some(2)
     );
 
@@ -139,7 +139,8 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     );
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .map(crate::ClientEntity::previous_position),
         Some((1.25, 80.0, -35.5))
     );
@@ -167,7 +168,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         relative_y_rot: false,
         relative_x_rot: false,
     }));
-    let entity = world.entity_at(37).expect("remote entity transform");
+    let entity = world.entities().at(37).expect("remote entity transform");
     assert_eq!(entity.previous_position(), (1.25, 80.0, -35.5));
     assert_eq!(entity.interpolated_position(0.5), (2.125, 81.0, -35.0));
     assert_eq!(entity.previous_rotation(), (350.0, -20.0, 350.0));
@@ -184,7 +185,8 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     world.tick();
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .map(crate::ClientEntity::previous_position),
         Some((1.25, 80.0, -35.5))
     );
@@ -202,7 +204,8 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     world.tick();
     assert_eq!(
         world
-            .entity_at(37)
+            .entities()
+            .at(37)
             .map(crate::ClientEntity::previous_position),
         Some((4.0, 82.0, -34.5))
     );

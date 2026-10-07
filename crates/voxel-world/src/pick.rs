@@ -277,7 +277,7 @@ mod tests {
             data: 0,
         }));
         // No chunk is loaded here to tick it in: it ticks all the same.
-        world.entities.get_mut(&100).expect("the dragon").ticking = true;
+        world.entities.at_mut(100).expect("the dragon").ticking = true;
         world.tick_entities();
         world
     }
@@ -289,7 +289,8 @@ mod tests {
     fn the_aim_lands_on_a_dragons_part_and_not_on_the_dragon() {
         let world = world_with_dragon();
         let head = world
-            .entity_at(100)
+            .entities()
+            .at(100)
             .and_then(|dragon| dragon.ender_dragon())
             .map(|state| state.parts()[0].position)
             .expect("a head");

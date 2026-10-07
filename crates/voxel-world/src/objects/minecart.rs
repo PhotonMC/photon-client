@@ -317,14 +317,14 @@ mod tests {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        world.entities.get_mut(&5).expect("the minecart").ticking = true;
+        world.entities.at_mut(5).expect("the minecart").ticking = true;
         assert!(world.apply_entity_position_sync(5, (5.5, 65.0, -2.5), (0.0, 0.0)));
         // The target's chunk is not loaded here, which stops an entity ticking: tick it all the same.
-        world.entities.get_mut(&5).expect("the minecart").ticking = true;
+        world.entities.at_mut(5).expect("the minecart").ticking = true;
         let mut seen = Vec::new();
         for _ in 0..4 {
             world.tick_entities();
-            seen.push(world.entity_at(5).expect("the minecart").position().0);
+            seen.push(world.entities().at(5).expect("the minecart").position().0);
         }
         assert!((seen[0] - 2.1666666).abs() < 1e-6, "{seen:?}");
         assert!(

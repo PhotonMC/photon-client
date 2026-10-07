@@ -175,7 +175,8 @@ pub(super) fn client_world_entity_passenger_rotation_state(
             .get(index * 2 + 1)
             .ok_or("passenger rotation state entity list is incomplete")?;
         let passenger = world
-            .entity_at(*entity_id)
+            .entities()
+            .at(*entity_id)
             .ok_or("passenger rotation fixture entity disappeared")?;
         let rotation = passenger.rotation();
         let previous_rotation = passenger.previous_rotation();
@@ -223,7 +224,8 @@ pub(super) fn client_world_entity_passenger_animal_rotation_state(
             .get(row_index * 3 + 1)
             .ok_or("passenger animal rotation state entity list is incomplete")?;
         let animal = world
-            .entity_at(*animal_id)
+            .entities()
+            .at(*animal_id)
             .ok_or("passenger animal rotation fixture entity disappeared")?;
         let rotation = animal.rotation();
         let previous_rotation = animal.previous_rotation();

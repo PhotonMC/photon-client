@@ -9,7 +9,7 @@ impl ClientWorld {
     /// Create or replace the local player state for a clientbound player ID.
     pub fn set_local_player_id(&mut self, player_id: i32) {
         let mut player = ClientPlayerState::new(player_id);
-        if let Some(entity) = self.entities.get(&player_id) {
+        if let Some(entity) = self.entities.at(player_id) {
             player.y_head_rot = entity.y_head_rot;
             player.old_y_head_rot = entity.old_y_head_rot;
             player.head_rotation_target = entity.y_head_rot;
@@ -271,7 +271,7 @@ impl ClientWorld {
 
     /// Copy local player movement flags into a client-authoritative boat.
     pub fn set_boat_input(&mut self, vehicle_id: i32, input: BoatInput) -> bool {
-        let Some(boat) = self.entities.get_mut(&vehicle_id) else {
+        let Some(boat) = self.entities.at_mut(vehicle_id) else {
             return false;
         };
         if vanilla_boat_max_passengers(boat.type_id).is_none() {

@@ -4,7 +4,7 @@ impl ClientWorld {
     /// `PrimedTnt.tick` and `LightningBolt.tick`: a spent fuse, or a bolt with no flashes left,
     /// discards the entity.
     pub(crate) fn discard_spent_entity(&mut self, entity_id: i32) -> bool {
-        let spent = self.entities.get(&entity_id).is_some_and(|entity| {
+        let spent = self.entities.at(entity_id).is_some_and(|entity| {
             entity
                 .primed_tnt()
                 .is_some_and(objects::primed_tnt::PrimedTntState::is_spent)
@@ -16,19 +16,10 @@ impl ClientWorld {
         spent
     }
 
-    pub fn loaded_entity_count(&self) -> usize {
-        self.entities.len()
-    }
-
-    /// Return the number of non-empty entity sections in the client index.
-    pub fn indexed_entity_section_count(&self) -> usize {
-        self.entity_sections.len()
-    }
-
     /// Where an entity is drawn between two ticks: its position
     /// (`getPosition(partialTick)`), its turn and its head's.
     pub fn entity_snapshot(&self, entity_id: i32, partial_tick: f32) -> Option<EntitySnapshot> {
-        let entity = self.entities.get(&entity_id)?;
+        let entity = self.entities.at(entity_id)?;
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
         Some(EntitySnapshot {
             position: entity.interpolated_position(partial_tick),
@@ -55,39 +46,35 @@ impl ClientWorld {
         })
     }
 
-    pub fn entity_at(&self, entity_id: i32) -> Option<&ClientEntity> {
-        self.entities.get(&entity_id)
+    /// The entities the server has sent.
+    pub fn entities(&self) -> &Entities {
+        &self.entities
     }
 
-    pub fn entities(&self) -> impl Iterator<Item = &ClientEntity> {
-        self.entities.values()
-    }
-
-    pub fn entity_metadata_at(&self, entity_id: i32) -> Option<&[u8]> {
-        self.entities
-            .get(&entity_id)
-            .and_then(|entity| entity.metadata())
+    /// The entities the server has sent, to change.
+    pub fn entities_mut(&mut self) -> &mut Entities {
+        &mut self.entities
     }
 
     pub fn remove_entity(&mut self, entity_id: i32) -> bool {
-        let Some(position) = self.entities.get(&entity_id).map(ClientEntity::position) else {
+        let Some(position) = self.entities.at(entity_id).map(ClientEntity::position) else {
             return false;
         };
         self.detach_entity_from_vehicle(entity_id);
         self.eject_entity_passengers(entity_id);
-        self.remove_entity_from_section(entity_id, position);
-        self.entities.remove(&entity_id).is_some()
+        self.entities_mut().remove_from_section(entity_id, position);
+        self.entities.by_id.remove(&entity_id).is_some()
     }
 
     /// Update one live entity position and its persistent section membership.
     pub fn update_entity_position(&mut self, entity_id: i32, position: (f64, f64, f64)) -> bool {
-        let Some(previous_position) = self.entities.get(&entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
         else {
             return false;
         };
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let ticking = self.contains_chunk(chunk_x, chunk_z);
-        if let Some(entity) = self.entities.get_mut(&entity_id) {
+        if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.set_position(position);
             entity.ticking = entity.always_ticking || ticking;
         }
@@ -108,7 +95,7 @@ impl ClientWorld {
     }
 
     pub(crate) fn entity_position(&self, entity_id: i32) -> Option<Vec3> {
-        if let Some(entity) = self.entities.get(&entity_id) {
+        if let Some(entity) = self.entities.at(entity_id) {
             let (x, y, z) = entity.position();
             return Some(Vec3::new(x, y, z));
         }
@@ -151,7 +138,7 @@ impl ClientWorld {
         } else {
             entity_kind::EntityKind::Plain
         };
-        self.entities.insert(
+        self.entities.by_id.insert(
             entity.entity_id,
             ClientEntity {
                 id: entity.entity_id,
@@ -242,10 +229,11 @@ impl ClientWorld {
                 shot_at_angle: false,
             },
         );
-        self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
+        self.entities_mut()
+            .add_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
         if let Some(shulker) = self
             .entities
-            .get_mut(&entity.entity_id)
+            .at_mut(entity.entity_id)
             .filter(|entity| entity.is_shulker())
         {
             // `Shulker.recreateFromPacket`: the body faces south; `snapTo`
@@ -257,7 +245,7 @@ impl ClientWorld {
         }
         if let Some(warden) = self
             .entities
-            .get_mut(&entity.entity_id)
+            .at_mut(entity.entity_id)
             .filter(|entity| entity.is_warden())
             && entity.data == 1
         {
@@ -266,24 +254,6 @@ impl ClientWorld {
         }
         self.snap_local_player_turn(entity.entity_id, head_rotation, entity.rotation.0);
         true
-    }
-
-    pub(crate) fn add_entity_to_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
-        self.entity_sections
-            .entry(entity_section_key(position))
-            .or_default()
-            .insert(entity_id);
-    }
-
-    pub(crate) fn remove_entity_from_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
-        let key = entity_section_key(position);
-        let Some(entity_ids) = self.entity_sections.get_mut(&key) else {
-            return;
-        };
-        entity_ids.remove(&entity_id);
-        if entity_ids.is_empty() {
-            self.entity_sections.remove(&key);
-        }
     }
 
     pub(crate) fn update_entity_section(
@@ -295,8 +265,10 @@ impl ClientWorld {
         let previous_key = entity_section_key(previous_position);
         let key = entity_section_key(position);
         if previous_key != key {
-            self.remove_entity_from_section(entity_id, previous_position);
-            self.entity_sections
+            self.entities_mut()
+                .remove_from_section(entity_id, previous_position);
+            self.entities
+                .sections
                 .entry(key)
                 .or_default()
                 .insert(entity_id);
@@ -335,14 +307,6 @@ impl ClientWorld {
             ticking: self.contains_chunk(chunk_x, chunk_z),
         })
     }
-
-    pub(crate) fn entity_exists(&self, entity_id: i32) -> bool {
-        self.entities.contains_key(&entity_id)
-            || self
-                .local_player
-                .as_ref()
-                .is_some_and(|player| player.id == entity_id)
-    }
 }
 
 mod events;
@@ -350,5 +314,56 @@ mod motion;
 mod passengers;
 mod seeds;
 mod state;
+mod store;
+pub use store::Entities;
 mod targets;
 mod ticking;
+
+impl Entities {
+    pub fn count(&self) -> usize {
+        self.by_id.len()
+    }
+
+    /// Return the number of non-empty entity sections in the client index.
+    pub fn section_count(&self) -> usize {
+        self.sections.len()
+    }
+
+    pub fn at(&self, entity_id: i32) -> Option<&ClientEntity> {
+        self.by_id.get(&entity_id)
+    }
+
+    pub fn metadata(&self, entity_id: i32) -> Option<&[u8]> {
+        self.by_id
+            .get(&entity_id)
+            .and_then(|entity| entity.metadata())
+    }
+
+    pub(crate) fn add_to_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+        self.sections
+            .entry(entity_section_key(position))
+            .or_default()
+            .insert(entity_id);
+    }
+
+    pub(crate) fn remove_from_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+        let key = entity_section_key(position);
+        let Some(entity_ids) = self.sections.get_mut(&key) else {
+            return;
+        };
+        entity_ids.remove(&entity_id);
+        if entity_ids.is_empty() {
+            self.sections.remove(&key);
+        }
+    }
+}
+
+impl ClientWorld {
+    pub(crate) fn entity_exists(&self, entity_id: i32) -> bool {
+        self.entities.by_id.contains_key(&entity_id)
+            || self
+                .local_player
+                .as_ref()
+                .is_some_and(|player| player.id == entity_id)
+    }
+}

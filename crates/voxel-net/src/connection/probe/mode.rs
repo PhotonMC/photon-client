@@ -109,7 +109,8 @@ pub(super) fn connect_and_probe_with_mode(
                 observation.applied_to_world = entities::add(&mut trace.world, &observation);
                 observation.applied_rotation = trace
                     .world
-                    .entity_at(observation.entity_id)
+                    .entities()
+                    .at(observation.entity_id)
                     .map(|entity| entity.rotation());
                 let should_tick_world_entity = match probe.action {
                     ProbeAction::WorldSnowballTick => {
@@ -146,7 +147,8 @@ pub(super) fn connect_and_probe_with_mode(
                 let motion_before = if probe.observe_player_motion {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| entity.motion())
                 } else {
@@ -156,7 +158,8 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_motion = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.motion());
                     if let Some(before_motion) = motion_before {
                         observe_player_motion_interpolation(
@@ -176,7 +179,8 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_head_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation().2);
                 }
                 trace.entity_head_rotation_observations.push(observation);
@@ -217,7 +221,7 @@ pub(super) fn connect_and_probe_with_mode(
                     let passenger_id =
                         if probe.action == ProbeAction::WorldEntityPassengerAnimalRotation {
                             observation.passenger_ids.iter().copied().find(|&id| {
-                                trace.world.entity_at(id).is_some_and(|entity| {
+                                trace.world.entities().at(id).is_some_and(|entity| {
                                     entity.type_id == VANILLA_COW_ENTITY_TYPE_ID
                                 })
                             })
@@ -226,12 +230,12 @@ pub(super) fn connect_and_probe_with_mode(
                                 .passenger_ids
                                 .iter()
                                 .copied()
-                                .find(|&id| trace.world.entity_at(id).is_some())
+                                .find(|&id| trace.world.entities().at(id).is_some())
                         };
                     if let Some(passenger_id) = passenger_id
                         && let (Some(vehicle), Some(passenger)) = (
-                            trace.world.entity_at(observation.vehicle_id),
-                            trace.world.entity_at(passenger_id),
+                            trace.world.entities().at(observation.vehicle_id),
+                            trace.world.entities().at(passenger_id),
                         )
                     {
                         let before_vehicle_tick_count = vehicle.tick_count();
@@ -252,11 +256,13 @@ pub(super) fn connect_and_probe_with_mode(
                         }
                         let vehicle = trace
                             .world
-                            .entity_at(observation.vehicle_id)
+                            .entities()
+                            .at(observation.vehicle_id)
                             .ok_or(ConnectionError::Codec("passenger tick vehicle"))?;
                         let passenger = trace
                             .world
-                            .entity_at(passenger_id)
+                            .entities()
+                            .at(passenger_id)
                             .ok_or(ConnectionError::Codec("passenger tick entity"))?;
                         trace.entity_passenger_tick_observations.push(
                             EntityPassengerTickObservation {
@@ -291,7 +297,8 @@ pub(super) fn connect_and_probe_with_mode(
                 let snap_before = if probe.observe_player_position_snap {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| {
                             (
@@ -307,15 +314,18 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_position = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.position());
                     observation.applied_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation());
                     observation.applied_on_ground = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.on_ground());
                     if let Some((before_position, before_rotation)) = snap_before {
                         observe_player_position_snap(
@@ -333,12 +343,14 @@ pub(super) fn connect_and_probe_with_mode(
                 let mut observation = parse_entity_teleport_packet(payload)?;
                 let motion_before = trace
                     .world
-                    .entity_at(observation.entity_id)
+                    .entities()
+                    .at(observation.entity_id)
                     .map(|entity| entity.motion());
                 let snap_before = if probe.observe_player_position_snap {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| {
                             (
@@ -354,19 +366,23 @@ pub(super) fn connect_and_probe_with_mode(
                     observation.motion_before = motion_before;
                     observation.applied_position = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.position());
                     observation.applied_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation());
                     observation.applied_motion = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.motion());
                     observation.applied_on_ground = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.on_ground());
                     if let Some((before_position, before_rotation)) = snap_before {
                         observe_player_position_snap(
@@ -385,7 +401,8 @@ pub(super) fn connect_and_probe_with_mode(
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| {
                             (
@@ -400,15 +417,18 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_position = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.position());
                     observation.applied_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation());
                     observation.applied_on_ground = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.on_ground());
                     if observation.has_position
                         && let Some((before_position, before_rotation)) = interpolation_before
@@ -428,7 +448,8 @@ pub(super) fn connect_and_probe_with_mode(
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| {
                             (
@@ -443,15 +464,18 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_position = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.position());
                     observation.applied_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation());
                     observation.applied_on_ground = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.on_ground());
                     if observation.has_position
                         && let Some((before_position, before_rotation)) = interpolation_before
@@ -471,7 +495,8 @@ pub(super) fn connect_and_probe_with_mode(
                 let interpolation_before = if probe.observe_player_interpolation {
                     trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .filter(|entity| entity.type_id == 156)
                         .map(|entity| {
                             (
@@ -486,11 +511,13 @@ pub(super) fn connect_and_probe_with_mode(
                 if observation.applied_to_world {
                     observation.applied_rotation = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.rotation());
                     observation.applied_on_ground = trace
                         .world
-                        .entity_at(observation.entity_id)
+                        .entities()
+                        .at(observation.entity_id)
                         .map(|entity| entity.on_ground());
                     if observation.has_position
                         && let Some((before_position, before_rotation)) = interpolation_before
@@ -626,10 +653,11 @@ pub(super) fn connect_and_probe_with_mode(
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => {
                 let (x, z) = parse_forget_level_chunk_packet(payload)?;
                 let removed_from_world = trace.world.unload_chunk(x, z);
-                let tracked_entity_count = trace.world.loaded_entity_count();
+                let tracked_entity_count = trace.world.entities().count();
                 let ticking_entity_count = trace
                     .world
                     .entities()
+                    .all()
                     .filter(|entity| entity.is_ticking())
                     .count();
                 trace
@@ -787,7 +815,7 @@ pub(super) fn connect_and_probe_with_mode(
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {
                 let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
                 let cleared_chunk_count = trace.world.loaded_chunk_count();
-                let cleared_entity_count = trace.world.loaded_entity_count();
+                let cleared_entity_count = trace.world.entities().count();
                 let dimension_changed = trace.world.replace_dimension_with_environment(
                     DimensionInput {
                         key: &spawn_info.dimension,
@@ -850,7 +878,8 @@ pub(super) fn connect_and_probe_with_mode(
                     .apply_local_player_attributes(observation.entity_id, &observation.attributes)
                     || trace
                         .world
-                        .apply_entity_attributes(observation.entity_id, &observation.attributes);
+                        .entities_mut()
+                        .apply_attributes(observation.entity_id, &observation.attributes);
                 trace.attribute_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID => {

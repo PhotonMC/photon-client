@@ -28,7 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("vanilla did not produce a Zombie passenger tick observation")?;
     let vehicle = trace
         .world
-        .entity_at(observation.vehicle_id)
+        .entities()
+        .at(observation.vehicle_id)
         .ok_or("world did not retain the boat vehicle")?;
     let vehicle_type_id = vehicle.type_id;
     let vehicle_y_rot = vehicle.rotation().0;
@@ -44,7 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let before = trace
         .world
-        .entity_at(passenger_id)
+        .entities()
+        .at(passenger_id)
         .ok_or("world did not retain the Zombie passenger")?;
     let before_position = before.position();
     let before_rotation = before.rotation();
@@ -60,7 +62,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(trace.world.turn_entity(passenger_id, 20.0, 0.0));
     let after = trace
         .world
-        .entity_at(passenger_id)
+        .entities()
+        .at(passenger_id)
         .ok_or("world lost the Zombie passenger after turn")?;
     if after.rotation()
         != (
@@ -104,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "passenger_observation_count={}",
         trace.entity_passenger_tick_observations.len()
     );
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("received_packet_count={}", trace.packets.len());
     Ok(())

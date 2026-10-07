@@ -2,15 +2,57 @@ use crate::*;
 use voxel_core::java_float::JavaF32;
 
 impl ClientWorld {
+    /// Apply a pinned block-state's BlockTags.CLIMBABLE membership to a living entity.
+    pub fn apply_entity_living_climbable_block_state(
+        &mut self,
+        entity_id: i32,
+        state_id: i32,
+    ) -> bool {
+        let on_climbable = self.block_state_registry.is_climbable_state(state_id);
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return false;
+        };
+        entity.on_climbable = on_climbable;
+        true
+    }
+
+    /// Apply the LivingEntity.onClimbable tag and fall-flying context.
+    pub fn apply_entity_living_climbable_glide_through_state(
+        &mut self,
+        entity_id: i32,
+        state_id: i32,
+        fall_flying: bool,
+    ) -> bool {
+        let is_climbable = self.block_state_registry.is_climbable_state(state_id);
+        let is_glide_through = self.block_state_registry.is_glide_through_state(state_id);
+        let on_climbable = if fall_flying && is_glide_through {
+            false
+        } else {
+            is_climbable
+        };
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return false;
+        };
+        entity.on_climbable = on_climbable;
+        if fall_flying {
+            entity.shared_flags |= 1 << SHARED_FLAG_FALL_FLYING;
+        } else {
+            entity.shared_flags &= !(1 << SHARED_FLAG_FALL_FLYING);
+        }
+        true
+    }
+}
+
+impl Entities {
     /// `ClientPacketListener.handleUpdateAttributes` for an entity that is not
     /// the local player: an attribute the type has takes the server's base
     /// value and modifiers; one it does not have is ignored.
-    pub fn apply_entity_attributes(
+    pub fn apply_attributes(
         &mut self,
         entity_id: i32,
         attributes: &[ClientAttributeState],
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         let Some(type_name) = voxel_data::entity_type::name(entity.type_id) else {
@@ -38,12 +80,12 @@ impl ClientWorld {
     }
 
     /// `ItemEntity.setItem` from the entity data: what a dropped item holds.
-    pub fn apply_entity_item_stack(
+    pub fn apply_item_stack(
         &mut self,
         entity_id: i32,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         entity.item_stack = stack;
@@ -54,13 +96,13 @@ impl ClientWorld {
     }
 
     /// `handleSetEquipment`: what the entity holds or wears in a slot.
-    pub fn apply_entity_equipment(
+    pub fn apply_equipment(
         &mut self,
         entity_id: i32,
         slot: EquipmentSlot,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         entity.equipment[slot as usize] = stack;
@@ -68,7 +110,7 @@ impl ClientWorld {
     }
 
     /// Apply the trapdoor and ladder block context used by LivingEntity.onClimbable.
-    pub fn apply_entity_living_climbable_trapdoor_state(
+    pub fn apply_climbable_trapdoor_state(
         &mut self,
         entity_id: i32,
         trapdoor_open: bool,
@@ -76,7 +118,7 @@ impl ClientWorld {
         below_is_ladder: bool,
         ladder_facing: &str,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
@@ -92,7 +134,7 @@ impl ClientWorld {
         still_timeout: bool,
         is_vehicle: bool,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID {
@@ -106,14 +148,14 @@ impl ClientWorld {
     }
 
     /// Apply the collision-relevant alive and spectator state of a living entity.
-    pub fn apply_entity_living_collision_state(
+    pub fn apply_living_collision_state(
         &mut self,
         entity_id: i32,
         alive: bool,
         spectator: bool,
         on_climbable: bool,
     ) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         entity.alive = alive;
@@ -122,49 +164,9 @@ impl ClientWorld {
         true
     }
 
-    /// Apply a pinned block-state's BlockTags.CLIMBABLE membership to a living entity.
-    pub fn apply_entity_living_climbable_block_state(
-        &mut self,
-        entity_id: i32,
-        state_id: i32,
-    ) -> bool {
-        let on_climbable = self.block_state_registry.is_climbable_state(state_id);
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        entity.on_climbable = on_climbable;
-        true
-    }
-
-    /// Apply the LivingEntity.onClimbable tag and fall-flying context.
-    pub fn apply_entity_living_climbable_glide_through_state(
-        &mut self,
-        entity_id: i32,
-        state_id: i32,
-        fall_flying: bool,
-    ) -> bool {
-        let is_climbable = self.block_state_registry.is_climbable_state(state_id);
-        let is_glide_through = self.block_state_registry.is_glide_through_state(state_id);
-        let on_climbable = if fall_flying && is_glide_through {
-            false
-        } else {
-            is_climbable
-        };
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
-            return false;
-        };
-        entity.on_climbable = on_climbable;
-        if fall_flying {
-            entity.shared_flags |= 1 << SHARED_FLAG_FALL_FLYING;
-        } else {
-            entity.shared_flags &= !(1 << SHARED_FLAG_FALL_FLYING);
-        }
-        true
-    }
-
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
-    pub fn apply_entity_player_flying_state(&mut self, entity_id: i32, flying: bool) -> bool {
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+    pub fn apply_player_flying_state(&mut self, entity_id: i32, flying: bool) -> bool {
+        let Some(entity) = self.by_id.get_mut(&entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -173,7 +175,9 @@ impl ClientWorld {
         entity.flying = flying;
         true
     }
+}
 
+impl ClientWorld {
     #[expect(
         clippy::cognitive_complexity,
         clippy::too_many_lines,
@@ -259,7 +263,7 @@ impl ClientWorld {
             }
             return true;
         }
-        let Some(entity) = self.entities.get_mut(&entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.metadata = Some(metadata.to_vec());

@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .add_entity_observations
                 .iter()
                 .any(|observation| observation.entity_id == entity_id)
-                && trace.world.entity_at(entity_id).is_none()
+                && trace.world.entities().at(entity_id).is_none()
         });
     if trace.remove_entities_observations.is_empty() || applied_count == 0 || !removed_known_entity
     {
@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("removed_entity_id_count={}", first.entity_ids.len());
     println!("remove_entities_applied_count={applied_count}");
     println!("first_removed_entity_ids={:?}", first.entity_ids);
-    println!("world_entity_count={}", trace.world.loaded_entity_count());
+    println!("world_entity_count={}", trace.world.entities().count());
     println!("world_chunk_count={}", trace.world.loaded_chunk_count());
     println!("world_section_count={}", trace.world.loaded_section_count());
     println!("received_packet_count={}", trace.packets.len());
