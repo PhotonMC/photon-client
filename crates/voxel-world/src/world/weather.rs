@@ -1,4 +1,5 @@
 use crate::*;
+use voxel_core::java_float::JavaF32;
 
 impl ClientWorld {
     pub fn game_time(&self) -> u64 {
@@ -8,8 +9,8 @@ impl ClientWorld {
     /// `Level.setRainLevel` and `setThunderLevel`: the weather the server sent
     /// (the level starts dry).
     pub fn set_weather(&mut self, rain_level: f32, thunder_level: f32) {
-        self.rain_level_bits = rain_level.to_bits();
-        self.thunder_level_bits = thunder_level.to_bits();
+        self.rain_level = JavaF32::new(rain_level);
+        self.thunder_level = JavaF32::new(thunder_level);
     }
 
     /// `Level.isThundering`: the level can have weather and the thunder,
@@ -19,8 +20,7 @@ impl ClientWorld {
         let can_have_weather = environment.has_skylight
             && !environment.has_ceiling
             && self.dimension_key != "minecraft:the_end";
-        can_have_weather
-            && f32::from_bits(self.thunder_level_bits) * f32::from_bits(self.rain_level_bits) > 0.9
+        can_have_weather && self.thunder_level.get() * self.rain_level.get() > 0.9
     }
 
     /// `ClientLevel.setTimeFromServer`: the game time the server sent.

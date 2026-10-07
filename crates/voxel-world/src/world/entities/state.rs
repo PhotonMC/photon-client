@@ -1,4 +1,5 @@
 use crate::*;
+use voxel_core::java_float::JavaF32;
 
 impl ClientWorld {
     /// `ClientPacketListener.handleUpdateAttributes` for an entity that is not
@@ -212,7 +213,7 @@ impl ClientWorld {
                 player.air_supply = air_supply;
             }
             if let Some(health) = health {
-                player.health_bits = health.to_bits();
+                player.health = JavaF32::new(health);
             }
             if let Some(arrow_count) = arrow_count {
                 player.arrow_count = arrow_count;
@@ -248,7 +249,7 @@ impl ClientWorld {
                 player.ticks_frozen = ticks_frozen;
             }
             if let Some(absorption) = player_absorption_from_metadata(metadata) {
-                player.absorption_bits = absorption.to_bits();
+                player.absorption = JavaF32::new(absorption);
             }
             if let Some(customisation) = player_model_customisation_from_metadata(metadata) {
                 player.model_customisation = customisation;
@@ -426,7 +427,7 @@ impl ClientWorld {
             entity.air_supply = air_supply;
         }
         if let Some(health) = health {
-            entity.health_bits = Some(health.to_bits());
+            entity.health = Some(health.to_bits());
             // `isAlive` of a living entity: not removed, health left.
             entity.alive = health > 0.0;
         }

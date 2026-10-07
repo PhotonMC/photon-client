@@ -6,6 +6,7 @@
 use voxel_core::random::RandomSource;
 
 use crate::animation_state::AnimationState;
+use voxel_core::java_float::JavaF32;
 
 /// `AbstractHorse.DATA_ID_FLAGS` bits.
 const FLAG_EATING: u8 = 16;
@@ -177,12 +178,12 @@ impl CamelState {
 pub struct HorseState {
     pub camel: CamelState,
     flags: u8,
-    eat_bits: u32,
-    eat_old_bits: u32,
-    stand_bits: u32,
-    stand_old_bits: u32,
-    mouth_bits: u32,
-    mouth_old_bits: u32,
+    eat: JavaF32,
+    eat_old: JavaF32,
+    stand: JavaF32,
+    stand_old: JavaF32,
+    mouth: JavaF32,
+    mouth_old: JavaF32,
     tail_counter: i32,
     /// `AbstractHorse.standCounter`: ticks left of a rear, and `allowStandSliding`: a rider's jump
     /// let it rear while it is held still.
@@ -193,8 +194,8 @@ pub struct HorseState {
     random: TailRandom,
 }
 
-fn lerp(old: u32, new: u32, partial: f32) -> f32 {
-    let (old, new) = (f32::from_bits(old), f32::from_bits(new));
+fn lerp(old: JavaF32, new: JavaF32, partial: f32) -> f32 {
+    let (old, new) = (old.get(), new.get());
     old + partial * (new - old)
 }
 
@@ -207,12 +208,12 @@ impl HorseState {
         Self {
             camel: CamelState::default(),
             flags: 0,
-            eat_bits: 0,
-            eat_old_bits: 0,
-            stand_bits: 0,
-            stand_old_bits: 0,
-            mouth_bits: 0,
-            mouth_old_bits: 0,
+            eat: JavaF32::new(0.0),
+            eat_old: JavaF32::new(0.0),
+            stand: JavaF32::new(0.0),
+            stand_old: JavaF32::new(0.0),
+            mouth: JavaF32::new(0.0),
+            mouth_old: JavaF32::new(0.0),
             tail_counter: 0,
             stand_counter: 0,
             allow_stand_sliding: false,
@@ -281,35 +282,31 @@ impl HorseState {
                 self.stand_counter = 0;
             }
         }
-        let (eat, stand, mouth) = (
-            f32::from_bits(self.eat_bits),
-            f32::from_bits(self.stand_bits),
-            f32::from_bits(self.mouth_bits),
-        );
-        self.eat_old_bits = self.eat_bits;
+        let (eat, stand, mouth) = (self.eat.get(), self.stand.get(), self.mouth.get());
+        self.eat_old = self.eat;
         let mut eat = if self.flags & FLAG_EATING != 0 {
             (eat + ((1.0 - eat) * 0.4 + 0.05)).min(1.0)
         } else {
             (eat + ((0.0 - eat) * 0.4 - 0.05)).max(0.0)
         };
-        self.stand_old_bits = self.stand_bits;
+        self.stand_old = self.stand;
         let stand = if self.flags & FLAG_STANDING != 0 {
             eat = 0.0;
-            self.eat_old_bits = eat.to_bits();
+            self.eat_old = JavaF32::new(eat);
             (stand + ((1.0 - stand) * 0.4 + 0.05)).min(1.0)
         } else {
             self.allow_stand_sliding = false;
             (stand + ((0.8 * stand * stand * stand - stand) * 0.6 - 0.05)).max(0.0)
         };
-        self.eat_bits = eat.to_bits();
-        self.stand_bits = stand.to_bits();
-        self.mouth_old_bits = self.mouth_bits;
+        self.eat = JavaF32::new(eat);
+        self.stand = JavaF32::new(stand);
+        self.mouth_old = self.mouth;
         let mouth = if self.flags & FLAG_OPEN_MOUTH != 0 {
             (mouth + ((1.0 - mouth) * 0.7 + 0.05)).min(1.0)
         } else {
             (mouth + ((0.0 - mouth) * 0.7 - 0.05)).max(0.0)
         };
-        self.mouth_bits = mouth.to_bits();
+        self.mouth = JavaF32::new(mouth);
     }
 
     /// A camel's own tick, after the horse's (see [`CamelState::tick`]).
@@ -327,12 +324,12 @@ impl HorseState {
 
     /// `getEatAnim`: how far the head is down to graze, between two ticks.
     pub fn eat_animation(&self, partial: f32) -> f32 {
-        lerp(self.eat_old_bits, self.eat_bits, partial)
+        lerp(self.eat_old, self.eat, partial)
     }
 
     /// `standAnimO`: how far the animal was reared a tick ago, which a rider's seat reads.
     pub fn stand_animation_old(&self) -> f32 {
-        f32::from_bits(self.stand_old_bits)
+        self.stand_old.get()
     }
 
     /// Whether the animal rears (`AbstractHorse.isStanding`).
@@ -342,12 +339,12 @@ impl HorseState {
 
     /// `getStandAnim`: how far the animal is reared.
     pub fn stand_animation(&self, partial: f32) -> f32 {
-        lerp(self.stand_old_bits, self.stand_bits, partial)
+        lerp(self.stand_old, self.stand, partial)
     }
 
     /// `getMouthAnim`: how far the mouth is open.
     pub fn mouth_animation(&self, partial: f32) -> f32 {
-        lerp(self.mouth_old_bits, self.mouth_bits, partial)
+        lerp(self.mouth_old, self.mouth, partial)
     }
 
     /// `tailCounter`: above zero while the tail swishes.

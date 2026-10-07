@@ -3,6 +3,7 @@
 //! animation (`WalkAnimationState`), the swimming pose easing in and out, and
 //! the body turning towards where the entity walks (`LivingEntity.tickHeadTurn`).
 
+use voxel_core::java_float::JavaF32;
 use voxel_core::math::{clamp_f32, mth_atan2, mth_degrees_difference_f32, wrap_degrees_f32};
 
 /// `WalkAnimationState`.
@@ -249,8 +250,8 @@ pub struct SwingState {
     swinging: bool,
     swing_time: i32,
     off_hand: bool,
-    attack_anim_bits: u32,
-    old_attack_anim_bits: u32,
+    attack_anim: JavaF32,
+    old_attack_anim: JavaF32,
 }
 
 impl SwingState {
@@ -273,7 +274,7 @@ impl SwingState {
 
     /// `LivingEntity.baseTick`: the last tick's attack animation is kept.
     pub fn begin_tick(&mut self) {
-        self.old_attack_anim_bits = self.attack_anim_bits;
+        self.old_attack_anim = self.attack_anim;
     }
 
     /// `LivingEntity.updateSwingTime`, which only players and monsters run.
@@ -288,7 +289,7 @@ impl SwingState {
         } else {
             self.swing_time = 0;
         }
-        self.attack_anim_bits = (self.swing_time as f32 / duration as f32).to_bits();
+        self.attack_anim = JavaF32::new(self.swing_time as f32 / duration as f32);
     }
 
     pub fn is_swinging(&self) -> bool {
@@ -307,8 +308,8 @@ impl SwingState {
     /// `LivingEntity.getAttackAnim`: between the last two ticks, wrapping
     /// when a new swing began.
     pub fn attack_anim(&self, partial: f32) -> f32 {
-        let old = f32::from_bits(self.old_attack_anim_bits);
-        let mut difference = f32::from_bits(self.attack_anim_bits) - old;
+        let old = self.old_attack_anim.get();
+        let mut difference = self.attack_anim.get() - old;
         if difference < 0.0 {
             difference += 1.0;
         }

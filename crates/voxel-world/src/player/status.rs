@@ -62,7 +62,7 @@ impl ClientPlayerState {
     }
 
     pub fn absorption(&self) -> f32 {
-        f32::from_bits(self.absorption_bits)
+        self.absorption.get()
     }
 
     pub fn score(&self) -> i32 {
@@ -123,7 +123,7 @@ impl ClientPlayerState {
     }
 
     pub fn health(&self) -> f32 {
-        f32::from_bits(self.health_bits)
+        self.health.get()
     }
 
     pub fn arrow_count(&self) -> i32 {

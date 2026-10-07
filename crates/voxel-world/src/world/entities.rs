@@ -212,7 +212,7 @@ impl ClientWorld {
                 living_flags: 0,
                 mob_flags: 0,
                 air_supply: DEFAULT_AIR_SUPPLY,
-                health_bits: None,
+                health: None,
                 living: EntityState::default(),
                 arrow_count: 0,
                 stinger_count: 0,

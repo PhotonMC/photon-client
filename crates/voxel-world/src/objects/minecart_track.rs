@@ -4,6 +4,7 @@
 
 use std::cell::Cell;
 
+use voxel_core::java_float::JavaF32;
 use voxel_core::math::{mth_lerp_f64, mth_rot_lerp_f32};
 
 /// The ticks a batch of steps is played over (`NewMinecartBehavior.POS_ROT_LERP_TICKS`).
@@ -56,7 +57,7 @@ struct StepPartial {
 /// gets the old answer).
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Cached {
-    partial_bits: u32,
+    partial: JavaF32,
     lerp_delay: i32,
     step: StepPartial,
 }
@@ -140,7 +141,7 @@ impl TrackLerp {
     /// `getCurrentLerpStep`.
     fn current_step(&self, partial: f32) -> StepPartial {
         if let Some(cached) = self.cache.get()
-            && cached.partial_bits == partial.to_bits()
+            && cached.partial.get().to_bits() == partial.to_bits()
             && cached.lerp_delay == self.lerp_delay
         {
             return cached.step;
@@ -176,7 +177,7 @@ impl TrackLerp {
             },
         };
         self.cache.set(Some(Cached {
-            partial_bits: partial.to_bits(),
+            partial: JavaF32::new(partial),
             lerp_delay: self.lerp_delay,
             step,
         }));

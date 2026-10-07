@@ -49,7 +49,7 @@ impl ClientEntity {
             && let (Some(health), Some(max)) = (self.health(), self.max_health())
             && health < max
         {
-            self.health_bits = Some((health + 1.0).to_bits());
+            self.health = Some((health + 1.0).to_bits());
         }
         let y_rot = voxel_core::math::wrap_degrees_f32(self.y_rot.get());
         self.y_rot = JavaF32::new(y_rot);

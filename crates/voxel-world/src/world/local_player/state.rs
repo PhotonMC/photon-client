@@ -1,4 +1,5 @@
 use crate::*;
+use voxel_core::java_float::{JavaF32, JavaF64};
 
 impl ClientWorld {
     pub fn local_player(&self) -> Option<&ClientPlayerState> {
@@ -50,9 +51,9 @@ impl ClientWorld {
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.health_bits = health.to_bits();
+        player.health = JavaF32::new(health);
         player.food = food;
-        player.saturation_bits = saturation.to_bits();
+        player.saturation = JavaF32::new(saturation);
         true
     }
 

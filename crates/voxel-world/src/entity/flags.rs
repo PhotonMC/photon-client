@@ -125,7 +125,7 @@ impl ClientEntity {
     }
 
     pub fn health(&self) -> Option<f32> {
-        self.health_bits.map(f32::from_bits)
+        self.health.map(f32::from_bits)
     }
 
     pub fn arrow_count(&self) -> i32 {

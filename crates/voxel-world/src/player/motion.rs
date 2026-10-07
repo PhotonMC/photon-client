@@ -1,4 +1,5 @@
 use super::*;
+use voxel_core::java_float::{JavaF32, JavaF64};
 
 impl ClientPlayerState {
     pub fn passenger_ids(&self) -> &[i32] {
@@ -49,7 +50,7 @@ impl ClientPlayerState {
     }
 
     pub fn friction_influenced_speed(&self) -> f32 {
-        f32::from_bits(self.friction_influenced_speed_bits)
+        self.friction_influenced_speed.get()
     }
 
     /// Return Java Player.getSpeed from the local movement-speed attribute.
@@ -76,11 +77,11 @@ impl ClientPlayerState {
     }
 
     pub fn modified_friction(&self) -> f32 {
-        f32::from_bits(self.modified_friction_bits)
+        self.modified_friction.get()
     }
 
     pub fn input_impulses(&self) -> voxel_core::math::Vec2 {
-        voxel_core::math::Vec2::new(f32::from_bits(self.xxa_bits), f32::from_bits(self.zza_bits))
+        voxel_core::math::Vec2::new(self.xxa.get(), self.zza.get())
     }
 
     pub fn input_key_presses(&self) -> Input {
@@ -89,8 +90,8 @@ impl ClientPlayerState {
 
     pub fn input_move_vector(&self) -> Vec2 {
         Vec2::new(
-            f32::from_bits(self.input_move_vector_x_bits),
-            f32::from_bits(self.input_move_vector_y_bits),
+            self.input_move_vector_x.get(),
+            self.input_move_vector_y.get(),
         )
     }
 
@@ -107,17 +108,11 @@ impl ClientPlayerState {
     }
 
     pub fn bob(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.x_bob_bits),
-            f32::from_bits(self.y_bob_bits),
-        )
+        (self.x_bob.get(), self.y_bob.get())
     }
 
     pub fn previous_bob(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.x_bob_o_bits),
-            f32::from_bits(self.y_bob_o_bits),
-        )
+        (self.x_bob_o.get(), self.y_bob_o.get())
     }
 
     pub fn rotation(&self) -> (f32, f32) {
@@ -227,22 +222,22 @@ impl ClientPlayerState {
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
             motion: DVec3::ZERO,
-            friction_influenced_speed_bits: 0.0_f32.to_bits(),
-            modified_friction_bits: 0.0_f32.to_bits(),
-            xxa_bits: 0.0_f32.to_bits(),
-            zza_bits: 0.0_f32.to_bits(),
+            friction_influenced_speed: JavaF32::new(0.0_f32),
+            modified_friction: JavaF32::new(0.0_f32),
+            xxa: JavaF32::new(0.0_f32),
+            zza: JavaF32::new(0.0_f32),
             input_key_presses: Input::EMPTY,
-            input_move_vector_x_bits: 0.0_f32.to_bits(),
-            input_move_vector_y_bits: 0.0_f32.to_bits(),
+            input_move_vector_x: JavaF32::new(0.0_f32),
+            input_move_vector_y: JavaF32::new(0.0_f32),
             sprint_trigger_time: 0,
             jumping: false,
             on_climbable: false,
             in_scaffolding: false,
             suppress_sliding_down_ladder: false,
-            x_bob_bits: 0.0_f32.to_bits(),
-            y_bob_bits: 0.0_f32.to_bits(),
-            x_bob_o_bits: 0.0_f32.to_bits(),
-            y_bob_o_bits: 0.0_f32.to_bits(),
+            x_bob: JavaF32::new(0.0_f32),
+            y_bob: JavaF32::new(0.0_f32),
+            x_bob_o: JavaF32::new(0.0_f32),
+            y_bob_o: JavaF32::new(0.0_f32),
             y_rot: JavaF32::new(0.0_f32),
             x_rot: JavaF32::new(0.0_f32),
             old_y_rot: JavaF32::new(0.0_f32),
@@ -270,14 +265,14 @@ impl ClientPlayerState {
             silent: false,
             pose: ClientEntityPose::Standing,
             ticks_frozen: 0,
-            absorption_bits: 0,
+            absorption: JavaF32::new(0.0),
             model_customisation: 0,
             score: 0,
             attributes: Vec::new(),
             effects: Vec::new(),
-            health_bits: 20.0_f32.to_bits(),
+            health: JavaF32::new(20.0_f32),
             food: 20,
-            saturation_bits: 5.0_f32.to_bits(),
+            saturation: JavaF32::new(5.0_f32),
             inventory_state_id: 0,
             inventory_slots: BTreeMap::new(),
             carried_item: None,

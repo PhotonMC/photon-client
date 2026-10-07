@@ -240,7 +240,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [V05b](V05b-paylasimli-quad-indeksi.md) | Paylaşımlı opaque quad indeks tamponu | M | V05 | açık |
 | [V06](V06-multi-draw.md) | Bölümler için indirect/multi-draw | L | V05 | kapandı (ölçüm: gerekmedi) |
 | [A01](A01-newtype-degerler.md) | `JavaF64`/`DVec3` ve kimlik newtype'ları | M | – | bölündü |
-| [A01b](A01b-kalan-newtype.md) | Kalan `*_bits` alanları ve kimlik newtype'ları | M | A01 | açık |
+| [A01b](A01b-kalan-newtype.md) | Kalan `*_bits` alanları ve kimlik newtype'ları | M | A01 | bölündü (A01c, 43ccde6d) |
+| [A01c](A01c-kimlik-newtype.md) | `EntityId`, `BlockStateId`, `EntityTypeId` newtype'ları | L | A01b | açık |
 | [A02](A02-entity-kind.md) | `ClientEntity` → `EntityBase` + `EntityKind` enum | L | A01 | bitti |
 | [A03](A03-extract-dispatch.md) | Extract → render state → tek geçişli dispatcher | L | A02 | açık |
 | [A04](A04-paket-enum-listener.md) | Tipli paket enum'u, listener, izlemeyi üretimden ayırma | L | A01 | açık |

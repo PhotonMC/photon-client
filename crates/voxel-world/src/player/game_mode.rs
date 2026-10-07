@@ -1,4 +1,5 @@
 use super::*;
+use voxel_core::java_float::JavaF32;
 
 /// The four Java game-mode values applied to the local player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -19,8 +20,8 @@ pub struct ClientPlayerAbilities {
     pub(crate) may_fly: bool,
     pub(crate) instabuild: bool,
     pub(crate) may_build: bool,
-    pub(crate) flying_speed_bits: u32,
-    pub(crate) walking_speed_bits: u32,
+    pub(crate) flying_speed: JavaF32,
+    pub(crate) walking_speed: JavaF32,
 }
 
 impl Default for ClientPlayerAbilities {
@@ -122,8 +123,8 @@ impl ClientPlayerAbilities {
             may_fly,
             instabuild,
             may_build: true,
-            flying_speed_bits: flying_speed.to_bits(),
-            walking_speed_bits: walking_speed.to_bits(),
+            flying_speed: JavaF32::new(flying_speed),
+            walking_speed: JavaF32::new(walking_speed),
         }
     }
 
@@ -148,10 +149,10 @@ impl ClientPlayerAbilities {
     }
 
     pub fn flying_speed(self) -> f32 {
-        f32::from_bits(self.flying_speed_bits)
+        self.flying_speed.get()
     }
 
     pub fn walking_speed(self) -> f32 {
-        f32::from_bits(self.walking_speed_bits)
+        self.walking_speed.get()
     }
 }

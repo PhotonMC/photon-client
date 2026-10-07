@@ -68,7 +68,7 @@ pub struct ClientEntity {
     pub(crate) living_flags: u8,
     pub(crate) mob_flags: u8,
     pub(crate) air_supply: i32,
-    pub(crate) health_bits: Option<u32>,
+    pub(crate) health: Option<u32>,
     pub(crate) living: EntityState,
     pub(crate) arrow_count: i32,
     pub(crate) stinger_count: i32,

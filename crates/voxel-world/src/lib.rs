@@ -127,8 +127,8 @@ pub struct ClientWorld {
     sky_flash_time: i32,
     /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
     /// the bits of the floats.
-    rain_level_bits: u32,
-    thunder_level_bits: u32,
+    rain_level: JavaF32,
+    thunder_level: JavaF32,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<i32, DestroyProgress>,
 }

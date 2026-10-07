@@ -1,5 +1,6 @@
 //! `ClientWorld` dimension layer split out of the former single-file module.
 
+use voxel_core::java_float::{JavaF32, JavaF64};
 /// The vertical bounds used when mapping a chunk packet's section order to Y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DimensionBounds {
@@ -83,9 +84,9 @@ pub struct DimensionEnvironment {
     pub(crate) has_skylight: bool,
     pub(crate) has_ceiling: bool,
     pub(crate) has_ender_dragon_fight: bool,
-    pub(crate) coordinate_scale_bits: u64,
+    pub(crate) coordinate_scale: JavaF64,
     pub(crate) logical_height: i32,
-    pub(crate) ambient_light_bits: u32,
+    pub(crate) ambient_light: JavaF32,
     pub(crate) skybox: DimensionSkybox,
     pub(crate) cardinal_light_type: CardinalLightType,
     pub(crate) piglins_zombify: bool,
@@ -113,9 +114,9 @@ impl DimensionEnvironment {
             has_skylight: input.has_skylight,
             has_ceiling: input.has_ceiling,
             has_ender_dragon_fight: input.has_ender_dragon_fight,
-            coordinate_scale_bits: input.coordinate_scale.to_bits(),
+            coordinate_scale: JavaF64::new(input.coordinate_scale),
             logical_height: input.logical_height,
-            ambient_light_bits: input.ambient_light.to_bits(),
+            ambient_light: JavaF32::new(input.ambient_light),
             skybox: input.skybox,
             cardinal_light_type: input.cardinal_light_type,
             piglins_zombify: input.piglins_zombify,
@@ -208,7 +209,7 @@ impl DimensionEnvironment {
     }
 
     pub fn coordinate_scale(&self) -> f64 {
-        f64::from_bits(self.coordinate_scale_bits)
+        self.coordinate_scale.get()
     }
 
     pub fn logical_height(&self) -> i32 {
@@ -216,7 +217,7 @@ impl DimensionEnvironment {
     }
 
     pub fn ambient_light(&self) -> f32 {
-        f32::from_bits(self.ambient_light_bits)
+        self.ambient_light.get()
     }
 
     pub fn skybox(&self) -> DimensionSkybox {

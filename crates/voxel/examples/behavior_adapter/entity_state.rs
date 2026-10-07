@@ -346,7 +346,7 @@ pub(super) fn client_world_entity_health_state(
         "label": label,
         "accepted": accepted,
         "living_flags": entity.living_flags(),
-        "health_bits": entity
+        "health": entity
             .health()
             .map(|value| format!("{:08x}", value.to_bits())),
     })

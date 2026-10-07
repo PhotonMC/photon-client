@@ -41,8 +41,8 @@ impl ClientWorld {
             paddle_packets: Vec::new(),
             rider_controls: ride::mount::Controller::default(),
             sky_flash_time: 0,
-            rain_level_bits: 0,
-            thunder_level_bits: 0,
+            rain_level: JavaF32::new(0.0),
+            thunder_level: JavaF32::new(0.0),
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
         }

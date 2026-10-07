@@ -1,6 +1,7 @@
 //! What a sheep, a chicken and a creeper keep for their drawing: the sheep's
 //! wool byte and its eating timer, the chicken's flap, the creeper's swell.
 
+use voxel_core::java_float::JavaF32;
 use voxel_core::math::mth_sin_f64;
 
 /// `Sheep.eatAnimationTick` when the server tells a sheep to eat
@@ -18,8 +19,8 @@ pub(crate) struct AnimalState {
     pub(crate) wool: u8,
     pub(crate) eat_tick: i32,
     /// `Bee.rollAmount` and the last tick's.
-    bee_roll_bits: u32,
-    bee_old_roll_bits: u32,
+    bee_roll: JavaF32,
+    bee_old_roll: JavaF32,
     /// `Goat.isLoweringHead` and `lowerHeadTick`.
     pub(crate) goat_lowering_head: bool,
     pub(crate) goat_lower_head_tick: i32,
@@ -28,11 +29,11 @@ pub(crate) struct AnimalState {
     pub(crate) golem_offer_flower_tick: i32,
     /// `Hoglin.attackAnimationRemainingTicks` (a zoglin's too).
     pub(crate) hoglin_attack_ticks: i32,
-    flap_bits: u32,
-    old_flap_bits: u32,
-    flap_speed_bits: u32,
-    old_flap_speed_bits: u32,
-    flapping_bits: u32,
+    flap: JavaF32,
+    old_flap: JavaF32,
+    flap_speed: JavaF32,
+    old_flap_speed: JavaF32,
+    flapping: JavaF32,
     /// `Creeper`: how far its fuse has burned and the last tick's, the
     /// direction it burns (`DATA_SWELL_DIR`) and whether it was ignited.
     swell: i32,
@@ -93,18 +94,18 @@ impl Default for AnimalState {
         Self {
             wool: 0,
             eat_tick: 0,
-            bee_roll_bits: 0,
-            bee_old_roll_bits: 0,
+            bee_roll: JavaF32::new(0.0),
+            bee_old_roll: JavaF32::new(0.0),
             goat_lowering_head: false,
             goat_lower_head_tick: 0,
             golem_attack_tick: 0,
             golem_offer_flower_tick: 0,
             hoglin_attack_ticks: 0,
-            flap_bits: 0,
-            old_flap_bits: 0,
-            flap_speed_bits: 0,
-            old_flap_speed_bits: 0,
-            flapping_bits: 1.0_f32.to_bits(),
+            flap: JavaF32::new(0.0),
+            old_flap: JavaF32::new(0.0),
+            flap_speed: JavaF32::new(0.0),
+            old_flap_speed: JavaF32::new(0.0),
+            flapping: JavaF32::new(1.0_f32),
             swell: 0,
             old_swell: 0,
             swell_dir: 0,
@@ -122,22 +123,19 @@ impl AnimalState {
     /// `Bee.updateRollAmount`: the roll grows by a fifth a tick while the bee
     /// rolls and shrinks by about a quarter a tick when it stops.
     pub(crate) fn tick_bee(&mut self, rolling: bool) {
-        let roll = f32::from_bits(self.bee_roll_bits);
-        self.bee_old_roll_bits = self.bee_roll_bits;
+        let roll = self.bee_roll.get();
+        self.bee_old_roll = self.bee_roll;
         let next = if rolling {
             (roll + 0.2).min(1.0)
         } else {
             (roll - 0.24).max(0.0)
         };
-        self.bee_roll_bits = next.to_bits();
+        self.bee_roll = JavaF32::new(next);
     }
 
     /// `Bee.getRollAmount`.
     pub(crate) fn bee_roll_at(&self, partial: f32) -> f32 {
-        let (old, new) = (
-            f32::from_bits(self.bee_old_roll_bits),
-            f32::from_bits(self.bee_roll_bits),
-        );
+        let (old, new) = (self.bee_old_roll.get(), self.bee_roll.get());
         old + partial * (new - old)
     }
 
@@ -193,22 +191,19 @@ impl AnimalState {
     /// `Chicken.aiStep`'s flap: the wings beat faster while it is off the
     /// ground and settle back on it.
     pub(crate) fn tick_chicken(&mut self, on_ground: bool) {
-        let (flap, flap_speed) = (
-            f32::from_bits(self.flap_bits),
-            f32::from_bits(self.flap_speed_bits),
-        );
-        let mut flapping = f32::from_bits(self.flapping_bits);
-        self.old_flap_bits = self.flap_bits;
-        self.old_flap_speed_bits = self.flap_speed_bits;
+        let (flap, flap_speed) = (self.flap.get(), self.flap_speed.get());
+        let mut flapping = self.flapping.get();
+        self.old_flap = self.flap;
+        self.old_flap_speed = self.flap_speed;
         let flap_speed =
             (flap_speed + (if on_ground { -1.0_f32 } else { 4.0 }) * 0.3).clamp(0.0, 1.0);
         if !on_ground && flapping < 1.0 {
             flapping = 1.0;
         }
         flapping *= 0.9;
-        self.flap_bits = (flap + flapping * 2.0).to_bits();
-        self.flap_speed_bits = flap_speed.to_bits();
-        self.flapping_bits = flapping.to_bits();
+        self.flap = JavaF32::new(flap + flapping * 2.0);
+        self.flap_speed = JavaF32::new(flap_speed);
+        self.flapping = JavaF32::new(flapping);
     }
 
     pub(crate) fn set_swell_dir(&mut self, direction: i32) {
@@ -240,16 +235,13 @@ impl AnimalState {
 
     /// `Mth.lerp` of the flap between two ticks.
     pub(crate) fn flap_at(&self, partial: f32) -> f32 {
-        let (old, new) = (
-            f32::from_bits(self.old_flap_bits),
-            f32::from_bits(self.flap_bits),
-        );
+        let (old, new) = (self.old_flap.get(), self.flap.get());
         old + partial * (new - old)
     }
 
     pub(crate) fn flap_speed_at(&self, partial: f32) -> f32 {
-        let old = f32::from_bits(self.old_flap_speed_bits);
-        let new = f32::from_bits(self.flap_speed_bits);
+        let old = self.old_flap_speed.get();
+        let new = self.flap_speed.get();
         old + partial * (new - old)
     }
 }

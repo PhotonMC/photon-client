@@ -56,7 +56,7 @@ impl ClientEntity {
                 && !self.spectator
                 && (self.flying || !self.on_climbable)
                 && self
-                    .health_bits
+                    .health
                     .is_none_or(|health| f32::from_bits(health) > 0.0)
         } else {
             is_vanilla_pushable_entity_type(self.type_id)

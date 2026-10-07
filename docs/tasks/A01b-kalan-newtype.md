@@ -21,4 +21,6 @@ Davranış değişikliği; `ClientEntity`'nin tür enum'una bölünmesi (A02).
 Bu görev dosyasının devir notu.
 
 ## Devir notu
-(boş)
+- 43 `*_bits: u32/u64` alanı `JavaF32`/`JavaF64` oldu (`ClientPlayerState` hız/giriş/sağlık, `border` (`from`/`to`/`size`/`previous_size`/merkez), `animal`, `horse`, `living`, `dimension`, öznitelik `amount`/`base_value`, hava durumu, `minecart_track`, oyun modu hızları). Betikle dönüştürüldü (`X_bits: e.to_bits()` → `X: JavaF::new(e)`, `f32::from_bits(a.X_bits)` → `a.X.get()`), kalanı derleyici yönlendirmesiyle elle (`border.rs`, `horse::lerp`, `player/travel.rs`). Davranış değişmedi: 542 test, 1109 parity kaydı.
+- Kalan `*_bits` yalnız GPU `valid_bits` (bit sayısı, float değil).
+- **Kimlik newtype'ları → [A01c](A01c-kimlik-newtype.md):** `EntityId`/`BlockStateId`/`EntityTypeId` 1700+ kullanım yerinde ve tipler tutarsız (`state_id` `i32`/`u32`/`i64`); ayrı görev.

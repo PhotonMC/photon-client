@@ -1,4 +1,5 @@
 use super::*;
+use voxel_core::java_float::{JavaF32, JavaF64};
 
 impl ClientPlayerState {
     pub(crate) fn apply_input(
@@ -12,31 +13,22 @@ impl ClientPlayerState {
             LocalPlayerInputState {
                 move_vector,
                 jump_pressed,
-                current_impulses: voxel_core::math::Vec2::new(
-                    f32::from_bits(self.xxa_bits),
-                    f32::from_bits(self.zza_bits),
-                ),
+                current_impulses: voxel_core::math::Vec2::new(self.xxa.get(), self.zza.get()),
                 current_jumping: self.jumping,
-                current_bob: voxel_core::math::Vec2::new(
-                    f32::from_bits(self.x_bob_bits),
-                    f32::from_bits(self.y_bob_bits),
-                ),
-                previous_bob: voxel_core::math::Vec2::new(
-                    f32::from_bits(self.x_bob_o_bits),
-                    f32::from_bits(self.y_bob_o_bits),
-                ),
+                current_bob: voxel_core::math::Vec2::new(self.x_bob.get(), self.y_bob.get()),
+                previous_bob: voxel_core::math::Vec2::new(self.x_bob_o.get(), self.y_bob_o.get()),
                 rotation: voxel_core::math::Vec2::new(self.x_rot.get(), self.y_rot.get()),
                 controlled_camera,
             },
             modifiers,
         );
-        self.xxa_bits = applied.movement.x.to_bits();
-        self.zza_bits = applied.movement.y.to_bits();
+        self.xxa = JavaF32::new(applied.movement.x);
+        self.zza = JavaF32::new(applied.movement.y);
         self.jumping = applied.jumping;
-        self.x_bob_bits = applied.x_bob.to_bits();
-        self.y_bob_bits = applied.y_bob.to_bits();
-        self.x_bob_o_bits = applied.x_bob_old.to_bits();
-        self.y_bob_o_bits = applied.y_bob_old.to_bits();
+        self.x_bob = JavaF32::new(applied.x_bob);
+        self.y_bob = JavaF32::new(applied.y_bob);
+        self.x_bob_o = JavaF32::new(applied.x_bob_old);
+        self.y_bob_o = JavaF32::new(applied.y_bob_old);
     }
 
     pub(crate) fn apply_input_from_attributes(
@@ -98,7 +90,7 @@ impl ClientPlayerState {
                 sprinting: self.is_sprinting(),
                 passenger: self.vehicle_id.is_some(),
             });
-        self.friction_influenced_speed_bits = adjusted.to_bits();
+        self.friction_influenced_speed = JavaF32::new(adjusted);
     }
 
     pub(crate) fn apply_friction_influenced_speed_from_attributes(
@@ -111,9 +103,9 @@ impl ClientPlayerState {
     }
 
     pub(crate) fn apply_modified_friction(&mut self, friction: f32, modifier: f32) {
-        self.modified_friction_bits =
-            local_player_modified_friction(LocalPlayerModifiedFrictionInput { friction, modifier })
-                .to_bits();
+        self.modified_friction = JavaF32::new(local_player_modified_friction(
+            LocalPlayerModifiedFrictionInput { friction, modifier },
+        ));
     }
 
     pub(crate) fn apply_travel_flying(&mut self, parameters: LocalPlayerTravelFlyingParameters) {

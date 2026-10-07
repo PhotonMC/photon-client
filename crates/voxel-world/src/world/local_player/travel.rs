@@ -1,4 +1,5 @@
 use crate::*;
+use voxel_core::java_float::JavaF32;
 
 impl ClientWorld {
     /// Advance LocalPlayer's sprint double-tap window from one input snapshot.
@@ -23,8 +24,8 @@ impl ClientWorld {
             conditions,
         });
         player.input_key_presses = current_input;
-        player.input_move_vector_x_bits = current_move_vector.x.to_bits();
-        player.input_move_vector_y_bits = current_move_vector.y.to_bits();
+        player.input_move_vector_x = JavaF32::new(current_move_vector.x);
+        player.input_move_vector_y = JavaF32::new(current_move_vector.y);
         player.sprint_trigger_time = result.sprint_trigger_time;
         if result.sprinting != player.is_sprinting() {
             player.apply_sprinting(result.sprinting);

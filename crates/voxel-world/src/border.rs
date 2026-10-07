@@ -2,6 +2,7 @@
 
 use super::*;
 
+use voxel_core::java_float::JavaF64;
 use voxel_core::math::{clamp_f64, mth_lerp_f64};
 use voxel_core::shape::VoxelShape;
 
@@ -15,23 +16,23 @@ pub enum ClientWorldBorderStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ClientWorldBorderExtent {
     Static {
-        size_bits: u64,
+        size: JavaF64,
     },
     Moving {
-        from_bits: u64,
-        to_bits: u64,
+        from: JavaF64,
+        to: JavaF64,
         duration: i64,
         progress: i64,
-        size_bits: u64,
-        previous_size_bits: u64,
+        size: JavaF64,
+        previous_size: JavaF64,
     },
 }
 
 /// Model the client-visible Java `WorldBorder` extent state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientWorldBorder {
-    pub(crate) center_x_bits: u64,
-    pub(crate) center_z_bits: u64,
+    pub(crate) center_x: JavaF64,
+    pub(crate) center_z: JavaF64,
     pub(crate) absolute_max_size: i32,
     pub(crate) warning_blocks: i32,
     pub(crate) warning_time: i32,
@@ -47,23 +48,23 @@ impl Default for ClientWorldBorder {
 impl ClientWorldBorder {
     pub fn new(center_x: f64, center_z: f64, absolute_max_size: i32, size: f64) -> Self {
         Self {
-            center_x_bits: center_x.to_bits(),
-            center_z_bits: center_z.to_bits(),
+            center_x: JavaF64::new(center_x),
+            center_z: JavaF64::new(center_z),
             absolute_max_size,
             warning_blocks: 5,
             warning_time: 15,
             extent: ClientWorldBorderExtent::Static {
-                size_bits: size.to_bits(),
+                size: JavaF64::new(size),
             },
         }
     }
 
     pub fn center_x(&self) -> f64 {
-        f64::from_bits(self.center_x_bits)
+        self.center_x.get()
     }
 
     pub fn center_z(&self) -> f64 {
-        f64::from_bits(self.center_z_bits)
+        self.center_z.get()
     }
 
     pub fn absolute_max_size(&self) -> i32 {
@@ -79,8 +80,8 @@ impl ClientWorldBorder {
     }
 
     pub fn set_center(&mut self, center_x: f64, center_z: f64) {
-        self.center_x_bits = center_x.to_bits();
-        self.center_z_bits = center_z.to_bits();
+        self.center_x = JavaF64::new(center_x);
+        self.center_z = JavaF64::new(center_z);
     }
 
     pub fn set_absolute_max_size(&mut self, absolute_max_size: i32) {
@@ -97,31 +98,31 @@ impl ClientWorldBorder {
 
     pub fn set_size(&mut self, size: f64) {
         self.extent = ClientWorldBorderExtent::Static {
-            size_bits: size.to_bits(),
+            size: JavaF64::new(size),
         };
     }
 
     pub fn lerp_size_between(&mut self, from: f64, to: f64, duration: i64) {
         self.extent = if from == to {
             ClientWorldBorderExtent::Static {
-                size_bits: to.to_bits(),
+                size: JavaF64::new(to),
             }
         } else {
             ClientWorldBorderExtent::Moving {
-                from_bits: from.to_bits(),
-                to_bits: to.to_bits(),
+                from: JavaF64::new(from),
+                to: JavaF64::new(to),
                 duration,
                 progress: duration,
-                size_bits: from.to_bits(),
-                previous_size_bits: from.to_bits(),
+                size: JavaF64::new(from),
+                previous_size: JavaF64::new(from),
             }
         };
     }
 
     pub fn size(&self) -> f64 {
         match self.extent {
-            ClientWorldBorderExtent::Static { size_bits }
-            | ClientWorldBorderExtent::Moving { size_bits, .. } => f64::from_bits(size_bits),
+            ClientWorldBorderExtent::Static { size }
+            | ClientWorldBorderExtent::Moving { size, .. } => size.get(),
         }
     }
 
@@ -134,18 +135,16 @@ impl ClientWorldBorder {
 
     pub fn lerp_target(&self) -> f64 {
         match self.extent {
-            ClientWorldBorderExtent::Static { size_bits } => f64::from_bits(size_bits),
-            ClientWorldBorderExtent::Moving { to_bits, .. } => f64::from_bits(to_bits),
+            ClientWorldBorderExtent::Static { size } => size.get(),
+            ClientWorldBorderExtent::Moving { to, .. } => to.get(),
         }
     }
 
     pub fn status(&self) -> ClientWorldBorderStatus {
         match self.extent {
             ClientWorldBorderExtent::Static { .. } => ClientWorldBorderStatus::Stationary,
-            ClientWorldBorderExtent::Moving {
-                from_bits, to_bits, ..
-            } => {
-                if f64::from_bits(to_bits) < f64::from_bits(from_bits) {
+            ClientWorldBorderExtent::Moving { from, to, .. } => {
+                if to.get() < from.get() {
                     ClientWorldBorderStatus::Shrinking
                 } else {
                     ClientWorldBorderStatus::Growing
@@ -181,50 +180,40 @@ impl ClientWorldBorder {
 
     pub fn tick(&mut self) {
         let ClientWorldBorderExtent::Moving {
-            from_bits,
-            to_bits,
+            from,
+            to,
             duration,
             progress,
-            size_bits,
+            size: previous_size,
             ..
         } = self.extent
         else {
             return;
         };
         let progress = progress - 1;
-        let previous_size_bits = size_bits;
-        let size = calculate_world_border_size(
-            f64::from_bits(from_bits),
-            f64::from_bits(to_bits),
-            duration,
-            progress,
-        );
+        let size = calculate_world_border_size(from.get(), to.get(), duration, progress);
         self.extent = if progress <= 0 {
-            ClientWorldBorderExtent::Static { size_bits: to_bits }
+            ClientWorldBorderExtent::Static { size: to }
         } else {
             ClientWorldBorderExtent::Moving {
-                from_bits,
-                to_bits,
+                from,
+                to,
                 duration,
                 progress,
-                size_bits: size.to_bits(),
-                previous_size_bits,
+                size: JavaF64::new(size),
+                previous_size,
             }
         };
     }
 
     pub(crate) fn effective_size(&self, partial_tick: f32) -> f64 {
         match self.extent {
-            ClientWorldBorderExtent::Static { size_bits } => f64::from_bits(size_bits),
+            ClientWorldBorderExtent::Static { size } => size.get(),
             ClientWorldBorderExtent::Moving {
-                size_bits,
-                previous_size_bits,
+                size,
+                previous_size,
                 ..
-            } => mth_lerp_f64(
-                f64::from(partial_tick),
-                f64::from_bits(previous_size_bits),
-                f64::from_bits(size_bits),
-            ),
+            } => mth_lerp_f64(f64::from(partial_tick), previous_size.get(), size.get()),
         }
     }
 

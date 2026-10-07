@@ -1,4 +1,5 @@
 use super::*;
+use voxel_core::java_float::JavaF64;
 
 impl ClientEntity {
     /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
@@ -38,14 +39,14 @@ impl ClientEntity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientAttributeModifierState {
     pub(crate) id: String,
-    pub(crate) amount_bits: u64,
+    pub(crate) amount: JavaF64,
     pub(crate) operation: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientAttributeState {
     pub(crate) attribute_id: i32,
-    pub(crate) base_value_bits: u64,
+    pub(crate) base_value: JavaF64,
     pub(crate) modifiers: Vec<ClientAttributeModifierState>,
 }
 
@@ -61,7 +62,7 @@ impl ClientAttributeModifierState {
     pub fn new(id: String, amount: f64, operation: u8) -> Self {
         Self {
             id,
-            amount_bits: amount.to_bits(),
+            amount: JavaF64::new(amount),
             operation,
         }
     }
@@ -75,7 +76,7 @@ impl ClientAttributeModifierState {
     }
 
     pub fn amount(&self) -> f64 {
-        f64::from_bits(self.amount_bits)
+        self.amount.get()
     }
 
     pub fn operation(&self) -> u8 {
@@ -119,7 +120,7 @@ impl ClientAttributeState {
     ) -> Self {
         Self {
             attribute_id,
-            base_value_bits: base_value.to_bits(),
+            base_value: JavaF64::new(base_value),
             modifiers,
         }
     }
@@ -137,7 +138,7 @@ impl ClientAttributeState {
     }
 
     pub fn base_value(&self) -> f64 {
-        f64::from_bits(self.base_value_bits)
+        self.base_value.get()
     }
 
     pub fn modifiers(&self) -> &[ClientAttributeModifierState] {

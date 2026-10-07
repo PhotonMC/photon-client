@@ -6,7 +6,7 @@ impl ClientPlayerState {
     }
 
     pub fn saturation(&self) -> f32 {
-        f32::from_bits(self.saturation_bits)
+        self.saturation.get()
     }
 
     pub fn inventory_state_id(&self) -> i32 {

@@ -1,7 +1,7 @@
 //! `ClientWorld` player layer split out of the former single-file module.
 
 use super::*;
-use voxel_core::java_float::{DVec3, JavaF32, JavaF64};
+use voxel_core::java_float::{DVec3, JavaF32};
 
 use std::collections::BTreeMap;
 
@@ -35,22 +35,22 @@ pub struct ClientPlayerState {
     pub(crate) position: DVec3,
     pub(crate) old_position: DVec3,
     pub(crate) motion: DVec3,
-    pub(crate) friction_influenced_speed_bits: u32,
-    pub(crate) modified_friction_bits: u32,
-    pub(crate) xxa_bits: u32,
-    pub(crate) zza_bits: u32,
+    pub(crate) friction_influenced_speed: JavaF32,
+    pub(crate) modified_friction: JavaF32,
+    pub(crate) xxa: JavaF32,
+    pub(crate) zza: JavaF32,
     pub(crate) input_key_presses: Input,
-    pub(crate) input_move_vector_x_bits: u32,
-    pub(crate) input_move_vector_y_bits: u32,
+    pub(crate) input_move_vector_x: JavaF32,
+    pub(crate) input_move_vector_y: JavaF32,
     pub(crate) sprint_trigger_time: i32,
     pub(crate) jumping: bool,
     pub(crate) on_climbable: bool,
     pub(crate) in_scaffolding: bool,
     pub(crate) suppress_sliding_down_ladder: bool,
-    pub(crate) x_bob_bits: u32,
-    pub(crate) y_bob_bits: u32,
-    pub(crate) x_bob_o_bits: u32,
-    pub(crate) y_bob_o_bits: u32,
+    pub(crate) x_bob: JavaF32,
+    pub(crate) y_bob: JavaF32,
+    pub(crate) x_bob_o: JavaF32,
+    pub(crate) y_bob_o: JavaF32,
     pub(crate) y_rot: JavaF32,
     pub(crate) x_rot: JavaF32,
     pub(crate) old_y_rot: JavaF32,
@@ -79,16 +79,16 @@ pub struct ClientPlayerState {
     pub(crate) pose: ClientEntityPose,
     pub(crate) ticks_frozen: i32,
     /// `Player.getAbsorptionAmount`, from the entity data.
-    pub(crate) absorption_bits: u32,
+    pub(crate) absorption: JavaF32,
     /// Which skin layers show, one bit each, from the entity data.
     pub(crate) model_customisation: u8,
     /// `Player.getScore`.
     pub(crate) score: i32,
     pub(crate) attributes: Vec<ClientAttributeState>,
     pub(crate) effects: Vec<ClientMobEffectState>,
-    pub(crate) health_bits: u32,
+    pub(crate) health: JavaF32,
     pub(crate) food: i32,
-    pub(crate) saturation_bits: u32,
+    pub(crate) saturation: JavaF32,
     pub(crate) inventory_state_id: i32,
     pub(crate) inventory_slots: BTreeMap<i16, Option<ClientItemStackState>>,
     pub(crate) carried_item: Option<ClientItemStackState>,
