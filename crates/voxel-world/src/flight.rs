@@ -5,6 +5,7 @@
 //! movement and the current of a fluid.
 
 use voxel_core::aabb::Aabb;
+use voxel_core::java_float::{JavaF32, JavaF64};
 use voxel_core::math::{Vec3, mth_atan2, mth_lerp_f32};
 
 use crate::ClientWorld;
@@ -76,8 +77,8 @@ fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
     let horizontal = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
     let y_rot = (mth_atan2(movement.2, movement.0) * PROJECTILE_DEGREES_PER_RADIAN) as f32 + 90.0;
     let x_rot = (mth_atan2(horizontal, movement.1) * PROJECTILE_DEGREES_PER_RADIAN) as f32 - 90.0;
-    let mut x_rot_old = f32::from_bits(entity.old_x_rot_bits);
-    let mut y_rot_old = f32::from_bits(entity.old_y_rot_bits);
+    let mut x_rot_old = entity.old_x_rot.get();
+    let mut y_rot_old = entity.old_y_rot.get();
     while x_rot - x_rot_old < -180.0 {
         x_rot_old -= 360.0;
     }
@@ -90,10 +91,10 @@ fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
     while y_rot - y_rot_old >= 180.0 {
         y_rot_old += 360.0;
     }
-    entity.old_x_rot_bits = x_rot_old.to_bits();
-    entity.old_y_rot_bits = y_rot_old.to_bits();
-    entity.x_rot_bits = mth_lerp_f32(speed, x_rot_old, x_rot).to_bits();
-    entity.y_rot_bits = mth_lerp_f32(speed, y_rot_old, y_rot).to_bits();
+    entity.old_x_rot = JavaF32::new(x_rot_old);
+    entity.old_y_rot = JavaF32::new(y_rot_old);
+    entity.x_rot = JavaF32::new(mth_lerp_f32(speed, x_rot_old, x_rot));
+    entity.y_rot = JavaF32::new(mth_lerp_f32(speed, y_rot_old, y_rot));
 }
 
 /// `Projectile.updateRotation`, which turns a fifth of the way to the movement.
@@ -102,8 +103,8 @@ fn update_rotation(entity: &mut ClientEntity) {
     let horizontal = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
     let target_x = (mth_atan2(movement.1, horizontal) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
     let target_y = (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-    entity.x_rot_bits = lerp_rotation(f32::from_bits(entity.old_x_rot_bits), target_x).to_bits();
-    entity.y_rot_bits = lerp_rotation(f32::from_bits(entity.old_y_rot_bits), target_y).to_bits();
+    entity.x_rot = JavaF32::new(lerp_rotation(entity.old_x_rot.get(), target_x));
+    entity.y_rot = JavaF32::new(lerp_rotation(entity.old_y_rot.get(), target_y));
 }
 
 /// `Projectile.lerpRotation`.
@@ -186,9 +187,9 @@ impl ClientWorld {
             .entities
             .get_mut(&entity_id)
             .expect("the projectile was read above");
-        entity.motion_x_bits = movement.x.to_bits();
-        entity.motion_y_bits = movement.y.to_bits();
-        entity.motion_z_bits = movement.z.to_bits();
+        entity.motion.x = JavaF64::new(movement.x);
+        entity.motion.y = JavaF64::new(movement.y);
+        entity.motion.z = JavaF64::new(movement.z);
         rotate_towards_movement(entity, 0.2);
         entity.set_position((new_position.x, new_position.y, new_position.z));
         // `Projectile.tick`: the owner check, then `Entity.baseTick`'s fluids.
@@ -240,9 +241,9 @@ impl ClientWorld {
         // `getAirDrag` and `getDefaultGravity` of the spit.
         let drag = f64::from(0.99_f32);
         let gravity = if no_gravity { 0.0 } else { 0.06 };
-        entity.motion_x_bits = (movement.x * drag).to_bits();
-        entity.motion_y_bits = (movement.y * drag - gravity).to_bits();
-        entity.motion_z_bits = (movement.z * drag).to_bits();
+        entity.motion.x = JavaF64::new(movement.x * drag);
+        entity.motion.y = JavaF64::new(movement.y * drag - gravity);
+        entity.motion.z = JavaF64::new(movement.z * drag);
         entity.set_position((target.x, target.y, target.z));
     }
 
@@ -349,9 +350,9 @@ impl ClientWorld {
             .get_mut(&entity_id)
             .expect("the projectile was read above");
         entity.living.in_water = found.water.height > 0.0;
-        entity.motion_x_bits = movement.x.to_bits();
-        entity.motion_y_bits = movement.y.to_bits();
-        entity.motion_z_bits = movement.z.to_bits();
+        entity.motion.x = JavaF64::new(movement.x);
+        entity.motion.y = JavaF64::new(movement.y);
+        entity.motion.z = JavaF64::new(movement.z);
     }
 
     /// `ProjectileUtil.getEntityHitResult` with `Projectile.canHitEntity`: where the nearest

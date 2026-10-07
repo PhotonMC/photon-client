@@ -6558,7 +6558,9 @@ fn an_open_containers_last_slots_are_the_players_inventory() {
     assert_eq!(player.inventory_slot(36), Some(&dirt));
 
     // A click in the container's menu writes through both ways.
-    let (_, _, mut slots, carried, _) = world.local_player_container_menu().expect("menu");
+    let crate::OpenContainerMenu {
+        mut slots, carried, ..
+    } = world.local_player_container_menu().expect("menu");
     slots[54] = None;
     world.set_local_player_container_menu(&slots, carried);
     assert!(
@@ -6571,7 +6573,7 @@ fn an_open_containers_last_slots_are_the_players_inventory() {
 
     // And the server changing the inventory shows in the container's menu.
     assert!(world.apply_local_player_inventory_slot(1, Some(&dirt)));
-    let (_, _, slots, _, _) = world.local_player_container_menu().expect("menu");
+    let crate::OpenContainerMenu { slots, .. } = world.local_player_container_menu().expect("menu");
     assert_eq!(slots[55].as_ref(), Some(&dirt));
 }
 

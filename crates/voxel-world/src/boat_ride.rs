@@ -5,6 +5,7 @@
 
 use voxel_core::aabb::Aabb;
 use voxel_core::binary::BlockPos;
+use voxel_core::java_float::{JavaF32, JavaF64};
 use voxel_core::math::{Vec3, ceil_f64, floor_f64, mth_cos_f64, mth_sin_f64};
 use voxel_core::shape::{BooleanOp, Shapes, VoxelShape};
 use voxel_data::block::definition::Fluid;
@@ -721,8 +722,8 @@ impl ClientWorld {
         );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
-        body.y_rot = f32::from_bits(entity.y_rot_bits);
-        body.delta_rotation = f32::from_bits(entity.delta_rotation_bits);
+        body.y_rot = entity.y_rot.get();
+        body.delta_rotation = entity.delta_rotation.get();
         body.on_ground = entity.on_ground;
         body.supporting_block = entity.tracking.support.main_block;
         body.on_ground_no_blocks = entity.tracking.support.no_blocks;
@@ -763,11 +764,11 @@ impl ClientWorld {
             .get_mut(&entity_id)
             .expect("the boat was read above");
         entity.set_position((body.position.x, body.position.y, body.position.z));
-        entity.motion_x_bits = body.delta.x.to_bits();
-        entity.motion_y_bits = body.delta.y.to_bits();
-        entity.motion_z_bits = body.delta.z.to_bits();
-        entity.y_rot_bits = body.y_rot.to_bits();
-        entity.delta_rotation_bits = body.delta_rotation.to_bits();
+        entity.motion.x = JavaF64::new(body.delta.x);
+        entity.motion.y = JavaF64::new(body.delta.y);
+        entity.motion.z = JavaF64::new(body.delta.z);
+        entity.y_rot = JavaF32::new(body.y_rot);
+        entity.delta_rotation = JavaF32::new(body.delta_rotation);
         entity.on_ground = body.on_ground;
         entity.tracking.support = Support {
             main_block: body.supporting_block,

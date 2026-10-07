@@ -1,6 +1,7 @@
 //! `ClientWorld` player layer split out of the former single-file module.
 
 use super::*;
+use voxel_core::java_float::{DVec3, JavaF32, JavaF64};
 
 use std::collections::BTreeMap;
 
@@ -237,15 +238,9 @@ pub struct ClientPlayerState {
     pub(crate) id: i32,
     pub(crate) generation: u64,
     pub(crate) tick_count: i32,
-    pub(crate) x_bits: u64,
-    pub(crate) y_bits: u64,
-    pub(crate) z_bits: u64,
-    pub(crate) old_x_bits: u64,
-    pub(crate) old_y_bits: u64,
-    pub(crate) old_z_bits: u64,
-    pub(crate) motion_x_bits: u64,
-    pub(crate) motion_y_bits: u64,
-    pub(crate) motion_z_bits: u64,
+    pub(crate) position: DVec3,
+    pub(crate) old_position: DVec3,
+    pub(crate) motion: DVec3,
     pub(crate) friction_influenced_speed_bits: u32,
     pub(crate) modified_friction_bits: u32,
     pub(crate) xxa_bits: u32,
@@ -262,15 +257,15 @@ pub struct ClientPlayerState {
     pub(crate) y_bob_bits: u32,
     pub(crate) x_bob_o_bits: u32,
     pub(crate) y_bob_o_bits: u32,
-    pub(crate) y_rot_bits: u32,
-    pub(crate) x_rot_bits: u32,
-    pub(crate) old_y_rot_bits: u32,
-    pub(crate) old_x_rot_bits: u32,
-    pub(crate) y_head_rot_bits: u32,
-    pub(crate) old_y_head_rot_bits: u32,
-    pub(crate) y_body_rot_bits: u32,
-    pub(crate) old_y_body_rot_bits: u32,
-    pub(crate) head_rotation_target_bits: u32,
+    pub(crate) y_rot: JavaF32,
+    pub(crate) x_rot: JavaF32,
+    pub(crate) old_y_rot: JavaF32,
+    pub(crate) old_x_rot: JavaF32,
+    pub(crate) y_head_rot: JavaF32,
+    pub(crate) old_y_head_rot: JavaF32,
+    pub(crate) y_body_rot: JavaF32,
+    pub(crate) old_y_body_rot: JavaF32,
+    pub(crate) head_rotation_target: JavaF32,
     pub(crate) head_lerp_steps: u8,
     pub(crate) entity_data: Option<Vec<u8>>,
     pub(crate) game_mode: ClientPlayerGameMode,
@@ -333,10 +328,7 @@ impl ClientPlayerState {
                     f32::from_bits(self.x_bob_o_bits),
                     f32::from_bits(self.y_bob_o_bits),
                 ),
-                rotation: voxel_core::math::Vec2::new(
-                    f32::from_bits(self.x_rot_bits),
-                    f32::from_bits(self.y_rot_bits),
-                ),
+                rotation: voxel_core::math::Vec2::new(self.x_rot.get(), self.y_rot.get()),
                 controlled_camera,
             },
             modifiers,
@@ -369,28 +361,28 @@ impl ClientPlayerState {
             is_falling,
             sprinting: self.is_sprinting(),
             movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
         });
-        self.motion_y_bits = adjusted.y.to_bits();
+        self.motion.y = JavaF64::new(adjusted.y);
     }
 
     pub(crate) fn apply_climbable_movement(&mut self) {
         let adjusted = clamp_local_player_climbable_movement(LocalPlayerClimbableMovementInput {
             movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
             on_climbable: self.on_climbable,
             scaffolding: self.in_scaffolding,
             suppress_sliding_down_ladder: self.suppress_sliding_down_ladder,
         });
-        self.motion_x_bits = adjusted.x.to_bits();
-        self.motion_y_bits = adjusted.y.to_bits();
-        self.motion_z_bits = adjusted.z.to_bits();
+        self.motion.x = JavaF64::new(adjusted.x);
+        self.motion.y = JavaF64::new(adjusted.y);
+        self.motion.z = JavaF64::new(adjusted.z);
     }
 
     pub(crate) fn apply_friction_influenced_speed(
@@ -431,9 +423,9 @@ impl ClientPlayerState {
         let movement = local_player_travel_flying(LocalPlayerTravelFlyingInput {
             input: parameters.input,
             delta_movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
             y_rot: parameters.y_rot,
             in_water: parameters.in_water,
@@ -442,18 +434,18 @@ impl ClientPlayerState {
             lava_speed: parameters.lava_speed,
             air_speed: parameters.air_speed,
         });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_travel_in_water(&mut self, parameters: LocalPlayerTravelInWaterParameters) {
         let movement = local_player_travel_in_water(LocalPlayerTravelInWaterInput {
             input: parameters.input,
             delta_movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
             y_rot: parameters.y_rot,
             sprinting: parameters.sprinting,
@@ -468,9 +460,9 @@ impl ClientPlayerState {
             base_gravity: parameters.base_gravity,
             is_falling: parameters.is_falling,
         });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_travel_in_water_from_attributes(
@@ -523,9 +515,9 @@ impl ClientPlayerState {
         let movement = local_player_travel_in_lava(LocalPlayerTravelInLavaInput {
             input: parameters.input,
             delta_movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
             y_rot: parameters.y_rot,
             sprinting: parameters.sprinting,
@@ -535,9 +527,9 @@ impl ClientPlayerState {
             base_gravity: parameters.base_gravity,
             is_falling: parameters.is_falling,
         });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_handle_relative_friction(
@@ -548,9 +540,9 @@ impl ClientPlayerState {
             local_player_handle_relative_friction(LocalPlayerHandleRelativeFrictionInput {
                 input: parameters.input,
                 delta_movement: Vec3::new(
-                    f64::from_bits(self.motion_x_bits),
-                    f64::from_bits(self.motion_y_bits),
-                    f64::from_bits(self.motion_z_bits),
+                    self.motion.x.get(),
+                    self.motion.y.get(),
+                    self.motion.z.get(),
                 ),
                 y_rot: parameters.y_rot,
                 on_ground: parameters.on_ground,
@@ -566,18 +558,18 @@ impl ClientPlayerState {
                 horizontal_collision: parameters.horizontal_collision,
                 jumping: parameters.jumping,
             });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_travel_in_air(&mut self, parameters: LocalPlayerTravelInAirParameters) {
         let movement = local_player_travel_in_air(LocalPlayerTravelInAirInput {
             input: parameters.input,
             delta_movement: Vec3::new(
-                f64::from_bits(self.motion_x_bits),
-                f64::from_bits(self.motion_y_bits),
-                f64::from_bits(self.motion_z_bits),
+                self.motion.x.get(),
+                self.motion.y.get(),
+                self.motion.z.get(),
             ),
             y_rot: parameters.y_rot,
             on_ground: parameters.on_ground,
@@ -603,9 +595,9 @@ impl ClientPlayerState {
             air_drag_modifier: parameters.air_drag_modifier,
             omnidirectional_air_mover: parameters.omnidirectional_air_mover,
         });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_update_fall_flying_movement(
@@ -616,16 +608,16 @@ impl ClientPlayerState {
             local_player_update_fall_flying_movement(LocalPlayerUpdateFallFlyingMovementInput {
                 look_angle: parameters.look_angle,
                 delta_movement: Vec3::new(
-                    f64::from_bits(self.motion_x_bits),
-                    f64::from_bits(self.motion_y_bits),
-                    f64::from_bits(self.motion_z_bits),
+                    self.motion.x.get(),
+                    self.motion.y.get(),
+                    self.motion.z.get(),
                 ),
                 x_rot: parameters.x_rot,
                 gravity: parameters.gravity,
             });
-        self.motion_x_bits = movement.x.to_bits();
-        self.motion_y_bits = movement.y.to_bits();
-        self.motion_z_bits = movement.z.to_bits();
+        self.motion.x = JavaF64::new(movement.x);
+        self.motion.y = JavaF64::new(movement.y);
+        self.motion.z = JavaF64::new(movement.z);
     }
 
     pub(crate) fn apply_travel_dispatch(
@@ -639,50 +631,50 @@ impl ClientPlayerState {
                 Vec3::new(x, y, z)
             },
         });
-        self.motion_x_bits = result.movement.x.to_bits();
-        self.motion_y_bits = result.movement.y.to_bits();
-        self.motion_z_bits = result.movement.z.to_bits();
+        self.motion.x = JavaF64::new(result.movement.x);
+        self.motion.y = JavaF64::new(result.movement.y);
+        self.motion.z = JavaF64::new(result.movement.z);
         result
     }
 
     pub(crate) fn capture_old_transform(&mut self) {
-        self.old_x_bits = self.x_bits;
-        self.old_y_bits = self.y_bits;
-        self.old_z_bits = self.z_bits;
-        self.old_y_rot_bits = self.y_rot_bits;
-        self.old_x_rot_bits = self.x_rot_bits;
-        self.old_y_head_rot_bits = self.y_head_rot_bits;
-        self.old_y_body_rot_bits = self.y_body_rot_bits;
+        self.old_position.x = self.position.x;
+        self.old_position.y = self.position.y;
+        self.old_position.z = self.position.z;
+        self.old_y_rot = self.y_rot;
+        self.old_x_rot = self.x_rot;
+        self.old_y_head_rot = self.y_head_rot;
+        self.old_y_body_rot = self.y_body_rot;
     }
 
     pub(crate) fn turn(&mut self, mouse_x: f64, mouse_y: f64) {
         let x_delta = mouse_y as f32 * 0.15_f32;
         let y_delta = mouse_x as f32 * 0.15_f32;
-        self.x_rot_bits = (f32::from_bits(self.x_rot_bits) + x_delta).to_bits();
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + y_delta).to_bits();
-        self.x_rot_bits = clamp_f32(f32::from_bits(self.x_rot_bits), -90.0, 90.0).to_bits();
-        self.old_x_rot_bits = (f32::from_bits(self.old_x_rot_bits) + x_delta).to_bits();
-        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + y_delta).to_bits();
-        self.old_x_rot_bits = clamp_f32(f32::from_bits(self.old_x_rot_bits), -90.0, 90.0).to_bits();
+        self.x_rot = JavaF32::new(self.x_rot.get() + x_delta);
+        self.y_rot = JavaF32::new(self.y_rot.get() + y_delta);
+        self.x_rot = JavaF32::new(clamp_f32(self.x_rot.get(), -90.0, 90.0));
+        self.old_x_rot = JavaF32::new(self.old_x_rot.get() + x_delta);
+        self.old_y_rot = JavaF32::new(self.old_y_rot.get() + y_delta);
+        self.old_x_rot = JavaF32::new(clamp_f32(self.old_x_rot.get(), -90.0, 90.0));
     }
 
     pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
-        self.x_bits = position.0.to_bits();
-        self.y_bits = position.1.to_bits();
-        self.z_bits = position.2.to_bits();
+        self.position.x = JavaF64::new(position.0);
+        self.position.y = JavaF64::new(position.1);
+        self.position.z = JavaF64::new(position.2);
     }
 
     pub(crate) fn tick_head_rotation(&mut self) {
         advance_head_rotation(
-            &mut self.y_head_rot_bits,
-            self.head_rotation_target_bits,
+            &mut self.y_head_rot,
+            self.head_rotation_target,
             &mut self.head_lerp_steps,
         );
     }
 
     pub(crate) fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + delta_rotation).to_bits();
-        self.y_head_rot_bits = (f32::from_bits(self.y_head_rot_bits) + delta_rotation).to_bits();
+        self.y_rot = JavaF32::new(self.y_rot.get() + delta_rotation);
+        self.y_head_rot = JavaF32::new(self.y_head_rot.get() + delta_rotation);
     }
 
     pub(crate) fn new(id: i32) -> Self {
@@ -690,15 +682,9 @@ impl ClientPlayerState {
             id,
             generation: 0,
             tick_count: 0,
-            x_bits: 0.0_f64.to_bits(),
-            y_bits: 0.0_f64.to_bits(),
-            z_bits: 0.0_f64.to_bits(),
-            old_x_bits: 0.0_f64.to_bits(),
-            old_y_bits: 0.0_f64.to_bits(),
-            old_z_bits: 0.0_f64.to_bits(),
-            motion_x_bits: 0.0_f64.to_bits(),
-            motion_y_bits: 0.0_f64.to_bits(),
-            motion_z_bits: 0.0_f64.to_bits(),
+            position: DVec3::ZERO,
+            old_position: DVec3::ZERO,
+            motion: DVec3::ZERO,
             friction_influenced_speed_bits: 0.0_f32.to_bits(),
             modified_friction_bits: 0.0_f32.to_bits(),
             xxa_bits: 0.0_f32.to_bits(),
@@ -715,15 +701,15 @@ impl ClientPlayerState {
             y_bob_bits: 0.0_f32.to_bits(),
             x_bob_o_bits: 0.0_f32.to_bits(),
             y_bob_o_bits: 0.0_f32.to_bits(),
-            y_rot_bits: 0.0_f32.to_bits(),
-            x_rot_bits: 0.0_f32.to_bits(),
-            old_y_rot_bits: 0.0_f32.to_bits(),
-            old_x_rot_bits: 0.0_f32.to_bits(),
-            y_head_rot_bits: 0.0_f32.to_bits(),
-            old_y_head_rot_bits: 0.0_f32.to_bits(),
-            y_body_rot_bits: 0.0_f32.to_bits(),
-            old_y_body_rot_bits: 0.0_f32.to_bits(),
-            head_rotation_target_bits: 0.0_f32.to_bits(),
+            y_rot: JavaF32::new(0.0_f32),
+            x_rot: JavaF32::new(0.0_f32),
+            old_y_rot: JavaF32::new(0.0_f32),
+            old_x_rot: JavaF32::new(0.0_f32),
+            y_head_rot: JavaF32::new(0.0_f32),
+            old_y_head_rot: JavaF32::new(0.0_f32),
+            y_body_rot: JavaF32::new(0.0_f32),
+            old_y_body_rot: JavaF32::new(0.0_f32),
+            head_rotation_target: JavaF32::new(0.0_f32),
             head_lerp_steps: 0,
             entity_data: None,
             game_mode: ClientPlayerGameMode::default(),
@@ -781,17 +767,17 @@ impl ClientPlayerState {
 
     pub fn position(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.x_bits),
-            f64::from_bits(self.y_bits),
-            f64::from_bits(self.z_bits),
+            self.position.x.get(),
+            self.position.y.get(),
+            self.position.z.get(),
         )
     }
 
     pub fn previous_position(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.old_x_bits),
-            f64::from_bits(self.old_y_bits),
-            f64::from_bits(self.old_z_bits),
+            self.old_position.x.get(),
+            self.old_position.y.get(),
+            self.old_position.z.get(),
         )
     }
 
@@ -808,9 +794,9 @@ impl ClientPlayerState {
 
     pub fn motion(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.motion_x_bits),
-            f64::from_bits(self.motion_y_bits),
-            f64::from_bits(self.motion_z_bits),
+            self.motion.x.get(),
+            self.motion.y.get(),
+            self.motion.z.get(),
         )
     }
 
@@ -887,45 +873,39 @@ impl ClientPlayerState {
     }
 
     pub fn rotation(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.y_rot_bits),
-            f32::from_bits(self.x_rot_bits),
-        )
+        (self.y_rot.get(), self.x_rot.get())
     }
 
     pub fn previous_rotation(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.old_y_rot_bits),
-            f32::from_bits(self.old_x_rot_bits),
-        )
+        (self.old_y_rot.get(), self.old_x_rot.get())
     }
 
     pub fn head_rotation(&self) -> f32 {
-        f32::from_bits(self.y_head_rot_bits)
+        self.y_head_rot.get()
     }
 
     pub fn body_y_rotation(&self) -> f32 {
-        f32::from_bits(self.y_body_rot_bits)
+        self.y_body_rot.get()
     }
 
     pub fn previous_body_y_rotation(&self) -> f32 {
-        f32::from_bits(self.old_y_body_rot_bits)
+        self.old_y_body_rot.get()
     }
 
     pub(crate) fn clamp_vanilla_boat_passenger_rotation(&mut self, vehicle_y_rot: f32) {
         let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
-            f32::from_bits(self.y_rot_bits),
-            f32::from_bits(self.old_y_rot_bits),
+            self.y_rot.get(),
+            self.old_y_rot.get(),
             vehicle_y_rot,
         );
-        self.old_y_rot_bits = old_y_rot.to_bits();
-        self.y_rot_bits = y_rot.to_bits();
-        self.y_head_rot_bits = self.y_rot_bits;
-        self.y_body_rot_bits = vehicle_y_rot.to_bits();
+        self.old_y_rot = JavaF32::new(old_y_rot);
+        self.y_rot = JavaF32::new(y_rot);
+        self.y_head_rot = self.y_rot;
+        self.y_body_rot = JavaF32::new(vehicle_y_rot);
     }
 
     pub fn previous_head_rotation(&self) -> f32 {
-        f32::from_bits(self.old_y_head_rot_bits)
+        self.old_y_head_rot.get()
     }
 
     pub fn interpolated_head_rotation(&self, partial_tick: f32) -> f32 {

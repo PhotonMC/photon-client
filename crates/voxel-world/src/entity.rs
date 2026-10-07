@@ -3,6 +3,7 @@
 use super::*;
 
 use voxel_core::aabb::Aabb;
+use voxel_core::java_float::{DVec3, JavaF32, JavaF64};
 use voxel_core::math::{
     Vec3, clamp_f32, mth_atan2, mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
     mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32, wrap_degrees_f32,
@@ -340,9 +341,9 @@ impl EquipmentSlot {
 /// Entity dimensions used to derive Java's feet-origin bounding box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientEntityDimensions {
-    pub(crate) width_bits: u32,
-    pub(crate) height_bits: u32,
-    pub(crate) eye_height_bits: u32,
+    pub(crate) width: JavaF32,
+    pub(crate) height: JavaF32,
+    pub(crate) eye_height: JavaF32,
     pub(crate) fixed: bool,
 }
 
@@ -359,23 +360,23 @@ impl ClientEntityDimensions {
 
     pub(crate) fn from_values(width: f32, height: f32, eye_height: f32, fixed: bool) -> Self {
         Self {
-            width_bits: width.to_bits(),
-            height_bits: height.to_bits(),
-            eye_height_bits: eye_height.to_bits(),
+            width: JavaF32::new(width),
+            height: JavaF32::new(height),
+            eye_height: JavaF32::new(eye_height),
             fixed,
         }
     }
 
     pub fn width(self) -> f32 {
-        f32::from_bits(self.width_bits)
+        self.width.get()
     }
 
     pub fn height(self) -> f32 {
-        f32::from_bits(self.height_bits)
+        self.height.get()
     }
 
     pub fn eye_height(self) -> f32 {
-        f32::from_bits(self.eye_height_bits)
+        self.eye_height.get()
     }
 
     pub fn is_fixed(self) -> bool {
@@ -491,14 +492,14 @@ pub(crate) fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
     flags & (1_u8 << flag) != 0
 }
 
-pub(crate) fn advance_head_rotation(current_bits: &mut u32, target_bits: u32, steps: &mut u8) {
+pub(crate) fn advance_head_rotation(current: &mut JavaF32, target: JavaF32, steps: &mut u8) {
     if *steps == 0 {
         return;
     }
     let step_count = f64::from(*steps);
-    let current = f64::from(f32::from_bits(*current_bits));
-    let target = f64::from(f32::from_bits(target_bits));
-    *current_bits = (mth_rot_lerp_f64(1.0 / step_count, current, target) as f32).to_bits();
+    let from = f64::from(current.get());
+    let to = f64::from(target.get());
+    *current = JavaF32::new(mth_rot_lerp_f64(1.0 / step_count, from, to) as f32);
     *steps -= 1;
 }
 
@@ -620,16 +621,12 @@ pub(crate) fn source_accepts_pushable_entities(entity_type_id: i32) -> bool {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityInterpolationState {
-    pub(crate) target_x_bits: u64,
-    pub(crate) target_y_bits: u64,
-    pub(crate) target_z_bits: u64,
-    pub(crate) target_y_rot_bits: u32,
-    pub(crate) target_x_rot_bits: u32,
-    pub(crate) previous_x_bits: u64,
-    pub(crate) previous_y_bits: u64,
-    pub(crate) previous_z_bits: u64,
-    pub(crate) previous_y_rot_bits: u32,
-    pub(crate) previous_x_rot_bits: u32,
+    pub(crate) target: DVec3,
+    pub(crate) target_y_rot: JavaF32,
+    pub(crate) target_x_rot: JavaF32,
+    pub(crate) previous: DVec3,
+    pub(crate) previous_y_rot: JavaF32,
+    pub(crate) previous_x_rot: JavaF32,
     pub(crate) steps: u8,
 }
 
@@ -643,17 +640,14 @@ pub(crate) struct ResolvedEntityPosition {
 impl EntityInterpolationState {
     pub(crate) fn target_position(self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.target_x_bits),
-            f64::from_bits(self.target_y_bits),
-            f64::from_bits(self.target_z_bits),
+            self.target.x.get(),
+            self.target.y.get(),
+            self.target.z.get(),
         )
     }
 
     pub(crate) fn target_rotation(self) -> (f32, f32) {
-        (
-            f32::from_bits(self.target_y_rot_bits),
-            f32::from_bits(self.target_x_rot_bits),
-        )
+        (self.target_y_rot.get(), self.target_x_rot.get())
     }
 }
 
@@ -666,28 +660,20 @@ pub struct ClientEntity {
     pub(crate) first_tick: bool,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
-    pub(crate) x_bits: u64,
-    pub(crate) y_bits: u64,
-    pub(crate) z_bits: u64,
-    pub(crate) old_x_bits: u64,
-    pub(crate) old_y_bits: u64,
-    pub(crate) old_z_bits: u64,
-    pub(crate) motion_x_bits: u64,
-    pub(crate) motion_y_bits: u64,
-    pub(crate) motion_z_bits: u64,
-    pub(crate) motion_lerp_target_x_bits: u64,
-    pub(crate) motion_lerp_target_y_bits: u64,
-    pub(crate) motion_lerp_target_z_bits: u64,
+    pub(crate) position: DVec3,
+    pub(crate) old_position: DVec3,
+    pub(crate) motion: DVec3,
+    pub(crate) motion_lerp_target: DVec3,
     pub(crate) motion_lerp_steps: u8,
-    pub(crate) x_rot_bits: u32,
-    pub(crate) y_rot_bits: u32,
-    pub(crate) y_head_rot_bits: u32,
-    pub(crate) y_body_rot_bits: u32,
-    pub(crate) old_x_rot_bits: u32,
-    pub(crate) old_y_rot_bits: u32,
-    pub(crate) old_y_head_rot_bits: u32,
-    pub(crate) old_y_body_rot_bits: u32,
-    pub(crate) delta_rotation_bits: u32,
+    pub(crate) x_rot: JavaF32,
+    pub(crate) y_rot: JavaF32,
+    pub(crate) y_head_rot: JavaF32,
+    pub(crate) y_body_rot: JavaF32,
+    pub(crate) old_x_rot: JavaF32,
+    pub(crate) old_y_rot: JavaF32,
+    pub(crate) old_y_head_rot: JavaF32,
+    pub(crate) old_y_body_rot: JavaF32,
+    pub(crate) delta_rotation: JavaF32,
     pub(crate) boat_input: BoatInput,
     /// What a boat the local player rides keeps between ticks (status, water level, fall).
     pub(crate) boat_ride: crate::boat_ride::RideState,
@@ -697,7 +683,7 @@ pub struct ClientEntity {
     pub(crate) flight: crate::flight::FlightState,
     pub(crate) paddle_left: bool,
     pub(crate) paddle_right: bool,
-    pub(crate) head_rotation_target_bits: u32,
+    pub(crate) head_rotation_target: JavaF32,
     pub(crate) head_lerp_steps: u8,
     pub(crate) interpolation: Option<EntityInterpolationState>,
     pub(crate) on_ground: bool,
@@ -706,16 +692,16 @@ pub struct ClientEntity {
     pub(crate) ticking: bool,
     /// The limbs' walk animation and the swimming pose's ease (a player's).
     pub(crate) walk: crate::living::WalkAnimation,
-    pub(crate) swim_amount_bits: u32,
-    pub(crate) old_swim_amount_bits: u32,
+    pub(crate) swim_amount: JavaF32,
+    pub(crate) old_swim_amount: JavaF32,
     /// A mob's `BodyRotationControl` state: how long its head has been still,
     /// and where it was when it last moved far.
     pub(crate) head_stable_time: i32,
-    pub(crate) last_stable_y_head_rot_bits: u32,
+    pub(crate) last_stable_y_head_rot: JavaF32,
     /// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its
     /// spin it started (`bobOffs`).
     pub(crate) item_stack: Option<ClientItemStackState>,
-    pub(crate) bob_offset_bits: u32,
+    pub(crate) bob_offset: JavaF32,
     /// What it holds and wears, by `EquipmentSlot`.
     pub(crate) equipment: [Option<ClientItemStackState>; EquipmentSlot::COUNT],
     pub data: i32,
@@ -1072,28 +1058,28 @@ impl ClientEntity {
     pub(crate) fn turn(&mut self, mouse_x: f64, mouse_y: f64) {
         let x_delta = mouse_y as f32 * 0.15_f32;
         let y_delta = mouse_x as f32 * 0.15_f32;
-        self.x_rot_bits = (f32::from_bits(self.x_rot_bits) + x_delta).to_bits();
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + y_delta).to_bits();
-        self.x_rot_bits = clamp_f32(f32::from_bits(self.x_rot_bits), -90.0, 90.0).to_bits();
-        self.old_x_rot_bits = (f32::from_bits(self.old_x_rot_bits) + x_delta).to_bits();
-        self.old_y_rot_bits = (f32::from_bits(self.old_y_rot_bits) + y_delta).to_bits();
-        self.old_x_rot_bits = clamp_f32(f32::from_bits(self.old_x_rot_bits), -90.0, 90.0).to_bits();
+        self.x_rot = JavaF32::new(self.x_rot.get() + x_delta);
+        self.y_rot = JavaF32::new(self.y_rot.get() + y_delta);
+        self.x_rot = JavaF32::new(clamp_f32(self.x_rot.get(), -90.0, 90.0));
+        self.old_x_rot = JavaF32::new(self.old_x_rot.get() + x_delta);
+        self.old_y_rot = JavaF32::new(self.old_y_rot.get() + y_delta);
+        self.old_x_rot = JavaF32::new(clamp_f32(self.old_x_rot.get(), -90.0, 90.0));
     }
 
     pub(crate) fn capture_old_transform(&mut self) {
-        self.old_x_bits = self.x_bits;
-        self.old_y_bits = self.y_bits;
-        self.old_z_bits = self.z_bits;
-        self.old_x_rot_bits = self.x_rot_bits;
-        self.old_y_rot_bits = self.y_rot_bits;
-        self.old_y_head_rot_bits = self.y_head_rot_bits;
-        self.old_y_body_rot_bits = self.y_body_rot_bits;
+        self.old_position.x = self.position.x;
+        self.old_position.y = self.position.y;
+        self.old_position.z = self.position.z;
+        self.old_x_rot = self.x_rot;
+        self.old_y_rot = self.y_rot;
+        self.old_y_head_rot = self.y_head_rot;
+        self.old_y_body_rot = self.y_body_rot;
     }
 
     pub(crate) fn tick_head_rotation(&mut self) {
         advance_head_rotation(
-            &mut self.y_head_rot_bits,
-            self.head_rotation_target_bits,
+            &mut self.y_head_rot,
+            self.head_rotation_target,
             &mut self.head_lerp_steps,
         );
     }
@@ -1122,50 +1108,49 @@ impl ClientEntity {
     /// swimming pose easing in or out.
     pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
         let moved = (
-            f64::from_bits(self.x_bits) - f64::from_bits(self.old_x_bits),
-            f64::from_bits(self.z_bits) - f64::from_bits(self.old_z_bits),
+            self.position.x.get() - self.old_position.x.get(),
+            self.position.z.get() - self.old_position.z.get(),
         );
         if kind == LivingKind::Player {
-            self.old_swim_amount_bits = self.swim_amount_bits;
-            self.swim_amount_bits = crate::living::ease_swim_amount(
-                f32::from_bits(self.swim_amount_bits),
+            self.old_swim_amount = self.swim_amount;
+            self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
+                self.swim_amount.get(),
                 self.pose == ClientEntityPose::Swimming,
-            )
-            .to_bits();
+            ));
         }
-        let mut body = f32::from_bits(self.y_body_rot_bits);
-        let mut body_old = f32::from_bits(self.old_y_body_rot_bits);
-        let mut head = f32::from_bits(self.y_head_rot_bits);
-        let mut head_old = f32::from_bits(self.old_y_head_rot_bits);
+        let mut body = self.y_body_rot.get();
+        let mut body_old = self.old_y_body_rot.get();
+        let mut head = self.y_head_rot.get();
+        let mut head_old = self.old_y_head_rot.get();
         if kind == LivingKind::Mob && self.is_shulker() {
             // `Shulker.ShulkerBodyRotationControl`: the body does not follow.
             crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
         } else if kind == LivingKind::Mob {
             let mut control = crate::living::MobBodyControl {
                 head_stable_time: self.head_stable_time,
-                last_stable_y_head_rot: f32::from_bits(self.last_stable_y_head_rot_bits),
+                last_stable_y_head_rot: self.last_stable_y_head_rot.get(),
             };
             crate::living::tick_mob_body(
                 &mut control,
                 (&mut body, &mut head),
-                f32::from_bits(self.y_rot_bits),
+                self.y_rot.get(),
                 moved,
                 !self.passenger_ids.is_empty(),
             );
             self.head_stable_time = control.head_stable_time;
-            self.last_stable_y_head_rot_bits = control.last_stable_y_head_rot.to_bits();
+            self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
             crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
-            self.y_head_rot_bits = head.to_bits();
+            self.y_head_rot = JavaF32::new(head);
         } else {
             crate::living::turn_body(
                 (&mut body, &mut body_old),
-                (f32::from_bits(self.y_rot_bits), head, &mut head_old),
+                (self.y_rot.get(), head, &mut head_old),
                 moved,
             );
         }
-        self.y_body_rot_bits = body.to_bits();
-        self.old_y_body_rot_bits = body_old.to_bits();
-        self.old_y_head_rot_bits = head_old.to_bits();
+        self.y_body_rot = JavaF32::new(body);
+        self.old_y_body_rot = JavaF32::new(body_old);
+        self.old_y_head_rot = JavaF32::new(head_old);
         // `calculateEntityAnimation`: a rider or a dead entity stands still.
         // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
         if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
@@ -1235,11 +1220,11 @@ impl ClientEntity {
         }
         let target_matches = self.interpolation.is_some_and(|interpolation| {
             interpolation.steps > 0
-                && interpolation.target_x_bits == position.0.to_bits()
-                && interpolation.target_y_bits == position.1.to_bits()
-                && interpolation.target_z_bits == position.2.to_bits()
-                && interpolation.target_y_rot_bits == y_rot.to_bits()
-                && interpolation.target_x_rot_bits == x_rot.to_bits()
+                && interpolation.target.x == JavaF64::new(position.0)
+                && interpolation.target.y == JavaF64::new(position.1)
+                && interpolation.target.z == JavaF64::new(position.2)
+                && interpolation.target_y_rot == JavaF32::new(y_rot)
+                && interpolation.target_x_rot == JavaF32::new(x_rot)
         });
         if target_matches {
             return;
@@ -1248,31 +1233,27 @@ impl ClientEntity {
         let current_position = self.position();
         let current_rotation = self.body_rotation();
         self.interpolation = Some(EntityInterpolationState {
-            target_x_bits: position.0.to_bits(),
-            target_y_bits: position.1.to_bits(),
-            target_z_bits: position.2.to_bits(),
-            target_y_rot_bits: y_rot.to_bits(),
-            target_x_rot_bits: x_rot.to_bits(),
-            previous_x_bits: current_position.0.to_bits(),
-            previous_y_bits: current_position.1.to_bits(),
-            previous_z_bits: current_position.2.to_bits(),
-            previous_y_rot_bits: current_rotation.0.to_bits(),
-            previous_x_rot_bits: current_rotation.1.to_bits(),
+            target: DVec3::new(position.0, position.1, position.2),
+            target_y_rot: JavaF32::new(y_rot),
+            target_x_rot: JavaF32::new(x_rot),
+            previous: DVec3::new(current_position.0, current_position.1, current_position.2),
+            previous_y_rot: JavaF32::new(current_rotation.0),
+            previous_x_rot: JavaF32::new(current_rotation.1),
             steps: steps.clamp(0, 255) as u8,
         });
     }
 
     pub(crate) fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
-        self.x_bits = position.0.to_bits();
-        self.y_bits = position.1.to_bits();
-        self.z_bits = position.2.to_bits();
-        self.y_rot_bits = y_rot.to_bits();
-        self.x_rot_bits = x_rot.to_bits();
-        self.old_x_bits = position.0.to_bits();
-        self.old_y_bits = position.1.to_bits();
-        self.old_z_bits = position.2.to_bits();
-        self.old_y_rot_bits = y_rot.to_bits();
-        self.old_x_rot_bits = x_rot.to_bits();
+        self.position.x = JavaF64::new(position.0);
+        self.position.y = JavaF64::new(position.1);
+        self.position.z = JavaF64::new(position.2);
+        self.y_rot = JavaF32::new(y_rot);
+        self.x_rot = JavaF32::new(x_rot);
+        self.old_position.x = JavaF64::new(position.0);
+        self.old_position.y = JavaF64::new(position.1);
+        self.old_position.z = JavaF64::new(position.2);
+        self.old_y_rot = JavaF32::new(y_rot);
+        self.old_x_rot = JavaF32::new(x_rot);
         if self.is_shulker() {
             // `Entity.snapTo` sets the old place from the raw one, then
             // `reapplyPosition` runs `Shulker.setPos` from the raw block.
@@ -1291,8 +1272,8 @@ impl ClientEntity {
     ) {
         if self.is_shulker() || self.minecart_track.is_some() {
             self.set_position(position);
-            self.y_rot_bits = (y_rot % 360.0).to_bits();
-            self.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+            self.y_rot = JavaF32::new(y_rot % 360.0);
+            self.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
         } else {
             self.interpolate_to(position, y_rot, x_rot);
         }
@@ -1311,34 +1292,31 @@ impl ClientEntity {
 
         let alpha = 1.0 / f64::from(interpolation.steps);
         let previous_position = (
-            f64::from_bits(interpolation.previous_x_bits),
-            f64::from_bits(interpolation.previous_y_bits),
-            f64::from_bits(interpolation.previous_z_bits),
+            interpolation.previous.x.get(),
+            interpolation.previous.y.get(),
+            interpolation.previous.z.get(),
         );
         let delta_position = (
             current_position.0 - previous_position.0,
             current_position.1 - previous_position.1,
             current_position.2 - previous_position.2,
         );
-        interpolation.target_x_bits =
-            (f64::from_bits(interpolation.target_x_bits) + delta_position.0).to_bits();
-        interpolation.target_y_bits =
-            (f64::from_bits(interpolation.target_y_bits) + delta_position.1).to_bits();
-        interpolation.target_z_bits =
-            (f64::from_bits(interpolation.target_z_bits) + delta_position.2).to_bits();
+        interpolation.target.x = JavaF64::new(interpolation.target.x.get() + delta_position.0);
+        interpolation.target.y = JavaF64::new(interpolation.target.y.get() + delta_position.1);
+        interpolation.target.z = JavaF64::new(interpolation.target.z.get() + delta_position.2);
 
         let previous_rotation = (
-            f32::from_bits(interpolation.previous_y_rot_bits),
-            f32::from_bits(interpolation.previous_x_rot_bits),
+            interpolation.previous_y_rot.get(),
+            interpolation.previous_x_rot.get(),
         );
         let delta_rotation = (
             current_rotation.0 - previous_rotation.0,
             current_rotation.1 - previous_rotation.1,
         );
-        interpolation.target_y_rot_bits =
-            (f32::from_bits(interpolation.target_y_rot_bits) + delta_rotation.0).to_bits();
-        interpolation.target_x_rot_bits =
-            (f32::from_bits(interpolation.target_x_rot_bits) + delta_rotation.1).to_bits();
+        interpolation.target_y_rot =
+            JavaF32::new(interpolation.target_y_rot.get() + delta_rotation.0);
+        interpolation.target_x_rot =
+            JavaF32::new(interpolation.target_x_rot.get() + delta_rotation.1);
 
         let target_position = interpolation.target_position();
         let target_rotation = interpolation.target_rotation();
@@ -1360,16 +1338,16 @@ impl ClientEntity {
             ) as f32,
         );
         interpolation.steps -= 1;
-        interpolation.previous_x_bits = new_position.0.to_bits();
-        interpolation.previous_y_bits = new_position.1.to_bits();
-        interpolation.previous_z_bits = new_position.2.to_bits();
-        interpolation.previous_y_rot_bits = new_rotation.0.to_bits();
-        interpolation.previous_x_rot_bits = new_rotation.1.to_bits();
-        self.x_bits = new_position.0.to_bits();
-        self.y_bits = new_position.1.to_bits();
-        self.z_bits = new_position.2.to_bits();
-        self.y_rot_bits = (new_rotation.0 % 360.0).to_bits();
-        self.x_rot_bits = (new_rotation.1 % 360.0).clamp(-90.0, 90.0).to_bits();
+        interpolation.previous.x = JavaF64::new(new_position.0);
+        interpolation.previous.y = JavaF64::new(new_position.1);
+        interpolation.previous.z = JavaF64::new(new_position.2);
+        interpolation.previous_y_rot = JavaF32::new(new_rotation.0);
+        interpolation.previous_x_rot = JavaF32::new(new_rotation.1);
+        self.position.x = JavaF64::new(new_position.0);
+        self.position.y = JavaF64::new(new_position.1);
+        self.position.z = JavaF64::new(new_position.2);
+        self.y_rot = JavaF32::new(new_rotation.0 % 360.0);
+        self.x_rot = JavaF32::new((new_rotation.1 % 360.0).clamp(-90.0, 90.0));
     }
 
     pub(crate) fn tick_motion_interpolation(&mut self) {
@@ -1380,13 +1358,13 @@ impl ClientEntity {
         let steps = f64::from(self.motion_lerp_steps);
         let current = self.motion();
         let target = (
-            f64::from_bits(self.motion_lerp_target_x_bits),
-            f64::from_bits(self.motion_lerp_target_y_bits),
-            f64::from_bits(self.motion_lerp_target_z_bits),
+            self.motion_lerp_target.x.get(),
+            self.motion_lerp_target.y.get(),
+            self.motion_lerp_target.z.get(),
         );
-        self.motion_x_bits = (current.0 + (target.0 - current.0) / steps).to_bits();
-        self.motion_y_bits = (current.1 + (target.1 - current.1) / steps).to_bits();
-        self.motion_z_bits = (current.2 + (target.2 - current.2) / steps).to_bits();
+        self.motion.x = JavaF64::new(current.0 + (target.0 - current.0) / steps);
+        self.motion.y = JavaF64::new(current.1 + (target.1 - current.1) / steps);
+        self.motion.z = JavaF64::new(current.2 + (target.2 - current.2) / steps);
         self.motion_lerp_steps -= 1;
     }
 
@@ -1403,33 +1381,35 @@ impl ClientEntity {
             (current_motion.1 - gravity) * air_drag,
             current_motion.2 * air_drag,
         );
-        self.motion_x_bits = motion.0.to_bits();
-        self.motion_y_bits = motion.1.to_bits();
-        self.motion_z_bits = motion.2.to_bits();
+        self.motion.x = JavaF64::new(motion.0);
+        self.motion.y = JavaF64::new(motion.1);
+        self.motion.z = JavaF64::new(motion.2);
 
         let current_position = self.position();
-        self.x_bits = (current_position.0 + motion.0).to_bits();
-        self.y_bits = (current_position.1 + motion.1).to_bits();
-        self.z_bits = (current_position.2 + motion.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
         let target_x_rot =
             (mth_atan2(motion.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let target_y_rot = (mth_atan2(motion.0, motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.old_x_rot_bits), target_x_rot)
-                .to_bits();
-        self.y_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.old_y_rot_bits), target_y_rot)
-                .to_bits();
+        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.old_x_rot.get(),
+            target_x_rot,
+        ));
+        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.old_y_rot.get(),
+            target_y_rot,
+        ));
     }
 
     pub(crate) fn tick_arrow(&mut self) {
         let current_position = self.position();
         let current_motion = self.motion();
-        self.x_bits = (current_position.0 + current_motion.0).to_bits();
-        self.y_bits = (current_position.1 + current_motion.1).to_bits();
-        self.z_bits = (current_position.2 + current_motion.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + current_motion.0);
+        self.position.y = JavaF64::new(current_position.1 + current_motion.1);
+        self.position.z = JavaF64::new(current_position.2 + current_motion.2);
 
         let horizontal_distance =
             (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
@@ -1437,10 +1417,8 @@ impl ClientEntity {
             * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let target_y_rot =
             (mth_atan2(current_motion.0, current_motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.x_rot_bits), target_x_rot).to_bits();
-        self.y_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.y_rot_bits), target_y_rot).to_bits();
+        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(self.x_rot.get(), target_x_rot));
+        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(self.y_rot.get(), target_y_rot));
 
         let air_friction = f64::from(VANILLA_ARROW_AIR_FRICTION);
         let motion = (
@@ -1448,15 +1426,16 @@ impl ClientEntity {
             current_motion.1 * air_friction,
             current_motion.2 * air_friction,
         );
-        self.motion_x_bits = motion.0.to_bits();
-        self.motion_y_bits = (motion.1
-            - if self.no_gravity {
-                0.0
-            } else {
-                VANILLA_ARROW_GRAVITY
-            })
-        .to_bits();
-        self.motion_z_bits = motion.2.to_bits();
+        self.motion.x = JavaF64::new(motion.0);
+        self.motion.y = JavaF64::new(
+            motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_ARROW_GRAVITY
+                },
+        );
+        self.motion.z = JavaF64::new(motion.2);
     }
 
     pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
@@ -1480,14 +1459,14 @@ impl ClientEntity {
             current_motion.2,
         );
         let current_position = self.position();
-        self.x_bits = (current_position.0 + motion.0).to_bits();
-        self.y_bits = (current_position.1 + motion.1).to_bits();
-        self.z_bits = (current_position.2 + motion.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let air_friction = f64::from(VANILLA_EXPERIENCE_ORB_AIR_FRICTION);
-        self.motion_x_bits = (motion.0 * air_friction).to_bits();
-        self.motion_y_bits = (motion.1 * air_friction).to_bits();
-        self.motion_z_bits = (motion.2 * air_friction).to_bits();
+        self.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.motion.z = JavaF64::new(motion.2 * air_friction);
     }
 
     pub(crate) fn tick_primed_tnt(&mut self) {
@@ -1503,14 +1482,14 @@ impl ClientEntity {
             current_motion.2,
         );
         let current_position = self.position();
-        self.x_bits = (current_position.0 + motion.0).to_bits();
-        self.y_bits = (current_position.1 + motion.1).to_bits();
-        self.z_bits = (current_position.2 + motion.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let air_friction = f64::from(VANILLA_PRIMED_TNT_AIR_FRICTION);
-        self.motion_x_bits = (motion.0 * air_friction).to_bits();
-        self.motion_y_bits = (motion.1 * air_friction).to_bits();
-        self.motion_z_bits = (motion.2 * air_friction).to_bits();
+        self.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.motion.z = JavaF64::new(motion.2 * air_friction);
     }
 
     pub(crate) fn tick_falling_block(&mut self) {
@@ -1526,14 +1505,14 @@ impl ClientEntity {
             current_motion.2,
         );
         let current_position = self.position();
-        self.x_bits = (current_position.0 + motion.0).to_bits();
-        self.y_bits = (current_position.1 + motion.1).to_bits();
-        self.z_bits = (current_position.2 + motion.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let air_friction = f64::from(VANILLA_FALLING_BLOCK_AIR_FRICTION);
-        self.motion_x_bits = (motion.0 * air_friction).to_bits();
-        self.motion_y_bits = (motion.1 * air_friction).to_bits();
-        self.motion_z_bits = (motion.2 * air_friction).to_bits();
+        self.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.motion.z = JavaF64::new(motion.2 * air_friction);
     }
 
     pub(crate) fn tick_firework(&mut self) {
@@ -1544,24 +1523,26 @@ impl ClientEntity {
             current_motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
         );
         let current_position = self.position();
-        self.x_bits = (current_position.0 + movement.0).to_bits();
-        self.y_bits = (current_position.1 + movement.1).to_bits();
-        self.z_bits = (current_position.2 + movement.2).to_bits();
+        self.position.x = JavaF64::new(current_position.0 + movement.0);
+        self.position.y = JavaF64::new(current_position.1 + movement.1);
+        self.position.z = JavaF64::new(current_position.2 + movement.2);
 
         let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
         let target_x_rot =
             (mth_atan2(movement.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
         let target_y_rot =
             (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.old_x_rot_bits), target_x_rot)
-                .to_bits();
-        self.y_rot_bits =
-            projectile_lerp_rotation_f32(f32::from_bits(self.old_y_rot_bits), target_y_rot)
-                .to_bits();
-        self.motion_x_bits = movement.0.to_bits();
-        self.motion_y_bits = movement.1.to_bits();
-        self.motion_z_bits = movement.2.to_bits();
+        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.old_x_rot.get(),
+            target_x_rot,
+        ));
+        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.old_y_rot.get(),
+            target_y_rot,
+        ));
+        self.motion.x = JavaF64::new(movement.0);
+        self.motion.y = JavaF64::new(movement.1);
+        self.motion.z = JavaF64::new(movement.2);
     }
 
     pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
@@ -1569,9 +1550,9 @@ impl ClientEntity {
             self.shulker_set_pos(position, block_of(self.position()));
             return;
         }
-        self.x_bits = position.0.to_bits();
-        self.y_bits = position.1.to_bits();
-        self.z_bits = position.2.to_bits();
+        self.position.x = JavaF64::new(position.0);
+        self.position.y = JavaF64::new(position.1);
+        self.position.z = JavaF64::new(position.2);
     }
 
     /// `Entity.getPositionCodec().getBase()`.
@@ -1590,17 +1571,17 @@ impl ClientEntity {
 
     pub fn position(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.x_bits),
-            f64::from_bits(self.y_bits),
-            f64::from_bits(self.z_bits),
+            self.position.x.get(),
+            self.position.y.get(),
+            self.position.z.get(),
         )
     }
 
     pub fn previous_position(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.old_x_bits),
-            f64::from_bits(self.old_y_bits),
-            f64::from_bits(self.old_z_bits),
+            self.old_position.x.get(),
+            self.old_position.y.get(),
+            self.old_position.z.get(),
         )
     }
 
@@ -1617,14 +1598,14 @@ impl ClientEntity {
 
     pub fn motion(&self) -> (f64, f64, f64) {
         (
-            f64::from_bits(self.motion_x_bits),
-            f64::from_bits(self.motion_y_bits),
-            f64::from_bits(self.motion_z_bits),
+            self.motion.x.get(),
+            self.motion.y.get(),
+            self.motion.z.get(),
         )
     }
 
     pub fn boat_delta_rotation(&self) -> f32 {
-        f32::from_bits(self.delta_rotation_bits)
+        self.delta_rotation.get()
     }
 
     pub fn paddle_state(&self) -> (bool, bool) {
@@ -1633,18 +1614,18 @@ impl ClientEntity {
 
     pub(crate) fn set_motion_if_finite(&mut self, motion: (f64, f64, f64)) {
         if motion.0.is_finite() && motion.1.is_finite() && motion.2.is_finite() {
-            self.motion_x_bits = motion.0.to_bits();
-            self.motion_y_bits = motion.1.to_bits();
-            self.motion_z_bits = motion.2.to_bits();
+            self.motion.x = JavaF64::new(motion.0);
+            self.motion.y = JavaF64::new(motion.1);
+            self.motion.z = JavaF64::new(motion.2);
         }
     }
 
     pub fn motion_interpolation_target(&self) -> Option<(f64, f64, f64)> {
         (self.motion_lerp_steps > 0).then(|| {
             (
-                f64::from_bits(self.motion_lerp_target_x_bits),
-                f64::from_bits(self.motion_lerp_target_y_bits),
-                f64::from_bits(self.motion_lerp_target_z_bits),
+                self.motion_lerp_target.x.get(),
+                self.motion_lerp_target.y.get(),
+                self.motion_lerp_target.z.get(),
             )
         })
     }
@@ -1654,30 +1635,26 @@ impl ClientEntity {
     }
 
     pub fn rotation(&self) -> (f32, f32, f32) {
-        (
-            f32::from_bits(self.y_rot_bits),
-            f32::from_bits(self.x_rot_bits),
-            f32::from_bits(self.y_head_rot_bits),
-        )
+        (self.y_rot.get(), self.x_rot.get(), self.y_head_rot.get())
     }
 
     /// `xRotO`.
     pub fn previous_x_rotation(&self) -> f32 {
-        f32::from_bits(self.old_x_rot_bits)
+        self.old_x_rot.get()
     }
 
     /// `yBodyRot`.
     pub fn y_body_rot(&self) -> f32 {
-        f32::from_bits(self.y_body_rot_bits)
+        self.y_body_rot.get()
     }
 
     /// `getYHeadRot`.
     pub fn y_head_rot(&self) -> f32 {
-        f32::from_bits(self.y_head_rot_bits)
+        self.y_head_rot.get()
     }
 
     pub fn head_rotation_target(&self) -> f32 {
-        f32::from_bits(self.head_rotation_target_bits)
+        self.head_rotation_target.get()
     }
 
     pub fn head_rotation_lerp_steps(&self) -> u8 {
@@ -1685,11 +1662,11 @@ impl ClientEntity {
     }
 
     pub fn body_y_rotation(&self) -> f32 {
-        f32::from_bits(self.y_body_rot_bits)
+        self.y_body_rot.get()
     }
 
     pub fn previous_body_y_rotation(&self) -> f32 {
-        f32::from_bits(self.old_y_body_rot_bits)
+        self.old_y_body_rot.get()
     }
 
     pub(crate) fn clamp_vanilla_boat_passenger_rotation(
@@ -1698,37 +1675,31 @@ impl ClientEntity {
         animal_rotation_offset: Option<f32>,
     ) {
         let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
-            f32::from_bits(self.y_rot_bits),
-            f32::from_bits(self.old_y_rot_bits),
+            self.y_rot.get(),
+            self.old_y_rot.get(),
             vehicle_y_rot,
         );
-        self.old_y_rot_bits = old_y_rot.to_bits();
-        self.y_rot_bits = y_rot.to_bits();
+        self.old_y_rot = JavaF32::new(old_y_rot);
+        self.y_rot = JavaF32::new(y_rot);
         if vanilla_passenger_is_living(self.type_id) {
-            self.y_head_rot_bits = self.y_rot_bits;
-            self.y_body_rot_bits = vehicle_y_rot.to_bits();
+            self.y_head_rot = self.y_rot;
+            self.y_body_rot = JavaF32::new(vehicle_y_rot);
         }
         if let Some(rotation_offset) = animal_rotation_offset {
-            self.y_body_rot_bits =
-                (f32::from_bits(self.y_body_rot_bits) + rotation_offset).to_bits();
-            self.y_head_rot_bits =
-                (f32::from_bits(self.y_head_rot_bits) + rotation_offset).to_bits();
+            self.y_body_rot = JavaF32::new(self.y_body_rot.get() + rotation_offset);
+            self.y_head_rot = JavaF32::new(self.y_head_rot.get() + rotation_offset);
         }
     }
 
     pub(crate) fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
-        self.y_rot_bits = (f32::from_bits(self.y_rot_bits) + delta_rotation).to_bits();
+        self.y_rot = JavaF32::new(self.y_rot.get() + delta_rotation);
         if vanilla_passenger_is_living(self.type_id) {
-            self.y_head_rot_bits =
-                (f32::from_bits(self.y_head_rot_bits) + delta_rotation).to_bits();
+            self.y_head_rot = JavaF32::new(self.y_head_rot.get() + delta_rotation);
         }
     }
 
     pub(crate) fn body_rotation(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.y_rot_bits),
-            f32::from_bits(self.x_rot_bits),
-        )
+        (self.y_rot.get(), self.x_rot.get())
     }
 
     pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
@@ -1751,9 +1722,9 @@ impl ClientEntity {
 
     pub fn previous_rotation(&self) -> (f32, f32, f32) {
         (
-            f32::from_bits(self.old_y_rot_bits),
-            f32::from_bits(self.old_x_rot_bits),
-            f32::from_bits(self.old_y_head_rot_bits),
+            self.old_y_rot.get(),
+            self.old_x_rot.get(),
+            self.old_y_head_rot.get(),
         )
     }
 
@@ -1796,8 +1767,8 @@ impl ClientEntity {
 
     /// `getSwimAmount(partialTick)`.
     pub fn swim_amount(&self, partial_tick: f32) -> f32 {
-        let old = f32::from_bits(self.old_swim_amount_bits);
-        old + partial_tick * (f32::from_bits(self.swim_amount_bits) - old)
+        let old = self.old_swim_amount.get();
+        old + partial_tick * (self.swim_amount.get() - old)
     }
 
     /// The body's facing between two ticks (`Mth.rotLerp` of `yBodyRotO`
@@ -1972,7 +1943,7 @@ impl ClientEntity {
                 // lifts the dragon and its parts a tenth of a block.
                 let lift = f64::from(0.1_f32);
                 self.ender_dragon_mut().tick_death(lift);
-                self.y_bits = (f64::from_bits(self.y_bits) + lift).to_bits();
+                self.position.y = JavaF64::new(self.position.y.get() + lift);
             } else {
                 self.living.death_time += 1;
             }
@@ -2393,8 +2364,8 @@ impl ClientEntity {
             return;
         }
         let (on_ground, passenger) = (self.on_ground, self.vehicle_id.is_some());
-        if !on_ground && f64::from_bits(self.motion_y_bits) < 0.0 {
-            self.motion_y_bits = (f64::from_bits(self.motion_y_bits) * 0.6).to_bits();
+        if !on_ground && self.motion.y.get() < 0.0 {
+            self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
         }
         self.parrot
             .get_or_insert_with(Default::default)
@@ -2419,15 +2390,15 @@ impl ClientEntity {
         }
         let resting = self.living.bat_resting;
         if resting {
-            self.motion_x_bits = 0.0_f64.to_bits();
-            self.motion_y_bits = 0.0_f64.to_bits();
-            self.motion_z_bits = 0.0_f64.to_bits();
+            self.motion.x = JavaF64::new(0.0_f64);
+            self.motion.y = JavaF64::new(0.0_f64);
+            self.motion.z = JavaF64::new(0.0_f64);
             let height = voxel_data::entity_type::pick(self.type_id)
                 .map_or(0.0, |pick| pick.size.1 * self.scale());
-            let y = f64::from_bits(self.y_bits);
-            self.y_bits = (y.floor() + 1.0 - f64::from(height)).to_bits();
+            let y = self.position.y.get();
+            self.position.y = JavaF64::new(y.floor() + 1.0 - f64::from(height));
         } else {
-            self.motion_y_bits = (f64::from_bits(self.motion_y_bits) * 0.6).to_bits();
+            self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
         }
         let tick_count = self.tick_count;
         self.bat
@@ -2511,9 +2482,9 @@ impl ClientEntity {
             target,
         };
         let mut pose = crate::guardian::GuardianPose {
-            y_rot: f32::from_bits(self.y_rot_bits),
-            x_rot: f32::from_bits(self.x_rot_bits),
-            y_head_rot: f32::from_bits(self.y_head_rot_bits),
+            y_rot: self.y_rot.get(),
+            x_rot: self.x_rot.get(),
+            y_head_rot: self.y_head_rot.get(),
             motion: self.motion(),
             on_ground: self.on_ground,
         };
@@ -2522,14 +2493,10 @@ impl ClientEntity {
         self.guardian
             .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
             .tick(&place, has_target, duration, &mut pose);
-        self.y_rot_bits = pose.y_rot.to_bits();
-        self.x_rot_bits = pose.x_rot.to_bits();
-        self.y_head_rot_bits = pose.y_head_rot.to_bits();
-        (self.motion_x_bits, self.motion_y_bits, self.motion_z_bits) = (
-            pose.motion.0.to_bits(),
-            pose.motion.1.to_bits(),
-            pose.motion.2.to_bits(),
-        );
+        self.y_rot = JavaF32::new(pose.y_rot);
+        self.x_rot = JavaF32::new(pose.x_rot);
+        self.y_head_rot = JavaF32::new(pose.y_head_rot);
+        self.motion = DVec3::new(pose.motion.0, pose.motion.1, pose.motion.2);
         self.on_ground = pose.on_ground;
     }
 
@@ -2761,12 +2728,9 @@ impl ClientEntity {
         } else if self.is_interpolating() {
             self.tick_position_interpolation();
         } else {
-            let (y_rot, x_rot) = (
-                f32::from_bits(self.y_rot_bits),
-                f32::from_bits(self.x_rot_bits),
-            );
-            self.x_rot_bits = (x_rot % 360.0).to_bits();
-            self.y_rot_bits = (y_rot % 360.0).to_bits();
+            let (y_rot, x_rot) = (self.y_rot.get(), self.x_rot.get());
+            self.x_rot = JavaF32::new(x_rot % 360.0);
+            self.y_rot = JavaF32::new(y_rot % 360.0);
         }
     }
 
@@ -2789,15 +2753,15 @@ impl ClientEntity {
             return;
         };
         self.set_position(place.position);
-        self.motion_x_bits = place.movement.0.to_bits();
-        self.motion_y_bits = place.movement.1.to_bits();
-        self.motion_z_bits = place.movement.2.to_bits();
+        self.motion.x = JavaF64::new(place.movement.0);
+        self.motion.y = JavaF64::new(place.movement.1);
+        self.motion.z = JavaF64::new(place.movement.2);
         // `Entity.setXRot` and `setYRot` discard what is not finite.
         if place.x_rot.is_finite() {
-            self.x_rot_bits = (place.x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+            self.x_rot = JavaF32::new((place.x_rot % 360.0).clamp(-90.0, 90.0));
         }
         if place.y_rot.is_finite() {
-            self.y_rot_bits = place.y_rot.to_bits();
+            self.y_rot = JavaF32::new(place.y_rot);
         }
     }
 
@@ -2854,14 +2818,14 @@ impl ClientEntity {
         {
             self.health_bits = Some((health + 1.0).to_bits());
         }
-        let y_rot = voxel_core::math::wrap_degrees_f32(f32::from_bits(self.y_rot_bits));
-        self.y_rot_bits = y_rot.to_bits();
+        let y_rot = voxel_core::math::wrap_degrees_f32(self.y_rot.get());
+        self.y_rot = JavaF32::new(y_rot);
         let (motion, no_ai, y) = (self.motion(), self.is_no_ai(), self.position().1);
         self.ender_dragon_mut().fly(motion, no_ai, (y, y_rot));
         if !no_ai {
             self.tick_position_interpolation();
-            self.y_body_rot_bits = self.y_rot_bits;
-            let (at, y_rot) = (self.position(), f32::from_bits(self.y_rot_bits));
+            self.y_body_rot = self.y_rot;
+            let (at, y_rot) = (self.position(), self.y_rot.get());
             self.ender_dragon_mut().tick_parts(at, y_rot);
         }
     }
@@ -2891,12 +2855,12 @@ impl ClientEntity {
             return;
         }
         let (x, y, z) = self.motion();
-        self.motion_y_bits = (y * 0.6).to_bits();
+        self.motion.y = JavaF64::new(y * 0.6);
         if x * x + z * z > 0.05 {
             let turn = voxel_core::math::mth_atan2(z, x) as f32
                 * (180.0_f32 / std::f64::consts::PI as f32)
                 - 90.0;
-            self.y_rot_bits = turn.to_bits();
+            self.y_rot = JavaF32::new(turn);
         }
     }
 
@@ -2910,7 +2874,7 @@ impl ClientEntity {
         }
         let place = crate::wither::WitherPlace {
             position: self.position(),
-            body_rot: f32::from_bits(self.y_body_rot_bits),
+            body_rot: self.y_body_rot.get(),
             scale: self.scale(),
         };
         self.wither_mut().tick_heads(place, targets);
@@ -2941,14 +2905,11 @@ impl ClientEntity {
         state.animate(tick_count);
         let scared = state.is_scared();
         if scared {
-            let (head, body) = (
-                f32::from_bits(self.y_head_rot_bits),
-                f32::from_bits(self.y_body_rot_bits),
-            );
+            let (head, body) = (self.y_head_rot.get(), self.y_body_rot.get());
             let limit = 75.0_f32;
             let delta = voxel_core::math::wrap_degrees_f32(body - head);
             let target = voxel_core::math::wrap_degrees_f32(body - head).clamp(-limit, limit);
-            self.y_head_rot_bits = (head + delta - target).to_bits();
+            self.y_head_rot = JavaF32::new(head + delta - target);
         }
         self.armadillo_mut().finish_tick();
     }
@@ -3157,9 +3118,9 @@ impl ClientEntity {
         if y.abs() < 0.003 {
             y = 0.0;
         }
-        self.motion_x_bits = x.to_bits();
-        self.motion_y_bits = y.to_bits();
-        self.motion_z_bits = z.to_bits();
+        self.motion.x = JavaF64::new(x);
+        self.motion.y = JavaF64::new(y);
+        self.motion.z = JavaF64::new(z);
     }
 
     /// `Entity.baseTick`'s fluid pass, then `LivingEntity.aiStep`: a living entity
@@ -3212,18 +3173,14 @@ impl ClientEntity {
         if !self.is_squid() {
             return;
         }
-        let (in_water, motion, body) = (
-            self.living.in_water,
-            self.motion(),
-            f32::from_bits(self.y_body_rot_bits),
-        );
+        let (in_water, motion, body) = (self.living.in_water, self.motion(), self.y_body_rot.get());
         let turned = self
             .squid
             .get_or_insert_with(|| Box::new(crate::squid::SquidState::new()))
             .ai_step(in_water, motion, body);
         if let Some(body) = turned {
-            self.y_body_rot_bits = body.to_bits();
-            self.y_rot_bits = body.to_bits();
+            self.y_body_rot = JavaF32::new(body);
+            self.y_rot = JavaF32::new(body);
         }
         // `GlowSquid.aiStep`: the dark ticks a hurt glow squid was given run out.
         if self.living.glow_dark_ticks > 0 {
@@ -3301,16 +3258,16 @@ impl ClientEntity {
                 position.2.floor() + 0.5,
             )
         };
-        self.x_bits = x.to_bits();
-        self.y_bits = y.to_bits();
-        self.z_bits = z.to_bits();
+        self.position.x = JavaF64::new(x);
+        self.position.y = JavaF64::new(y);
+        self.position.z = JavaF64::new(z);
         let block = block_of((x, y, z));
         if self.tick_count != 0 && block != old_block {
             self.living.shulker_raw_peek = 0;
             if !riding && self.living.shulker.start_teleport(old_block, block) {
-                self.old_x_bits = x.to_bits();
-                self.old_y_bits = y.to_bits();
-                self.old_z_bits = z.to_bits();
+                self.old_position.x = JavaF64::new(x);
+                self.old_position.y = JavaF64::new(y);
+                self.old_position.z = JavaF64::new(z);
             }
         }
     }
@@ -3327,8 +3284,8 @@ impl ClientEntity {
     pub(crate) fn shulker_stops_riding(&mut self) {
         let block = block_of(self.position());
         self.living.shulker.set_old_attach(block);
-        self.y_body_rot_bits = 0.0_f32.to_bits();
-        self.old_y_body_rot_bits = 0.0_f32.to_bits();
+        self.y_body_rot = JavaF32::new(0.0_f32);
+        self.old_y_body_rot = JavaF32::new(0.0_f32);
     }
 
     /// Whether this is a slime or a magma cube (`AbstractCubeMob`).
@@ -3355,8 +3312,8 @@ impl ClientEntity {
     /// says it (the same size too), the body and the entity turn to where the
     /// head looks.
     pub(crate) fn set_cube_size(&mut self, size: i32) {
-        self.y_rot_bits = self.y_head_rot_bits;
-        self.y_body_rot_bits = self.y_head_rot_bits;
+        self.y_rot = self.y_head_rot;
+        self.y_body_rot = self.y_head_rot;
         self.living.cube_size = Some(size);
     }
 
@@ -3532,7 +3489,7 @@ impl ClientEntity {
         };
         let panda = self.panda.get_or_insert_with(Default::default);
         if panda.tick(around) {
-            self.x_rot_bits = 0.0_f32.to_bits();
+            self.x_rot = JavaF32::new(0.0_f32);
         }
     }
 
@@ -3856,7 +3813,7 @@ impl ClientEntity {
 
     /// `ItemEntity.bobOffs`.
     pub fn bob_offset(&self) -> f32 {
-        f32::from_bits(self.bob_offset_bits)
+        self.bob_offset.get()
     }
 
     /// Whether the entity is a player.

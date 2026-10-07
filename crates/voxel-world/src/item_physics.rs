@@ -4,6 +4,7 @@
 
 use voxel_core::aabb::Aabb;
 use voxel_core::binary::BlockPos;
+use voxel_core::java_float::JavaF64;
 use voxel_core::math::{Vec3, floor_f64};
 
 use super::ClientWorld;
@@ -208,9 +209,9 @@ impl ClientWorld {
             .get_mut(&entity_id)
             .expect("the item was read above");
         entity.set_position((step.position.x, step.position.y, step.position.z));
-        entity.motion_x_bits = step.delta.x.to_bits();
-        entity.motion_y_bits = step.delta.y.to_bits();
-        entity.motion_z_bits = step.delta.z.to_bits();
+        entity.motion.x = JavaF64::new(step.delta.x);
+        entity.motion.y = JavaF64::new(step.delta.y);
+        entity.motion.z = JavaF64::new(step.delta.z);
         entity.on_ground = step.on_ground;
         entity.tracking.support = Support {
             main_block: step.main_supporting_block,

@@ -11,6 +11,7 @@ use crate::input::{
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterParameters,
     LocalPlayerUpdateFallFlyingMovementParameters, advance_local_player_sprint_trigger,
 };
+use voxel_core::java_float::{DVec3, JavaF32, JavaF64};
 use voxel_core::math::{Vec2, Vec3, abs_max_f64, mth_cos_f64, mth_sin_f64};
 use voxel_core::{
     aabb::Aabb,
@@ -179,22 +180,25 @@ impl Default for ClientWorld {
     }
 }
 
-/// An open container's menu: its id, its `MenuType` registry id, every slot,
-/// the carried stack and the state id.
-pub type OpenContainerMenu = (
-    i32,
-    i32,
-    Vec<Option<ClientItemStackState>>,
-    Option<ClientItemStackState>,
-    i32,
-);
+/// An open container's menu.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpenContainerMenu {
+    pub container_id: i32,
+    /// The `MenuType` registry id.
+    pub menu_type_id: i32,
+    /// Every slot, the player's inventory at the end.
+    pub slots: Vec<Option<ClientItemStackState>>,
+    /// The stack the cursor carries.
+    pub carried: Option<ClientItemStackState>,
+    pub state_id: i32,
+}
 
 /// `ItemEntity.bobOffs` is drawn from an unseeded random source; this one is
 /// drawn from the entity's uuid.
-fn bob_offset_bits(uuid: voxel_core::binary::Uuid) -> u32 {
+fn bob_offset(uuid: voxel_core::binary::Uuid) -> JavaF32 {
     let folded = uuid.most ^ uuid.least;
     let mut random = voxel_core::random::RandomSource::create(folded as i64);
-    (random.next_float() * std::f32::consts::PI * 2.0).to_bits()
+    JavaF32::new(random.next_float() * std::f32::consts::PI * 2.0)
 }
 
 impl ClientWorld {
@@ -471,11 +475,11 @@ impl ClientWorld {
     pub fn set_local_player_id(&mut self, player_id: i32) {
         let mut player = ClientPlayerState::new(player_id);
         if let Some(entity) = self.entities.get(&player_id) {
-            player.y_head_rot_bits = entity.y_head_rot_bits;
-            player.old_y_head_rot_bits = entity.old_y_head_rot_bits;
-            player.head_rotation_target_bits = entity.y_head_rot_bits;
-            player.y_body_rot_bits = entity.y_body_rot_bits;
-            player.old_y_body_rot_bits = entity.old_y_body_rot_bits;
+            player.y_head_rot = entity.y_head_rot;
+            player.old_y_head_rot = entity.old_y_head_rot;
+            player.head_rotation_target = entity.y_head_rot;
+            player.y_body_rot = entity.y_body_rot;
+            player.old_y_body_rot = entity.old_y_body_rot;
         }
         self.local_player = Some(player);
     }
@@ -519,20 +523,20 @@ impl ClientWorld {
             return false;
         };
         let initialize_transform_history = player.tick_count == 0;
-        player.x_bits = position.0.to_bits();
-        player.y_bits = position.1.to_bits();
-        player.z_bits = position.2.to_bits();
-        player.motion_x_bits = motion.0.to_bits();
-        player.motion_y_bits = motion.1.to_bits();
-        player.motion_z_bits = motion.2.to_bits();
-        player.y_rot_bits = rotation.0.to_bits();
-        player.x_rot_bits = rotation.1.to_bits();
+        player.position.x = JavaF64::new(position.0);
+        player.position.y = JavaF64::new(position.1);
+        player.position.z = JavaF64::new(position.2);
+        player.motion.x = JavaF64::new(motion.0);
+        player.motion.y = JavaF64::new(motion.1);
+        player.motion.z = JavaF64::new(motion.2);
+        player.y_rot = JavaF32::new(rotation.0);
+        player.x_rot = JavaF32::new(rotation.1);
         if initialize_transform_history {
-            player.old_x_bits = player.x_bits;
-            player.old_y_bits = player.y_bits;
-            player.old_z_bits = player.z_bits;
-            player.old_y_rot_bits = player.y_rot_bits;
-            player.old_x_rot_bits = player.x_rot_bits;
+            player.old_position.x = player.position.x;
+            player.old_position.y = player.position.y;
+            player.old_position.z = player.position.z;
+            player.old_y_rot = player.y_rot;
+            player.old_x_rot = player.x_rot;
         }
         true
     }
@@ -923,13 +927,13 @@ impl ClientWorld {
                 }
             }
         }
-        Some((
-            container.container_id,
-            container.menu_type_id,
+        Some(OpenContainerMenu {
+            container_id: container.container_id,
+            menu_type_id: container.menu_type_id,
             slots,
-            container.carried_item.clone(),
-            container.state_id,
-        ))
+            carried: container.carried_item.clone(),
+            state_id: container.state_id,
+        })
     }
 
     /// Write back the open container's menu after a predicted click.
@@ -1124,18 +1128,18 @@ impl ClientWorld {
             })
             .collect();
         if keep_entity_data {
-            player.motion_x_bits = previous.motion_x_bits;
-            player.motion_y_bits = previous.motion_y_bits;
-            player.motion_z_bits = previous.motion_z_bits;
-            player.y_rot_bits = previous.y_rot_bits;
-            player.x_rot_bits = previous.x_rot_bits;
-            player.old_y_rot_bits = previous.old_y_rot_bits;
-            player.old_x_rot_bits = previous.old_x_rot_bits;
-            player.y_body_rot_bits = previous.y_body_rot_bits;
-            player.old_y_body_rot_bits = previous.old_y_body_rot_bits;
-            player.y_head_rot_bits = previous.y_head_rot_bits;
-            player.old_y_head_rot_bits = previous.old_y_head_rot_bits;
-            player.head_rotation_target_bits = previous.head_rotation_target_bits;
+            player.motion.x = previous.motion.x;
+            player.motion.y = previous.motion.y;
+            player.motion.z = previous.motion.z;
+            player.y_rot = previous.y_rot;
+            player.x_rot = previous.x_rot;
+            player.old_y_rot = previous.old_y_rot;
+            player.old_x_rot = previous.old_x_rot;
+            player.y_body_rot = previous.y_body_rot;
+            player.old_y_body_rot = previous.old_y_body_rot;
+            player.y_head_rot = previous.y_head_rot;
+            player.old_y_head_rot = previous.old_y_head_rot;
+            player.head_rotation_target = previous.head_rotation_target;
             player.head_lerp_steps = previous.head_lerp_steps;
             player.shared_flags = previous.shared_flags;
             player.living_flags = previous.living_flags;
@@ -1153,7 +1157,7 @@ impl ClientWorld {
             player.ticks_frozen = previous.ticks_frozen;
             player.entity_data = previous.entity_data;
         } else {
-            player.y_rot_bits = (-180.0_f32).to_bits();
+            player.y_rot = JavaF32::new(-180.0_f32);
         }
         self.local_player = Some(player);
         true
@@ -1343,7 +1347,7 @@ impl ClientWorld {
         let Some(player) = self.local_player.as_mut() else {
             return false;
         };
-        player.head_rotation_target_bits = y_head_rot.to_bits();
+        player.head_rotation_target = JavaF32::new(y_head_rot);
         player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         true
     }
@@ -1355,17 +1359,17 @@ impl ClientWorld {
             return false;
         };
         if entity.living_kind().is_some() {
-            entity.head_rotation_target_bits = y_head_rot.to_bits();
+            entity.head_rotation_target = JavaF32::new(y_head_rot);
             entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         } else {
-            entity.y_head_rot_bits = y_head_rot.to_bits();
+            entity.y_head_rot = JavaF32::new(y_head_rot);
         }
         if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == entity_id)
         {
-            player.head_rotation_target_bits = y_head_rot.to_bits();
+            player.head_rotation_target = JavaF32::new(y_head_rot);
             player.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         }
         true
@@ -1550,9 +1554,9 @@ impl ClientWorld {
                 return;
             };
             if vehicle_id.is_some() {
-                player.motion_x_bits = 0.0_f64.to_bits();
-                player.motion_y_bits = 0.0_f64.to_bits();
-                player.motion_z_bits = 0.0_f64.to_bits();
+                player.motion.x = JavaF64::new(0.0_f64);
+                player.motion.y = JavaF64::new(0.0_f64);
+                player.motion.z = JavaF64::new(0.0_f64);
             }
             player.capture_old_transform();
             player.tick_head_rotation();
@@ -1577,9 +1581,9 @@ impl ClientWorld {
         if vehicle_id.is_some()
             && let Some(entity) = self.entities.get_mut(&entity_id)
         {
-            entity.motion_x_bits = 0.0_f64.to_bits();
-            entity.motion_y_bits = 0.0_f64.to_bits();
-            entity.motion_z_bits = 0.0_f64.to_bits();
+            entity.motion.x = JavaF64::new(0.0_f64);
+            entity.motion.y = JavaF64::new(0.0_f64);
+            entity.motion.z = JavaF64::new(0.0_f64);
         }
         self.tick_entity_once(entity_id);
         if let Some(vehicle_id) = vehicle_id {
@@ -1639,7 +1643,7 @@ impl ClientWorld {
                 Some((
                     vehicle.type_id,
                     vehicle.position(),
-                    f32::from_bits(vehicle.y_rot_bits),
+                    vehicle.y_rot.get(),
                     passenger_index,
                     vehicle.passenger_ids.len(),
                 ))
@@ -1713,8 +1717,8 @@ impl ClientWorld {
             self.entities.get(&vehicle_id).map(|vehicle| {
                 (
                     vehicle.type_id,
-                    f32::from_bits(vehicle.y_rot_bits),
-                    f32::from_bits(vehicle.delta_rotation_bits),
+                    vehicle.y_rot.get(),
+                    vehicle.delta_rotation.get(),
                     vehicle.passenger_ids.len(),
                 )
             })
@@ -1767,7 +1771,7 @@ impl ClientWorld {
             VANILLA_BOAT_PASSENGER_GEOMETRY
                 .iter()
                 .any(|&(type_id, _, _)| type_id == vehicle.type_id)
-                .then(|| f32::from_bits(vehicle.y_rot_bits))
+                .then(|| vehicle.y_rot.get())
         }) else {
             return;
         };
@@ -2071,9 +2075,9 @@ impl ClientWorld {
             }
             entity.tick_species(surroundings);
             if boat_is_non_authoritative {
-                entity.motion_x_bits = 0.0_f64.to_bits();
-                entity.motion_y_bits = 0.0_f64.to_bits();
-                entity.motion_z_bits = 0.0_f64.to_bits();
+                entity.motion.x = JavaF64::new(0.0_f64);
+                entity.motion.y = JavaF64::new(0.0_f64);
+                entity.motion.z = JavaF64::new(0.0_f64);
             }
             if let Some(kind) = projectile_kind {
                 tick_projectile(entity, kind, projectile_path_is_open);
@@ -3527,7 +3531,7 @@ impl ClientWorld {
         let ticking = self.contains_chunk_at((entity.x, entity.y, entity.z));
         let new_minecart =
             self.minecart_improvements && entity::is_vanilla_minecart_entity_type(entity.type_id);
-        let head_rotation_bits = entity.rotation.2.to_bits();
+        let head_rotation = JavaF32::new(entity.rotation.2);
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
         let owner = self.entity_exists(entity.data).then_some(entity.data);
         self.entities.insert(
@@ -3543,28 +3547,24 @@ impl ClientWorld {
                     voxel_core::math::floor_f64(entity.y),
                     voxel_core::math::floor_f64(entity.z),
                 ),
-                x_bits: entity.x.to_bits(),
-                y_bits: entity.y.to_bits(),
-                z_bits: entity.z.to_bits(),
-                old_x_bits: entity.x.to_bits(),
-                old_y_bits: entity.y.to_bits(),
-                old_z_bits: entity.z.to_bits(),
-                motion_x_bits: entity.movement.0.to_bits(),
-                motion_y_bits: entity.movement.1.to_bits(),
-                motion_z_bits: entity.movement.2.to_bits(),
-                motion_lerp_target_x_bits: entity.movement.0.to_bits(),
-                motion_lerp_target_y_bits: entity.movement.1.to_bits(),
-                motion_lerp_target_z_bits: entity.movement.2.to_bits(),
+                position: DVec3::new(entity.x, entity.y, entity.z),
+                old_position: DVec3::new(entity.x, entity.y, entity.z),
+                motion: DVec3::new(entity.movement.0, entity.movement.1, entity.movement.2),
+                motion_lerp_target: DVec3::new(
+                    entity.movement.0,
+                    entity.movement.1,
+                    entity.movement.2,
+                ),
                 motion_lerp_steps: 0,
-                x_rot_bits: entity.rotation.1.to_bits(),
-                y_rot_bits: entity.rotation.0.to_bits(),
-                y_head_rot_bits: entity.rotation.2.to_bits(),
-                y_body_rot_bits: entity.rotation.0.to_bits(),
-                old_x_rot_bits: entity.rotation.1.to_bits(),
-                old_y_rot_bits: entity.rotation.0.to_bits(),
-                old_y_head_rot_bits: entity.rotation.2.to_bits(),
-                old_y_body_rot_bits: entity.rotation.0.to_bits(),
-                delta_rotation_bits: 0.0_f32.to_bits(),
+                x_rot: JavaF32::new(entity.rotation.1),
+                y_rot: JavaF32::new(entity.rotation.0),
+                y_head_rot: JavaF32::new(entity.rotation.2),
+                y_body_rot: JavaF32::new(entity.rotation.0),
+                old_x_rot: JavaF32::new(entity.rotation.1),
+                old_y_rot: JavaF32::new(entity.rotation.0),
+                old_y_head_rot: JavaF32::new(entity.rotation.2),
+                old_y_body_rot: JavaF32::new(entity.rotation.0),
+                delta_rotation: JavaF32::new(0.0_f32),
                 boat_input: BoatInput::EMPTY,
                 boat_ride: boat_ride::RideState::default(),
                 mount_ride: mount_ride::MountState::default(),
@@ -3574,7 +3574,7 @@ impl ClientWorld {
                 },
                 paddle_left: false,
                 paddle_right: false,
-                head_rotation_target_bits: entity.rotation.2.to_bits(),
+                head_rotation_target: JavaF32::new(entity.rotation.2),
                 head_lerp_steps: 0,
                 interpolation: None,
                 on_ground: false,
@@ -3582,13 +3582,13 @@ impl ClientWorld {
                 always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                 walk: living::WalkAnimation::default(),
-                swim_amount_bits: 0.0_f32.to_bits(),
-                old_swim_amount_bits: 0.0_f32.to_bits(),
+                swim_amount: JavaF32::new(0.0_f32),
+                old_swim_amount: JavaF32::new(0.0_f32),
                 head_stable_time: 0,
-                last_stable_y_head_rot_bits: entity.rotation.2.to_bits(),
+                last_stable_y_head_rot: JavaF32::new(entity.rotation.2),
                 item_stack: None,
                 equipment: Default::default(),
-                bob_offset_bits: bob_offset_bits(entity.uuid),
+                bob_offset: bob_offset(entity.uuid),
                 data: entity.data,
                 metadata: None,
                 shared_flags: 0,
@@ -3661,8 +3661,8 @@ impl ClientWorld {
         {
             // `Shulker.recreateFromPacket`: the body faces south; `snapTo`
             // holds it to the middle of its block.
-            shulker.y_body_rot_bits = 0.0_f32.to_bits();
-            shulker.old_y_body_rot_bits = 0.0_f32.to_bits();
+            shulker.y_body_rot = JavaF32::new(0.0_f32);
+            shulker.old_y_body_rot = JavaF32::new(0.0_f32);
             let (position, (y_rot, x_rot, _)) = (shulker.position(), shulker.rotation());
             shulker.snap_to(position, y_rot, x_rot);
         }
@@ -3675,24 +3675,24 @@ impl ClientWorld {
             // `Warden.recreateFromPacket`: the packet's data says it is emerging.
             warden.set_pose(ClientEntityPose::Emerging);
         }
-        self.snap_local_player_turn(entity.entity_id, head_rotation_bits, entity.rotation.0);
+        self.snap_local_player_turn(entity.entity_id, head_rotation, entity.rotation.0);
         true
     }
 
     /// The local player's own head and body turn, set to what an entity
     /// packet for it says.
-    fn snap_local_player_turn(&mut self, entity_id: i32, head_rotation_bits: u32, body_yaw: f32) {
+    fn snap_local_player_turn(&mut self, entity_id: i32, head_rotation: JavaF32, body_yaw: f32) {
         if let Some(player) = self
             .local_player
             .as_mut()
             .filter(|player| player.id == entity_id)
         {
-            player.y_head_rot_bits = head_rotation_bits;
-            player.old_y_head_rot_bits = head_rotation_bits;
-            player.head_rotation_target_bits = head_rotation_bits;
+            player.y_head_rot = head_rotation;
+            player.old_y_head_rot = head_rotation;
+            player.head_rotation_target = head_rotation;
             player.head_lerp_steps = 0;
-            player.y_body_rot_bits = body_yaw.to_bits();
-            player.old_y_body_rot_bits = body_yaw.to_bits();
+            player.y_body_rot = JavaF32::new(body_yaw);
+            player.old_y_body_rot = JavaF32::new(body_yaw);
         }
     }
 
@@ -4249,14 +4249,14 @@ impl ClientWorld {
             return false;
         };
         if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.motion_lerp_target_x_bits = input.x.to_bits();
-            entity.motion_lerp_target_y_bits = input.y.to_bits();
-            entity.motion_lerp_target_z_bits = input.z.to_bits();
+            entity.motion_lerp_target.x = JavaF64::new(input.x);
+            entity.motion_lerp_target.y = JavaF64::new(input.y);
+            entity.motion_lerp_target.z = JavaF64::new(input.z);
             entity.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
         } else {
-            entity.motion_x_bits = input.x.to_bits();
-            entity.motion_y_bits = input.y.to_bits();
-            entity.motion_z_bits = input.z.to_bits();
+            entity.motion.x = JavaF64::new(input.x);
+            entity.motion.y = JavaF64::new(input.y);
+            entity.motion.z = JavaF64::new(input.z);
         }
         true
     }
@@ -4310,22 +4310,22 @@ impl ClientWorld {
                 entity.move_or_interpolate_to(entity.interpolation_position(), y_rot, x_rot);
             } else {
                 if let Some(y_rot) = input.y_rot {
-                    let current = f32::from_bits(entity.y_rot_bits);
+                    let current = entity.y_rot.get();
                     let value = if input.relative_y_rot {
                         current + y_rot
                     } else {
                         y_rot
                     };
-                    entity.y_rot_bits = (value % 360.0).to_bits();
+                    entity.y_rot = JavaF32::new(value % 360.0);
                 }
                 if let Some(x_rot) = input.x_rot {
-                    let current = f32::from_bits(entity.x_rot_bits);
+                    let current = entity.x_rot.get();
                     let value = if input.relative_x_rot {
                         current + x_rot
                     } else {
                         x_rot
                     };
-                    entity.x_rot_bits = (value % 360.0).clamp(-90.0, 90.0).to_bits();
+                    entity.x_rot = JavaF32::new((value % 360.0).clamp(-90.0, 90.0));
                 }
             }
         }
@@ -4486,17 +4486,17 @@ impl ClientWorld {
             } else {
                 if input.has_position {
                     let (x, y, z) = new_position.expect("position was requested");
-                    entity.x_bits = x.to_bits();
-                    entity.y_bits = y.to_bits();
-                    entity.z_bits = z.to_bits();
+                    entity.position.x = JavaF64::new(x);
+                    entity.position.y = JavaF64::new(y);
+                    entity.position.z = JavaF64::new(z);
                     entity.ticking =
                         entity.always_ticking || ticking.expect("position ticking state");
                 }
                 if let Some(y_rot) = input.y_rot {
-                    entity.y_rot_bits = (y_rot % 360.0).to_bits();
+                    entity.y_rot = JavaF32::new(y_rot % 360.0);
                 }
                 if let Some(x_rot) = input.x_rot {
-                    entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+                    entity.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
                 }
             }
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -4611,12 +4611,12 @@ impl ClientWorld {
                     entity.snap_to(target_position, rotation.0, rotation.1);
                 }
             } else {
-                entity.x_bits = target_position.0.to_bits();
-                entity.y_bits = target_position.1.to_bits();
-                entity.z_bits = target_position.2.to_bits();
+                entity.position.x = JavaF64::new(target_position.0);
+                entity.position.y = JavaF64::new(target_position.1);
+                entity.position.z = JavaF64::new(target_position.2);
                 if let Some((y_rot, x_rot)) = target_rotation {
-                    entity.y_rot_bits = (y_rot % 360.0).to_bits();
-                    entity.x_rot_bits = (x_rot % 360.0).clamp(-90.0, 90.0).to_bits();
+                    entity.y_rot = JavaF32::new(y_rot % 360.0);
+                    entity.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
                 }
             }
             entity.ticking = entity.always_ticking || ticking;

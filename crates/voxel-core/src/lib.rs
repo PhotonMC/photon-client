@@ -5,6 +5,7 @@ pub mod axis_cycle;
 pub mod binary;
 pub mod direction;
 pub mod identifier;
+pub mod java_float;
 pub mod json;
 pub mod math;
 pub mod nbt;

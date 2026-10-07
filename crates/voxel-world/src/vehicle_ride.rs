@@ -115,7 +115,7 @@ impl ClientWorld {
         } else {
             VehicleKind::Other
         };
-        let y_rot = f32::from_bits(vehicle.y_rot_bits);
+        let y_rot = vehicle.y_rot.get();
         // `getDefaultPassengerAttachmentPoint`: the type's seat for this passenger's place, turned
         // with the vehicle; `AbstractHorse` adds, rearing, up and back.
         let seats = voxel_data::entity_type::pick(vehicle.type_id)?.passengers;
@@ -169,7 +169,7 @@ impl ClientWorld {
             type_id: vehicle.type_id,
             position,
             y_rot,
-            x_rot: f32::from_bits(vehicle.x_rot_bits),
+            x_rot: vehicle.x_rot.get(),
             on_ground: vehicle.on_ground,
             horizontal_collision: vehicle.mount_ride.horizontal_collision,
             rider_position: rider,
@@ -238,12 +238,12 @@ impl ClientWorld {
             controlled: vehicle.passenger_ids.first() == Some(&player.id),
             type_id: vehicle.type_id,
             position,
-            y_rot: f32::from_bits(vehicle.y_rot_bits),
+            y_rot: vehicle.y_rot.get(),
             x_rot: 0.0,
             on_ground: vehicle.on_ground,
             horizontal_collision: vehicle.boat_ride.horizontal_collision,
             rider_position: self.boat_rider_position(vehicle_id, player.id)?,
-            delta_rotation: f32::from_bits(vehicle.delta_rotation_bits),
+            delta_rotation: vehicle.delta_rotation.get(),
             max_y: bb.max_y,
             under_water: vehicle.boat_ride.status.is_some_and(Status::is_under_water),
             can_sprint: false,

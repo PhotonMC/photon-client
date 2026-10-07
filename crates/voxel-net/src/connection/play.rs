@@ -618,9 +618,14 @@ impl PlaySession {
     /// The menu of the container the server opened, as the client holds it
     /// now; `None` until its contents have come.
     pub fn open_container_menu(&mut self) -> Option<&voxel_game::container_menu::ContainerMenu> {
-        let (container_id, menu_type, slots, carried, state_id) =
-            self.trace.world.local_player_container_menu()?;
-        let kind = voxel_game::container_menu::MenuKind::from_menu_type(menu_type)?;
+        let voxel_world::OpenContainerMenu {
+            container_id,
+            menu_type_id,
+            slots,
+            carried,
+            state_id,
+        } = self.trace.world.local_player_container_menu()?;
+        let kind = voxel_game::container_menu::MenuKind::from_menu_type(menu_type_id)?;
         match self.open_menu.as_mut() {
             Some(menu) if menu.container_id == container_id && menu.kind == kind => {
                 menu.load(slots, carried, state_id);
@@ -719,8 +724,9 @@ impl PlaySession {
             self.trace
                 .world
                 .apply_local_player_container_data(container_id, 0, button as i16);
-            if let Some((_, _, mut slots, carried, _)) =
-                self.trace.world.local_player_container_menu()
+            if let Some(voxel_world::OpenContainerMenu {
+                mut slots, carried, ..
+            }) = self.trace.world.local_player_container_menu()
             {
                 slots[1] = None;
                 self.trace

@@ -69,10 +69,7 @@ impl ClientEntity {
         let (old, current) = if self.is_living_entity() {
             (self.previous_body_y_rotation(), self.body_y_rotation())
         } else {
-            (
-                f32::from_bits(self.old_y_rot_bits),
-                f32::from_bits(self.y_rot_bits),
-            )
+            (self.old_y_rot.get(), self.y_rot.get())
         };
         voxel_core::math::mth_lerp_f32(partial_tick, old, current)
     }
