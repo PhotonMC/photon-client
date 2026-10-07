@@ -1,7 +1,9 @@
 //! The skulls a head wears (`CustomHeadLayer`'s `wornHeadType`, `SkullBlockRenderer.submitSkull`): which
 //! item is which skull, its model and texture, and where on the head it sits.
 
-use crate::joml::Pose;
+use voxel_core::direction::Direction;
+
+use crate::joml::{Matrix4, Pose, Quaternion};
 use crate::player_model::Part;
 
 /// `SkullBlock.Types`.
@@ -83,5 +85,50 @@ pub fn skull_pose(
     head.translate_and_rotate(&mut pose);
     pose.translate(0.0, skull_y_offset, 0.0);
     pose.scale(1.1875, 1.1875, 1.1875);
+    pose
+}
+
+/// `SkullBlockRenderer.createWallTransformation`: against the wall it hangs on, turned to face
+/// away from it.
+pub fn wall_transformation(facing: Direction) -> Matrix4 {
+    let (step_x, _, step_z) = facing.step();
+    let mut matrix =
+        Matrix4::translation(0.5 - step_x as f32 * 0.25, 0.25, 0.5 - step_z as f32 * 0.25);
+    matrix.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        -facing.opposite().to_y_rot(),
+    )));
+    matrix.scale(-1.0, -1.0, 1.0);
+    matrix
+}
+
+/// `RotationSegment.convertToDegrees` for the sixteen segments.
+fn segment_degrees(segment: i32) -> f32 {
+    let degrees = (segment & 15) as f32 * 22.5;
+    if degrees >= 180.0 {
+        degrees - 360.0
+    } else {
+        degrees
+    }
+}
+
+/// `SkullBlockRenderer.createGroundTransformation`: on the floor, turned by one of the sixteen
+/// segments.
+pub fn ground_transformation(segment: i32) -> Matrix4 {
+    let mut matrix = Matrix4::translation(0.5, 0.0, 0.5);
+    matrix.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        -segment_degrees(segment),
+    )));
+    matrix.scale(-1.0, -1.0, 1.0);
+    matrix
+}
+
+/// The pose a skull block is drawn from, with `base` the pose of the block's corner.
+pub fn block_pose(base: &Pose, transformation: &Matrix4) -> Pose {
+    let mut pose = *base;
+    let mut transformation = *transformation;
+    // `MatrixUtil.isPureTranslation` works the flags of a transformation's matrix out the first
+    // time it is used.
+    transformation.determine_properties();
+    pose.mul_matrix(&transformation);
     pose
 }

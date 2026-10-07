@@ -3326,6 +3326,68 @@ public final class EntityOracle {
     }
 
     /**
+     * What the real `SkullBlockRenderer.submit` hands the collector for a skull block: the pose its
+     * wall or rotation gives, the light, the texture and the model posed for the animation.
+     */
+    private static JsonObject skullBlockPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var modelSet = net.minecraft.client.model.geom.EntityModelSet.vanilla();
+        var renderer = (net.minecraft.client.renderer.blockentity.SkullBlockRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class);
+        var modelsField = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class.getDeclaredField("modelByType");
+        modelsField.setAccessible(true);
+        java.util.function.Function<net.minecraft.world.level.block.SkullBlock.Type,
+            net.minecraft.client.model.object.skull.SkullModelBase> models = net.minecraft.util.Util.memoize(
+                type -> net.minecraft.client.renderer.blockentity.SkullBlockRenderer.createModel(modelSet, type));
+        modelsField.set(renderer, models);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.SkullBlockRenderState();
+            state.skullType = net.minecraft.world.level.block.SkullBlock.Types.valueOf(row.get("kind").getAsString());
+            var transformations = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.TRANSFORMATIONS;
+            state.transformation = row.get("wall").isJsonNull()
+                ? transformations.freeTransformations(row.get("rotation").getAsInt())
+                : transformations.wallTransformation(
+                    net.minecraft.core.Direction.valueOf(row.get("wall").getAsString().toUpperCase()));
+            state.animationProgress = Oracle.f32(row, "animation");
+            state.lightCoords = row.get("light").getAsInt();
+            state.renderType = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.getSkullRenderType(
+                state.skullType, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("light", (Integer) args[4]);
+                        var found = java.util.regex.Pattern.compile("textures/([a-z0-9_/]+)\\.png")
+                            .matcher(String.valueOf(args[3]));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(args[3]));
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(args[1]);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `BellRenderer.submit` hands the collector: the model with the bell swung for the
      * ticks and the side it was struck from, the light and the sprite.
      */
@@ -5803,6 +5865,9 @@ public final class EntityOracle {
         }
         if (operation.equals("chest_pose")) {
             return chestPose(request);
+        }
+        if (operation.equals("skull_block_pose")) {
+            return skullBlockPose(request);
         }
         if (operation.equals("bell_pose")) {
             return bellPose(request);

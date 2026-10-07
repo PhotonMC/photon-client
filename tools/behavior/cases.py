@@ -16073,6 +16073,7 @@ def entity_cases():
     yield from entity_chest_cases()
     yield from entity_shulker_box_cases()
     yield from entity_bell_cases()
+    yield from entity_skull_block_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -18005,6 +18006,27 @@ def entity_bell_cases():
             rows.append({"label": f"{shake} {ticks}", "ticks": float_bits(ticks), "shake": shake,
                          "light": 0xF000F0 - 17})
     yield {"case_id": "entity/bell-pose", "family": "entity", "operation": "bell_pose", "rows": rows}
+
+
+def entity_skull_block_cases():
+    """The real `SkullBlockRenderer` for each skull standing at each of the sixteen turns and
+    hanging on each wall, with the jaw and ears at several animation times."""
+    rows = []
+    kinds = ("SKELETON", "WITHER_SKELETON", "PLAYER", "ZOMBIE", "CREEPER", "PIGLIN", "DRAGON")
+    for kind in kinds:
+        for rotation in range(16):
+            rows.append({"label": f"{kind} floor {rotation}", "kind": kind, "wall": None,
+                         "rotation": rotation, "animation": float_bits(0.0),
+                         "light": 0xF000F0 - 17})
+        for wall in ("north", "south", "east", "west"):
+            rows.append({"label": f"{kind} wall {wall}", "kind": kind, "wall": wall, "rotation": 0,
+                         "animation": float_bits(0.0), "light": 240})
+    for kind in ("PIGLIN", "DRAGON"):
+        for animation in (0.5, 7.25, 33.0, 120.5):
+            rows.append({"label": f"{kind} animated {animation}", "kind": kind, "wall": None,
+                         "rotation": 4, "animation": float_bits(animation), "light": 15728880})
+    yield {"case_id": "entity/skull-block-pose", "family": "entity", "operation": "skull_block_pose",
+           "rows": rows}
 
 
 def entity_equippable_cases():

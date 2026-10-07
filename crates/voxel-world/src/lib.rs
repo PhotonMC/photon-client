@@ -96,7 +96,7 @@ pub mod wolf;
 pub use block_entity::*;
 pub use block_state::*;
 pub use border::*;
-pub use chest::{ChestView, ShulkerBoxView};
+pub use chest::{ChestView, ShulkerBoxView, SkullBlockView};
 pub use chunk::*;
 pub use collision::*;
 pub use constants::*;
@@ -1462,6 +1462,7 @@ impl ClientWorld {
     pub fn tick(&mut self) {
         self.world_border.tick();
         self.block_animations.tick();
+        self.tick_skulls();
         self.game_time = self.game_time.wrapping_add(1);
         let local_player_is_passenger = self.local_player.as_ref().is_some_and(|player| {
             self.entity_vehicle_id(player.id).is_some_and(|vehicle_id| {

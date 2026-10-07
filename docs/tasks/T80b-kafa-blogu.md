@@ -19,4 +19,6 @@ Başka blok entity aileleri.
 `docs/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
 
 ## Devir notu
-(boş)
+Yapılan: yerleştirilmiş kafa/kafatası blokları (yedi tür, ayakta ve duvarda, güçlü ejderha/piglin animasyonu) gerçek `SkullBlockRenderer`'a bit bit eşit. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Sapma: oyuncu kafası profili çözülmez (hep varsayılan görünüm; görünüm indirmesi M9'a bağlı).
+Açık: güçlü animasyon canlıda denenmedi.

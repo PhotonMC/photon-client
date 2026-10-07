@@ -23739,6 +23739,56 @@ fn bell_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// `skull_block_pose`: where, with what texture and light a skull block is drawn, and the model
+/// posed for the animation.
+fn skull_block_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::MobModel;
+    use voxel_render::skull::{SkullKind, block_pose, ground_transformation, wall_transformation};
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let animation = f32::from_bits(
+            u32::from_str_radix(row["animation"].as_str().ok_or("animation")?, 16)
+                .map_err(|error| error.to_string())?,
+        );
+        let kind = match row["kind"].as_str().ok_or("kind")? {
+            "SKELETON" => SkullKind::Skeleton,
+            "WITHER_SKELETON" => SkullKind::WitherSkeleton,
+            "PLAYER" => SkullKind::Player,
+            "ZOMBIE" => SkullKind::Zombie,
+            "CREEPER" => SkullKind::Creeper,
+            "PIGLIN" => SkullKind::Piglin,
+            "DRAGON" => SkullKind::Dragon,
+            _ => return Err("kind".to_owned()),
+        };
+        let transformation = match row["wall"].as_str() {
+            Some(name) => wall_transformation(
+                voxel_core::direction::Direction::from_name(name).ok_or("wall")?,
+            ),
+            None => ground_transformation(row["rotation"].as_i64().ok_or("rotation")? as i32),
+        };
+        let pose = block_pose(&Pose::default(), &transformation);
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        let layer = voxel_data::entity_model::layer(kind.layer()).ok_or("no such layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_skull(kind, animation);
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": matrix,
+            "light": row["light"],
+            "texture": kind.texture(),
+            "quads": posed_quads(&model),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
 fn camera_hurt_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
@@ -26011,6 +26061,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "chest_model" => return chest_model_result(request),
         "chest_pose" => return chest_pose_result(request),
         "bell_pose" => return bell_pose_result(request),
+        "skull_block_pose" => return skull_block_pose_result(request),
         "shulker_box_pose" => return shulker_box_pose_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),

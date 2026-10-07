@@ -12,7 +12,8 @@ use voxel_render::joml::Pose;
 use voxel_render::mob_model::mob_vertices_posed;
 use voxel_render::scene::Vertex;
 use voxel_render::shulker_box;
-use voxel_world::ShulkerBoxView;
+use voxel_render::skull::{SkullKind, ground_transformation, wall_transformation};
+use voxel_world::{ShulkerBoxView, SkullBlockView};
 
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
@@ -62,7 +63,9 @@ const TEXTURES: [&str; 37] = [
 ];
 
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    TEXTURES.into_iter()
+    TEXTURES
+        .into_iter()
+        .chain(SkullKind::ALL.into_iter().map(SkullKind::texture))
 }
 
 /// `ChestRenderer.getChestMaterial` from the block's name.
@@ -117,6 +120,15 @@ pub fn block_entities(
                     view,
                     (x, y, z),
                     shulker,
+                ));
+            } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
+                vertices.extend(skull_vertices(
+                    session,
+                    models,
+                    textures,
+                    view,
+                    (x, y, z),
+                    skull,
                 ));
             } else if let Some(shake) = world.bell_shake((x, y, z), partial) {
                 vertices.extend(bell_vertices(
@@ -221,5 +233,41 @@ fn bell_vertices(
         (y - view.origin[1]) as f32,
         (z - view.origin[2]) as f32,
     );
+    mob_vertices_posed(model, &pose, rect, (light, false))
+}
+
+/// One skull or head block, turned to its wall or its segment, its jaw or ears at the animation.
+fn skull_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    skull: SkullBlockView,
+) -> Vec<Vertex> {
+    // A wall head is named for its wall (`minecraft:zombie_wall_head`); the item's name is not.
+    let Some(kind) = SkullKind::of_item(&skull.name.replace("_wall_", "_")) else {
+        return Vec::new();
+    };
+    let (Some(rect), Some(model)) = (textures.rect(kind.texture()), models.model(kind.layer()))
+    else {
+        return Vec::new();
+    };
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    model.setup_skull(kind, skull.animation);
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let transformation = match skull.wall {
+        Some(facing) => wall_transformation(facing),
+        None => ground_transformation(skull.rotation),
+    };
+    let pose = voxel_render::skull::block_pose(&base, &transformation);
     mob_vertices_posed(model, &pose, rect, (light, false))
 }

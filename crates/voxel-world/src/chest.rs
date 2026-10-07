@@ -1,5 +1,5 @@
 //! The block entities the client draws (`ChestBlockEntity`, `EnderChestBlockEntity`,
-//! `ShulkerBoxBlockEntity`, `BellBlockEntity`): which blocks they are, the partner half of a double
+//! `ShulkerBoxBlockEntity`, `BellBlockEntity`, `SkullBlockEntity`): which blocks they are, the partner half of a double
 //! chest, and the lid or the clapper that moves as the server's block events say.
 
 use std::collections::HashMap;
@@ -122,6 +122,32 @@ impl BellShake {
     }
 }
 
+/// `SkullBlockEntity`'s animation: counts the ticks a powered dragon or piglin head has been on.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct SkullAnimation {
+    ticks: i32,
+    animating: bool,
+}
+
+impl SkullAnimation {
+    /// `SkullBlockEntity.animation`.
+    fn tick(&mut self, powered: bool) {
+        self.animating = powered;
+        if powered {
+            self.ticks += 1;
+        }
+    }
+
+    /// `getAnimation`.
+    fn animation(&self, partial: f32) -> f32 {
+        if self.animating {
+            self.ticks as f32 + partial
+        } else {
+            self.ticks as f32
+        }
+    }
+}
+
 /// A table of which blocks are of some classes, by the block's registry id.
 fn is_of_classes(
     state_id: i32,
@@ -160,9 +186,18 @@ pub(crate) fn is_bell_state(state_id: i32) -> bool {
     is_of_classes(state_id, &[BlockClass::BellBlock], &BLOCKS)
 }
 
+/// Whether a block state is a skull's or a head's.
+pub(crate) fn is_skull_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::AbstractSkullBlock], &BLOCKS)
+}
+
 /// Whether a block state has a block entity the client draws.
 pub(crate) fn is_drawn_state(state_id: i32) -> bool {
-    is_chest_state(state_id) || is_shulker_state(state_id) || is_bell_state(state_id)
+    is_chest_state(state_id)
+        || is_shulker_state(state_id)
+        || is_bell_state(state_id)
+        || is_skull_state(state_id)
 }
 
 /// The chest blocks of a chunk's sections.
@@ -209,12 +244,26 @@ pub struct ShulkerBoxView {
     pub facing: Direction,
 }
 
+/// What a skull or head block is, for drawing it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SkullBlockView {
+    /// The block's name (`minecraft:zombie_head`, `minecraft:dragon_wall_head`…).
+    pub name: &'static str,
+    /// The wall a wall skull hangs on's facing, none for a standing one.
+    pub wall: Option<Direction>,
+    /// `SkullBlock.ROTATION` of a standing one.
+    pub rotation: i32,
+    /// `SkullBlockEntity.getAnimation`.
+    pub animation: f32,
+}
+
 /// The lids the server has opened, by block.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct BlockAnimations {
     pub(crate) chests: HashMap<(i32, i32, i32), ChestLid>,
     pub(crate) shulkers: HashMap<(i32, i32, i32), ShulkerLid>,
     pub(crate) bells: HashMap<(i32, i32, i32), BellShake>,
+    pub(crate) skulls: HashMap<(i32, i32, i32), SkullAnimation>,
 }
 
 impl BlockAnimations {
@@ -234,6 +283,7 @@ impl BlockAnimations {
         self.chests.remove(pos);
         self.shulkers.remove(pos);
         self.bells.remove(pos);
+        self.skulls.remove(pos);
     }
 }
 
@@ -339,6 +389,66 @@ impl ClientWorld {
             .map_or(0.0, |lid| lid.progress(partial))
     }
 
+    /// The skull or head at a block.
+    pub fn skull_block_view(&self, pos: (i32, i32, i32), partial: f32) -> Option<SkullBlockView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_skull_state(state) {
+            return None;
+        }
+        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let property = |key| crate::local_player::property(Some(state), key);
+        let wall = name
+            .contains("_wall_")
+            .then(|| property("facing").and_then(Direction::from_name))
+            .flatten();
+        Some(SkullBlockView {
+            name,
+            wall,
+            rotation: property("rotation")
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0),
+            animation: self
+                .block_animations
+                .skulls
+                .get(&pos)
+                .map_or(0.0, |skull| skull.animation(partial)),
+        })
+    }
+
+    /// `AbstractSkullBlock.getTicker`: the powered dragon and piglin heads count their ticks.
+    pub(crate) fn tick_skulls(&mut self) {
+        let mut animated = Vec::new();
+        for chunk in self.chunks.values() {
+            for &pos in &chunk.chests {
+                let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
+                    continue;
+                };
+                let name = crate::block::state_or_air(i64::from(state)).block().name;
+                if is_skull_state(state)
+                    && [
+                        "dragon_head",
+                        "dragon_wall_head",
+                        "piglin_head",
+                        "piglin_wall_head",
+                    ]
+                    .iter()
+                    .any(|head| name.strip_prefix("minecraft:") == Some(head))
+                {
+                    let powered =
+                        crate::local_player::property(Some(state), "powered") == Some("true");
+                    animated.push((pos, powered));
+                }
+            }
+        }
+        for (pos, powered) in animated {
+            self.block_animations
+                .skulls
+                .entry(pos)
+                .or_default()
+                .tick(powered);
+        }
+    }
+
     /// Whether a block is a bell, and how it is shaking: the ticks since the blow with the part
     /// of a tick that has passed, and the direction it was struck from while it still swings
     /// (`BellRenderer.extractRenderState`).
@@ -416,7 +526,17 @@ impl ClientWorld {
 mod tests {
     use voxel_core::direction::Direction;
 
-    use super::{BellShake, ChestLid, ShulkerLid};
+    use super::{BellShake, ChestLid, ShulkerLid, SkullAnimation};
+
+    #[test]
+    fn skull_counts_only_while_powered() {
+        let mut skull = SkullAnimation::default();
+        skull.tick(true);
+        skull.tick(true);
+        assert_eq!(skull.animation(0.5), 2.5);
+        skull.tick(false);
+        assert_eq!(skull.animation(0.5), 2.0);
+    }
 
     #[test]
     fn bell_swings_for_fifty_ticks_from_the_blow() {

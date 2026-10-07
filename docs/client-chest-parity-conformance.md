@@ -1,4 +1,4 @@
-# T79, T80 — Sandık, shulker kutusu ve çan blok entity çizimi — [client-parity]
+# T79, T80 — Sandık, shulker kutusu, çan ve kafa blok entity çizimi — [client-parity]
 
 Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
@@ -34,3 +34,11 @@ Gerçek `BellRenderer.submit` ile Rust `MobModel::setup_bell` aynı girdide kar�
 - `BellModel.setupAnim`: çalındığı yönün tersine `sin(tik/π)/(4 + tik/3)` kadar sallanır (kuzey/güney `x`, doğu/batı `z`); yukarı/aşağıdan çalınan çan sallanmaz. Çizici durumu `tik + kare kesri` ve çalındığı yönü (`shaking` iken) alır.
 - `BellBlockEntity`: `BlockEvent` 1 yönü (`from3DDataValue`) alır, sayacı sıfırlar ve sallanmayı başlatır; her tik sayaç artar, elli tikte durur. Gövde blok modelinde yoktur, yalnız bu çizici çizer.
 - Sapma: baskıncı yakındayken yankılanma (ses ve parçacık, `EntityTypeTags.RAIDERS`) yok. Canlıda yer ve tavan çanı görüldü; sallanma canlıda denenmedi.
+
+## Kafa ve kafatası blokları (T80b)
+
+Gerçek `SkullBlockRenderer.submit` ile Rust `voxel_render::skull::{wall_transformation, ground_transformation, block_pose}` ve `MobModel::setup_skull` aynı girdide karşılaştırılır (`entity/skull-block-pose`, 148 satır: yedi tür × on altı dönüş ve dört duvar, piglin ve ejderha için dört animasyon zamanı): matris, ışık, doku ve animasyona kurulmuş modelin dörtgenleri.
+
+- Ayakta duran kafa on altı dilimden birine döner (`RotationSegment`, 22,5° adım, 180° üstü eksiye sarılır), duvardaki kafa duvardan çeyrek blok içeride ve duvardan uzağa bakar; ikisi de `(-1, -1, 1)` ölçeklidir. Doku türün kendisidir, oyuncu kafası varsayılan görünümü giyer.
+- `SkullBlockEntity.animation`: yalnız `powered` ejderha ve piglin kafaları sayaç artırır; güç gidince sayaç kalır, kare kesri eklenmez.
+- Sapma: oyuncu kafasının profili (`BlockEntityData` ile gelen `profile`) çözülmez, her oyuncu kafası varsayılan görünümü giyer (profil çözümü ve görünüm indirmesi için kimlik doğrulama ve oturum sunucusu gerekir, M9). `note_block_sound` ve özel ad çizimi etkilemez. Canlıda yedi tür görüldü; güçlü ejderha/piglin animasyonu canlıda denenmedi.
