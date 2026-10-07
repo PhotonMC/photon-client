@@ -49,11 +49,11 @@ use super::{
     encode_inventory_quick_move_state_correction,
     encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
     encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
-    encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_set_carried_item,
-    encode_stop_destroy_block, encode_use_item, encode_use_item_on, encode_use_item_on_hit,
-    pack_block_position, parse_add_entity_packet, parse_block_destruction_packet,
-    parse_block_entity_data_packet, parse_block_update_packet, parse_chunk_packet,
-    parse_container_close_packet, parse_container_set_content_packet,
+    encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_set_beacon,
+    encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
+    encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
+    parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
+    parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
     parse_container_set_slot_packet, parse_cursor_item_packet, parse_damage_event_packet,
     parse_entity_equipment_packet, parse_entity_event_packet, parse_entity_metadata_packet,
     parse_entity_position_sync_packet, parse_entity_teleport_packet,
@@ -2760,6 +2760,16 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn a_beacon_choice_is_two_optional_effect_ids() {
+    assert_eq!(encode_set_beacon(None, None), vec![0, 0]);
+    assert_eq!(encode_set_beacon(Some(10), None), vec![1, 10, 0]);
+    assert_eq!(
+        encode_set_beacon(Some(1), Some(300)),
+        vec![1, 1, 1, 0xAC, 0x02]
+    );
 }
 
 #[test]

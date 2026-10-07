@@ -997,6 +997,18 @@ impl PlaySession {
         })
     }
 
+    /// `ServerboundSetBeaconPacket`: the effects the beacon's screen chose, by registry id.
+    pub fn set_beacon(
+        &mut self,
+        primary: Option<i32>,
+        secondary: Option<i32>,
+    ) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_SET_BEACON_PACKET_ID, |output| {
+            output.extend_from_slice(&encode_set_beacon(primary, secondary));
+            Ok(())
+        })
+    }
+
     /// `LoomMenu.slotsChanged`'s list of patterns: with a banner and a dye in,
     /// those that need no item, or those the pattern item in the loom gives.
     /// Nothing once the banner has six layers.

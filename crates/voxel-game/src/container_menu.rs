@@ -94,6 +94,8 @@ pub enum MenuKind {
     Enchantment,
     /// `BrewingStandMenu`: three bottles, the ingredient and the fuel.
     Brewing,
+    /// `BeaconMenu`: the payment slot.
+    Beacon,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -124,6 +126,7 @@ impl MenuKind {
             6 => Self::Dispenser,
             8 => Self::Anvil,
             10 => Self::Furnace(Smelter::BlastFurnace),
+            9 => Self::Beacon,
             11 => Self::Brewing,
             12 => Self::Crafting,
             13 => Self::Enchantment,
@@ -152,6 +155,7 @@ impl MenuKind {
             Self::Furnace(_) | Self::Grindstone | Self::Cartography | Self::Anvil => 3,
             Self::Stonecutter | Self::Enchantment => 2,
             Self::Brewing => 5,
+            Self::Beacon => 1,
             Self::Loom | Self::Smithing => 4,
         }
     }
@@ -851,6 +855,7 @@ impl ContainerMenu {
             || (matches!(self.kind, MenuKind::Furnace(_)) && index == 1 && is_bucket(stack))
             || (self.kind == MenuKind::Enchantment && index == 0)
             || (self.kind == MenuKind::Brewing && index < 3)
+            || (self.kind == MenuKind::Beacon && index == 0)
         {
             1
         } else {
@@ -1181,6 +1186,38 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `BeaconMenu.quickMoveStack`: a single payment item goes to the empty payment slot.
+    fn quick_move_beacon(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let keeps_going = if index == 0 {
+            self.move_item_stack_to(&mut stack, 1, 37, true)
+        } else if self.slots[0].is_none() && self.may_place(0, &stack) && stack.item_count() == 1 {
+            self.move_item_stack_to(&mut stack, 0, 1, false)
+        } else if index < 28 {
+            self.move_item_stack_to(&mut stack, 28, 37, false)
+        } else if index < 37 {
+            self.move_item_stack_to(&mut stack, 1, 28, false)
+        } else {
+            self.move_item_stack_to(&mut stack, 1, 37, false)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !keeps_going {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        Some(clicked)
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
@@ -1193,6 +1230,7 @@ impl ContainerMenu {
             | MenuKind::Anvil
             | MenuKind::Enchantment => self.quick_move_transform(index, player),
             MenuKind::Brewing => self.quick_move_brewing(index, player),
+            MenuKind::Beacon => self.quick_move_beacon(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
@@ -1468,7 +1506,9 @@ mod tests {
             Some(63)
         );
         assert_eq!(MenuKind::from_menu_type(16), Some(MenuKind::Hopper));
-        assert_eq!(MenuKind::from_menu_type(9), None);
+        assert_eq!(MenuKind::from_menu_type(9), Some(MenuKind::Beacon));
+        // The lectern's menu is not modelled yet.
+        assert_eq!(MenuKind::from_menu_type(17), None);
     }
 
     #[test]

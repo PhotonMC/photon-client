@@ -798,7 +798,7 @@ def gui_container_screen_cases():
     own menu: labels, textures, sprites, name box and what each shows of its
     data. Slots hold items, which are not recorded."""
     def screen(label, menu, title_key, slots=(), data=None, xp=None, keys=(), sync_slot=None,
-               mouse=(0, 0), width=427, height=240, stonecutter=()):
+               mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True):
         row = {"label": label, "width": width, "height": height, "mouse_x": mouse[0],
                "mouse_y": mouse[1], "menu": f"minecraft:{menu}", "title_key": title_key,
                "container_id": 4, "game_mode": "survival", "selected": 0, "state_id": 0,
@@ -811,6 +811,10 @@ def gui_container_screen_cases():
             row["xp_level"] = xp
         if sync_slot is not None:
             row["sync_slot"] = sync_slot
+        if data_after is not None:
+            row["data_after"] = data_after
+        if not tooltips:
+            row["tooltips"] = False
         if stonecutter:
             row["stonecutter_inputs"] = list(stonecutter)
             # Its entries show no item the reference can name here.
@@ -849,6 +853,20 @@ def gui_container_screen_cases():
         screen("brewing-end", "brewing_stand", "container.brewing", data=[1, 0]),
         screen("brewing-items", "brewing_stand", "container.brewing",
                slots=[(0, "potion", 1), (3, "nether_wart", 2)], data=[120, 11], sync_slot=3),
+        screen("beacon-empty", "beacon", "container.beacon", data=[0, 0, 0]),
+        screen("beacon-level-one", "beacon", "container.beacon", data=[1, 0, 0]),
+        screen("beacon-level-three", "beacon", "container.beacon", data=[3, 0, 0]),
+        screen("beacon-level-four", "beacon", "container.beacon", data=[4, 0, 0]),
+        screen("beacon-primary", "beacon", "container.beacon", data=[4, 0, 0], data_after=[[1, 1]]),
+        screen("beacon-secondary", "beacon", "container.beacon", data=[4, 0, 0],
+               data_after=[[1, 11], [2, 10]]),
+        screen("beacon-upgrade", "beacon", "container.beacon", data=[4, 0, 0],
+               data_after=[[1, 10], [2, 10]]),
+        screen("beacon-payment", "beacon", "container.beacon", slots=[(0, "emerald", 1)],
+               data=[4, 0, 0], data_after=[[1, 1]], sync_slot=0),
+        screen("beacon-hover-power", "beacon", "container.beacon", data=[4, 0, 0], mouse=(160, 40), tooltips=False),
+        screen("beacon-hover-confirm", "beacon", "container.beacon", slots=[(0, "emerald", 1)],
+               data=[4, 0, 0], data_after=[[1, 1]], sync_slot=0, mouse=(270, 125), tooltips=False),
         screen("smithing-empty", "smithing", "container.upgrade"),
         screen("smithing-template", "smithing", "container.upgrade",
                slots=[(0, "netherite_upgrade_smithing_template", 1)]),

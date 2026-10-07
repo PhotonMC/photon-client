@@ -1801,6 +1801,12 @@ impl Controls {
                     screen.mouse_released(self.gui_mouse, button, shift, &menu)
                 };
                 run_actions(session, &mut self.screen, actions)?;
+                // A button of the screen closed it: the mouse is grabbed again.
+                if self.screen.is_none() {
+                    surface.set_cursor_captured(true);
+                    self.captured = true;
+                    self.last_cursor = None;
+                }
             }
             glfw::WindowEvent::Scroll(_, y) => screen.mouse_scrolled(y),
             glfw::WindowEvent::CursorPos(x, y) => {

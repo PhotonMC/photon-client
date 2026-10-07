@@ -127,6 +127,7 @@ impl ContainerMenu {
             }
             (MenuKind::Brewing, 3) => stacking(stack).is_some_and(|item| item.brewing_ingredient),
             (MenuKind::Brewing, 4) => self.in_tag(stack, "minecraft:brewing_fuel"),
+            (MenuKind::Beacon, 0) => self.in_tag(stack, "minecraft:beacon_payment_items"),
             (
                 MenuKind::Stonecutter
                 | MenuKind::Grindstone
@@ -135,7 +136,8 @@ impl ContainerMenu {
                 | MenuKind::Smithing
                 | MenuKind::Anvil
                 | MenuKind::Enchantment
-                | MenuKind::Brewing,
+                | MenuKind::Brewing
+                | MenuKind::Beacon,
                 _,
             ) => true,
             _ => return None,

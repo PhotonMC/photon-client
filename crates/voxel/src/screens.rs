@@ -190,6 +190,14 @@ pub fn run_actions(
             }
             ScreenAction::Rename(name) => session.rename_item(&name)?,
             ScreenAction::Button(button) => session.container_button(button)?,
+            ScreenAction::SetBeacon { primary, secondary } => {
+                session.set_beacon(primary, secondary)?;
+            }
+            ScreenAction::Close => {
+                *screen = None;
+                session.clear_recipe_ghost();
+                session.close_inventory()?;
+            }
             ScreenAction::PlaceRecipe { recipe, shift } => session.place_recipe(recipe, shift)?,
             ScreenAction::RecipeBookSettings {
                 book_type,

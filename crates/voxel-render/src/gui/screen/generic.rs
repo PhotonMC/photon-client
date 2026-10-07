@@ -3,6 +3,7 @@
 //! each `AbstractContainerScreen` over a generic menu. The clicks themselves
 //! run in [`voxel_game::container_menu`].
 
+mod beacon;
 mod transform;
 
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
@@ -21,6 +22,7 @@ fn image(kind: MenuKind) -> (i32, i32) {
         MenuKind::Dispenser | MenuKind::Crafting | MenuKind::Furnace(_) => (176, 166),
         MenuKind::Hopper => (176, 133),
         MenuKind::ShulkerBox | MenuKind::Inventory => (176, 167),
+        MenuKind::Beacon => (230, 219),
         _ => (176, 166),
     }
 }
@@ -54,19 +56,20 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
         };
     }
     // `addStandardInventorySlots`: three rows, then the hotbar 58 lower.
-    let inventory_top = match kind {
-        MenuKind::Chest(rows) => rows as i32 * 18 + 31,
-        MenuKind::Hopper => 51,
-        _ => 84,
+    let (inventory_left, inventory_top) = match kind {
+        MenuKind::Chest(rows) => (8, rows as i32 * 18 + 31),
+        MenuKind::Hopper => (8, 51),
+        MenuKind::Beacon => (36, 137),
+        _ => (8, 84),
     };
     let own = index - top;
     if own < 27 {
         (
-            8 + (own % 9) as i32 * 18,
+            inventory_left + (own % 9) as i32 * 18,
             inventory_top + (own / 9) as i32 * 18,
         )
     } else {
-        (8 + (own - 27) as i32 * 18, inventory_top + 58)
+        (inventory_left + (own - 27) as i32 * 18, inventory_top + 58)
     }
 }
 
@@ -115,6 +118,8 @@ pub struct GenericScreen {
     book: Option<RecipeBookPanel>,
     /// What only the menus that transform their items keep.
     extras: transform::Extras,
+    /// The beacon's buttons, for its menu.
+    beacon: Option<beacon::BeaconPanel>,
 }
 
 impl GenericScreen {
@@ -137,6 +142,7 @@ impl GenericScreen {
             mouse: ContainerMouse::default(),
             book,
             extras: transform::Extras::new(),
+            beacon: (kind == MenuKind::Beacon).then(beacon::BeaconPanel::new),
         }
     }
 
@@ -288,8 +294,72 @@ impl GenericScreen {
     }
 }
 
+impl GenericScreen {
+    /// The labels of the screen (and, for the beacon, its buttons), which the reference draws
+    /// with them: the title and the inventory's, or the beacon's two powers.
+    fn draw_labels(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        mouse: (f64, f64),
+        (left, top): (i32, i32),
+        (width, height): (i32, i32),
+    ) {
+        if let Some(panel) = &self.beacon {
+            if let Some((key, suffix)) = panel.draw(draw, (left, top), mouse) {
+                let name = format!("{}{suffix}", self.titles.lang.text(&key));
+                self.extras.pending_tooltip = Some(vec![crate::gui::chat::plain_runs(&name)]);
+            }
+            // `BeaconScreen.extractLabels`: two centred labels instead of the title.
+            for (key, x) in [
+                ("block.minecraft.beacon.primary", 62),
+                ("block.minecraft.beacon.secondary", 169),
+            ] {
+                let label = self.titles.lang.text(key);
+                draw.frame.text_with_shadow(
+                    draw.atlas,
+                    draw.font,
+                    &label,
+                    left + x - draw.font.width(&label) / 2,
+                    top + 10,
+                    0xFFE0_E0E0,
+                );
+            }
+        } else {
+            // The dispenser centres its title; the others keep it at the corner.
+            let (label_x, label_y) = transform::title_label(self.kind);
+            let title_x = if matches!(
+                self.kind,
+                MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing
+            ) {
+                (width - draw.font.width(&self.titles.title)) / 2
+            } else {
+                label_x
+            };
+            draw.frame.text(
+                draw.atlas,
+                draw.font,
+                &self.titles.title,
+                left + title_x,
+                top + label_y,
+                0xFF40_4040,
+            );
+            draw.frame.text(
+                draw.atlas,
+                draw.font,
+                &self.titles.inventory,
+                left + 8,
+                top + height - 94,
+                0xFF40_4040,
+            );
+        }
+    }
+}
+
 impl Screen for GenericScreen {
     fn tick(&mut self, menu: &ContainerMenu) {
+        if let Some(panel) = &mut self.beacon {
+            panel.tick(menu);
+        }
         if self.kind == MenuKind::Smithing {
             self.extras.tick_smithing(menu);
         }
@@ -312,6 +382,13 @@ impl Screen for GenericScreen {
         menu: &ContainerMenu,
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
+        let origin = (self.layout.left(), self.layout.top());
+        if button == 0
+            && let Some(panel) = &mut self.beacon
+            && let Some(actions) = panel.click(mouse, origin, menu)
+        {
+            return actions;
+        }
         if let Some(entry) = self.stone_click(mouse, menu) {
             // `clickMenuButton`: one that is not the chosen one, and is an entry.
             let chosen = i32::from(menu.data.first().copied().unwrap_or(-1));
@@ -476,32 +553,7 @@ impl Screen for GenericScreen {
             return;
         }
         self.draw_extras(draw, menu, mouse, (left, top));
-        // The dispenser centres its title; the others keep it at the corner.
-        let (label_x, label_y) = transform::title_label(self.kind);
-        let title_x = if matches!(
-            self.kind,
-            MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing
-        ) {
-            (width - draw.font.width(&self.titles.title)) / 2
-        } else {
-            label_x
-        };
-        draw.frame.text(
-            draw.atlas,
-            draw.font,
-            &self.titles.title,
-            left + title_x,
-            top + label_y,
-            0xFF40_4040,
-        );
-        draw.frame.text(
-            draw.atlas,
-            draw.font,
-            &self.titles.inventory,
-            left + 8,
-            top + height - 94,
-            0xFF40_4040,
-        );
+        self.draw_labels(draw, mouse, (left, top), (width, height));
         self.hovered = self.hovered_slot(mouse);
         let kind = self.kind;
         if kind == MenuKind::Smithing {
@@ -529,7 +581,9 @@ impl Screen for GenericScreen {
             book.draw_ghost(draw, menu, (left, top), &|slot| slot_position(kind, slot));
         }
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
-        if let Some(lines) = self.extras.pending_tooltip.take() {
+        if let Some(lines) = self.extras.pending_tooltip.take()
+            && draw.widget_tooltips
+        {
             self.layout.tooltip(draw, &lines, mouse);
         }
         if menu.carried.is_none()

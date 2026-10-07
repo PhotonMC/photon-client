@@ -26679,6 +26679,7 @@ fn menu_named(
         "anvil" => MenuKind::Anvil,
         "enchantment" => MenuKind::Enchantment,
         "brewing_stand" => MenuKind::Brewing,
+        "beacon" => MenuKind::Beacon,
         "grindstone" => MenuKind::Grindstone,
         "loom" => MenuKind::Loom,
         "smithing" => MenuKind::Smithing,
@@ -26743,6 +26744,21 @@ fn menu_named(
             .iter()
             .filter_map(|value| Some(value.as_i64()? as i16))
             .collect();
+    }
+    // What the server sends once the screen is open lands in the same data.
+    for pair in row
+        .get("data_after")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let (Some(index), Some(value)) = (pair[0].as_u64(), pair[1].as_i64()) else {
+            continue;
+        };
+        if menu.data.len() <= index as usize {
+            menu.data.resize(index as usize + 1, 0);
+        }
+        menu.data[index as usize] = value as i16;
     }
     if let Some(level) = row.get("xp_level").and_then(Value::as_i64) {
         menu.xp_level = level as i32;

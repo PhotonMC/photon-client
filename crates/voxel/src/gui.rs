@@ -622,6 +622,7 @@ impl Gui {
                 tooltip: &mut tooltip_lines,
                 control_held: controls.control_held,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
+                widget_tooltips: true,
                 book: session.world().recipe_book(),
                 tags: session.world().block_state_registry().item_tags(),
             };

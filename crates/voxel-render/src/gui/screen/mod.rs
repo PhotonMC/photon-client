@@ -46,6 +46,9 @@ pub struct ScreenDraw<'a, 'b> {
     pub control_held: bool,
     /// The fraction of the tick the frame is drawn at.
     pub partial: f32,
+    /// Whether the tooltips the screen's own widgets ask for are drawn (the reference draws them
+    /// last, after everything a draw log compares).
+    pub widget_tooltips: bool,
 }
 
 /// A click a screen asks the session to run.
@@ -60,6 +63,13 @@ pub enum ScreenAction {
     /// A button of the open menu pressed (`ContainerButtonClick`): a
     /// stonecutter recipe, a loom pattern or an enchantment.
     Button(i32),
+    /// The beacon's screen confirmed its choice (`SetBeacon`), by effect registry id.
+    SetBeacon {
+        primary: Option<i32>,
+        secondary: Option<i32>,
+    },
+    /// The screen closes the container (`LocalPlayer.closeContainer`).
+    Close,
     /// The recipe book asks the server to place a recipe (`PlaceRecipe`).
     PlaceRecipe { recipe: i32, shift: bool },
     /// The recipe book was opened or closed, or its filter flipped.

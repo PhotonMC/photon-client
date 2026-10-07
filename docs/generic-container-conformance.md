@@ -132,3 +132,7 @@ türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
 
 `MenuKind::Brewing` (menü türü 11): şişe yuvaları 0–2 (yalnız iksir, sıçrayan/kalıcı iksir ve cam şişe, hepsi 1'lik), bileşen 3 (`PotionBrewing.isIngredient`: eşya tanımındaki `brewing_ingredient` bayrağı, `BlockOracle`'daki istemcinin kendi `PotionBrewing.bootstrap`'ından üretilir), yakıt 4 (`brewing_fuel` etiketi). `quickMoveStack`, Java'nın yakıt yolundaki tuhaflığıyla (yakıta taşıma tıklamayı bitirir) oracle'da 3 satırla Java ile birebir. Ekran (`BrewingStandScreen`): arka plan, yakıt çubuğu, ok ve kabarcıklar `ContainerSetData` değerlerinden (0: kaynama süresi, 1: yakıt), boş yuva simgeleri; `container_screen` oracle'ında 7 satır. Canlıda bakılmadı.
 
+## İşaret ışığı
+
+`MenuKind::Beacon` (menü türü 9): tek ödeme yuvası (`beacon_payment_items` etiketi, 1'lik), `quickMoveStack` (tek eşya boş ödeme yuvasına) oracle'da 2 satırla Java ile birebir. Ekran (`BeaconScreen`, 230×219): dört kademenin güç düğmeleri, ikincil gücün ikinci seviyesi, onay ve iptal; düğmelerin açık/seçili durumu `ContainerSetData` seviyesinden (0) ve seçilen etkilerden (1, 2: etki kimliği + 1), ilk tikten sonra. Onay `SetBeacon` paketini gönderip kabı kapatır, iptal yalnız kapatır (`ScreenAction::{SetBeacon, Close}`). `container_screen` oracle'ında 10 satır Java ile birebir; tıklama davranışı birim testle (oracle fare tıklaması sürmüyor). Sapma: düğme ipucu gecikmesiz çıkar (Java yarım saniye bekler); yük eşyaları simgeleri (`graphics.item`) çizilmiyor. Canlıda bakılmadı.
+

@@ -2734,6 +2734,9 @@ public final class GuiOracle {
                     case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
                         (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
                         Component.translatable("container.grindstone_title"));
+                    case "minecraft:beacon" -> new net.minecraft.client.gui.screens.inventory.BeaconScreen(
+                        (net.minecraft.world.inventory.BeaconMenu) menu, inventory,
+                        Component.translatable("container.beacon"));
                     case "minecraft:brewing_stand" -> new net.minecraft.client.gui.screens.inventory.BrewingStandScreen(
                         (net.minecraft.world.inventory.BrewingStandMenu) menu, inventory,
                         Component.translatable("container.brewing"));
@@ -2755,8 +2758,15 @@ public final class GuiOracle {
             var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(screen);
-            if (menu instanceof net.minecraft.world.inventory.SmithingMenu) {
-                // Its empty slots show their icons once the screen has ticked.
+            if (row.has("data_after")) {
+                // What the server sends once the screen is open: the screen hears the change.
+                for (var pair : row.getAsJsonArray("data_after")) {
+                    menu.setData(pair.getAsJsonArray().get(0).getAsInt(), pair.getAsJsonArray().get(1).getAsInt());
+                }
+            }
+            if (menu instanceof net.minecraft.world.inventory.SmithingMenu
+                || menu instanceof net.minecraft.world.inventory.BeaconMenu) {
+                // Its empty slots show their icons, and a beacon's buttons their state, once the screen has ticked.
                 var tick = net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class
                     .getDeclaredMethod("containerTick");
                 tick.setAccessible(true);
