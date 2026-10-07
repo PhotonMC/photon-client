@@ -188,7 +188,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T78](T78-seviye-olaylari.md) | `LevelEvent` ve `BlockEvent` işleyicileri | L | T71, T64b | açık |
 | [T79](T79-blok-entity-cizici-iskeleti.md) | Blok entity çizici iskeleti ve sandık ailesi | L | – | bitti (864fe2b0) |
 | [T79b](T79b-shulker-yatak.md) | Shulker kutusu çizimi | M | T79 | bitti (de6b3611) |
-| [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | bölündü |
+| [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | bölündü (4077713c) |
 | [T80b](T80b-kafa-blogu.md) | Yerleştirilmiş kafa ve kafatası blokları | M | T80 | açık |
 | [T80c](T80c-bayrak-blogu.md) | Bayrak bloğu | M | T80 | açık |
 | [T80d](T80d-tabela-blogu.md) | Tabela bloğu (ayakta ve asılı) | L | T80 | açık |
