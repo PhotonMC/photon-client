@@ -936,8 +936,8 @@ impl ClientWorld {
         let camel = horse.is_camel();
         let on_ground = horse.on_ground;
         let state = horse
-            .horse
-            .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+            .kind
+            .horse_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
         // `Camel.onPlayerJump`: only when it has rested from its last dash and stands on the ground.
         if camel && !(state.camel.dash_cooldown() <= 0 && on_ground) {
             return;
@@ -1095,19 +1095,19 @@ fn write_back_camel(
     game_time: i64,
 ) {
     let horse = entity
-        .horse
-        .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+        .kind
+        .horse_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
     if ride.stand_up {
         horse.camel.stand_up(game_time);
         entity.pose = crate::entity::ClientEntityPose::Standing;
     }
     if let Some(cooldown) = ride.dash_cooldown {
-        let horse = entity.horse.as_mut().expect("made above");
+        let horse = entity.kind.horse_mut().expect("made above");
         horse.camel.set_dash_cooldown(cooldown);
         horse.camel.set_dashing(true);
     }
     // `Camel.tick`: a sitting camel in the water stands up at once.
-    let horse = entity.horse.as_mut().expect("made above");
+    let horse = entity.kind.horse_mut().expect("made above");
     if horse.camel.sitting() && in_water {
         horse.camel.stand_up_instantly(game_time);
         entity.pose = crate::entity::ClientEntityPose::Standing;

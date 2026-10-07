@@ -734,71 +734,18 @@ pub struct ClientEntity {
     pub(crate) passenger_ids: Vec<i32>,
     /// What the server changed of the attributes the type starts with.
     pub(crate) attributes: Vec<ClientAttributeState>,
-    /// A rabbit's hop and animation states, made when it first ticks.
-    pub(crate) rabbit: Option<Box<crate::rabbit::RabbitState>>,
-    /// A copper golem's animation states, made when it first ticks.
-    pub(crate) copper_golem: Option<Box<crate::copper_golem::CopperGolemAnimations>>,
-    /// A squid's tentacles and body turns, made when it first ticks.
-    pub(crate) squid: Option<Box<crate::squid::SquidState>>,
-    /// An axolotl's animators and animation states, made when it first ticks.
-    pub(crate) axolotl: Option<Box<crate::axolotl::AxolotlState>>,
-    /// A boat's hit, bubbles and paddles, made when its data first says something or it ticks.
-    pub(crate) boat: Option<Box<crate::boat::BoatState>>,
-    /// A bat's animation states and an allay's progress, made when they first tick.
-    pub(crate) bat: Option<Box<crate::bat::BatState>>,
-    /// A parrot's wing beats, made when it first ticks.
-    pub(crate) parrot: Option<Box<crate::parrot::ParrotState>>,
-    pub(crate) allay: Option<Box<crate::allay::AllayState>>,
-    /// A guardian's animations, made when it first ticks.
-    pub(crate) guardian: Option<Box<crate::guardian::GuardianState>>,
-    /// A breeze's animation states, made when its pose first changes or it first ticks.
-    pub(crate) breeze: Option<Box<crate::breeze::BreezeState>>,
-    /// A warden's animation states and pulses, made when its pose, data or events first reach it.
-    pub(crate) warden: Option<Box<crate::warden::WardenState>>,
-    /// A creaking's animation states and flags, made when its data, events or ticks first reach it.
-    pub(crate) creaking: Option<Box<crate::creaking::CreakingState>>,
-    /// An armadillo's state and animation states, made when its data, events or ticks first reach it.
-    pub(crate) armadillo: Option<crate::armadillo::ArmadilloState>,
-    /// A sniffer's state and animation states, made when its data first reaches it.
-    pub(crate) sniffer: Option<crate::sniffer::SnifferState>,
-    /// A wither's head turns, targets and invulnerable ticks, made when its data first reaches it.
-    pub(crate) wither: Option<crate::wither::WitherState>,
-    /// An ender dragon's flight history, wing beat and phase, made when its data or ticks first reach it.
-    pub(crate) ender_dragon: Option<Box<crate::ender_dragon::EnderDragonState>>,
-    /// An end crystal's age and data, made when its data or ticks first reach it.
-    pub(crate) end_crystal: Option<crate::end_crystal::EndCrystalState>,
-    /// A minecart's hit, carried block and fuel, made when its data or ticks first reach it.
-    pub(crate) minecart: Option<crate::minecart::MinecartState>,
-    /// A minecart of the new behaviour (`NewMinecartBehavior`): the steps the server sent along
-    /// the track and how far they are played; none for the old behaviour.
-    pub(crate) minecart_track: Option<crate::minecart_track::TrackLerp>,
-    /// An arrow's shake and data, made when its data or ticks first reach it.
-    pub(crate) arrow: Option<crate::arrow::ArrowState>,
-    /// Evoker fangs' bite, made when the server first says they bite or they first tick.
-    pub(crate) evoker_fangs: Option<crate::evoker_fangs::FangsState>,
+    /// What kind of entity this is, with the state that kind keeps (a rabbit's hops, a warden's
+    /// pulses…), made when something first reaches it.
+    pub(crate) kind: crate::entity_kind::EntityKind,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
     pub(crate) item_frame_rotation: i32,
-    /// A display entity's data and render state (`Display`).
-    pub(crate) display: Option<Box<crate::display::DisplayState>>,
-    pub(crate) primed_tnt: Option<crate::primed_tnt::PrimedTntState>,
     /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
     pub(crate) leash_holder_id: i32,
-    /// A lightning bolt's shape and flashes, made when it first ticks.
-    pub(crate) lightning: Option<crate::lightning::LightningState>,
     /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
     pub(crate) lightning_done: bool,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
-    /// A frog's animation states, made when its pose first changes or it first ticks.
-    pub(crate) frog: Option<Box<crate::frog::FrogState>>,
-    /// A panda's data and own client state, once it has any.
-    pub(crate) panda: Option<Box<crate::panda::PandaState>>,
-    /// A ravager's counters, once it has any.
-    pub(crate) ravager: Option<Box<crate::ravager::RavagerState>>,
-    /// A horse's animations and tail, made when it first ticks, and the flags
-    /// the server sent before that.
-    pub(crate) horse: Option<Box<crate::horse::HorseState>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1163,8 +1110,8 @@ impl ClientEntity {
                 // not dashing walks, and its stride is quicker to settle.
                 let walking = self.pose == ClientEntityPose::Standing
                     && !self
-                        .horse
-                        .as_ref()
+                        .kind
+                        .horse()
                         .is_some_and(|horse| horse.camel.is_dash_animation_started());
                 let target = if walking {
                     ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
@@ -1178,7 +1125,7 @@ impl ClientEntity {
                 let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
                 self.walk.update(target, 0.4, 1.0);
             } else if self.is_frog() {
-                let target = self.frog.as_ref().map_or_else(
+                let target = self.kind.frog().map_or_else(
                     || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
                     |frog| frog.walk_target(moved.0.hypot(moved.1)),
                 );
@@ -1270,7 +1217,7 @@ impl ClientEntity {
         y_rot: f32,
         x_rot: f32,
     ) {
-        if self.is_shulker() || self.minecart_track.is_some() {
+        if self.is_shulker() || self.minecart_track().is_some() {
             self.set_position(position);
             self.y_rot = JavaF32::new(y_rot % 360.0);
             self.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
@@ -2091,7 +2038,7 @@ impl ClientEntity {
 
     /// A horse's animations and tail, if it has ticked.
     pub fn horse(&self) -> Option<&crate::horse::HorseState> {
-        self.horse.as_deref()
+        self.kind.horse()
     }
 
     /// `Horse.getVariant` and `getMarkings`: ids, each wrapped into its enum
@@ -2118,27 +2065,27 @@ impl ClientEntity {
     /// Fixes the source a horse's tail chance is drawn from (see
     /// [`crate::horse::HorseState::fix_seed`]).
     pub fn fix_horse_seed(&mut self, seed: i64) {
-        self.horse
-            .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()))
+        self.kind
+            .horse_or_insert_with(|| Box::new(crate::horse::HorseState::new()))
             .fix_seed(seed);
     }
 
     /// A rabbit's hop and animation states, if it has ticked.
     pub fn rabbit(&self) -> Option<&crate::rabbit::RabbitState> {
-        self.rabbit.as_deref()
+        self.kind.rabbit()
     }
 
     /// Fixes the idle head tilt's wait and random source of a rabbit (see
     /// [`crate::rabbit::RabbitState::fix_idle`]).
     pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {
-        self.rabbit
-            .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
+        self.kind
+            .rabbit_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
             .fix_idle(timeout, seed);
     }
 
     /// A squid's tentacles and body turns, if it has ticked.
     pub fn squid(&self) -> Option<&crate::squid::SquidState> {
-        self.squid.as_deref()
+        self.kind.squid()
     }
 
     pub(crate) fn is_squid(&self) -> bool {
@@ -2282,7 +2229,7 @@ impl ClientEntity {
 
     /// A boat's hit, bubbles and paddles, if it has any.
     pub fn boat(&self) -> Option<&crate::boat::BoatState> {
-        self.boat.as_deref()
+        self.kind.boat()
     }
 
     /// Whether a boat's paddle on a side (zero left, one right) rows
@@ -2304,29 +2251,29 @@ impl ClientEntity {
         };
         let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
         let tick_count = self.tick_count;
-        self.boat
-            .get_or_insert_with(Default::default)
+        self.kind
+            .boat_or_insert_with(Default::default)
             .tick(under_water, paddling, tick_count);
     }
 
     /// The part of a ridden boat's tick before its own movement.
     pub(crate) fn tick_boat_start(&mut self) {
-        self.boat
-            .get_or_insert_with(Default::default)
+        self.kind
+            .boat_or_insert_with(Default::default)
             .tick_start(false);
     }
 
     /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
     pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
         let tick_count = self.tick_count;
-        self.boat
-            .get_or_insert_with(Default::default)
+        self.kind
+            .boat_or_insert_with(Default::default)
             .tick_end(paddling, tick_count);
     }
 
     /// A boat's data: its hit, paddles and bubbles.
     pub(crate) fn set_boat_data(&mut self, data: crate::metadata::BoatData) {
-        let boat = self.boat.get_or_insert_with(Default::default);
+        let boat = self.kind.boat_or_insert_with(Default::default);
         if let Some(hurt) = data.hurt_time {
             boat.hurt_time = hurt;
         }
@@ -2354,7 +2301,7 @@ impl ClientEntity {
 
     /// A parrot's wing beats, if it has ticked.
     pub fn parrot(&self) -> Option<&crate::parrot::ParrotState> {
-        self.parrot.as_deref()
+        self.kind.parrot()
     }
 
     /// `Parrot.calculateFlapping` after `super.aiStep`: the wings beat by
@@ -2367,19 +2314,19 @@ impl ClientEntity {
         if !on_ground && self.motion.y.get() < 0.0 {
             self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
         }
-        self.parrot
-            .get_or_insert_with(Default::default)
+        self.kind
+            .parrot_or_insert_with(Default::default)
             .tick(on_ground, passenger);
     }
 
     /// A bat's animation states, if it has ticked.
     pub fn bat(&self) -> Option<&crate::bat::BatState> {
-        self.bat.as_deref()
+        self.kind.bat()
     }
 
     /// An allay's progress, if it has ticked.
     pub fn allay(&self) -> Option<&crate::allay::AllayState> {
-        self.allay.as_deref()
+        self.kind.allay()
     }
 
     /// `Bat.tick` after `super.tick`: a hanging bat does not move and hangs
@@ -2401,8 +2348,8 @@ impl ClientEntity {
             self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
         }
         let tick_count = self.tick_count;
-        self.bat
-            .get_or_insert_with(Default::default)
+        self.kind
+            .bat_or_insert_with(Default::default)
             .tick(resting, tick_count);
     }
 
@@ -2413,8 +2360,8 @@ impl ClientEntity {
         }
         let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
         let dancing = self.living.allay_dancing;
-        self.allay
-            .get_or_insert_with(Default::default)
+        self.kind
+            .allay_or_insert_with(Default::default)
             .tick(holds, dancing);
     }
 
@@ -2430,7 +2377,7 @@ impl ClientEntity {
 
     /// A guardian's animations, if it has ticked.
     pub fn guardian(&self) -> Option<&crate::guardian::GuardianState> {
-        self.guardian.as_deref()
+        self.kind.guardian()
     }
 
     pub(crate) fn is_guardian(&self) -> bool {
@@ -2458,8 +2405,8 @@ impl ClientEntity {
         }
         if let Some(target) = target {
             self.living.guardian_target = target;
-            self.guardian
-                .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
+            self.kind
+                .guardian_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
                 .restart_attack();
         }
     }
@@ -2490,8 +2437,8 @@ impl ClientEntity {
         };
         let has_target = self.living.guardian_target != 0;
         let duration = self.guardian_attack_duration();
-        self.guardian
-            .get_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
+        self.kind
+            .guardian_or_insert_with(|| Box::new(crate::guardian::GuardianState::new()))
             .tick(&place, has_target, duration, &mut pose);
         self.y_rot = JavaF32::new(pose.y_rot);
         self.x_rot = JavaF32::new(pose.x_rot);
@@ -2516,7 +2463,7 @@ impl ClientEntity {
 
     /// A frog's animation states, if it has any.
     pub fn frog(&self) -> Option<&crate::frog::FrogState> {
-        self.frog.as_deref()
+        self.kind.frog()
     }
 
     /// `Frog.onSyncedDataUpdated(DATA_POSE)`: the pose the data names starts
@@ -2525,34 +2472,34 @@ impl ClientEntity {
         self.pose = pose;
         if self.is_frog() {
             let tick_count = self.tick_count;
-            self.frog
-                .get_or_insert_with(Default::default)
+            self.kind
+                .frog_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
         if self.is_breeze() {
             let tick_count = self.tick_count;
-            self.breeze
-                .get_or_insert_with(Default::default)
+            self.kind
+                .breeze_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
         if self.is_warden() {
             let tick_count = self.tick_count;
-            self.warden
-                .get_or_insert_with(Default::default)
+            self.kind
+                .warden_or_insert_with(Default::default)
                 .set_pose(pose, tick_count);
         }
     }
 
     /// A sniffer's state and animation states, if it has any.
     pub fn sniffer(&self) -> Option<&crate::sniffer::SnifferState> {
-        self.sniffer.as_ref()
+        self.kind.sniffer()
     }
 
     /// `Sniffer.onSyncedDataUpdated(DATA_STATE)`.
     pub(crate) fn set_sniffer_mode(&mut self, mode: crate::sniffer::SnifferMode) {
         let tick_count = self.tick_count;
-        self.sniffer
-            .get_or_insert_with(Default::default)
+        self.kind
+            .sniffer_or_insert_with(Default::default)
             .set_mode(mode, tick_count);
     }
 
@@ -2603,7 +2550,7 @@ impl ClientEntity {
 
     /// A lightning bolt's shape and flashes, if it has begun to tick.
     pub fn lightning(&self) -> Option<&crate::lightning::LightningState> {
-        self.lightning.as_ref()
+        self.kind.lightning()
     }
 
     pub(crate) fn lightning_finished(&self) -> bool {
@@ -2612,20 +2559,20 @@ impl ClientEntity {
 
     /// A display entity's data and render state.
     pub fn display(&self) -> Option<&crate::display::DisplayState> {
-        self.display.as_deref()
+        self.kind.display()
     }
 
     /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
     /// living, the minecarts and the displays ease to the positions the server sends.
     pub(crate) fn has_interpolation_handler(&self) -> bool {
-        self.living_kind().is_some() || self.is_minecart() || self.display.is_some()
+        self.living_kind().is_some() || self.is_minecart() || self.kind.display().is_some()
     }
 
     /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or
     /// a display's own.
     fn interpolation_length(&self) -> i32 {
-        self.display
-            .as_ref()
+        self.kind
+            .display()
             .map_or(i32::from(LIVING_ENTITY_POSITION_LERP_STEPS), |display| {
                 display.pos_rot_duration()
             })
@@ -2651,11 +2598,11 @@ impl ClientEntity {
 
     /// A primed tnt's fuse and block, if it has any.
     pub fn primed_tnt(&self) -> Option<&crate::primed_tnt::PrimedTntState> {
-        self.primed_tnt.as_ref()
+        self.kind.primed_tnt()
     }
 
     pub(crate) fn primed_tnt_mut(&mut self) -> &mut crate::primed_tnt::PrimedTntState {
-        self.primed_tnt.get_or_insert_with(Default::default)
+        self.kind.primed_tnt_or_insert_with(Default::default)
     }
 
     /// Whether this is a pair of evoker fangs.
@@ -2665,20 +2612,20 @@ impl ClientEntity {
 
     /// Evoker fangs' bite, if it has begun to be told of.
     pub fn evoker_fangs(&self) -> Option<&crate::evoker_fangs::FangsState> {
-        self.evoker_fangs.as_ref()
+        self.kind.evoker_fangs()
     }
 
     pub(crate) fn evoker_fangs_mut(&mut self) -> &mut crate::evoker_fangs::FangsState {
-        self.evoker_fangs.get_or_insert_with(Default::default)
+        self.kind.evoker_fangs_or_insert_with(Default::default)
     }
 
     /// An arrow's shake and data, if it has any.
     pub fn arrow(&self) -> Option<&crate::arrow::ArrowState> {
-        self.arrow.as_ref()
+        self.kind.arrow()
     }
 
     pub(crate) fn arrow_mut(&mut self) -> &mut crate::arrow::ArrowState {
-        self.arrow.get_or_insert_with(Default::default)
+        self.kind.arrow_or_insert_with(Default::default)
     }
 
     /// Whether this is one of the minecarts (`AbstractMinecart`).
@@ -2690,17 +2637,22 @@ impl ClientEntity {
 
     /// A minecart's hit, carried block and fuel, if it has any.
     pub fn minecart(&self) -> Option<&crate::minecart::MinecartState> {
-        self.minecart.as_ref()
+        self.kind
+            .minecart_slot()
+            .and_then(|slot| slot.state.as_ref())
     }
 
     pub(crate) fn minecart_mut(&mut self) -> &mut crate::minecart::MinecartState {
-        self.minecart.get_or_insert_with(Default::default)
+        self.kind
+            .minecart_slot_or_insert_with(Default::default)
+            .state
+            .get_or_insert_with(Default::default)
     }
 
     /// `AbstractMinecart.getDisplayBlockState`: the block state the server named, else the
     /// type's own (the plain minecart shows none).
     pub fn minecart_display_block(&self) -> Option<u32> {
-        let state = self.minecart.unwrap_or_default();
+        let state = self.minecart().copied().unwrap_or_default();
         state.custom_display.or_else(|| {
             voxel_data::entity_type::name(self.type_id)
                 .and_then(|name| crate::minecart::default_display_block(name, state.fuel))
@@ -2712,7 +2664,10 @@ impl ClientEntity {
         let default = voxel_data::entity_type::name(self.type_id)
             .and_then(crate::minecart::default_display_offset)
             .unwrap_or(6);
-        self.minecart.unwrap_or_default().display_offset(default)
+        self.minecart()
+            .copied()
+            .unwrap_or_default()
+            .display_offset(default)
     }
 
     /// `AbstractMinecart.tick` on the client, with `OldMinecartBehavior.tick`'s client half: the
@@ -2723,7 +2678,7 @@ impl ClientEntity {
         if voxel_data::entity_type::name(self.type_id) == Some("minecraft:tnt_minecart") {
             self.minecart_mut().burn_fuse();
         }
-        if self.minecart_track.is_some() {
+        if self.minecart_track().is_some() {
             self.tick_minecart_track();
         } else if self.is_interpolating() {
             self.tick_position_interpolation();
@@ -2746,8 +2701,9 @@ impl ClientEntity {
             weight: 0.0,
         };
         let Some(place) = self
-            .minecart_track
-            .as_mut()
+            .kind
+            .minecart_slot_mut()
+            .and_then(|slot| slot.track.as_mut())
             .and_then(|track| track.tick(now))
         else {
             return;
@@ -2767,7 +2723,9 @@ impl ClientEntity {
 
     /// A minecart of the new behaviour: the steps the server sent along the track.
     pub fn minecart_track(&self) -> Option<&crate::minecart_track::TrackLerp> {
-        self.minecart_track.as_ref()
+        self.kind
+            .minecart_slot()
+            .and_then(|slot| slot.track.as_ref())
     }
 
     pub(crate) fn is_end_crystal(&self) -> bool {
@@ -2776,13 +2734,13 @@ impl ClientEntity {
 
     /// An end crystal's age and data, if it has any.
     pub fn end_crystal(&self) -> Option<&crate::end_crystal::EndCrystalState> {
-        self.end_crystal.as_ref()
+        self.kind.end_crystal()
     }
 
     pub(crate) fn end_crystal_mut(&mut self) -> &mut crate::end_crystal::EndCrystalState {
         let seed = i64::from(self.id);
-        self.end_crystal
-            .get_or_insert_with(|| crate::end_crystal::EndCrystalState::new(seed))
+        self.kind
+            .end_crystal_or_insert_with(|| Box::new(crate::end_crystal::EndCrystalState::new(seed)))
     }
 
     pub(crate) fn is_ender_dragon(&self) -> bool {
@@ -2791,13 +2749,14 @@ impl ClientEntity {
 
     /// An ender dragon's flight history, wing beat and phase, if it has any.
     pub fn ender_dragon(&self) -> Option<&crate::ender_dragon::EnderDragonState> {
-        self.ender_dragon.as_deref()
+        self.kind.ender_dragon()
     }
 
     pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::ender_dragon::EnderDragonState {
         let seed = i64::from(self.id);
-        self.ender_dragon
-            .get_or_insert_with(|| Box::new(crate::ender_dragon::EnderDragonState::new(seed)))
+        self.kind.ender_dragon_or_insert_with(|| {
+            Box::new(crate::ender_dragon::EnderDragonState::new(seed))
+        })
     }
 
     /// `EnderDragon.aiStep` on the client, which replaces `LivingEntity.aiStep`: the wing
@@ -2836,16 +2795,16 @@ impl ClientEntity {
 
     /// A wither's head turns, targets and invulnerable ticks, if it has any.
     pub fn wither(&self) -> Option<&crate::wither::WitherState> {
-        self.wither.as_ref()
+        self.kind.wither()
     }
 
     pub(crate) fn wither_mut(&mut self) -> &mut crate::wither::WitherState {
-        self.wither.get_or_insert_with(Default::default)
+        self.kind.wither_or_insert_with(Default::default)
     }
 
     /// The ids of the entities a wither's side heads look at, zero for none.
     pub(crate) fn wither_targets(&self) -> [i32; 2] {
-        self.wither.map_or([0; 2], |wither| wither.targets)
+        self.kind.wither().map_or([0; 2], |wither| wither.targets)
     }
 
     /// `WitherBoss.aiStep` before `super.aiStep`: the motion's height settles by
@@ -2886,11 +2845,11 @@ impl ClientEntity {
 
     /// An armadillo's state and animation states, if it has any.
     pub fn armadillo(&self) -> Option<&crate::armadillo::ArmadilloState> {
-        self.armadillo.as_ref()
+        self.kind.armadillo()
     }
 
     pub(crate) fn armadillo_mut(&mut self) -> &mut crate::armadillo::ArmadilloState {
-        self.armadillo.get_or_insert_with(Default::default)
+        self.kind.armadillo_or_insert_with(Default::default)
     }
 
     /// `Armadillo.tick`'s client half, after the rest of the tick: the animation
@@ -2920,14 +2879,14 @@ impl ClientEntity {
 
     /// A creaking's animation states and flags, if it has any.
     pub fn creaking(&self) -> Option<&crate::creaking::CreakingState> {
-        self.creaking.as_deref()
+        self.kind.creaking()
     }
 
     /// The creaking's state, made if it has none yet.
     pub(crate) fn creaking_mut(&mut self) -> &mut crate::creaking::CreakingState {
         let seed = i64::from(self.id);
-        self.creaking
-            .get_or_insert_with(|| Box::new(crate::creaking::CreakingState::new(seed)))
+        self.kind
+            .creaking_or_insert_with(|| Box::new(crate::creaking::CreakingState::new(seed)))
     }
 
     /// `Creaking.tick`'s client half, after the rest of the tick.
@@ -2944,12 +2903,12 @@ impl ClientEntity {
 
     /// A warden's animation states and pulses, if it has any.
     pub fn warden(&self) -> Option<&crate::warden::WardenState> {
-        self.warden.as_deref()
+        self.kind.warden()
     }
 
     /// The warden's state, made if it has none yet.
     pub(crate) fn warden_mut(&mut self) -> &mut crate::warden::WardenState {
-        self.warden.get_or_insert_with(Default::default)
+        self.kind.warden_or_insert_with(Default::default)
     }
 
     /// `Warden.tick`'s client half, after the rest of the tick.
@@ -2966,7 +2925,7 @@ impl ClientEntity {
 
     /// A breeze's animation states, if it has any.
     pub fn breeze(&self) -> Option<&crate::breeze::BreezeState> {
-        self.breeze.as_deref()
+        self.kind.breeze()
     }
 
     /// `Breeze.tick`'s client half, before the rest of the tick.
@@ -2975,8 +2934,8 @@ impl ClientEntity {
             return;
         }
         let (pose, tick_count) = (self.pose, self.tick_count);
-        self.breeze
-            .get_or_insert_with(Default::default)
+        self.kind
+            .breeze_or_insert_with(Default::default)
             .tick(pose, tick_count);
     }
 
@@ -2988,14 +2947,14 @@ impl ClientEntity {
         }
         let (in_water, moving, tick_count) =
             (self.living.in_water, self.walk.is_moving(), self.tick_count);
-        self.frog
-            .get_or_insert_with(Default::default)
+        self.kind
+            .frog_or_insert_with(Default::default)
             .tick(in_water, moving, tick_count);
     }
 
     /// An axolotl's animators and animation states, if it has ticked.
     pub fn axolotl(&self) -> Option<&crate::axolotl::AxolotlState> {
-        self.axolotl.as_deref()
+        self.kind.axolotl()
     }
 
     /// `Axolotl.getVariant`: the index of the variant (an id no variant has is the first).
@@ -3022,8 +2981,8 @@ impl ClientEntity {
             moving: self.walk.is_moving(),
             tick_count: self.tick_count,
         };
-        self.axolotl
-            .get_or_insert_with(|| Box::new(crate::axolotl::AxolotlState::new()))
+        self.kind
+            .axolotl_or_insert_with(|| Box::new(crate::axolotl::AxolotlState::new()))
             .tick(input);
     }
 
@@ -3140,7 +3099,7 @@ impl ClientEntity {
             self.tick_minecart();
             return;
         }
-        if let Some(display) = self.display.as_mut() {
+        if let Some(display) = self.kind.display_mut() {
             // `Display.tick`'s client half: the notes the data left, then the position's easing.
             display.tick(self.tick_count);
             self.tick_position_interpolation();
@@ -3175,8 +3134,8 @@ impl ClientEntity {
         }
         let (in_water, motion, body) = (self.living.in_water, self.motion(), self.y_body_rot.get());
         let turned = self
-            .squid
-            .get_or_insert_with(|| Box::new(crate::squid::SquidState::new()))
+            .kind
+            .squid_or_insert_with(|| Box::new(crate::squid::SquidState::new()))
             .ai_step(in_water, motion, body);
         if let Some(body) = turned {
             self.y_body_rot = JavaF32::new(body);
@@ -3339,7 +3298,7 @@ impl ClientEntity {
 
     /// A copper golem's animation states, if it has ticked.
     pub fn copper_golem(&self) -> Option<&crate::copper_golem::CopperGolemAnimations> {
-        self.copper_golem.as_deref()
+        self.kind.copper_golem()
     }
 
     /// `CopperGolem.getState`.
@@ -3429,20 +3388,20 @@ impl ClientEntity {
     /// A panda's data and own client state (its counters and how far it sits,
     /// lies on its back and rolls); the starting state until data comes.
     pub fn panda(&self) -> crate::panda::PandaState {
-        self.panda.as_deref().cloned().unwrap_or_default()
+        self.kind.panda().cloned().unwrap_or_default()
     }
 
     /// Fixes the source a panda's chance to eat is drawn from (see
     /// [`crate::panda::PandaState::fix_seed`]).
     pub fn fix_panda_seed(&mut self, seed: i64) {
-        self.panda
-            .get_or_insert_with(Default::default)
+        self.kind
+            .panda_or_insert_with(Default::default)
             .fix_seed(seed);
     }
 
     /// A ravager's counters (the starting state until an event comes).
     pub fn ravager(&self) -> crate::ravager::RavagerState {
-        self.ravager.as_deref().cloned().unwrap_or_default()
+        self.kind.ravager().cloned().unwrap_or_default()
     }
 
     /// What a cat or a panda does of its own after `super.tick`, given what
@@ -3471,8 +3430,8 @@ impl ClientEntity {
         if self.is_lightning_bolt() {
             let seed = i64::from(self.id);
             self.lightning_done = self
-                .lightning
-                .get_or_insert_with(|| crate::lightning::LightningState::new(seed))
+                .kind
+                .lightning_or_insert_with(|| Box::new(crate::lightning::LightningState::new(seed)))
                 .tick();
         }
     }
@@ -3487,7 +3446,7 @@ impl ClientEntity {
             thundering,
             holds_item,
         };
-        let panda = self.panda.get_or_insert_with(Default::default);
+        let panda = self.kind.panda_or_insert_with(Default::default);
         if panda.tick(around) {
             self.x_rot = JavaF32::new(0.0_f32);
         }
@@ -3734,8 +3693,8 @@ impl ClientEntity {
             Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
             Some("minecraft:ravager") => {
                 let alive = self.alive;
-                self.ravager
-                    .get_or_insert_with(Default::default)
+                self.kind
+                    .ravager_or_insert_with(Default::default)
                     .tick(alive);
             }
             Some("minecraft:bee") => {
@@ -3763,8 +3722,8 @@ impl ClientEntity {
                 let (tick_count, on_ground, passenger) =
                     (self.tick_count, self.on_ground, self.vehicle_id.is_some());
                 let horse = self
-                    .horse
-                    .get_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+                    .kind
+                    .horse_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
                 horse.tick(alive);
                 if camel {
                     let in_liquid = self.mount_ride.in_liquid;
@@ -3776,8 +3735,8 @@ impl ClientEntity {
             }
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
-                self.rabbit
-                    .get_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
+                self.kind
+                    .rabbit_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
                     .tick(tick_count, no_ai);
             }
             Some("minecraft:copper_golem") => {
@@ -3786,8 +3745,8 @@ impl ClientEntity {
                     self.tick_count,
                     (self.is_no_ai(), self.alive),
                 );
-                self.copper_golem
-                    .get_or_insert_with(|| {
+                self.kind
+                    .copper_golem_or_insert_with(|| {
                         Box::new(crate::copper_golem::CopperGolemAnimations::new())
                     })
                     .tick(action, tick_count, flags);

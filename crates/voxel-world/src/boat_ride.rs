@@ -750,8 +750,8 @@ impl ClientWorld {
         let paddling = [paddles.0, paddles.1].map(|rows| rows && body.has_passengers);
         let positions = [0, 1].map(|side| {
             entity
-                .boat
-                .as_deref()
+                .kind
+                .boat()
                 .map_or(0.0, |boat| boat.paddle_position(side))
         });
         for (rows, position) in paddling.iter().zip(positions) {
@@ -778,7 +778,7 @@ impl ClientWorld {
         entity.paddle_right = body.paddles.1;
         entity.boat_ride = body.ride;
         entity.tick_boat_end(paddling);
-        if let Some(state) = entity.boat.as_deref_mut() {
+        if let Some(state) = entity.kind.boat_mut() {
             state.is_under_water = body.ride.status.is_some_and(Status::is_under_water);
         }
         self.paddle_packets.push(paddles);

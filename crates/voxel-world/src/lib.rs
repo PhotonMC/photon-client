@@ -55,6 +55,7 @@ pub mod elytra;
 pub mod end_crystal;
 pub mod ender_dragon;
 mod entity;
+pub(crate) mod entity_kind;
 mod entity_random;
 pub mod evoker_fangs;
 pub mod fish;
@@ -1263,8 +1264,8 @@ impl ClientWorld {
             return false;
         };
         entity
-            .guardian
-            .get_or_insert_with(|| Box::new(guardian::GuardianState::new()))
+            .kind
+            .guardian_or_insert_with(|| Box::new(guardian::GuardianState::new()))
             .fix_random(tail, seed);
         true
     }
@@ -1276,8 +1277,8 @@ impl ClientWorld {
             return false;
         };
         entity
-            .squid
-            .get_or_insert_with(|| Box::new(squid::SquidState::new()))
+            .kind
+            .squid_or_insert_with(|| Box::new(squid::SquidState::new()))
             .fix_tentacle_speed(speed);
         true
     }
@@ -1289,8 +1290,8 @@ impl ClientWorld {
             return false;
         };
         entity
-            .copper_golem
-            .get_or_insert_with(|| Box::new(copper_golem::CopperGolemAnimations::new()))
+            .kind
+            .copper_golem_or_insert_with(|| Box::new(copper_golem::CopperGolemAnimations::new()))
             .fix_seed(seed);
         true
     }
@@ -2390,7 +2391,7 @@ impl ClientWorld {
             return false;
         };
         entity.item_stack = stack;
-        if let Some(display) = entity.display.as_mut() {
+        if let Some(display) = entity.kind.display_mut() {
             display.item_changed();
         }
         true
@@ -2518,8 +2519,8 @@ impl ClientWorld {
         }
         if event == 19 && entity.is_squid() {
             entity
-                .squid
-                .get_or_insert_with(|| Box::new(squid::SquidState::new()))
+                .kind
+                .squid_or_insert_with(|| Box::new(squid::SquidState::new()))
                 .restart_beat();
             return true;
         }
@@ -2534,8 +2535,8 @@ impl ClientWorld {
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
             Some("minecraft:ravager") => {
                 return entity
-                    .ravager
-                    .get_or_insert_with(Default::default)
+                    .kind
+                    .ravager_or_insert_with(Default::default)
                     .event(event);
             }
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
@@ -2576,8 +2577,8 @@ impl ClientWorld {
             }
             Some("minecraft:rabbit") if event == 1 => {
                 entity
-                    .rabbit
-                    .get_or_insert_with(|| Box::new(rabbit::RabbitState::new()))
+                    .kind
+                    .rabbit_or_insert_with(|| Box::new(rabbit::RabbitState::new()))
                     .start_hop();
                 return true;
             }
@@ -2987,7 +2988,8 @@ impl ClientWorld {
         let Some(track) = self
             .entities
             .get_mut(&entity_id)
-            .and_then(|entity| entity.minecart_track.as_mut())
+            .and_then(|entity| entity.kind.minecart_slot_mut())
+            .and_then(|slot| slot.track.as_mut())
         else {
             return false;
         };
@@ -3534,6 +3536,18 @@ impl ClientWorld {
         let head_rotation = JavaF32::new(entity.rotation.2);
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
         let owner = self.entity_exists(entity.data).then_some(entity.data);
+        // An entity is one kind for as long as it lives; a display or a minecart of the new
+        // behaviour is known from its type, the rest make their state when it first comes.
+        let initial_kind = if let Some(display_kind) = entity::display_kind_of(entity.type_id) {
+            entity_kind::EntityKind::Display(Box::new(display::DisplayState::new(display_kind)))
+        } else if new_minecart {
+            entity_kind::EntityKind::Minecart(Box::new(entity_kind::MinecartSlot {
+                state: None,
+                track: Some(Default::default()),
+            }))
+        } else {
+            entity_kind::EntityKind::Plain
+        };
         self.entities.insert(
             entity.entity_id,
             ClientEntity {
@@ -3618,39 +3632,11 @@ impl ClientWorld {
                 vehicle_id: None,
                 passenger_ids: Vec::new(),
                 attributes: Vec::new(),
-                rabbit: None,
-                copper_golem: None,
-                squid: None,
-                axolotl: None,
-                frog: None,
-                guardian: None,
-                bat: None,
-                boat: None,
-                breeze: None,
-                warden: None,
-                creaking: None,
-                armadillo: None,
-                sniffer: None,
-                wither: None,
-                ender_dragon: None,
-                end_crystal: None,
-                minecart: None,
-                minecart_track: new_minecart.then(Default::default),
-                arrow: None,
-                evoker_fangs: None,
-                primed_tnt: None,
+                kind: initial_kind,
                 item_frame_rotation: 0,
-                display: entity::display_kind_of(entity.type_id)
-                    .map(|kind| Box::new(display::DisplayState::new(kind))),
-                lightning: None,
                 leash_holder_id: 0,
                 lightning_done: false,
                 shot_at_angle: false,
-                parrot: None,
-                allay: None,
-                panda: None,
-                ravager: None,
-                horse: None,
             },
         );
         self.add_entity_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
@@ -4071,8 +4057,8 @@ impl ClientWorld {
         let (camel_dash, camel_last_pose) = camel_data_from_metadata(entity.type_id, metadata);
         if camel_dash.is_some() || camel_last_pose.is_some() {
             let horse = entity
-                .horse
-                .get_or_insert_with(|| Box::new(horse::HorseState::new()));
+                .kind
+                .horse_or_insert_with(|| Box::new(horse::HorseState::new()));
             if let Some(dash) = camel_dash {
                 horse.camel.set_dashing(dash);
             }
@@ -4084,8 +4070,8 @@ impl ClientWorld {
             horse_data_from_metadata(entity.type_id, metadata);
         if let Some(flags) = horse_flags {
             entity
-                .horse
-                .get_or_insert_with(|| Box::new(horse::HorseState::new()))
+                .kind
+                .horse_or_insert_with(|| Box::new(horse::HorseState::new()))
                 .set_flags(flags);
         }
         if let Some(variant) = horse_variant {
@@ -4110,8 +4096,8 @@ impl ClientWorld {
         let panda_data = panda_data_from_metadata(entity.type_id, metadata);
         if panda_data != panda::PandaData::default() {
             entity
-                .panda
-                .get_or_insert_with(Default::default)
+                .kind
+                .panda_or_insert_with(Default::default)
                 .apply(panda_data);
         }
         let (fox_flags, fox_variant) = fox_data_from_metadata(entity.type_id, metadata);
@@ -4788,7 +4774,7 @@ pub const FIREWORK_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 
 /// The data of a display (`Display`) and of an item frame's turn, which this entity may have.
 fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
-    if let Some(display) = entity.display.as_mut() {
+    if let Some(display) = entity.kind.display_mut() {
         display.apply_metadata(metadata);
         match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:block_display") => display.apply_block_state(metadata),
