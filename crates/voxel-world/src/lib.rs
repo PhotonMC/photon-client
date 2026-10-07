@@ -45,6 +45,7 @@ mod metadata;
 pub mod mobs;
 pub mod objects;
 mod paletted;
+pub mod particles;
 mod pick;
 mod player;
 mod prediction;

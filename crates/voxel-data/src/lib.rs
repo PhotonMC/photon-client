@@ -20,6 +20,7 @@ mod generated;
 pub mod item;
 pub mod leash;
 pub mod map;
+pub mod particle_type;
 pub mod sound_event;
 pub mod spear;
 pub mod villager;

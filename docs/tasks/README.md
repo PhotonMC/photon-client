@@ -177,14 +177,16 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | bitti (fd8d309d) |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | bitti (c09922a4) |
-| [T70](T70-parcacik-cekirdegi.md) | Partikül motoru çekirdeği ve `LevelParticles` paketi | L | – | açık |
-| [T71](T71-blok-parcaciklari.md) | Blok parçacıkları: kırılma ve çatlama (`TerrainParticle`) | M | T70 | açık |
-| [T72](T72-yukselen-parcaciklar.md) | Yükselen duman/ateş aileleri | M | T70 | açık |
-| [T73](T73-su-parcaciklari.md) | Su ve kabarcık parçacıkları | M | T70 | açık |
-| [T74](T74-toz-buyu-parcaciklari.md) | Toz, büyü ve renkli parçacıklar | M | T70 | açık |
-| [T75](T75-cekim-parcaciklari.md) | Portal, büyü masası ve çeken parçacıklar | M | T70 | açık |
-| [T76](T76-vurus-patlama-parcaciklari.md) | Vuruş, patlama ve ifade parçacıkları | M | T70 | açık |
-| [T77](T77-esya-parcaciklari.md) | Eşya parçacıkları ve eşya toplama animasyonu | M | T70, T25 | açık |
+| [T70](T70-parcacik-cekirdegi.md) | Partikül motoru çekirdeği ve `LevelParticles` paketi | L | – | bölündü (T70b, T70c) |
+| [T70b](T70b-parcacik-motoru.md) | Partikül motoru, `LevelParticles` paketi ve ekleme geçidi | M | T70 | açık |
+| [T70c](T70c-parcacik-cizimi.md) | Partikül dörtgenlerinin çizimi (atlas, boru hattı) | L | T70b | açık |
+| [T71](T71-blok-parcaciklari.md) | Blok parçacıkları: kırılma ve çatlama (`TerrainParticle`) | M | T70b | açık |
+| [T72](T72-yukselen-parcaciklar.md) | Yükselen duman/ateş aileleri | M | T70b | açık |
+| [T73](T73-su-parcaciklari.md) | Su ve kabarcık parçacıkları | M | T70b | açık |
+| [T74](T74-toz-buyu-parcaciklari.md) | Toz, büyü ve renkli parçacıklar | M | T70b | açık |
+| [T75](T75-cekim-parcaciklari.md) | Portal, büyü masası ve çeken parçacıklar | M | T70b | açık |
+| [T76](T76-vurus-patlama-parcaciklari.md) | Vuruş, patlama ve ifade parçacıkları | M | T70b | açık |
+| [T77](T77-esya-parcaciklari.md) | Eşya parçacıkları ve eşya toplama animasyonu | M | T70b, T25 | açık |
 | [T78](T78-seviye-olaylari.md) | `LevelEvent` ve `BlockEvent` işleyicileri | L | T71, T64b | açık |
 | [T79](T79-blok-entity-cizici-iskeleti.md) | Blok entity çizici iskeleti ve sandık ailesi | L | – | bitti (864fe2b0) |
 | [T79b](T79b-shulker-yatak.md) | Shulker kutusu çizimi | M | T79 | bitti (de6b3611) |

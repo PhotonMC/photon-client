@@ -163,6 +163,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T40h — Tablo — client-parity](records/client-painting-parity-conformance.md)
 - [T32f — Panda — client-parity](records/client-panda-parity-conformance.md)
 - [T36c — Papağan — client-parity](records/client-parrot-parity-conformance.md)
+- [T70 — Partikül çekirdeği: `Particle`, duman ve alev — client-parity](records/client-particle-core-parity-conformance.md)
 - [T26b — Orta tık seçimi (`PickItemFrom*`) ve bakılan varlık önerisi — client-parity](records/client-pick-item-suggestion-parity-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](records/client-player-apply-input-conformance.md)
 - [P10.f — LocalPlayer movement speed attribute binding — client-parity](records/client-player-attribute-speed-conformance.md)

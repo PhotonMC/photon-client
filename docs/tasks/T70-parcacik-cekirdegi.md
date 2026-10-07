@@ -19,4 +19,6 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+- **Yapılan:** `voxel-world/src/particles/` (`Particle` tabanı ve `SingleQuadParticle` alanları, `Kind::{AshSmoke, Flame}`, `SpriteSet`, ışık); `voxel-data/src/particle_type.rs` (125 tür, elle, her koşuda oracle'la karşılaştırılır); oracle `particle_types` ve `particle_ticks` (`MovementParticleOracle`); kayıt: `client-particle-core-parity-conformance.md`.
+- **Oracle hilesi:** partikülün kendi rastgele kaynağı saat tohumlu; `seededParticle` sayacı kurup tohum tutana dek yeniden yapar (sonraki partikül görevleri aynı yardımcıyı kullanır). Yeniden denemelerde motor rastgele kaynağı da yeniden yapılmalı (aksi hâlde çekimler denemeye bağlı kayar).
+- **Bölündü:** motor/paket/geçit T70b, çizim T70c. Açık: bağlama duyarlı çarpışma şekli (iskele) taşınmadı.

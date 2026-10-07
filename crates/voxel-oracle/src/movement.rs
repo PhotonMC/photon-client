@@ -28,6 +28,12 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "container_clicks" {
         return container_clicks_result(request);
     }
+    if string(request, "operation")? == "particle_types" {
+        return particle_types_result(request);
+    }
+    if string(request, "operation")? == "particle_ticks" {
+        return particle_ticks_result(request);
+    }
     if string(request, "operation")? == "projectile_ticks" {
         return projectile_ticks_result(request);
     }

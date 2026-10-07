@@ -212,5 +212,7 @@ mod player_input;
 use player_input::*;
 mod projectiles;
 use projectiles::*;
+mod particles;
+use particles::*;
 mod ticks;
 use ticks::*;

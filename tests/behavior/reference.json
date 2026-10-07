@@ -405,6 +405,7 @@
         "MovementObjectEvents.java",
         "MovementObjectExtras.java",
         "MovementPacketEvents.java",
+        "MovementParticleOracle.java",
         "MovementPlayerOracle.java",
         "MovementSupport.java",
         "MovementWorldOracle.java"
@@ -595,6 +596,7 @@
         "MovementObjectExtras.java",
         "MovementOracle.java",
         "MovementPacketEvents.java",
+        "MovementParticleOracle.java",
         "MovementPlayerOracle.java",
         "MovementSupport.java",
         "MovementWorldOracle.java"

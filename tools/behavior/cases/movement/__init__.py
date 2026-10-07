@@ -1,6 +1,6 @@
 """The movement family: the player, the entities, the sky and the elytra."""
 
-from cases.movement import player, entities, sky, elytra
+from cases.movement import player, entities, sky, elytra, particles
 
 
 def movement_cases():
@@ -8,3 +8,4 @@ def movement_cases():
     yield from entities.movement_entity_cases()
     yield from sky.sky_flash_cases()
     yield from elytra.elytra_state_cases()
+    yield from particles.particle_cases()
