@@ -26681,6 +26681,7 @@ fn menu_named(
         "brewing_stand" => MenuKind::Brewing,
         "beacon" => MenuKind::Beacon,
         "crafter_3x3" => MenuKind::Crafter,
+        "lectern" => MenuKind::Lectern,
         "grindstone" => MenuKind::Grindstone,
         "loom" => MenuKind::Loom,
         "smithing" => MenuKind::Smithing,

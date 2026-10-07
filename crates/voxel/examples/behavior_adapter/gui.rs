@@ -1385,10 +1385,14 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     let index = slot["slot"].as_u64().ok_or("slot")? as usize;
                     let item = voxel_game::item::id_of(slot["item"].as_str().ok_or("item")?)
                         .ok_or("unknown item")?;
-                    menu.slots[index] = Some(voxel_world::ClientItemStackState::new(
+                    let mut stack = voxel_world::ClientItemStackState::new(
                         slot["count"].as_i64().unwrap_or(1) as i32,
                         item,
-                    ));
+                    );
+                    if let Some(pages) = slot["book_pages"].as_array() {
+                        stack = stack.with_patch_bytes(written_book_patch(pages));
+                    }
+                    menu.slots[index] = Some(stack);
                 }
                 // The stonecutter's entries for the item in its slot, each
                 // showing an item (which the screen draws and this run does not
@@ -1424,7 +1428,18 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     recipe: std::sync::Arc::default(),
                 };
                 let (width, height) = (int("width"), int("height"));
-                let mut screen = GenericScreen::new(menu.kind, width, height, titles);
+                let mut screen: Box<dyn Screen> =
+                    if menu.kind == voxel_game::container_menu::MenuKind::Lectern {
+                        Box::new(voxel_render::gui::screen::book::BookScreen::new(
+                            width,
+                            height,
+                            lang.clone(),
+                            shared_font.clone(),
+                            !matches!(row["game_mode"].as_str(), Some("adventure" | "spectator")),
+                        ))
+                    } else {
+                        Box::new(GenericScreen::new(menu.kind, width, height, titles))
+                    };
                 let mouse = (f64::from(int("mouse_x")), f64::from(int("mouse_y")));
                 // The smithing table's empty slots show their icons, and a beacon's buttons their state,
                 // once it has ticked.
@@ -1511,6 +1526,36 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
+}
+
+/// The patch of a written book of these pages (plain text): one component, `written_book_content`.
+fn written_book_patch(pages: &[Value]) -> Vec<u8> {
+    use voxel_core::wire::write_varint;
+    let string = |out: &mut Vec<u8>, text: &str| {
+        write_varint(text.len() as i32, out);
+        out.extend_from_slice(text.as_bytes());
+    };
+    // One added component, none removed.
+    let mut out = vec![1, 0];
+    write_varint(
+        voxel_data::item::component_types::WRITTEN_BOOK_CONTENT,
+        &mut out,
+    );
+    string(&mut out, "Title");
+    out.push(0);
+    string(&mut out, "Author");
+    write_varint(0, &mut out);
+    write_varint(pages.len() as i32, &mut out);
+    for page in pages {
+        // A plain text component is a string tag.
+        let text = page.as_str().unwrap_or_default();
+        out.push(8);
+        out.extend_from_slice(&(text.len() as u16).to_be_bytes());
+        out.extend_from_slice(text.as_bytes());
+        out.push(0);
+    }
+    out.push(1);
+    out
 }
 
 /// What a step does with a result it has no use for.

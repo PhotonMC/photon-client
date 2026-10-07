@@ -2791,7 +2791,19 @@ public final class MovementOracle {
     private static net.minecraft.world.item.ItemStack stack(JsonObject described) {
         var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
             net.minecraft.resources.Identifier.parse(described.get("item").getAsString()));
-        return new net.minecraft.world.item.ItemStack(item, described.get("count").getAsInt());
+        var stack = new net.minecraft.world.item.ItemStack(item, described.get("count").getAsInt());
+        if (described.has("book_pages")) {
+            // A written book of these pages (plain text).
+            var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<net.minecraft.network.chat.Component>>();
+            for (var page : described.getAsJsonArray("book_pages")) {
+                pages.add(net.minecraft.server.network.Filterable.passThrough(
+                    net.minecraft.network.chat.Component.literal(page.getAsString())));
+            }
+            stack.set(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT,
+                new net.minecraft.world.item.component.WrittenBookContent(
+                    net.minecraft.server.network.Filterable.passThrough("Title"), "Author", 0, pages, true));
+        }
+        return stack;
     }
 
     private static com.google.gson.JsonElement describeStack(net.minecraft.world.item.ItemStack stack) {

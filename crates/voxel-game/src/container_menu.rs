@@ -99,6 +99,8 @@ pub enum MenuKind {
     /// `CrafterMenu`: the three by three grid, whose slots can be switched off, and, after the
     /// player's own 36, the result it shows and gives nothing of.
     Crafter,
+    /// `LecternMenu`: the book, and no inventory under it.
+    Lectern,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -142,6 +144,7 @@ impl MenuKind {
             23 => Self::Cartography,
             24 => Self::Stonecutter,
             16 => Self::Hopper,
+            17 => Self::Lectern,
             20 => Self::ShulkerBox,
             _ => return None,
         })
@@ -161,6 +164,7 @@ impl MenuKind {
             Self::Brewing => 5,
             Self::Beacon => 1,
             Self::Crafter => 9,
+            Self::Lectern => 1,
             Self::Loom | Self::Smithing => 4,
         }
     }
@@ -201,6 +205,7 @@ impl MenuKind {
         match self {
             Self::Inventory => SLOT_COUNT,
             Self::Crafter => 46,
+            Self::Lectern => 1,
             other => other.top_slots() + 36,
         }
     }
@@ -1271,6 +1276,8 @@ impl ContainerMenu {
             MenuKind::Brewing => self.quick_move_brewing(index, player),
             MenuKind::Beacon => self.quick_move_beacon(index, player),
             MenuKind::Crafter => self.quick_move_crafter(index, player),
+            // `LecternMenu.quickMoveStack` moves nothing.
+            MenuKind::Lectern => None,
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
@@ -1547,8 +1554,10 @@ mod tests {
         );
         assert_eq!(MenuKind::from_menu_type(16), Some(MenuKind::Hopper));
         assert_eq!(MenuKind::from_menu_type(9), Some(MenuKind::Beacon));
-        // The lectern's menu is not modelled yet.
-        assert_eq!(MenuKind::from_menu_type(17), None);
+        assert_eq!(MenuKind::from_menu_type(17), Some(MenuKind::Lectern));
+        assert_eq!(MenuKind::Lectern.slot_count(), 1);
+        // The merchant's menu is not modelled yet.
+        assert_eq!(MenuKind::from_menu_type(19), None);
     }
 
     #[test]

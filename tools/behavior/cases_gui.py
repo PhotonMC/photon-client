@@ -798,12 +798,13 @@ def gui_container_screen_cases():
     own menu: labels, textures, sprites, name box and what each shows of its
     data. Slots hold items, which are not recorded."""
     def screen(label, menu, title_key, slots=(), data=None, xp=None, keys=(), sync_slot=None,
-               mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True):
+               mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True, game_mode="survival", books=None):
         row = {"label": label, "width": width, "height": height, "mouse_x": mouse[0],
                "mouse_y": mouse[1], "menu": f"minecraft:{menu}", "title_key": title_key,
-               "container_id": 4, "game_mode": "survival", "selected": 0, "state_id": 0,
+               "container_id": 4, "game_mode": game_mode, "selected": 0, "state_id": 0,
                "blocks": [], "chunk_radius": 0, "clicks": [], "keys": list(keys),
-               "slots": [{"slot": slot, "item": f"minecraft:{item}", "count": count}
+               "slots": [dict({"slot": slot, "item": f"minecraft:{item}", "count": count},
+                              **({"book_pages": books[slot]} if books and slot in books else {}))
                          for slot, item, count in slots]}
         if data is not None:
             row["data"] = data
@@ -878,6 +879,27 @@ def gui_container_screen_cases():
                mouse=(155, 58), tooltips=False),
         screen("crafter-hover-disabled", "crafter_3x3", "container.crafter",
                data=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0], mouse=(155, 58), tooltips=False),
+        screen("lectern-empty", "lectern", "container.lectern"),
+        screen("lectern-book", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0, books={0: ["Hello, lectern.", "A second page", "The third"]}),
+        screen("lectern-middle-page", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0, data_after=[[0, 1]],
+               books={0: ["Hello, lectern.", "A second page", "The third"]}),
+        screen("lectern-last-page", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0, data_after=[[0, 2]],
+               books={0: ["Hello, lectern.", "A second page", "The third"]}),
+        screen("lectern-long-page", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0,
+               books={0: ["The quick brown fox jumps over the lazy dog, again and again, until the "
+                          "page is full of words that wrap at the width of the book's text column "
+                          "and run on and on and on and on and on and on and on and on and on and "
+                          "on and on and on and on and on and on and on and on and on and on and on "
+                          "and on and on and on and on and on and on and on and on and on and on"]}),
+        screen("lectern-hover-forward", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0, mouse=(240, 165), books={0: ["One", "Two"]}),
+        screen("lectern-hover-done", "lectern", "container.lectern", mouse=(150, 205)),
+        screen("lectern-adventure", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
+               sync_slot=0, game_mode="adventure", books={0: ["One", "Two"]}),
         screen("smithing-empty", "smithing", "container.upgrade"),
         screen("smithing-template", "smithing", "container.upgrade",
                slots=[(0, "netherite_upgrade_smithing_template", 1)]),

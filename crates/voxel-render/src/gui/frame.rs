@@ -1037,6 +1037,9 @@ pub(crate) fn glyph_quads(
             .map(|shift| ((((colour >> shift) & 0xFF) as f32 * 0.25) as u32) << shift)
             .into_iter()
             .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
+        // A style that names its shadow colour has that one; a clear one has none.
+        let shadow_colour = run.style.shadow.unwrap_or(shadow_colour);
+        let shadow_drawn = shadow && shadow_colour >> 24 != 0;
         let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
         let bold = run.style.bold == Some(true);
         let italic = run.style.italic == Some(true);
@@ -1063,7 +1066,7 @@ pub(crate) fn glyph_quads(
                 // `(offset, bold shift, colour)` for each pass: the shadow's,
                 // then the glyph's; a bold glyph twice.
                 let mut passes: Vec<(f32, f32, [f32; 4])> = Vec::new();
-                if shadow {
+                if shadow_drawn {
                     passes.push((1.0, 0.0, shadow_colour));
                     if bold {
                         passes.push((1.0, 1.0, shadow_colour));

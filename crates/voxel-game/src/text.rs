@@ -6,7 +6,7 @@
 //! carries; the language turns it into runs of text, each with the style it
 //! ends up in. Not read: keybinds, scores, selectors, NBT contents, the
 //! dialog click event, an item's components in a hover, fonts and the
-//! shadow colour.
+//! shadow colour of a component's JSON.
 
 use std::collections::HashMap;
 
@@ -47,6 +47,9 @@ pub struct Style {
     pub underlined: Option<bool>,
     pub strikethrough: Option<bool>,
     pub obfuscated: Option<bool>,
+    /// `shadow_color`, `0xAARRGGBB`: zero alpha draws no shadow (`Style.withoutShadow`). Not read
+    /// from a component; set by the screens that style their text.
+    pub shadow: Option<u32>,
     /// What a click on the text does (`clickEvent`).
     pub click: Option<Box<ClickEvent>>,
     /// What the mouse over the text shows (`hoverEvent`).
@@ -124,6 +127,7 @@ impl Style {
             underlined: flag("underlined"),
             strikethrough: flag("strikethrough"),
             obfuscated: flag("obfuscated"),
+            shadow: None,
             click: match get("click_event") {
                 Some(FieldValue::Compound(event)) => click_from_nbt(event).map(Box::new),
                 _ => None,
@@ -148,6 +152,7 @@ impl Style {
             underlined: self.underlined.or(parent.underlined),
             strikethrough: self.strikethrough.or(parent.strikethrough),
             obfuscated: self.obfuscated.or(parent.obfuscated),
+            shadow: self.shadow.or(parent.shadow),
             click: self.click.clone().or_else(|| parent.click.clone()),
             hover: self.hover.clone().or_else(|| parent.hover.clone()),
             insertion: self.insertion.clone().or_else(|| parent.insertion.clone()),
@@ -275,6 +280,7 @@ impl Component {
                 underlined: flag("underlined"),
                 strikethrough: flag("strikethrough"),
                 obfuscated: flag("obfuscated"),
+                shadow: None,
                 click: object
                     .object("click_event")
                     .and_then(click_from_json)

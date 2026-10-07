@@ -1498,6 +1498,12 @@ impl Controls {
     ) -> Result {
         let size = surface.scale();
         let (width, height) = (size.gui_scaled_width(), size.gui_scaled_height());
+        // `Player.mayBuild`: not in adventure or spectator.
+        let may_build = !matches!(
+            session.game_mode(),
+            voxel_world::ClientPlayerGameMode::Adventure
+                | voxel_world::ClientPlayerGameMode::Spectator
+        );
         // A container with no screen here is closed at once, so the server
         // does not wait on a window the player cannot see.
         if session.open_container_unsupported() {
@@ -1506,7 +1512,7 @@ impl Controls {
         match (self.server_container, session.open_container_info()) {
             (None, Some((id, kind, title))) => {
                 self.server_container = Some(id);
-                self.screen = Some(assets.container_screen(kind, &title, width, height));
+                self.screen = Some(assets.container_screen(kind, &title, width, height, may_build));
                 self.release_keys();
                 surface.set_cursor_captured(false);
                 let (w, h) = surface.window_size();
@@ -1515,7 +1521,7 @@ impl Controls {
             }
             (Some(open), Some((id, kind, title))) if open != id => {
                 self.server_container = Some(id);
-                self.screen = Some(assets.container_screen(kind, &title, width, height));
+                self.screen = Some(assets.container_screen(kind, &title, width, height, may_build));
                 return Ok(());
             }
             (Some(_), None) => {

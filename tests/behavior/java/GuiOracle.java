@@ -2718,9 +2718,12 @@ public final class GuiOracle {
             set(minecraft, "gameRenderer", renderer);
             set(minecraft, "level", open.scene().level());
             set(minecraft, "deltaTracker", new net.minecraft.client.DeltaTracker.Timer(20.0F, 0L, millis -> 50L));
+            // What a book asks of the account (whether text is filtered).
+            set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
+                com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
             var menu = open.menu();
             var inventory = open.player().getInventory();
-            net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen =
+            net.minecraft.client.gui.screens.Screen screen =
                 switch (row.get("menu").getAsString()) {
                     case "minecraft:anvil" -> new net.minecraft.client.gui.screens.inventory.AnvilScreen(
                         (net.minecraft.world.inventory.AnvilMenu) menu, inventory,
@@ -2734,6 +2737,9 @@ public final class GuiOracle {
                     case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
                         (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
                         Component.translatable("container.grindstone_title"));
+                    case "minecraft:lectern" -> new net.minecraft.client.gui.screens.inventory.LecternScreen(
+                        (net.minecraft.world.inventory.LecternMenu) menu, inventory,
+                        Component.translatable("container.lectern"));
                     case "minecraft:crafter_3x3" -> new net.minecraft.client.gui.screens.inventory.CrafterScreen(
                         (net.minecraft.world.inventory.CrafterMenu) menu, inventory,
                         Component.translatable("container.crafter"));
@@ -2761,6 +2767,23 @@ public final class GuiOracle {
             var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(screen);
+            if (row.has("sync_slot")) {
+                // The server's update of a slot, as the screen hears it.
+                int slot = row.get("sync_slot").getAsInt();
+                if (menu instanceof net.minecraft.world.inventory.LecternMenu) {
+                    // The lectern's screen hears the server's update of the book.
+                    var heard = net.minecraft.client.gui.screens.inventory.LecternScreen.class
+                        .getDeclaredField("listener");
+                    heard.setAccessible(true);
+                    ((net.minecraft.world.inventory.ContainerListener) heard.get(screen))
+                        .slotChanged(menu, slot, menu.getSlot(slot).getItem());
+                } else if (screen instanceof net.minecraft.world.inventory.ContainerListener listener) {
+                    listener.slotChanged(menu, slot, menu.getSlot(slot).getItem());
+                } else {
+                    // The stonecutter and the loom hear their menu's own update.
+                    menu.getSlot(slot).setChanged();
+                }
+            }
             if (row.has("data_after")) {
                 // What the server sends once the screen is open: the screen hears the change.
                 for (var pair : row.getAsJsonArray("data_after")) {
@@ -2774,16 +2797,6 @@ public final class GuiOracle {
                     .getDeclaredMethod("containerTick");
                 tick.setAccessible(true);
                 tick.invoke(screen);
-            }
-            if (row.has("sync_slot")) {
-                // The server's update of a slot, as the screen hears it.
-                int slot = row.get("sync_slot").getAsInt();
-                if (screen instanceof net.minecraft.world.inventory.ContainerListener listener) {
-                    listener.slotChanged(menu, slot, menu.getSlot(slot).getItem());
-                } else {
-                    // The stonecutter and the loom hear their menu's own update.
-                    menu.getSlot(slot).setChanged();
-                }
             }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

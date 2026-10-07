@@ -234,6 +234,45 @@ impl Values {
         self.raw(component).is_some()
     }
 
+    /// `BookViewScreen.BookAccess.fromItem`: the pages of a written book, or of a book and quill
+    /// (its text as it is, the text-filtering option being off); `None` for any other stack.
+    pub fn book_pages(&self) -> Option<Vec<Component>> {
+        use voxel_data::item::component_types::{WRITABLE_BOOK_CONTENT, WRITTEN_BOOK_CONTENT};
+        let string = |cursor: &mut Cursor<'_>| -> Option<String> {
+            let length = cursor.count().ok()?;
+            let bytes = cursor.data.get(..length)?;
+            let text = String::from_utf8(bytes.to_vec()).ok()?;
+            cursor.skip(length).ok()?;
+            Some(text)
+        };
+        if let Some(data) = self.raw(WRITTEN_BOOK_CONTENT) {
+            let mut cursor = Cursor { data };
+            // The title (raw, then the filtered one if there is one), the author and the
+            // generation.
+            cursor.string().ok()?;
+            cursor.optional(Cursor::string).ok()?;
+            cursor.string().ok()?;
+            cursor.varint().ok()?;
+            let count = cursor.count().ok()?;
+            let mut pages = Vec::new();
+            for _ in 0..count {
+                let tag = voxel_core::nbt::read_any_nbt(&mut cursor.data).ok()??;
+                pages.push(Component::from_nbt(&tag).unwrap_or_else(Component::empty));
+                cursor.optional(Cursor::tag).ok()?;
+            }
+            return Some(pages);
+        }
+        let data = self.raw(WRITABLE_BOOK_CONTENT)?;
+        let mut cursor = Cursor { data };
+        let count = cursor.count().ok()?;
+        let mut pages = Vec::new();
+        for _ in 0..count {
+            pages.push(Component::literal(&string(&mut cursor)?));
+            cursor.optional(Cursor::string).ok()?;
+        }
+        Some(pages)
+    }
+
     /// `lore`.
     pub fn lore(&self) -> Vec<Component> {
         let Some(mut data) = self.raw(ids::LORE) else {

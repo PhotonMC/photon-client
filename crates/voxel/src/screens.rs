@@ -58,7 +58,17 @@ impl ScreenAssets {
         title_nbt: &[u8],
         width: i32,
         height: i32,
+        may_build: bool,
     ) -> Box<dyn Screen> {
+        if kind == voxel_game::container_menu::MenuKind::Lectern {
+            return Box::new(voxel_render::gui::screen::book::BookScreen::new(
+                width,
+                height,
+                self.lang.clone(),
+                self.creative.font.clone(),
+                may_build,
+            ));
+        }
         let mut data = title_nbt;
         let title = voxel_core::nbt::read_any_nbt(&mut data)
             .ok()

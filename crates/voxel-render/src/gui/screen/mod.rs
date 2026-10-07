@@ -5,6 +5,7 @@
 //! answers with the clicks it wants run ([`ScreenAction`]), and draws itself
 //! into the GUI frame through a [`ScreenDraw`].
 
+pub mod book;
 pub mod container;
 pub mod creative;
 pub mod generic;
