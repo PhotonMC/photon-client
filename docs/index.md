@@ -666,6 +666,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [PLAN-M7 — Ses yığını kararı: `cpal` çıkışı, `lewton` çözücü](audio-backend-decision.md)
 - [Kod kalitesi ve yapı incelemesi (2026-10-07)](code-quality-review-2026-10-07.md)
 - [P22.d.2 — Yaratıcı envanter ekranı — oracle tablosu ve canlı oturum kaydı](records/creative-inventory-record.md)
+- [Üretilmiş tabloların envanteri (D01)](records/generated-inventory.md)
 - [GUI çizim oracle'ı (`gui` ailesi)](gui-oracle.md)
 - [P22.d.1 — Envanter ekranı — canlı oturum kaydı](records/inventory-screen-record.md)
 - [P11.e — Canlı oyun oturumu — server-conformance kaydı](live-play-session.md)

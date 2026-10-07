@@ -22,4 +22,5 @@ Kod taşıma.
 Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 
 ## Devir notu
-(boş)
+- Envanter `docs/records/generated-inventory.md`'de: 28 dosyanın 28'i kapsandı (22 elle modül (a), 4 çalışma anı verisi (b), 1 karma (a+b), üç `mod.rs` D07'de birleşir; (c) hesaplanan tablo yok). Her dosya Java kaynağına, üreticiye ve hedef yola eşlendi; doğrulama her parity koşusundaki tam karşılaştırma.
+- **Karar bekleyen nokta (D02–D07'yi kilitliyor):** inceleme §8 ve AGENTS.md'deki "tablo oracle'dan yakalanır, üretilmiş dosyaya yazılır" kuralı üretilmiş tabloları şart koşuyor; D07 üreticiyi ve kural metnini kaldırır. Proje sahibinin açık kararı olmadan D02–D07 başlatılmadı.
