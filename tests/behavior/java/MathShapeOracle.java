@@ -1,0 +1,78 @@
+import com.google.gson.JsonObject;
+
+class MathShapeOracle extends MathLocalPlayerOracle {
+    static JsonObject shapeCase(JsonObject request) {
+        String kind = request.get("kind").getAsString();
+        return switch (kind) {
+            case "single" -> shapesingleCase(request);
+            case "join" -> shapejoinCase(request);
+            case "join_many" -> shapejoinManyCase(request);
+            case "single_encompassing" -> shapesingleEncompassingCase(request);
+            case "optimize" -> shapeoptimizeCase(request);
+            case "edges" -> shapeedgesCase(request);
+            case "join_coords" -> shapejoinCoordsCase(request);
+            case "boxes" -> shapeboxesCase(request);
+            case "create_aabb" -> shapecreateAabbCase(request);
+            case "create_coords" -> shapecreateCoordsCase(request);
+            case "infinity" -> shapeinfinityCase(request);
+            case "constants" -> shapeconstantsCase(request);
+            case "axis_limits" -> shapeaxisLimitsCase(request);
+            case "axis_limits_at" -> shapeaxisLimitsAtCase(request);
+            case "equal" -> shapeequalCase(request);
+            case "object_equals" -> shapeobjectEqualsCase(request);
+            case "object_equals_constants" -> shapeobjectEqualsConstantsCase(request);
+            case "to_string" -> shapetoStringCase(request);
+            case "rotate" -> shaperotateCase(request);
+            case "rotate_join" -> shaperotateJoinCase(request);
+            case "rotate_center" -> shaperotateCenterCase(request);
+            case "rotate_horizontal_axis" -> shaperotateHorizontalAxisCase(request);
+            case "rotate_horizontal_axis_center" -> shaperotateHorizontalAxisCenterCase(request);
+            case "rotate_all_axis" -> shaperotateAllAxisCase(request);
+            case "rotate_all_axis_center" -> shaperotateAllAxisCenterCase(request);
+            case "rotate_horizontal" -> shaperotateHorizontalCase(request);
+            case "rotate_horizontal_initial" -> shaperotateHorizontalInitialCase(request);
+            case "rotate_all" -> shaperotateAllCase(request);
+            case "rotate_all_center" -> shaperotateAllCenterCase(request);
+            case "rotate_all_initial" -> shaperotateAllInitialCase(request);
+            case "rotate_attach_face" -> shaperotateAttachFaceCase(request);
+            case "rotate_attach_face_initial" -> shaperotateAttachFaceInitialCase(request);
+            case "collide" -> shapecollideCase(request);
+            case "collide_many" -> shapecollideManyCase(request);
+            case "collide_movement" -> shapecollideMovementCase(request);
+            case "entity_movement_state" -> shapeentityMovementStateCase(request);
+            case "entity_movement_state_retention" -> shapeentityMovementStateRetentionCase(request);
+            case "entity_collision_shapes" -> shapeentityCollisionShapesCase(request);
+            case "world_border_collision_shape" -> shapeworldBorderCollisionShapeCase(request);
+            case "world_border_collision_shape_moving" -> shapeworldBorderCollisionShapeMovingCase(request);
+            case "client_world_border_state" -> shapeclientWorldBorderStateCase(request);
+            case "client_world_collision" -> shapeclientWorldCollisionCase(request);
+            case "client_world_indexed_collision" -> shapeclientWorldIndexedCollisionCase(request);
+            case "client_world_entity_section_index" -> shapeclientWorldEntitySectionIndexCase(request);
+            case "client_world_happy_ghast_collision" -> shapeclientWorldHappyGhastCollisionCase(request);
+            case "client_world_registry_collision" -> shapeclientWorldRegistryCollisionCase(request);
+            case "client_world_stair_neighbor_collision" -> shapeclientWorldStairNeighborCollisionCase(request);
+            case "local_player_minor_horizontal_collision" -> shapelocalPlayerMinorHorizontalCollisionCase(request);
+            case "collect_step_up_heights" -> shapecollectStepUpHeightsCase(request);
+            case "select_step_up_movement" -> shapeselectStepUpMovementCase(request);
+            case "collect_block_collisions" -> shapecollectBlockCollisionsCase(request);
+            case "entity_fit" -> shapeentityFitCase(request);
+            case "living_entity_dimensions_scale" -> shapelivingEntityDimensionsScaleCase(request);
+            case "entity_dimensions_refresh" -> shapeentityDimensionsRefreshCase(request);
+            case "player_abilities_packet" -> shapeplayerAbilitiesPacketCase(request);
+            case "player_game_mode_event" -> shapeplayerGameModeEventCase(request);
+            case "player_pose_dimensions" -> shapeplayerPoseDimensionsCase(request);
+            case "player_pose_selection" -> shapeplayerPoseSelectionCase(request);
+            case "clip" -> shapeclipCase(request);
+            case "clip_join" -> shapeclipJoinCase(request);
+            case "closest" -> shapeclosestCase(request);
+            case "closest_join" -> shapeclosestJoinCase(request);
+            case "face" -> shapefaceCase(request);
+            case "face_join" -> shapefaceJoinCase(request);
+            case "block_occludes" -> shapeblockOccludesCase(request);
+            case "block_occludes_join" -> shapeblockOccludesJoinCase(request);
+            case "merged_occludes" -> shapemergedOccludesCase(request);
+            case "face_occludes" -> shapefaceOccludesCase(request);
+            default -> throw new IllegalArgumentException("Unknown VoxelShape kind");
+        };
+    }
+}

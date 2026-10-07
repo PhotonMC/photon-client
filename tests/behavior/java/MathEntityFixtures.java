@@ -1,0 +1,438 @@
+import com.google.gson.JsonObject;
+import java.util.List;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.entity.EntityInLevelCallback;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import sun.misc.Unsafe;
+
+class MathEntityFixtures extends MathCollisionFixtures {
+    static final class SharedFlagsFixtureEntity extends Entity {
+        static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        SharedFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND, CLIENT_LEVEL);
+        }
+
+        static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(HappyGhastClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate metadata client level fixture", error);
+            }
+        }
+
+        int sharedFlags() {
+            return Byte.toUnsignedInt(this.getEntityData().get(DATA_SHARED_FLAGS_ID));
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public boolean hurtServer(
+            net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source,
+            float damage
+        ) {
+            return false;
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        }
+    }
+
+    static final class LivingFlagsFixtureEntity
+        extends net.minecraft.world.entity.decoration.ArmorStand {
+        static final net.minecraft.network.syncher.EntityDataAccessor<
+            List<net.minecraft.core.particles.ParticleOptions>> EFFECT_PARTICLES_DATA =
+            new net.minecraft.network.syncher.EntityDataAccessor<>(
+                10, net.minecraft.network.syncher.EntityDataSerializers.PARTICLES);
+        static final net.minecraft.network.syncher.EntityDataAccessor<Boolean>
+            EFFECT_AMBIENCE_DATA = new net.minecraft.network.syncher.EntityDataAccessor<>(
+                11, net.minecraft.network.syncher.EntityDataSerializers.BOOLEAN);
+
+        LivingFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND,
+                SharedFlagsFixtureEntity.CLIENT_LEVEL);
+        }
+
+        int livingFlags() {
+            return Byte.toUnsignedInt(this.getEntityData().get(DATA_LIVING_ENTITY_FLAGS));
+        }
+
+        boolean effectAmbience() {
+            return this.getEntityData().get(EFFECT_AMBIENCE_DATA);
+        }
+
+        List<Integer> effectParticleTypeIds() {
+            return this.getEntityData().get(EFFECT_PARTICLES_DATA).stream()
+                .map(particle -> BuiltInRegistries.PARTICLE_TYPE.getId(particle.getType()))
+                .toList();
+        }
+    }
+
+    static final class MobFlagsFixtureEntity
+        extends net.minecraft.world.entity.animal.golem.IronGolem {
+        MobFlagsFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.IRON_GOLEM,
+                SharedFlagsFixtureEntity.CLIENT_LEVEL);
+        }
+
+        int mobFlags() {
+            return (this.isNoAi() ? 1 : 0)
+                | (this.isLeftHanded() ? 2 : 0)
+                | (this.isAggressive() ? 4 : 0);
+        }
+    }
+
+    static final class RemotePlayerInterpolationFixture extends RemotePlayer {
+        static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        RemotePlayerInterpolationFixture() {
+            super(null, null);
+        }
+
+        static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(InterpolationClientLevelFixture.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(
+                    "Unable to allocate interpolation client level fixture", error);
+            }
+        }
+
+        static RemotePlayerInterpolationFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot
+        ) {
+            return create(position, yRot, xRot, yHeadRot, Vec3.ZERO);
+        }
+
+        static RemotePlayerInterpolationFixture create(
+            Vec3 position, float yRot, float xRot, float yHeadRot, Vec3 initialMotion
+        ) {
+            try {
+                Unsafe unsafe = unsafeInstance();
+                RemotePlayerInterpolationFixture player =
+                    (RemotePlayerInterpolationFixture)unsafe.allocateInstance(
+                        RemotePlayerInterpolationFixture.class);
+                var typeField = Entity.class.getDeclaredField("type");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(typeField),
+                    net.minecraft.world.entity.EntityTypes.PLAYER);
+                var positionField = Entity.class.getDeclaredField("position");
+                unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
+                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(deltaMovementField), initialMotion);
+                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(blockPositionField),
+                    BlockPos.containing(position.x, position.y, position.z));
+                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                unsafe.putObject(
+                    player, unsafe.objectFieldOffset(chunkPositionField),
+                    ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
+                var passengersField = Entity.class.getDeclaredField("passengers");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(passengersField),
+                    com.google.common.collect.ImmutableList.of());
+                player.setLevelCallback(EntityInLevelCallback.NULL);
+                var interpolationField = LivingEntity.class.getDeclaredField("interpolation");
+                unsafe.putObject(
+                    player,
+                    unsafe.objectFieldOffset(interpolationField),
+                    new net.minecraft.world.entity.InterpolationHandler(player));
+                player.setYRot(yRot);
+                player.setXRot(xRot);
+                player.yHeadRot = yHeadRot;
+                player.yHeadRotO = yHeadRot;
+                player.yBodyRot = yRot;
+                player.yBodyRotO = yRot;
+                player.setOldPosAndRot();
+                return player;
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to construct remote player interpolation fixture", error);
+            }
+        }
+
+        int interpolationSteps() {
+            try {
+                var dataField = net.minecraft.world.entity.InterpolationHandler.class
+                    .getDeclaredField("interpolationData");
+                dataField.setAccessible(true);
+                Object data = dataField.get(this.getInterpolation());
+                var stepsField = data.getClass().getDeclaredField("steps");
+                stepsField.setAccessible(true);
+                return stepsField.getInt(data);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read interpolation step fixture", error);
+            }
+        }
+
+        Vec3 motionTarget() {
+            try {
+                var targetField = RemotePlayer.class.getDeclaredField("lerpDeltaMovement");
+                targetField.setAccessible(true);
+                return (Vec3)targetField.get(this);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read remote player motion target fixture", error);
+            }
+        }
+
+        int motionSteps() {
+            try {
+                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
+                stepsField.setAccessible(true);
+                return stepsField.getInt(this);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to read remote player motion steps fixture", error);
+            }
+        }
+
+        void setMotionSteps(int steps) {
+            try {
+                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
+                stepsField.setAccessible(true);
+                stepsField.setInt(this, steps);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(
+                    "Unable to write remote player motion steps fixture", error);
+            }
+        }
+
+        void tickRemotePlayerMotion() {
+            int steps = this.motionSteps();
+            if (steps > 0) {
+                Vec3 target = this.motionTarget();
+                Vec3 current = this.getDeltaMovement();
+                this.addDeltaMovement(new Vec3(
+                    (target.x - current.x) / steps,
+                    (target.y - current.y) / steps,
+                    (target.z - current.z) / steps));
+                this.setMotionSteps(steps - 1);
+            }
+        }
+
+        void applyTeleport(
+            Vec3 changePosition, Vec3 changeMotion, float yRot, float xRot,
+            int relativeFlags, boolean interpolate
+        ) {
+            var relatives = net.minecraft.world.entity.Relative.unpack(relativeFlags);
+            var change = new net.minecraft.world.entity.PositionMoveRotation(
+                changePosition, changeMotion, yRot, xRot);
+            var currentValues = net.minecraft.world.entity.PositionMoveRotation.of(this);
+            var newValues = net.minecraft.world.entity.PositionMoveRotation.calculateAbsolute(
+                currentValues, change, relatives);
+            boolean tooBigToInterpolate = currentValues.position().distanceToSqr(
+                newValues.position()) > 4096.0;
+            if (interpolate && !tooBigToInterpolate) {
+                this.moveOrInterpolateTo(
+                    newValues.position(), newValues.yRot(), newValues.xRot());
+                this.setDeltaMovement(newValues.deltaMovement());
+            } else {
+                this.setPos(newValues.position());
+                this.setDeltaMovement(newValues.deltaMovement());
+                this.setYRot(newValues.yRot());
+                this.setXRot(newValues.xRot());
+                var currentInterpolationValues =
+                    new net.minecraft.world.entity.PositionMoveRotation(
+                        this.oldPosition(), Vec3.ZERO, this.yRotO, this.xRotO);
+                var interpolationValues =
+                    net.minecraft.world.entity.PositionMoveRotation.calculateAbsolute(
+                        currentInterpolationValues, change, relatives);
+                this.setOldPosAndRot(
+                    interpolationValues.position(),
+                    interpolationValues.yRot(),
+                    interpolationValues.xRot());
+            }
+        }
+
+        void applyPositionSync(Vec3 position, float yRot, float xRot) {
+            boolean withinInterpolationRange = this.position().distanceToSqr(position) <= 4096.0;
+            if (((InterpolationClientLevelFixture)CLIENT_LEVEL).isTickingEntity(this)
+                && withinInterpolationRange) {
+                this.moveOrInterpolateTo(position, yRot, xRot);
+            } else {
+                this.snapTo(position, yRot, xRot);
+            }
+        }
+
+        void tickThroughClientLevel() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            if (this.isInterpolating()) {
+                this.getInterpolation().interpolate();
+            }
+        }
+
+        void tickThroughRemotePlayer() {
+            this.setOldPosAndRot();
+            this.tickCount++;
+            this.tickRemotePlayerMotion();
+        }
+
+        @Override
+        protected AABB makeBoundingBox(Vec3 position) {
+            return AABB.ofSize(position, 0.6, 1.8, 0.6);
+        }
+
+        @Override
+        public net.minecraft.world.level.Level level() {
+            return CLIENT_LEVEL;
+        }
+
+        @Override
+        protected void updateSwingTime() {
+        }
+
+        @Override
+        protected void updateBob() {
+        }
+
+        @Override
+        protected void pushEntities() {
+        }
+    }
+
+    static final class TransformHistoryFixture {
+        int playerId;
+        int entityId;
+        int playerTickCount;
+        int entityTickCount;
+        long gameTime;
+        Vec3 playerPosition;
+        Vec3 playerPreviousPosition;
+        float playerYRot;
+        float playerXRot;
+        float playerYRotO;
+        float playerXRotO;
+        Vec3 entityPosition;
+        Vec3 entityPreviousPosition;
+        float entityYRot;
+        float entityXRot;
+        float entityYRotO;
+        float entityXRotO;
+        float entityHeadRot;
+        float entityHeadRotO;
+
+        static TransformHistoryFixture create(
+            JsonObject playerInput, JsonObject entityInput
+        ) {
+            TransformHistoryFixture fixture = new TransformHistoryFixture();
+            fixture.playerId = playerInput.get("entity_id").getAsInt();
+            fixture.entityId = entityInput.get("entity_id").getAsInt();
+            fixture.playerPosition = vec3(playerInput.getAsJsonObject("position"));
+            fixture.playerPreviousPosition = fixture.playerPosition;
+            JsonObject playerRotation = playerInput.getAsJsonObject("rotation");
+            fixture.playerYRot = Oracle.f32(playerRotation, "y");
+            fixture.playerXRot = Oracle.f32(playerRotation, "x");
+            fixture.playerYRotO = fixture.playerYRot;
+            fixture.playerXRotO = fixture.playerXRot;
+            fixture.entityPosition = vec3(entityInput.getAsJsonObject("position"));
+            fixture.entityPreviousPosition = fixture.entityPosition;
+            JsonObject entityRotation = entityInput.getAsJsonObject("rotation");
+            fixture.entityYRot = Oracle.f32(entityRotation, "y");
+            fixture.entityXRot = Oracle.f32(entityRotation, "x");
+            fixture.entityYRotO = fixture.entityYRot;
+            fixture.entityXRotO = fixture.entityXRot;
+            fixture.entityHeadRot = Oracle.f32(entityRotation, "head");
+            fixture.entityHeadRotO = fixture.entityHeadRot;
+            return fixture;
+        }
+
+        void tick(int ticks) {
+            for (int tick = 0; tick < ticks; tick++) {
+                this.gameTime++;
+                this.playerPreviousPosition = this.playerPosition;
+                this.playerYRotO = this.playerYRot;
+                this.playerXRotO = this.playerXRot;
+                this.playerTickCount++;
+                this.entityPreviousPosition = this.entityPosition;
+                this.entityYRotO = this.entityYRot;
+                this.entityXRotO = this.entityXRot;
+                this.entityHeadRotO = this.entityHeadRot;
+                this.entityTickCount++;
+            }
+        }
+
+        void updatePlayer(Vec3 position, float yRot, float xRot) {
+            this.playerPosition = position;
+            this.playerYRot = yRot;
+            this.playerXRot = xRot;
+        }
+
+        void updateEntityPosition(Vec3 position) {
+            this.entityPosition = position;
+        }
+
+        void updateEntityHead(float headRot) {
+            this.entityHeadRot = headRot;
+        }
+
+        Vec3 playerInterpolatedPosition(float partialTick) {
+            return interpolate(this.playerPreviousPosition, this.playerPosition, partialTick);
+        }
+
+        float playerInterpolatedYRot(float partialTick) {
+            return partialTick == 1.0F
+                ? this.playerYRot : Mth.rotLerp(
+                    partialTick, this.playerYRotO, this.playerYRot);
+        }
+
+        float playerInterpolatedXRot(float partialTick) {
+            return partialTick == 1.0F
+                ? this.playerXRot : Mth.lerp(
+                    partialTick, this.playerXRotO, this.playerXRot);
+        }
+
+        Vec3 entityInterpolatedPosition(float partialTick) {
+            return interpolate(this.entityPreviousPosition, this.entityPosition, partialTick);
+        }
+
+        float entityInterpolatedYRot(float partialTick) {
+            return partialTick == 1.0F
+                ? this.entityYRot : Mth.rotLerp(
+                    partialTick, this.entityYRotO, this.entityYRot);
+        }
+
+        float entityInterpolatedXRot(float partialTick) {
+            return partialTick == 1.0F
+                ? this.entityXRot : Mth.lerp(
+                    partialTick, this.entityXRotO, this.entityXRot);
+        }
+
+        float entityInterpolatedHeadRot(float partialTick) {
+            return partialTick == 1.0F
+                ? this.entityHeadRot : Mth.rotLerp(
+                    partialTick, this.entityHeadRotO, this.entityHeadRot);
+        }
+
+        static Vec3 interpolate(Vec3 previous, Vec3 current, float partialTick) {
+            return new Vec3(
+                Mth.lerp(partialTick, previous.x, current.x),
+                Mth.lerp(partialTick, previous.y, current.y),
+                Mth.lerp(partialTick, previous.z, current.z));
+        }
+    }
+}
