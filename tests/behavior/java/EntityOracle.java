@@ -3245,6 +3245,86 @@ public final class EntityOracle {
      * pipeline's state and texture, and the matrix that moves the texture at some times and glint
      * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
      */
+    /** A chest's model (a half of a double one too), its lid at a given eased openness. */
+    private static JsonObject chestModel(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var model = new net.minecraft.client.model.object.chest.ChestModel(bakedLayer(row.get("layer").getAsString()));
+            model.setupAnim(Oracle.f32(row, "open"));
+            rows.add(posedQuads(row.get("label").getAsString(), model));
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * What the real `ChestRenderer.submit` hands the collector: the pose, the lid's eased openness,
+     * the light and the sprite, for a chest's type, material, facing and openness.
+     */
+    private static JsonObject chestPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var roots = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
+        java.util.function.Function<net.minecraft.client.model.geom.ModelLayerLocation,
+            net.minecraft.client.model.object.chest.ChestModel> bake = layer ->
+                new net.minecraft.client.model.object.chest.ChestModel(roots.get(layer).bakeRoot());
+        var models = net.minecraft.client.renderer.blockentity.ChestRenderer.LAYERS.map(bake);
+        var renderer = (net.minecraft.client.renderer.blockentity.ChestRenderer<?>) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.ChestRenderer.class);
+        var modelsField = net.minecraft.client.renderer.blockentity.ChestRenderer.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(renderer, models);
+        // The first use of each facing's matrix works its flags out (a facing that turns nothing
+        // becomes the identity), as the first chest drawn does in the game.
+        for (var facing : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            com.mojang.math.MatrixUtil.isPureTranslation(
+                net.minecraft.client.renderer.blockentity.ChestRenderer.modelTransformation(facing).getMatrix());
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.ChestRenderState();
+            state.type = net.minecraft.world.level.block.state.properties.ChestType.valueOf(
+                row.get("type").getAsString().toUpperCase());
+            state.facing = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.material = net.minecraft.client.renderer.blockentity.state.ChestRenderState.ChestMaterialType
+                .valueOf(row.get("material").getAsString());
+            state.open = Oracle.f32(row, "open");
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("open", Oracle.bits((Float) args[1]));
+                        out.addProperty("light", (Integer) args[3]);
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        out.addProperty("layer", args[0] == models.single() ? "single"
+                            : args[0] == models.left() ? "left" : "right");
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            stack.translate(Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"));
+            renderer.submit(state, stack, collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** `GameRenderer.bobHurt`: the matrix the view is turned by when the camera's entity flinches or dies. */
     private static JsonObject cameraHurt(final JsonObject request) throws Exception {
         var gameState = installGameState();
@@ -5619,6 +5699,12 @@ public final class EntityOracle {
         }
         if (operation.equals("camera_hurt")) {
             return cameraHurt(request);
+        }
+        if (operation.equals("chest_model")) {
+            return chestModel(request);
+        }
+        if (operation.equals("chest_pose")) {
+            return chestPose(request);
         }
         if (operation.equals("map_render")) {
             return mapRender(request);

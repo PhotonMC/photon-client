@@ -2805,6 +2805,17 @@ impl MobModel {
         }
     }
 
+    /// `ChestModel.setupAnim`: the lid, and the lock on it, tip back by how open the (eased) lid is.
+    pub fn setup_chest(&mut self, open: f32) {
+        self.root.reset();
+        let angle = -(open * (std::f64::consts::PI / 2.0) as f32);
+        for name in ["lid", "lock"] {
+            if let Some(part) = self.root.child_mut(name) {
+                part.x_rot = angle;
+            }
+        }
+    }
+
     /// `AbstractBoatModel.setupAnim`: each paddle swings by the time it has
     /// rowed (the right one mirrored).
     pub fn setup_boat(&mut self, state: &crate::boat::BoatRenderState) {

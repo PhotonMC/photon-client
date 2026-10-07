@@ -158,6 +158,8 @@ pub(crate) struct ClientChunk {
     /// `ChunkSkyLightSources`, from the sections the chunk arrived with.
     pub(crate) sky_sources: Option<super::light::ChunkSkyLightSources>,
     pub(crate) block_entities: BTreeMap<(i32, i32, i32), ClientBlockEntity>,
+    /// The blocks of the chunk that are chests, which the client gives a block entity of its own.
+    pub(crate) chests: std::collections::BTreeSet<(i32, i32, i32)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

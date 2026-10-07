@@ -87,6 +87,7 @@ pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID: i32 = 74;
 pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID: i32 = 75;
 pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID: i32 = 76;
 pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
+pub(crate) const PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID: i32 = 7;
 pub(crate) const PLAY_CLIENTBOUND_INITIALIZE_BORDER_PACKET_ID: i32 = 43;
 pub(crate) const PLAY_CLIENTBOUND_SET_BORDER_CENTER_PACKET_ID: i32 = 88;
 pub(crate) const PLAY_CLIENTBOUND_SET_BORDER_LERP_SIZE_PACKET_ID: i32 = 89;
@@ -3865,6 +3866,21 @@ pub(crate) fn parse_damage_event_packet(
             .ok()
             .and_then(|value| value.checked_sub(1)),
     ))
+}
+
+/// Position, event id and event data of a block event.
+pub(crate) type BlockEvent = ((i32, i32, i32), u8, u8);
+
+/// `ClientboundBlockEventPacket`: the block, the event and its data (the block's registry id
+/// is left unread).
+pub(crate) fn parse_block_event_packet(input: &[u8]) -> Result<BlockEvent, ConnectionError> {
+    const NAME: &str = "block event";
+    let mut input = input;
+    let input = &mut input;
+    let pos = voxel_core::binary::BlockPos::unpack(read_i64(input, NAME)? as u64);
+    let event = read_byte(input, NAME)?;
+    let data = read_byte(input, NAME)?;
+    Ok(((pos.x, pos.y, pos.z), event, data))
 }
 
 /// `ClientboundInitializeBorderPacket`: the whole border state of a level.

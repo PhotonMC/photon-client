@@ -10,6 +10,7 @@ pub mod blockstate;
 pub mod boat;
 pub mod breaking;
 pub mod camera;
+pub mod chest;
 pub mod clouds;
 pub mod crystal_beam;
 pub mod display;

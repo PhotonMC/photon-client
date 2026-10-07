@@ -23613,6 +23613,64 @@ fn glint_layers_result(request: &Value) -> Result<Value, String> {
     }))
 }
 
+/// `chest_model`: a chest's model with its lid at an eased opening.
+fn chest_model_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = row["layer"].as_str().ok_or("layer")?;
+        let layer = voxel_data::entity_model::layer(id).ok_or("no such layer")?;
+        let open = f32::from_bits(
+            u32::from_str_radix(row["open"].as_str().ok_or("open")?, 16)
+                .map_err(|error| error.to_string())?,
+        );
+        let mut model = MobModel::bake(layer);
+        model.setup_chest(open);
+        rows.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `chest_pose`: where, with what lid, light and texture a chest is drawn.
+fn chest_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
+    use voxel_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(row[key].as_str().ok_or(key.to_owned())?, 16)
+                    .map_err(|error| error.to_string())?,
+            ))
+        };
+        let kind = ChestKind::from_name(row["type"].as_str().ok_or("type")?).ok_or("type")?;
+        let material = ChestMaterial::from_name(row["material"].as_str().ok_or("material")?)
+            .ok_or("material")?;
+        let facing =
+            voxel_core::direction::Direction::from_name(row["facing"].as_str().ok_or("facing")?)
+                .ok_or("facing")?;
+        let mut base = Pose::default();
+        base.translate(float("x")?, float("y")?, float("z")?);
+        let pose = chest_pose(&base, facing);
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": matrix,
+            "open": format!("{:08x}", eased_open(float("open")?).to_bits()),
+            "light": row["light"],
+            "texture": material.texture(kind),
+            "layer": row["type"],
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
 fn camera_hurt_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
@@ -25882,6 +25940,8 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "item_equippable" => return item_equippable_result(request),
         "glint_layers" => return glint_layers_result(request),
         "camera_hurt" => return camera_hurt_result(request),
+        "chest_model" => return chest_model_result(request),
+        "chest_pose" => return chest_pose_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),

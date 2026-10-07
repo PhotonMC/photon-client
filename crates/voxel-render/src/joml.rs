@@ -334,6 +334,14 @@ impl Matrix4 {
         self.properties & IDENTITY != 0 || self.m == Self::identity().m
     }
 
+    /// `Matrix4f.determineProperties` as `MatrixUtil.checkProperty` leaves it on a matrix a
+    /// transformation keeps: one equal to the identity (zeros of either sign) is known to be.
+    pub fn determine_properties(&mut self) {
+        if self.m == Self::identity().m {
+            self.properties |= IDENTITY | AFFINE | TRANSLATION | ORTHONORMAL;
+        }
+    }
+
     /// `Matrix4f.mul(right)`: this times `right`, for the affine cases the
     /// reference's dispatch sends to `mulAffine` and the identity shortcuts.
     pub fn mul(&self, right: &Self) -> Self {
@@ -348,6 +356,21 @@ impl Matrix4 {
             "only affine products are ported"
         );
         let (l, r) = (&self.m, &right.m);
+        if self.properties & TRANSLATION != 0 {
+            // `mulTranslationAffine`: the right's rotation as it is, the translations added.
+            let mut out = right.m;
+            for column in out.iter_mut().take(3) {
+                column[3] = l[0][3];
+            }
+            for row in 0..3 {
+                out[3][row] = r[3][row] + l[3][row];
+            }
+            out[3][3] = l[3][3];
+            return Self {
+                m: out,
+                properties: AFFINE | right.properties & ORTHONORMAL,
+            };
+        }
         let mut out = [[0.0_f32; 4]; 4];
         for column in 0..3 {
             for row in 0..3 {
@@ -381,6 +404,27 @@ impl Matrix4 {
         matrix.m[3][2] = z;
         matrix.properties = AFFINE | TRANSLATION | ORTHONORMAL;
         matrix
+    }
+
+    /// `Matrix4f.rotationAround(quat, ox, oy, oz)`: the rotation about the point as a matrix of its
+    /// own, affine and orthonormal.
+    pub fn rotation_around(quat: &Quaternion, (ox, oy, oz): (f32, f32, f32)) -> Self {
+        let r = quat.expand();
+        let mut m = [[0.0_f32; 4]; 4];
+        for (column, rm) in m.iter_mut().zip(r.chunks(3)) {
+            column[..3].copy_from_slice(rm);
+        }
+        for row in 0..3 {
+            m[3][row] = -m[0][row] * [ox, oy, oz][0]
+                - m[1][row] * [ox, oy, oz][1]
+                - m[2][row] * [ox, oy, oz][2]
+                + [ox, oy, oz][row];
+        }
+        m[3][3] = 1.0;
+        Self {
+            m,
+            properties: AFFINE | ORTHONORMAL,
+        }
     }
 
     /// `Matrix4f.rotateAround(quat, ox, oy, oz)` for an affine matrix

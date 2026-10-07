@@ -11,6 +11,7 @@ mod bears;
 mod boats;
 mod bullets;
 mod charges;
+mod chests;
 mod controls;
 mod copper_golems;
 mod cube_mobs;

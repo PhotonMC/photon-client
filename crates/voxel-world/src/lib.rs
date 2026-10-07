@@ -40,6 +40,7 @@ pub use vehicle_ride::{VehicleKind, VehicleView};
 mod border;
 pub mod breeze;
 pub mod cat;
+mod chest;
 mod chunk;
 mod collision;
 mod constants;
@@ -95,6 +96,7 @@ pub mod wolf;
 pub use block_entity::*;
 pub use block_state::*;
 pub use border::*;
+pub use chest::ChestView;
 pub use chunk::*;
 pub use collision::*;
 pub use constants::*;
@@ -150,6 +152,7 @@ pub struct ClientWorld {
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
     world_border: ClientWorldBorder,
+    chest_lids: chest::ChestLids,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
     server_simulation_distance: i32,
     /// The chunk the client's own player stands in, as the session last said
@@ -223,6 +226,7 @@ impl ClientWorld {
             local_player: None,
             sounds: local_player::SoundQueue::default(),
             world_border: ClientWorldBorder::default(),
+            chest_lids: chest::ChestLids::default(),
             server_simulation_distance: 3,
             local_chunk: None,
             game_time: 0,
@@ -1457,6 +1461,7 @@ impl ClientWorld {
 
     pub fn tick(&mut self) {
         self.world_border.tick();
+        self.chest_lids.tick();
         self.game_time = self.game_time.wrapping_add(1);
         let local_player_is_passenger = self.local_player.as_ref().is_some_and(|player| {
             self.entity_vehicle_id(player.id).is_some_and(|vehicle_id| {
@@ -3401,6 +3406,15 @@ impl ClientWorld {
         // `LevelChunk.setBlockState`: the light hears of a section turning
         // empty or not, and of a change in how light passes the block.
         let is_empty = section.has_only_air();
+        // A chest block has its own block entity on the client, and a lid that goes with it.
+        self.chest_lids.0.remove(&(x, y, z));
+        if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
+            if chest::is_chest_state(state_id) {
+                chunk.chests.insert((x, y, z));
+            } else {
+                chunk.chests.remove(&(x, y, z));
+            }
+        }
         if was_empty != is_empty {
             self.light
                 .update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
@@ -4677,11 +4691,13 @@ impl ClientWorld {
                 .filter(|section| !section.has_only_air())
                 .map(|section| &section.block_states)
         });
-        let new_chunk = ClientChunk {
+        let mut new_chunk = ClientChunk {
             sections,
             sky_sources: Some(sky_sources),
             block_entities: BTreeMap::new(),
+            chests: std::collections::BTreeSet::new(),
         };
+        new_chunk.chests = chest::chests_of(chunk_x, chunk_z, &new_chunk.sections);
         let new_section_statuses = new_chunk
             .sections
             .iter()

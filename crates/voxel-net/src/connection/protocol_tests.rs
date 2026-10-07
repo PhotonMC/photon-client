@@ -52,11 +52,11 @@ use super::{
     encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_select_trade,
     encode_set_beacon, encode_set_carried_item, encode_stop_destroy_block, encode_use_item,
     encode_use_item_on, encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
-    parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
-    parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
-    parse_container_set_slot_packet, parse_cursor_item_packet, parse_damage_event_packet,
-    parse_entity_equipment_packet, parse_entity_event_packet, parse_entity_metadata_packet,
-    parse_entity_position_sync_packet, parse_entity_teleport_packet,
+    parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_event_packet,
+    parse_block_update_packet, parse_chunk_packet, parse_container_close_packet,
+    parse_container_set_content_packet, parse_container_set_slot_packet, parse_cursor_item_packet,
+    parse_damage_event_packet, parse_entity_equipment_packet, parse_entity_event_packet,
+    parse_entity_metadata_packet, parse_entity_position_sync_packet, parse_entity_teleport_packet,
     parse_forget_level_chunk_packet, parse_game_event_packet, parse_hurt_animation_packet,
     parse_initialize_border_packet, parse_light_update_packet, parse_login_packet,
     parse_map_item_data_packet, parse_merchant_offers_packet, parse_move_entity_pos_packet,
@@ -2762,6 +2762,20 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn a_block_event_names_the_block_the_event_and_its_data() {
+    let mut payload = voxel_core::binary::BlockPos::new(-3, 64, 12)
+        .pack()
+        .to_be_bytes()
+        .to_vec();
+    payload.extend_from_slice(&[1, 2, 0x05]);
+    assert_eq!(
+        parse_block_event_packet(&payload).unwrap(),
+        ((-3, 64, 12), 1, 2)
+    );
+    assert!(parse_block_event_packet(&payload[..9]).is_err());
 }
 
 #[test]

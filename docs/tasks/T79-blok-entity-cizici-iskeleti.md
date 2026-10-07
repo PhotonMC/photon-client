@@ -19,4 +19,6 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: sandık ailesi (tek/çift, tuzaklı, ender, bakır) `ChestRenderer`'a bit bit eşit; kapak `BlockEvent` ile sürülür; istemci sandığı blok durumundan kurar. Kayıt: [client-chest-parity-conformance.md](../client-chest-parity-conformance.md).
+Sapma: Noel dokusu yok (tarih denetimi). Kapak hareketi canlıda ayrıca denenmedi.
+Açık: shulker kutusu ve yatak [T79b](T79b-shulker-yatak.md)'ye; sandık sesleri T78'de.

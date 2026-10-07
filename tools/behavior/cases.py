@@ -16070,6 +16070,7 @@ def entity_cases():
     yield from entity_map_render_cases()
     yield from entity_equippable_cases()
     yield from entity_camera_hurt_cases()
+    yield from entity_chest_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17939,6 +17940,39 @@ def entity_camera_hurt_cases():
     row("dead", -1.0, dying=True, death=33.0)
     row("dying and flinching", 4.0, dying=True, death=2.5, direction=75.0)
     yield {"case_id": "entity/camera-hurt", "family": "entity", "operation": "camera_hurt", "rows": rows}
+
+
+def entity_chest_cases():
+    """The chest's three models with the lid shut and at a few openings, and where the real
+    `ChestRenderer` draws a chest of each type, material and facing, at each openness."""
+    models = []
+    for layer in ("minecraft:chest#main", "minecraft:double_chest_left#main",
+                  "minecraft:double_chest_right#main"):
+        for open_ in (0.0, 0.25, 0.7, 1.0):
+            models.append({"label": f"{layer} {open_}", "layer": layer, "open": float_bits(open_)})
+    yield {"case_id": "entity/chest-model", "family": "entity", "operation": "chest_model",
+           "rows": models}
+    poses = []
+    for facing in ("north", "east", "south", "west"):
+        for kind in ("single", "left", "right"):
+            poses.append({"label": f"{facing} {kind}", "type": kind, "facing": facing,
+                          "material": "REGULAR", "open": float_bits(0.4), "light": 0xF000F0 - 17,
+                          "x": float_bits(3.0), "y": float_bits(-1.25), "z": float_bits(7.5)})
+    for repeat in range(3):
+        poses.append({"label": f"repeat {repeat}", "type": "single", "facing": "south",
+                      "material": "REGULAR", "open": float_bits(0.4), "light": 240,
+                      "x": float_bits(1.0), "y": float_bits(1.0), "z": float_bits(1.0)})
+    for material in ("ENDER_CHEST", "CHRISTMAS", "TRAPPED", "COPPER_UNAFFECTED", "COPPER_EXPOSED",
+                     "COPPER_WEATHERED", "COPPER_OXIDIZED"):
+        for kind in ("single", "left", "right"):
+            poses.append({"label": f"{material} {kind}", "type": kind, "facing": "south",
+                          "material": material, "open": float_bits(0.0), "light": 15728880,
+                          "x": float_bits(0.0), "y": float_bits(0.0), "z": float_bits(0.0)})
+    for index, open_ in enumerate((0.0, 0.1, 0.5, 0.9, 1.0)):
+        poses.append({"label": f"open {index}", "type": "single", "facing": "north", "material": "TRAPPED",
+                      "open": float_bits(open_), "light": 240, "x": float_bits(-4.5),
+                      "y": float_bits(2.0), "z": float_bits(-0.5)})
+    yield {"case_id": "entity/chest-pose", "family": "entity", "operation": "chest_pose", "rows": poses}
 
 
 def entity_equippable_cases():

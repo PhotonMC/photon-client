@@ -2110,6 +2110,10 @@ impl PlaySession {
                     packet.carried_item.as_ref(),
                 );
             }
+            PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => {
+                let (pos, event, data) = parse_block_event_packet(payload)?;
+                self.trace.world.apply_chest_block_event(pos, event, data);
+            }
             PLAY_CLIENTBOUND_INITIALIZE_BORDER_PACKET_ID => {
                 let packet = parse_initialize_border_packet(payload)?;
                 self.trace.world.apply_world_border_initialize(packet);
