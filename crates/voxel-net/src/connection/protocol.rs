@@ -3722,6 +3722,24 @@ pub(crate) fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionErro
     voxel_core::wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("entity id"))
 }
 
+/// `ClientboundDamageEventPacket`: the entity hurt, and the registry id of the damage type that
+/// hurt it (`None` when the packet carries the type itself instead of naming one, which a server
+/// that syncs its registries does not do). The rest (the causes, the place) is not read.
+pub(crate) fn parse_damage_event_packet(
+    input: &[u8],
+) -> Result<(i32, Option<usize>), ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "damage event entity id")?;
+    // `ByteBufCodecs.holder`: the registry id plus one, or zero for a type written out.
+    let holder = read_varint(&mut input, "damage event type")?;
+    Ok((
+        id,
+        usize::try_from(holder)
+            .ok()
+            .and_then(|value| value.checked_sub(1)),
+    ))
+}
+
 /// `ClientboundTrackedWaypointPacket.STREAM_CODEC`: the operation, then the
 /// waypoint (`TrackedWaypoint.read`).
 pub fn parse_waypoint_packet(

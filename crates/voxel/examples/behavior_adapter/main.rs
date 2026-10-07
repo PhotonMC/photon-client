@@ -20521,6 +20521,12 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                 x_rot = bits32(tick, "x_rot")?;
             }
             player.set_rotation(y_rot, x_rot);
+            if let Some(damage) = tick.get("damage").and_then(Value::as_str) {
+                player.handle_damage_event(damage);
+            }
+            if tick.get("death").is_some() {
+                player.handle_death_event();
+            }
             let mut actions = Vec::new();
             if let Some(attack) = tick.get("attack") {
                 for event in attack["server"].as_array().into_iter().flatten() {
@@ -20678,9 +20684,11 @@ fn movement_result(request: &Value) -> Result<Value, String> {
                         voxel_world::local_player::LocalSoundSource::Players => "player",
                         voxel_world::local_player::LocalSoundSource::Blocks => "block",
                     };
-                    // The swim and splash sounds' pitch is random in Java and is compared by volume only.
+                    // The swim, splash, hurt and death sounds' pitch is random in Java and is compared by volume only.
                     let pitch = if sound.event == "minecraft:entity.player.swim"
                         || sound.event.starts_with("minecraft:entity.player.splash")
+                        || sound.event.starts_with("minecraft:entity.player.hurt")
+                        || sound.event == "minecraft:entity.player.death"
                     {
                         0.0_f32
                     } else {
@@ -26618,6 +26626,21 @@ fn respond(request: Value) -> Result<Value, String> {
                         "type": row.name, "overrides": own}),
                     );
                 }
+                json!({"rows": rows})
+            }
+            "damage_effects" => {
+                let mut rows: Vec<Value> = voxel_data::damage_effect::effect_sounds()
+                    .map(|(name, sound)| {
+                        json!({"label": format!("effect:{name}"), "kind": "effect", "name": name,
+                            "sound": sound})
+                    })
+                    .collect();
+                rows.extend(
+                    voxel_data::damage_effect::type_effects().map(|(name, effect)| {
+                        json!({"label": format!("type:{name}"), "kind": "type", "name": name,
+                        "effect": effect})
+                    }),
+                );
                 json!({"rows": rows})
             }
             _ => sound_registry_result(&request)?,

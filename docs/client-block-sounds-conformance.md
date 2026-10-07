@@ -1,6 +1,6 @@
 # T64a — Blok sesleri ve oyuncunun hareket sesleri — [client-parity] (tablo) · [server-conformance] (tetikler)
 
-Bu kayıt iki şeyi ayrı sınıflarla tutar. **Tablo** (`client-parity`): her bloğun ses türü (`SoundType`: ses, perde ve kırma/adım/koyma/vurma/düşme sesleri) gerçek kayıt defterinden alınır ve her koşuda baştan sona karşılaştırılır. **Tetikler**: oyuncunun hareket sesleri (adım, yüzme, su sıçraması, iniş, kabarcık sütununa girme) gerçek `LocalPlayer`'a karşı karşılaştırılır (`client-parity`, `movement/local-player-ticks` satırlarının `sounds` alanı: olay, kaynak, ses, perde, yer; bit bit). Vuruş, kırma ve koyma sesleri Java kaynağından yazıldı ve birim testli/canlı gözlemlidir (`server-conformance`).
+Bu kayıt iki şeyi ayrı sınıflarla tutar. **Tablo** (`client-parity`): her bloğun ses türü (`SoundType`: ses, perde ve kırma/adım/koyma/vurma/düşme sesleri) gerçek kayıt defterinden alınır ve her koşuda baştan sona karşılaştırılır. **Tetikler**: oyuncunun hareket sesleri (adım, yüzme, su sıçraması, iniş, kabarcık sütununa girme, hasar ve ölüm) gerçek `LocalPlayer`'a karşı karşılaştırılır (`client-parity`, `movement/local-player-ticks` satırlarının `sounds` alanı: olay, kaynak, ses, perde, yer; bit bit). Vuruş, kırma ve koyma sesleri Java kaynağından yazıldı ve birim testli/canlı gözlemlidir (`server-conformance`).
 
 ## Java kaynak incelemesi
 
@@ -17,6 +17,7 @@ Bu kayıt iki şeyi ayrı sınıflarla tutar. **Tablo** (`client-parity`): her b
 
 - Oracle'da `SoundManager` sessiz bir sahtedir ve çalınan sesleri kaydeder. Rastgele olanlar karşılaştırılmaz: ortam sesleri (su altı, mağara) elenir, yüzme ve sıçrama sesinin perdesi (varlığın tohumsuz rastgelesi) `0`a eşitlenir, bal bloğunda kayarken beşte bir şansla çalan ses elenir (inişteki kesin ses karşılaştırılır). Yerel `Entity.random` bir tohumdan başlar, Java'daki gibi rastgele değil.
 - Binekteki oyuncunun sesleri karşılaştırılmaz: araç inince düşüşü yolcuya aktarır (`propagateFallToPassengers`) ve binek tiklerinde bu aktarım yok. Slime bloğu (düşme hasarı sıfır) ses çıkarmaz. Çiftlik toprağı ve kaplumbağa yumurtası yalnız sunucuda bozulur. Dürtülmüş ucu ve yatak yolları kodda var, sahnede yok. Darbe bağlamı (`currentImpulse`) yok.
-- Ametist tınısı, kapı/sandık, hasar, yağmur, mağara/su altı döngüleri ve **müzik** (`MusicManager`) yok; bunlar [T64c](tasks/T64c-ses-tetikleri-son.md)dedir.
+- Ametist tınısı, kapı/sandık, yağmur, mağara/su altı döngüleri ve **müzik** (`MusicManager`) yok; bunlar [T64d](tasks/T64d-ses-tetikleri-ortam-muzik.md)dedir.
 - `LevelEvent`'in 2001 dışındaki olayları (parçacıklar, kapı sesleri vb.) yok sayılır ([PLAN-M8](tasks/README.md)).
+- Hasar sesi: hasar türünün `effects` değerinden (`sound/damage-effects` tablosu, oracle'dan); pakette yazılı hasar türü desteklenmez. Perde rastgele olduğundan `0`a eşitlenir.
 - Eşya kullanım sesleri yok. Adım sesinde `isSilent` yok.

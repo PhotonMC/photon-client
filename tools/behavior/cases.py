@@ -13462,6 +13462,11 @@ def movement_cases():
         scene("sneak-in-plants", floor() + plants,
               keys(4, forward=True) + keys(10, forward=True, sneak=True) + keys(10, forward=True)
               + keys(6, sneak=True) + keys(6)),
+        scene("hurt-and-die", floor(), [dict(tick, **extra) for tick, extra in zip(keys(9), [
+            {"damage": "minecraft:generic"}, {"damage": "minecraft:drown"},
+            {"damage": "minecraft:on_fire"}, {"damage": "minecraft:sweet_berry_bush"},
+            {"damage": "minecraft:freeze"}, {"damage": "minecraft:thorns"},
+            {"damage": "minecraft:lava"}, {"death": True}, {}])]),
         scene("ride-bubble-column", floor() + bubbles, keys(40), start=(0.5, 64.0, 0.5)),
         scene("sink-in-bubble-column", floor() + bubbles, keys(30), start=(1.5, 69.0, 0.5)),
     ]
@@ -18919,6 +18924,7 @@ def sound_cases():
     yield from sound_decode_cases()
     yield from sound_engine_cases()
     yield {"case_id": "sound/block-sounds", "family": "sound", "operation": "block_sounds", "rows": [{"label": "all"}]}
+    yield {"case_id": "sound/damage-effects", "family": "sound", "operation": "damage_effects", "rows": [{"label": "all"}]}
 
 
 def sound_engine_cases():

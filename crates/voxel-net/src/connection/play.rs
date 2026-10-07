@@ -1633,6 +1633,11 @@ impl PlaySession {
                 }
                 // `LivingEntity.handleEntityEvent`: 3 is a death.
                 if event == 3 {
+                    if self.player_id == Some(id)
+                        && let Some(player) = self.player.as_mut()
+                    {
+                        player.handle_death_event();
+                    }
                     self.trace.world.apply_entity_death_event(id);
                 } else {
                     self.trace.world.apply_entity_event(id, event);
@@ -1644,8 +1649,19 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => {
-                if let Ok(id) = parse_entity_id_prefix(payload) {
+                if let Ok((id, damage_type)) = parse_damage_event_packet(payload) {
                     self.trace.world.apply_entity_damage_event(id);
+                    if self.player_id == Some(id) {
+                        let name = damage_type
+                            .and_then(|index| {
+                                self.registry_names("minecraft:damage_type").get(index)
+                            })
+                            .cloned()
+                            .unwrap_or_default();
+                        if let Some(player) = self.player.as_mut() {
+                            player.handle_damage_event(&name);
+                        }
+                    }
                 }
             }
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => {

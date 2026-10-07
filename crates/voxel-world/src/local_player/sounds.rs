@@ -241,6 +241,33 @@ impl LocalPlayer {
         self.ambient_first_tick = false;
     }
 
+    /// `(random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F`.
+    fn hurt_pitch(&mut self) -> f32 {
+        let first = self.random.next_float();
+        (first - self.random.next_float()) * 0.2 + 1.0
+    }
+
+    /// `LivingEntity.handleDamageEvent` of the local player: it flinches, its limbs swing at once,
+    /// and it makes the sound its damage type gives (`Player.getHurtSound`).
+    pub fn handle_damage_event(&mut self, damage_type: &str) {
+        self.walk.set_speed(1.5);
+        self.invulnerable_time = 20;
+        self.hurt_time = 10;
+        let pitch = self.hurt_pitch();
+        self.play_player_sound(
+            voxel_data::damage_effect::hurt_sound(damage_type),
+            1.0,
+            pitch,
+        );
+    }
+
+    /// `LivingEntity.handleEntityEvent(3)` of the local player: the death sound (the rest of
+    /// dying is the server's, as `health` reaches zero).
+    pub fn handle_death_event(&mut self) {
+        let pitch = self.hurt_pitch();
+        self.play_player_sound("minecraft:entity.player.death", 1.0, pitch);
+    }
+
     /// `Entity.waterSwimSound`.
     fn water_swim_sound(&mut self) {
         let delta = self.delta;

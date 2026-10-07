@@ -70,10 +70,11 @@ public final class MovementOracle {
             if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT || chanceSlide) {
                 return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
             }
-            // The swim and splash sounds' pitch is drawn from the entity's own random source, which the scene
+            // The swim, splash, hurt and death sounds' pitch is drawn from the entity's own random source, which the scene
             // does not seed: it is compared by volume and place only.
             String played = instance.getIdentifier().toString();
-            if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")) {
+            if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")
+                || played.startsWith("minecraft:entity.player.hurt") || played.equals("minecraft:entity.player.death")) {
                 pitch = 0.0F;
             }
             PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","
@@ -2475,6 +2476,17 @@ public final class MovementOracle {
             wire.sent.clear();
             // Sounds of the setup (and of earlier scenes) are not this tick's.
             SilentSoundManager.PLAYED.clear();
+            if (input.has("damage")) {
+                var type = net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DAMAGE_TYPE,
+                    net.minecraft.resources.Identifier.parse(input.get("damage").getAsString()));
+                var holder = Oracle.vanillaRegistries()
+                    .lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getOrThrow(type);
+                player.handleDamageEvent(new net.minecraft.world.damagesource.DamageSource(holder));
+            }
+            if (input.has("death")) {
+                player.handleEntityEvent((byte) 3);
+            }
             if (input.has("attack")) {
                 attack(minecraft, level, input, startAttack, continueAttack);
             }

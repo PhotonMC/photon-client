@@ -5,6 +5,7 @@
 pub mod animations;
 pub mod block;
 pub mod block_sounds;
+pub mod damage_effects;
 pub mod entity_attributes;
 pub mod entity_models;
 pub mod entity_picks;

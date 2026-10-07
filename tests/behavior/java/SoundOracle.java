@@ -52,6 +52,9 @@ public final class SoundOracle {
                 case "block_sounds" -> {
                     return blockSounds();
                 }
+                case "damage_effects" -> {
+                    return damageEffects();
+                }
                 default -> {
                 }
             }
@@ -110,6 +113,37 @@ public final class SoundOracle {
      * The sound type of every block: the types the reference names (`SoundType`'s own constants), then each
      * block's type (its default state's) and the states of it that have another.
      */
+    /**
+     * What each damage type does to the one it hurts (`DamageType.effects`): the effect, and the
+     * sound the player makes for it (`DamageEffects.sound`), then the same for each effect.
+     */
+    private static JsonObject damageEffects() {
+        var rows = new JsonArray();
+        for (var effect : net.minecraft.world.damagesource.DamageEffects.values()) {
+            var out = new JsonObject();
+            out.addProperty("label", "effect:" + effect.getSerializedName());
+            out.addProperty("kind", "effect");
+            out.addProperty("name", effect.getSerializedName());
+            out.addProperty("sound", effect.sound().location().toString());
+            rows.add(out);
+        }
+        var registry = Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE);
+        var types = new java.util.TreeMap<String, String>();
+        registry.listElements().forEach(holder ->
+            types.put(holder.key().identifier().toString(), holder.value().effects().getSerializedName()));
+        for (var entry : types.entrySet()) {
+            var out = new JsonObject();
+            out.addProperty("label", "type:" + entry.getKey());
+            out.addProperty("kind", "type");
+            out.addProperty("name", entry.getKey());
+            out.addProperty("effect", entry.getValue());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     private static JsonObject blockSounds() throws Exception {
         var types = new java.util.LinkedHashMap<net.minecraft.world.level.block.SoundType, String>();
         var rows = new JsonArray();
