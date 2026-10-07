@@ -876,6 +876,7 @@ impl Play {
                 render_distance: frame.render_distance,
                 loaded_chunks: self.session.world().loaded_chunk_count(),
                 entities: self.session.entity_count(),
+                validation: voxel_render::validation_findings(),
             })?;
         }
         if let Ok(path) = capture {

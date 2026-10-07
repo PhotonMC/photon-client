@@ -56,10 +56,12 @@ mod sections;
 mod shaders;
 mod swapchain;
 mod texture;
+mod validation;
 
 use bytes::as_bytes;
 use frame::transition;
 use swapchain::clamp_extent;
+pub use validation::validation_findings;
 
 /// No terrain fog: every distance out of reach, as the reference's empty
 /// fog buffer.
@@ -583,6 +585,8 @@ pub struct VulkanBackend {
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
+    /// The validation layer's messenger, with `VOXEL_VALIDATION`.
+    validation: Option<validation::Validation>,
     /// The pipeline cache, null until [`VulkanBackend::use_pipeline_cache`], and its file.
     pipeline_cache: vk::PipelineCache,
     pipeline_cache_path: Option<std::path::PathBuf>,

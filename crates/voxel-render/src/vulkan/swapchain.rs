@@ -171,6 +171,22 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
+            // The scene's rendering expects the depth image in its attachment layout, and clears
+            // it on load, so nothing needs to survive from the first use.
+            let depth = vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::DEPTH)
+                .level_count(1)
+                .layer_count(1);
+            self.run_once(|command| {
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    depth,
+                    vk::ImageLayout::UNDEFINED,
+                    vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+                );
+            })?;
             Ok(DepthTarget {
                 image,
                 memory,

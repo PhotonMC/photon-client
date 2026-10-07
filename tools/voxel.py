@@ -613,13 +613,19 @@ def bench(args):
         environment = tool_environment()
         environment.update({"VOXEL_USER": BENCH_USER, "VOXEL_SCRIPT": BENCH_SCRIPT,
                             "VOXEL_BENCH": str(path), "VOXEL_BENCH_WARMUP": str(args.warmup)})
+        if args.validation:
+            environment["VOXEL_VALIDATION"] = "1"
         result = subprocess.run([str(binary), "play", args.address, *args.size], cwd=ROOT,
                                 env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if result.returncode != 0 or not path.exists():
             print("\n".join(result.stdout.splitlines()[-15:]))
             raise SystemExit(f"bench run {number} failed (exit {result.returncode}); no report at {path}")
+        path.with_suffix(".log").write_text(result.stdout, encoding="utf-8")
         reports.append(json.loads(path.read_text(encoding="utf-8")))
         say(f"run {number}: {bench_summary(reports[-1])}")
+        if args.validation:
+            findings = reports[-1]["validation"]
+            say(f"validation: {findings['errors']} errors, {findings['warnings']} warnings (see {path.with_suffix('.log')})")
     first = reports[0]
     say(f"{first['device']} {first['extent'][0]}x{first['extent'][1]} render_distance={first['render_distance']} "
         f"chunks={first['loaded_chunks']} entities={first['entities']}")
@@ -680,6 +686,8 @@ def main():
     bench_parser.add_argument("--warmup", type=float, default=10, help="seconds left out at the start")
     bench_parser.add_argument("--size", nargs=2, default=["1280", "720"], metavar=("WIDTH", "HEIGHT"))
     bench_parser.add_argument("--no-build", action="store_true", help="skip `cargo build --release`")
+    bench_parser.add_argument("--validation", action="store_true",
+                              help="run with the Vulkan validation layer and report what it finds")
     bench_parser.set_defaults(run=bench)
 
     play_parser = commands.add_parser("play", help="build and start the client")

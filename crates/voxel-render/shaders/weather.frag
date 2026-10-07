@@ -4,7 +4,6 @@ layout(location = 0) in vec2 in_uv;
 layout(location = 1) in float in_shade;
 layout(location = 2) in vec4 in_tint;
 layout(location = 3) in vec2 in_fog;
-layout(location = 4) in vec3 in_light;
 layout(location = 0) out vec4 out_colour;
 layout(push_constant) uniform Push {
     layout(offset = 128) vec4 fog_colour;

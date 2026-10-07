@@ -38,6 +38,8 @@ pub struct RunInfo {
     pub render_distance: i32,
     pub loaded_chunks: usize,
     pub entities: usize,
+    /// What the validation layer reported (errors, warnings), when it was on.
+    pub validation: (u32, u32),
 }
 
 pub struct Bench {
@@ -111,6 +113,11 @@ impl Bench {
         let _ = writeln!(out, "  \"render_distance\": {},", info.render_distance);
         let _ = writeln!(out, "  \"loaded_chunks\": {},", info.loaded_chunks);
         let _ = writeln!(out, "  \"entities\": {},", info.entities);
+        let _ = writeln!(
+            out,
+            "  \"validation\": {{\"errors\": {}, \"warnings\": {}}},",
+            info.validation.0, info.validation.1
+        );
         let _ = writeln!(out, "  \"warmup_s\": {},", self.warmup.as_secs_f64());
         let _ = writeln!(out, "  \"frames\": {frames},");
         // Wall-clock FPS is not reported: a vsynced swapchain makes it the

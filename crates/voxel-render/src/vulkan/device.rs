@@ -50,6 +50,15 @@ impl VulkanBackend {
                 instance_flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
             }
 
+            let mut layers: Vec<*const i8> = Vec::new();
+            let validation_names = validation::requested()
+                .then(|| validation::names(&entry))
+                .flatten();
+            if let Some((layer, extension)) = validation_names {
+                layers.push(layer);
+                extensions.push(extension);
+            }
+
             let application_name = CString::new("Minecraft Java Edition").expect("static name");
             let engine_name = CString::new("MinecraftJE").expect("static name");
             let application_info = vk::ApplicationInfo::default()
@@ -60,11 +69,17 @@ impl VulkanBackend {
             let instance_info = vk::InstanceCreateInfo::default()
                 .flags(instance_flags)
                 .application_info(&application_info)
+                .enabled_layer_names(&layers)
                 .enabled_extension_names(&extensions);
             let instance = entry
                 .create_instance(&instance_info, None)
                 .map_err(|result| VulkanError::Call("vkCreateInstance", result))?;
 
+            let validation = if validation_names.is_some() {
+                Some(validation::Validation::new(&entry, &instance)?)
+            } else {
+                None
+            };
             let surface_instance = ash::khr::surface::Instance::new(&entry, &instance);
             let surface =
                 ash_window::create_surface(&entry, &instance, display_handle, window_handle, None)
@@ -331,6 +346,7 @@ impl VulkanBackend {
                 image_available,
                 render_finished,
                 in_flight,
+                validation,
                 pipeline_cache: vk::PipelineCache::null(),
                 pipeline_cache_path: None,
                 cache_identity: pipeline_cache::CacheIdentity {
@@ -456,6 +472,9 @@ impl Drop for VulkanBackend {
                 .destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
             self.surface_instance.destroy_surface(self.surface, None);
+            if let Some(validation) = self.validation.take() {
+                validation.destroy();
+            }
             self.instance.destroy_instance(None);
         }
     }
