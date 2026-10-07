@@ -19,4 +19,5 @@ Gerçek `BlockColors` ile biyoma bağlı tintler için oracle (renk haritaları 
 Bu görevin kaydı ve `docs/index.md`.
 
 ## Devir notu
-(boş)
+- **Yapılan:** `BlockRenderer::{particle_sprite,particle_tint,sprite_rect}`; `DrawKind::BlockParticles`/`Run::BlockParticle` (blok atlası, arazi boru hattı); uygulamada `BlockMaterials` (`TerrainMaterials`), kırılma olayı 2001 ve `continue_attack`ın çatlak isteği (`take_block_breaks`, `take_breaking_effects`). Canlı: taş ve yaprak kırıntıları görüldü.
+- **Açık:** modelin parçacık dokusu ve tintin Java'yla bire bir karşılaştırması (oracle yok), su/kabarcık tinti, `missingno` yedeği.

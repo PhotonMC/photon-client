@@ -69,6 +69,22 @@ impl ClientWorld {
         std::mem::take(&mut self.block_breaks)
     }
 
+    /// The block and face the player swung at breaking, since the last call.
+    pub fn take_breaking_effects(
+        &mut self,
+    ) -> Vec<((i32, i32, i32), voxel_core::direction::Direction)> {
+        std::mem::take(&mut self.breaking_effects)
+    }
+
+    /// `ClientLevel.addBreakingBlockEffect` asked for, as `Minecraft.continueAttack` asks.
+    pub fn add_breaking_block_effect(
+        &mut self,
+        pos: (i32, i32, i32),
+        face: voxel_core::direction::Direction,
+    ) {
+        self.breaking_effects.push((pos, face));
+    }
+
     pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
         if event == 2001 {
             self.block_breaks.push((pos, data));

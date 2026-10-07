@@ -33,6 +33,7 @@ impl ClientWorld {
             local_player: None,
             sounds: local_player::SoundQueue::default(),
             block_breaks: Vec::new(),
+            breaking_effects: Vec::new(),
             world_border: ClientWorldBorder::default(),
             block_animations: block::chest::BlockAnimations::default(),
             server_simulation_distance: 3,

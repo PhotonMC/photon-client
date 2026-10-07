@@ -83,6 +83,8 @@ pub(super) enum Run {
     Orb,
     /// Particles: quads over the entity textures, cut out by their alpha.
     Particle,
+    /// The flakes of blocks: quads over the block atlas.
+    BlockParticle,
     /// The maps in item frames, drawn as text is.
     Map,
     MapDecoration,
@@ -118,6 +120,9 @@ pub(super) const ENTITY_RUNS: [Run; 13] = [
     Run::NameTag,
 ];
 
+/// What the particles pass draws, in order.
+pub(super) const PARTICLE_RUNS: [Run; 2] = [Run::BlockParticle, Run::Particle];
+
 /// Which of the scene's descriptor sets a run samples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Sampled {
@@ -148,7 +153,7 @@ impl Run {
     /// The pipeline the run is drawn with.
     pub(super) fn pipeline(self, scene: &SceneResources) -> &Pipeline {
         match self {
-            Self::Ground | Self::Held => &scene.held_pipeline,
+            Self::Ground | Self::Held | Self::BlockParticle => &scene.held_pipeline,
             Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
@@ -166,7 +171,7 @@ impl Run {
     /// The set the run samples.
     pub(super) fn sampled(self) -> Sampled {
         match self {
-            Self::Ground | Self::Held => Sampled::Atlas,
+            Self::Ground | Self::Held | Self::BlockParticle => Sampled::Atlas,
             Self::Map => Sampled::Map,
             Self::NameTagSeeThrough | Self::NameTag => Sampled::Gui,
             Self::Outline => Sampled::Unbound,

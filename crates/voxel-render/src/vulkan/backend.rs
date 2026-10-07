@@ -60,6 +60,8 @@ pub struct VulkanBackend {
     pub(super) orb: DrawList,
     /// The particles' triangles, which sample the entity textures.
     pub(super) particle: DrawList,
+    /// The flakes of blocks' triangles, which sample the block atlas.
+    pub(super) block_particle: DrawList,
     /// The entity shadows' triangles, which sample the entity textures.
     pub(super) shadow: DrawList,
     /// The glowing layers' triangles (`RenderTypes.eyes`): the entity

@@ -181,7 +181,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T70b](T70b-parcacik-motoru.md) | Partikül motoru, `LevelParticles` paketi ve ekleme geçidi | M | T70 | bitti |
 | [T70c](T70c-parcacik-cizimi.md) | Partikül dörtgenlerinin çizimi (atlas, boru hattı) | L | T70b | bitti |
 | [T71](T71-blok-parcaciklari.md) | Blok parçacıkları: kırılma ve çatlama (`TerrainParticle`) | M | T70b | bölündü (T71b) |
-| [T71b](T71b-blok-parcacigi-cizimi.md) | Blok kırıntılarının çizimi, tintler ve oyuna bağlama | M | T71 | açık |
+| [T71b](T71b-blok-parcacigi-cizimi.md) | Blok kırıntılarının çizimi, tintler ve oyuna bağlama | M | T71 | bitti |
 | [T72](T72-yukselen-parcaciklar.md) | Yükselen duman/ateş aileleri | M | T70b | açık |
 | [T73](T73-su-parcaciklari.md) | Su ve kabarcık parçacıkları | M | T70b | açık |
 | [T74](T74-toz-buyu-parcaciklari.md) | Toz, büyü ve renkli parçacıklar | M | T70b | açık |

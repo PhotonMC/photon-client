@@ -37,3 +37,22 @@ tohumlar), bu yüzden yer ve sayı karşılaştırılır; kırıntının içi sa
   tarafında bunlar [T71b](../tasks/T71b-blok-parcacigi-cizimi.md)'de gerçek tint çözümüyle gelir. Oracle
   adaptörü yalnız sabit tintleri (ladin, huş) bilir.
 - `block_marker` ve `falling_dust` sağlayıcıları ayrı sınıflardır, taşınmadı.
+
+## Çizim ve oyuna bağlama (T71b) — [server-conformance]
+
+Bu bölüm istemci eşitliği kanıtı değil, canlı gözlemdir (`tools/voxel.py shot`): sunucunun `setblock ... destroy`
+komutuyla kırdığı taş ve meşe yaprağı, kırıntılarıyla görüldü (taş gri 0.6, yaprak biyom tintiyle yeşil).
+
+- `BlockRenderer::particle_sprite`: durumun modelinin `particle` dokusu; `variants` dosyasında durumun seçtiği
+  listenin ilk modeli, `multipart` dosyasında dosyadaki ilk seçicinin ilk modeli (`WeightedVariants`,
+  `MultiPartModel`'in `particleMaterial`ı).
+- `BlockRenderer::particle_tint`: durumun ilk tint kaynağının rengi (biyom renkleri 5x5 harmanlanır);
+  çimen bloğunun kırıntısı tintsizdir (`colorAsTerrainParticle` -1).
+- Kırıntılar blok atlasından, arazi boru hattıyla (`Run::BlockParticle`) çizilir; dokunun hangi çeyreği
+  gösterildiği `Particle::sprite_window` ile verilir.
+- Oyuncu bir bloğu kırınca yerel `destroy_block` olay 2001'i bekletir (kırılma kırıntıları), kırarken
+  `continue_attack` her darbede yüzün çatlak kırıntısını ister.
+
+Açık (oracle yok): modelin parçacık dokusunun ve tintin her blok için Java'yla karşılaştırması;
+doku bulunamazsa Java'nın "missingno"su yerine kırıntı yapılmaz; su ve kabarcık sütunu tintleri
+(`waterParticles`) taşınmadı.

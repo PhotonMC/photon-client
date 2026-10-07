@@ -75,6 +75,11 @@ impl ParticleEngine {
         }
     }
 
+    /// The block models and tints the flakes of blocks are made with.
+    pub fn set_terrain(&mut self, materials: std::sync::Arc<dyn super::TerrainMaterials>) {
+        self.resources.set_terrain(materials);
+    }
+
     /// `ParticleEngine.createParticle`: whether the type's provider made one. The particle's own
     /// random source is asked for only when it is.
     pub fn create_particle(

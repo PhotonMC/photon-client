@@ -15,6 +15,18 @@ impl PlaySession {
         std::mem::take(&mut self.level_particles)
     }
 
+    /// The blocks that broke since the last call (level event 2001), each with the state it had.
+    pub fn take_block_breaks(&mut self) -> Vec<((i32, i32, i32), i32)> {
+        self.trace.world.take_block_breaks()
+    }
+
+    /// The blocks the player swung at breaking, with the face aimed at, since the last call.
+    pub fn take_breaking_effects(
+        &mut self,
+    ) -> Vec<((i32, i32, i32), voxel_core::direction::Direction)> {
+        self.trace.world.take_breaking_effects()
+    }
+
     /// Where an entity is drawn between two ticks.
     pub fn entity_snapshot(
         &self,

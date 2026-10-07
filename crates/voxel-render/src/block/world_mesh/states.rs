@@ -159,6 +159,32 @@ pub(super) fn state_lists(
     per_block.into_iter().flatten().unzip()
 }
 
+/// The sprite each state's flakes show, block by block in parallel.
+pub(super) fn particle_sprites(
+    blockstates: &BTreeMap<String, crate::block::blockstate::BlockStateFile>,
+    models: &BTreeMap<String, ResolvedModel>,
+) -> Vec<Option<String>> {
+    use rayon::prelude::*;
+    let per_block: Vec<Vec<Option<String>>> = registry::BLOCKS
+        .par_iter()
+        .map(|block| {
+            (0..block.state_count())
+                .map(|offset| {
+                    let file = blockstates.get(block.name)?;
+                    let properties: BTreeMap<String, String> = block
+                        .properties_at(offset)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                        .collect();
+                    super::particle::particle_sprite(file, &properties, models)
+                })
+                .collect()
+        })
+        .collect();
+    per_block.into_iter().flatten().collect()
+}
+
 /// What one block state draws, worked out once at load rather than for
 /// every block.
 pub(super) enum StateRender {

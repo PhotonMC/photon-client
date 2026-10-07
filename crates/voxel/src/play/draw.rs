@@ -261,14 +261,15 @@ impl Play {
             ),
             position: frame.camera,
         };
-        self.backend.set_draw(
-            voxel_render::vulkan::DrawKind::Particles,
-            &self.particles.vertices(
-                self.session.world(),
-                &particle_camera,
-                (&frame.frustum, frame.relative, frame.partial as f32),
-            ),
-        )?;
+        let (particles, flakes) = self.particles.vertices(
+            self.session.world(),
+            &particle_camera,
+            (&frame.frustum, frame.relative, frame.partial as f32),
+        );
+        self.backend
+            .set_draw(voxel_render::vulkan::DrawKind::Particles, &particles)?;
+        self.backend
+            .set_draw(voxel_render::vulkan::DrawKind::BlockParticles, &flakes)?;
         self.backend.set_draw(
             voxel_render::vulkan::DrawKind::ExperienceOrbs,
             &overlays::experience_orbs(&self.session, &self.entity_textures, &camera, view),

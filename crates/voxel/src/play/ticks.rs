@@ -35,6 +35,7 @@ impl Play {
             .ok_or("the biome colours could not be read")?,
         );
         let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
+        particles.set_terrain(Arc::clone(&block_renderer), Arc::clone(&biome_tints));
         let sky_sprites = sky_sprites(&block_renderer);
         let origin = [
             position.x.floor() as i32,
@@ -257,6 +258,8 @@ impl Play {
             }
             // The particles option is not kept yet: all of them.
             let level_particles = self.session.take_level_particles();
+            let broke = self.session.take_block_breaks();
+            self.particles.blocks_broke(self.session.world(), broke);
             self.particles.receive(
                 level_particles,
                 self.session.world(),
@@ -397,6 +400,8 @@ impl Play {
             sound.handle_local(own_sounds);
         }
         self.animated_atlas.tick();
+        let breaking = session.take_breaking_effects();
+        self.particles.breaking(session.world(), breaking);
         self.particles.tick(session.world());
         if let Some(player) = session.player() {
             self.camera.tick(player);

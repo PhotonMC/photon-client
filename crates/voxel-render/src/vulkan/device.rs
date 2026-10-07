@@ -19,6 +19,7 @@ impl Drop for VulkanBackend {
             self.name_tag_see.buffer.clear();
             self.orb.buffer.clear();
             self.particle.buffer.clear();
+            self.block_particle.buffer.clear();
             self.shadow.buffer.clear();
             self.glow.buffer.clear();
             self.swirl.buffer.clear();

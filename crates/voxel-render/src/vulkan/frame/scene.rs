@@ -45,7 +45,11 @@ impl VulkanBackend {
                     Pass::Outline => self.draw_run(scene, Run::Outline, &terrain_push),
                     Pass::Cracks => self.draw_run(scene, Run::Cracks, &terrain_push),
                     Pass::Translucent => self.record_translucent(scene, &terrain_push, now),
-                    Pass::Particles => self.draw_run(scene, Run::Particle, &terrain_push),
+                    Pass::Particles => {
+                        for run in PARTICLE_RUNS {
+                            self.draw_run(scene, run, &terrain_push);
+                        }
+                    }
                     Pass::Clouds => self.record_clouds(scene),
                     Pass::Weather => self.record_weather(scene, &terrain_push),
                     Pass::Hand => self.record_hand(scene, &terrain_push),

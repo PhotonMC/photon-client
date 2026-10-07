@@ -101,6 +101,10 @@ impl GameMode {
                 if !is_air(ctx.state_at((x, y, z)))
                     && self.continue_destroy_block(ctx, (x, y, z), face, out)
                 {
+                    ctx.world.add_breaking_block_effect(
+                        (x, y, z),
+                        voxel_core::direction::Direction::from_3d_data_value(i32::from(face)),
+                    );
                     ctx.swing(out);
                 }
             }

@@ -33,6 +33,9 @@ pub enum DrawKind {
     /// The next frame's particles, as triangles that sample the entity textures: the quads
     /// the opaque layer draws, each vertex lit by the lightmap.
     Particles,
+    /// The next frame's particles that show the block atlas (flakes of blocks), as triangles
+    /// drawn like the dropped items': the tint is each vertex's colour.
+    BlockParticles,
 }
 
 impl VulkanBackend {
@@ -135,6 +138,7 @@ impl VulkanBackend {
             DrawKind::Shadows => &mut self.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
             DrawKind::Particles => &mut self.particle,
+            DrawKind::BlockParticles => &mut self.block_particle,
         }
     }
 

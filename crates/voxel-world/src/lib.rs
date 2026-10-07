@@ -114,6 +114,9 @@ pub struct ClientWorld {
     sounds: local_player::SoundQueue,
     /// The blocks the server said broke (level event 2001), with the state they had, until taken.
     block_breaks: Vec<((i32, i32, i32), i32)>,
+    /// The blocks the player is breaking and the face it aims at, for each tick it swings at one
+    /// (`Minecraft.continueAttack`'s `addBreakingBlockEffect`), until taken.
+    breaking_effects: Vec<((i32, i32, i32), voxel_core::direction::Direction)>,
     world_border: ClientWorldBorder,
     block_animations: block::chest::BlockAnimations,
     /// `ClientLevel.serverSimulationDistance`, in chunks.

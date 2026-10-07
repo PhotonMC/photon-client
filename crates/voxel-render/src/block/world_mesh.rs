@@ -27,6 +27,8 @@ pub struct BlockRenderer {
     /// What each block state draws, by state id; after the registry's come the item frames'
     /// fake states ([`Self::item_frame_state`]).
     pub(in crate::block::world_mesh) states: Vec<StateRender>,
+    /// The sprite each state's flakes show, by state id.
+    pub(super) particle_sprites: Vec<Option<String>>,
     /// The id of the first fake state (the number of states the registry has).
     pub(super) frame_base: u32,
     /// The block atlas, with the fluid and sky sprites too.
@@ -41,6 +43,7 @@ mod item_frame;
 pub use item_frame::*;
 mod mesh;
 mod model;
+mod particle;
 pub use mesh::*;
 use model::*;
 mod states;

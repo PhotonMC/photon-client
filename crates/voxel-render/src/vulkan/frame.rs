@@ -47,4 +47,4 @@ mod passes;
 mod scene;
 mod sync;
 
-use passes::{ENTITY_RUNS, PASSES, Pass, Run, Sampled};
+use passes::{ENTITY_RUNS, PARTICLE_RUNS, PASSES, Pass, Run, Sampled};

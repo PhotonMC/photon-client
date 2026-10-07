@@ -80,12 +80,14 @@ impl BlockRenderer {
             .collect();
         let atlas = crate::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
         let (baked, states) = bake_states(&models, &atlas, pending, &air);
+        let particle_sprites = particle_sprites(&blockstates, &models);
         Ok(Self {
             models,
             baked,
             items,
             layer_alpha,
             states,
+            particle_sprites,
             frame_base,
             atlas,
             skipped,

@@ -135,7 +135,7 @@ impl VulkanBackend {
         let mut push = [0.0_f32; 44];
         push[..40].copy_from_slice(base);
         let bytes = match run {
-            Run::Ground | Run::Held => {
+            Run::Ground | Run::Held | Run::BlockParticle => {
                 push[40] = 1.0;
                 164
             }
@@ -186,6 +186,7 @@ impl VulkanBackend {
             Run::Rays => list(&self.rays),
             Run::Orb => list(&self.orb),
             Run::Particle => list(&self.particle),
+            Run::BlockParticle => list(&self.block_particle),
             Run::Map => list(&self.map),
             Run::MapDecoration => list(&self.map_decoration),
             Run::NameTagSeeThrough => list(&self.name_tag_see),
