@@ -908,6 +908,7 @@ impl Play {
                 loaded_chunks: self.session.world().loaded_chunk_count(),
                 entities: self.session.entity_count(),
                 validation: voxel_render::validation_findings(),
+                memory: self.backend.section_memory(),
                 present_mode: format!("{:?}", self.backend.description().present_mode),
                 framerate_limit: self.controls.options.framerate_limit,
             })?;

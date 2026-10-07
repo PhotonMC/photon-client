@@ -396,6 +396,17 @@ struct ArenaBlock {
     free: Vec<(u64, u64)>,
 }
 
+/// What the section meshes hold.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SectionMemory {
+    pub sections: usize,
+    /// Bytes of the sections' vertices and of their indices, as the arena rounds them.
+    pub vertex_bytes: u64,
+    pub index_bytes: u64,
+    /// Bytes of the arena blocks that carry them, free ranges included.
+    pub arena_bytes: u64,
+}
+
 /// A range of one arena block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ArenaSlice {

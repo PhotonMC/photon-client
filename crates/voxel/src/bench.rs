@@ -42,6 +42,7 @@ pub struct RunInfo {
     pub validation: (u32, u32),
     /// How the swapchain presents, and the frame rate limit the run held to.
     pub present_mode: String,
+    pub memory: voxel_render::SectionMemory,
     pub framerate_limit: i32,
 }
 
@@ -118,6 +119,12 @@ impl Bench {
         let _ = writeln!(out, "  \"device\": {:?},", info.device);
         let _ = writeln!(out, "  \"extent\": [{}, {}],", info.extent.0, info.extent.1);
         let _ = writeln!(out, "  \"render_distance\": {},", info.render_distance);
+        let memory = &info.memory;
+        let _ = writeln!(
+            out,
+            "  \"section_memory\": {{\"sections\": {}, \"vertex_bytes\": {}, \"index_bytes\": {}, \"arena_bytes\": {}}},",
+            memory.sections, memory.vertex_bytes, memory.index_bytes, memory.arena_bytes
+        );
         let _ = writeln!(out, "  \"present_mode\": {:?},", info.present_mode);
         let _ = writeln!(out, "  \"framerate_limit\": {},", info.framerate_limit);
         let _ = writeln!(out, "  \"loaded_chunks\": {},", info.loaded_chunks);

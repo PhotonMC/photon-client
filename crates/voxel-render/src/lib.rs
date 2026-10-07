@@ -101,5 +101,5 @@ pub use tint::{
     ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,
     constant_tints, multiply,
 };
-pub use vulkan::{CapturedFrame, VulkanBackend, VulkanError, validation_findings};
+pub use vulkan::{CapturedFrame, SectionMemory, VulkanBackend, VulkanError, validation_findings};
 pub use world_mesh::{WorldMesh, build_world_mesh};

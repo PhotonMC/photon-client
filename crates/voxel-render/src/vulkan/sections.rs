@@ -125,6 +125,24 @@ impl VulkanBackend {
         }
     }
 
+    /// What the section meshes hold: how many sections, the bytes of their vertices and of their
+    /// indices, and the bytes of the arena blocks that carry them.
+    pub fn section_memory(&self) -> SectionMemory {
+        let sections = self.sections.values().chain(&self.moving_sections);
+        let (mut count, mut vertex_bytes, mut index_bytes) = (0, 0, 0);
+        for section in sections {
+            count += 1;
+            vertex_bytes += section.vertices.size;
+            index_bytes += section.indices.size;
+        }
+        SectionMemory {
+            sections: count,
+            vertex_bytes,
+            index_bytes,
+            arena_bytes: self.arena.iter().map(|block| block.size).sum(),
+        }
+    }
+
     /// Where translucent sections are ordered from, usually the camera.
     pub fn set_sort_origin(&mut self, origin: [f32; 3]) {
         self.sort_origin = origin;
