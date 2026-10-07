@@ -24,4 +24,5 @@ Davranış değişikliği; üretilmiş tablolar (D görevleri).
 Bu görev dosyasının devir notu.
 
 ## Devir notu
-(boş)
+- **Adaptör bitti:** `math_cases.rs` (254 `if operation == …` bloğu → konuya göre `math_cases/{positions/{blockpos,chunkpos,sectionpos},direction,vectors,mth/{interpolation,angles,numbers,algorithms},player,options}.rs`, dağıtım bir `match`), `shape.rs` (68 kol → `shape/{packets,boxes,rotation,collision,world_collision,world_index,border,dimensions,queries}.rs`), `entity.rs` (`entity/{tables,player}.rs`), `gui/result.rs` (`GuiContext` + senaryo başına işlev, `gui/result/{chat,hud,screens,settings,container}.rs`), `living_ticks.rs` (kurulum + `events/{world,mobs,objects}.rs` + `extras/{animals,aquatic,special,objects}.rs`). Bloklar sözcüğü sözcüğüne işlevlere taşındı (son `return X;` → `X`); 542 test ve 1109 parity kaydı aynı.
+- **Kalan:** `probe/mode.rs` (2267) ve `play/incoming.rs` (856) A04 ile; `outline.rs` (670); Python `cases.py` (19.4k), `cases_gui.py` (2.3k), `tools/voxel.py` (740); Java oracle'lar (`MathOracle` 13k, `EntityOracle` 6.2k, `MovementOracle` 3.1k, `GuiOracle` 2.8k, `BlockOracle` 1.7k, `WireOracle` 1.5k, `SoundOracle`, `ModelOracle`); `crates/voxel-oracle` taşıması.
