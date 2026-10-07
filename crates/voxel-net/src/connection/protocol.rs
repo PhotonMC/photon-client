@@ -4895,5 +4895,5 @@ pub(crate) fn decode_palette_values(
 }
 
 #[cfg(test)]
-#[path = "protocol_tests.rs"]
+#[path = "protocol_tests/mod.rs"]
 mod tests;

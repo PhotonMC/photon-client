@@ -25,6 +25,12 @@ Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka c
 - Arayüz kodu `voxel-render::gui` altındadır: çizim (`frame`, `atlas`, `font`, `items`), HUD (`hud`), metin kutusu (`edit_box`) ve ekranlar (`screen`).
 - Birden fazla modülün paylaştığı bir yardımcı, en alttaki ortak crate'e ve oradaki doğru modüle konur. Yeni bir yardımcı yazmadan önce aynısının var olup olmadığına bakılır: sabit boyutlu okuma `voxel_core::wire::take`, JSON dosyası `voxel_core::json::read_object`, ARGB `voxel_render::tint`, Java `Math` kuralları `voxel-world` içinde `java_math`.
 
+## Dosya boyutu
+
+- **Bir kod dosyası 500–600 satırı geçmez** (Rust, Python, Java; boş satır ve yorum dahil). Sınıra yaklaşan dosya yeni özellikle birlikte sorumluluğuna göre bölünür; bölme sonradan değil, eklemeden önce yapılır.
+- Bölme sorumluluğa göredir, satır sayısına göre değil: `impl` blokları alt modüllere (`entity/state.rs`, `controls/events.rs`), testler konuya göre (`tests/entities.rs`), paket ayrıştırıcıları paket ailesine göre. Modül adı içeriği söyler (`part`, `misc` açılmaz).
+- Üretilmiş tablolar (`voxel-data/src/generated/`) ve oracle'ın ürettiği veri bu sınırın dışındadır; üretici kaldırılınca (D görevleri) o istisna da kalkar. Sınırı aşan mevcut dosyalar [A06](tasks/A06-dev-dosyalar.md) ve bağlı görevlerle küçültülür; yeni dosya veya mevcut dosyaya ekleme bu sınırı aşan bir dosya bırakmaz.
+
 ## Adlandırma ve yorumlar
 
 - Rust adlandırma kuralları uygulanır: tipler `CamelCase`, fonksiyon ve değişkenler `snake_case`, sabitler `SCREAMING_SNAKE_CASE`. Kısaltma yerine tam kelime kullanılır.

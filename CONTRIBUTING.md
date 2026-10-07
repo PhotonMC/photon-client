@@ -9,6 +9,7 @@ Thanks for looking. This is a parity project: the target is the Java client's ex
 - **Expected values come from the Java oracle**, never from Rust output.
 - Keep slices small and reviewable. One slice, one commit.
 - Code follows the [coding standards](docs/coding-standards.md): crate layers, naming and complexity limits. Clippy must stay warning-free.
+- **A source file stays under 500–600 lines.** Split by responsibility before a file reaches the limit.
 
 ## Build and test
 

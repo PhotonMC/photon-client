@@ -7,7 +7,7 @@ Bu kurallar model veya sağlayıcıdan bağımsızdır: GPT/Codex, Claude, Gemin
 - Yalnızca Minecraft Java Edition istemcisini Rust ile yeniden uygula. Sunucu yazma; Pumpkin kullan. Sunucu davranışı farklılıklarını istemciye telafi hileleri ekleyerek gizleme.
 - Mekanikler, fizik, hareket, zamanlama, kamera, animasyon, texture, UI, ses ve etkileşimler dahil hedef, seçilecek Java sürümüyle birebir eşitliktir. Bedrock davranışı veya öznel olarak daha iyi hissettiren değişiklikler referans değildir.
 - Önce eşitlik, sonra optimizasyon. Kasıtlı oyun tasarımı değişiklikleri, yaklaşık çözümler ve Java referansındaki gözlenen tuhaflıkları düzeltmek kapsam dışıdır.
-- YAGNI, KISS ve DRY uygula. Kod düzeni, crate katmanları, adlandırma ve karmaşıklık sınırları [kodlama standartlarındadır](docs/coding-standards.md); Clippy uyarısız kalır. Davranışı değiştirmediği ilgili karşılaştırmalarla kanıtlanan basit optimizasyonlar yapılabilir. Rust'a geçişi tek başına performans kanıtı sayma.
+- YAGNI, KISS ve DRY uygula. Kod düzeni, crate katmanları, adlandırma ve karmaşıklık sınırları [kodlama standartlarındadır](docs/coding-standards.md); Clippy uyarısız kalır. Bir kod dosyası 500–600 satırı geçmez; sınıra yaklaşan dosya sorumluluğuna göre bölünür. Davranışı değiştirmediği ilgili karşılaştırmalarla kanıtlanan basit optimizasyonlar yapılabilir. Rust'a geçişi tek başına performans kanıtı sayma.
 - Teknolojileri ihtiyaç ve kaynak incelemesi ortaya çıkmadan seçme. Şimdilik engine, renderer, ECS, ses veya ağ framework'ü ekleme. Test adaptöründeki `serde_json` yalnızca geliştirme bağımlılığıdır; uygulama stack'i seçimi değildir.
 
 ## Aşama sınırı

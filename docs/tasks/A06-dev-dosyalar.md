@@ -10,7 +10,7 @@
 ## Yapılacaklar
 - `crates/voxel-oracle` (publish=false) crate'i; adaptör aileye göre modüllere (GUI örneği zaten var).
 - `tests.rs` konu modüllerine; `protocol.rs` paket ailesine; `mob_model.rs` aileye göre.
-- Hedef: hiçbir kaynak dosyası 1500 satırı aşmaz (üretilmiş tablolar hariç; D görevleri onları kaldırır).
+- Hedef: hiçbir kaynak dosyası 500–600 satırı aşmaz ([kodlama standartları](../coding-standards.md#dosya-boyutu); üretilmiş tablolar hariç, D görevleri onları kaldırır). İlk turda 1500 satırın üstü, sonra kademeli olarak 600'e inilir.
 - Birden fazla oturum gerekirse A06b, A06c.
 
 ## Kabul
