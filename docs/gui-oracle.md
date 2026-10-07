@@ -37,7 +37,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `disconnected_screen` | gerçek `DisconnectedScreen` (init + extractMenuBackground + extractRenderState) | dikey düzen, başlık, sarılmış ortalı neden (ekran genişliği − 50), düğme, boş neden, çok satır |
 | `sidebar` | `Hud.extractScoreboardSidebar/displayScoreboardSidebar` | sıralama, gizli sahipler, 15 satır, sayı biçimleri, takım giydirme, takım rengine özel kenar çubuğu |
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
-| `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen`, `CartographyTableScreen`, `SmithingScreen`, `BrewingStandScreen`, `BeaconScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları, smithing'in boş yuvalarında şablona göre dönen simgeler (`CyclingSlotBackground`, bir tık sonra) |
+| `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen`, `CartographyTableScreen`, `SmithingScreen`, `BrewingStandScreen`, `BeaconScreen`, `CrafterScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları, smithing'in boş yuvalarında şablona göre dönen simgeler (`CyclingSlotBackground`, bir tık sonra) |
 
 Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `tools/behavior/cases_gui.py`'de senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
 

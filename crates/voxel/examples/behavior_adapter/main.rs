@@ -26680,6 +26680,7 @@ fn menu_named(
         "enchantment" => MenuKind::Enchantment,
         "brewing_stand" => MenuKind::Brewing,
         "beacon" => MenuKind::Beacon,
+        "crafter_3x3" => MenuKind::Crafter,
         "grindstone" => MenuKind::Grindstone,
         "loom" => MenuKind::Loom,
         "smithing" => MenuKind::Smithing,

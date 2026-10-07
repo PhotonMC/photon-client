@@ -68,6 +68,8 @@ pub enum ScreenAction {
         primary: Option<i32>,
         secondary: Option<i32>,
     },
+    /// The crafter's screen switched a slot of its grid on or off (`ContainerSlotStateChanged`).
+    SlotState { slot: i32, enabled: bool },
     /// The screen closes the container (`LocalPlayer.closeContainer`).
     Close,
     /// The recipe book asks the server to place a recipe (`PlaceRecipe`).

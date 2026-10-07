@@ -127,6 +127,8 @@ impl ContainerMenu {
             }
             (MenuKind::Brewing, 3) => stacking(stack).is_some_and(|item| item.brewing_ingredient),
             (MenuKind::Brewing, 4) => self.in_tag(stack, "minecraft:brewing_fuel"),
+            // `CrafterSlot.mayPlace`: a switched-off slot (data 1) takes nothing.
+            (MenuKind::Crafter, 0..=8) => self.data.get(index) != Some(&1),
             (MenuKind::Beacon, 0) => self.in_tag(stack, "minecraft:beacon_payment_items"),
             (
                 MenuKind::Stonecutter
@@ -137,7 +139,8 @@ impl ContainerMenu {
                 | MenuKind::Anvil
                 | MenuKind::Enchantment
                 | MenuKind::Brewing
-                | MenuKind::Beacon,
+                | MenuKind::Beacon
+                | MenuKind::Crafter,
                 _,
             ) => true,
             _ => return None,

@@ -37,9 +37,9 @@ use super::{
     STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID, STATUS_CLIENTBOUND_RESPONSE_PACKET_ID,
     STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID, STATUS_SERVERBOUND_REQUEST_PACKET_ID,
     VANILLA_ITEM_COMPONENT_CONFORMANCE, decode_packet_frame, encode_abort_destroy_block,
-    encode_creative_item_slot, encode_creative_slot, encode_creative_stone_slot,
-    encode_inventory_click_with_input, encode_inventory_drag_empty_cancel_state_correction,
-    encode_inventory_pickup_state_correction,
+    encode_container_slot_state, encode_creative_item_slot, encode_creative_slot,
+    encode_creative_stone_slot, encode_inventory_click_with_input,
+    encode_inventory_drag_empty_cancel_state_correction, encode_inventory_pickup_state_correction,
     encode_inventory_pickup_with_component_hash_prediction,
     encode_inventory_pickup_with_component_spec_prediction,
     encode_inventory_pickup_with_partial_changed_slot_prediction,
@@ -2760,6 +2760,15 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn a_crafter_slot_state_is_the_slot_the_container_and_a_flag() {
+    assert_eq!(encode_container_slot_state(4, 7, false), vec![4, 7, 0]);
+    assert_eq!(
+        encode_container_slot_state(300, 2, true),
+        vec![0xAC, 0x02, 2, 1]
+    );
 }
 
 #[test]

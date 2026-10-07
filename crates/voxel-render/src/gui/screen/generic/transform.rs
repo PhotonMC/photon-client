@@ -28,6 +28,17 @@ pub(super) fn slot_position(kind: MenuKind, index: usize) -> Option<(i32, i32)> 
         MenuKind::Enchantment => &[(15, 47), (35, 47)],
         MenuKind::Brewing => &[(56, 51), (79, 58), (102, 51), (79, 17), (17, 17)],
         MenuKind::Beacon => &[(136, 110)],
+        MenuKind::Crafter => &[
+            (26, 17),
+            (44, 17),
+            (62, 17),
+            (26, 35),
+            (44, 35),
+            (62, 35),
+            (26, 53),
+            (44, 53),
+            (62, 53),
+        ],
         _ => return None,
     };
     Some(slots[index])
@@ -45,6 +56,7 @@ pub(super) fn texture(kind: MenuKind) -> Option<&'static str> {
         MenuKind::Enchantment => "container/enchanting_table",
         MenuKind::Brewing => "container/brewing_stand",
         MenuKind::Beacon => "container/beacon",
+        MenuKind::Crafter => "container/crafter",
         _ => return None,
     })
 }

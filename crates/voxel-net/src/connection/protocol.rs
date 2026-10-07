@@ -149,6 +149,7 @@ pub(crate) const PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID: i32 = 48;
 pub(crate) const PLAY_SERVERBOUND_SET_BEACON_PACKET_ID: i32 = 52;
+pub(crate) const PLAY_SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_SERVERBOUND_PLACE_RECIPE_PACKET_ID: i32 = 39;
 pub(crate) const PLAY_SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS_PACKET_ID: i32 = 46;
 pub(crate) const PLAY_SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE_PACKET_ID: i32 = 47;
@@ -3721,6 +3722,15 @@ pub(crate) fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), Conne
 pub(crate) fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionError> {
     let mut input = input;
     voxel_core::wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("entity id"))
+}
+
+/// `ServerboundContainerSlotStateChangedPacket`: the slot, the container and the new state.
+pub fn encode_container_slot_state(slot: i32, container_id: i32, enabled: bool) -> Vec<u8> {
+    let mut output = Vec::new();
+    voxel_core::wire::write_varint(slot, &mut output);
+    voxel_core::wire::write_varint(container_id, &mut output);
+    output.push(u8::from(enabled));
+    output
 }
 
 /// `ServerboundSetBeaconPacket`: each effect as a present flag and, when present, its registry id.

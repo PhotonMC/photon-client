@@ -997,6 +997,42 @@ impl PlaySession {
         })
     }
 
+    /// `CrafterScreen.updateSlotState`: a slot of the crafter's grid is switched on or off, in the
+    /// menu at once and by `ServerboundContainerSlotStateChangedPacket`.
+    pub fn set_crafter_slot_state(
+        &mut self,
+        slot: i32,
+        enabled: bool,
+    ) -> Result<(), ConnectionError> {
+        let Some(container_id) = self
+            .trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .map(|container| container.container_id())
+        else {
+            return Ok(());
+        };
+        let value = i16::from(!enabled);
+        self.trace
+            .world
+            .apply_local_player_container_data(container_id, slot as i16, value);
+        if let Some(entry) = self
+            .open_menu
+            .as_mut()
+            .and_then(|menu| menu.data.get_mut(slot as usize))
+        {
+            *entry = value;
+        }
+        self.send(
+            PLAY_SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED_PACKET_ID,
+            |output| {
+                output.extend_from_slice(&encode_container_slot_state(slot, container_id, enabled));
+                Ok(())
+            },
+        )
+    }
+
     /// `ServerboundSetBeaconPacket`: the effects the beacon's screen chose, by registry id.
     pub fn set_beacon(
         &mut self,

@@ -19,4 +19,5 @@ Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 `docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-(boş)
+- Yapıldı: `MenuKind::Crafter` (46 yuva: sonuç yuvası envanterden sonra), yuva kuralları ve `quickMoveStack`, ekran (kapalı yuva, redstone oku, ipucu), yuva açıp kapama (`ScreenAction::SlotState`, `PlaySession::set_crafter_slot_state`, `encode_container_slot_state`). Kayıt: `docs/generic-container-conformance.md` "Crafter".
+- Oracle: `container-clicks` 3, `container_screen` 6 satır. Sapma: `UI_BUTTON_CLICK` sesi yok; izleyici kipi (spectator) bilinmediğinden tıklamada denetlenmez. Açık: tarif sonucu sunucudan gelir (istemci tahmini yok).

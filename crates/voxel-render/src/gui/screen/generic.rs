@@ -31,6 +31,10 @@ fn image(kind: MenuKind) -> (i32, i32) {
 /// places them, then the player's 27 and 9 below them.
 pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     let top = kind.top_slots();
+    // `CrafterMenu`'s result slot comes after the player's slots.
+    if kind == MenuKind::Crafter && index == 45 {
+        return (134, 35);
+    }
     if matches!(kind, MenuKind::Furnace(_)) && index < top {
         return [(56, 17), (56, 53), (116, 35)][index];
     }
@@ -281,9 +285,10 @@ impl GenericScreen {
     }
 
     /// The clicks as actions, with what the recipe book answers them with.
-    fn actions(&mut self, clicks: Vec<SlotClick>) -> Vec<ScreenAction> {
+    fn actions(&mut self, clicks: Vec<SlotClick>, menu: &ContainerMenu) -> Vec<ScreenAction> {
         let mut actions = Vec::new();
         for click in clicks {
+            actions.extend(Self::crafter_toggle(self.kind, &click, menu));
             if let Some(book) = &mut self.book {
                 book.slot_clicked(click.slot);
                 actions.extend(book.drain_actions());
@@ -295,6 +300,35 @@ impl GenericScreen {
 }
 
 impl GenericScreen {
+    /// `CrafterScreen.slotClicked`: a click on an empty slot of the grid switches it on or off
+    /// before the click itself is made.
+    fn crafter_toggle(
+        kind: MenuKind,
+        click: &SlotClick,
+        menu: &ContainerMenu,
+    ) -> Option<ScreenAction> {
+        let slot = usize::try_from(click.slot).ok().filter(|slot| *slot < 9)?;
+        if kind != MenuKind::Crafter || menu.slots[slot].is_some() {
+            return None;
+        }
+        let disabled = menu.data.get(slot) == Some(&1);
+        let enabled = match click.kind {
+            ClickType::Pickup if disabled => true,
+            ClickType::Pickup if menu.carried.is_none() => false,
+            // A number key over a switched-off slot, when the hotbar slot holds something.
+            ClickType::Swap if disabled => {
+                let hotbar = usize::try_from(click.button).ok().filter(|key| *key < 9)?;
+                menu.slots.get(36 + hotbar)?.as_ref()?;
+                true
+            }
+            _ => return None,
+        };
+        Some(ScreenAction::SlotState {
+            slot: slot as i32,
+            enabled,
+        })
+    }
+
     /// The labels of the screen (and, for the beacon, its buttons), which the reference draws
     /// with them: the title and the inventory's, or the beacon's two powers.
     fn draw_labels(
@@ -329,7 +363,7 @@ impl GenericScreen {
             let (label_x, label_y) = transform::title_label(self.kind);
             let title_x = if matches!(
                 self.kind,
-                MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing
+                MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing | MenuKind::Crafter
             ) {
                 (width - draw.font.width(&self.titles.title)) / 2
             } else {
@@ -423,7 +457,7 @@ impl Screen for GenericScreen {
             button == 2 && menu.creative(),
             menu,
         );
-        self.actions(clicks)
+        self.actions(clicks, menu)
     }
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
@@ -462,7 +496,7 @@ impl Screen for GenericScreen {
             button == 2 && menu.creative(),
             menu,
         );
-        self.actions(clicks)
+        self.actions(clicks, menu)
     }
 
     /// `keyPressed`: the inventory key and escape close the screen; the
@@ -493,7 +527,7 @@ impl Screen for GenericScreen {
             return KeyResult::Close;
         }
         let clicks = slot_key_clicks(key, mods.control, self.hovered, menu);
-        KeyResult::Actions(self.actions(clicks))
+        KeyResult::Actions(self.actions(clicks, menu))
     }
 
     fn key_released(&mut self) {
@@ -563,8 +597,21 @@ impl Screen for GenericScreen {
             self.layout
                 .highlight(draw, slot_position(kind, slot), false);
         }
+        let crafter_data = |slot: usize| menu.data.get(slot).copied().unwrap_or(0);
         for index in 0..kind.slot_count() {
             let (x, y) = slot_position(kind, index);
+            // `CrafterScreen.extractSlot`: a switched-off slot is drawn as one, items or not.
+            if kind == MenuKind::Crafter && index < 9 && crafter_data(index) == 1 {
+                draw.frame.sprite(
+                    draw.atlas,
+                    "container/crafter/disabled_slot",
+                    left + x - 1,
+                    top + y - 1,
+                    18,
+                    18,
+                );
+                continue;
+            }
             self.mouse.draw_slot(
                 draw,
                 menu,
@@ -581,6 +628,31 @@ impl Screen for GenericScreen {
             book.draw_ghost(draw, menu, (left, top), &|slot| slot_position(kind, slot));
         }
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
+        if kind == MenuKind::Crafter {
+            // `CrafterScreen.extractRedstone`, from the middle of the screen; and the hint over
+            // a switched-on empty slot.
+            let sprite = if crafter_data(9) == 1 {
+                "container/crafter/powered_redstone"
+            } else {
+                "container/crafter/unpowered_redstone"
+            };
+            draw.frame.sprite(
+                draw.atlas,
+                sprite,
+                self.layout.width / 2 + 9,
+                self.layout.height / 2 - 48,
+                16,
+                16,
+            );
+            if let Some(slot) = self.hovered.filter(|slot| *slot < 9)
+                && crafter_data(slot) != 1
+                && menu.carried.is_none()
+                && menu.slots[slot].is_none()
+            {
+                let hint = self.titles.lang.text("gui.togglable_slot");
+                self.extras.pending_tooltip = Some(vec![crate::gui::chat::plain_runs(&hint)]);
+            }
+        }
         if let Some(lines) = self.extras.pending_tooltip.take()
             && draw.widget_tooltips
         {
@@ -656,6 +728,61 @@ mod tests {
                 button: 0,
                 kind: ClickType::Pickup
             })]
+        );
+    }
+
+    #[test]
+    fn a_click_on_an_empty_crafter_slot_switches_it_before_the_click_is_made() {
+        let kind = MenuKind::Crafter;
+        let mut menu = ContainerMenu::for_menu(kind, 4, Vec::new(), None, 0);
+        menu.data = vec![0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+        let click = |slot, kind| SlotClick {
+            slot,
+            button: 0,
+            kind,
+        };
+        let toggle = |menu: &ContainerMenu, slot, kind| {
+            GenericScreen::crafter_toggle(MenuKind::Crafter, &click(slot, kind), menu)
+        };
+        // An empty open slot is switched off, a switched-off one on.
+        assert_eq!(
+            toggle(&menu, 0, ClickType::Pickup),
+            Some(ScreenAction::SlotState {
+                slot: 0,
+                enabled: false
+            })
+        );
+        assert_eq!(
+            toggle(&menu, 1, ClickType::Pickup),
+            Some(ScreenAction::SlotState {
+                slot: 1,
+                enabled: true
+            })
+        );
+        // Not while something is carried, nor over an item, nor on the player's slots.
+        menu.carried = Some(Stack::new(1, 1));
+        assert_eq!(toggle(&menu, 0, ClickType::Pickup), None);
+        menu.carried = None;
+        menu.slots[0] = Some(Stack::new(1, 1));
+        assert_eq!(toggle(&menu, 0, ClickType::Pickup), None);
+        assert_eq!(toggle(&menu, 12, ClickType::Pickup), None);
+        // A number key switches a switched-off slot on when the hotbar slot holds something.
+        assert_eq!(toggle(&menu, 1, ClickType::Swap), None);
+        menu.slots[36] = Some(Stack::new(1, 1));
+        assert_eq!(
+            GenericScreen::crafter_toggle(
+                MenuKind::Crafter,
+                &SlotClick {
+                    slot: 1,
+                    button: 0,
+                    kind: ClickType::Swap
+                },
+                &menu
+            ),
+            Some(ScreenAction::SlotState {
+                slot: 1,
+                enabled: true
+            })
         );
     }
 }

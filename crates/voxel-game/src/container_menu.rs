@@ -96,6 +96,9 @@ pub enum MenuKind {
     Brewing,
     /// `BeaconMenu`: the payment slot.
     Beacon,
+    /// `CrafterMenu`: the three by three grid, whose slots can be switched off, and, after the
+    /// player's own 36, the result it shows and gives nothing of.
+    Crafter,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -126,6 +129,7 @@ impl MenuKind {
             6 => Self::Dispenser,
             8 => Self::Anvil,
             10 => Self::Furnace(Smelter::BlastFurnace),
+            7 => Self::Crafter,
             9 => Self::Beacon,
             11 => Self::Brewing,
             12 => Self::Crafting,
@@ -156,6 +160,7 @@ impl MenuKind {
             Self::Stonecutter | Self::Enchantment => 2,
             Self::Brewing => 5,
             Self::Beacon => 1,
+            Self::Crafter => 9,
             Self::Loom | Self::Smithing => 4,
         }
     }
@@ -186,6 +191,7 @@ impl MenuKind {
             Self::Stonecutter => Some(1),
             Self::Grindstone | Self::Cartography | Self::Anvil => Some(2),
             Self::Loom | Self::Smithing => Some(3),
+            Self::Crafter => Some(45),
             _ => None,
         }
     }
@@ -194,6 +200,7 @@ impl MenuKind {
     pub fn slot_count(self) -> usize {
         match self {
             Self::Inventory => SLOT_COUNT,
+            Self::Crafter => 46,
             other => other.top_slots() + 36,
         }
     }
@@ -811,6 +818,11 @@ impl ContainerMenu {
             },
             MenuKind::Furnace(_) => usize::from(index >= 3),
             MenuKind::Enchantment => usize::from(index >= 2),
+            MenuKind::Crafter => match index {
+                0..9 => 0,
+                45 => 1,
+                _ => 2,
+            },
             other => {
                 if other.result_slot() == Some(index) {
                     1
@@ -900,7 +912,8 @@ impl ContainerMenu {
             let cost = i32::from(self.data.first().copied().unwrap_or(0));
             return (self.infinite_materials || self.xp_level >= cost) && cost > 0;
         }
-        true
+        // `NonInteractiveResultSlot`.
+        !(self.kind == MenuKind::Crafter && index == 45)
     }
 
     /// `Slot.allowModification`.
@@ -1218,6 +1231,32 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `CrafterMenu.quickMoveStack`: the grid's items go to the inventory, the others to the grid.
+    fn quick_move_crafter(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let keeps_going = if index < 9 {
+            self.move_item_stack_to(&mut stack, 9, 45, true)
+        } else {
+            self.move_item_stack_to(&mut stack, 0, 9, false)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !keeps_going {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        Some(clicked)
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
@@ -1231,6 +1270,7 @@ impl ContainerMenu {
             | MenuKind::Enchantment => self.quick_move_transform(index, player),
             MenuKind::Brewing => self.quick_move_brewing(index, player),
             MenuKind::Beacon => self.quick_move_beacon(index, player),
+            MenuKind::Crafter => self.quick_move_crafter(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
