@@ -23,6 +23,18 @@ pub(super) enum Kind {
     AshSmoke,
     /// `FlameParticle`: goes through blocks, shrinks and glows as it ages.
     Flame,
+    /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
+    /// place (`uo`, `vo`, in quarters of it) it draws at random.
+    Terrain { uo: f32, vo: f32 },
+}
+
+/// Which atlas a particle's picture is in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleAtlas {
+    /// `particle/`.
+    Particles,
+    /// The blocks' own.
+    Blocks,
 }
 
 /// A particle of the client level.
@@ -289,6 +301,7 @@ impl Particle {
                 let s = (self.age as f32 + partial) / self.lifetime as f32;
                 self.quad_size * (1.0 - s * s * 0.5)
             }
+            Kind::Terrain { .. } => self.quad_size,
         }
     }
 
@@ -296,10 +309,36 @@ impl Particle {
     pub fn light_coords_at(&self, world: &ClientWorld, partial: f32) -> i32 {
         let light = particle_light(world, self.x, self.y, self.z);
         match self.kind {
-            Kind::AshSmoke => light,
+            Kind::AshSmoke | Kind::Terrain { .. } => light,
             Kind::Flame => {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
+        }
+    }
+
+    /// `Particle.setPower`: the motion it started with, scaled (the rise less).
+    pub fn set_power(&mut self, power: f32) {
+        self.xd *= f64::from(power);
+        self.yd = (self.yd - f64::from(0.1_f32)) * f64::from(power) + f64::from(0.1_f32);
+        self.zd *= f64::from(power);
+    }
+
+    /// The atlas the picture is in.
+    pub fn atlas(&self) -> ParticleAtlas {
+        match self.kind {
+            Kind::Terrain { .. } => ParticleAtlas::Blocks,
+            _ => ParticleAtlas::Particles,
+        }
+    }
+
+    /// The part of its picture a particle shows, as fractions (`u0`, `u1`, `v0`, `v1`), where it is
+    /// not the whole: `getU0` and the rest ask the sprite for a place within it.
+    pub fn sprite_window(&self) -> Option<[f32; 4]> {
+        match self.kind {
+            Kind::Terrain { uo, vo } => {
+                Some([(uo + 1.0) / 4.0, uo / 4.0, vo / 4.0, (vo + 1.0) / 4.0])
+            }
+            _ => None,
         }
     }
 

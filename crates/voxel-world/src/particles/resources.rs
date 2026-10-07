@@ -7,8 +7,10 @@ use std::sync::Arc;
 use voxel_core::random::RandomSource;
 use voxel_data::particle_type;
 
+use super::super::ClientWorld;
 use super::particle::Particle;
 use super::sprites::SpriteSet;
+use super::terrain::TerrainMaterials;
 
 /// The class a type's provider makes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,6 +18,9 @@ enum Provider {
     Smoke,
     Flame,
     SmallFlame,
+    Terrain,
+    Crumbling,
+    DustPillar,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -24,14 +29,18 @@ fn provider_of(name: &str) -> Option<Provider> {
         "smoke" => Provider::Smoke,
         "flame" | "soul_fire_flame" | "copper_fire_flame" => Provider::Flame,
         "small_flame" => Provider::SmallFlame,
+        "block" => Provider::Terrain,
+        "block_crumble" => Provider::Crumbling,
+        "dust_pillar" => Provider::DustPillar,
         _ => return None,
     })
 }
 
-/// The providers, each with the sprite set its `particles/<name>.json` lists.
+/// The providers, each with the sprite set its `particles/*.json` lists.
 #[derive(Debug, Clone, Default)]
 pub struct ParticleResources {
     sprite_sets: HashMap<&'static str, Arc<SpriteSet>>,
+    terrain: Option<Arc<dyn TerrainMaterials>>,
 }
 
 impl ParticleResources {
@@ -64,24 +73,53 @@ impl ParticleResources {
         }
     }
 
+    /// The block models and tints the flakes of blocks take their pictures and colours from.
+    pub fn set_terrain(&mut self, materials: Arc<dyn TerrainMaterials>) {
+        self.terrain = Some(materials);
+    }
+
+    /// What the flakes of blocks are made with.
+    pub(super) fn terrain(&self) -> Option<&Arc<dyn TerrainMaterials>> {
+        self.terrain.as_ref()
+    }
+
     /// `ParticleProvider.createParticle` of the type with this id: nothing where the type has no
-    /// provider here or no sprite set was bound.
+    /// provider here, no sprite set was bound, or the provider makes none.
     pub(super) fn create(
         &self,
-        type_id: i32,
-        at: (f64, f64, f64),
-        push: (f64, f64, f64),
+        world: &ClientWorld,
+        (type_id, block_state): (i32, Option<i32>),
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
         engine_random: &mut RandomSource,
     ) -> Option<Particle> {
         let name = particle_type::name(type_id)?;
         let provider = provider_of(name)?;
+        if matches!(
+            provider,
+            Provider::Terrain | Provider::Crumbling | Provider::DustPillar
+        ) {
+            let materials = self.terrain.as_deref()?;
+            let state = block_state?;
+            if !super::terrain::makes_terrain_particles(state) {
+                return None;
+            }
+            let env = (world, materials);
+            let random = random();
+            return match provider {
+                Provider::Terrain => Particle::terrain_provider(random, (at, push), state, env),
+                Provider::Crumbling => {
+                    Particle::crumbling_provider(random, (at, push), state, env, engine_random)
+                }
+                _ => Particle::dust_pillar_provider(random, (at, push), state, env, engine_random),
+            };
+        }
         let sprites = self.sprite_sets.get(name)?;
         let random = random();
         Some(match provider {
             Provider::Smoke => Particle::smoke(random, at, push, sprites),
             Provider::Flame => Particle::flame(random, at, push, sprites, engine_random),
-            Provider::SmallFlame => Particle::small_flame(random, at, push, sprites, engine_random),
+            _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
     }
 }

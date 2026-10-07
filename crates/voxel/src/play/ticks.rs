@@ -256,8 +256,10 @@ impl Play {
                 self.particles.clear();
             }
             // The particles option is not kept yet: all of them.
+            let level_particles = self.session.take_level_particles();
             self.particles.receive(
-                self.session.take_level_particles(),
+                level_particles,
+                self.session.world(),
                 voxel_world::particles::ParticleStatus::All,
             );
             let commands = self.session.take_sounds();

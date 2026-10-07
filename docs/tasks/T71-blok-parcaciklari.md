@@ -19,4 +19,5 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+- **Yapılan:** `particles/terrain.rs` (`Particle::terrain`, üç sağlayıcı, `destroy_block_effect`, `breaking_block_effect`, `TerrainMaterials`); motor imzalarına `world` ve blok durumu; `LevelParticles.block_state` (paket `BlockParticleOption`), tür tablosunda `block_state`; dünyada `take_block_breaks` (olay 2001); oracle `particle_terrain`; kayıt: `client-particle-terrain-parity-conformance.md`.
+- **Bölündü:** gerçek malzeme/tint çözümü, blok atlasından çizim, oyuna bağlama T71b. Açık: biyoma bağlı tintler oracle'da yok.

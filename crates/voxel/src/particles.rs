@@ -114,7 +114,12 @@ impl Particles {
 
     /// The particle packets that arrived: each particle asked for is made when the option and
     /// the camera's distance let it in.
-    pub(crate) fn receive(&mut self, packets: Vec<LevelParticles>, status: ParticleStatus) {
+    pub(crate) fn receive(
+        &mut self,
+        packets: Vec<LevelParticles>,
+        world: &ClientWorld,
+        status: ParticleStatus,
+    ) {
         self.packets_heard += packets.len();
         let view = AddView {
             camera: self.camera,
@@ -123,6 +128,7 @@ impl Particles {
         for packet in packets {
             let mut uniquifier = self.uniquifier;
             self.engine.level_particles(
+                world,
                 &packet,
                 &view,
                 (&mut self.listener_random, &mut self.level_random),

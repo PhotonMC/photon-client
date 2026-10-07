@@ -32,6 +32,11 @@ pub struct ShadowPiece {
     pub alpha: f32,
 }
 
+/// Whether the block's `getRenderShape` is `INVISIBLE`.
+pub(crate) fn is_invisible_render_shape(name: &str) -> bool {
+    INVISIBLE.contains(&name)
+}
+
 /// Blocks whose `getRenderShape` is `INVISIBLE`: they take no shadow.
 const INVISIBLE: [&str; 12] = [
     "minecraft:air",

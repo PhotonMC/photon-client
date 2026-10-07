@@ -2,6 +2,8 @@
 
 use std::collections::VecDeque;
 
+use voxel_core::binary::BlockPos;
+use voxel_core::direction::Direction;
 use voxel_core::math::Vec3;
 use voxel_core::random::RandomSource;
 use voxel_data::particle_type;
@@ -31,16 +33,20 @@ pub struct AddView {
 #[derive(Debug, Clone, Copy)]
 pub struct Spawn {
     pub type_id: i32,
+    /// The block state of a type that carries one (`BlockParticleOption`).
+    pub block_state: Option<i32>,
     pub override_limiter: bool,
     pub always_show: bool,
     pub at: (f64, f64, f64),
     pub push: (f64, f64, f64),
 }
 
-/// `ClientboundLevelParticlesPacket`, of a type that is only its id.
+/// `ClientboundLevelParticlesPacket`, of a type that is only its id or a block state.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LevelParticles {
     pub type_id: i32,
+    /// The block state of a type that carries one.
+    pub block_state: Option<i32>,
     pub override_limiter: bool,
     pub always_show: bool,
     pub at: (f64, f64, f64),
@@ -73,20 +79,63 @@ impl ParticleEngine {
     /// random source is asked for only when it is.
     pub fn create_particle(
         &mut self,
-        type_id: i32,
-        at: (f64, f64, f64),
-        push: (f64, f64, f64),
+        world: &ClientWorld,
+        (type_id, block_state): (i32, Option<i32>),
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
     ) -> bool {
-        match self
-            .resources
-            .create(type_id, at, push, random, &mut self.random)
-        {
+        match self.resources.create(
+            world,
+            (type_id, block_state),
+            (at, push),
+            random,
+            &mut self.random,
+        ) {
             Some(particle) => {
                 self.add(particle);
                 true
             }
             None => false,
+        }
+    }
+
+    /// `ClientLevel.addDestroyBlockEffect`: the flakes of a block that broke join the group.
+    pub fn add_destroy_block_effect(
+        &mut self,
+        world: &ClientWorld,
+        (pos, state): (BlockPos, i32),
+        particle_random: impl FnMut() -> RandomSource,
+    ) {
+        let Some(materials) = self.resources.terrain().cloned() else {
+            return;
+        };
+        for flake in super::terrain::destroy_block_effect(
+            (pos, state),
+            (world, materials.as_ref()),
+            particle_random,
+        ) {
+            self.add(flake);
+        }
+    }
+
+    /// `ClientLevel.addBreakingBlockEffect`: a flake from the face of the block being broken.
+    pub fn add_breaking_block_effect(
+        &mut self,
+        world: &ClientWorld,
+        (pos, direction): (BlockPos, Direction),
+        level_random: &mut RandomSource,
+        particle_random: impl FnOnce() -> RandomSource,
+    ) {
+        let Some(materials) = self.resources.terrain().cloned() else {
+            return;
+        };
+        if let Some(flake) = super::terrain::breaking_block_effect(
+            (pos, direction),
+            (world, materials.as_ref()),
+            level_random,
+            particle_random,
+        ) {
+            self.add(flake);
         }
     }
 
@@ -146,6 +195,7 @@ impl ParticleEngine {
     /// is within 32 blocks of the camera and the option is not at its least.
     pub fn add_particle(
         &mut self,
+        world: &ClientWorld,
         spawn: &Spawn,
         view: &AddView,
         level_random: &mut RandomSource,
@@ -162,7 +212,12 @@ impl ParticleEngine {
         let too_far = dx * dx + dy * dy + dz * dz > 1024.0;
         let near = !too_far;
         if override_limiter || (near && level != ParticleStatus::Minimal) {
-            self.create_particle(spawn.type_id, spawn.at, spawn.push, &mut particle_random);
+            self.create_particle(
+                world,
+                (spawn.type_id, spawn.block_state),
+                (spawn.at, spawn.push),
+                &mut particle_random,
+            );
         }
     }
 
@@ -170,6 +225,7 @@ impl ParticleEngine {
     /// count is that many, each spread and sped by the listener's random source.
     pub fn level_particles(
         &mut self,
+        world: &ClientWorld,
         packet: &LevelParticles,
         view: &AddView,
         (listener_random, level_random): (&mut RandomSource, &mut RandomSource),
@@ -177,6 +233,7 @@ impl ParticleEngine {
     ) {
         let spawn = |at: (f64, f64, f64), push: (f64, f64, f64)| Spawn {
             type_id: packet.type_id,
+            block_state: packet.block_state,
             override_limiter: packet.override_limiter,
             always_show: packet.always_show,
             at,
@@ -189,6 +246,7 @@ impl ParticleEngine {
                 f64::from(packet.max_speed * packet.spread.2),
             );
             self.add_particle(
+                world,
                 &spawn(packet.at, push),
                 view,
                 level_random,
@@ -204,6 +262,7 @@ impl ParticleEngine {
             let ya = listener_random.next_gaussian() * f64::from(packet.max_speed);
             let za = listener_random.next_gaussian() * f64::from(packet.max_speed);
             self.add_particle(
+                world,
                 &spawn(
                     (
                         packet.at.0 + x_variance,

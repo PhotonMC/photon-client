@@ -422,3 +422,15 @@ fn an_item_frame_keeps_the_turn_of_its_item() {
         assert_eq!(frame.item_frame_rotation(), 5);
     }
 }
+
+#[test]
+fn a_block_broken_waits_for_its_flakes_with_the_state_it_had() {
+    let mut world = ClientWorld::default();
+    let stone = voxel_data::block::registry::block("minecraft:stone")
+        .expect("stone")
+        .default_state_id() as i32;
+    world.apply_level_event(2001, (10, 64, -3), stone);
+    world.apply_level_event(1000, (0, 0, 0), 0);
+    assert_eq!(world.take_block_breaks(), vec![((10, 64, -3), stone)]);
+    assert!(world.take_block_breaks().is_empty());
+}

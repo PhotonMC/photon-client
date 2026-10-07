@@ -27,16 +27,25 @@ class MovementParticleOracle extends MovementMenuOracle {
     }
 
     /** The registry of particle types, in the order of its ids. */
-    static JsonObject particleTypes(JsonObject row) {
+    static JsonObject particleTypes(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         var types = new JsonArray();
+        // The types whose options are a block state, by what the field of `ParticleTypes` is declared as.
+        var carryingBlocks = new java.util.HashSet<Object>();
+        for (var field : net.minecraft.core.particles.ParticleTypes.class.getDeclaredFields()) {
+            if (field.getGenericType() instanceof java.lang.reflect.ParameterizedType generic
+                && generic.getActualTypeArguments()[0] == net.minecraft.core.particles.BlockParticleOption.class) {
+                carryingBlocks.add(field.get(null));
+            }
+        }
         for (var type : net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE) {
             var described = new JsonObject();
             described.addProperty("name",
                 net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getKey(type).toString());
             described.addProperty("override_limiter", type.getOverrideLimiter());
             described.addProperty("simple", type instanceof net.minecraft.core.particles.SimpleParticleType);
+            described.addProperty("block_state", carryingBlocks.contains(type));
             types.add(described);
         }
         entry.add("types", types);
@@ -176,7 +185,9 @@ class MovementParticleOracle extends MovementMenuOracle {
         for (var name : new String[] {"quadSize", "rCol", "gCol", "bCol", "alpha", "roll", "oRoll", "gravity", "friction"}) {
             described.addProperty(name, Oracle.bits((float) getField(particle, name)));
         }
-        described.addProperty("sprite", sprites.indexOf(getField(particle, "sprite")));
+        if (sprites != null) {
+            described.addProperty("sprite", sprites.indexOf(getField(particle, "sprite")));
+        }
         var drawn = new JsonArray();
         var lightMethod = net.minecraft.client.particle.Particle.class.getDeclaredMethod("getLightCoords", float.class);
         lightMethod.setAccessible(true);
@@ -489,6 +500,121 @@ class MovementParticleOracle extends MovementMenuOracle {
             state.buildLayer(layer, capture);
         }
         entry.add("vertices", capture.vertices);
+        return entry;
+    }
+
+    /** An engine that keeps the particles it is given instead of keeping them to tick. */
+    static final class RecordingEngine extends net.minecraft.client.particle.ParticleEngine {
+        final java.util.List<net.minecraft.client.particle.Particle> added = new java.util.ArrayList<>();
+
+        RecordingEngine(net.minecraft.client.multiplayer.ClientLevel level) {
+            super(level, new net.minecraft.client.particle.ParticleResources());
+        }
+
+        @Override
+        public void add(net.minecraft.client.particle.Particle particle) {
+            this.added.add(particle);
+        }
+    }
+
+    private static JsonObject describeTerrain(net.minecraft.client.particle.Particle particle, JsonArray partials) throws Exception {
+        var described = describeParticle(particle, null, partials);
+        var uvs = new JsonArray();
+        for (var name : new String[] {"getU0", "getU1", "getV0", "getV1"}) {
+            var method = net.minecraft.client.particle.SingleQuadParticle.class.getDeclaredMethod(name);
+            method.setAccessible(true);
+            uvs.add(Oracle.bits((float) method.invoke(particle)));
+        }
+        described.add("uvs", uvs);
+        return described;
+    }
+
+    private static JsonObject at(net.minecraft.client.particle.Particle particle) throws Exception {
+        var out = new JsonObject();
+        for (var name : new String[] {"x", "y", "z"}) {
+            out.addProperty(name, Oracle.bits((double) getField(particle, name)));
+        }
+        return out;
+    }
+
+    /**
+     * What a block's terrain particles are: one made by a provider and ticked, the particles of
+     * a block breaking (where each is), and of one being broken (where it is and how big).
+     */
+    static JsonObject particleTerrain(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var minecraft = scene.minecraft();
+        setField(minecraft, "level", level);
+        var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) unsafe.allocateInstance(BlankSprite.class);
+        var uv = row.getAsJsonArray("sprite_uv");
+        int at = 0;
+        for (var name : new String[] {"u0", "u1", "v0", "v1"}) {
+            setField(sprite, name, Float.intBitsToFloat(Integer.parseUnsignedInt(uv.get(at++).getAsString(), 16)));
+        }
+        BlankModels.sprite = sprite;
+        BlankModelManager.models = (net.minecraft.client.renderer.block.BlockStateModelSet) unsafe.allocateInstance(BlankModels.class);
+        setField(minecraft, "modelManager", unsafe.allocateInstance(BlankModelManager.class));
+        setField(minecraft, "blockColors", net.minecraft.client.color.block.BlockColors.createDefault());
+        var engine = new RecordingEngine(level);
+        setField(minecraft, "particleEngine", engine);
+        var state = state(row.getAsJsonObject("state"));
+        var pos = new net.minecraft.core.BlockPos(row.get("pos_x").getAsInt(), row.get("pos_y").getAsInt(), row.get("pos_z").getAsInt());
+        var partials = row.getAsJsonArray("partials");
+        switch (row.get("mode").getAsString()) {
+            case "single" -> {
+                var options = new net.minecraft.core.particles.BlockParticleOption(
+                    net.minecraft.core.particles.ParticleTypes.BLOCK, state);
+                var coordinates = new double[] {Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+                    Oracle.f64(row, "xa"), Oracle.f64(row, "ya"), Oracle.f64(row, "za")};
+                var provider = row.get("provider").getAsString();
+                var particle = seededParticle(row.get("seed").getAsLong(), () -> {
+                    var random = net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong());
+                    return switch (provider) {
+                        case "block" -> new net.minecraft.client.particle.TerrainParticle.Provider().createParticle(
+                            options, level, coordinates[0], coordinates[1], coordinates[2], coordinates[3], coordinates[4], coordinates[5], random);
+                        case "crumbling" -> new net.minecraft.client.particle.TerrainParticle.CrumblingProvider().createParticle(
+                            options, level, coordinates[0], coordinates[1], coordinates[2], coordinates[3], coordinates[4], coordinates[5], random);
+                        case "dust_pillar" -> new net.minecraft.client.particle.TerrainParticle.DustPillarProvider().createParticle(
+                            options, level, coordinates[0], coordinates[1], coordinates[2], coordinates[3], coordinates[4], coordinates[5], random);
+                        default -> throw new IllegalArgumentException("Unknown provider " + provider);
+                    };
+                });
+                entry.addProperty("made", particle != null);
+                var states = new JsonArray();
+                if (particle != null) {
+                    states.add(describeTerrain(particle, partials));
+                    for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+                        particle.tick();
+                        states.add(describeTerrain(particle, partials));
+                    }
+                }
+                entry.add("states", states);
+            }
+            case "destroy" -> {
+                level.addDestroyBlockEffect(pos, state);
+                var made = new JsonArray();
+                for (var particle : engine.added) {
+                    made.add(at(particle));
+                }
+                entry.add("particles", made);
+            }
+            case "breaking" -> {
+                ((net.minecraft.util.RandomSource) getField(level, "random")).setSeed(row.get("level_seed").getAsLong());
+                level.addBreakingBlockEffect(pos, net.minecraft.core.Direction.valueOf(row.get("direction").getAsString()));
+                var made = new JsonArray();
+                for (var particle : engine.added) {
+                    var out = at(particle);
+                    out.addProperty("width", Oracle.bits((float) getField(particle, "bbWidth")));
+                    out.addProperty("height", Oracle.bits((float) getField(particle, "bbHeight")));
+                    made.add(out);
+                }
+                entry.add("particles", made);
+            }
+            default -> throw new IllegalArgumentException("Unknown terrain mode");
+        }
         return entry;
     }
 }

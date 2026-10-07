@@ -63,7 +63,16 @@ impl ClientWorld {
 
     /// `LevelEventHandler.levelEvent`, for the events that make a sound the client knows: `2001`,
     /// a block broken (its state's number is the data).
+    /// The blocks that broke since the last call, each with the state it had: what the level
+    /// event 2001 made flakes of.
+    pub fn take_block_breaks(&mut self) -> Vec<((i32, i32, i32), i32)> {
+        std::mem::take(&mut self.block_breaks)
+    }
+
     pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
+        if event == 2001 {
+            self.block_breaks.push((pos, data));
+        }
         if event == 2001 && block::state_or_air(i64::from(data)).block().name != "minecraft:air" {
             self.block_sound(
                 pos,

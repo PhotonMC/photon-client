@@ -1,7 +1,8 @@
 use super::*;
 
 /// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type that
-/// carries options after its id (those are not read yet; the packet ends with them).
+/// carries options other than a block state after its id (those are not read yet; the packet
+/// ends with them).
 pub fn read_level_particles_packet(
     input: &mut &[u8],
 ) -> Result<Option<voxel_world::particles::LevelParticles>, ConnectionError> {
@@ -24,12 +25,17 @@ pub fn read_level_particles_packet(
     if voxel_data::particle_type::name(type_id).is_none() {
         return Err(ConnectionError::Codec("unknown particle type id"));
     }
-    if !voxel_data::particle_type::is_simple(type_id) {
+    let block_state = if voxel_data::particle_type::carries_block_state(type_id) {
+        Some(read_varint(input, NAME)?)
+    } else if voxel_data::particle_type::is_simple(type_id) {
+        None
+    } else {
         *input = &[];
         return Ok(None);
-    }
+    };
     Ok(Some(voxel_world::particles::LevelParticles {
         type_id,
+        block_state,
         override_limiter,
         always_show,
         at,

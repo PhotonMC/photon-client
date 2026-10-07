@@ -4,7 +4,7 @@ use super::*;
 use std::sync::Arc;
 use voxel_world::particles::{
     AddView, LevelParticles, Particle, ParticleEngine, ParticleResources, ParticleStatus, Spawn,
-    SpriteSet,
+    SpriteSet, TerrainMaterials,
 };
 
 fn bits32(value: f32) -> String {
@@ -33,6 +33,7 @@ pub(super) fn particle_types_result(request: &Value) -> Result<Value, String> {
                     "name": format!("minecraft:{}", particle.name),
                     "override_limiter": particle.overrides_limiter,
                     "simple": particle.simple,
+                    "block_state": particle.block_state,
                 })
             })
             .collect();
@@ -298,8 +299,10 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                     .ok_or("always_show must be a bool")?;
                 match string(event, "type")? {
                     "add" => engine.add_particle(
+                        &world,
                         &Spawn {
                             type_id,
+                            block_state: None,
                             override_limiter,
                             always_show,
                             at,
@@ -320,8 +323,10 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                                 .map_err(|error| format!("{key}: {error}"))
                         };
                         engine.level_particles(
+                            &world,
                             &LevelParticles {
                                 type_id,
+                                block_state: None,
                                 override_limiter,
                                 always_show,
                                 at,
@@ -365,6 +370,205 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             "first": first,
             "digest": format!("{digest:x}"),
         }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// What the oracle's flakes are made with: one texture, and the tints the scenarios ask for.
+#[derive(Debug)]
+struct OracleTerrain;
+
+impl TerrainMaterials for OracleTerrain {
+    fn particle_texture(&self, _state: i32) -> String {
+        "block/stone".into()
+    }
+
+    fn tint(
+        &self,
+        _world: &ClientWorld,
+        state: i32,
+        _pos: voxel_core::binary::BlockPos,
+    ) -> Option<i32> {
+        // The tint sources of these blocks do not read the biome (`BlockColors`).
+        match voxel_world::block::state_or_air(i64::from(state))
+            .block()
+            .name
+        {
+            "minecraft:spruce_leaves" => Some(-10_380_959),
+            "minecraft:birch_leaves" => Some(-8_345_771),
+            // `grassBlock().colorAsTerrainParticle`: none.
+            "minecraft:grass_block" => Some(-1),
+            _ => None,
+        }
+    }
+}
+
+fn state_of(row: &Value) -> Result<i32, String> {
+    let described = &row["state"];
+    let name = string(described, "block")?;
+    let definition =
+        voxel_data::block::registry::block(name).ok_or_else(|| format!("unknown block {name}"))?;
+    let mut chosen = std::collections::BTreeMap::new();
+    if let Some(properties) = described["properties"].as_object() {
+        for (key, value) in properties {
+            chosen.insert(
+                key.clone(),
+                value
+                    .as_str()
+                    .ok_or("property values are strings")?
+                    .to_owned(),
+            );
+        }
+    }
+    definition
+        .state_id(&chosen)
+        .map(|state| state as i32)
+        .ok_or_else(|| format!("bad properties for {name}"))
+}
+
+/// `particle_terrain`: a flake made by a provider and ticked, the flakes of a block breaking, and the
+/// flake of one being broken.
+pub(super) fn particle_terrain_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let world = movement_world(row)?;
+        let state = state_of(row)?;
+        let pos = voxel_core::binary::BlockPos::new(
+            i32_field(row, "pos_x")?,
+            i32_field(row, "pos_y")?,
+            i32_field(row, "pos_z")?,
+        );
+        let partials = f32_bits(&row["partials"])?;
+        let sprite_uv = f32_bits(&row["sprite_uv"])?;
+        let materials = OracleTerrain;
+        let mut entry = serde_json::Map::new();
+        entry.insert("label".into(), json!(string(row, "label")?));
+        let seeds = {
+            let mut next = 0_i64;
+            move || {
+                next += 1;
+                RandomSource::create(next)
+            }
+        };
+        match string(row, "mode")? {
+            "single" => {
+                let at = (
+                    parsed64(row, "x")?,
+                    parsed64(row, "y")?,
+                    parsed64(row, "z")?,
+                );
+                let push = (
+                    parsed64(row, "xa")?,
+                    parsed64(row, "ya")?,
+                    parsed64(row, "za")?,
+                );
+                let random =
+                    RandomSource::create(row["seed"].as_i64().ok_or("seed must be an integer")?);
+                let mut engine_random = RandomSource::create(
+                    row["engine_seed"]
+                        .as_i64()
+                        .ok_or("engine_seed must be an integer")?,
+                );
+                let env = (&world, &materials as &dyn TerrainMaterials);
+                let made = match string(row, "provider")? {
+                    "block" => Particle::terrain_provider(random, (at, push), state, env),
+                    "crumbling" => Particle::crumbling_provider(
+                        random,
+                        (at, push),
+                        state,
+                        env,
+                        &mut engine_random,
+                    ),
+                    "dust_pillar" => Particle::dust_pillar_provider(
+                        random,
+                        (at, push),
+                        state,
+                        env,
+                        &mut engine_random,
+                    ),
+                    other => return Err(format!("unknown provider {other}")),
+                };
+                entry.insert("made".into(), json!(made.is_some()));
+                let mut states = Vec::new();
+                if let Some(mut particle) = made {
+                    let describe_terrain = |particle: &Particle| {
+                        let mut described = describe(particle, &world, &partials);
+                        let window = particle.sprite_window().unwrap_or([0.0, 1.0, 0.0, 1.0]);
+                        // `TextureAtlasSprite.getU` and `getV`: a place within the sprite.
+                        let along =
+                            |low: f32, high: f32, fraction: f32| low + (high - low) * fraction;
+                        let [u0, u1, v0, v1] =
+                            [sprite_uv[0], sprite_uv[1], sprite_uv[2], sprite_uv[3]];
+                        described["uvs"] = json!([
+                            bits32(along(u0, u1, window[0])),
+                            bits32(along(u0, u1, window[1])),
+                            bits32(along(v0, v1, window[2])),
+                            bits32(along(v0, v1, window[3])),
+                        ]);
+                        described
+                            .as_object_mut()
+                            .expect("an object")
+                            .remove("sprite");
+                        described
+                    };
+                    states.push(describe_terrain(&particle));
+                    for _ in 0..i32_field(row, "tick_count")? {
+                        particle.tick(&world);
+                        states.push(describe_terrain(&particle));
+                    }
+                }
+                entry.insert("states".into(), json!(states));
+            }
+            "destroy" | "breaking" => {
+                let mut resources = ParticleResources::new();
+                resources.set_terrain(std::sync::Arc::new(materials));
+                let mut engine = ParticleEngine::new(RandomSource::create(0), resources);
+                if string(row, "mode")? == "destroy" {
+                    engine.add_destroy_block_effect(&world, (pos, state), seeds);
+                } else {
+                    let direction = match string(row, "direction")? {
+                        "DOWN" => voxel_core::direction::Direction::Down,
+                        "UP" => voxel_core::direction::Direction::Up,
+                        "NORTH" => voxel_core::direction::Direction::North,
+                        "SOUTH" => voxel_core::direction::Direction::South,
+                        "WEST" => voxel_core::direction::Direction::West,
+                        "EAST" => voxel_core::direction::Direction::East,
+                        other => return Err(format!("unknown direction {other}")),
+                    };
+                    let mut level_random = RandomSource::create(
+                        row["level_seed"]
+                            .as_i64()
+                            .ok_or("level_seed must be an integer")?,
+                    );
+                    engine.add_breaking_block_effect(
+                        &world,
+                        (pos, direction),
+                        &mut level_random,
+                        seeds,
+                    );
+                }
+                let breaking = string(row, "mode")? == "breaking";
+                // The engine keeps them until its next tick: tick it once with nothing to move them.
+                engine.tick(&world);
+                let made: Vec<Value> = engine
+                    .particles()
+                    .map(|particle| {
+                        let position = particle.position();
+                        let mut out = json!({"x": bits64(position.x), "y": bits64(position.y), "z": bits64(position.z)});
+                        if breaking {
+                            let (width, height) = particle.size();
+                            out["width"] = json!(bits32(width));
+                            out["height"] = json!(bits32(height));
+                        }
+                        out
+                    })
+                    .collect();
+                entry.insert("particles".into(), json!(made));
+            }
+            other => return Err(format!("unknown terrain mode {other}")),
+        }
+        out.push(Value::Object(entry));
     }
     Ok(json!({"rows": out}))
 }

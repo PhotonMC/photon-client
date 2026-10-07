@@ -13,8 +13,10 @@ mod particle;
 mod resources;
 mod smoke;
 mod sprites;
+mod terrain;
 
 pub use engine::{AddView, LevelParticles, ParticleEngine, ParticleStatus, Spawn};
-pub use particle::Particle;
+pub use particle::{Particle, ParticleAtlas};
 pub use resources::ParticleResources;
 pub use sprites::SpriteSet;
+pub use terrain::TerrainMaterials;

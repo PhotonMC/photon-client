@@ -67,6 +67,7 @@ def particle_cases():
     yield from particle_tick_cases()
     yield from particle_engine_cases()
     yield from particle_quad_cases()
+    yield from particle_terrain_cases()
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
@@ -169,4 +170,73 @@ def particle_quad_cases():
                  roll=(-1.5, 2.0)),
     ]
     yield {"case_id": "movement/particle-quads", "family": "movement", "operation": "particle_quads",
+           "rows": rows}
+
+
+def terrain_row(label, mode, block, properties=None, **extra):
+    state = {"block": block}
+    if properties:
+        state["properties"] = properties
+    row = {
+        "label": label, "mode": mode, "state": state, "pos_x": 2, "pos_y": 64, "pos_z": 3,
+        "blocks": [dict(x=2, y=64, z=3, **state)], "chunk_radius": 1, "partials": PARTIALS,
+        "sprite_uv": [float_bits(0.25), float_bits(0.3125), float_bits(0.5), float_bits(0.5625)],
+    }
+    row.update(extra)
+    return row
+
+
+def single(label, block, provider="block", seed=12345, push=(0.1, 0.2, -0.1), properties=None, ticks=24,
+           engine_seed=9):
+    return terrain_row(label, "single", block, properties, provider=provider, seed=seed,
+                       engine_seed=engine_seed, tick_count=ticks,
+                       x=float_bits(2.5, "f64"), y=float_bits(64.5, "f64"), z=float_bits(3.5, "f64"),
+                       xa=float_bits(push[0], "f64"), ya=float_bits(push[1], "f64"),
+                       za=float_bits(push[2], "f64"))
+
+
+def particle_terrain_cases():
+    rows = [
+        # What a provider makes: the draws of the constructor, the tint, the window of the texture.
+        single("stone", "minecraft:stone"),
+        single("stone-another-seed", "minecraft:stone", seed=-77, push=(-0.4, 0.0, 0.3)),
+        single("spruce-leaves-tinted", "minecraft:spruce_leaves"),
+        single("birch-leaves-tinted", "minecraft:birch_leaves", seed=5),
+        single("grass-block-not-tinted", "minecraft:grass_block"),
+        # Types that make nothing.
+        single("air", "minecraft:air"),
+        single("moving-piston", "minecraft:moving_piston"),
+        single("barrier", "minecraft:barrier"),
+        single("structure-void", "minecraft:structure_void"),
+        # The two other providers of the class: still, short-lived; and rising, long-lived.
+        single("crumbling", "minecraft:stone", provider="crumbling", engine_seed=3, ticks=12),
+        single("crumbling-another", "minecraft:stone", provider="crumbling", engine_seed=4, ticks=12),
+        single("dust-pillar", "minecraft:stone", provider="dust_pillar", engine_seed=3, ticks=30,
+               push=(0.0, 0.3, 0.0)),
+        # A block breaking: one particle in each box of its shape, as many as its size asks.
+        terrain_row("destroy-stone", "destroy", "minecraft:stone"),
+        terrain_row("destroy-slab", "destroy", "minecraft:stone_slab", {"type": "bottom", "waterlogged": "false"}),
+        terrain_row("destroy-stairs", "destroy", "minecraft:oak_stairs",
+                    {"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": "false"}),
+        terrain_row("destroy-inner-stairs", "destroy", "minecraft:oak_stairs",
+                    {"facing": "east", "half": "top", "shape": "inner_left", "waterlogged": "false"}),
+        terrain_row("destroy-fence", "destroy", "minecraft:oak_fence",
+                    {"north": "true", "east": "false", "south": "true", "west": "false", "waterlogged": "false"}),
+        terrain_row("destroy-chest", "destroy", "minecraft:chest",
+                    {"facing": "north", "type": "single", "waterlogged": "false"}),
+        terrain_row("destroy-torch", "destroy", "minecraft:torch"),
+        terrain_row("destroy-barrier", "destroy", "minecraft:barrier"),
+        terrain_row("destroy-air", "destroy", "minecraft:air"),
+    ]
+    for direction in ("DOWN", "UP", "NORTH", "SOUTH", "WEST", "EAST"):
+        rows.append(terrain_row(f"breaking-stone-{direction.lower()}", "breaking", "minecraft:stone",
+                                direction=direction, level_seed=31))
+    rows += [
+        terrain_row("breaking-slab-up", "breaking", "minecraft:stone_slab",
+                    {"type": "bottom", "waterlogged": "false"}, direction="UP", level_seed=8),
+        terrain_row("breaking-slab-side", "breaking", "minecraft:stone_slab",
+                    {"type": "top", "waterlogged": "false"}, direction="EAST", level_seed=9),
+        terrain_row("breaking-barrier", "breaking", "minecraft:barrier", direction="UP", level_seed=1),
+    ]
+    yield {"case_id": "movement/particle-terrain", "family": "movement", "operation": "particle_terrain",
            "rows": rows}

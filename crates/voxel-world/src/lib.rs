@@ -112,6 +112,8 @@ pub struct ClientWorld {
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
+    /// The blocks the server said broke (level event 2001), with the state they had, until taken.
+    block_breaks: Vec<((i32, i32, i32), i32)>,
     world_border: ClientWorldBorder,
     block_animations: block::chest::BlockAnimations,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
