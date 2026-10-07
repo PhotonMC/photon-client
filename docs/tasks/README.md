@@ -224,5 +224,30 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T65](T65-ses-ayarlari-ekrani.md) | Ses ayarları ekranı | M | T63, T06 | bitti (a9e6230d) |
 | [T66](T66-hud-durum-oracle.md) | HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) | M | T45 | bitti (5814a8cd) |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
+| [Q01](Q01-repo-hijyeni-ci.md) | Public repo hijyeni ve CI | S | – | açık |
+| [Q02](Q02-ingilizce-readme.md) | İngilizce README, katkı belgeleri, belge ayrımı | M | Q01 | açık |
+| [Q03](Q03-log-safety-lint.md) | Log altyapısı, SAFETY yorumları, lint sıkılaştırma | M | Q01 | açık |
+| [V00](V00-performans-olcumu.md) | Performans ölçümü ve bench | M | – | açık |
+| [V01](V01-vulkan-modulleri.md) | `vulkan.rs` modüllere bölme ve RAII | M | V00 | açık |
+| [V02](V02-shader-dosyalari.md) | Shader dosyaları, build-time SPIR-V, pipeline cache | M | V01 | açık |
+| [V03](V03-kare-ucusta.md) | İki kare uçuşta, halka tampon, `RenderType` tablosu | L | V01 | açık |
+| [V04](V04-present-modu.md) | Present modu ve kare sınırı | S | V03 | açık |
+| [V05](V05-indexed-kompakt-vertex.md) | Indexed quad ve kompakt köşe formatı | L | V03 | açık |
+| [V06](V06-multi-draw.md) | Bölümler için indirect/multi-draw | L | V05 | açık |
+| [A01](A01-newtype-degerler.md) | `JavaF64`/`DVec3` ve kimlik newtype'ları | M | – | açık |
+| [A02](A02-entity-kind.md) | `ClientEntity` → `EntityBase` + `EntityKind` enum | L | A01 | açık |
+| [A03](A03-extract-dispatch.md) | Extract → render state → tek geçişli dispatcher | L | A02 | açık |
+| [A04](A04-paket-enum-listener.md) | Tipli paket enum'u, listener, izlemeyi üretimden ayırma | L | A01 | açık |
+| [A05](A05-clientworld-bolme.md) | `ClientWorld` alt sistemlere bölme | M | A02 | açık |
+| [A06](A06-dev-dosyalar.md) | Dev dosyaları ve oracle adaptörünü bölme | M | – | açık |
+| [D01](D01-generated-envanter.md) | Üretilmiş tabloların envanteri ve sınıflandırması | S | – | açık |
+| [D02](D02-animasyonlar-elle.md) | Animasyonlar: Java sınıfı başına elle modül | M | D01 | açık |
+| [D03](D03-modeller-elle.md) | Entity modelleri: model sınıfı başına `create_body_layer` | L | D01 | açık |
+| [D04](D04-bloklar-elle.md) | Bloklar ve blok sınıfları elle | L | D01 | açık |
+| [D05](D05-esyalar-elle.md) | Eşyalar, bileşen türleri ve yaratıcı sekmeleri elle | L | D01 | açık |
+| [D06](D06-kalan-tablolar.md) | Sesler, kalan tablolar ve çalışma anı veri okuyucu | M | D01 | açık |
+| [D07](D07-uretici-kaldir.md) | Üreticiyi ve `generated/` dizinini kaldırma | S | D02, D03, D04, D05, D06 | açık |
+
+Q/V/A/D satırları (kalite ve performans) [kod kalitesi incelemesinden](../code-quality-review-2026-10-07.md) gelir.
 
 Görev yazarken şablon: Amaç · Bağımlılık · Oku · Yapılacaklar · Oracle · Kabul · Kapsam dışı · Belgeler · Devir notu (≤ 60 satır).
