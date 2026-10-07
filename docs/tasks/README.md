@@ -184,7 +184,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T52](T52-ipucu-bilesen-hash.md) | Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması | M | – | açık |
 | [T53](T53-beacon.md) | İşaret ışığı menüsü ve ekranı (`SetBeacon`) | M | T50 | bitti (184cdc4b) |
 | [T54](T54-brewing-stand.md) | Simya standı menüsü ve ekranı | M | – | bitti (20572c47) |
-| [T55](T55-tuccar-menusu.md) | Tüccar menüsü ve `MerchantOffers` | L | T50 | bitti (HASH) |
+| [T55](T55-tuccar-menusu.md) | Tüccar menüsü ve `MerchantOffers` | L | T50 | bitti (968caf60) |
 | [T56](T56-lectern-kitap.md) | Kürsü menüsü ve kitap görünümü | M | – | bitti (8519cd70) |
 | [T57](T57-crafter.md) | Crafter menüsü ve ekranı | M | – | bitti (3b303cb3) |
 | [T58](T58-binek-envanteri.md) | At, eşek, katır ve nautilus envanteri | L | T50 | açık |
