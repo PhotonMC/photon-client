@@ -176,7 +176,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T44c4](T44c4-minecart-binme-inme.md) | Minecart yolcusu ve binme/inme | M | T44c3 | bitti (37f8c4ea) |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | bitti (fd8d309d) |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
-| PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | bitti (HASH) |
+| PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | bitti (c09922a4) |
 | [T70](T70-parcacik-cekirdegi.md) | Partikül motoru çekirdeği ve `LevelParticles` paketi | L | – | açık |
 | [T71](T71-blok-parcaciklari.md) | Blok parçacıkları: kırılma ve çatlama (`TerrainParticle`) | M | T70 | açık |
 | [T72](T72-yukselen-parcaciklar.md) | Yükselen duman/ateş aileleri | M | T70 | açık |
