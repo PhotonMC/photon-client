@@ -355,14 +355,6 @@ fn banner_vertices(
         None => banner::ground_transformation(banner.rotation),
     };
     let pose = voxel_render::skull::block_pose(&base, &transformation);
-    eprintln!(
-        "BANNERDEBUG {:?} {:?} {:?}",
-        banner.color,
-        banner.patterns,
-        world
-            .block_entity_at(x, y, z)
-            .map(|e| (e.type_id, e.tag.clone()))
-    );
     let phase = banner::flag_phase((x, y, z), world.game_time() as i64, view.partial as f32);
     let mut vertices = Vec::new();
     if let (Some(rect), Some(pole)) = (textures.rect(banner::BASE_TEXTURE), models.model(main)) {

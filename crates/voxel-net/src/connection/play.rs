@@ -545,7 +545,7 @@ impl PlaySession {
 
     fn warn(&mut self, message: String) {
         if self.warned.as_deref() != Some(message.as_str()) {
-            eprintln!("{message}");
+            log::warn!("{message}");
             self.warned = Some(message);
         }
     }
@@ -1407,7 +1407,7 @@ impl PlaySession {
                 Err(unsupported) => {
                     let message = unsupported.to_string();
                     if self.warned.as_deref() != Some(message.as_str()) {
-                        eprintln!("movement: {message}");
+                        log::warn!("movement: {message}");
                         self.warned = Some(message);
                     }
                 }
@@ -1600,7 +1600,7 @@ impl PlaySession {
             // not parse is left alone, as the reference ignores what it
             // cannot place.
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
-                if let Ok(packet) = parse_add_entity_packet(payload) {
+                if let Some(packet) = parsed(parse_add_entity_packet(payload), "add_entity") {
                     if self.removed_player_vehicle == Some(packet.entity_id) {
                         self.removed_player_vehicle = None;
                     }
@@ -1608,32 +1608,40 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => {
-                if let Ok(packet) = parse_set_entity_motion_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_set_entity_motion_packet(payload), "set_entity_motion")
+                {
                     entities::motion(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_MAP_ITEM_DATA_PACKET_ID => {
-                if let Ok(packet) = parse_map_item_data_packet(payload) {
+                if let Some(packet) = parsed(parse_map_item_data_packet(payload), "map_item_data") {
                     self.trace.world.apply_map_item_data(&packet);
                 }
             }
             PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID => {
-                if let Ok((entity_id, steps)) = parse_move_minecart_packet(payload) {
+                if let Some((entity_id, steps)) =
+                    parsed(parse_move_minecart_packet(payload), "move_minecart")
+                {
                     entities::minecart_steps(&mut self.trace.world, entity_id, &steps);
                 }
             }
             PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID => {
-                if let Ok((source, holder)) = parse_set_entity_link_packet(payload) {
+                if let Some((source, holder)) =
+                    parsed(parse_set_entity_link_packet(payload), "set_entity_link")
+                {
                     self.trace.world.set_leash_holder(source, holder);
                 }
             }
             PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => {
-                if let Ok(packet) = parse_rotate_head_packet(payload) {
+                if let Some(packet) = parsed(parse_rotate_head_packet(payload), "rotate_head") {
                     entities::rotate_head(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => {
-                if let Ok(packet) = parse_remove_entities_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_remove_entities_packet(payload), "remove_entities")
+                {
                     // `handleRemoveEntities`: a vehicle that goes with its rider aboard is
                     // remembered, for a teleport the server may still address to it.
                     for &id in &packet.entity_ids {
@@ -1647,7 +1655,8 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => {
-                if let Ok(packet) = parse_set_passengers_packet(payload) {
+                if let Some(packet) = parsed(parse_set_passengers_packet(payload), "set_passengers")
+                {
                     let was_aboard = self.trace.world.ridden_vehicle_of_local_player();
                     entities::passengers(&mut self.trace.world, &packet);
                     if self
@@ -1688,12 +1697,17 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
-                if let Ok(packet) = parse_entity_position_sync_packet(payload) {
+                if let Some(packet) = parsed(
+                    parse_entity_position_sync_packet(payload),
+                    "entity_position_sync",
+                ) {
                     entities::position_sync(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => {
-                if let Ok(packet) = parse_entity_teleport_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_entity_teleport_packet(payload), "entity_teleport")
+                {
                     if !self.trace.world.has_entity(packet.entity_id)
                         && self.removed_player_vehicle == Some(packet.entity_id)
                     {
@@ -1704,22 +1718,29 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => {
-                if let Ok(packet) = parse_move_entity_pos_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_move_entity_pos_packet(payload), "move_entity_pos")
+                {
                     entities::step(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
-                if let Ok(packet) = parse_move_entity_pos_rot_packet(payload) {
+                if let Some(packet) = parsed(
+                    parse_move_entity_pos_rot_packet(payload),
+                    "move_entity_pos_rot",
+                ) {
                     entities::step(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => {
-                if let Ok(packet) = parse_move_entity_rot_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_move_entity_rot_packet(payload), "move_entity_rot")
+                {
                     entities::step(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_ANIMATE_PACKET_ID => {
-                if let Ok((id, action)) = parse_animate_packet(payload) {
+                if let Some((id, action)) = parsed(parse_animate_packet(payload), "animate") {
                     self.trace.world.apply_entity_animate(id, action);
                 }
             }
@@ -1742,12 +1763,14 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID => {
-                if let Ok(chunks) = parse_entity_id_prefix(payload) {
+                if let Some(chunks) = parsed(parse_entity_id_prefix(payload), "entity_id_prefix") {
                     self.trace.world.set_server_simulation_distance(chunks);
                 }
             }
             PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => {
-                if let Ok((id, damage_type)) = parse_damage_event_packet(payload) {
+                if let Some((id, damage_type)) =
+                    parsed(parse_damage_event_packet(payload), "damage_event")
+                {
                     self.trace.world.apply_entity_damage_event(id);
                     if self.player_id == Some(id) {
                         let name = damage_type
@@ -1763,7 +1786,9 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => {
-                if let Ok((id, yaw)) = parse_hurt_animation_packet(payload) {
+                if let Some((id, yaw)) =
+                    parsed(parse_hurt_animation_packet(payload), "hurt_animation")
+                {
                     self.trace.world.apply_entity_hurt_animation(id);
                     if self.player_id == Some(id)
                         && let Some(player) = self.player.as_mut()
@@ -1884,12 +1909,16 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
                 // Data of a kind this client cannot read leaves it as it was.
-                if let Ok(packet) = parse_entity_metadata_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_entity_metadata_packet(payload), "entity_metadata")
+                {
                     entities::metadata(&mut self.trace.world, &packet);
                 }
             }
             PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID => {
-                if let Ok(packet) = parse_entity_equipment_packet(payload) {
+                if let Some(packet) =
+                    parsed(parse_entity_equipment_packet(payload), "entity_equipment")
+                {
                     entities::equipment(&mut self.trace.world, &packet);
                 }
             }
@@ -2479,6 +2508,14 @@ impl PlaySession {
         self.loaded = true;
         Ok(())
     }
+}
+
+/// The packet a parser made, or nothing after logging why it could not: the
+/// reference ignores a packet it cannot place, and the log keeps the reason.
+fn parsed<T, E: std::fmt::Display>(result: Result<T, E>, packet: &str) -> Option<T> {
+    result
+        .map_err(|error| log::debug!("ignored {packet} packet: {error}"))
+        .ok()
 }
 
 fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {

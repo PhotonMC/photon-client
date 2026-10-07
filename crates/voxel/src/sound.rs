@@ -77,7 +77,7 @@ impl SoundSystem {
         let output = match Output::open() {
             Ok(output) => output,
             Err(error) => {
-                println!("sound=off ({})", error.0);
+                log::warn!("sound off: {}", error.0);
                 return None;
             }
         };
@@ -93,7 +93,7 @@ impl SoundSystem {
             }
         };
         if registry.register_file("minecraft", &text, &exists).is_err() {
-            println!("sound=off (sounds.json is not valid)");
+            log::warn!("sound off: sounds.json is not valid");
             return None;
         }
         // `Library.init`: a device gives its own count of sources; thirty when it cannot say.
@@ -104,7 +104,7 @@ impl SoundSystem {
                 .volumes
                 .set(source, options.sound_category_volume(source));
         }
-        println!("sound=on");
+        log::info!("sound on");
         Some(Self {
             engine,
             mixer: Arc::clone(&output.mixer),

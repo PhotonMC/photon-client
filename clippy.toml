@@ -3,3 +3,4 @@ cognitive-complexity-threshold = 25
 too-many-lines-threshold = 100
 too-many-arguments-threshold = 7
 type-complexity-threshold = 250
+allow-unwrap-in-tests = true

@@ -39,6 +39,7 @@ mod item_frames;
 mod item_layers;
 mod leashes;
 mod lightning_bolts;
+mod logger;
 mod minecarts;
 mod mobs;
 mod monsters;
@@ -74,6 +75,7 @@ use std::time::Duration;
 use voxel_net::connection::connect_and_probe;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    logger::init();
     let mut args = env::args().skip(1);
     if env::args().nth(1).as_deref() == Some("window") {
         return window_probe::run_window(env::args().skip(2));

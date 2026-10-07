@@ -39,7 +39,7 @@ impl Output {
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     Self::fill(&shared, &mut stereo, channels, data);
                 },
-                |error| eprintln!("sound output: {error}"),
+                |error| log::error!("sound output: {error}"),
                 None,
             ),
             other => return Err(OutputError(format!("unsupported sample format {other:?}"))),

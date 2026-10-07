@@ -915,6 +915,8 @@ fn open_window(width: i32, height: i32) -> Result<(WindowSurface, VulkanBackend,
         scale.framebuffer_width() as u32,
         scale.framebuffer_height() as u32,
     );
+    // SAFETY: the handles are the window's, and the caller holds the surface
+    // beside the backend, declared first so it is dropped after it.
     let backend = unsafe { VulkanBackend::create(display_handle, window_handle, size.0, size.1) }?;
     if env::var_os("VOXEL_FULLSCREEN").is_some() {
         surface.toggle_fullscreen();

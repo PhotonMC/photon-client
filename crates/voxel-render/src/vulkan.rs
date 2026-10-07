@@ -11,6 +11,28 @@
 //! which GPU and which image the client ends up with: API version, required
 //! device extensions and features, discrete-GPU preference, surface format
 //! filter, and the swapchain parameters.
+//!
+//! # Safety conventions
+//!
+//! Every `unsafe` block here is a call into Vulkan through `ash`, and they all
+//! lean on the same few invariants of [`VulkanBackend`]. They are stated once,
+//! and each block names the ones it needs.
+//!
+//! - **Live handles.** `instance`, `device`, `surface`, the swapchain, the
+//!   queue, the command pool and the command buffer are made by `create` and
+//!   destroyed only in `Drop`. Every other handle sits in a field that owns it
+//!   and is taken out of that field before it is destroyed. A handle read from
+//!   `self` is therefore valid, and none is destroyed twice.
+//! - **Idle GPU.** A resource is destroyed or overwritten only after the work
+//!   that may read it has finished: `in_flight` was waited on, or the device
+//!   was made idle.
+//! - **Recording.** Commands go to `command_buffer` between the begin and the
+//!   end in `render_frame`.
+//!
+//! The public methods that use the queue or the command buffer take
+//! `&mut self`, so those are never used from two places at once. A private
+//! `unsafe fn` states in its `# Safety` section what its caller must add to
+//! these; the public methods that call it do.
 
 use std::ffi::{CStr, CString};
 
@@ -18,6 +40,49 @@ use ash::vk;
 
 use crate::png::DecodedImage;
 use crate::scene::{BlockVertex, Mesh, Vertex};
+
+/// A value whose bytes are all initialised, so a slice of it can go to the GPU as bytes.
+///
+/// # Safety
+///
+/// The type must be `repr(C)`, made only of numbers and arrays of them, and have no padding.
+unsafe trait Plain: Copy {}
+
+// SAFETY: a number has no padding.
+unsafe impl Plain for f32 {}
+// SAFETY: a number has no padding.
+unsafe impl Plain for u32 {}
+
+/// Vertex types, each with the size its fields add up to, so a field that
+/// brings padding fails the build instead of leaking uninitialised bytes.
+macro_rules! plain_vertices {
+    ($($vertex:ty = $size:expr),* $(,)?) => {$(
+        const _: () = assert!(std::mem::size_of::<$vertex>() == $size);
+        // SAFETY: `repr(C)` over `f32`/`u8` arrays, and the assertion above
+        // shows the fields leave no padding.
+        unsafe impl Plain for $vertex {}
+    )*};
+}
+
+plain_vertices! {
+    Vertex = 48,
+    BlockVertex = 28,
+    crate::outline::LineVertex = 44,
+    crate::clouds::CloudVertex = 16,
+    crate::sky::SkyVertex = 44,
+    crate::gui::GuiVertex = 32,
+    crate::gui::items::GuiItemVertex = 36,
+}
+
+/// The bytes of a slice of plain values.
+fn as_bytes<T: Plain>(values: &[T]) -> &[u8] {
+    // SAFETY: `T: Plain` makes every byte of the slice initialised; the
+    // pointer is valid for `size_of_val` bytes, `u8` needs no alignment, and
+    // the result borrows `values`.
+    unsafe {
+        std::slice::from_raw_parts(values.as_ptr().cast::<u8>(), std::mem::size_of_val(values))
+    }
+}
 
 /// Scaffolding shaders. These are this project's own, not the reference's:
 /// they exist to prove the pipeline works, and carry no parity claim.
@@ -1414,6 +1479,9 @@ impl VulkanBackend {
         width: u32,
         height: u32,
     ) -> Result<Self, VulkanError> {
+        // SAFETY: the caller keeps the window alive (see `# Safety`). Each handle is made from
+        // handles created before it, in the order Vulkan requires, and ends up in the returned
+        // backend, whose `Drop` destroys them.
         unsafe {
             let entry =
                 ash::Entry::load().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -1706,11 +1774,18 @@ impl VulkanBackend {
     }
 
     /// Allocate a buffer and fill it from host memory.
+    ///
+    /// # Safety
+    ///
+    /// `bytes` must not be empty; an empty range cannot be mapped.
     unsafe fn upload_buffer(
         &self,
         usage: vk::BufferUsageFlags,
         bytes: &[u8],
     ) -> Result<(vk::Buffer, vk::DeviceMemory), VulkanError> {
+        // SAFETY: live handles. The buffer is bound to host-visible, coherent memory sized from
+        // its own requirements, and `bytes` is not empty, so the mapping covers the `bytes.len()`
+        // bytes the copy fills before the unmap.
         unsafe {
             let buffer = self
                 .device
@@ -1741,10 +1816,15 @@ impl VulkanBackend {
         }
     }
 
-    /// Find a memory type matching the requirements and properties.
     /// The buffer a screenshot of the current extent is copied into, made
     /// when one is taken and freed once it has been read.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must not be using the old readback buffer; the caller has waited on `in_flight`.
     unsafe fn make_readback(&mut self) -> Result<(), VulkanError> {
+        // SAFETY: live handles; `free_readback` runs first, so the old buffer is gone before the
+        // new pair is stored.
         unsafe {
             self.free_readback();
             let extent = self.description.extent;
@@ -1771,7 +1851,14 @@ impl VulkanBackend {
         }
     }
 
+    /// Free the screenshot buffer, if there is one.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must not be using the readback buffer.
     unsafe fn free_readback(&mut self) {
+        // SAFETY: `take` removes the pair from `self`, so it is destroyed once; the caller
+        // guarantees no pending work uses it.
         unsafe {
             if let Some((buffer, memory)) = self.readback.take() {
                 self.device.destroy_buffer(buffer, None);
@@ -1780,11 +1867,18 @@ impl VulkanBackend {
         }
     }
 
+    /// Allocate device memory of a type matching the requirements and properties.
+    ///
+    /// # Safety
+    ///
+    /// Nothing beyond the live handles.
     unsafe fn allocate(
         &self,
         requirements: vk::MemoryRequirements,
         properties: vk::MemoryPropertyFlags,
     ) -> Result<vk::DeviceMemory, VulkanError> {
+        // SAFETY: live handles; the memory type index comes from this physical device's own
+        // properties.
         unsafe {
             let available = self
                 .instance
@@ -1809,7 +1903,15 @@ impl VulkanBackend {
     }
 
     /// Run one command buffer to completion, for setup work.
+    ///
+    /// # Safety
+    ///
+    /// The caller must have exclusive use of the queue, and `record` must record only commands that
+    /// are valid outside a render pass.
     unsafe fn run_once(&self, record: impl FnOnce(vk::CommandBuffer)) -> Result<(), VulkanError> {
+        // SAFETY: live handles. The command buffer is allocated here, ended before the submit, and
+        // freed after `queue_wait_idle`, so the GPU is done with it; the queue is used from `&mut
+        // self` callers only.
         unsafe {
             let buffer = self
                 .device
@@ -1846,12 +1948,18 @@ impl VulkanBackend {
     }
 
     /// Record the draw for one swapchain image.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording, and the section's ranges must be live arena ranges.
     unsafe fn bind_section(
         &self,
         section: &SectionBuffers,
         layout: vk::PipelineLayout,
         now: std::time::Instant,
     ) {
+        // SAFETY: recording on `command_buffer`; the section's ranges are in arena blocks that
+        // exist, which indexing `arena` checks.
         unsafe {
             self.device.cmd_push_constants(
                 self.command_buffer,
@@ -1877,7 +1985,14 @@ impl VulkanBackend {
 
     /// Dissolving entities (a dying dragon's body), over the entities' own draw: its push constants
     /// carry where the masks are.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording inside the scene's rendering scope, and `scene` must be
+    /// the live scene. `push` needs at least 40 floats (a shorter one panics).
     unsafe fn record_dissolve(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        // SAFETY: recording; the pipeline, layout and set belong to `scene` and the vertex buffer
+        // to `self`, all live. The push constants are a bounds-checked prefix of `push`.
         unsafe {
             if let (Some(buffer), Some(set)) = (self.dissolve_buffer.as_ref(), scene.entity_set)
                 && self.dissolve_count > 0
@@ -1904,7 +2019,7 @@ impl VulkanBackend {
                     scene.dissolve_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 176),
+                    &as_bytes(&push)[..176],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -1915,7 +2030,13 @@ impl VulkanBackend {
     }
 
     /// The maps in item frames: quads of the maps' image, drawn as text is.
+    ///
+    /// # Safety
+    ///
+    /// As [`Self::draw_triangles`].
     unsafe fn record_maps(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        // SAFETY: the callee's contract is the recording one, which this function's own contract
+        // passes on.
         unsafe {
             if let (Some(buffer), Some(set)) = (self.map_buffer.as_ref(), scene.map_set) {
                 self.draw_triangles(
@@ -1943,7 +2064,13 @@ impl VulkanBackend {
 
     /// The shadows, experience orbs and name tags: flat shapes drawn after the
     /// entities, each from its own buffer.
+    ///
+    /// # Safety
+    ///
+    /// As [`Self::draw_triangles`].
     unsafe fn record_flat_shapes(&self, scene: &SceneResources, terrain_push: &[f32]) {
+        // SAFETY: the callees' contract is the recording one, which this function's own contract
+        // passes on.
         unsafe {
             // Shadows under the entities, before them: blended quads of the
             // shadow texture over the blocks' tops.
@@ -2034,6 +2161,11 @@ impl VulkanBackend {
 
     /// Draw a buffer's triangles with a pipeline over a descriptor set and the
     /// frame's push constants. Nothing is drawn for an empty buffer.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording inside the scene's rendering scope. `push` needs at least
+    /// 40 floats (a shorter one panics).
     unsafe fn draw_triangles(
         &self,
         (pipeline, layout): (vk::Pipeline, vk::PipelineLayout),
@@ -2044,6 +2176,8 @@ impl VulkanBackend {
         if count == 0 {
             return;
         }
+        // SAFETY: recording; the pipeline, layout, set and buffer are live, and the push constants
+        // are a bounds-checked prefix of `push`.
         unsafe {
             self.device.cmd_bind_pipeline(
                 self.command_buffer,
@@ -2063,7 +2197,7 @@ impl VulkanBackend {
                 layout,
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
-                std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 160),
+                &as_bytes(push)[..160],
             );
             self.device
                 .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2071,11 +2205,19 @@ impl VulkanBackend {
         }
     }
 
+    /// Record the scene's draws for one swapchain image.
+    ///
+    /// # Safety
+    ///
+    /// Must be called between the begin and the end of `command_buffer`, with swapchain image
+    /// `index` acquired.
     #[expect(
         clippy::too_many_lines,
         reason = "one command buffer recorded in draw order"
     )]
     unsafe fn record_scene(&self, index: usize, view_projection: [[f32; 4]; 4]) {
+        // SAFETY: recording, inside the rendering scope this function begins and ends; the image
+        // views, pipelines, sets and buffers are owned by `self` or `scene` and live.
         unsafe {
             let now = std::time::Instant::now();
             let (Some(scene), Some(depth)) = (self.scene.as_ref(), self.depth.as_ref()) else {
@@ -2157,14 +2299,14 @@ impl VulkanBackend {
                         layout,
                         vk::ShaderStageFlags::VERTEX,
                         0,
-                        std::slice::from_raw_parts(matrix.as_ptr().cast::<u8>(), 64),
+                        &as_bytes(&matrix)[..64],
                     );
                     self.device.cmd_push_constants(
                         self.command_buffer,
                         layout,
                         vk::ShaderStageFlags::FRAGMENT,
                         64,
-                        std::slice::from_raw_parts(fragment.as_ptr().cast::<u8>(), 32),
+                        &as_bytes(&fragment)[..32],
                     );
                     self.device
                         .cmd_draw(self.command_buffer, count, 1, first, 0);
@@ -2196,7 +2338,7 @@ impl VulkanBackend {
                 scene.pipeline_layout,
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
-                std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                &as_bytes(&terrain_push)[..160],
             );
             for section in self
                 .drawn_sections()
@@ -2235,7 +2377,7 @@ impl VulkanBackend {
                     scene.held_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(ground_push.as_ptr().cast::<u8>(), 164),
+                    &as_bytes(&ground_push)[..164],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2264,7 +2406,7 @@ impl VulkanBackend {
                     scene.entity_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                    &as_bytes(&terrain_push)[..160],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2289,7 +2431,7 @@ impl VulkanBackend {
                     scene.lines_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(line_push.as_ptr().cast::<u8>(), 160),
+                    &as_bytes(&line_push)[..160],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2318,7 +2460,7 @@ impl VulkanBackend {
                     scene.crumbling_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                    &as_bytes(&terrain_push)[..160],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2357,7 +2499,7 @@ impl VulkanBackend {
                     scene.translucent_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                    &as_bytes(&terrain_push)[..160],
                 );
             }
             for section in translucent {
@@ -2386,7 +2528,7 @@ impl VulkanBackend {
                     scene.cloud_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(clouds.push.as_ptr().cast::<u8>(), 96),
+                    &as_bytes(&clouds.push)[..96],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[clouds.buffer], &[0]);
@@ -2409,7 +2551,7 @@ impl VulkanBackend {
                     scene.weather_pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
-                    std::slice::from_raw_parts(terrain_push.as_ptr().cast::<u8>(), 160),
+                    &as_bytes(&terrain_push)[..160],
                 );
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
@@ -2484,7 +2626,7 @@ impl VulkanBackend {
                         scene.entity_pipeline_layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
-                        std::slice::from_raw_parts(hand_push.as_ptr().cast::<u8>(), 160),
+                        &as_bytes(&hand_push)[..160],
                     );
                     self.device
                         .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
@@ -2513,7 +2655,7 @@ impl VulkanBackend {
                         scene.held_pipeline_layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
-                        std::slice::from_raw_parts(held_push.as_ptr().cast::<u8>(), 164),
+                        &as_bytes(&held_push)[..164],
                     );
                     self.device.cmd_draw(
                         self.command_buffer,
@@ -2607,7 +2749,7 @@ impl VulkanBackend {
                         layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
-                        std::slice::from_raw_parts(push.as_ptr().cast::<u8>(), 16),
+                        &as_bytes(&push)[..16],
                     );
                     self.device
                         .cmd_draw(self.command_buffer, count, 1, first, 0);
@@ -2622,6 +2764,10 @@ impl VulkanBackend {
     ///
     /// Dynamic rendering is used rather than a render pass object, which is
     /// the extension the reference already requires of every device it picks.
+    ///
+    /// # Safety
+    ///
+    /// `descriptor_layout` must be a live layout of this device.
     #[expect(
         clippy::cognitive_complexity,
         clippy::too_many_lines,
@@ -2652,6 +2798,9 @@ impl VulkanBackend {
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
         let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
+        // SAFETY: live handles; the shader modules are made from freshly compiled SPIR-V and
+        // destroyed once the pipeline is built, and every create-info points at locals that
+        // outlive its call.
         unsafe {
             let compiler =
                 shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
@@ -3125,6 +3274,9 @@ impl VulkanBackend {
         centre: [f32; 3],
         fade: SectionFade,
     ) -> Result<(), VulkanError> {
+        // SAFETY: live handles. The old section is retired, not freed, since the frame in flight
+        // may still read it; `upload_section` needs only live handles and the exclusive access
+        // `&mut self` gives.
         unsafe {
             // The frame in flight may still read the old mesh, so it is
             // freed after that frame.
@@ -3139,20 +3291,22 @@ impl VulkanBackend {
     }
 
     /// Give the arena a section's mesh, or nothing for an empty one.
+    ///
+    /// # Safety
+    ///
+    /// As [`Self::arena_upload`].
     unsafe fn upload_section(
         &mut self,
         mesh: &Mesh,
         centre: [f32; 3],
         fade: SectionFade,
     ) -> Result<Option<SectionBuffers>, VulkanError> {
+        // SAFETY: live handles; the bytes come from `as_bytes` over plain vertex and index data.
         unsafe {
             if mesh.indices.is_empty() && mesh.translucent_indices.is_empty() {
                 return Ok(None);
             }
-            let vertex_bytes = std::slice::from_raw_parts(
-                mesh.vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(mesh.vertices.as_slice()),
-            );
+            let vertex_bytes = as_bytes(&mesh.vertices);
             let vertices = self.arena_upload(vertex_bytes)?;
             let all_indices: Vec<u32> = mesh
                 .indices
@@ -3160,10 +3314,7 @@ impl VulkanBackend {
                 .chain(&mesh.translucent_indices)
                 .copied()
                 .collect();
-            let index_bytes = std::slice::from_raw_parts(
-                all_indices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(all_indices.as_slice()),
-            );
+            let index_bytes = as_bytes(&all_indices);
             let indices = self.arena_upload(index_bytes)?;
             Ok(Some(SectionBuffers {
                 vertices,
@@ -3179,6 +3330,8 @@ impl VulkanBackend {
     /// Hand over the next frame's moving blocks (the falling blocks): each a mesh with the place
     /// it is sorted from, drawn with the terrain.
     pub fn set_moving_blocks(&mut self, blocks: &[(&Mesh, [f32; 3])]) -> Result<(), VulkanError> {
+        // SAFETY: live handles. The old meshes are retired, not freed, since the frame in flight
+        // may still read them.
         unsafe {
             // The frame in flight may still read the old meshes.
             let old = std::mem::take(&mut self.moving_sections);
@@ -3212,6 +3365,8 @@ impl VulkanBackend {
         if width == 0 || height == 0 {
             return Ok(());
         }
+        // SAFETY: live handles; `device_wait_idle` runs first, so the old swapchain, views, depth
+        // target and semaphores are unused when they are replaced.
         unsafe {
             self.device
                 .device_wait_idle()
@@ -3327,6 +3482,8 @@ impl VulkanBackend {
 
     /// Drop every section mesh.
     pub fn clear_sections(&mut self) -> Result<(), VulkanError> {
+        // SAFETY: the fence wait leaves the GPU done with every section, and `take` empties each
+        // list, so every range goes back to the arena once.
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
@@ -3354,15 +3511,28 @@ impl VulkanBackend {
 
     /// Give a section's ranges back to the arena; the GPU must be done
     /// with them.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must be done with the section's ranges.
     unsafe fn destroy_section(&mut self, section: SectionBuffers) {
         self.arena_free(section.vertices);
         self.arena_free(section.indices);
+        // SAFETY: the caller guarantees the GPU is done with the section's ranges, and
+        // `trim_arena` has the same contract.
         unsafe { self.trim_arena() };
     }
 
     /// Give every block that holds nothing back to the driver but one, which
     /// stays for the next meshes.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must be done with every empty block.
     unsafe fn trim_arena(&mut self) {
+        // SAFETY: a block is destroyed only when its free list is the whole block, so no section
+        // uses it, and it is nulled afterwards, so it is destroyed once; the caller guarantees the
+        // GPU is done with it.
         unsafe {
             let mut spare = false;
             for block in &mut self.arena {
@@ -3386,7 +3556,14 @@ impl VulkanBackend {
 
     /// Give the staging chunks past the spare ones back to the driver; none
     /// is in use when a frame starts.
+    ///
+    /// # Safety
+    ///
+    /// No chunk may be in flight: call it after `in_flight` has been waited on and
+    /// `staging_in_flight` cleared.
     unsafe fn trim_staging(&mut self) {
+        // SAFETY: only chunks outside `staging_filling` are unmapped and destroyed, and none is in
+        // flight when a frame starts; each is nulled afterwards.
         unsafe {
             let mut idle = 0;
             for (index, chunk) in self.staging.iter_mut().enumerate() {
@@ -3411,7 +3588,14 @@ impl VulkanBackend {
 
     /// Copy bytes into a free range of the arena, growing it by a block
     /// when none fits.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles; the copy is recorded later by `record_staged_copies`.
     unsafe fn arena_upload(&mut self, bytes: &[u8]) -> Result<ArenaSlice, VulkanError> {
+        // SAFETY: live handles. The destination range is reserved from the arena's free list, and
+        // the copy stays inside the staging chunk: `size` is at least `bytes.len()` and the chunk
+        // had `size` bytes free at `used`. Chunks are mapped for good.
         unsafe {
             let size = (bytes.len() as u64).div_ceil(16) * 16;
             let found = self.arena.iter().enumerate().find_map(|(block, arena)| {
@@ -3525,7 +3709,12 @@ impl VulkanBackend {
     }
 
     /// A new arena block, in the GPU's own memory.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
     unsafe fn create_arena_block(&self, size: u64) -> Result<ArenaBlock, VulkanError> {
+        // SAFETY: live handles; the buffer is bound to memory made from its own requirements.
         unsafe {
             let buffer = self
                 .device
@@ -3556,7 +3745,13 @@ impl VulkanBackend {
     }
 
     /// A new staging chunk, mapped for good.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
     unsafe fn create_staging_chunk(&self, size: u64) -> Result<StagingChunk, VulkanError> {
+        // SAFETY: live handles; the memory is host-visible and coherent, and mapped over the
+        // chunk's whole size.
         unsafe {
             let buffer = self
                 .device
@@ -3592,7 +3787,15 @@ impl VulkanBackend {
     }
 
     /// Record the staged section copies, and make the draws wait for them.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording, outside a render pass.
     unsafe fn record_staged_copies(&mut self) {
+        // SAFETY: recording, outside a render pass. Each copy names a staging chunk held in
+        // `staging_filling` until now and an arena range from `arena_upload`; when a section is
+        // replaced twice within one frame the first one's range is already back in the arena (see
+        // the open issue in `docs/tasks/Q03-log-safety-lint.md`).
         unsafe {
             if self.staged.is_empty() {
                 return;
@@ -3633,6 +3836,8 @@ impl VulkanBackend {
         reason = "Vulkan objects created in the order the API requires"
     )]
     pub fn load_atlas(&mut self, texture_levels: &[DecodedImage]) -> Result<(), VulkanError> {
+        // SAFETY: live handles; `destroy_scene` makes the device idle before it frees the old
+        // scene, so everything made below replaces something unused.
         unsafe {
             self.destroy_scene();
             self.depth = Some(self.create_depth_target()?);
@@ -3828,7 +4033,14 @@ impl VulkanBackend {
         }
     }
 
+    /// A depth image, with its memory and view, for the current extent.
+    ///
+    /// # Safety
+    ///
+    /// No frame may be recording: it submits setup work and waits for the queue.
     unsafe fn create_depth_target(&self) -> Result<DepthTarget, VulkanError> {
+        // SAFETY: live handles; the image's memory is bound before the view is made, and the
+        // target owns all three.
         unsafe {
             let format = vk::Format::D32_SFLOAT;
             let image = self
@@ -3892,6 +4104,8 @@ impl VulkanBackend {
         if regions.is_empty() {
             return Ok(());
         }
+        // SAFETY: live handles; the fence wait leaves the previous frame done sampling the atlas
+        // before it is overwritten.
         unsafe {
             // The previous frame may still be sampling the atlas.
             self.device
@@ -3962,6 +4176,11 @@ impl VulkanBackend {
         }
     }
 
+    /// Upload mip levels of one image through a staging buffer, and make a view of it.
+    ///
+    /// # Safety
+    ///
+    /// No frame may be recording: it submits setup work and waits for the queue.
     #[expect(
         clippy::too_many_lines,
         reason = "Vulkan objects created in the order the API requires"
@@ -3970,6 +4189,8 @@ impl VulkanBackend {
         &self,
         levels: &[DecodedImage],
     ) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), VulkanError> {
+        // SAFETY: live handles; the staging buffer lives only until `run_once` has finished the
+        // copies, and the image's memory is bound before it is viewed.
         unsafe {
             let base = levels.first().ok_or(VulkanError::NoAtlasLevels)?;
             let mut staged = Vec::new();
@@ -4078,11 +4299,17 @@ impl VulkanBackend {
     }
 
     /// Destroy an image with its view and memory, and the sampler it was read with, if they were made.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must be done with the objects.
     unsafe fn destroy_texture(
         &self,
         texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
         sampler: Option<vk::Sampler>,
     ) {
+        // SAFETY: each object is passed by value, so it is destroyed once; the caller guarantees
+        // the GPU is done with them.
         unsafe {
             if let Some((image, memory, view)) = texture {
                 self.device.destroy_image_view(view, None);
@@ -4095,7 +4322,14 @@ impl VulkanBackend {
         }
     }
 
+    /// Destroy everything the loaded atlas made: pipelines, textures, sets, sections.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles; it makes the device idle itself.
     unsafe fn destroy_scene(&mut self) {
+        // SAFETY: `device_wait_idle` runs first, and each object leaves `self` before it is
+        // destroyed, so none is used by the GPU or destroyed twice.
         unsafe {
             let _ = self.device.device_wait_idle();
             if let Some(scene) = self.scene.take() {
@@ -4245,6 +4479,7 @@ impl VulkanBackend {
         rain: &DecodedImage,
         snow: &DecodedImage,
     ) -> Result<(), VulkanError> {
+        // SAFETY: live handles; this only creates objects and stores them in the scene.
         unsafe {
             let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
                 return Ok(());
@@ -4366,6 +4601,7 @@ impl VulkanBackend {
             scene.map_set = Some(set);
             return Ok(());
         }
+        // SAFETY: live handles; `device_wait_idle` runs before an old texture is replaced.
         unsafe {
             let _ = self.device.device_wait_idle();
             let (texture, memory, view) = self.upload_texture(std::slice::from_ref(image))?;
@@ -4448,6 +4684,7 @@ impl VulkanBackend {
         )>,
         VulkanError,
     > {
+        // SAFETY: live handles; this only creates objects, which the caller stores.
         unsafe {
             let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
                 return Ok(None);
@@ -4614,22 +4851,12 @@ impl VulkanBackend {
         size: [f32; 2],
     ) -> Result<(), VulkanError> {
         let mut buffer = self.gui_buffer.take();
-        let bytes = unsafe {
-            std::slice::from_raw_parts(
-                frame.vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(frame.vertices.as_slice()),
-            )
-        };
+        let bytes = as_bytes(&frame.vertices);
         self.fill_bytes(&mut buffer, bytes)?;
         self.gui_buffer = buffer;
         if !frame.items.is_empty() {
             let mut items = self.gui_item_buffer.take();
-            let bytes = unsafe {
-                std::slice::from_raw_parts(
-                    frame.items.as_ptr().cast::<u8>(),
-                    std::mem::size_of_val(frame.items.as_slice()),
-                )
-            };
+            let bytes = as_bytes(&frame.items);
             self.fill_bytes(&mut items, bytes)?;
             self.gui_item_buffer = items;
         }
@@ -4645,12 +4872,7 @@ impl VulkanBackend {
         vertices: &[crate::outline::LineVertex],
     ) -> Result<(), VulkanError> {
         let mut buffer = self.outline_buffer.take();
-        let bytes = unsafe {
-            std::slice::from_raw_parts(
-                vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(vertices),
-            )
-        };
+        let bytes = as_bytes(vertices);
         self.fill_bytes(&mut buffer, bytes)?;
         self.outline_buffer = buffer;
         self.outline_count = vertices.len() as u32;
@@ -4681,12 +4903,7 @@ impl VulkanBackend {
         slot: &mut Option<SkyBuffer>,
         vertices: &[Vertex],
     ) -> Result<(), VulkanError> {
-        let bytes = unsafe {
-            std::slice::from_raw_parts(
-                vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(vertices),
-            )
-        };
+        let bytes = as_bytes(vertices);
         self.fill_bytes(slot, bytes)
     }
 
@@ -4697,6 +4914,9 @@ impl VulkanBackend {
         slot: &mut Option<SkyBuffer>,
         bytes: &[u8],
     ) -> Result<(), VulkanError> {
+        // SAFETY: live handles. The fence wait leaves the previous frame done with the buffer; it
+        // is replaced only when too small, and the mapping covers `size` bytes of its host-
+        // visible, coherent memory, which is at most its capacity, written before the unmap.
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
@@ -4733,6 +4953,8 @@ impl VulkanBackend {
     /// Hand over the next frame's rain and snow triangles, placed like the
     /// terrain's.
     pub fn set_weather(&mut self, rain: &[Vertex], snow: &[Vertex]) -> Result<(), VulkanError> {
+        // SAFETY: as `fill_bytes`: the fence wait comes first, and the two copies are contiguous
+        // within the mapped `size`.
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
@@ -4782,15 +5004,14 @@ impl VulkanBackend {
         &mut self,
         vertices: &[crate::clouds::CloudVertex],
     ) -> Result<(), VulkanError> {
+        // SAFETY: as `fill_bytes`: the fence wait comes first, and the copy fills at most the
+        // buffer's capacity.
         unsafe {
             // The previous frame may still be reading the buffer.
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
-            let bytes = std::slice::from_raw_parts(
-                vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(vertices),
-            );
+            let bytes = as_bytes(vertices);
             if self
                 .cloud_buffer
                 .as_ref()
@@ -4866,15 +5087,14 @@ impl VulkanBackend {
         fog_colour: [f32; 4],
         sky_end: f32,
     ) -> Result<(), VulkanError> {
+        // SAFETY: as `fill_bytes`: the fence wait comes first, and the copy fills at most the
+        // buffer's capacity.
         unsafe {
             // The previous frame may still be reading the buffer.
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
                 .map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
-            let bytes = std::slice::from_raw_parts(
-                vertices.as_ptr().cast::<u8>(),
-                std::mem::size_of_val(vertices),
-            );
+            let bytes = as_bytes(vertices);
             if self
                 .sky_buffer
                 .as_ref()
@@ -4957,6 +5177,9 @@ impl VulkanBackend {
         capture: bool,
         view_projection: [[f32; 4]; 4],
     ) -> Result<Option<Vec<u8>>, VulkanError> {
+        // SAFETY: live handles. The fence wait comes first, so the previous frame is done before
+        // its resources are recycled; the command buffer is begun here and ended before the
+        // submit, and the readback is mapped only after the fence has signalled.
         unsafe {
             self.device
                 .wait_for_fences(&[self.in_flight], true, u64::MAX)
@@ -5144,6 +5367,9 @@ impl VulkanBackend {
 
 impl Drop for VulkanBackend {
     fn drop(&mut self) {
+        // SAFETY: `device_wait_idle` runs first, then objects go children before parents (scene,
+        // buffers, views, sync objects, pool, swapchain, device, surface, instance), each once,
+        // since `Drop` runs once.
         unsafe {
             let _ = self.device.device_wait_idle();
             self.destroy_scene();
@@ -5213,6 +5439,10 @@ impl Drop for VulkanBackend {
 }
 
 /// Insert the layout transition the clear and the present each need.
+///
+/// # Safety
+///
+/// `command_buffer` must be recording outside a render pass, and `image` must belong to `device`.
 unsafe fn transition(
     device: &ash::Device,
     command_buffer: vk::CommandBuffer,
@@ -5221,6 +5451,8 @@ unsafe fn transition(
     from: vk::ImageLayout,
     to: vk::ImageLayout,
 ) {
+    // SAFETY: the caller's contract: `command_buffer` is recording and `image` belongs to
+    // `device`.
     unsafe {
         let barrier = vk::ImageMemoryBarrier::default()
             .old_layout(from)
@@ -5249,11 +5481,17 @@ unsafe fn transition(
 /// Pick a device the way the reference does: skip anything that cannot meet the
 /// required extensions or the minimum API version, take the first that can, and
 /// upgrade to a discrete GPU if a later one turns out to be discrete.
+///
+/// # Safety
+///
+/// `instance`, `surface_instance` and `surface` must be live and belong together.
 unsafe fn select_physical_device(
     instance: &ash::Instance,
     surface_instance: &ash::khr::surface::Instance,
     surface: vk::SurfaceKHR,
 ) -> Result<(vk::PhysicalDevice, u32, vk::PhysicalDeviceProperties), VulkanError> {
+    // SAFETY: live instance and surface (see `# Safety`). The extension names are NUL-terminated
+    // arrays the driver fills in.
     unsafe {
         let devices = instance
             .enumerate_physical_devices()
@@ -5298,12 +5536,18 @@ unsafe fn select_physical_device(
 }
 
 /// First queue family that can both render and present to this surface.
+///
+/// # Safety
+///
+/// `instance`, `surface_instance` and `surface` must be live and belong together, and `device` must
+/// come from `instance`.
 unsafe fn graphics_present_family(
     instance: &ash::Instance,
     surface_instance: &ash::khr::surface::Instance,
     surface: vk::SurfaceKHR,
     device: vk::PhysicalDevice,
 ) -> Option<u32> {
+    // SAFETY: live instance and surface; `device` comes from this instance.
     unsafe {
         instance
             .get_physical_device_queue_family_properties(device)
@@ -5321,11 +5565,17 @@ unsafe fn graphics_present_family(
 }
 
 /// The reference accepts only these two formats, and only in sRGB non-linear.
+///
+/// # Safety
+///
+/// `surface_instance` and `surface` must be live and belong together, and `device` must come from
+/// the same instance.
 unsafe fn pick_surface_format(
     surface_instance: &ash::khr::surface::Instance,
     device: vk::PhysicalDevice,
     surface: vk::SurfaceKHR,
 ) -> Result<vk::Format, VulkanError> {
+    // SAFETY: live instance and surface; `device` comes from this instance.
     unsafe {
         let formats = surface_instance
             .get_physical_device_surface_formats(device, surface)

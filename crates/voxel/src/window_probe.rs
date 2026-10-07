@@ -92,6 +92,8 @@ fn open_backend(surface: &WindowSurface) -> Result<VulkanBackend> {
     let (display_handle, window_handle) = surface
         .raw_handles()
         .map_err(|error| format!("window handles unavailable: {error}"))?;
+    // SAFETY: the handles are the window's, and the caller's surface is
+    // declared before the backend, so it is dropped after it.
     let backend = unsafe {
         VulkanBackend::create(
             display_handle,

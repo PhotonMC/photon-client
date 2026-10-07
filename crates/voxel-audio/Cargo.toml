@@ -8,6 +8,7 @@ publish = false
 include = ["/Cargo.toml", "/src/**"]
 
 [dependencies]
+log.workspace = true
 cpal = "0.18.2"
 lewton = "0.10.2"
 voxel-game.workspace = true

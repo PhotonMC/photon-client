@@ -69,6 +69,12 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 
 - Hata olabilecek işlem `Result` döner ve `?` ile yayılır. Katmanlar arası hata dönüşümü `From` ile yazılır (`wire::ReadError` → `binary::ReadError`); aynı eşleme fonksiyonu modül modül tekrar edilmez.
 - `expect` yalnızca daha önce denetlenmiş bir değişmez için ve bunu söyleyen bir mesajla kullanılır; `unwrap` üretim kodunda kullanılmaz.
+- Tanılama çıktısı `log` makrolarıyla yazılır (`error!`, `warn!`, `info!`, `debug!`); düzey `VOXEL_LOG` ile seçilir, varsayılan `info`. `println!` yalnız probe ve profil raporlarının `anahtar=değer` satırları içindir. Ayrıştırılamayıp yok sayılan paket `debug!` ile nedenini bırakır.
+
+## `unsafe`
+
+- Her `unsafe` bloğunun üstünde `// SAFETY:` gerekçesi, her `unsafe fn`'de `# Safety` bölümü bulunur; `clippy::undocumented_unsafe_blocks` ve `clippy::unwrap_used` uyarı olarak açıktır (testlerde `unwrap` serbest).
+- Ham bayt görünümü `as_bytes` ile alınır; yalnız dolgusuz `repr(C)` tipler `Plain` olabilir ve boyutu bir `const` iddiasıyla sabitlenir. Ortak değişmezler `vulkan.rs` başındaki "Safety conventions" bölümündedir.
 
 ## Arayüz ekranları
 

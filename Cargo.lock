@@ -1088,6 +1088,7 @@ name = "voxel"
 version = "0.1.0"
 dependencies = [
  "glfw",
+ "log",
  "serde_json",
  "voxel-audio",
  "voxel-core",
@@ -1104,6 +1105,7 @@ version = "0.1.0"
 dependencies = [
  "cpal",
  "lewton",
+ "log",
  "voxel-game",
 ]
 
@@ -1129,6 +1131,7 @@ name = "voxel-net"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "log",
  "voxel-core",
  "voxel-data",
  "voxel-game",

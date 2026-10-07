@@ -18,6 +18,7 @@ voxel-audio = { path = "crates/voxel-audio" }
 ash = "0.38.0"
 ash-window = "0.13.0"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+log = { version = "0.4.34", features = ["std"] }
 glfw = { version = "0.62.0", default-features = false, features = ["raw-window-handle-v0-6", "vulkan", "wayland", "x11", "src-build"] }
 raw-window-handle = "0.6.2"
 rayon = "1.12.0"
@@ -30,6 +31,8 @@ unsafe_op_in_unsafe_fn = "warn"
 [workspace.lints.clippy]
 cognitive_complexity = "warn"
 too_many_lines = "warn"
+undocumented_unsafe_blocks = "warn"
+unwrap_used = "warn"
 
 # Java integer arithmetic always wraps. Keeping overflow checks on in both
 # profiles makes an unintended wrap a test failure instead of a silent
