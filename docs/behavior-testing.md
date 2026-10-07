@@ -2,7 +2,7 @@
 
 Bu belge, Minecraft Java Edition 26.2 / protokol 776 / Java 25 için davranış dilimlerinin nasıl hazırlanıp doğrulanacağını tanımlar. Her dilim kendi kaynak incelemesine, özgün senaryolarına, Java oracle çağrısına ve birleşik parity/conformance kaydına sahip olur.
 
-Genel belgeler hareketli corpus toplamlarını tekrar etmez. Kesin senaryo girdileri tools/behavior/cases.py içinde, referans kimlikleri ve kayıt bütünlüğü runner raporlarında, davranışın sınırları ise ilgili birleşik contract/parity kaydında tutulur. Yeni bir dilim eski dilim belgelerine sayaç eklemek için geriye dönük değişiklik gerektirmez.
+Genel belgeler hareketli corpus toplamlarını tekrar etmez. Kesin senaryo girdileri tools/behavior/cases/ paketinde, referans kimlikleri ve kayıt bütünlüğü runner raporlarında, davranışın sınırları ise ilgili birleşik contract/parity kaydında tutulur. Yeni bir dilim eski dilim belgelerine sayaç eklemek için geriye dönük değişiklik gerektirmez.
 
 Kaynak veya sürüm değişirse mevcut capture sessizce yenilenmez. Yeni referans açıkça yakalanır; önceki kayıtlar korunur. Gerekli yerel girdiler sağlandıktan sonra test çalıştırma veya sonuç değerlendirme için kullanıcıdan elle oyun oynaması beklenmez.
 

@@ -4,7 +4,7 @@
 
 This document defines how behavior slices are prepared and verified for Minecraft Java Edition 26.2 / protocol 776 / Java 25. Every slice has its own source review, original scenarios, Java oracle call and combined parity/conformance record.
 
-General documents do not repeat moving corpus totals. The exact scenario inputs are in `tools/behavior/cases.py`, reference ids and record integrity are in the runner reports, and the limits of a behavior are in the relevant combined contract/parity record. A new slice does not require changing old slice documents to add counters.
+General documents do not repeat moving corpus totals. The exact scenario inputs are in the `tools/behavior/cases/` package, reference ids and record integrity are in the runner reports, and the limits of a behavior are in the relevant combined contract/parity record. A new slice does not require changing old slice documents to add counters.
 
 If the sources or the version change, existing captures are not silently refreshed. A new reference is captured explicitly; earlier records are kept. Once the required local inputs are provided, nobody is expected to play the game by hand to run tests or judge results.
 
