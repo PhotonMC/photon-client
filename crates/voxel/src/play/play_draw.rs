@@ -177,7 +177,8 @@ impl Play {
                 ),
             ));
         }
-        self.backend.set_entities(&models)?;
+        self.backend
+            .set_draw(voxel_render::vulkan::DrawKind::Entities, &models)?;
         mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
         let local = (!first_person && !player.spectating())
             .then(|| player.interpolated_position(frame.partial));
@@ -245,20 +246,14 @@ impl Play {
         // The leads are a flat colour lit by the lightmap, as the world text is.
         normal.extend(crate::leashes::leashes(&self.session, view));
         self.backend.set_name_tags(&see_through, &normal)?;
-        self.backend.set_shadows(&overlays::entity_shadows(
-            &self.session,
-            &self.entity_textures,
-            &camera,
-            local,
-            view,
-        ))?;
-        self.backend
-            .set_experience_orbs(&overlays::experience_orbs(
-                &self.session,
-                &self.entity_textures,
-                &camera,
-                view,
-            ))?;
+        self.backend.set_draw(
+            voxel_render::vulkan::DrawKind::Shadows,
+            &overlays::entity_shadows(&self.session, &self.entity_textures, &camera, local, view),
+        )?;
+        self.backend.set_draw(
+            voxel_render::vulkan::DrawKind::ExperienceOrbs,
+            &overlays::experience_orbs(&self.session, &self.entity_textures, &camera, view),
+        )?;
         Ok(())
     }
 

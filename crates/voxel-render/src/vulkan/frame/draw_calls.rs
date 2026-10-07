@@ -52,8 +52,8 @@ impl VulkanBackend {
         // SAFETY: recording; the pipeline, layout and set belong to `scene` and the vertex buffer
         // to `self`, all live. The push constants are a bounds-checked prefix of `push`.
         unsafe {
-            if let (Some(buffer), Some(set)) = (self.dissolve_buffer.as_ref(), scene.entity_set)
-                && self.dissolve_count > 0
+            if let (Some(buffer), Some(set)) = (self.dissolve.buffer.as_ref(), scene.entity_set)
+                && self.dissolve.count > 0
             {
                 let mut push = [0.0_f32; 44];
                 push[..40].copy_from_slice(&terrain_push[..40]);
@@ -82,7 +82,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
-                    .cmd_draw(self.command_buffer, self.dissolve_count, 1, 0, 0);
+                    .cmd_draw(self.command_buffer, self.dissolve.count, 1, 0, 0);
             }
         }
     }
@@ -100,16 +100,16 @@ impl VulkanBackend {
         // SAFETY: the callee's contract is the recording one, which this function's own contract
         // passes on.
         unsafe {
-            if let (Some(buffer), Some(set)) = (self.map_buffer.as_ref(), scene.map_set) {
+            if let (Some(buffer), Some(set)) = (self.map.buffer.as_ref(), scene.map_set) {
                 self.draw_triangles(
                     (scene.text_pipeline, scene.text_pipeline_layout),
                     set,
-                    (buffer, self.map_count),
+                    (buffer, self.map.count),
                     terrain_push,
                 );
             }
             if let (Some(buffer), Some(set)) =
-                (self.map_decoration_buffer.as_ref(), scene.entity_set)
+                (self.map_decoration.buffer.as_ref(), scene.entity_set)
             {
                 self.draw_triangles(
                     (
@@ -117,7 +117,7 @@ impl VulkanBackend {
                         scene.text_translucent_pipeline_layout,
                     ),
                     set,
-                    (buffer, self.map_decoration_count),
+                    (buffer, self.map_decoration.count),
                     terrain_push,
                 );
             }
@@ -140,11 +140,11 @@ impl VulkanBackend {
         unsafe {
             // Shadows under the entities, before them: blended quads of the
             // shadow texture over the blocks' tops.
-            if let (Some(buffer), Some(set)) = (self.shadow_buffer.as_ref(), scene.entity_set) {
+            if let (Some(buffer), Some(set)) = (self.shadow.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     set,
-                    (buffer, self.shadow_count),
+                    (buffer, self.shadow.count),
                     terrain_push,
                 );
             }
@@ -152,11 +152,11 @@ impl VulkanBackend {
             // The glowing layers (the eyes of spiders and endermen): the
             // `EYES` pipeline is the shadow's shaders and state, the texel
             // times the colour with no light and no cut-out, then fog.
-            if let (Some(buffer), Some(set)) = (self.glow_buffer.as_ref(), scene.entity_set) {
+            if let (Some(buffer), Some(set)) = (self.glow.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
                     (scene.shadow_pipeline, scene.shadow_pipeline_layout),
                     set,
-                    (buffer, self.glow_count),
+                    (buffer, self.glow.count),
                     terrain_push,
                 );
             }
@@ -166,18 +166,18 @@ impl VulkanBackend {
             if let Some(set) = scene.entity_set {
                 for (buffer, count, pipeline) in [
                     (
-                        self.swirl_buffer.as_ref(),
-                        self.swirl_count,
+                        self.swirl.buffer.as_ref(),
+                        self.swirl.count,
                         (scene.swirl_pipeline, scene.swirl_pipeline_layout),
                     ),
                     (
-                        self.glint_buffer.as_ref(),
-                        self.glint_count,
+                        self.glint.buffer.as_ref(),
+                        self.glint.count,
                         (scene.glint_pipeline, scene.glint_pipeline_layout),
                     ),
                     (
-                        self.rays_buffer.as_ref(),
-                        self.rays_count,
+                        self.rays.buffer.as_ref(),
+                        self.rays.count,
                         (scene.rays_pipeline, scene.rays_pipeline_layout),
                     ),
                 ] {
@@ -187,14 +187,14 @@ impl VulkanBackend {
                 }
             }
             // Experience orbs: blended quads over the entity textures.
-            if let (Some(buffer), Some(set)) = (self.orb_buffer.as_ref(), scene.entity_set) {
+            if let (Some(buffer), Some(set)) = (self.orb.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
                     (
                         scene.text_translucent_pipeline,
                         scene.text_translucent_pipeline_layout,
                     ),
                     set,
-                    (buffer, self.orb_count),
+                    (buffer, self.orb.count),
                     terrain_push,
                 );
             }
@@ -204,16 +204,16 @@ impl VulkanBackend {
             if let Some(set) = scene.gui_set {
                 for (buffer, count, pipeline) in [
                     (
-                        self.name_tag_see_buffer.as_ref(),
-                        self.name_tag_see_count,
+                        self.name_tag_see.buffer.as_ref(),
+                        self.name_tag_see.count,
                         (
                             scene.text_see_through_pipeline,
                             scene.text_see_through_pipeline_layout,
                         ),
                     ),
                     (
-                        self.name_tag_buffer.as_ref(),
-                        self.name_tag_count,
+                        self.name_tag.buffer.as_ref(),
+                        self.name_tag.count,
                         (scene.text_pipeline, scene.text_pipeline_layout),
                     ),
                 ] {

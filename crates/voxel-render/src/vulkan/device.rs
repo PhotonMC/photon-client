@@ -14,22 +14,22 @@ impl Drop for VulkanBackend {
             self.cloud_buffer = None;
             self.sky_buffer.clear();
             self.weather_buffer.clear();
-            self.entity_buffer.clear();
-            self.ground_buffer.clear();
-            self.name_tag_see_buffer.clear();
-            self.orb_buffer.clear();
-            self.shadow_buffer.clear();
-            self.glow_buffer.clear();
-            self.swirl_buffer.clear();
-            self.glint_buffer.clear();
-            self.map_buffer.clear();
-            self.map_decoration_buffer.clear();
-            self.dissolve_buffer.clear();
-            self.rays_buffer.clear();
-            self.name_tag_buffer.clear();
-            self.hand_buffer.clear();
-            self.outline_buffer.clear();
-            self.breaking_buffer.clear();
+            self.entity.buffer.clear();
+            self.ground.buffer.clear();
+            self.name_tag_see.buffer.clear();
+            self.orb.buffer.clear();
+            self.shadow.buffer.clear();
+            self.glow.buffer.clear();
+            self.swirl.buffer.clear();
+            self.glint.buffer.clear();
+            self.map.buffer.clear();
+            self.map_decoration.buffer.clear();
+            self.dissolve.buffer.clear();
+            self.rays.buffer.clear();
+            self.name_tag.buffer.clear();
+            self.hand.buffer.clear();
+            self.outline.buffer.clear();
+            self.breaking.buffer.clear();
             self.gui_buffer.clear();
             self.gui_item_buffer.clear();
             for block in self.arena.drain(..) {
@@ -182,4 +182,4 @@ pub(super) unsafe fn pick_surface_format(
     }
 }
 
-mod vulkan_backend_create;
+mod create;

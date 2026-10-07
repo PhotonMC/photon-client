@@ -450,3 +450,11 @@ pub(super) struct PendingSky {
     pub(super) fog_colour: [f32; 4],
     pub(super) sky_end: f32,
 }
+
+/// What one kind of draw keeps between frames: the vertices it draws and how many of them there
+/// are. A frame that is not given new vertices draws the last ones.
+#[derive(Default)]
+pub(super) struct DrawList {
+    pub(super) buffer: DynamicBuffer,
+    pub(super) count: u32,
+}

@@ -60,11 +60,12 @@ mod texture;
 mod validation;
 
 use bytes::as_bytes;
+pub use draws::DrawKind;
 use frame::transition;
 use swapchain::{choose_present_mode, clamp_extent};
 pub use validation::validation_findings;
 
 mod buffer;
 pub use buffer::*;
-mod captured;
-pub use captured::*;
+mod backend;
+pub use backend::*;

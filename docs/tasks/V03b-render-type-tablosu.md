@@ -22,4 +22,8 @@ Senkronizasyon ve present modu.
 Bu görev dosyasının devir notu.
 
 ## Devir notu
-(boş)
+- 16 `*_buffer` + `*_count` alan çifti tek `DrawList { buffer: DynamicBuffer, count }` alanına indi (`entity`, `ground`, `shadow`, `glow`, `swirl`, `glint`, `dissolve`, `rays`, `name_tag(_see)`, `orb`, `map(_decoration)`, `hand`, `outline`, `breaking`).
+- Sekiz yalın `set_*` (`set_entities`, `set_entity_glow/swirl/glint`, `set_dragon_rays`, `set_ground_items`, `set_shadows`, `set_experience_orbs`) tek `set_draw(DrawKind, &[Vertex])` oldu; çağıranlar (`dropped_items`, `mobs/wild`, `play/play_draw`) mekanik güncellendi. Farklı imzalı olanlar (`set_entity_dissolve` ofsetli, `set_name_tags` iki liste, `set_hand`, `set_map_quads`, `set_outline`, `set_breaking`, `set_gui`, `set_sky`, `set_weather`, bulut) kendi setter'larında kaldı.
+- Vulkan alt modülleri anlamlı adlandırıldı (`backend.rs` struct, `device/create.rs`, `frame/{sync,draw_calls,scene}.rs`).
+- Doğrulama: 539 test, 1109 parity, `bench --validation` 0 hata/0 uyarı, bir `shot` karesi (arazi, domuzlar, bayraklar, HUD) doğru; bench kare p50 8.7 ms aralığında (V03 ile aynı).
+- **Kalan → V03c:** `RenderType { pipeline, layout, descriptor, blend }` tablosu ve `record_scene`'in (≈550 satırlık tek işlev) tablo üzerinden tek döngüye indirilmesi. Çizim sırası ve blend durumu piksel eşitliğini belirlediği için ayrı bir görevde, kare başına çizim sırası birim testiyle sabitlenerek yapılmalı.

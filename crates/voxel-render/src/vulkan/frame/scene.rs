@@ -156,8 +156,8 @@ impl VulkanBackend {
             // entities so that a translucent shell (a sulfur cube's) blends
             // over the block inside it: the items' quads in the block atlas,
             // shaded as the held ones are, fully faded in.
-            if let Some(buffer) = self.ground_buffer.as_ref()
-                && self.ground_count > 0
+            if let Some(buffer) = self.ground.buffer.as_ref()
+                && self.ground.count > 0
             {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
@@ -185,11 +185,11 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
-                    .cmd_draw(self.command_buffer, self.ground_count, 1, 0, 0);
+                    .cmd_draw(self.command_buffer, self.ground.count, 1, 0, 0);
             }
             // Entities after the opaque terrain and before the water.
-            if let (Some(buffer), Some(set)) = (self.entity_buffer.as_ref(), scene.entity_set)
-                && self.entity_count > 0
+            if let (Some(buffer), Some(set)) = (self.entity.buffer.as_ref(), scene.entity_set)
+                && self.entity.count > 0
             {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
@@ -214,13 +214,13 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
-                    .cmd_draw(self.command_buffer, self.entity_count, 1, 0, 0);
+                    .cmd_draw(self.command_buffer, self.entity.count, 1, 0, 0);
             }
             self.record_flat_shapes(scene, &terrain_push);
             self.stamp(3);
             // The aimed block's outline over the solid world.
-            if let Some(buffer) = self.outline_buffer.as_ref()
-                && self.outline_count > 0
+            if let Some(buffer) = self.outline.buffer.as_ref()
+                && self.outline.count > 0
             {
                 let mut line_push = terrain_push;
                 line_push[16] = extent.width as f32;
@@ -240,11 +240,11 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
-                    .cmd_draw(self.command_buffer, self.outline_count, 1, 0, 0);
+                    .cmd_draw(self.command_buffer, self.outline.count, 1, 0, 0);
             }
             // Cracks over the blocks being broken.
-            if let (Some(buffer), Some(set)) = (self.breaking_buffer.as_ref(), scene.crack_set)
-                && self.breaking_count > 0
+            if let (Some(buffer), Some(set)) = (self.breaking.buffer.as_ref(), scene.crack_set)
+                && self.breaking.count > 0
             {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
@@ -269,7 +269,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 self.device
-                    .cmd_draw(self.command_buffer, self.breaking_count, 1, 0, 0);
+                    .cmd_draw(self.command_buffer, self.breaking.count, 1, 0, 0);
             }
             self.stamp(4);
             // Translucent faces last, the farthest section first, so nearer
@@ -388,8 +388,8 @@ impl VulkanBackend {
             self.stamp(6);
             // The first-person hand last, over a cleared depth, with its own
             // projection and the camera at the origin of its view space.
-            if let Some(buffer) = self.hand_buffer.as_ref()
-                && self.hand_count + self.held_count > 0
+            if let Some(buffer) = self.hand.buffer.as_ref()
+                && self.hand.count + self.held_count > 0
             {
                 self.device.cmd_clear_attachments(
                     self.command_buffer,
@@ -417,7 +417,7 @@ impl VulkanBackend {
                 self.device
                     .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
                 if let Some(set) = scene.entity_set
-                    && self.hand_count > 0
+                    && self.hand.count > 0
                 {
                     self.device.cmd_bind_pipeline(
                         self.command_buffer,
@@ -440,7 +440,7 @@ impl VulkanBackend {
                         &as_bytes(&hand_push)[..160],
                     );
                     self.device
-                        .cmd_draw(self.command_buffer, self.hand_count, 1, 0, 0);
+                        .cmd_draw(self.command_buffer, self.hand.count, 1, 0, 0);
                 }
                 // The held items after the arm, from the block atlas the way
                 // the terrain samples it, fully faded in.
@@ -472,7 +472,7 @@ impl VulkanBackend {
                         self.command_buffer,
                         self.held_count,
                         1,
-                        self.hand_count,
+                        self.hand.count,
                         0,
                     );
                 }

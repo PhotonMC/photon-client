@@ -51,58 +51,42 @@ pub struct VulkanBackend {
     /// The rain's and the snow's vertex counts in the weather buffer.
     pub(super) weather_counts: (u32, u32),
     /// The entities' triangles for the next frame.
-    pub(super) entity_buffer: DynamicBuffer,
-    pub(super) entity_count: u32,
+    pub(super) entity: DrawList,
     /// The dropped items' triangles, which sample the block atlas.
-    pub(super) ground_buffer: DynamicBuffer,
-    pub(super) ground_count: u32,
+    pub(super) ground: DrawList,
     /// The name tags' text: seen through blocks, then lit and depth-tested.
-    pub(super) name_tag_see_buffer: DynamicBuffer,
-    pub(super) name_tag_see_count: u32,
+    pub(super) name_tag_see: DrawList,
     /// The experience orbs' triangles, which sample the entity textures.
-    pub(super) orb_buffer: DynamicBuffer,
-    pub(super) orb_count: u32,
+    pub(super) orb: DrawList,
     /// The entity shadows' triangles, which sample the entity textures.
-    pub(super) shadow_buffer: DynamicBuffer,
-    pub(super) shadow_count: u32,
+    pub(super) shadow: DrawList,
     /// The glowing layers' triangles (`RenderTypes.eyes`): the entity
     /// textures, unlit and blended, tested but not written to the depth.
-    pub(super) glow_buffer: DynamicBuffer,
-    pub(super) glow_count: u32,
+    pub(super) glow: DrawList,
     /// The energy swirls' triangles (`RenderTypes.energySwirl`).
-    pub(super) swirl_buffer: DynamicBuffer,
-    pub(super) swirl_count: u32,
+    pub(super) swirl: DrawList,
     /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
-    pub(super) glint_buffer: DynamicBuffer,
-    pub(super) glint_count: u32,
+    pub(super) glint: DrawList,
     /// The maps' quads, drawn with the text pipeline over the maps' image.
-    pub(super) map_buffer: DynamicBuffer,
-    pub(super) map_count: u32,
+    pub(super) map: DrawList,
     /// The decorations' sprites on them, blended over the entity textures.
-    pub(super) map_decoration_buffer: DynamicBuffer,
-    pub(super) map_decoration_count: u32,
+    pub(super) map_decoration: DrawList,
     /// What the dissolving entities draw (a dying dragon's body), and where
     /// each texel's mask is from it in the packed image (in texture units).
-    pub(super) dissolve_buffer: DynamicBuffer,
-    pub(super) dissolve_count: u32,
+    pub(super) dissolve: DrawList,
     pub(super) dissolve_mask_offset: [f32; 2],
     /// The dying dragon's rays.
-    pub(super) rays_buffer: DynamicBuffer,
-    pub(super) rays_count: u32,
-    pub(super) name_tag_buffer: DynamicBuffer,
-    pub(super) name_tag_count: u32,
+    pub(super) rays: DrawList,
+    pub(super) name_tag: DrawList,
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
-    pub(super) hand_buffer: DynamicBuffer,
-    pub(super) hand_count: u32,
+    pub(super) hand: DrawList,
     /// The held items' triangles, after the arm's in the hand buffer.
     pub(super) held_count: u32,
     /// The aimed block's outline strips for the next frame.
-    pub(super) outline_buffer: DynamicBuffer,
-    pub(super) outline_count: u32,
+    pub(super) outline: DrawList,
     /// The breaking overlay's triangles for the next frame.
-    pub(super) breaking_buffer: DynamicBuffer,
-    pub(super) breaking_count: u32,
+    pub(super) breaking: DrawList,
     pub(super) hand_projection: [[f32; 4]; 4],
     /// The GUI's triangles, their runs by blend, and the window's size in
     /// GUI units.

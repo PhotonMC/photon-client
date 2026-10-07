@@ -94,14 +94,26 @@ pub fn hand_layers(
     backend: &mut voxel_render::VulkanBackend,
     armor: &mut crate::armor::Armor,
 ) -> Result<(), voxel_render::VulkanError> {
-    backend.set_entity_glint(&std::mem::take(&mut armor.glint))?;
-    backend.set_entity_glow(&std::mem::take(&mut models.glow))?;
-    backend.set_entity_swirl(&std::mem::take(&mut models.swirl))?;
+    backend.set_draw(
+        voxel_render::vulkan::DrawKind::EntityGlint,
+        &std::mem::take(&mut armor.glint),
+    )?;
+    backend.set_draw(
+        voxel_render::vulkan::DrawKind::EntityGlow,
+        &std::mem::take(&mut models.glow),
+    )?;
+    backend.set_draw(
+        voxel_render::vulkan::DrawKind::EntitySwirl,
+        &std::mem::take(&mut models.swirl),
+    )?;
     backend.set_entity_dissolve(
         &std::mem::take(&mut models.dissolve),
         models.dissolve_mask_offset,
     )?;
-    backend.set_dragon_rays(&std::mem::take(&mut models.rays))
+    backend.set_draw(
+        voxel_render::vulkan::DrawKind::DragonRays,
+        &std::mem::take(&mut models.rays),
+    )
 }
 
 /// Where a mob is drawn and how it is lit, from where it is between two ticks.

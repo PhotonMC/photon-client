@@ -2,6 +2,36 @@
 
 use super::*;
 
+/// A kind of draw whose triangles the caller hands over each frame as [`Vertex`] values, and
+/// [`VulkanBackend::set_draw`] takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DrawKind {
+    /// The next frame's entity triangles, placed like the
+    /// terrain's, with each vertex's normal in its tint.
+    Entities,
+    /// The next frame's glowing layers, as triangles that sample the
+    /// entity textures, each vertex's tint its colour.
+    EntityGlow,
+    /// The next frame's energy swirls: each vertex carries its
+    /// texture's place, the offset and the colour (see [`SWIRL_VERTEX_SHADER`]).
+    EntitySwirl,
+    /// The next frame's enchantment glints: each vertex's texture coordinate is moved by
+    /// the glint's texture matrix and its tint carries the glint texture's place in the packed image
+    /// (see [`GLINT_VERTEX_SHADER`]).
+    EntityGlint,
+    /// The next frame's dragon rays: each vertex's tint its colour.
+    DragonRays,
+    /// The next frame's dropped items: triangles placed like the
+    /// terrain's, each with its shade and colour, sampling the block atlas.
+    GroundItems,
+    /// The next frame's entity shadows, as triangles that sample the
+    /// entity textures.
+    Shadows,
+    /// The next frame's experience orbs, as triangles that sample the
+    /// entity textures.
+    ExperienceOrbs,
+}
+
 impl VulkanBackend {
     /// Set the lightmap's inputs for the frames that follow: the sky light
     /// colour and factor, the block light tint and factor, and the ambient
@@ -42,10 +72,10 @@ impl VulkanBackend {
     /// Hand over the next frame's breaking overlay, placed like the
     /// terrain's.
     pub fn set_breaking(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.breaking_buffer);
+        let mut buffer = std::mem::take(&mut self.breaking.buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.breaking_buffer = buffer;
-        self.breaking_count = vertices.len() as u32;
+        self.breaking.buffer = buffer;
+        self.breaking.count = vertices.len() as u32;
         Ok(())
     }
 
@@ -55,55 +85,14 @@ impl VulkanBackend {
         &mut self,
         (maps, decorations): (&[Vertex], &[Vertex]),
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.map_buffer);
+        let mut buffer = std::mem::take(&mut self.map.buffer);
         self.fill_vertex_buffer(&mut buffer, maps)?;
-        self.map_buffer = buffer;
-        self.map_count = maps.len() as u32;
-        let mut buffer = std::mem::take(&mut self.map_decoration_buffer);
+        self.map.buffer = buffer;
+        self.map.count = maps.len() as u32;
+        let mut buffer = std::mem::take(&mut self.map_decoration.buffer);
         self.fill_vertex_buffer(&mut buffer, decorations)?;
-        self.map_decoration_buffer = buffer;
-        self.map_decoration_count = decorations.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's entity triangles, placed like the
-    /// terrain's, with each vertex's normal in its tint.
-    pub fn set_entities(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.entity_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.entity_buffer = buffer;
-        self.entity_count = vertices.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's glowing layers, as triangles that sample the
-    /// entity textures, each vertex's tint its colour.
-    pub fn set_entity_glow(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.glow_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.glow_buffer = buffer;
-        self.glow_count = vertices.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's energy swirls: each vertex carries its
-    /// texture's place, the offset and the colour (see [`SWIRL_VERTEX_SHADER`]).
-    pub fn set_entity_swirl(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.swirl_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.swirl_buffer = buffer;
-        self.swirl_count = vertices.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's enchantment glints: each vertex's texture coordinate is moved by
-    /// the glint's texture matrix and its tint carries the glint texture's place in the packed image
-    /// (see [`GLINT_VERTEX_SHADER`]).
-    pub fn set_entity_glint(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.glint_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.glint_buffer = buffer;
-        self.glint_count = vertices.len() as u32;
+        self.map_decoration.buffer = buffer;
+        self.map_decoration.count = decorations.len() as u32;
         Ok(())
     }
 
@@ -115,51 +104,34 @@ impl VulkanBackend {
         vertices: &[Vertex],
         mask_offset: [f32; 2],
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.dissolve_buffer);
+        let mut buffer = std::mem::take(&mut self.dissolve.buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.dissolve_buffer = buffer;
-        self.dissolve_count = vertices.len() as u32;
+        self.dissolve.buffer = buffer;
+        self.dissolve.count = vertices.len() as u32;
         self.dissolve_mask_offset = mask_offset;
         Ok(())
     }
 
-    /// Hand over the next frame's dragon rays: each vertex's tint its colour.
-    pub fn set_dragon_rays(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.rays_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.rays_buffer = buffer;
-        self.rays_count = vertices.len() as u32;
-        Ok(())
+    /// Hand over the next frame's triangles of one kind of draw.
+    pub fn set_draw(&mut self, kind: DrawKind, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut list = std::mem::take(self.draw_list_mut(kind));
+        let filled = self.fill_vertex_buffer(&mut list.buffer, vertices);
+        list.count = vertices.len() as u32;
+        *self.draw_list_mut(kind) = list;
+        filled
     }
 
-    /// Hand over the next frame's dropped items: triangles placed like the
-    /// terrain's, each with its shade and colour, sampling the block atlas.
-    pub fn set_ground_items(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.ground_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.ground_buffer = buffer;
-        self.ground_count = vertices.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's entity shadows, as triangles that sample the
-    /// entity textures.
-    pub fn set_shadows(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.shadow_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.shadow_buffer = buffer;
-        self.shadow_count = vertices.len() as u32;
-        Ok(())
-    }
-
-    /// Hand over the next frame's experience orbs, as triangles that sample the
-    /// entity textures.
-    pub fn set_experience_orbs(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.orb_buffer);
-        self.fill_vertex_buffer(&mut buffer, vertices)?;
-        self.orb_buffer = buffer;
-        self.orb_count = vertices.len() as u32;
-        Ok(())
+    fn draw_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
+        match kind {
+            DrawKind::Entities => &mut self.entity,
+            DrawKind::EntityGlow => &mut self.glow,
+            DrawKind::EntitySwirl => &mut self.swirl,
+            DrawKind::EntityGlint => &mut self.glint,
+            DrawKind::DragonRays => &mut self.rays,
+            DrawKind::GroundItems => &mut self.ground,
+            DrawKind::Shadows => &mut self.shadow,
+            DrawKind::ExperienceOrbs => &mut self.orb,
+        }
     }
 
     /// Hand over the next frame's name tags: the text seen through blocks,
@@ -170,14 +142,14 @@ impl VulkanBackend {
         see_through: &[Vertex],
         normal: &[Vertex],
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.name_tag_see_buffer);
+        let mut buffer = std::mem::take(&mut self.name_tag_see.buffer);
         self.fill_vertex_buffer(&mut buffer, see_through)?;
-        self.name_tag_see_buffer = buffer;
-        self.name_tag_see_count = see_through.len() as u32;
-        let mut buffer = std::mem::take(&mut self.name_tag_buffer);
+        self.name_tag_see.buffer = buffer;
+        self.name_tag_see.count = see_through.len() as u32;
+        let mut buffer = std::mem::take(&mut self.name_tag.buffer);
         self.fill_vertex_buffer(&mut buffer, normal)?;
-        self.name_tag_buffer = buffer;
-        self.name_tag_count = normal.len() as u32;
+        self.name_tag.buffer = buffer;
+        self.name_tag.count = normal.len() as u32;
         Ok(())
     }
 
@@ -209,11 +181,11 @@ impl VulkanBackend {
         &mut self,
         vertices: &[crate::outline::LineVertex],
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.outline_buffer);
+        let mut buffer = std::mem::take(&mut self.outline.buffer);
         let bytes = as_bytes(vertices);
         self.fill_bytes(&mut buffer, bytes)?;
-        self.outline_buffer = buffer;
-        self.outline_count = vertices.len() as u32;
+        self.outline.buffer = buffer;
+        self.outline.count = vertices.len() as u32;
         Ok(())
     }
 
@@ -225,11 +197,11 @@ impl VulkanBackend {
         held: &[Vertex],
         projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.hand_buffer);
+        let mut buffer = std::mem::take(&mut self.hand.buffer);
         let all: Vec<Vertex> = vertices.iter().chain(held).copied().collect();
         self.fill_vertex_buffer(&mut buffer, &all)?;
-        self.hand_buffer = buffer;
-        self.hand_count = vertices.len() as u32;
+        self.hand.buffer = buffer;
+        self.hand.count = vertices.len() as u32;
         self.held_count = held.len() as u32;
         self.hand_projection = projection;
         Ok(())

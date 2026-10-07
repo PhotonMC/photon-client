@@ -89,7 +89,7 @@ impl WorldItemLayers {
         backend: &mut voxel_render::VulkanBackend,
         items: &[Vertex],
     ) -> Result<(), voxel_render::VulkanError> {
-        backend.set_ground_items(items)?;
+        backend.set_draw(voxel_render::vulkan::DrawKind::GroundItems, items)?;
         self.frames.hand_over(backend)
     }
 }
