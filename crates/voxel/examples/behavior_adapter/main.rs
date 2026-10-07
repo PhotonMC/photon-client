@@ -23789,6 +23789,104 @@ fn skull_block_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// `banner_pose`: every model a banner block submits, in the order it is drawn.
+fn banner_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::banner::{
+        BASE_TEXTURE, MAX_PATTERNS, PATTERN_BASE_TEXTURE, ground_transformation, layers,
+        pattern_texture, wall_transformation,
+    };
+    use voxel_render::joml::Pose;
+    use voxel_render::mob_model::MobModel;
+    use voxel_render::skull::block_pose;
+    let dye = |name: &str| -> Result<u32, String> {
+        let id = [
+            "white",
+            "orange",
+            "magenta",
+            "light_blue",
+            "yellow",
+            "lime",
+            "pink",
+            "gray",
+            "light_gray",
+            "cyan",
+            "purple",
+            "blue",
+            "brown",
+            "green",
+            "red",
+            "black",
+        ]
+        .iter()
+        .position(|candidate| *candidate == name)
+        .ok_or("dye")?;
+        voxel_data::entity_type::dye_texture_colour(id).ok_or_else(|| "dye".to_owned())
+    };
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let phase = f32::from_bits(
+            u32::from_str_radix(row["phase"].as_str().ok_or("phase")?, 16)
+                .map_err(|error| error.to_string())?,
+        );
+        let wall = row["wall"].as_str();
+        let transformation = match wall {
+            Some(name) => wall_transformation(
+                voxel_core::direction::Direction::from_name(name).ok_or("wall")?,
+            ),
+            None => ground_transformation(row["rotation"].as_i64().ok_or("rotation")? as i32),
+        };
+        let pose = block_pose(&Pose::default(), &transformation);
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        let (main, flag) = layers(wall.is_some());
+        let mut pole = MobModel::bake(voxel_data::entity_model::layer(main).ok_or("layer")?);
+        pole.setup_banner_flag(phase);
+        let mut cloth = MobModel::bake(voxel_data::entity_model::layer(flag).ok_or("layer")?);
+        cloth.setup_banner_flag(phase);
+        let call = |model: &MobModel, texture: &str, tint: u32, order: usize| {
+            json!({
+                "matrix": matrix,
+                "order": order,
+                "light": row["light"],
+                "tint": format!("{tint:x}"),
+                "texture": texture,
+                "quads": posed_quads(model),
+            })
+        };
+        let mut calls = vec![
+            call(&pole, BASE_TEXTURE, 0xFFFF_FFFF, 0),
+            call(&cloth, BASE_TEXTURE, 0xFFFF_FFFF, 0),
+            call(
+                &cloth,
+                PATTERN_BASE_TEXTURE,
+                dye(row["color"].as_str().ok_or("color")?)?,
+                0,
+            ),
+        ];
+        for (index, layer) in row["patterns"]
+            .as_array()
+            .ok_or("patterns")?
+            .iter()
+            .take(MAX_PATTERNS)
+            .enumerate()
+        {
+            calls.push(call(
+                &cloth,
+                &pattern_texture(layer["pattern"].as_str().ok_or("pattern")?),
+                dye(layer["color"].as_str().ok_or("color")?)?,
+                index + 1,
+            ));
+        }
+        rows.push(json!({"label": row["label"], "calls": calls}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
 fn camera_hurt_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
@@ -26061,6 +26159,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "chest_model" => return chest_model_result(request),
         "chest_pose" => return chest_pose_result(request),
         "bell_pose" => return bell_pose_result(request),
+        "banner_pose" => return banner_pose_result(request),
         "skull_block_pose" => return skull_block_pose_result(request),
         "shulker_box_pose" => return shulker_box_pose_result(request),
         "display_light" => return display_light_result(request),

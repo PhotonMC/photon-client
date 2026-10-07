@@ -108,7 +108,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)
 - [T83 — Hasar sırasında kameranın eğilmesi — client-parity](client-camera-hurt-parity-conformance.md)
 - [T39d — Rüzgâr yükleri ve ejderha topu — client-parity](client-charges-parity-conformance.md)
-- [T79, T80 — Sandık, shulker kutusu, çan ve kafa blok entity çizimi — client-parity](client-chest-parity-conformance.md)
+- [T79, T80 — Sandık, shulker kutusu, çan, kafa ve bayrak blok entity çizimi — client-parity](client-chest-parity-conformance.md)
 - [T34e, T34f — Bakır golem — client-parity](client-copper-golem-parity-conformance.md)
 - [T37e — Creaking — client-parity](client-creaking-parity-conformance.md)
 - [T37a — Slime ve magma cube — client-parity](client-cube-mob-parity-conformance.md)

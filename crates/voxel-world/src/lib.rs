@@ -96,7 +96,7 @@ pub mod wolf;
 pub use block_entity::*;
 pub use block_state::*;
 pub use border::*;
-pub use chest::{ChestView, ShulkerBoxView, SkullBlockView};
+pub use chest::{BannerView, ChestView, DYES, ShulkerBoxView, SkullBlockView};
 pub use chunk::*;
 pub use collision::*;
 pub use constants::*;
@@ -3410,6 +3410,13 @@ impl ClientWorld {
         // A chest block has its own block entity on the client, and a lid that goes with it.
         self.block_animations.remove(&(x, y, z));
         if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
+            // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
+            // entity.
+            if block::state_or_air(i64::from(previous_state_id)).block
+                != block::state_or_air(i64::from(state_id)).block
+            {
+                chunk.block_entities.remove(&(x, y, z));
+            }
             if chest::is_drawn_state(state_id) {
                 chunk.chests.insert((x, y, z));
             } else {

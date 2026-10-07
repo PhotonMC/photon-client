@@ -102,7 +102,7 @@ pub fn wall_transformation(facing: Direction) -> Matrix4 {
 }
 
 /// `RotationSegment.convertToDegrees` for the sixteen segments.
-fn segment_degrees(segment: i32) -> f32 {
+pub(crate) fn segment_degrees(segment: i32) -> f32 {
     let degrees = (segment & 15) as f32 * 22.5;
     if degrees >= 180.0 {
         degrees - 360.0
@@ -122,7 +122,8 @@ pub fn ground_transformation(segment: i32) -> Matrix4 {
     matrix
 }
 
-/// The pose a skull block is drawn from, with `base` the pose of the block's corner.
+/// The pose a block entity is drawn from (a skull, a banner), with `base` the pose of the block's
+/// corner and `transformation` the block's `Transformation`.
 pub fn block_pose(base: &Pose, transformation: &Matrix4) -> Pose {
     let mut pose = *base;
     let mut transformation = *transformation;

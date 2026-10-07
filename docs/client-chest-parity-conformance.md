@@ -1,4 +1,4 @@
-# T79, T80 — Sandık, shulker kutusu, çan ve kafa blok entity çizimi — [client-parity]
+# T79, T80 — Sandık, shulker kutusu, çan, kafa ve bayrak blok entity çizimi — [client-parity]
 
 Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
@@ -42,3 +42,12 @@ Gerçek `SkullBlockRenderer.submit` ile Rust `voxel_render::skull::{wall_transfo
 - Ayakta duran kafa on altı dilimden birine döner (`RotationSegment`, 22,5° adım, 180° üstü eksiye sarılır), duvardaki kafa duvardan çeyrek blok içeride ve duvardan uzağa bakar; ikisi de `(-1, -1, 1)` ölçeklidir. Doku türün kendisidir, oyuncu kafası varsayılan görünümü giyer.
 - `SkullBlockEntity.animation`: yalnız `powered` ejderha ve piglin kafaları sayaç artırır; güç gidince sayaç kalır, kare kesri eklenmez.
 - Sapma: oyuncu kafasının profili (`BlockEntityData` ile gelen `profile`) çözülmez, her oyuncu kafası varsayılan görünümü giyer (profil çözümü ve görünüm indirmesi için kimlik doğrulama ve oturum sunucusu gerekir, M9). `note_block_sound` ve özel ad çizimi etkilemez. Canlıda yedi tür görüldü; güçlü ejderha/piglin animasyonu canlıda denenmedi.
+
+## Bayrak (T80c)
+
+Gerçek `BannerRenderer.submit` ile Rust `voxel_render::banner` aynı girdide karşılaştırılır (`entity/banner-pose`, 28 satır: on altı dönüş, dört duvar, farklı renk, desen sayısı ve bayrak evresi; en çok on altı katman ve ötesi): çizilen her model çağrısı sırasıyla (direk ve çubuk, bayrak, düz katman, her desen) matris, sıra, ışık, doku, boya rengi ve modelin dörtgenleriyle.
+
+- Pozu duvar ya da dilim verir (`translation(0,5; 0; 0,5)`, `Y` dönüşü, `(2/3, −2/3, −2/3)` ölçek). Bayrak `(−0,0125 + 0,01·cos(2π·evre))·π` kadar eğilir; evre bloğun yeri ve oyun zamanıyla yüz tike yayılır.
+- Katmanlar: düz katman (`entity/banner/base`) bayrağın rengiyle, sonra `patterns` listesinin ilk on altısı kendi `entity/banner/<ad>` maskesi ve boyasıyla, birbirinin üstüne harmanlanarak. Renk bloğun adından, desenler blok entity verisinden gelir.
+- İstemci durumu: canlı oturum `BlockEntityData` paketini ve parça paketindeki blok entity'leri artık dünyaya işliyor (yalnız sınama koşucusu işliyordu); blok başka cins bir blokla değişince eski blok entity'si düşer (`LevelChunk.setBlockState`).
+- Sapma: katman dokusunun yüzde ona inmeyen alfa kesimi (`ALPHA_CUTOUT`) bayrak katmanlarında da var, `gradient` desenlerinin çok şeffaf texel'leri Java'da çizilir; deseni kayıt satırı yerine satır içi bileşen olarak veren (veri paketi) desenler çizilmez; eşya olarak bayrak ve kalkan bu görevde değil. Canlıda yer ve duvar bayrağı, renkli desenler görüldü.

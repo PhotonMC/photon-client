@@ -16074,6 +16074,7 @@ def entity_cases():
     yield from entity_shulker_box_cases()
     yield from entity_bell_cases()
     yield from entity_skull_block_cases()
+    yield from entity_banner_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -18026,6 +18027,44 @@ def entity_skull_block_cases():
             rows.append({"label": f"{kind} animated {animation}", "kind": kind, "wall": None,
                          "rotation": 4, "animation": float_bits(animation), "light": 15728880})
     yield {"case_id": "entity/skull-block-pose", "family": "entity", "operation": "skull_block_pose",
+           "rows": rows}
+
+
+def entity_banner_cases():
+    """Every model the real `BannerRenderer` submits for banners standing at each turn and hanging on
+    each wall, of several colours, with no patterns, a few and the most (sixteen), the flag at
+    several phases."""
+    patterns = ["stripe_bottom", "stripe_top", "stripe_left", "stripe_right", "stripe_center",
+                "stripe_middle", "stripe_downright", "stripe_downleft", "small_stripes", "cross",
+                "straight_cross", "diagonal_left", "diagonal_right", "diagonal_up_left",
+                "diagonal_up_right", "half_vertical", "half_vertical_right", "half_horizontal",
+                "half_horizontal_bottom", "square_bottom_left", "triangle_bottom", "circle",
+                "rhombus", "border", "curly_border", "gradient", "gradient_up", "bricks", "creeper",
+                "skull", "flower", "mojang", "globe", "piglin", "flow", "guster"]
+    dyes = ["white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+            "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"]
+
+    def layers(count, offset):
+        return [{"pattern": "minecraft:" + patterns[(offset + index) % len(patterns)],
+                 "color": dyes[(offset * 3 + index * 5) % 16]} for index in range(count)]
+
+    rows = []
+    for rotation in range(16):
+        rows.append({"label": f"floor {rotation}", "wall": None, "rotation": rotation,
+                     "color": dyes[rotation], "patterns": layers(rotation % 4, rotation),
+                     "phase": float_bits(rotation / 16.0), "light": 0xF000F0 - 17})
+    for index, wall in enumerate(("north", "south", "east", "west")):
+        rows.append({"label": f"wall {wall}", "wall": wall, "rotation": 0, "color": dyes[index * 4],
+                     "patterns": layers(3, index), "phase": float_bits(0.37 * index), "light": 240})
+    for offset in range(0, len(patterns), 6):
+        rows.append({"label": f"every pattern from {offset}", "wall": None, "rotation": 3,
+                     "color": "white", "patterns": layers(6, offset),
+                     "phase": float_bits(0.5), "light": 15728880})
+    rows.append({"label": "the most", "wall": None, "rotation": 9, "color": "red",
+                 "patterns": layers(16, 5), "phase": float_bits(0.99), "light": 15728880})
+    rows.append({"label": "past the most", "wall": "south", "rotation": 0, "color": "blue",
+                 "patterns": layers(20, 7), "phase": float_bits(0.01), "light": 15728880})
+    yield {"case_id": "entity/banner-pose", "family": "entity", "operation": "banner_pose",
            "rows": rows}
 
 

@@ -3326,6 +3326,102 @@ public final class EntityOracle {
     }
 
     /**
+     * Everything the real `BannerRenderer.submit` hands the collector for a banner block: the pole
+     * and bar, the flag, and each pattern layer in the order it is drawn, each with its pose, light,
+     * sprite and tint.
+     */
+    private static JsonObject bannerPose(final JsonObject request) throws Exception {
+        var registries = Oracle.vanillaRegistries();
+        var patterns = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN);
+        var requested = new net.minecraft.client.resources.model.sprite.SpriteId[1];
+        var sprites = (net.minecraft.client.resources.model.sprite.SpriteGetter) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.client.resources.model.sprite.SpriteGetter.class},
+            (proxy, method, args) -> {
+                requested[0] = (net.minecraft.client.resources.model.sprite.SpriteId) args[0];
+                return null;
+            });
+        var renderer = new net.minecraft.client.renderer.blockentity.BannerRenderer(
+            net.minecraft.client.model.geom.EntityModelSet.vanilla(), sprites);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.BannerRenderState();
+            var transformations = net.minecraft.client.renderer.blockentity.BannerRenderer.TRANSFORMATIONS;
+            if (row.get("wall").isJsonNull()) {
+                state.transformation = transformations.freeTransformations(row.get("rotation").getAsInt());
+                state.attachmentType = net.minecraft.world.level.block.BannerBlock.AttachmentType.GROUND;
+            } else {
+                state.transformation = transformations.wallTransformation(
+                    net.minecraft.core.Direction.valueOf(row.get("wall").getAsString().toUpperCase()));
+                state.attachmentType = net.minecraft.world.level.block.BannerBlock.AttachmentType.WALL;
+            }
+            state.baseColor = net.minecraft.world.item.DyeColor.valueOf(row.get("color").getAsString().toUpperCase());
+            var layers = new java.util.ArrayList<net.minecraft.world.level.block.entity.BannerPatternLayers.Layer>();
+            for (var layerElement : row.get("patterns").getAsJsonArray()) {
+                var layer = layerElement.getAsJsonObject();
+                var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BANNER_PATTERN,
+                    net.minecraft.resources.Identifier.parse(layer.get("pattern").getAsString()));
+                layers.add(new net.minecraft.world.level.block.entity.BannerPatternLayers.Layer(
+                    patterns.getOrThrow(key),
+                    net.minecraft.world.item.DyeColor.valueOf(layer.get("color").getAsString().toUpperCase())));
+            }
+            state.patterns = new net.minecraft.world.level.block.entity.BannerPatternLayers(layers);
+            state.phase = Oracle.f32(row, "phase");
+            state.lightCoords = row.get("light").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var calls = new JsonArray();
+            var order = new int[] {0};
+            var holder = new net.minecraft.client.renderer.SubmitNodeCollector[1];
+            holder[0] = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("order")) {
+                        order[0] = (int) args[0];
+                        return holder[0];
+                    }
+                    if (method.getName().equals("submitModel")) {
+                        var call = new JsonObject();
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        call.add("matrix", described);
+                        call.addProperty("order", order[0]);
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        if (args[3] instanceof Integer) {
+                            // Plain sprite call: light, overlay, tint, sprite.
+                            call.addProperty("light", (Integer) args[3]);
+                            call.addProperty("tint", Integer.toHexString((Integer) args[5]));
+                            call.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                                .texture().getPath());
+                        } else {
+                            // Pattern layer: render type, light, overlay, tint, sprite.
+                            call.addProperty("light", (Integer) args[4]);
+                            call.addProperty("tint", Integer.toHexString((Integer) args[6]));
+                            call.addProperty("texture", requested[0].texture().getPath());
+                        }
+                        model.setupAnim(args[1]);
+                        call.add("quads", posedQuads("", model).get("quads"));
+                        calls.add(call);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), holder[0], null);
+            out.add("calls", calls);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `SkullBlockRenderer.submit` hands the collector for a skull block: the pose its
      * wall or rotation gives, the light, the texture and the model posed for the animation.
      */
@@ -5865,6 +5961,9 @@ public final class EntityOracle {
         }
         if (operation.equals("chest_pose")) {
             return chestPose(request);
+        }
+        if (operation.equals("banner_pose")) {
+            return bannerPose(request);
         }
         if (operation.equals("skull_block_pose")) {
             return skullBlockPose(request);

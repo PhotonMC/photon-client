@@ -2816,6 +2816,16 @@ impl MobModel {
         }
     }
 
+    /// `BannerFlagModel.setupAnim`: the flag tips by the phase of its wave.
+    pub fn setup_banner_flag(&mut self, phase: f32) {
+        self.root.reset();
+        if let Some(flag) = self.root.child_mut("flag") {
+            let pi = std::f64::consts::PI as f32;
+            let wave = mth_cos_f64(f64::from(2.0 * std::f64::consts::PI as f32 * phase));
+            flag.x_rot = (-0.0125 + 0.01 * wave) * pi;
+        }
+    }
+
     /// `BellModel.setupAnim`: the bell swings away from the side it was struck from, less each
     /// tick.
     pub fn setup_bell(&mut self, ticks: f32, shake: Option<voxel_core::direction::Direction>) {
@@ -5309,6 +5319,24 @@ pub fn mob_vertices_posed(
 /// (`RenderTypes.entityTranslucent` with a colour whose alpha is not full): the shade, past
 /// every code the overlay uses, plus the alpha in 255ths.
 pub const BLENDED_SHADE: f32 = 64.0;
+
+/// [`mob_vertices_posed`] for a layer the pipeline blends and a colour (`0xRRGGBB`) multiplies
+/// (`RenderTypes.bannerPattern` with the layer's dye): each texel's own alpha decides how much of
+/// it covers what the layer lies on.
+pub fn mob_vertices_tinted(
+    model: &MobModel,
+    pose: &Pose,
+    texture: TextureRect,
+    packed_light: i32,
+    colour: u32,
+) -> Vec<Vertex> {
+    let mut vertices = posed_vertices(model, pose, texture, (packed_light, BLENDED_SHADE + 255.0));
+    let colour = crate::scene::entity_colour(colour);
+    for vertex in &mut vertices {
+        vertex.tint[3] = colour;
+    }
+    vertices
+}
 
 /// [`mob_vertices_posed`] for a model blended by a colour of this alpha (a whole 255th, the
 /// colour's own byte), sorted far to near as the reference's translucent pipeline sorts it.

@@ -18,8 +18,8 @@ use voxel_core::wire;
 use voxel_world::input::Input;
 use voxel_world::local_player::{LocalPlayer, ServerboundMovement};
 use voxel_world::{
-    ClientPlayerAbilities, ClientPlayerGameMode, ClientWorld, DimensionInput, LightLayerInput,
-    LightUpdateInput, SectionInput,
+    BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, ClientWorld, DimensionInput,
+    LightLayerInput, LightUpdateInput, SectionInput,
 };
 
 use super::entities;
@@ -1502,6 +1502,17 @@ impl PlaySession {
                     biomes: &section.biome_values,
                 }),
         );
+        self.trace.world.apply_block_entities(
+            chunk.x,
+            chunk.z,
+            chunk.block_entities.iter().map(|entity| BlockEntityInput {
+                x: entity.x,
+                y: entity.y,
+                z: entity.z,
+                type_id: entity.type_id,
+                tag: entity.tag.as_deref(),
+            }),
+        );
         self.trace.world.apply_chunk_light(
             chunk.x,
             chunk.z,
@@ -2109,6 +2120,18 @@ impl PlaySession {
                     &packet.items,
                     packet.carried_item.as_ref(),
                 );
+            }
+            PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => {
+                let entity = parse_block_entity_data_packet(payload)?;
+                self.trace
+                    .world
+                    .apply_block_entity_update(BlockEntityInput {
+                        x: entity.x,
+                        y: entity.y,
+                        z: entity.z,
+                        type_id: entity.type_id,
+                        tag: entity.tag.as_deref(),
+                    });
             }
             PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => {
                 let (pos, event, data) = parse_block_event_packet(payload)?;

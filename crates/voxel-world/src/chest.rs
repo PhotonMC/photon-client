@@ -94,6 +94,26 @@ impl ShulkerLid {
     }
 }
 
+/// The dyes, in `DyeColor.getId` order.
+pub const DYES: [&str; 16] = [
+    "white",
+    "orange",
+    "magenta",
+    "light_blue",
+    "yellow",
+    "lime",
+    "pink",
+    "gray",
+    "light_gray",
+    "cyan",
+    "purple",
+    "blue",
+    "brown",
+    "green",
+    "red",
+    "black",
+];
+
 /// `BellBlockEntity`: the shake a ring starts and the tick wears away.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct BellShake {
@@ -192,12 +212,51 @@ pub(crate) fn is_skull_state(state_id: i32) -> bool {
     is_of_classes(state_id, &[BlockClass::AbstractSkullBlock], &BLOCKS)
 }
 
+/// Whether a block state is a banner's.
+pub(crate) fn is_banner_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::AbstractBannerBlock], &BLOCKS)
+}
+
+/// `BannerBlockEntity.loadAdditional`: the layers of a `patterns` list, a layer without a pattern
+/// id or a colour left out.
+fn banner_patterns(tag: &[u8]) -> Vec<(String, String)> {
+    use voxel_core::nbt::FieldValue;
+    let mut input = tag;
+    let Ok(Some(fields)) = voxel_core::nbt::read_nbt(&mut input) else {
+        return Vec::new();
+    };
+    let Some(FieldValue::List(layers)) = fields
+        .iter()
+        .find(|field| field.key == "patterns")
+        .map(|field| &field.value)
+    else {
+        return Vec::new();
+    };
+    let text = |fields: &[voxel_core::nbt::Field], key: &str| {
+        fields.iter().find_map(|field| match &field.value {
+            FieldValue::Str(value) if field.key == key => Some(value.clone()),
+            _ => None,
+        })
+    };
+    layers
+        .iter()
+        .filter_map(|layer| {
+            let FieldValue::Compound(layer) = layer else {
+                return None;
+            };
+            Some((text(layer, "pattern")?, text(layer, "color")?))
+        })
+        .collect()
+}
+
 /// Whether a block state has a block entity the client draws.
 pub(crate) fn is_drawn_state(state_id: i32) -> bool {
     is_chest_state(state_id)
         || is_shulker_state(state_id)
         || is_bell_state(state_id)
         || is_skull_state(state_id)
+        || is_banner_state(state_id)
 }
 
 /// The chest blocks of a chunk's sections.
@@ -242,6 +301,19 @@ pub struct ShulkerBoxView {
     /// The dye of the box (`red`), none for the undyed one.
     pub color: Option<&'static str>,
     pub facing: Direction,
+}
+
+/// What a banner block is, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BannerView {
+    /// The dye of the banner's cloth (`red`).
+    pub color: &'static str,
+    /// The wall a wall banner hangs on's facing, none for a standing one.
+    pub wall: Option<Direction>,
+    /// `BannerBlock.ROTATION` of a standing one.
+    pub rotation: i32,
+    /// `BannerBlockEntity.getPatterns`: each layer's pattern (a registry id) and dye, bottom first.
+    pub patterns: Vec<(String, String)>,
 }
 
 /// What a skull or head block is, for drawing it.
@@ -387,6 +459,38 @@ impl ClientWorld {
             .shulkers
             .get(&pos)
             .map_or(0.0, |lid| lid.progress(partial))
+    }
+
+    /// The banner at a block.
+    pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_banner_state(state) {
+            return None;
+        }
+        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let property = |key| crate::local_player::property(Some(state), key);
+        let dye = name
+            .strip_prefix("minecraft:")?
+            .strip_suffix("_wall_banner")
+            .or_else(|| name.strip_prefix("minecraft:")?.strip_suffix("_banner"))?;
+        let color = DYES.iter().copied().find(|candidate| *candidate == dye)?;
+        let wall = name
+            .ends_with("_wall_banner")
+            .then(|| property("facing").and_then(Direction::from_name))
+            .flatten();
+        let patterns = self
+            .block_entity_at(pos.0, pos.1, pos.2)
+            .and_then(|entity| entity.tag.as_deref())
+            .map(banner_patterns)
+            .unwrap_or_default();
+        Some(BannerView {
+            color,
+            wall,
+            rotation: property("rotation")
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0),
+            patterns,
+        })
     }
 
     /// The skull or head at a block.
@@ -536,6 +640,39 @@ mod tests {
         assert_eq!(skull.animation(0.5), 2.5);
         skull.tick(false);
         assert_eq!(skull.animation(0.5), 2.0);
+    }
+
+    #[test]
+    fn banner_layers_come_from_the_patterns_list() {
+        use voxel_core::nbt::{Field, FieldValue};
+        let layer = |pattern: &str, color: &str| {
+            FieldValue::Compound(vec![
+                Field {
+                    key: "pattern".to_owned(),
+                    value: FieldValue::Str(pattern.to_owned()),
+                },
+                Field {
+                    key: "color".to_owned(),
+                    value: FieldValue::Str(color.to_owned()),
+                },
+            ])
+        };
+        let mut tag = Vec::new();
+        voxel_core::nbt::write_nbt(
+            Some(&[Field {
+                key: "patterns".to_owned(),
+                value: FieldValue::List(vec![
+                    layer("minecraft:cross", "red"),
+                    FieldValue::Compound(Vec::new()),
+                ]),
+            }]),
+            &mut tag,
+        );
+        assert_eq!(
+            super::banner_patterns(&tag),
+            [("minecraft:cross".to_owned(), "red".to_owned())]
+        );
+        assert!(super::banner_patterns(&[]).is_empty());
     }
 
     #[test]

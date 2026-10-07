@@ -5,15 +5,16 @@
 use voxel_core::direction::Direction;
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
+use voxel_render::banner;
 use voxel_render::bell;
 use voxel_render::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::joml::Pose;
-use voxel_render::mob_model::mob_vertices_posed;
+use voxel_render::mob_model::{mob_vertices_posed, mob_vertices_tinted};
 use voxel_render::scene::Vertex;
 use voxel_render::shulker_box;
 use voxel_render::skull::{SkullKind, ground_transformation, wall_transformation};
-use voxel_world::{ShulkerBoxView, SkullBlockView};
+use voxel_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
 
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
@@ -62,10 +63,59 @@ const TEXTURES: [&str; 37] = [
     "entity/shulker/shulker_black",
 ];
 
+/// The banner textures: the cloth and each pattern's mask.
+const BANNER_TEXTURES: [&str; 44] = [
+    "entity/banner/banner_base",
+    "entity/banner/base",
+    "entity/banner/border",
+    "entity/banner/bricks",
+    "entity/banner/circle",
+    "entity/banner/creeper",
+    "entity/banner/cross",
+    "entity/banner/curly_border",
+    "entity/banner/diagonal_left",
+    "entity/banner/diagonal_right",
+    "entity/banner/diagonal_up_left",
+    "entity/banner/diagonal_up_right",
+    "entity/banner/flow",
+    "entity/banner/flower",
+    "entity/banner/globe",
+    "entity/banner/gradient",
+    "entity/banner/gradient_up",
+    "entity/banner/guster",
+    "entity/banner/half_horizontal",
+    "entity/banner/half_horizontal_bottom",
+    "entity/banner/half_vertical",
+    "entity/banner/half_vertical_right",
+    "entity/banner/mojang",
+    "entity/banner/piglin",
+    "entity/banner/rhombus",
+    "entity/banner/skull",
+    "entity/banner/small_stripes",
+    "entity/banner/square_bottom_left",
+    "entity/banner/square_bottom_right",
+    "entity/banner/square_top_left",
+    "entity/banner/square_top_right",
+    "entity/banner/straight_cross",
+    "entity/banner/stripe_bottom",
+    "entity/banner/stripe_center",
+    "entity/banner/stripe_downleft",
+    "entity/banner/stripe_downright",
+    "entity/banner/stripe_left",
+    "entity/banner/stripe_middle",
+    "entity/banner/stripe_right",
+    "entity/banner/stripe_top",
+    "entity/banner/triangle_bottom",
+    "entity/banner/triangle_top",
+    "entity/banner/triangles_bottom",
+    "entity/banner/triangles_top",
+];
+
 pub fn textures() -> impl Iterator<Item = &'static str> {
     TEXTURES
         .into_iter()
         .chain(SkullKind::ALL.into_iter().map(SkullKind::texture))
+        .chain(BANNER_TEXTURES)
 }
 
 /// `ChestRenderer.getChestMaterial` from the block's name.
@@ -120,6 +170,15 @@ pub fn block_entities(
                     view,
                     (x, y, z),
                     shulker,
+                ));
+            } else if let Some(banner) = world.banner_view((x, y, z)) {
+                vertices.extend(banner_vertices(
+                    session,
+                    models,
+                    textures,
+                    view,
+                    (x, y, z),
+                    &banner,
                 ));
             } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
                 vertices.extend(skull_vertices(
@@ -270,4 +329,72 @@ fn skull_vertices(
     };
     let pose = voxel_render::skull::block_pose(&base, &transformation);
     mob_vertices_posed(model, &pose, rect, (light, false))
+}
+
+/// One banner: its pole and bar, its flag and the layers of the flag, each tinted by its dye and
+/// blended over the one before.
+fn banner_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    banner: &BannerView,
+) -> Vec<Vertex> {
+    let world = session.world();
+    let (main, flag) = banner::layers(banner.wall.is_some());
+    let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let transformation = match banner.wall {
+        Some(facing) => banner::wall_transformation(facing),
+        None => banner::ground_transformation(banner.rotation),
+    };
+    let pose = voxel_render::skull::block_pose(&base, &transformation);
+    eprintln!(
+        "BANNERDEBUG {:?} {:?} {:?}",
+        banner.color,
+        banner.patterns,
+        world
+            .block_entity_at(x, y, z)
+            .map(|e| (e.type_id, e.tag.clone()))
+    );
+    let phase = banner::flag_phase((x, y, z), world.game_time() as i64, view.partial as f32);
+    let mut vertices = Vec::new();
+    if let (Some(rect), Some(pole)) = (textures.rect(banner::BASE_TEXTURE), models.model(main)) {
+        pole.setup_banner_flag(phase);
+        vertices.extend(mob_vertices_posed(pole, &pose, rect, (light, false)));
+    }
+    let Some(cloth) = models.model(flag) else {
+        return vertices;
+    };
+    cloth.setup_banner_flag(phase);
+    if let Some(rect) = textures.rect(banner::BASE_TEXTURE) {
+        vertices.extend(mob_vertices_posed(cloth, &pose, rect, (light, false)));
+    }
+    let dye = |name: &str| {
+        DYES.iter()
+            .position(|candidate| *candidate == name)
+            .and_then(voxel_data::entity_type::dye_texture_colour)
+            .map(|colour| colour & 0x00FF_FFFF)
+    };
+    let layers = std::iter::once((banner::PATTERN_BASE_TEXTURE.to_owned(), dye(banner.color)))
+        .chain(
+            banner
+                .patterns
+                .iter()
+                .take(banner::MAX_PATTERNS)
+                .map(|(pattern, color)| (banner::pattern_texture(pattern), dye(color))),
+        );
+    for (texture, colour) in layers {
+        let (Some(rect), Some(colour)) = (textures.rect(&texture), colour) else {
+            continue;
+        };
+        vertices.extend(mob_vertices_tinted(cloth, &pose, rect, light, colour));
+    }
+    vertices
 }
