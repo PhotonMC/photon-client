@@ -22,4 +22,9 @@ Shader mantık değişikliği.
 Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 
 ## Devir notu
-(boş)
+- GLSL `crates/voxel-render/shaders/` altında 31 dosya (`*.vert`/`*.frag`) + iki ortak `#include` (`push.glsl`, `lightmap.glsl`; on köşe gölgelendiricisinin tekrarlayan başı). Dosyalar eski sabitlerin makro açılmış hâlinden üretildi.
+- `build.rs` shaderc ile SPIR-V üretir (`OUT_DIR`), `shaders.rs` `include_bytes!` ile gömer (`Shader::words`). `shaderc` yalnız `[build-dependencies]`; çalışma zamanında derleme yok. Derleme testi build'e taşındı (bozuk GLSL build'i düşürür); `Cargo.toml` `include` listesi `build.rs` ve `shaders/**` ile genişledi.
+- **Kanıt:** 31 gömülü SPIR-V'nin hepsi eski sabit metninin shaderc derlemesiyle bayt bayt eşit (geçici test, silindi). Gölgelendirici mantığı değişmedi.
+- Pipeline cache: `VulkanBackend::use_pipeline_cache(yol)` / `save_pipeline_cache()`; dosya `<oyun dizini>/pipeline.cache` (`VOXEL_GAME_DIR`, varsayılan `.data/client`). Başlık (vendor, aygıt, UUID) bu aygıta uymuyorsa veya dosya kısaysa yok sayılır (birim testli); yazma geçici dosya + yeniden adlandırma, hata `warn!`.
+- **Açılış (22 boru hattı, Apple M1, 3 koşu):** önce 1.13–1.16 sn (her boru hattı için çalışma zamanı shaderc); şimdi ilk koşu (boş önbellek) 35 ms, sonraki 19–24 ms (önbellek 101 KB). Ölçüm `log::info!("pipelines built in …")` satırı ile (`VOXEL_LOG=info`, `shot` günlüğünde).
+- Sapma: iki kare piksel piksel karşılaştırılmadı; SPIR-V eşitliği aynı gölgelendiriciyi kanıtlar, ayrı çizim karşılaştırması anlamsız kalırdı.

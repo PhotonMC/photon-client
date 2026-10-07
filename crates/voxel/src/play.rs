@@ -967,7 +967,16 @@ fn bake_blocks(
         block_renderer.skipped.len(),
         baking.elapsed()
     );
+    // The pipelines' compiled shaders are kept beside the options between runs.
+    let cache_path = crate::controls::game_directory().join("pipeline.cache");
+    let cached = backend.use_pipeline_cache(cache_path)?;
+    let pipelines = Instant::now();
     backend.load_atlas(&block_renderer.atlas.levels)?;
+    backend.save_pipeline_cache();
+    log::info!(
+        "pipelines built in {:?} from a cache of {cached} bytes",
+        pipelines.elapsed()
+    );
     // The atlas now lives on the GPU; the renderer only keeps where the
     // sprites are, and the animations take their frames with them.
     let animated = AnimatedAtlas::new(&mut block_renderer.atlas);

@@ -5,8 +5,8 @@ use super::*;
 impl VulkanBackend {
     /// Build the depth target, texture, buffers and pipeline for one mesh.
     ///
-    /// Shaders are compiled here with shaderc, which is the library the
-    /// reference's Vulkan backend uses; the GLSL itself is this project's own.
+    /// The GLSL is this project's own; `build.rs` compiles it with shaderc, the library the
+    /// reference's Vulkan backend uses.
     pub fn load_scene(
         &mut self,
         mesh: &Mesh,

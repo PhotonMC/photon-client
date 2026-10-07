@@ -5,7 +5,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-include = ["/Cargo.toml", "/src/**"]
+include = ["/Cargo.toml", "/build.rs", "/src/**", "/shaders/**"]
 
 [dependencies]
 voxel-core.workspace = true
@@ -16,8 +16,11 @@ ash.workspace = true
 ash-window.workspace = true
 flate2.workspace = true
 glfw.workspace = true
+log.workspace = true
 raw-window-handle.workspace = true
 rayon.workspace = true
+
+[build-dependencies]
 shaderc.workspace = true
 
 [lints]

@@ -1146,6 +1146,7 @@ dependencies = [
  "ash-window",
  "flate2",
  "glfw",
+ "log",
  "raw-window-handle",
  "rayon",
  "shaderc",

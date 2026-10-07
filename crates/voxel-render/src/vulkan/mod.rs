@@ -50,6 +50,7 @@ mod draws;
 mod frame;
 mod memory;
 mod pipeline;
+mod pipeline_cache;
 mod scene;
 mod sections;
 mod shaders;
@@ -582,6 +583,10 @@ pub struct VulkanBackend {
     image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
     in_flight: vk::Fence,
+    /// The pipeline cache, null until [`VulkanBackend::use_pipeline_cache`], and its file.
+    pipeline_cache: vk::PipelineCache,
+    pipeline_cache_path: Option<std::path::PathBuf>,
+    cache_identity: pipeline_cache::CacheIdentity,
     /// GPU timestamp queries, when the device and queue can write them.
     timestamps: Option<TimestampQueries>,
     /// The CPU time of the last frame, by span.

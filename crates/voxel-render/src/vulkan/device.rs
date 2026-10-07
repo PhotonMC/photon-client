@@ -331,6 +331,13 @@ impl VulkanBackend {
                 image_available,
                 render_finished,
                 in_flight,
+                pipeline_cache: vk::PipelineCache::null(),
+                pipeline_cache_path: None,
+                cache_identity: pipeline_cache::CacheIdentity {
+                    vendor_id: properties.vendor_id,
+                    device_id: properties.device_id,
+                    uuid: properties.pipeline_cache_uuid,
+                },
                 timestamps,
                 timings: BackendTimings::default(),
                 fence_wait: std::cell::Cell::default(),
@@ -438,6 +445,8 @@ impl Drop for VulkanBackend {
             }
             self.device.destroy_semaphore(self.image_available, None);
             self.device.destroy_fence(self.in_flight, None);
+            self.device
+                .destroy_pipeline_cache(self.pipeline_cache, None);
             if let Some(queries) = self.timestamps.take() {
                 self.device.destroy_query_pool(queries.pool, None);
             }

@@ -4,7 +4,7 @@ use super::shaders::*;
 use super::*;
 
 impl VulkanBackend {
-    /// Compile the shaders and build the graphics pipeline.
+    /// Build the graphics pipeline from its compiled shaders.
     ///
     /// Dynamic rendering is used rather than a render pass object, which is
     /// the extension the reference already requires of every device it picks.
@@ -42,18 +42,10 @@ impl VulkanBackend {
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
         let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
-        // SAFETY: live handles; the shader modules are made from freshly compiled SPIR-V and
+        // SAFETY: live handles; the shader modules are made from the embedded SPIR-V and
         // destroyed once the pipeline is built, and every create-info points at locals that
         // outlive its call.
         unsafe {
-            let compiler =
-                shaderc::Compiler::new().map_err(|error| VulkanError::Loader(error.to_string()))?;
-            let compile = |source: &str, kind, name: &str| -> Result<Vec<u32>, VulkanError> {
-                compiler
-                    .compile_into_spirv(source, kind, name, "main", None)
-                    .map(|artifact| artifact.as_binary().to_vec())
-                    .map_err(|error| VulkanError::Loader(error.to_string()))
-            };
             let (vertex_source, fragment_source) = if sky {
                 (SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
             } else if clouds {
@@ -92,9 +84,7 @@ impl VulkanBackend {
             } else {
                 (HELD_VERTEX_SHADER, FRAGMENT_SHADER)
             };
-            let vertex_code = compile(vertex_source, shaderc::ShaderKind::Vertex, "scene.vert")?;
-            let fragment_code =
-                compile(fragment_source, shaderc::ShaderKind::Fragment, "scene.frag")?;
+            let (vertex_code, fragment_code) = (vertex_source.words(), fragment_source.words());
             let make_module = |code: &[u32]| -> Result<vk::ShaderModule, VulkanError> {
                 self.device
                     .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(code), None)
@@ -488,7 +478,7 @@ impl VulkanBackend {
                 .push_next(&mut rendering);
             let pipeline = self
                 .device
-                .create_graphics_pipelines(vk::PipelineCache::null(), &[create], None)
+                .create_graphics_pipelines(self.pipeline_cache, &[create], None)
                 .map_err(|(_, result)| VulkanError::Call("vkCreateGraphicsPipelines", result))?[0];
 
             self.device.destroy_shader_module(vertex_module, None);

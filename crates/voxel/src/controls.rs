@@ -1936,7 +1936,7 @@ impl Controls {
 const COMMAND_HISTORY_LIMIT: usize = 50;
 
 /// Where the game keeps its files (`gameDirectory`).
-fn game_directory() -> std::path::PathBuf {
+pub(crate) fn game_directory() -> std::path::PathBuf {
     std::env::var_os("VOXEL_GAME_DIR")
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
 }
