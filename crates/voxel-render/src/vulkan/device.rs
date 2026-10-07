@@ -204,18 +204,31 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateCommandPool", result))?;
-            let command_buffer = device
+            let command_buffers = device
                 .allocate_command_buffers(
                     &vk::CommandBufferAllocateInfo::default()
                         .command_pool(command_pool)
                         .level(vk::CommandBufferLevel::PRIMARY)
-                        .command_buffer_count(1),
+                        .command_buffer_count(FRAMES_IN_FLIGHT as u32),
                 )
-                .map_err(|result| VulkanError::Call("vkAllocateCommandBuffers", result))?[0];
-
-            let image_available = device
-                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
-                .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?;
+                .map_err(|result| VulkanError::Call("vkAllocateCommandBuffers", result))?;
+            let mut frames = Vec::with_capacity(FRAMES_IN_FLIGHT);
+            for command_buffer in command_buffers {
+                frames.push(FrameSlot {
+                    command_buffer,
+                    in_flight: device
+                        .create_fence(
+                            &vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED),
+                            None,
+                        )
+                        .map_err(|result| VulkanError::Call("vkCreateFence", result))?,
+                    image_available: device
+                        .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+                        .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?,
+                    stamp: 0,
+                });
+            }
+            let command_buffer = frames[0].command_buffer;
             // Present waits are per image: reusing one semaphore across images
             // is what trips validation on a FIFO swapchain.
             let mut render_finished = Vec::with_capacity(images.len());
@@ -226,13 +239,6 @@ impl VulkanBackend {
                         .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?,
                 );
             }
-            let in_flight = device
-                .create_fence(
-                    &vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateFence", result))?;
-
             let valid_bits = instance.get_physical_device_queue_family_properties(physical_device)
                 [queue_family as usize]
                 .timestamp_valid_bits;
@@ -242,7 +248,7 @@ impl VulkanBackend {
                         .create_query_pool(
                             &vk::QueryPoolCreateInfo::default()
                                 .query_type(vk::QueryType::TIMESTAMP)
-                                .query_count(TIMESTAMP_COUNT),
+                                .query_count(TIMESTAMP_COUNT * FRAMES_IN_FLIGHT as u32),
                             None,
                         )
                         .map_err(|result| VulkanError::Call("vkCreateQueryPool", result))?;
@@ -250,7 +256,7 @@ impl VulkanBackend {
                         pool,
                         period_ns: f64::from(properties.limits.timestamp_period),
                         valid_bits,
-                        pending: false,
+                        pending: [false; FRAMES_IN_FLIGHT],
                         last: None,
                     })
                 } else {
@@ -283,54 +289,58 @@ impl VulkanBackend {
                 image_views,
                 command_pool,
                 command_buffer,
+                frames,
+                frame_slot: 0,
+                frames_submitted: 0,
+                completed: std::cell::Cell::new(0),
                 readback: None,
                 depth: None,
                 out_of_date: false,
                 scene: None,
-                sky_buffer: None,
+                sky_buffer: DynamicBuffer::default(),
                 pending_sky: None,
                 cloud_buffer: None,
-                weather_buffer: None,
+                weather_buffer: DynamicBuffer::default(),
                 weather_counts: (0, 0),
-                entity_buffer: None,
+                entity_buffer: DynamicBuffer::default(),
                 entity_count: 0,
-                ground_buffer: None,
+                ground_buffer: DynamicBuffer::default(),
                 ground_count: 0,
-                name_tag_see_buffer: None,
+                name_tag_see_buffer: DynamicBuffer::default(),
                 name_tag_see_count: 0,
-                orb_buffer: None,
+                orb_buffer: DynamicBuffer::default(),
                 orb_count: 0,
-                shadow_buffer: None,
+                shadow_buffer: DynamicBuffer::default(),
                 shadow_count: 0,
-                glow_buffer: None,
+                glow_buffer: DynamicBuffer::default(),
                 glow_count: 0,
-                swirl_buffer: None,
+                swirl_buffer: DynamicBuffer::default(),
                 swirl_count: 0,
-                glint_buffer: None,
+                glint_buffer: DynamicBuffer::default(),
                 glint_count: 0,
-                map_buffer: None,
+                map_buffer: DynamicBuffer::default(),
                 map_count: 0,
-                map_decoration_buffer: None,
+                map_decoration_buffer: DynamicBuffer::default(),
                 map_decoration_count: 0,
-                dissolve_buffer: None,
+                dissolve_buffer: DynamicBuffer::default(),
                 dissolve_count: 0,
                 dissolve_mask_offset: [0.0; 2],
-                rays_buffer: None,
+                rays_buffer: DynamicBuffer::default(),
                 rays_count: 0,
-                name_tag_buffer: None,
+                name_tag_buffer: DynamicBuffer::default(),
                 name_tag_count: 0,
-                hand_buffer: None,
+                hand_buffer: DynamicBuffer::default(),
                 hand_count: 0,
                 held_count: 0,
-                outline_buffer: None,
+                outline_buffer: DynamicBuffer::default(),
                 outline_count: 0,
-                breaking_buffer: None,
+                breaking_buffer: DynamicBuffer::default(),
                 breaking_count: 0,
                 hand_projection: [[0.0; 4]; 4],
-                gui_buffer: None,
+                gui_buffer: DynamicBuffer::default(),
                 gui_batches: Vec::new(),
                 gui_size: [1.0, 1.0],
-                gui_item_buffer: None,
+                gui_item_buffer: DynamicBuffer::default(),
                 sections: std::collections::BTreeMap::new(),
                 visible_sections: None,
                 moving_sections: Vec::new(),
@@ -343,9 +353,7 @@ impl VulkanBackend {
                 sort_origin: [0.0; 3],
                 lightmap: DEFAULT_LIGHTMAP,
                 fog: NO_FOG,
-                image_available,
                 render_finished,
-                in_flight,
                 validation,
                 pipeline_cache: vk::PipelineCache::null(),
                 pipeline_cache_path: None,
@@ -420,31 +428,27 @@ impl Drop for VulkanBackend {
             let _ = self.device.device_wait_idle();
             self.destroy_scene();
             // The host buffers free themselves; they go here, while the device is live.
-            self.sky_buffer = None;
             self.cloud_buffer = None;
-            self.weather_buffer = None;
-            for buffer in [
-                self.entity_buffer.take(),
-                self.ground_buffer.take(),
-                self.name_tag_see_buffer.take(),
-                self.orb_buffer.take(),
-                self.shadow_buffer.take(),
-                self.glow_buffer.take(),
-                self.swirl_buffer.take(),
-                self.glint_buffer.take(),
-                self.map_buffer.take(),
-                self.map_decoration_buffer.take(),
-                self.dissolve_buffer.take(),
-                self.rays_buffer.take(),
-                self.name_tag_buffer.take(),
-                self.hand_buffer.take(),
-                self.outline_buffer.take(),
-                self.breaking_buffer.take(),
-                self.gui_buffer.take(),
-                self.gui_item_buffer.take(),
-            ] {
-                drop(buffer);
-            }
+            self.sky_buffer.clear();
+            self.weather_buffer.clear();
+            self.entity_buffer.clear();
+            self.ground_buffer.clear();
+            self.name_tag_see_buffer.clear();
+            self.orb_buffer.clear();
+            self.shadow_buffer.clear();
+            self.glow_buffer.clear();
+            self.swirl_buffer.clear();
+            self.glint_buffer.clear();
+            self.map_buffer.clear();
+            self.map_decoration_buffer.clear();
+            self.dissolve_buffer.clear();
+            self.rays_buffer.clear();
+            self.name_tag_buffer.clear();
+            self.hand_buffer.clear();
+            self.outline_buffer.clear();
+            self.breaking_buffer.clear();
+            self.gui_buffer.clear();
+            self.gui_item_buffer.clear();
             for block in self.arena.drain(..) {
                 self.device.destroy_buffer(block.buffer, None);
                 self.device.free_memory(block.memory, None);
@@ -459,8 +463,10 @@ impl Drop for VulkanBackend {
             for semaphore in self.render_finished.drain(..) {
                 self.device.destroy_semaphore(semaphore, None);
             }
-            self.device.destroy_semaphore(self.image_available, None);
-            self.device.destroy_fence(self.in_flight, None);
+            for frame in self.frames.drain(..) {
+                self.device.destroy_semaphore(frame.image_available, None);
+                self.device.destroy_fence(frame.in_flight, None);
+            }
             self.device
                 .destroy_pipeline_cache(self.pipeline_cache, None);
             if let Some(queries) = self.timestamps.take() {

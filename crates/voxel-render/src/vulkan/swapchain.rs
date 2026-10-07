@@ -100,11 +100,13 @@ impl VulkanBackend {
             }
             // The acquire semaphore may have been left signalled by a failed
             // acquire, so it is replaced too.
-            self.device.destroy_semaphore(self.image_available, None);
-            self.image_available = self
-                .device
-                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
-                .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?;
+            for frame in &mut self.frames {
+                self.device.destroy_semaphore(frame.image_available, None);
+                frame.image_available = self
+                    .device
+                    .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+                    .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?;
+            }
             self.description.extent = extent;
             self.description.image_count = self.images.len() as u32;
 

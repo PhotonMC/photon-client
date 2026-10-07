@@ -11,7 +11,7 @@
 - `Image` (görüntü + bellek + görünüm) ve `Pipeline` (boru hattı + yerleşim) sahip tipleri; `SceneResources`'taki elle `destroy_*` çağrıları ve `destroy_scene` bunlara iner. Yok etme sırası tipte belgeli; `VulkanBackend::drop` aygıttan önce hepsini bırakır (`HostBuffer` örneği).
 - `ArenaBlock`/`StagingChunk` için `null` işaretçili boşluk yerine `Option`; `upload_texture`'ın hazırlama tamponu bir sahip tip (hata yolunda sızıntı olmasın).
 - `create` (≈325 satır) `instance`, `device`, `swapchain`, `sync` aşama fonksiyonlarına bölünür; `device.rs` yalnız bunları çağırır.
-- `set_entities`/`set_shadows`/… çiftleri (`*_buffer` + `*_count`) tek `DrawList` değerine ve `set_draw(kind, vertices)`ye iner. V03'ün `RenderType` tablosuyla çakışmamak için önce V03'ün tasarımına bakılır; çakışıyorsa bu madde V03'e taşınır.
+- (`set_*` → `DrawList` maddesi V03b'ye taşındı.)
 - `frame.rs` (≈1200 satır; `record_scene` 550) çizim türü başına işlevlere ayrılır (V03 ile birlikte yapılabilir).
 
 ## Kabul

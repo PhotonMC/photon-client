@@ -26,8 +26,9 @@
 //!   Where a type owns its handles and frees them when dropped (`HostBuffer`), the
 //!   backend's `Drop` releases the owners while the device is still live.
 //! - **Idle GPU.** A resource is destroyed or overwritten only after the work
-//!   that may read it has finished: `in_flight` was waited on, or the device
-//!   was made idle.
+//!   that may read it has finished: those frames' fences were waited on (`complete_through`),
+//!   or the device was made idle. Up to `FRAMES_IN_FLIGHT` frames are in flight, and every frame
+//!   is numbered; a resource records the frames that may use it as such a number.
 //! - **Recording.** Commands go to `command_buffer` between the begin and the
 //!   end in `render_frame`.
 //!
@@ -220,8 +221,8 @@ struct TimestampQueries {
     period_ns: f64,
     /// How many bits of a tick the queue writes.
     valid_bits: u32,
-    /// Whether the last submitted frame wrote a scene's timestamps not yet read.
-    pending: bool,
+    /// Whether each slot's last frame wrote a scene's timestamps not yet read.
+    pending: [bool; FRAMES_IN_FLIGHT],
     /// The last frame read back.
     last: Option<GpuTimings>,
 }
@@ -394,7 +395,7 @@ struct ArenaBlock {
 }
 
 /// A range of one arena block.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ArenaSlice {
     block: usize,
     offset: u64,
@@ -427,6 +428,44 @@ const STAGING_CHUNK_SIZE: u64 = 4 << 20;
 
 /// How many idle staging chunks are kept for the next frame's uploads.
 const STAGING_SPARE: usize = 2;
+
+/// How many frames the CPU may build while the GPU draws the one before.
+const FRAMES_IN_FLIGHT: usize = 2;
+
+/// What one frame in flight owns: its command buffer, the fence that says the GPU is done with it,
+/// and the semaphore the swapchain image's acquisition signals.
+struct FrameSlot {
+    command_buffer: vk::CommandBuffer,
+    in_flight: vk::Fence,
+    image_available: vk::Semaphore,
+    /// The number of the frame last submitted from this slot, 0 for none.
+    stamp: u64,
+}
+
+/// A vertex buffer the CPU rewrites each frame: two, written alternately, so that a write never
+/// waits for the frame still drawing the other. A frame that is not given new data draws the last
+/// data it was given.
+#[derive(Default)]
+struct DynamicBuffer {
+    buffers: [Option<HostBuffer>; FRAMES_IN_FLIGHT],
+    /// The one the frames draw.
+    active: usize,
+    /// For each buffer, how many frames had been submitted when it stopped being the active one:
+    /// the frames up to that number may still be drawing it.
+    retired_at: [u64; FRAMES_IN_FLIGHT],
+}
+
+impl DynamicBuffer {
+    /// The buffer the next frame draws.
+    fn as_ref(&self) -> Option<&HostBuffer> {
+        self.buffers[self.active].as_ref()
+    }
+
+    /// Free both buffers.
+    fn clear(&mut self) {
+        self.buffers = [None, None];
+    }
+}
 
 /// A vertex buffer in host-visible, coherent memory, rewritten by the CPU every frame. It frees
 /// itself when dropped.
@@ -489,80 +528,89 @@ pub struct VulkanBackend {
     images: Vec<vk::Image>,
     image_views: Vec<vk::ImageView>,
     command_pool: vk::CommandPool,
+    /// The command buffer of the frame being recorded: one of `frames`'.
     command_buffer: vk::CommandBuffer,
+    /// What each frame in flight owns.
+    frames: Vec<FrameSlot>,
+    /// The slot of the frame being recorded.
+    frame_slot: usize,
+    /// How many frames have been submitted; the next one is numbered one more.
+    frames_submitted: u64,
+    /// The frames up to this number are known to have finished on the GPU.
+    completed: std::cell::Cell<u64>,
     /// The buffer a screenshot is copied into, there only while one is taken.
     readback: Option<(vk::Buffer, vk::DeviceMemory)>,
     depth: Option<DepthTarget>,
     /// Set when the surface no longer matches the swapchain.
     out_of_date: bool,
     scene: Option<SceneResources>,
-    sky_buffer: Option<HostBuffer>,
+    sky_buffer: DynamicBuffer,
     pending_sky: Option<PendingSky>,
     cloud_buffer: Option<CloudBuffer>,
-    weather_buffer: Option<HostBuffer>,
+    weather_buffer: DynamicBuffer,
     /// The rain's and the snow's vertex counts in the weather buffer.
     weather_counts: (u32, u32),
     /// The entities' triangles for the next frame.
-    entity_buffer: Option<HostBuffer>,
+    entity_buffer: DynamicBuffer,
     entity_count: u32,
     /// The dropped items' triangles, which sample the block atlas.
-    ground_buffer: Option<HostBuffer>,
+    ground_buffer: DynamicBuffer,
     ground_count: u32,
     /// The name tags' text: seen through blocks, then lit and depth-tested.
-    name_tag_see_buffer: Option<HostBuffer>,
+    name_tag_see_buffer: DynamicBuffer,
     name_tag_see_count: u32,
     /// The experience orbs' triangles, which sample the entity textures.
-    orb_buffer: Option<HostBuffer>,
+    orb_buffer: DynamicBuffer,
     orb_count: u32,
     /// The entity shadows' triangles, which sample the entity textures.
-    shadow_buffer: Option<HostBuffer>,
+    shadow_buffer: DynamicBuffer,
     shadow_count: u32,
     /// The glowing layers' triangles (`RenderTypes.eyes`): the entity
     /// textures, unlit and blended, tested but not written to the depth.
-    glow_buffer: Option<HostBuffer>,
+    glow_buffer: DynamicBuffer,
     glow_count: u32,
     /// The energy swirls' triangles (`RenderTypes.energySwirl`).
-    swirl_buffer: Option<HostBuffer>,
+    swirl_buffer: DynamicBuffer,
     swirl_count: u32,
     /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
-    glint_buffer: Option<HostBuffer>,
+    glint_buffer: DynamicBuffer,
     glint_count: u32,
     /// The maps' quads, drawn with the text pipeline over the maps' image.
-    map_buffer: Option<HostBuffer>,
+    map_buffer: DynamicBuffer,
     map_count: u32,
     /// The decorations' sprites on them, blended over the entity textures.
-    map_decoration_buffer: Option<HostBuffer>,
+    map_decoration_buffer: DynamicBuffer,
     map_decoration_count: u32,
     /// What the dissolving entities draw (a dying dragon's body), and where
     /// each texel's mask is from it in the packed image (in texture units).
-    dissolve_buffer: Option<HostBuffer>,
+    dissolve_buffer: DynamicBuffer,
     dissolve_count: u32,
     dissolve_mask_offset: [f32; 2],
     /// The dying dragon's rays.
-    rays_buffer: Option<HostBuffer>,
+    rays_buffer: DynamicBuffer,
     rays_count: u32,
-    name_tag_buffer: Option<HostBuffer>,
+    name_tag_buffer: DynamicBuffer,
     name_tag_count: u32,
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
-    hand_buffer: Option<HostBuffer>,
+    hand_buffer: DynamicBuffer,
     hand_count: u32,
     /// The held items' triangles, after the arm's in the hand buffer.
     held_count: u32,
     /// The aimed block's outline strips for the next frame.
-    outline_buffer: Option<HostBuffer>,
+    outline_buffer: DynamicBuffer,
     outline_count: u32,
     /// The breaking overlay's triangles for the next frame.
-    breaking_buffer: Option<HostBuffer>,
+    breaking_buffer: DynamicBuffer,
     breaking_count: u32,
     hand_projection: [[f32; 4]; 4],
     /// The GUI's triangles, their runs by blend, and the window's size in
     /// GUI units.
-    gui_buffer: Option<HostBuffer>,
+    gui_buffer: DynamicBuffer,
     gui_batches: Vec<(crate::gui::GuiBlend, u32, u32)>,
     gui_size: [f32; 2],
     /// The items in the GUI's slots, which the GUI's item runs count in.
-    gui_item_buffer: Option<HostBuffer>,
+    gui_item_buffer: DynamicBuffer,
     sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
     /// The sections in view this frame; `None` draws every section.
     visible_sections: Option<Vec<(i32, i32, i32)>>,
@@ -573,18 +621,16 @@ pub struct VulkanBackend {
     /// frame, and the ones the frame in flight still copies from.
     staging: Vec<StagingChunk>,
     staging_filling: Vec<usize>,
-    staging_in_flight: Vec<usize>,
+    staging_in_flight: Vec<(u64, usize)>,
     staged: Vec<StagedCopy>,
     /// Section meshes replaced since the frame in flight began; freed once
     /// it is done with them.
-    retired: Vec<SectionBuffers>,
+    retired: Vec<(u64, SectionBuffers)>,
     sort_origin: [f32; 3],
     lightmap: [f32; 12],
     /// The terrain fog's colour and its four distances.
     fog: [f32; 8],
-    image_available: vk::Semaphore,
     render_finished: Vec<vk::Semaphore>,
-    in_flight: vk::Fence,
     /// The validation layer's messenger, with `VOXEL_VALIDATION`.
     validation: Option<validation::Validation>,
     /// The pipeline cache, null until [`VulkanBackend::use_pipeline_cache`], and its file.

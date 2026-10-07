@@ -232,7 +232,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [V01](V01-vulkan-modulleri.md) | `vulkan.rs` modüllere bölme ve RAII | M | V00 | bölündü |
 | [V01b](V01b-vulkan-sahiplik.md) | Vulkan nesnelerinde sahiplik, `create`'in bölünmesi, `DrawList` | M | V01 | açık |
 | [V02](V02-shader-dosyalari.md) | Shader dosyaları, build-time SPIR-V, pipeline cache | M | V01 | bitti |
-| [V03](V03-kare-ucusta.md) | İki kare uçuşta, halka tampon, `RenderType` tablosu | L | V01 | açık |
+| [V03](V03-kare-ucusta.md) | İki kare uçuşta, halka tampon, `RenderType` tablosu | L | V01 | bölündü |
+| [V03b](V03b-render-type-tablosu.md) | `RenderType` tablosu ve `DrawList` | M | V03 | açık |
 | [V04](V04-present-modu.md) | Present modu ve kare sınırı | S | V03 | açık |
 | [V05](V05-indexed-kompakt-vertex.md) | Indexed quad ve kompakt köşe formatı | L | V03 | açık |
 | [V06](V06-multi-draw.md) | Bölümler için indirect/multi-draw | L | V05 | açık |

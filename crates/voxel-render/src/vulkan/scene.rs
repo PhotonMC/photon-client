@@ -229,6 +229,7 @@ impl VulkanBackend {
         // destroyed, so none is used by the GPU or destroyed twice.
         unsafe {
             let _ = self.device.device_wait_idle();
+            self.completed.set(self.frames_submitted);
             if let Some(scene) = self.scene.take() {
                 self.device.destroy_pipeline(scene.pipeline, None);
                 self.device
@@ -297,7 +298,7 @@ impl VulkanBackend {
             for section in std::mem::take(&mut self.moving_sections) {
                 self.destroy_section(section);
             }
-            for section in std::mem::take(&mut self.retired) {
+            for (_, section) in std::mem::take(&mut self.retired) {
                 self.destroy_section(section);
             }
             // Their copies have nowhere to go now.

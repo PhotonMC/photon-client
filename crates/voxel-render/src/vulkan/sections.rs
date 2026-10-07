@@ -11,14 +11,14 @@ impl VulkanBackend {
         centre: [f32; 3],
         fade: SectionFade,
     ) -> Result<(), VulkanError> {
-        // SAFETY: live handles. The old section is retired, not freed, since the frame in flight
+        // SAFETY: live handles. The old section is retired, not freed, since the frames in flight
         // may still read it; `upload_section` needs only live handles and the exclusive access
         // `&mut self` gives.
         unsafe {
-            // The frame in flight may still read the old mesh, so it is
-            // freed after that frame.
+            // The frames in flight may still read the old mesh, so it is
+            // freed after the last of them.
             if let Some(old) = self.sections.remove(&key) {
-                self.retired.push(old);
+                self.retired.push((self.frames_submitted, old));
             }
             if let Some(section) = self.upload_section(mesh, centre, fade)? {
                 self.sections.insert(key, section);
@@ -67,12 +67,14 @@ impl VulkanBackend {
     /// Hand over the next frame's moving blocks (the falling blocks): each a mesh with the place
     /// it is sorted from, drawn with the terrain.
     pub fn set_moving_blocks(&mut self, blocks: &[(&Mesh, [f32; 3])]) -> Result<(), VulkanError> {
-        // SAFETY: live handles. The old meshes are retired, not freed, since the frame in flight
+        // SAFETY: live handles. The old meshes are retired, not freed, since the frames in flight
         // may still read them.
         unsafe {
-            // The frame in flight may still read the old meshes.
+            // The frames in flight may still read the old meshes.
             let old = std::mem::take(&mut self.moving_sections);
-            self.retired.extend(old);
+            let submitted = self.frames_submitted;
+            self.retired
+                .extend(old.into_iter().map(|section| (submitted, section)));
             for (mesh, centre) in blocks {
                 if let Some(section) = self.upload_section(mesh, *centre, SectionFade::none())? {
                     self.moving_sections.push(section);
@@ -113,7 +115,7 @@ impl VulkanBackend {
             for section in std::mem::take(&mut self.moving_sections) {
                 self.destroy_section(section);
             }
-            for section in std::mem::take(&mut self.retired) {
+            for (_, section) in std::mem::take(&mut self.retired) {
                 self.destroy_section(section);
             }
             // Their copies have nowhere to go now.

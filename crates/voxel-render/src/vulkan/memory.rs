@@ -51,7 +51,7 @@ impl VulkanBackend {
     ///
     /// # Safety
     ///
-    /// The GPU must not be using the old readback buffer; the caller has waited on `in_flight`.
+    /// The GPU must not be using the old readback buffer; the caller has waited for the frames that may copy into it.
     pub(super) unsafe fn make_readback(&mut self) -> Result<(), VulkanError> {
         // SAFETY: live handles; `free_readback` runs first, so the old buffer is gone before the
         // new pair is stored.
@@ -168,15 +168,21 @@ impl VulkanBackend {
     ///
     /// # Safety
     ///
-    /// No chunk may be in flight: call it after `in_flight` has been waited on and
-    /// `staging_in_flight` cleared.
+    /// No chunk may be in flight past `staging_in_flight`: call it once the finished frames' chunks
+    /// have been dropped from it.
     pub(super) unsafe fn trim_staging(&mut self) {
-        // SAFETY: only chunks outside `staging_filling` are unmapped and destroyed, and none is in
-        // flight when a frame starts; each is nulled afterwards.
+        // SAFETY: only chunks outside `staging_filling` and `staging_in_flight` are unmapped and
+        // destroyed, so no frame copies from them; each is nulled afterwards.
         unsafe {
             let mut idle = 0;
             for (index, chunk) in self.staging.iter_mut().enumerate() {
-                if chunk.buffer == vk::Buffer::null() || self.staging_filling.contains(&index) {
+                if chunk.buffer == vk::Buffer::null()
+                    || self.staging_filling.contains(&index)
+                    || self
+                        .staging_in_flight
+                        .iter()
+                        .any(|&(_, busy)| busy == index)
+                {
                     continue;
                 }
                 idle += 1;
@@ -256,7 +262,10 @@ impl VulkanBackend {
                 None => {
                     let free = (0..self.staging.len()).find(|chunk| {
                         !self.staging_filling.contains(chunk)
-                            && !self.staging_in_flight.contains(chunk)
+                            && !self
+                                .staging_in_flight
+                                .iter()
+                                .any(|&(_, busy)| busy == *chunk)
                             && self.staging[*chunk].size >= size
                     });
                     let chunk = match free {
@@ -405,9 +414,8 @@ impl VulkanBackend {
     /// `command_buffer` must be recording, outside a render pass.
     pub(super) unsafe fn record_staged_copies(&mut self) {
         // SAFETY: recording, outside a render pass. Each copy names a staging chunk held in
-        // `staging_filling` until now and an arena range from `arena_upload`; when a section is
-        // replaced twice within one frame the first one's range is already back in the arena (see
-        // the open issue in `docs/tasks/Q03-log-safety-lint.md`).
+        // `staging_filling` until now and an arena range from `arena_upload`; the range's section
+        // is retired only with its copy dropped (`free_retired`), so the range is still its own.
         unsafe {
             if self.staged.is_empty() {
                 return;
@@ -437,8 +445,13 @@ impl VulkanBackend {
                 &[],
                 &[],
             );
-            self.staging_in_flight
-                .extend(std::mem::take(&mut self.staging_filling));
+            // These chunks are copied from until the frame being recorded has finished.
+            let frame = self.frames_submitted + 1;
+            self.staging_in_flight.extend(
+                std::mem::take(&mut self.staging_filling)
+                    .into_iter()
+                    .map(|chunk| (frame, chunk)),
+            );
         }
     }
 }
@@ -502,6 +515,33 @@ impl HostBuffer {
 }
 
 impl VulkanBackend {
+    /// Write the parts into the buffer of `slot` that no frame in flight draws, and make it the one
+    /// the next frame draws. Only the frames that may still draw that buffer are waited for, never
+    /// the one drawing the other.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
+    pub(super) unsafe fn fill_dynamic(
+        &self,
+        slot: &mut DynamicBuffer,
+        parts: &[&[u8]],
+        minimum: usize,
+    ) -> Result<(), VulkanError> {
+        let target = 1 - slot.active;
+        let size: usize = parts.iter().map(|part| part.len()).sum();
+        // SAFETY: live handles. The frames that may draw the target have finished, so it may be
+        // replaced and written; it becomes the active buffer only after the write succeeded.
+        unsafe {
+            self.complete_through(slot.retired_at[target])?;
+            self.grow_host_buffer(&mut slot.buffers[target], size, minimum)?
+                .write(parts)?;
+        }
+        slot.retired_at[slot.active] = self.frames_submitted;
+        slot.active = target;
+        Ok(())
+    }
+
     /// Make `slot` hold a buffer of at least `size` bytes, replacing a smaller one with one of at
     /// least `minimum`; the old buffer is freed first.
     ///

@@ -42,7 +42,7 @@ impl VulkanBackend {
     /// Hand over the next frame's breaking overlay, placed like the
     /// terrain's.
     pub fn set_breaking(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.breaking_buffer.take();
+        let mut buffer = std::mem::take(&mut self.breaking_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.breaking_buffer = buffer;
         self.breaking_count = vertices.len() as u32;
@@ -55,11 +55,11 @@ impl VulkanBackend {
         &mut self,
         (maps, decorations): (&[Vertex], &[Vertex]),
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.map_buffer.take();
+        let mut buffer = std::mem::take(&mut self.map_buffer);
         self.fill_vertex_buffer(&mut buffer, maps)?;
         self.map_buffer = buffer;
         self.map_count = maps.len() as u32;
-        let mut buffer = self.map_decoration_buffer.take();
+        let mut buffer = std::mem::take(&mut self.map_decoration_buffer);
         self.fill_vertex_buffer(&mut buffer, decorations)?;
         self.map_decoration_buffer = buffer;
         self.map_decoration_count = decorations.len() as u32;
@@ -69,7 +69,7 @@ impl VulkanBackend {
     /// Hand over the next frame's entity triangles, placed like the
     /// terrain's, with each vertex's normal in its tint.
     pub fn set_entities(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.entity_buffer.take();
+        let mut buffer = std::mem::take(&mut self.entity_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.entity_buffer = buffer;
         self.entity_count = vertices.len() as u32;
@@ -79,7 +79,7 @@ impl VulkanBackend {
     /// Hand over the next frame's glowing layers, as triangles that sample the
     /// entity textures, each vertex's tint its colour.
     pub fn set_entity_glow(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.glow_buffer.take();
+        let mut buffer = std::mem::take(&mut self.glow_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.glow_buffer = buffer;
         self.glow_count = vertices.len() as u32;
@@ -89,7 +89,7 @@ impl VulkanBackend {
     /// Hand over the next frame's energy swirls: each vertex carries its
     /// texture's place, the offset and the colour (see [`SWIRL_VERTEX_SHADER`]).
     pub fn set_entity_swirl(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.swirl_buffer.take();
+        let mut buffer = std::mem::take(&mut self.swirl_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.swirl_buffer = buffer;
         self.swirl_count = vertices.len() as u32;
@@ -100,7 +100,7 @@ impl VulkanBackend {
     /// the glint's texture matrix and its tint carries the glint texture's place in the packed image
     /// (see [`GLINT_VERTEX_SHADER`]).
     pub fn set_entity_glint(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.glint_buffer.take();
+        let mut buffer = std::mem::take(&mut self.glint_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.glint_buffer = buffer;
         self.glint_count = vertices.len() as u32;
@@ -115,7 +115,7 @@ impl VulkanBackend {
         vertices: &[Vertex],
         mask_offset: [f32; 2],
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.dissolve_buffer.take();
+        let mut buffer = std::mem::take(&mut self.dissolve_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.dissolve_buffer = buffer;
         self.dissolve_count = vertices.len() as u32;
@@ -125,7 +125,7 @@ impl VulkanBackend {
 
     /// Hand over the next frame's dragon rays: each vertex's tint its colour.
     pub fn set_dragon_rays(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.rays_buffer.take();
+        let mut buffer = std::mem::take(&mut self.rays_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.rays_buffer = buffer;
         self.rays_count = vertices.len() as u32;
@@ -135,7 +135,7 @@ impl VulkanBackend {
     /// Hand over the next frame's dropped items: triangles placed like the
     /// terrain's, each with its shade and colour, sampling the block atlas.
     pub fn set_ground_items(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.ground_buffer.take();
+        let mut buffer = std::mem::take(&mut self.ground_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.ground_buffer = buffer;
         self.ground_count = vertices.len() as u32;
@@ -145,7 +145,7 @@ impl VulkanBackend {
     /// Hand over the next frame's entity shadows, as triangles that sample the
     /// entity textures.
     pub fn set_shadows(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.shadow_buffer.take();
+        let mut buffer = std::mem::take(&mut self.shadow_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.shadow_buffer = buffer;
         self.shadow_count = vertices.len() as u32;
@@ -155,7 +155,7 @@ impl VulkanBackend {
     /// Hand over the next frame's experience orbs, as triangles that sample the
     /// entity textures.
     pub fn set_experience_orbs(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
-        let mut buffer = self.orb_buffer.take();
+        let mut buffer = std::mem::take(&mut self.orb_buffer);
         self.fill_vertex_buffer(&mut buffer, vertices)?;
         self.orb_buffer = buffer;
         self.orb_count = vertices.len() as u32;
@@ -170,11 +170,11 @@ impl VulkanBackend {
         see_through: &[Vertex],
         normal: &[Vertex],
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.name_tag_see_buffer.take();
+        let mut buffer = std::mem::take(&mut self.name_tag_see_buffer);
         self.fill_vertex_buffer(&mut buffer, see_through)?;
         self.name_tag_see_buffer = buffer;
         self.name_tag_see_count = see_through.len() as u32;
-        let mut buffer = self.name_tag_buffer.take();
+        let mut buffer = std::mem::take(&mut self.name_tag_buffer);
         self.fill_vertex_buffer(&mut buffer, normal)?;
         self.name_tag_buffer = buffer;
         self.name_tag_count = normal.len() as u32;
@@ -188,12 +188,12 @@ impl VulkanBackend {
         frame: &crate::gui::GuiFrame,
         size: [f32; 2],
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.gui_buffer.take();
+        let mut buffer = std::mem::take(&mut self.gui_buffer);
         let bytes = as_bytes(&frame.vertices);
         self.fill_bytes(&mut buffer, bytes)?;
         self.gui_buffer = buffer;
         if !frame.items.is_empty() {
-            let mut items = self.gui_item_buffer.take();
+            let mut items = std::mem::take(&mut self.gui_item_buffer);
             let bytes = as_bytes(&frame.items);
             self.fill_bytes(&mut items, bytes)?;
             self.gui_item_buffer = items;
@@ -209,7 +209,7 @@ impl VulkanBackend {
         &mut self,
         vertices: &[crate::outline::LineVertex],
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.outline_buffer.take();
+        let mut buffer = std::mem::take(&mut self.outline_buffer);
         let bytes = as_bytes(vertices);
         self.fill_bytes(&mut buffer, bytes)?;
         self.outline_buffer = buffer;
@@ -225,7 +225,7 @@ impl VulkanBackend {
         held: &[Vertex],
         projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
-        let mut buffer = self.hand_buffer.take();
+        let mut buffer = std::mem::take(&mut self.hand_buffer);
         let all: Vec<Vertex> = vertices.iter().chain(held).copied().collect();
         self.fill_vertex_buffer(&mut buffer, &all)?;
         self.hand_buffer = buffer;
@@ -238,42 +238,33 @@ impl VulkanBackend {
     /// Write vertices into a host buffer, growing it when they do not fit.
     pub(super) fn fill_vertex_buffer(
         &mut self,
-        slot: &mut Option<HostBuffer>,
+        slot: &mut DynamicBuffer,
         vertices: &[Vertex],
     ) -> Result<(), VulkanError> {
         let bytes = as_bytes(vertices);
         self.fill_bytes(slot, bytes)
     }
 
-    /// Write bytes into a host vertex buffer, growing it when they do not
+    /// Write bytes into a dynamic vertex buffer, growing it when they do not
     /// fit.
     pub(super) fn fill_bytes(
         &mut self,
-        slot: &mut Option<HostBuffer>,
+        slot: &mut DynamicBuffer,
         bytes: &[u8],
     ) -> Result<(), VulkanError> {
-        // SAFETY: the fence wait leaves the previous frame done with the buffer, so it may be
-        // replaced and written.
-        unsafe {
-            self.wait_in_flight()?;
-            self.grow_host_buffer(slot, bytes.len(), 1 << 16)?
-                .write(&[bytes])
-        }
+        // SAFETY: live handles; `fill_dynamic` waits for the frames that may draw the buffer it
+        // replaces.
+        unsafe { self.fill_dynamic(slot, &[bytes], 1 << 16) }
     }
 
     /// Hand over the next frame's rain and snow triangles, placed like the
     /// terrain's.
     pub fn set_weather(&mut self, rain: &[Vertex], snow: &[Vertex]) -> Result<(), VulkanError> {
-        let (rain_bytes, snow_bytes) = (as_bytes(rain), as_bytes(snow));
-        let mut slot = self.weather_buffer.take();
-        // SAFETY: the fence wait leaves the previous frame done with the buffer, so it may be
-        // replaced and written.
-        let written = unsafe {
-            self.wait_in_flight().and_then(|()| {
-                self.grow_host_buffer(&mut slot, rain_bytes.len() + snow_bytes.len(), 1 << 16)?
-                    .write(&[rain_bytes, snow_bytes])
-            })
-        };
+        let mut slot = std::mem::take(&mut self.weather_buffer);
+        // SAFETY: live handles; `fill_dynamic` waits for the frames that may draw the buffer it
+        // replaces.
+        let written =
+            unsafe { self.fill_dynamic(&mut slot, &[as_bytes(rain), as_bytes(snow)], 1 << 16) };
         self.weather_buffer = slot;
         written?;
         self.weather_counts = (rain.len() as u32, snow.len() as u32);
@@ -344,15 +335,10 @@ impl VulkanBackend {
         fog_colour: [f32; 4],
         sky_end: f32,
     ) -> Result<(), VulkanError> {
-        let mut slot = self.sky_buffer.take();
-        // SAFETY: the fence wait leaves the previous frame done with the buffer, so it may be
-        // replaced and written.
-        let written = unsafe {
-            self.wait_in_flight().and_then(|()| {
-                self.grow_host_buffer(&mut slot, as_bytes(vertices).len(), 1 << 20)?
-                    .write(&[as_bytes(vertices)])
-            })
-        };
+        let mut slot = std::mem::take(&mut self.sky_buffer);
+        // SAFETY: live handles; `fill_dynamic` waits for the frames that may draw the buffer it
+        // replaces.
+        let written = unsafe { self.fill_dynamic(&mut slot, &[as_bytes(vertices)], 1 << 20) };
         self.sky_buffer = slot;
         written?;
         self.pending_sky = Some(PendingSky {

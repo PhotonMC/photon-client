@@ -829,21 +829,62 @@ impl VulkanBackend {
         }
     }
 
-    /// Wait until the frame in flight has finished. The wait is counted against the frame being
-    /// built, since that is the frame that stood still for it.
+    /// Wait until every frame up to number `through` has finished on the GPU. The wait is counted
+    /// against the frame being built, since that is the frame that stood still for it.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
+    pub(super) unsafe fn complete_through(&self, through: u64) -> Result<(), VulkanError> {
+        let through = through.min(self.frames_submitted);
+        let start = std::time::Instant::now();
+        for number in self.completed.get() + 1..=through {
+            let slot = &self.frames[number as usize % FRAMES_IN_FLIGHT];
+            // A slot that took a later frame had to finish this one first, so only a slot still
+            // holding this frame has a fence to wait on.
+            if slot.stamp == number {
+                // SAFETY: live handles; the fence is waited on, never reset, here.
+                let waited = unsafe {
+                    self.device
+                        .wait_for_fences(&[slot.in_flight], true, u64::MAX)
+                };
+                waited.map_err(|result| VulkanError::Call("vkWaitForFences", result))?;
+            }
+            self.completed.set(number);
+        }
+        self.fence_wait.set(self.fence_wait.get() + start.elapsed());
+        Ok(())
+    }
+
+    /// Give back the section meshes whose last frame has finished, along with the copies still
+    /// waiting to fill them.
+    ///
+    /// # Safety
+    ///
+    /// The GPU must be done with every frame up to `completed`.
+    pub(super) unsafe fn free_retired(&mut self) {
+        let completed = self.completed.get();
+        let (done, waiting): (Vec<_>, Vec<_>) = std::mem::take(&mut self.retired)
+            .into_iter()
+            .partition(|(stamp, _)| *stamp <= completed);
+        self.retired = waiting;
+        for (_, section) in done {
+            // A copy into a mesh nobody will draw has nowhere safe to go: its range is free now.
+            self.staged
+                .retain(|copy| copy.target != section.vertices && copy.target != section.indices);
+            // SAFETY: the section's last frame has finished (see `# Safety`).
+            unsafe { self.destroy_section(section) };
+        }
+    }
+
+    /// Wait until every frame submitted so far has finished.
     ///
     /// # Safety
     ///
     /// Only the live handles.
     pub(super) unsafe fn wait_in_flight(&self) -> Result<(), VulkanError> {
-        let start = std::time::Instant::now();
-        // SAFETY: live handles; the fence is waited on, never reset, here.
-        let waited = unsafe {
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-        };
-        self.fence_wait.set(self.fence_wait.get() + start.elapsed());
-        waited.map_err(|result| VulkanError::Call("vkWaitForFences", result))
+        // SAFETY: the caller's contract.
+        unsafe { self.complete_through(self.frames_submitted) }
     }
 
     /// Write a timestamp after the work recorded so far, if the device can.
@@ -853,6 +894,7 @@ impl VulkanBackend {
     /// `command_buffer` must be recording, with the timestamp queries reset in it.
     pub(super) unsafe fn stamp(&self, query: u32) {
         if let Some(queries) = &self.timestamps {
+            let query = (self.frame_slot as u32) * TIMESTAMP_COUNT + query;
             // SAFETY: recording (see `# Safety`), and the pool is live and owned by `self`.
             unsafe {
                 self.device.cmd_write_timestamp(
@@ -865,16 +907,21 @@ impl VulkanBackend {
         }
     }
 
-    /// Read back the last frame's timestamps, if it wrote any.
+    /// Read back the timestamps the last frame of this slot wrote, if it wrote any.
     ///
     /// # Safety
     ///
-    /// The caller has waited on `in_flight`, so that frame has finished.
+    /// The caller has waited for that frame, so it has finished.
     pub(super) unsafe fn read_timestamps(&mut self) {
-        let Some(queries) = self.timestamps.as_mut().filter(|queries| queries.pending) else {
+        let slot = self.frame_slot;
+        let Some(queries) = self
+            .timestamps
+            .as_mut()
+            .filter(|queries| queries.pending[slot])
+        else {
             return;
         };
-        queries.pending = false;
+        queries.pending[slot] = false;
         let mut ticks = [0_u64; TIMESTAMP_COUNT as usize];
         // SAFETY: live pool; the frame that wrote it has finished (see `# Safety`). A pass the
         // frame did not reach leaves the query unavailable and the call fails, which keeps the
@@ -882,7 +929,7 @@ impl VulkanBackend {
         let read = unsafe {
             self.device.get_query_pool_results(
                 queries.pool,
-                0,
+                slot as u32 * TIMESTAMP_COUNT,
                 &mut ticks,
                 vk::QueryResultFlags::TYPE_64,
             )
@@ -971,12 +1018,17 @@ impl VulkanBackend {
         // its resources are recycled; the command buffer is begun here and ended before the
         // submit, and the readback is mapped only after the fence has signalled.
         unsafe {
-            self.wait_in_flight()?;
+            // The frame about to be recorded takes the slot of the one before the last, which must
+            // have finished: the last frame may still be drawing.
+            let number = self.frames_submitted + 1;
+            self.frame_slot = number as usize % FRAMES_IN_FLIGHT;
+            self.command_buffer = self.frames[self.frame_slot].command_buffer;
+            self.complete_through(self.frames[self.frame_slot].stamp)?;
             self.read_timestamps();
-            for section in std::mem::take(&mut self.retired) {
-                self.destroy_section(section);
-            }
-            self.staging_in_flight.clear();
+            self.free_retired();
+            let completed = self.completed.get();
+            self.staging_in_flight
+                .retain(|&(stamp, _)| stamp > completed);
             self.trim_staging();
             if capture {
                 self.make_readback()?;
@@ -986,7 +1038,7 @@ impl VulkanBackend {
             let (index, _) = match self.swapchain_device.acquire_next_image(
                 self.swapchain,
                 u64::MAX,
-                self.image_available,
+                self.frames[self.frame_slot].image_available,
                 vk::Fence::null(),
             ) {
                 Ok(value) => value,
@@ -998,7 +1050,7 @@ impl VulkanBackend {
             };
             self.timings.acquire = acquire_start.elapsed();
             self.device
-                .reset_fences(&[self.in_flight])
+                .reset_fences(&[self.frames[self.frame_slot].in_flight])
                 .map_err(|result| VulkanError::Call("vkResetFences", result))?;
 
             let image = self.images[index as usize];
@@ -1019,7 +1071,7 @@ impl VulkanBackend {
                 self.device.cmd_reset_query_pool(
                     self.command_buffer,
                     queries.pool,
-                    0,
+                    self.frame_slot as u32 * TIMESTAMP_COUNT,
                     TIMESTAMP_COUNT,
                 );
             }
@@ -1112,7 +1164,7 @@ impl VulkanBackend {
             self.timings.record = record_start.elapsed();
 
             let submit_start = std::time::Instant::now();
-            let wait_semaphores = [self.image_available];
+            let wait_semaphores = [self.frames[self.frame_slot].image_available];
             let wait_stages = [vk::PipelineStageFlags::TRANSFER];
             let command_buffers = [self.command_buffer];
             let signal_semaphores = [self.render_finished[index as usize]];
@@ -1122,7 +1174,11 @@ impl VulkanBackend {
                 .command_buffers(&command_buffers)
                 .signal_semaphores(&signal_semaphores);
             self.device
-                .queue_submit(self.queue, &[submit], self.in_flight)
+                .queue_submit(
+                    self.queue,
+                    &[submit],
+                    self.frames[self.frame_slot].in_flight,
+                )
                 .map_err(|result| VulkanError::Call("vkQueueSubmit", result))?;
 
             let swapchains = [self.swapchain];
@@ -1140,9 +1196,11 @@ impl VulkanBackend {
             }
             self.timings.submit_present = submit_start.elapsed();
             self.timings.fence_wait = self.fence_wait.take();
-            let wrote_scene = self.scene.is_some();
+            self.frames_submitted = number;
+            self.frames[self.frame_slot].stamp = number;
+            let (slot, wrote_scene) = (self.frame_slot, self.scene.is_some());
             if let Some(queries) = self.timestamps.as_mut() {
-                queries.pending = wrote_scene;
+                queries.pending[slot] = wrote_scene;
             }
 
             if !capture {
