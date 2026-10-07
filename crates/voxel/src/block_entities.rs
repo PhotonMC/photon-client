@@ -1,10 +1,11 @@
-//! The chests and shulker boxes of the world (`ChestRenderer`, `ShulkerBoxRenderer`): each block
-//! entity's model, in the texture of its kind, turned to face, its lid as far open as the
-//! server's block events have it.
+//! The block entities of the world (`ChestRenderer`, `ShulkerBoxRenderer`, `BellRenderer`): each
+//! one's model, in the texture of its kind, turned to face, its lid as far open or its clapper
+//! as far swung as the server's block events have it.
 
 use voxel_core::direction::Direction;
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
+use voxel_render::bell;
 use voxel_render::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
 use voxel_render::entity_textures::EntityTextures;
 use voxel_render::joml::Pose;
@@ -16,11 +17,11 @@ use voxel_world::ShulkerBoxView;
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
 
-/// How far from the camera, in chunks, chests are drawn.
+/// How far from the camera, in chunks, block entities are drawn.
 const RADIUS_CHUNKS: i32 = 8;
 
 /// The paths (under `textures/`) of every chest and shulker box texture.
-const TEXTURES: [&str; 36] = [
+const TEXTURES: [&str; 37] = [
     "entity/chest/normal",
     "entity/chest/normal_left",
     "entity/chest/normal_right",
@@ -40,6 +41,7 @@ const TEXTURES: [&str; 36] = [
     "entity/chest/copper_oxidized_left",
     "entity/chest/copper_oxidized_right",
     "entity/chest/ender",
+    "entity/bell/bell_body",
     "entity/shulker/shulker",
     "entity/shulker/shulker_white",
     "entity/shulker/shulker_orange",
@@ -91,8 +93,8 @@ fn max_light(first: i32, second: i32) -> i32 {
     block(first).max(block(second)) << 4 | sky(first).max(sky(second)) << 20
 }
 
-/// The chests near the camera.
-pub fn chests(
+/// The block entities near the camera.
+pub fn block_entities(
     session: &PlaySession,
     models: &mut MobModels,
     textures: &EntityTextures,
@@ -115,6 +117,15 @@ pub fn chests(
                     view,
                     (x, y, z),
                     shulker,
+                ));
+            } else if let Some(shake) = world.bell_shake((x, y, z), partial) {
+                vertices.extend(bell_vertices(
+                    session,
+                    models,
+                    textures,
+                    view,
+                    (x, y, z),
+                    shake,
                 ));
             }
             continue;
@@ -183,5 +194,32 @@ fn shulker_box_vertices(
         (z - view.origin[2]) as f32,
     );
     let pose = shulker_box::box_pose(&base, shulker.facing);
+    mob_vertices_posed(model, &pose, rect, (light, false))
+}
+
+/// One bell, swung as far as its ticks since the blow say.
+fn bell_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    (ticks, shake): (f32, Option<Direction>),
+) -> Vec<Vertex> {
+    let (Some(rect), Some(model)) = (textures.rect(bell::TEXTURE), models.model(bell::LAYER))
+    else {
+        return Vec::new();
+    };
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    model.setup_bell(ticks, shake);
+    let mut pose = Pose::default();
+    pose.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
     mob_vertices_posed(model, &pose, rect, (light, false))
 }

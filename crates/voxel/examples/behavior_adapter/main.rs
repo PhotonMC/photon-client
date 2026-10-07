@@ -23712,6 +23712,33 @@ fn shulker_box_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// `bell_pose`: the bell's model and sprite for its ticks and the direction it was struck from.
+fn bell_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::mob_model::MobModel;
+    let layer = voxel_data::entity_model::layer(voxel_render::bell::LAYER).ok_or("no layer")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let ticks = f32::from_bits(
+            u32::from_str_radix(row["ticks"].as_str().ok_or("ticks")?, 16)
+                .map_err(|error| error.to_string())?,
+        );
+        let shake = row["shake"]
+            .as_str()
+            .map(|name| voxel_core::direction::Direction::from_name(name).ok_or("shake"))
+            .transpose()?;
+        let mut model = MobModel::bake(layer);
+        model.setup_bell(ticks, shake);
+        rows.push(json!({
+            "label": row["label"],
+            "ticks": format!("{:08x}", ticks.to_bits()),
+            "light": row["light"],
+            "texture": voxel_render::bell::TEXTURE,
+            "quads": posed_quads(&model),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
 fn camera_hurt_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
@@ -25983,6 +26010,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "camera_hurt" => return camera_hurt_result(request),
         "chest_model" => return chest_model_result(request),
         "chest_pose" => return chest_pose_result(request),
+        "bell_pose" => return bell_pose_result(request),
         "shulker_box_pose" => return shulker_box_pose_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),

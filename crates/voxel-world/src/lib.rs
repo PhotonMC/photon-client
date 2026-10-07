@@ -152,7 +152,7 @@ pub struct ClientWorld {
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
     world_border: ClientWorldBorder,
-    chest_lids: chest::ChestLids,
+    block_animations: chest::BlockAnimations,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
     server_simulation_distance: i32,
     /// The chunk the client's own player stands in, as the session last said
@@ -226,7 +226,7 @@ impl ClientWorld {
             local_player: None,
             sounds: local_player::SoundQueue::default(),
             world_border: ClientWorldBorder::default(),
-            chest_lids: chest::ChestLids::default(),
+            block_animations: chest::BlockAnimations::default(),
             server_simulation_distance: 3,
             local_chunk: None,
             game_time: 0,
@@ -1461,7 +1461,7 @@ impl ClientWorld {
 
     pub fn tick(&mut self) {
         self.world_border.tick();
-        self.chest_lids.tick();
+        self.block_animations.tick();
         self.game_time = self.game_time.wrapping_add(1);
         let local_player_is_passenger = self.local_player.as_ref().is_some_and(|player| {
             self.entity_vehicle_id(player.id).is_some_and(|vehicle_id| {
@@ -3407,9 +3407,9 @@ impl ClientWorld {
         // empty or not, and of a change in how light passes the block.
         let is_empty = section.has_only_air();
         // A chest block has its own block entity on the client, and a lid that goes with it.
-        self.chest_lids.remove(&(x, y, z));
+        self.block_animations.remove(&(x, y, z));
         if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
-            if chest::is_lidded_state(state_id) {
+            if chest::is_drawn_state(state_id) {
                 chunk.chests.insert((x, y, z));
             } else {
                 chunk.chests.remove(&(x, y, z));

@@ -1,6 +1,6 @@
-//! The chests and shulker boxes the client draws (`ChestBlockEntity`, `EnderChestBlockEntity`,
-//! `ShulkerBoxBlockEntity`): which blocks they are, the partner half of a double chest, and the
-//! lid that opens and shuts as the server's block events say.
+//! The block entities the client draws (`ChestBlockEntity`, `EnderChestBlockEntity`,
+//! `ShulkerBoxBlockEntity`, `BellBlockEntity`): which blocks they are, the partner half of a double
+//! chest, and the lid or the clapper that moves as the server's block events say.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -94,6 +94,34 @@ impl ShulkerLid {
     }
 }
 
+/// `BellBlockEntity`: the shake a ring starts and the tick wears away.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct BellShake {
+    ticks: i32,
+    shaking: bool,
+    direction: Option<Direction>,
+}
+
+impl BellShake {
+    /// `tick`, without the raiders' resonance.
+    fn tick(&mut self) {
+        if self.shaking {
+            self.ticks += 1;
+        }
+        if self.ticks >= 50 {
+            self.shaking = false;
+            self.ticks = 0;
+        }
+    }
+
+    /// `triggerEvent` for event 1: the direction of the blow, in `Direction.from3DDataValue`.
+    fn ring(&mut self, direction: u8) {
+        self.direction = Some(Direction::from_3d_data_value(i32::from(direction)));
+        self.ticks = 0;
+        self.shaking = true;
+    }
+}
+
 /// A table of which blocks are of some classes, by the block's registry id.
 fn is_of_classes(
     state_id: i32,
@@ -126,9 +154,15 @@ pub(crate) fn is_shulker_state(state_id: i32) -> bool {
     is_of_classes(state_id, &[BlockClass::ShulkerBoxBlock], &BLOCKS)
 }
 
-/// Whether a block state has a lid the client draws.
-pub(crate) fn is_lidded_state(state_id: i32) -> bool {
-    is_chest_state(state_id) || is_shulker_state(state_id)
+/// Whether a block state is a bell's.
+pub(crate) fn is_bell_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::BellBlock], &BLOCKS)
+}
+
+/// Whether a block state has a block entity the client draws.
+pub(crate) fn is_drawn_state(state_id: i32) -> bool {
+    is_chest_state(state_id) || is_shulker_state(state_id) || is_bell_state(state_id)
 }
 
 /// The chest blocks of a chunk's sections.
@@ -143,7 +177,7 @@ pub(crate) fn chests_of(
             continue;
         }
         for index in 0..4096 {
-            if section.block_states.get(index).is_some_and(is_lidded_state) {
+            if section.block_states.get(index).is_some_and(is_drawn_state) {
                 found.insert((
                     chunk_x * 16 + (index % 16) as i32,
                     section_y * 16 + (index / 256) as i32,
@@ -177,12 +211,13 @@ pub struct ShulkerBoxView {
 
 /// The lids the server has opened, by block.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct ChestLids {
+pub(crate) struct BlockAnimations {
     pub(crate) chests: HashMap<(i32, i32, i32), ChestLid>,
     pub(crate) shulkers: HashMap<(i32, i32, i32), ShulkerLid>,
+    pub(crate) bells: HashMap<(i32, i32, i32), BellShake>,
 }
 
-impl ChestLids {
+impl BlockAnimations {
     pub(crate) fn tick(&mut self) {
         for lid in self.chests.values_mut() {
             lid.tick();
@@ -190,21 +225,25 @@ impl ChestLids {
         for lid in self.shulkers.values_mut() {
             lid.tick();
         }
+        for bell in self.bells.values_mut() {
+            bell.tick();
+        }
     }
 
     pub(crate) fn remove(&mut self, pos: &(i32, i32, i32)) {
         self.chests.remove(pos);
         self.shulkers.remove(pos);
+        self.bells.remove(pos);
     }
 }
 
-impl PartialEq for ChestLids {
+impl PartialEq for BlockAnimations {
     fn eq(&self, _: &Self) -> bool {
         true
     }
 }
 
-impl Eq for ChestLids {}
+impl Eq for BlockAnimations {}
 
 impl ClientWorld {
     /// The chest at a block, if it is one the client draws as a block entity.
@@ -263,7 +302,7 @@ impl ClientWorld {
         partial: f32,
     ) -> f32 {
         let own = |pos: (i32, i32, i32)| {
-            self.chest_lids
+            self.block_animations
                 .chests
                 .get(&pos)
                 .map_or(0.0, |lid| lid.openness(partial))
@@ -294,20 +333,45 @@ impl ClientWorld {
 
     /// How far a shulker box is open (`getProgress`).
     pub fn shulker_box_progress(&self, pos: (i32, i32, i32), partial: f32) -> f32 {
-        self.chest_lids
+        self.block_animations
             .shulkers
             .get(&pos)
             .map_or(0.0, |lid| lid.progress(partial))
     }
 
-    /// `ClientLevel.blockEvent` on a chest or a shulker box: event 1 opens the lid for a positive
-    /// count, shuts it for none (a box opens for one only).
+    /// Whether a block is a bell, and how it is shaking: the ticks since the blow with the part
+    /// of a tick that has passed, and the direction it was struck from while it still swings
+    /// (`BellRenderer.extractRenderState`).
+    pub fn bell_shake(
+        &self,
+        pos: (i32, i32, i32),
+        partial: f32,
+    ) -> Option<(f32, Option<Direction>)> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_bell_state(state) {
+            return None;
+        }
+        let bell = self
+            .block_animations
+            .bells
+            .get(&pos)
+            .copied()
+            .unwrap_or_default();
+        Some((
+            bell.ticks as f32 + partial,
+            bell.shaking.then_some(bell.direction).flatten(),
+        ))
+    }
+
+    /// `ClientLevel.blockEvent` on a chest, a shulker box or a bell: event 1 opens the lid for a
+    /// positive count, shuts it for none (a box opens for one only), or strikes the bell from the
+    /// direction the data says.
     pub fn apply_chest_block_event(&mut self, pos: (i32, i32, i32), event: u8, count: u8) -> bool {
         if event != 1 {
             return false;
         }
         if self.chest_view(pos.0, pos.1, pos.2).is_some() {
-            self.chest_lids
+            self.block_animations
                 .chests
                 .entry(pos)
                 .or_default()
@@ -315,11 +379,19 @@ impl ClientWorld {
             return true;
         }
         if self.shulker_box_view(pos.0, pos.1, pos.2).is_some() {
-            self.chest_lids
+            self.block_animations
                 .shulkers
                 .entry(pos)
                 .or_default()
                 .trigger(count);
+            return true;
+        }
+        if self.bell_shake(pos, 0.0).is_some() {
+            self.block_animations
+                .bells
+                .entry(pos)
+                .or_default()
+                .ring(count);
             return true;
         }
         false
@@ -342,7 +414,24 @@ impl ClientWorld {
 
 #[cfg(test)]
 mod tests {
-    use super::{ChestLid, ShulkerLid};
+    use voxel_core::direction::Direction;
+
+    use super::{BellShake, ChestLid, ShulkerLid};
+
+    #[test]
+    fn bell_swings_for_fifty_ticks_from_the_blow() {
+        let mut bell = BellShake::default();
+        bell.tick();
+        assert!(!bell.shaking && bell.ticks == 0);
+        bell.ring(2);
+        assert_eq!(bell.direction, Some(Direction::North));
+        for _ in 0..49 {
+            bell.tick();
+        }
+        assert!(bell.shaking && bell.ticks == 49);
+        bell.tick();
+        assert!(!bell.shaking && bell.ticks == 0);
+    }
 
     #[test]
     fn shulker_lid_opens_then_stays_open_and_closes() {

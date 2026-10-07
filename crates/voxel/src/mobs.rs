@@ -312,7 +312,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(crate::sniffers::textures())
         .chain(crate::ender_dragons::textures())
         .chain(crate::end_crystals::textures())
-        .chain(crate::chests::textures())
+        .chain(crate::block_entities::textures())
         .chain(crate::minecarts::textures())
         .chain(crate::arrows::textures())
         .chain(crate::charges::textures())
@@ -553,7 +553,9 @@ fn remote_wild_animals(
     vertices.extend(crate::end_crystals::remote_end_crystals(
         session, models, textures, view,
     ));
-    vertices.extend(crate::chests::chests(session, models, textures, view));
+    vertices.extend(crate::block_entities::block_entities(
+        session, models, textures, view,
+    ));
     vertices
 }
 

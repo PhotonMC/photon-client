@@ -1,4 +1,4 @@
-# T79 — Sandık ve shulker kutusu blok entity çizimi — [client-parity]
+# T79, T80 — Sandık, shulker kutusu ve çan blok entity çizimi — [client-parity]
 
 Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
@@ -26,3 +26,11 @@ Gerçek `ShulkerBoxRenderer.submit` ile Rust `voxel_render::shulker_box` aynı g
 - Kapak `ShulkerBoxBlockEntity`'dir: `BlockEvent` 1 ve veri 1 açar, 0 kapatır; tikte onda bir ilerler. Yön özelliği yoksa kutu yukarı bakar.
 - Sapma: kapağın açılırken yaptığı komşu güncellemeleri ve üstündeki varlıkları itmesi (`moveCollidedEntities`) istemcide yok; kapalı/açık durumdaki çarpışma şekli değişmez. Kapak hareketi canlıda denenmedi.
 - Yatak ayrı bir blok entity çizicisi gerektirmez: 26.2'de normal blok modelidir (`BedRenderState` kullanılmıyor).
+
+## Çan (T80)
+
+Gerçek `BellRenderer.submit` ile Rust `MobModel::setup_bell` aynı girdide karşılaştırılır (`entity/bell-pose`, 36 satır: durağan ve beş yön × altı tik): ilerleme, ışık, doku ve sallanmış modelin dörtgenleri.
+
+- `BellModel.setupAnim`: çalındığı yönün tersine `sin(tik/π)/(4 + tik/3)` kadar sallanır (kuzey/güney `x`, doğu/batı `z`); yukarı/aşağıdan çalınan çan sallanmaz. Çizici durumu `tik + kare kesri` ve çalındığı yönü (`shaking` iken) alır.
+- `BellBlockEntity`: `BlockEvent` 1 yönü (`from3DDataValue`) alır, sayacı sıfırlar ve sallanmayı başlatır; her tik sayaç artar, elli tikte durur. Gövde blok modelinde yoktur, yalnız bu çizici çizer.
+- Sapma: baskıncı yakındayken yankılanma (ses ve parçacık, `EntityTypeTags.RAIDERS`) yok. Canlıda yer ve tavan çanı görüldü; sallanma canlıda denenmedi.

@@ -16072,6 +16072,7 @@ def entity_cases():
     yield from entity_camera_hurt_cases()
     yield from entity_chest_cases()
     yield from entity_shulker_box_cases()
+    yield from entity_bell_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17993,6 +17994,17 @@ def entity_shulker_box_cases():
                      "z": float_bits(0.0)})
     yield {"case_id": "entity/shulker-box-pose", "family": "entity", "operation": "shulker_box_pose",
            "rows": rows}
+
+
+def entity_bell_cases():
+    """The real `BellRenderer` model for a bell at rest and swinging from each side, through the
+    fifty ticks of a ring."""
+    rows = []
+    for shake in (None, "north", "south", "east", "west", "up"):
+        for ticks in (0.0, 0.5, 3.25, 10.0, 24.75, 49.9):
+            rows.append({"label": f"{shake} {ticks}", "ticks": float_bits(ticks), "shake": shake,
+                         "light": 0xF000F0 - 17})
+    yield {"case_id": "entity/bell-pose", "family": "entity", "operation": "bell_pose", "rows": rows}
 
 
 def entity_equippable_cases():

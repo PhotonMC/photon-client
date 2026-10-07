@@ -4,6 +4,7 @@
 
 pub mod atlas;
 pub mod bake;
+pub mod bell;
 pub mod biome_tint;
 pub mod block_light;
 pub mod blockstate;

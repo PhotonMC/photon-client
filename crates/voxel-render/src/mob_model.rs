@@ -2816,6 +2816,29 @@ impl MobModel {
         }
     }
 
+    /// `BellModel.setupAnim`: the bell swings away from the side it was struck from, less each
+    /// tick.
+    pub fn setup_bell(&mut self, ticks: f32, shake: Option<voxel_core::direction::Direction>) {
+        use voxel_core::direction::Direction;
+        self.root.reset();
+        let (mut x_rot, mut z_rot) = (0.0_f32, 0.0_f32);
+        if let Some(direction) = shake {
+            let base = voxel_core::math::mth_sin_f64(f64::from(ticks / std::f32::consts::PI))
+                / (4.0 + ticks / 3.0);
+            match direction {
+                Direction::North => x_rot = -base,
+                Direction::South => x_rot = base,
+                Direction::East => z_rot = -base,
+                Direction::West => z_rot = base,
+                Direction::Down | Direction::Up => {}
+            }
+        }
+        if let Some(body) = self.root.child_mut("bell_body") {
+            body.x_rot = x_rot;
+            body.z_rot = z_rot;
+        }
+    }
+
     /// `ShulkerBoxModel.setupAnim`: the lid rises half a block and turns three quarters of a
     /// circle as the box opens.
     pub fn setup_shulker_box(&mut self, progress: f32) {
