@@ -97,6 +97,16 @@ impl PlaySession {
         Ok(())
     }
 
+    pub(super) fn on_level_particles(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let mut input = payload;
+        let packet = read_level_particles_packet(&mut input)?;
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("level particles trailing payload"));
+        }
+        self.level_particles.extend(packet);
+        Ok(())
+    }
+
     pub(super) fn on_sound(
         &mut self,
         payload: &[u8],

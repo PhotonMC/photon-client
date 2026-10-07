@@ -5,11 +5,16 @@
 //! reference's `Particle` makes its random source when it is built, seeded from the clock. Here
 //! the source is handed in.
 
+mod engine;
 mod flame;
+mod group;
 mod light;
 mod particle;
+mod resources;
 mod smoke;
 mod sprites;
 
+pub use engine::{AddView, LevelParticles, ParticleEngine, ParticleStatus, Spawn};
 pub use particle::Particle;
+pub use resources::ParticleResources;
 pub use sprites::SpriteSet;

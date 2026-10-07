@@ -9,6 +9,7 @@ mod logger;
 mod mobs;
 mod objects;
 mod overlays;
+mod particles;
 mod play;
 mod ppm;
 mod profile;

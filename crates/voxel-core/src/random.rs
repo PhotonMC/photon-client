@@ -157,7 +157,8 @@ impl RandomSource {
                 continue;
             }
 
-            let multiplier = (-2.0 * radius_squared.ln() / radius_squared).sqrt();
+            let multiplier =
+                (-2.0 * crate::math::strict_log(radius_squared) / radius_squared).sqrt();
             self.gaussian = Some(y * multiplier);
             return x * multiplier;
         }

@@ -143,6 +143,8 @@ struct Play {
     sounds_heard: usize,
     /// The sound engine, if there is a device to play on.
     sound: Option<SoundSystem>,
+    /// The level's particles.
+    particles: crate::particles::Particles,
     frames: u64,
     profile: Option<FrameProfile>,
     /// `VOXEL_BENCH`: the frames kept for a report.

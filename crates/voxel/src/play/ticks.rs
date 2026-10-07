@@ -184,6 +184,7 @@ impl Play {
             ticks: 0,
             sounds_heard: 0,
             sound,
+            particles: crate::particles::Particles::load(&root),
             frames: 0,
             profile: FrameProfile::from_env(),
             bench: Bench::from_env(),
@@ -249,7 +250,13 @@ impl Play {
                 self.backend.clear_sections()?;
                 self.sections.clear();
                 self.sky.reset();
+                self.particles.clear();
             }
+            // The particles option is not kept yet: all of them.
+            self.particles.receive(
+                self.session.take_level_particles(),
+                voxel_world::particles::ParticleStatus::All,
+            );
             let commands = self.session.take_sounds();
             self.sounds_heard += commands.len();
             if let Some(sound) = self.sound.as_mut() {
@@ -383,6 +390,7 @@ impl Play {
             sound.handle_local(own_sounds);
         }
         self.animated_atlas.tick();
+        self.particles.tick(session.world());
         if let Some(player) = session.player() {
             self.camera.tick(player);
         }

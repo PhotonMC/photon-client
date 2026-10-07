@@ -127,6 +127,7 @@ mod ids;
 mod inventory;
 mod map;
 mod movement;
+mod particles;
 mod player;
 mod recipe;
 mod serverbound;

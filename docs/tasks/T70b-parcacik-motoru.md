@@ -19,4 +19,6 @@ Java: `client/particle/{ParticleEngine,ParticleGroup,QuadParticleGroup,ParticleR
 Bu görevin kaydı (`docs/records/` altında yeni dosya) ve `docs/index.md`.
 
 ## Devir notu
-(boş)
+- **Yapılan:** `voxel-world/src/particles/{engine,group,resources}.rs`; `voxel-net` `read_level_particles_packet` (id 47) ve `take_level_particles`; `voxel/src/particles.rs` (motor, saat tohumlu rastgele kaynaklar, `particles/*.json` sprite listeleri; tik, paket, seviye sıfırlama bağlandı). Oracle `particle_engine`; kayıt: `client-particle-engine-parity-conformance.md`.
+- **Sapma/yan ürün:** `nextGaussian` artık `strict_log` (fdlibm) kullanır: arm64'te libm `ln` 1 ulp ayrışıyordu.
+- **Açık:** `ParticleStatus` seçeneği saklanmıyor (hep `ALL`); sağlayıcılar yalnız duman/alev; `ParticleLimit`, `TrackingEmitter` yok; çizim T70c.

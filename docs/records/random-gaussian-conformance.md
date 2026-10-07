@@ -72,3 +72,9 @@ Yerel raporlar: `compare-c3rqn2f5` (math debug), `compare-vdvn52ql` (math releas
 ## Sınırlar
 
 Bu kanıt legacy `nextGaussian` için seçili 6 yeni senaryoyla sınırlıdır. Diğer random overload'ları ve Gaussian kullanan istemci yolları sonraki dilimlerdir; `setSeed` için ayrı [kanıt](random-set-seed-conformance.md), `fork`/`forkPositional` için ayrı [kanıt](random-fork-conformance.md) vardır.
+
+## Sonraki değişiklik (T70b)
+
+`log` artık platformun libm'inden değil, fdlibm'in `log`undan taşınmış `voxel_core::math::strict_log`tan gelir:
+arm64 JVM'de `Math.log` fdlibm ile aynı bitleri verirken Apple libm'in `ln`i seyrek olarak bir basamak ayrışıyordu
+(partikül motoru satırında yakalandı). `strict_log`, JVM'in `StrictMath.log`una karşı 400 bin girdiyle bit bit denendi.

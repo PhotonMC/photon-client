@@ -84,7 +84,7 @@ class MovementParticleOracle extends MovementMenuOracle {
      * A particle made by `build`, whose own random source was seeded with `wanted`. The
      * seed is the clock's xor a counter that is set here, so the counter is set to cancel the
      * clock's reading the particle is expected to see; a reading that is off makes another try,
-     * which is told how far off it was.
+     * which is told how far off it was. Nothing made (a type with no provider) is nothing.
      */
     static net.minecraft.client.particle.Particle seededParticle(
         long wanted, java.util.concurrent.Callable<net.minecraft.client.particle.Particle> build) throws Exception {
@@ -98,6 +98,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             long stepped = wanted ^ expected;
             uniquifier.set(stepped * UNIQUIFIER_STEP_INVERSE);
             var particle = build.call();
+            if (particle == null) {
+                return null;
+            }
             if (seededWith(particle, wanted)) {
                 return particle;
             }
@@ -210,5 +213,169 @@ class MovementParticleOracle extends MovementMenuOracle {
         }
         entry.add("states", states);
         return entry;
+    }
+
+    /**
+     * An engine whose particles are each made with the next seed of a list: a try that did not
+     * get it is taken out of the queue again, and a type that makes nothing takes no seed.
+     */
+    static final class SeededEngine extends net.minecraft.client.particle.ParticleEngine {
+        private final java.util.ArrayDeque<Long> seeds = new java.util.ArrayDeque<>();
+
+        SeededEngine(net.minecraft.client.multiplayer.ClientLevel level,
+            net.minecraft.client.particle.ParticleResources resources) {
+            super(level, resources);
+        }
+
+        @Override
+        public net.minecraft.client.particle.Particle createParticle(
+            net.minecraft.core.particles.ParticleOptions options, double x, double y, double z,
+            double xa, double ya, double za) {
+            try {
+                @SuppressWarnings("unchecked")
+                var queue = (java.util.Queue<net.minecraft.client.particle.Particle>) getField(this, "particlesToAdd");
+                // What a try that missed drew from the engine's random source is given back.
+                var engineSeedField = getField(this, "random").getClass().getDeclaredField("seed");
+                engineSeedField.setAccessible(true);
+                var engineSeed = (java.util.concurrent.atomic.AtomicLong) engineSeedField.get(getField(this, "random"));
+                long engineSeedBefore = engineSeed.get();
+                var particle = seededParticle(seeds.isEmpty() ? 0L : seeds.peekFirst(), () -> {
+                    engineSeed.set(engineSeedBefore);
+                    var made = super.createParticle(options, x, y, z, xa, ya, za);
+                    if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())) {
+                        queue.remove(made);
+                    }
+                    return made;
+                });
+                if (particle != null) {
+                    seeds.removeFirst();
+                }
+                return particle;
+            } catch (Exception error) {
+                throw new IllegalStateException(error);
+            }
+        }
+    }
+
+    private static net.minecraft.core.particles.ParticleOptions simpleType(String name) {
+        return (net.minecraft.core.particles.SimpleParticleType) net.minecraft.core.registries.BuiltInRegistries
+            .PARTICLE_TYPE.getValue(net.minecraft.resources.Identifier.parse("minecraft:" + name));
+    }
+
+    private static final long FNV_OFFSET = 0xcbf29ce484222325L;
+    private static final long FNV_PRIME = 0x100000001b3L;
+
+    private static long fold(long hash, long value) {
+        return (hash ^ value) * FNV_PRIME;
+    }
+
+    /**
+     * The real engine, with the real providers, asked for particles by the level and by the
+     * packet: how many wait and how many are in the group after each tick, the first few
+     * particles as they are and a digest of all of them.
+     */
+    static JsonObject particleEngine(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var listener = scene.listener();
+        var minecraft = scene.minecraft();
+        setField(minecraft, "packetProcessor", new net.minecraft.network.PacketProcessor(Thread.currentThread()));
+        setField(listener, "level", level);
+        setField(listener, "minecraft", minecraft);
+        var listenerRandom = net.minecraft.util.RandomSource.createThreadSafe();
+        listenerRandom.setSeed(row.get("listener_seed").getAsLong());
+        setField(listener, "random", listenerRandom);
+        ((net.minecraft.util.RandomSource) getField(level, "random")).setSeed(row.get("level_seed").getAsLong());
+        scene.options().particles().set(net.minecraft.server.level.ParticleStatus.valueOf(row.get("status").getAsString()));
+
+        var camera = new net.minecraft.client.Camera();
+        setField(camera, "position", new net.minecraft.world.phys.Vec3(
+            Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"), Oracle.f64(row, "camera_z")));
+        var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(renderer, "mainCamera", camera);
+        setField(minecraft, "gameRenderer", renderer);
+
+        var sprites = new SpriteSetProbe(row.get("sprites").getAsInt());
+        var resources = new net.minecraft.client.particle.ParticleResources();
+        @SuppressWarnings("unchecked")
+        var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
+        var rebind = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet")
+            .getDeclaredMethod("rebind", java.util.List.class);
+        rebind.setAccessible(true);
+        for (var set : sets.values()) {
+            rebind.invoke(set, sprites.sprites);
+        }
+        var engine = new SeededEngine(level, resources);
+        setField(engine, "random", net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
+        long base = row.get("particle_seed_base").getAsLong();
+        long step = row.get("particle_seed_step").getAsLong();
+        for (int index = 0; index < row.get("particle_seeds").getAsInt(); index++) {
+            engine.seeds.add(base + step * index);
+        }
+        setField(minecraft, "particleEngine", engine);
+
+        var partials = row.getAsJsonArray("partials");
+        @SuppressWarnings("unchecked")
+        var pending = (java.util.Queue<net.minecraft.client.particle.Particle>) getField(engine, "particlesToAdd");
+        var ticks = new JsonArray();
+        for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            for (var element : row.getAsJsonArray("events")) {
+                var event = element.getAsJsonObject();
+                if (event.get("tick").getAsInt() != tick) {
+                    continue;
+                }
+                var options = simpleType(event.get("particle").getAsString());
+                switch (event.get("type").getAsString()) {
+                    case "add" -> level.addParticle(options, event.get("override").getAsBoolean(),
+                        event.get("always_show").getAsBoolean(), Oracle.f64(event, "x"), Oracle.f64(event, "y"),
+                        Oracle.f64(event, "z"), Oracle.f64(event, "xa"), Oracle.f64(event, "ya"), Oracle.f64(event, "za"));
+                    case "packet" -> listener.handleParticleEvent(
+                        new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(options,
+                            event.get("override").getAsBoolean(), event.get("always_show").getAsBoolean(),
+                            Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z"),
+                            Oracle.f32(event, "x_dist"), Oracle.f32(event, "y_dist"), Oracle.f32(event, "z_dist"),
+                            Oracle.f32(event, "max_speed"), event.get("count").getAsInt()));
+                    default -> throw new IllegalArgumentException("Unknown particle event " + event);
+                }
+            }
+            var counted = new JsonObject();
+            counted.addProperty("pending", pending.size());
+            engine.tick();
+            counted.addProperty("particles", groupParticles(engine).size());
+            ticks.add(counted);
+        }
+        entry.add("ticks", ticks);
+        var inGroup = groupParticles(engine);
+        long digest = FNV_OFFSET;
+        var first = new JsonArray();
+        int limit = row.get("describe").getAsInt();
+        for (var particle : inGroup) {
+            for (var name : new String[] {"x", "y", "z", "xd", "yd", "zd"}) {
+                digest = fold(digest, Double.doubleToRawLongBits((double) getField(particle, name)));
+            }
+            digest = fold(digest, (int) getField(particle, "age"));
+            digest = fold(digest, particle.getLifetime());
+            digest = fold(digest, sprites.indexOf(getField(particle, "sprite")));
+            if (first.size() < limit) {
+                first.add(describeParticle(particle, sprites, partials));
+            }
+        }
+        entry.add("first", first);
+        entry.addProperty("digest", Long.toHexString(digest));
+        return entry;
+    }
+
+    /** The particles of the engine's group, in the order they tick. */
+    private static java.util.List<net.minecraft.client.particle.Particle> groupParticles(
+        net.minecraft.client.particle.ParticleEngine engine) throws Exception {
+        var all = new java.util.ArrayList<net.minecraft.client.particle.Particle>();
+        for (var group : ((java.util.Map<?, ?>) getField(engine, "particles")).values()) {
+            for (var particle : (java.util.Queue<?>) getField(group, "particles")) {
+                all.add((net.minecraft.client.particle.Particle) particle);
+            }
+        }
+        return all;
     }
 }

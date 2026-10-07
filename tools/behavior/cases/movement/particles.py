@@ -65,3 +65,66 @@ def particle_tick_cases():
 def particle_cases():
     yield from particle_type_cases()
     yield from particle_tick_cases()
+    yield from particle_engine_cases()
+
+
+def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
+               listener_seed=202, engine_seed=303, describe=4, sprites=8):
+    return {
+        "label": label, "blocks": [], "chunk_radius": 1, "events": events, "status": status,
+        "tick_count": ticks, "particle_seeds": seeds, "particle_seed_base": 1000,
+        "particle_seed_step": 7919, "camera_x": float_bits(camera[0], "f64"),
+        "camera_y": float_bits(camera[1], "f64"), "camera_z": float_bits(camera[2], "f64"),
+        "level_seed": level_seed, "listener_seed": listener_seed, "engine_seed": engine_seed,
+        "sprites": sprites, "describe": describe, "partials": PARTIALS,
+    }
+
+
+def add(tick, particle, at, push=(0.0, 0.0, 0.0), override=False, always_show=False):
+    return {"tick": tick, "type": "add", "particle": particle, "override": override,
+            "always_show": always_show, "x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+            "z": float_bits(at[2], "f64"), "xa": float_bits(push[0], "f64"),
+            "ya": float_bits(push[1], "f64"), "za": float_bits(push[2], "f64")}
+
+
+def packet(tick, particle, at, spread, speed, count, override=False, always_show=False):
+    return {"tick": tick, "type": "packet", "particle": particle, "override": override,
+            "always_show": always_show, "x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+            "z": float_bits(at[2], "f64"), "x_dist": float_bits(spread[0]),
+            "y_dist": float_bits(spread[1]), "z_dist": float_bits(spread[2]),
+            "max_speed": float_bits(speed), "count": count}
+
+
+def particle_engine_cases():
+    near = (5.0, 64.0, 5.0)
+    far = (40.0, 64.0, 0.0)
+    rows = [
+        # What the level lets in: near the camera, far from it, and far but let in by the packet's flag.
+        engine_row("level-add-near-and-far", [
+            add(0, "smoke", near), add(0, "smoke", far), add(0, "flame", far, override=True),
+            add(1, "small_flame", near, (0.0, 0.1, 0.0)), add(1, "soul_fire_flame", (0.0, 64.0, 31.9)),
+            add(1, "copper_fire_flame", (0.0, 64.0, 32.1))]),
+        # The option: some are dropped by the level's own random at DECREASED, all at MINIMAL unless
+        # shown always.
+        engine_row("decreased", [add(0, "smoke", near) for _ in range(14)], status="DECREASED", seeds=20),
+        engine_row("minimal", [add(0, "smoke", near) for _ in range(6)], status="MINIMAL"),
+        engine_row("minimal-always-shown", [add(0, "smoke", near, always_show=True) for _ in range(30)],
+                   status="MINIMAL", seeds=30),
+        engine_row("decreased-always-shown", [add(0, "flame", near, always_show=True) for _ in range(20)],
+                   status="DECREASED", seeds=20),
+        # The packet: one particle moving as told, and a count, spread and sped by the listener's random.
+        engine_row("packet-without-a-count", [packet(0, "smoke", near, (0.5, 0.25, -0.125), 2.0, 0)]),
+        engine_row("packet-count", [packet(0, "flame", (0.0, 64.0, 0.0), (1.0, 0.5, 1.0), 0.05, 20)],
+                   seeds=20, describe=20),
+        engine_row("packet-count-decreased", [packet(1, "smoke", (0.0, 64.0, 0.0), (2.0, 1.0, 2.0), 0.02, 30)],
+                   status="DECREASED", seeds=30),
+        engine_row("packet-far", [packet(0, "smoke", far, (1.0, 1.0, 1.0), 0.01, 10),
+                                  packet(1, "smoke", far, (1.0, 1.0, 1.0), 0.01, 10, override=True)],
+                   seeds=10),
+        # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
+        engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
+                                 packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],
+                   ticks=3, seeds=28000, describe=3),
+    ]
+    yield {"case_id": "movement/particle-engine", "family": "movement", "operation": "particle_engine",
+           "rows": rows}

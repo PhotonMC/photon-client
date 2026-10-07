@@ -121,6 +121,8 @@ pub struct PlaySession {
     pub(super) swings: u32,
     /// The sound packets since the last [`Self::take_sounds`].
     pub(super) sounds: Vec<voxel_game::sounds::SoundCommand>,
+    /// The particle packets since the last [`Self::take_level_particles`].
+    pub(super) level_particles: Vec<voxel_world::particles::LevelParticles>,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
     pub(super) aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.

@@ -56,6 +56,8 @@ mod movement;
 pub use movement::*;
 mod player;
 pub use player::*;
+mod particles;
+pub use particles::*;
 mod player_info;
 pub use player_info::*;
 mod reader;

@@ -12,6 +12,8 @@ mod java;
 pub use java::*;
 mod lerp;
 pub use lerp::*;
+mod log;
+pub use log::*;
 mod mth;
 pub use mth::*;
 mod quaternion;

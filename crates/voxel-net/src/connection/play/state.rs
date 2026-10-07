@@ -10,6 +10,11 @@ impl PlaySession {
         self.trace.world.take_sounds()
     }
 
+    /// The particle packets that arrived since the last call, for the particle engine.
+    pub fn take_level_particles(&mut self) -> Vec<voxel_world::particles::LevelParticles> {
+        std::mem::take(&mut self.level_particles)
+    }
+
     /// Where an entity is drawn between two ticks.
     pub fn entity_snapshot(
         &self,

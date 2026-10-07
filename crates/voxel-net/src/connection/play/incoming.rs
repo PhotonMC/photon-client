@@ -82,6 +82,7 @@ impl PlaySession {
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => self.on_remove_mob_effect(payload)?,
             PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => self.on_set_health(payload)?,
             PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID => self.on_level_event(payload)?,
+            PLAY_CLIENTBOUND_LEVEL_PARTICLES_PACKET_ID => self.on_level_particles(payload)?,
             PLAY_CLIENTBOUND_SOUND_PACKET_ID
             | PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID
             | PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID => self.on_sound(payload, packet_id)?,

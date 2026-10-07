@@ -275,6 +275,7 @@ impl Play {
             return Ok(Flow::Next);
         };
         let frame = self.frame_camera(player);
+        self.particles.set_camera(frame.camera);
         self.draw_overlays(&frame)?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
         self.sections

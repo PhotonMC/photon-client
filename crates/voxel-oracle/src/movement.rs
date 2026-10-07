@@ -31,6 +31,9 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "particle_types" {
         return particle_types_result(request);
     }
+    if string(request, "operation")? == "particle_engine" {
+        return particle_engine_result(request);
+    }
     if string(request, "operation")? == "particle_ticks" {
         return particle_ticks_result(request);
     }

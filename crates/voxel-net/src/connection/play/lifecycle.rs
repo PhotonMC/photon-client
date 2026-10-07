@@ -173,6 +173,7 @@ impl PlaySession {
             death: None,
             swings: 0,
             sounds: Vec::new(),
+            level_particles: Vec::new(),
             aimed_entity: None,
             hardcore: false,
             health_received: false,
