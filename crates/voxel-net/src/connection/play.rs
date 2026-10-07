@@ -666,7 +666,7 @@ impl PlaySession {
                 .local_player()
                 .and_then(|player| player.open_container())
             {
-                menu.data = (0..4).map(|index| container.data(index)).collect();
+                menu.data = (0..10).map(|index| container.data(index)).collect();
             }
         }
         self.open_menu.as_ref()

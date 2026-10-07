@@ -66,6 +66,8 @@ pub struct Item {
     pub kinetic_weapon: bool,
     /// Ticks a furnace burns it for; zero when it is no fuel.
     pub burn_time: i32,
+    /// Whether a brewing stand takes it in its ingredient slot (`PotionBrewing.isIngredient`).
+    pub brewing_ingredient: bool,
     /// The block a block item places.
     pub block: Option<&'static str>,
     /// The other default components the client reads.
@@ -87,6 +89,7 @@ impl Item {
             blocks_attacks: false,
             kinetic_weapon: false,
             burn_time: 0,
+            brewing_ingredient: false,
             block: None,
             components: &[],
         }
@@ -95,6 +98,12 @@ impl Item {
     /// What a furnace burns the item for, in ticks (`FuelValues`).
     pub const fn burns(mut self, ticks: i32) -> Self {
         self.burn_time = ticks;
+        self
+    }
+
+    /// Whether a brewing stand takes the item as an ingredient.
+    pub const fn brews(mut self) -> Self {
+        self.brewing_ingredient = true;
         self
     }
 

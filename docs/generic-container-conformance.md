@@ -127,3 +127,8 @@ birim testli.
 
 Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, kalan menü
 türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
+
+## Simya standı
+
+`MenuKind::Brewing` (menü türü 11): şişe yuvaları 0–2 (yalnız iksir, sıçrayan/kalıcı iksir ve cam şişe, hepsi 1'lik), bileşen 3 (`PotionBrewing.isIngredient`: eşya tanımındaki `brewing_ingredient` bayrağı, `BlockOracle`'daki istemcinin kendi `PotionBrewing.bootstrap`'ından üretilir), yakıt 4 (`brewing_fuel` etiketi). `quickMoveStack`, Java'nın yakıt yolundaki tuhaflığıyla (yakıta taşıma tıklamayı bitirir) oracle'da 3 satırla Java ile birebir. Ekran (`BrewingStandScreen`): arka plan, yakıt çubuğu, ok ve kabarcıklar `ContainerSetData` değerlerinden (0: kaynama süresi, 1: yakıt), boş yuva simgeleri; `container_screen` oracle'ında 7 satır. Canlıda bakılmadı.
+

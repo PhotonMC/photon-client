@@ -16840,6 +16840,9 @@ fn item_declarations(label: &str) -> Value {
             if item.burn_time > 0 {
                 described["burn_time"] = json!(item.burn_time);
             }
+            if item.brewing_ingredient {
+                described["brewing_ingredient"] = json!(true);
+            }
             if let Some(block) = item.block {
                 described["block"] = json!(block);
             }
@@ -26675,6 +26678,7 @@ fn menu_named(
         "crafting" => MenuKind::Crafting,
         "anvil" => MenuKind::Anvil,
         "enchantment" => MenuKind::Enchantment,
+        "brewing_stand" => MenuKind::Brewing,
         "grindstone" => MenuKind::Grindstone,
         "loom" => MenuKind::Loom,
         "smithing" => MenuKind::Smithing,

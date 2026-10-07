@@ -92,6 +92,8 @@ pub enum MenuKind {
     Anvil,
     /// `EnchantmentMenu`: the item and the lapis.
     Enchantment,
+    /// `BrewingStandMenu`: three bottles, the ingredient and the fuel.
+    Brewing,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -122,6 +124,7 @@ impl MenuKind {
             6 => Self::Dispenser,
             8 => Self::Anvil,
             10 => Self::Furnace(Smelter::BlastFurnace),
+            11 => Self::Brewing,
             12 => Self::Crafting,
             13 => Self::Enchantment,
             14 => Self::Furnace(Smelter::Furnace),
@@ -148,6 +151,7 @@ impl MenuKind {
             Self::Crafting => 10,
             Self::Furnace(_) | Self::Grindstone | Self::Cartography | Self::Anvil => 3,
             Self::Stonecutter | Self::Enchantment => 2,
+            Self::Brewing => 5,
             Self::Loom | Self::Smithing => 4,
         }
     }
@@ -846,6 +850,7 @@ impl ContainerMenu {
         let slot_max = if self.armour_at(index).is_some()
             || (matches!(self.kind, MenuKind::Furnace(_)) && index == 1 && is_bucket(stack))
             || (self.kind == MenuKind::Enchantment && index == 0)
+            || (self.kind == MenuKind::Brewing && index < 3)
         {
             1
         } else {
@@ -1134,6 +1139,48 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `BrewingStandMenu.quickMoveStack`. A move that fuels the stand ends the click (its stack
+    /// was changed in place, and the reference returns nothing for it).
+    fn quick_move_brewing(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let keeps_going = if index >= 5 {
+            if self.in_tag(&clicked, "minecraft:brewing_fuel") {
+                let fueled = self.move_item_stack_to(&mut stack, 4, 5, false);
+                !(fueled
+                    || self.may_place(3, &stack)
+                        && !self.move_item_stack_to(&mut stack, 3, 4, false))
+            } else if self.may_place(3, &stack) {
+                self.move_item_stack_to(&mut stack, 3, 4, false)
+            } else if self.may_place(0, &clicked) {
+                self.move_item_stack_to(&mut stack, 0, 3, false)
+            } else if index < 32 {
+                self.move_item_stack_to(&mut stack, 32, 41, false)
+            } else if index < 41 {
+                self.move_item_stack_to(&mut stack, 5, 32, false)
+            } else {
+                self.move_item_stack_to(&mut stack, 5, 41, false)
+            }
+        } else {
+            self.move_item_stack_to(&mut stack, 5, 41, true)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !keeps_going {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        Some(clicked)
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
@@ -1145,6 +1192,7 @@ impl ContainerMenu {
             | MenuKind::Smithing
             | MenuKind::Anvil
             | MenuKind::Enchantment => self.quick_move_transform(index, player),
+            MenuKind::Brewing => self.quick_move_brewing(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),

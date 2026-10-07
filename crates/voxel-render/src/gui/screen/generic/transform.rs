@@ -26,6 +26,7 @@ pub(super) fn slot_position(kind: MenuKind, index: usize) -> Option<(i32, i32)> 
         MenuKind::Smithing => &[(8, 48), (26, 48), (44, 48), (98, 48)],
         MenuKind::Anvil => &[(27, 47), (76, 47), (134, 47)],
         MenuKind::Enchantment => &[(15, 47), (35, 47)],
+        MenuKind::Brewing => &[(56, 51), (79, 58), (102, 51), (79, 17), (17, 17)],
         _ => return None,
     };
     Some(slots[index])
@@ -41,6 +42,7 @@ pub(super) fn texture(kind: MenuKind) -> Option<&'static str> {
         MenuKind::Smithing => "container/smithing",
         MenuKind::Anvil => "container/anvil",
         MenuKind::Enchantment => "container/enchanting_table",
+        MenuKind::Brewing => "container/brewing_stand",
         _ => return None,
     })
 }
@@ -65,6 +67,8 @@ pub(super) fn empty_icon(kind: MenuKind, index: usize) -> Option<&'static str> {
         (MenuKind::Loom, 1) => Some("container/slot/dye"),
         (MenuKind::Loom, 2) => Some("container/slot/banner_pattern"),
         (MenuKind::Enchantment, 1) => Some("container/slot/lapis_lazuli"),
+        (MenuKind::Brewing, 0..=2) => Some("container/slot/potion"),
+        (MenuKind::Brewing, 4) => Some("container/slot/brewing_fuel"),
         _ => None,
     }
 }
@@ -956,6 +960,7 @@ impl GenericScreen {
                     );
                 }
             }
+            MenuKind::Brewing => brewing_progress(draw, (data(0), data(1)), (left, top)),
             MenuKind::Cartography => self.cartography_preview(draw, menu, (left, top)),
             MenuKind::Anvil => self.anvil_extras(draw, menu, (left, top)),
             MenuKind::Stonecutter => self.stone_draw(draw, menu, mouse, (left, top)),
@@ -1097,6 +1102,57 @@ impl GenericScreen {
             );
             draw.frame
                 .text_with_shadow(draw.atlas, draw.font, &text, left + x, top + 69, colour);
+        }
+    }
+}
+
+/// `BrewingStandScreen.extractBackground`: the fuel bar, the arrow down the brew and its bubbles,
+/// from the brewing time and the fuel the server sent.
+fn brewing_progress(
+    draw: &mut ScreenDraw<'_, '_>,
+    (ticks, fuel): (i32, i32),
+    (left, top): (i32, i32),
+) {
+    const BUBBLE_LENGTHS: [i32; 7] = [29, 24, 20, 16, 11, 6, 0];
+    let fuel_length = ((18 * fuel + 20 - 1) / 20).clamp(0, 18);
+    if fuel_length > 0 {
+        draw.frame.sprite_cut(
+            draw.atlas,
+            "container/brewing_stand/fuel_length",
+            (18, 4),
+            (0, 0),
+            left + 60,
+            top + 44,
+            fuel_length,
+            4,
+        );
+    }
+    if ticks > 0 {
+        let length = (28.0_f32 * (1.0_f32 - ticks as f32 / 400.0_f32)) as i32;
+        if length > 0 {
+            draw.frame.sprite_cut(
+                draw.atlas,
+                "container/brewing_stand/brew_progress",
+                (9, 28),
+                (0, 0),
+                left + 97,
+                top + 16,
+                9,
+                length,
+            );
+        }
+        let length = BUBBLE_LENGTHS[(ticks / 2 % 7) as usize];
+        if length > 0 {
+            draw.frame.sprite_cut(
+                draw.atlas,
+                "container/brewing_stand/bubbles",
+                (12, 29),
+                (0, 29 - length),
+                left + 63,
+                top + 14 + 29 - length,
+                12,
+                length,
+            );
         }
     }
 }

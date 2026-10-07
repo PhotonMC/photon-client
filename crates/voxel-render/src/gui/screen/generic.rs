@@ -478,7 +478,10 @@ impl Screen for GenericScreen {
         self.draw_extras(draw, menu, mouse, (left, top));
         // The dispenser centres its title; the others keep it at the corner.
         let (label_x, label_y) = transform::title_label(self.kind);
-        let title_x = if matches!(self.kind, MenuKind::Dispenser | MenuKind::Furnace(_)) {
+        let title_x = if matches!(
+            self.kind,
+            MenuKind::Dispenser | MenuKind::Furnace(_) | MenuKind::Brewing
+        ) {
             (width - draw.font.width(&self.titles.title)) / 2
         } else {
             label_x

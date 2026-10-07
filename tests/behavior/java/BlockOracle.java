@@ -1483,6 +1483,9 @@ public final class BlockOracle {
         // was given.
         var fuel = net.minecraft.world.level.block.entity.FuelValues.vanillaBurnTimes(
             Oracle.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        // The ingredients of the brewing stand (the client's own `PotionBrewing`).
+        var brewing = net.minecraft.world.item.alchemy.PotionBrewing.bootstrap(
+            net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         for (var item : registry) {
             for (Class<?> type = item.getClass();
                  type != null && type != Object.class;
@@ -1520,6 +1523,9 @@ public final class BlockOracle {
             var tool = data.get(net.minecraft.core.component.DataComponents.TOOL);
             if (tool != null) {
                 described.add("tool", toolJson(tool));
+            }
+            if (brewing.isIngredient(new net.minecraft.world.item.ItemStack(item))) {
+                described.addProperty("brewing_ingredient", true);
             }
             int burn = fuel.burnDuration(new net.minecraft.world.item.ItemStack(item));
             if (burn > 0) {

@@ -919,6 +919,33 @@ impl GuiFrame {
         self.blit_region(atlas, blend, name, size, (uv.0, uv.1, w, h), (x, y, w, h));
     }
 
+    /// `GuiGraphics.blitSprite` of part of a sprite as the reference's draw log records it: one
+    /// sprite at the rectangle drawn.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
+    pub(crate) fn sprite_cut(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        size: (i32, i32),
+        uv: (i32, i32),
+        x: i32,
+        y: i32,
+        w: i32,
+        h: i32,
+    ) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Sprite {
+                name: name.to_owned(),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                colour: 0xFFFF_FFFF,
+            });
+        }
+        self.blit_part(atlas, GuiBlend::Translucent, name, size, uv, x, y, w, h);
+    }
+
     /// A region of a sprite, `(u, v, width, height)` of a sprite `size`
     /// units big, stretched to a rectangle `(x, y, w, h)`.
     pub(crate) fn blit_region(

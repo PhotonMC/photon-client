@@ -137,6 +137,8 @@ def items_file(items):
                 calls.append(f"{flag}()")
         if item.get("burn_time"):
             calls.append(f"burns({item['burn_time']})")
+        if item.get("brewing_ingredient"):
+            calls.append("brews()")
         if item.get("block"):
             calls.append(f"places({rust_str(item['block'])})")
         components = component_calls(item)

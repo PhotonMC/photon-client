@@ -83,7 +83,7 @@ impl ContainerMenu {
     }
 
     /// `ItemStack.is(tag)`.
-    fn in_tag(&self, stack: &Stack, tag: &str) -> bool {
+    pub(super) fn in_tag(&self, stack: &Stack, tag: &str) -> bool {
         self.item_tags.contains(stack.item_registry_id(), tag)
     }
 
@@ -118,6 +118,15 @@ impl ContainerMenu {
             (MenuKind::Loom, 1) => self.in_tag(stack, "minecraft:loom_dyes"),
             (MenuKind::Loom, 2) => self.in_tag(stack, "minecraft:loom_patterns"),
             (MenuKind::Enchantment, 1) => is_item(stack, "minecraft:lapis_lazuli"),
+            // `BrewingStandMenu.PotionSlot`, `IngredientsSlot` and `FuelSlot`.
+            (MenuKind::Brewing, 0..=2) => {
+                is_item(stack, "minecraft:potion")
+                    || is_item(stack, "minecraft:splash_potion")
+                    || is_item(stack, "minecraft:lingering_potion")
+                    || is_item(stack, "minecraft:glass_bottle")
+            }
+            (MenuKind::Brewing, 3) => stacking(stack).is_some_and(|item| item.brewing_ingredient),
+            (MenuKind::Brewing, 4) => self.in_tag(stack, "minecraft:brewing_fuel"),
             (
                 MenuKind::Stonecutter
                 | MenuKind::Grindstone
@@ -125,7 +134,8 @@ impl ContainerMenu {
                 | MenuKind::Loom
                 | MenuKind::Smithing
                 | MenuKind::Anvil
-                | MenuKind::Enchantment,
+                | MenuKind::Enchantment
+                | MenuKind::Brewing,
                 _,
             ) => true,
             _ => return None,

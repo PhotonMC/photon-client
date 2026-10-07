@@ -286,6 +286,9 @@ public final class MovementOracle {
         var wire = new CapturingConnection();
         setField(listener, "connection", wire);
         setField(listener, "clientLoaded", true);
+        // What a brewing stand's ingredient slot asks the level.
+        setField(listener, "potionBrewing", net.minecraft.world.item.alchemy.PotionBrewing.bootstrap(
+            net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
 
         var dimensionType = registries.lookupOrThrow(
             net.minecraft.core.registries.Registries.DIMENSION_TYPE).getOrThrow(
