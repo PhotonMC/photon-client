@@ -3245,6 +3245,46 @@ public final class EntityOracle {
      * pipeline's state and texture, and the matrix that moves the texture at some times and glint
      * speeds (`TextureTransform.setupGlintTexturing`, the time and the option set as asked).
      */
+    /** `GameRenderer.bobHurt`: the matrix the view is turned by when the camera's entity flinches or dies. */
+    private static JsonObject cameraHurt(final JsonObject request) throws Exception {
+        var gameState = installGameState();
+        var minecraft = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+        minecraft.setAccessible(true);
+        var renderer = (net.minecraft.client.renderer.GameRenderer)
+            ((net.minecraft.client.Minecraft) minecraft.get(null)).gameRenderer;
+        var bob = net.minecraft.client.renderer.GameRenderer.class.getDeclaredMethod("bobHurt",
+            net.minecraft.client.renderer.state.level.CameraRenderState.class, com.mojang.blaze3d.vertex.PoseStack.class);
+        bob.setAccessible(true);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            gameState.optionsRenderState.damageTiltStrength = Oracle.f64(row, "tilt");
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            var entity = camera.entityRenderState;
+            entity.isLiving = true;
+            entity.hurtTime = Oracle.f32(row, "hurt_time");
+            entity.hurtDuration = row.get("hurt_duration").getAsInt();
+            entity.hurtDir = Oracle.f32(row, "hurt_dir");
+            entity.isDeadOrDying = row.get("dying").getAsBoolean();
+            entity.deathTime = Oracle.f32(row, "death_time");
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            bob.invoke(renderer, camera, stack);
+            var matrix = new float[16];
+            stack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("matrix", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     private static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
@@ -5576,6 +5616,9 @@ public final class EntityOracle {
         }
         if (operation.equals("glint_layers")) {
             return glintLayers(request);
+        }
+        if (operation.equals("camera_hurt")) {
+            return cameraHurt(request);
         }
         if (operation.equals("map_render")) {
             return mapRender(request);

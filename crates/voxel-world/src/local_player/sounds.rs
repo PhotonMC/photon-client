@@ -253,6 +253,7 @@ impl LocalPlayer {
         self.walk.set_speed(1.5);
         self.invulnerable_time = 20;
         self.hurt_time = 10;
+        self.hurt_duration = 10;
         let pitch = self.hurt_pitch();
         self.play_player_sound(
             voxel_data::damage_effect::hurt_sound(damage_type),

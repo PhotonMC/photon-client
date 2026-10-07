@@ -1752,8 +1752,13 @@ impl PlaySession {
                 }
             }
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => {
-                if let Ok(id) = parse_entity_id_prefix(payload) {
+                if let Ok((id, yaw)) = parse_hurt_animation_packet(payload) {
                     self.trace.world.apply_entity_hurt_animation(id);
+                    if self.player_id == Some(id)
+                        && let Some(player) = self.player.as_mut()
+                    {
+                        player.animate_hurt(yaw);
+                    }
                 }
             }
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => {

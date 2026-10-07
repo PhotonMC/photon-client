@@ -16056,6 +16056,7 @@ def entity_cases():
     yield from entity_text_display_cases()
     yield from entity_map_render_cases()
     yield from entity_equippable_cases()
+    yield from entity_camera_hurt_cases()
     yield from entity_display_light_cases()
     yield from entity_arrow_cases()
     yield from entity_thrown_item_cases()
@@ -17903,6 +17904,28 @@ def entity_glint_cases():
                 for millis, speed in [(0, 0.5), (1234, 0.5), (27500, 0.5), (55000, 0.5), (1_000_000, 0.5),
                                       (987654321, 0.5), (5000, 0.0), (5000, 1.0), (123456, 0.25)]]
     yield {"case_id": "entity/glint-layers", "family": "entity", "operation": "glint_layers", "rows": matrices}
+
+
+def entity_camera_hurt_cases():
+    """What the view is turned by when the camera's entity flinches or is dying: before and after the
+    flinch, across it, from several directions, with the tilt option changed, and while dying."""
+    rows = []
+    def row(label, hurt_time, duration=10, direction=0.0, dying=False, death=0.0, tilt=1.0):
+        rows.append({"label": label, "hurt_time": float_bits(hurt_time), "hurt_duration": duration,
+                     "hurt_dir": float_bits(direction), "dying": dying,
+                     "death_time": float_bits(death), "tilt": float_bits(tilt, "f64")})
+    row("no flinch", -0.5)
+    row("flinch ending", 0.0)
+    for index, hurt_time in enumerate([0.5, 2.25, 4.0, 6.5, 9.0, 9.9]):
+        row(f"flinch {index}", hurt_time, direction=float(index * 57) - 90.0)
+    row("weaker tilt", 3.0, direction=33.0, tilt=0.4)
+    row("no tilt", 3.0, direction=33.0, tilt=0.0)
+    row("longer flinch", 3.0, duration=20, direction=-120.0)
+    row("dying", -1.0, dying=True, death=0.5)
+    row("dying later", -1.0, dying=True, death=11.25)
+    row("dead", -1.0, dying=True, death=33.0)
+    row("dying and flinching", 4.0, dying=True, death=2.5, direction=75.0)
+    yield {"case_id": "entity/camera-hurt", "family": "entity", "operation": "camera_hurt", "rows": rows}
 
 
 def entity_equippable_cases():

@@ -111,6 +111,17 @@ pub fn hands(
         attack: player.attack_anim(partial),
         light: view.light,
         skin: view.skin,
+        hurt: {
+            let (hurt_time, hurt_duration, hurt_dir, dying, death_time) = player.hurt_view(partial);
+            voxel_render::camera::HurtView {
+                hurt_time,
+                hurt_duration,
+                hurt_dir,
+                dying,
+                death_time,
+                tilt_strength: 1.0,
+            }
+        },
     };
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);

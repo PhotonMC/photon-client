@@ -190,7 +190,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | açık |
 | [T81](T81-isin-ve-portal-blok-entity.md) | Işın, portal ve efektli blok entity'ler | M | T79 | açık |
 | [T82](T82-spawner-vault-kafes.md) | Spawner, vault ve deneme spawner'ı çizimi | M | T79, T24 | açık |
-| [T83](T83-hasar-ve-etki-orturleri.md) | Ekran örtüleri ve kamera sallanması | M | – | açık |
+| [T83](T83-hasar-ve-etki-orturleri.md) | Hasarda kameranın eğilmesi (`bobHurt`) | M | – | bitti (HASH) |
+| [T83b](T83b-ekran-orturleri.md) | Ekran örtüleri ve etki sisleri | M | T83 | açık |
 | [T84](T84-dunya-siniri.md) | Dünya sınırı | M | – | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (f64024d2) |

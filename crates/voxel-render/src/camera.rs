@@ -67,6 +67,70 @@ impl Camera {
     }
 }
 
+/// What `GameRenderer.bobHurt` reads of the camera's entity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HurtView {
+    /// `hurtTime` less the partial tick: negative once the flinch is over.
+    pub hurt_time: f32,
+    pub hurt_duration: i32,
+    /// The direction the damage came from (`getHurtDir`), in degrees.
+    pub hurt_dir: f32,
+    pub dying: bool,
+    /// `deathTime` plus the partial tick.
+    pub death_time: f32,
+    /// The option `damageTiltStrength`.
+    pub tilt_strength: f64,
+}
+
+impl HurtView {
+    /// An entity that is not flinching or dying.
+    pub const fn none() -> Self {
+        Self {
+            hurt_time: -1.0,
+            hurt_duration: 0,
+            hurt_dir: 0.0,
+            dying: false,
+            death_time: 0.0,
+            tilt_strength: 1.0,
+        }
+    }
+}
+
+/// `GameRenderer.bobHurt` on a pose: the view rolls over in a faint death, and tilts away from a
+/// blow while the flinch lasts.
+pub fn apply_hurt(pose: &mut crate::joml::Pose, view: &HurtView) {
+    use crate::joml::Quaternion;
+    if view.dying {
+        let duration = view.death_time.min(20.0);
+        let roll = Quaternion::degrees_to_radians(40.0 - 8000.0 / (duration + 200.0));
+        pose.rotate(&Quaternion::rotation_z(roll));
+    }
+    if view.hurt_time < 0.0 {
+        return;
+    }
+    let hurt = view.hurt_time / view.hurt_duration as f32;
+    let hurt =
+        voxel_core::math::mth_sin_f64(f64::from(hurt * hurt * hurt * hurt * std::f32::consts::PI));
+    let direction = view.hurt_dir;
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        -direction,
+    )));
+    let tilt = (f64::from(-hurt) * 14.0 * view.tilt_strength) as f32;
+    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+        tilt,
+    )));
+    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        direction,
+    )));
+}
+
+/// The matrix `PoseStack` builds of [`apply_hurt`], column by column.
+pub fn view_hurt(view: &HurtView) -> [[f32; 4]; 4] {
+    let mut pose = crate::joml::Pose::default();
+    apply_hurt(&mut pose, view);
+    pose.pose.m
+}
+
 /// `GameRenderer.bobView`: the sway of a walking player's view, a shift
 /// and two small turns applied after the projection's own transform, from
 /// the backwards walked distance and the bob.

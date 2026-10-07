@@ -57,16 +57,17 @@ use super::{
     parse_container_set_slot_packet, parse_cursor_item_packet, parse_damage_event_packet,
     parse_entity_equipment_packet, parse_entity_event_packet, parse_entity_metadata_packet,
     parse_entity_position_sync_packet, parse_entity_teleport_packet,
-    parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
-    parse_login_packet, parse_map_item_data_packet, parse_merchant_offers_packet,
-    parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet,
-    parse_move_minecart_packet, parse_open_screen_packet, parse_optional_item_stack,
-    parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
-    parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
-    parse_section_data, parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
-    parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
-    parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
-    parse_update_mob_effect_packet, resolve_player_position, support_block_position,
+    parse_forget_level_chunk_packet, parse_game_event_packet, parse_hurt_animation_packet,
+    parse_light_update_packet, parse_login_packet, parse_map_item_data_packet,
+    parse_merchant_offers_packet, parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet,
+    parse_move_entity_rot_packet, parse_move_minecart_packet, parse_open_screen_packet,
+    parse_optional_item_stack, parse_player_abilities_packet, parse_player_position_packet,
+    parse_remove_entities_packet, parse_remove_mob_effect_packet, parse_respawn_packet,
+    parse_rotate_head_packet, parse_section_data, parse_set_chunk_cache_center_packet,
+    parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet, parse_set_health_packet,
+    parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
+    parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
+    support_block_position,
 };
 
 #[test]
@@ -2760,6 +2761,15 @@ fn an_entity_event_packet_names_the_entity_and_the_event() {
     payload.push(26);
     assert_eq!(parse_entity_event_packet(&payload).unwrap(), (7, 26));
     assert!(parse_entity_event_packet(&payload[..4]).is_err());
+}
+
+#[test]
+fn a_hurt_animation_names_the_entity_and_the_yaw_of_the_blow() {
+    let mut payload = Vec::new();
+    voxel_core::wire::write_varint(7, &mut payload);
+    payload.extend_from_slice(&(-135.5_f32).to_be_bytes());
+    assert_eq!(parse_hurt_animation_packet(&payload).unwrap(), (7, -135.5));
+    assert!(parse_hurt_animation_packet(&payload[..3]).is_err());
 }
 
 #[test]

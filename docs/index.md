@@ -106,6 +106,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` içeriğinden üretilir.
 - [T44a — Oyuncunun tekneyi sürmesi: `AbstractBoat.tick`, `LocalPlayer.rideTick`, `MoveVehicle`, `PaddleBoat` — client-parity](client-boat-ride-parity-conformance.md)
 - [T36e — Breeze — client-parity](client-breeze-parity-conformance.md)
 - [T31b — Deve, deve kabuğu, lama ve tüccar lamasi — client-parity](client-camel-llama-parity-conformance.md)
+- [T83 — Hasar sırasında kameranın eğilmesi — client-parity](client-camera-hurt-parity-conformance.md)
 - [T39d — Rüzgâr yükleri ve ejderha topu — client-parity](client-charges-parity-conformance.md)
 - [T34e, T34f — Bakır golem — client-parity](client-copper-golem-parity-conformance.md)
 - [T37e — Creaking — client-parity](client-creaking-parity-conformance.md)

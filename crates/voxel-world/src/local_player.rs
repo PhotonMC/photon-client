@@ -852,6 +852,12 @@ pub struct LocalPlayer {
     flash_on_set_health: bool,
     invulnerable_time: i32,
     hurt_time: i32,
+    /// `hurtDuration`: what the flinch started from.
+    hurt_duration: i32,
+    /// `Player.hurtDir`: where the last blow came from, in degrees.
+    hurt_dir: f32,
+    /// `deathTime`: the ticks since the health ran out.
+    death_time: i32,
     /// How far into the swimming pose the model has turned.
     swim_amount: f32,
     swim_amount_old: f32,
@@ -977,6 +983,9 @@ impl LocalPlayer {
             flash_on_set_health: false,
             invulnerable_time: 0,
             hurt_time: 0,
+            hurt_duration: 0,
+            hurt_dir: 0.0,
+            death_time: 0,
             swim_amount: 0.0,
             swim_amount_old: 0.0,
             bob: 0.0,
@@ -1194,11 +1203,31 @@ impl LocalPlayer {
                 self.invulnerable_time = 20;
                 self.health = new_health;
                 self.hurt_time = 10;
+                self.hurt_duration = 10;
             }
         } else {
             self.health = new_health;
             self.flash_on_set_health = true;
         }
+    }
+
+    /// `Player.animateHurt`: the flinch starts, away from where the blow came from.
+    pub fn animate_hurt(&mut self, yaw: f32) {
+        self.hurt_duration = 10;
+        self.hurt_time = 10;
+        self.hurt_dir = yaw;
+    }
+
+    /// What the camera reads of the player when the view is turned by a blow (`Camera.extractRenderState`):
+    /// the flinch left, the direction, whether it is dying, and how long.
+    pub fn hurt_view(&self, partial_tick: f32) -> (f32, i32, f32, bool, f32) {
+        (
+            self.hurt_time as f32 - partial_tick,
+            self.hurt_duration,
+            self.hurt_dir,
+            self.health <= 0.0,
+            self.death_time as f32 + partial_tick,
+        )
     }
 
     pub fn health(&self) -> f32 {
@@ -1604,6 +1633,12 @@ impl LocalPlayer {
         if self.hurt_time > 0 {
             self.hurt_time -= 1;
         }
+        // `LivingEntity.tickDeath`: the dying go on counting; a living player starts over.
+        self.death_time = if self.health <= 0.0 {
+            self.death_time.saturating_add(1)
+        } else {
+            0
+        };
         if self.invulnerable_time > 0 {
             self.invulnerable_time -= 1;
         }

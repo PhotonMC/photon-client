@@ -549,6 +549,19 @@ impl Play {
         // The view bob option's default is on.
         let (walked, bob) = player.view_bob(partial as f32);
         let bob = voxel_render::camera::view_bob(walked, bob);
+        // `GameRenderer.bobHurt` first, then `bobView`: the view tilts away from a blow.
+        let (hurt_time, hurt_duration, hurt_dir, dying, death_time) =
+            player.hurt_view(partial as f32);
+        let hurt = voxel_render::camera::view_hurt(&voxel_render::camera::HurtView {
+            hurt_time,
+            hurt_duration,
+            hurt_dir,
+            dying,
+            death_time,
+            // `damageTiltStrength`'s default: the option is not kept.
+            tilt_strength: 1.0,
+        });
+        let bob = voxel_render::scene::multiply(hurt, bob);
         let locator = voxel_render::gui::locator::LocatorCamera {
             y_rot,
             x_rot,

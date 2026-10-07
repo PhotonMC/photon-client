@@ -3861,6 +3861,14 @@ pub(crate) fn parse_damage_event_packet(
     ))
 }
 
+/// `ClientboundHurtAnimationPacket`: the entity and the yaw the blow came from.
+pub(crate) fn parse_hurt_animation_packet(input: &[u8]) -> Result<(i32, f32), ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "hurt animation entity")?;
+    let yaw = f32::from_bits(read_i32(&mut input, "hurt animation yaw")? as u32);
+    Ok((id, yaw))
+}
+
 /// `ClientboundTrackedWaypointPacket.STREAM_CODEC`: the operation, then the
 /// waypoint (`TrackedWaypoint.read`).
 pub fn parse_waypoint_packet(

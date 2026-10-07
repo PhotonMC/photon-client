@@ -323,6 +323,8 @@ pub struct HandView {
     pub light: i32,
     /// Where the skin the arm is drawn in is in the entity textures.
     pub skin: crate::entity_textures::TextureRect,
+    /// The blow the view tilts by, as `GameRenderer.bobHurt` does the hand's pose first.
+    pub hurt: crate::camera::HurtView,
 }
 
 /// The pose both hands start from: `GameRenderer.bobView`, then the hands'
@@ -334,6 +336,7 @@ fn view_pose(view: &HandView) -> Pose {
     let cos = |value: f32| mth_cos_f64(f64::from(value));
     let pi = std::f64::consts::PI as f32;
     let mut pose = Pose::default();
+    crate::camera::apply_hurt(&mut pose, &view.hurt);
     // `GameRenderer.bobView` on the hand's pose.
     let angle = view.bob_walked * pi;
     pose.translate(

@@ -23609,6 +23609,38 @@ fn glint_layers_result(request: &Value) -> Result<Value, String> {
     }))
 }
 
+/// `camera_hurt`: the matrix `GameRenderer.bobHurt` turns the view by.
+fn camera_hurt_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(row[key].as_str().ok_or(key.to_owned())?, 16)
+                    .map_err(|error| error.to_string())?,
+            ))
+        };
+        let tilt = f64::from_bits(
+            u64::from_str_radix(row["tilt"].as_str().ok_or("tilt")?, 16)
+                .map_err(|error| error.to_string())?,
+        );
+        let view = voxel_render::camera::HurtView {
+            hurt_time: float("hurt_time")?,
+            hurt_duration: row["hurt_duration"].as_i64().ok_or("hurt_duration")? as i32,
+            hurt_dir: float("hurt_dir")?,
+            dying: row["dying"].as_bool().ok_or("dying")?,
+            death_time: float("death_time")?,
+            tilt_strength: tilt,
+        };
+        let matrix: Vec<String> = voxel_render::camera::view_hurt(&view)
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({"label": row["label"], "matrix": matrix}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// `parrot_textures`: the texture each parrot variant wears.
 fn parrot_textures_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
@@ -25845,6 +25877,7 @@ fn entity_result(request: &Value) -> Result<Value, String> {
         "text_display_submit" => return text_display_submit_result(request),
         "item_equippable" => return item_equippable_result(request),
         "glint_layers" => return glint_layers_result(request),
+        "camera_hurt" => return camera_hurt_result(request),
         "display_light" => return display_light_result(request),
         "arrow_pose" => return arrow_pose_result(request),
         "thrown_item_pose" => return thrown_item_pose_result(request),
