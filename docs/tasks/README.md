@@ -244,7 +244,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [A03](A03-extract-dispatch.md) | Extract → render state → tek geçişli dispatcher | L | A02 | açık |
 | [A04](A04-paket-enum-listener.md) | Tipli paket enum'u, listener, izlemeyi üretimden ayırma | L | A01 | açık |
 | [A05](A05-clientworld-bolme.md) | `ClientWorld` alt sistemlere bölme | M | A02 | açık |
-| [A06](A06-dev-dosyalar.md) | Dev dosyaları ve oracle adaptörünü bölme | M | – | açık |
+| [A06](A06-dev-dosyalar.md) | Dev dosyaları ve oracle adaptörünü bölme | M | – | bölündü |
+| [A06b](A06b-dev-islevler.md) | Tek dev işlev olan dosyalar ve oracle adaptörünün crate'i | L | A06 | açık |
 | [D01](D01-generated-envanter.md) | Üretilmiş tabloların envanteri ve sınıflandırması | S | – | açık |
 | [D02](D02-animasyonlar-elle.md) | Animasyonlar: Java sınıfı başına elle modül | M | D01 | açık |
 | [D03](D03-modeller-elle.md) | Entity modelleri: model sınıfı başına `create_body_layer` | L | D01 | açık |
