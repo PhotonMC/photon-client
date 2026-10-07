@@ -3,6 +3,7 @@ name = "voxel-audio"
 description = "Sound decoding, mixing and output."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 

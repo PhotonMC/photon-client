@@ -3,6 +3,7 @@ name = "voxel-game"
 description = "Items, menus and the player's actions built on the world copy."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 

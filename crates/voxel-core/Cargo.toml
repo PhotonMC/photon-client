@@ -3,6 +3,7 @@ name = "voxel-core"
 description = "Numeric, geometric and wire primitives ported from the reference."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 

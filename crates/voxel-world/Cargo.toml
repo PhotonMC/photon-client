@@ -3,6 +3,7 @@ name = "voxel-world"
 description = "The client's copy of the world: blocks, light, entities and the local player."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 

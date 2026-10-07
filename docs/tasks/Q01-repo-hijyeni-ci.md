@@ -24,4 +24,8 @@ Kod değişikliği (yalnız test atlatma koşulu).
 Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 
 ## Devir notu
-(boş)
+- `.DS_Store` izlemeden çıkarıldı, `.gitignore`'a eklendi. `rust-toolchain.toml` 1.97.1 + rustfmt/clippy.
+- `.github/workflows/ci.yml`: fmt, clippy `-D warnings`, build, `cargo test --workspace --lib --bins --tests`; ayrı `deny` işi. Linux paketleri (cmake, ninja, ALSA, wayland/xkb/xorg) shaderc/glfw/cpal için eklendi.
+- Boş klonda (`.data/` yok) 520 test geçti, 0 düştü: birim testler asset istemiyor, test atlatma koşulu gerekmedi. Asset isteyen işler `examples/` altında ve yerelde kalıyor.
+- `deny.toml` yazıldı ama `cargo-deny` bu makinede kurulu değil; yerelde ve CI'da çalıştırılmadı. İlk CI koşusunda lisans izin listesi ve yinelenen sürüm uyarıları gözden geçirilmeli. CI'nın kendisi de GitHub'da henüz koşmadı (shaderc/glfw kaynaktan derleme süresi ve paket listesi doğrulanmadı).
+- Lisans: kullanıcı MIT OR Apache-2.0 seçti. `LICENSE-MIT` (telif sahibi "voxel-client contributors", gerçek ad kullanıcıya bırakıldı), `LICENSE-APACHE`, workspace `license` alanı ve her crate'te `license.workspace = true`.

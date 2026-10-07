@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system packages
+        # shaderc and glfw build their native code from source; cpal needs ALSA.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build python3 libasound2-dev libwayland-dev \
+            libxkbcommon-dev xorg-dev
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo build --workspace
+      # No Minecraft assets or Java reference exist in CI (see AGENTS.md).
+      # The unit tests need none; the oracle runs stay local.
+      - run: cargo test --workspace --lib --bins --tests
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check

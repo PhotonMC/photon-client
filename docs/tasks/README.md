@@ -224,7 +224,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T65](T65-ses-ayarlari-ekrani.md) | Ses ayarları ekranı | M | T63, T06 | bitti (a9e6230d) |
 | [T66](T66-hud-durum-oracle.md) | HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) | M | T45 | bitti (5814a8cd) |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
-| [Q01](Q01-repo-hijyeni-ci.md) | Public repo hijyeni ve CI | S | – | açık |
+| [Q01](Q01-repo-hijyeni-ci.md) | Public repo hijyeni ve CI | S | – | bitti |
 | [Q02](Q02-ingilizce-readme.md) | İngilizce README, katkı belgeleri, belge ayrımı | M | Q01 | açık |
 | [Q03](Q03-log-safety-lint.md) | Log altyapısı, SAFETY yorumları, lint sıkılaştırma | M | Q01 | açık |
 | [V00](V00-performans-olcumu.md) | Performans ölçümü ve bench | M | – | açık |

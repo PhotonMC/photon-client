@@ -3,6 +3,7 @@ name = "voxel-render"
 description = "Window, Vulkan backend, world and item meshing, models and the GUI."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 include = ["/Cargo.toml", "/src/**"]
 

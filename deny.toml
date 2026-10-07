@@ -1,0 +1,36 @@
+# cargo-deny policy: licenses, security advisories, duplicate versions.
+# Run with `cargo deny check`; CI does the same.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "0BSD",
+    "Unicode-3.0",
+]
+# The workspace crates carry no license field yet (open decision in the
+# quality review); third-party crates are still checked.
+private = { ignore = true }
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
