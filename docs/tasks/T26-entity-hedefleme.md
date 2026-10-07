@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/renderer/GameRenderer.java` (`pick`, `filterHitResult`: `grep -n "pick\|ProjectileUtil"`), `.data/minecraft/source/net/minecraft/world/entity/projectile/ProjectileUtil.java` (`getEntityHitResult`), `.data/minecraft/source/net/minecraft/client/Minecraft.java` (`startAttack`, `startUseItem`, `continueAttack`), `.data/minecraft/source/net/minecraft/client/multiplayer/MultiPlayerGameMode.java` (`attack`, `interact`, `interactAt`), `.data/minecraft/source/net/minecraft/network/protocol/game/{ServerboundAttackPacket,ServerboundInteractPacket,ServerboundSwingPacket}.java`.
-- Rust: mevcut blok hedefleme `crates/voxel/src/controls.rs` (`break`/`place` yolu), `crates/voxel-game/src/attack.rs` (saldırı gücü/bekleme), docs `use-item-conformance.md` (kısa), `crates/voxel-world/src/lib.rs` entity AABB'leri (`ClientEntity.bounding_box`), `voxel_core::aabb` ray (`clip`).
+- Rust: mevcut blok hedefleme `crates/voxel/src/controls.rs` (`break`/`place` yolu), `crates/voxel-game/src/input/attack.rs` (saldırı gücü/bekleme), docs `use-item-conformance.md` (kısa), `crates/voxel-world/src/lib.rs` entity AABB'leri (`ClientEntity.bounding_box`), `voxel_core::aabb` ray (`clip`).
 
 ## Yapılacaklar
 1. Hedefleme: `entity_pick(eye, direction, reach)` — AABB `clip` + `pickRadius`, blok isabetiyle mesafe karşılaştırma (Java `GameRenderer.pick` sırası: blok → entity, entity daha yakınsa).

@@ -325,6 +325,8 @@ fn uuid_valid(text: &str) -> bool {
             .all(|part| !part.is_empty() && part.len() <= 16)
 }
 
+mod argument_kind_items;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,5 +363,3 @@ mod tests {
         assert_eq!(read(&ArgumentKind::Balanced, "{a:\"b c\"} x").1, 9);
     }
 }
-
-mod argument_kind_items;

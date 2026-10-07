@@ -11,7 +11,7 @@ Bu kayıt `fishing_bobber`'ın çizimini kapsar: şamandıra sprite'ı (`Fishing
 ## Kapsam
 
 - `entity/fishing-hook` 8 satır (kamera dört yön ve eğik, el altta/üstte/uzakta, uzak konum, sıfır uzunluk).
-- Rust: `projectile::fishing_hook_quad`, `voxel-render::fishing` (çizgi, el, yakın düzlem), oyunda `crates/voxel/src/fishing_hooks.rs`; çizgi blok anahattıyla aynı çizgi hattından geçer.
+- Rust: `projectile::fishing_hook_quad`, `voxel-render::fishing` (çizgi, el, yakın düzlem), oyunda `crates/voxel/src/objects/fishing_hooks.rs`; çizgi blok anahattıyla aynı çizgi hattından geçer.
 
 ## Sapmalar ve açık kalanlar
 

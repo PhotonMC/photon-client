@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/spider/SpiderModel.java`, `client/model/monster/silverfish/SilverfishModel.java`, `client/model/monster/endermite/EndermiteModel.java`, `client/model/animal/bee/BeeModel.java`, `client/model/monster/creeper/CreeperModel.java`, `client/renderer/entity/SpiderRenderer.java`, `client/renderer/entity/CreeperRenderer.java`, `client/renderer/entity/layers/CreeperPowerLayer.java`, `client/renderer/entity/BeeRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. `SpiderModel.setupAnim` (bacak çiftleri), `getFlipDegrees` 180 (T27 yatışı için `FLIP_DEGREES` tablosuna).

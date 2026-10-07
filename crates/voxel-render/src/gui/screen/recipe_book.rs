@@ -1,7 +1,7 @@
 //! The recipe book beside a crafting screen (`RecipeBookComponent`): the
 //! toggle button, the panel with its tabs, search box, filter button and
 //! pages of recipe buttons, and the ghost recipe over the menu's slots. The
-//! recipes and what can be crafted are [`voxel_game::recipe_book`]'s.
+//! recipes and what can be crafted are [`voxel_game::menus::recipe_book`]'s.
 //!
 //! Not drawn: the overlay of a collection's other recipes (right click),
 //! the squeeze animation of new recipes' buttons and tabs, and the toasts.
@@ -11,10 +11,10 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use super::{ScreenAction, ScreenDraw};
-use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
-use voxel_game::container_menu::{ContainerMenu, MenuKind};
-use voxel_game::recipe_book::{
+use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
+use voxel_game::menus::container::{ContainerMenu, MenuKind};
+use voxel_game::menus::recipe_book::{
     BookKind, BookModel, Collection, OverlaySlot, RECIPES_PER_PAGE, button_stack, display_stacks,
     ghost_slots, overlay_origin, overlay_slots, same_display,
 };
@@ -124,6 +124,6 @@ fn plain(text: &str) -> Vec<Run> {
     }]
 }
 
-mod recipe_book_panel_clicked;
-mod recipe_book_panel_draw;
-mod recipe_book_panel_ghost;
+mod clicked;
+mod draw;
+mod ghost;

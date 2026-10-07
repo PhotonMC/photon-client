@@ -364,16 +364,17 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                     .join("../../.data/minecraft/assets/jar/data");
                 let registries = voxel_game::registries::Registries::vanilla(&data_root);
                 let stack = |entry: &voxel_data::item::creative::CreativeStack| {
-                    let made = voxel_game::creative_menu::table_stack(entry, &registries);
+                    let made = voxel_game::menus::creative::table_stack(entry, &registries);
                     let mut wire = Vec::new();
                     voxel_core::wire::write_varint(made.item_count(), &mut wire);
                     voxel_core::wire::write_varint(made.item_registry_id(), &mut wire);
                     wire.extend_from_slice(made.patch_bytes());
                     let mut components = serde_json::Map::new();
                     for component in entry.components {
-                        if let Some((id, _)) =
-                            voxel_game::default_components::encode(component, Some(&registries))
-                        {
+                        if let Some((id, _)) = voxel_game::item::default_components::encode(
+                            component,
+                            Some(&registries),
+                        ) {
                             components
                                 .insert(NAMES[id as usize].to_owned(), component_json(component));
                         }

@@ -35,7 +35,7 @@ sekme tablosunun 1896 yığını da birim testinde tam okunur.
 
 ## Değerler
 
-`crates/voxel-game/src/item_values.rs` bir yığının bileşen değerlerini yamadan, yama yoksa
+`crates/voxel-game/src/item/values.rs` bir yığının bileşen değerlerini yamadan, yama yoksa
 eşyanın varsayılanından (yukarıdaki tablo) okur; yalnız çizimin okuduğu
 türler çözülür: `dyed_color`, `map_color`, `firework_explosion`,
 `potion_contents`. `PotionContents.getColorOr` portu için

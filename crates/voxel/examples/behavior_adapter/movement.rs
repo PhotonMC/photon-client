@@ -270,7 +270,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 let aim = match attack.get("target") {
                     _ if attack.get("pick").is_some() => {
                         let at = player.position();
-                        voxel_game::pick::pick(
+                        voxel_game::input::pick::pick(
                             &world,
                             &player,
                             voxel_core::math::Vec3::new(

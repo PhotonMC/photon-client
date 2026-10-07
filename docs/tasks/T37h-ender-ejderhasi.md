@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/boss/enderdragon/{EnderDragon,EnderDragonPart}.java`, `client/model/monster/dragon/EnderDragonModel.java`, `client/renderer/entity/{EnderDragonRenderer,state/EnderDragonRenderState}.java`.
-- Rust: `crates/voxel-world/src/pick.rs` (seçilebilirlik), `crates/voxel-render/src/mob_model.rs`.
+- Rust: `crates/voxel-world/src/pick.rs` (seçilebilirlik), `crates/voxel-render/src/entity/mob_model.rs`.
 
 ## Kapsam dışı
 Savaş yapıları, ejderha yumurtası, ses.

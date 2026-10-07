@@ -3,7 +3,7 @@ use super::*;
 /// `primed_tnt_pose`: the pose and overlay a block of primed tnt is drawn with.
 pub(super) fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::minecart::{primed_tnt_pose, tnt_is_lit};
+    use voxel_render::objects::minecart::{primed_tnt_pose, tnt_is_lit};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -32,10 +32,10 @@ pub(super) fn primed_tnt_pose_result(request: &Value) -> Result<Value, String> {
 
 /// `fishing_hook`: a bobber's quad and its line's vertices.
 pub(super) fn fishing_hook_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::fishing::string_vertices;
+    use voxel_render::entity::name_tag::camera_orientation;
     use voxel_render::joml::Pose;
-    use voxel_render::name_tag::camera_orientation;
-    use voxel_render::projectile::fishing_hook_quad;
+    use voxel_render::objects::fishing::string_vertices;
+    use voxel_render::objects::projectile::fishing_hook_quad;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -96,7 +96,7 @@ pub(super) fn fishing_hook_result(request: &Value) -> Result<Value, String> {
 
 /// `avatar_pose`: where a player is put, by the body's turn, the dying, swimming and gliding.
 pub(super) fn avatar_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::player_renderer::{FallFlying, Placement, placement_pose};
+    use voxel_render::entity::player_renderer::{FallFlying, Placement, placement_pose};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let flag = |key: &str| row[key].as_bool().unwrap_or(false);
@@ -131,7 +131,7 @@ pub(super) fn avatar_pose_result(request: &Value) -> Result<Value, String> {
 
 /// `elytra_model`: the elytra models posed by the wings' spread, drawn.
 pub(super) fn elytra_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer =
@@ -186,7 +186,7 @@ pub(super) fn elytra_state_result(request: &Value) -> Result<Value, String> {
 /// `leash_strip`: a leash's strip as `LeashFeatureRenderer.prepare` builds it.
 pub(super) fn leash_strip_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::leash::{LeashState, leash_vertices};
+    use voxel_render::objects::leash::{LeashState, leash_vertices};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let float = |key: &str| -> Result<f32, String> {
@@ -249,7 +249,9 @@ pub(super) fn leash_strip_result(request: &Value) -> Result<Value, String> {
 /// `small_projectile_pose`: the poses a shulker bullet's, llama spit's or evoker fangs' models are drawn from.
 pub(super) fn small_projectile_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::projectile::{evoker_fangs_pose, llama_spit_pose, shulker_bullet_poses};
+    use voxel_render::objects::projectile::{
+        evoker_fangs_pose, llama_spit_pose, shulker_bullet_poses,
+    };
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -264,7 +266,7 @@ pub(super) fn small_projectile_pose_result(request: &Value) -> Result<Value, Str
         base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
         let poses: Vec<Pose> = match row["kind"].as_str().ok_or("kind")? {
             "shulker_bullet" => shulker_bullet_poses(&base, bits("age_in_ticks")?).to_vec(),
-            "leash_knot" => vec![voxel_render::projectile::leash_knot_pose(&base)],
+            "leash_knot" => vec![voxel_render::objects::projectile::leash_knot_pose(&base)],
             "llama_spit" => vec![llama_spit_pose(&base, bits("y_rot")?, bits("x_rot")?)],
             // Fangs are not drawn until they bite.
             _ if bits("bite_progress")? == 0.0 => Vec::new(),
@@ -278,9 +280,9 @@ pub(super) fn small_projectile_pose_result(request: &Value) -> Result<Value, Str
 
 /// `dragon_fireball_quad`: the quad a dragon's fireball is drawn as, seen by a camera.
 pub(super) fn dragon_fireball_quad_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::entity::name_tag::camera_orientation;
     use voxel_render::joml::Pose;
-    use voxel_render::name_tag::camera_orientation;
-    use voxel_render::projectile::dragon_fireball_quad;
+    use voxel_render::objects::projectile::dragon_fireball_quad;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -323,7 +325,7 @@ pub(super) fn dragon_fireball_quad_result(request: &Value) -> Result<Value, Stri
 /// `arrow_pose`: the pose an arrow's model is drawn from.
 pub(super) fn arrow_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::projectile::arrow_pose;
+    use voxel_render::objects::projectile::arrow_pose;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -337,7 +339,7 @@ pub(super) fn arrow_pose_result(request: &Value) -> Result<Value, String> {
         let mut base = Pose::default();
         base.translate(bits("feet_x")?, bits("feet_y")?, bits("feet_z")?);
         let pose = if row.get("trident").is_some() {
-            voxel_render::projectile::trident_pose(&base, bits("y_rot")?, bits("x_rot")?)
+            voxel_render::objects::projectile::trident_pose(&base, bits("y_rot")?, bits("x_rot")?)
         } else {
             arrow_pose(&base, bits("y_rot")?, bits("x_rot")?)
         };
@@ -349,7 +351,7 @@ pub(super) fn arrow_pose_result(request: &Value) -> Result<Value, String> {
 /// `minecart_pose`: the poses a minecart's model and its carried block are drawn from.
 pub(super) fn minecart_pose_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::minecart::{
+    use voxel_render::objects::minecart::{
         MinecartRenderState, RailPlace, minecart_poses, tnt_is_lit, tnt_swell_amount,
     };
     let mut out = Vec::new();

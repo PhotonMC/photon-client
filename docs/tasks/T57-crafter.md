@@ -4,7 +4,7 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/CrafterScreen.java`, `world/inventory/{CrafterMenu,CrafterSlot,NonInteractiveResultSlot}.java`, `network/protocol/game/ServerboundContainerSlotStateChangedPacket.java`. Rust: `crates/voxel-game/src/container_menu.rs`.
+Java: `client/gui/screens/inventory/CrafterScreen.java`, `world/inventory/{CrafterMenu,CrafterSlot,NonInteractiveResultSlot}.java`, `network/protocol/game/ServerboundContainerSlotStateChangedPacket.java`. Rust: `crates/voxel-game/src/menus/container.rs`.
 
 ## Oracle
 `container-clicks` (kilitli yuvaya koyma, `SlotStateChanged` baytı); `container_screen` crafter (kilit simgeleri, tetiklenmiş ok). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).

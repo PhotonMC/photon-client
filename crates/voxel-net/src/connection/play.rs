@@ -29,32 +29,54 @@ use super::probe::{
 use super::protocol::*;
 use super::session::{read_packet, send_packet};
 
-const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
-const PLAY_CLIENTBOUND_PING_PACKET_ID: i32 = 61;
-const PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID: i32 = 84;
-const PLAY_CLIENTBOUND_SET_TIME_PACKET_ID: i32 = 113;
-const PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID: i32 = 134;
-const PLAY_SERVERBOUND_PONG_PACKET_ID: i32 = 45;
-const PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID: i32 = 30;
-const PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID: i32 = 32;
-const PLAY_SERVERBOUND_MOVE_PLAYER_STATUS_ONLY_PACKET_ID: i32 = 33;
-const PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID: i32 = 34;
-const PLAY_SERVERBOUND_PADDLE_BOAT_PACKET_ID: i32 = 35;
-const PLAY_SERVERBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 40;
-const PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID: i32 = 42;
-const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
+mod chat;
+mod chunks;
+mod containers;
+mod incoming;
+mod lifecycle;
+mod movement;
+mod recipes;
+mod state;
+
+pub(super) const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
+
+pub(super) const PLAY_CLIENTBOUND_PING_PACKET_ID: i32 = 61;
+
+pub(super) const PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID: i32 = 84;
+
+pub(super) const PLAY_CLIENTBOUND_SET_TIME_PACKET_ID: i32 = 113;
+
+pub(super) const PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID: i32 = 134;
+
+pub(super) const PLAY_SERVERBOUND_PONG_PACKET_ID: i32 = 45;
+
+pub(super) const PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID: i32 = 30;
+
+pub(super) const PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID: i32 = 32;
+
+pub(super) const PLAY_SERVERBOUND_MOVE_PLAYER_STATUS_ONLY_PACKET_ID: i32 = 33;
+
+pub(super) const PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID: i32 = 34;
+
+pub(super) const PLAY_SERVERBOUND_PADDLE_BOAT_PACKET_ID: i32 = 35;
+
+pub(super) const PLAY_SERVERBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 40;
+
+pub(super) const PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID: i32 = 42;
+
+pub(super) const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 
 /// A packet as the reader thread hands it over. Chunk and light packets,
 /// which are the heavy ones to parse, arrive already parsed; the order the
 /// packets came in is kept, so an error surfaces where it always did.
-enum Incoming {
+pub(super) enum Incoming {
     Raw(Vec<u8>),
     Chunk(Box<ChunkPacketObservation>),
     Light(Box<LightUpdateObservation>),
 }
 
 /// Parse the packets worth parsing off the game's thread.
-fn classify(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
+pub(super) fn classify(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
     let (packet_id, payload) = split_packet(&body)?;
     match packet_id {
         PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
@@ -69,101 +91,101 @@ fn classify(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
 
 /// A connection in the play phase with its world and local player.
 pub struct PlaySession {
-    writer: TcpStream,
-    compression_threshold: Option<usize>,
-    incoming: Receiver<Result<Incoming, ConnectionError>>,
-    trace: PlayConnectionTrace,
-    player_id: Option<i32>,
-    game_mode: ClientPlayerGameMode,
-    abilities: Option<ClientPlayerAbilities>,
-    player: Option<LocalPlayer>,
-    loaded: bool,
-    auto_jump: bool,
-    warned: Option<String>,
-    teleports: u32,
-    view_distance: i32,
-    dimension_type_id: i32,
-    hashed_seed: i64,
-    game_time: i64,
-    rain_level: f32,
-    thunder_level: f32,
-    status: PlayerStatus,
+    pub(super) writer: TcpStream,
+    pub(super) compression_threshold: Option<usize>,
+    pub(super) incoming: Receiver<Result<Incoming, ConnectionError>>,
+    pub(super) trace: PlayConnectionTrace,
+    pub(super) player_id: Option<i32>,
+    pub(super) game_mode: ClientPlayerGameMode,
+    pub(super) abilities: Option<ClientPlayerAbilities>,
+    pub(super) player: Option<LocalPlayer>,
+    pub(super) loaded: bool,
+    pub(super) auto_jump: bool,
+    pub(super) warned: Option<String>,
+    pub(super) teleports: u32,
+    pub(super) view_distance: i32,
+    pub(super) dimension_type_id: i32,
+    pub(super) hashed_seed: i64,
+    pub(super) game_time: i64,
+    pub(super) rain_level: f32,
+    pub(super) thunder_level: f32,
+    pub(super) status: PlayerStatus,
     /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
-    show_death_screen: bool,
+    pub(super) show_death_screen: bool,
     /// Why the connection is over, once it is: the server's word or what
     /// the connection said (`onDisconnect`).
-    disconnect: Option<voxel_game::text::Component>,
+    pub(super) disconnect: Option<voxel_game::text::Component>,
     /// The message of a death the death screen is yet to show.
-    death: Option<voxel_game::text::Component>,
+    pub(super) death: Option<voxel_game::text::Component>,
     /// Swing packets sent, for scripted runs to report.
-    swings: u32,
+    pub(super) swings: u32,
     /// The sound packets since the last [`Self::take_sounds`].
-    sounds: Vec<voxel_game::sounds::SoundCommand>,
+    pub(super) sounds: Vec<voxel_game::sounds::SoundCommand>,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
-    aimed_entity: Option<i32>,
+    pub(super) aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.
-    hardcore: bool,
+    pub(super) hardcore: bool,
     /// Whether a health update has arrived since the player last respawned.
-    health_received: bool,
+    pub(super) health_received: bool,
     /// Set when the server moved the player to a new level.
-    level_reset: bool,
+    pub(super) level_reset: bool,
     /// The hotbar slot the server was last told about.
-    sent_slot: i32,
+    pub(super) sent_slot: i32,
     /// Breaking state and the miss wait.
-    game_mode_state: voxel_game::game_mode::GameMode,
+    pub(super) game_mode_state: voxel_game::game_mode::GameMode,
     /// The player's inventory menu, whose drag state lasts between clicks.
-    container_menu: voxel_game::container_menu::ContainerMenu,
+    pub(super) container_menu: voxel_game::menus::container::ContainerMenu,
     /// The menu of the container the server opened, likewise.
-    open_menu: Option<voxel_game::container_menu::ContainerMenu>,
+    pub(super) open_menu: Option<voxel_game::menus::container::ContainerMenu>,
     /// What the server last said of the merchant whose menu is open, by container.
-    merchant: Option<(i32, voxel_game::merchant::MerchantState)>,
+    pub(super) merchant: Option<(i32, voxel_game::menus::merchant::MerchantState)>,
     /// Chat the server sent that the client has not shown yet, and the
     /// `nextChatIndex` its player chat must come in.
-    chat_events: Vec<ChatEvent>,
-    signature_cache: SignatureCache,
+    pub(super) chat_events: Vec<ChatEvent>,
+    pub(super) signature_cache: SignatureCache,
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
-    hud_events: Vec<HudEvent>,
+    pub(super) hud_events: Vec<HudEvent>,
     /// The vehicle the server removed with the local player aboard (`removedPlayerVehicleId`).
-    removed_player_vehicle: Option<i32>,
-    scoreboard: voxel_game::scoreboard::Scoreboard,
-    waypoints: voxel_game::waypoint::WaypointManager,
+    pub(super) removed_player_vehicle: Option<i32>,
+    pub(super) scoreboard: voxel_game::scoreboard::Scoreboard,
+    pub(super) waypoints: voxel_game::waypoint::WaypointManager,
     /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`), which
     /// the server tells by entity events 24 to 28.
-    permission_level: i32,
-    commands: Option<std::sync::Arc<voxel_game::commands::CommandTree>>,
-    username: String,
-    suggestions: Option<CommandSuggestions>,
-    player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
-    next_chat_index: i32,
+    pub(super) permission_level: i32,
+    pub(super) commands: Option<std::sync::Arc<voxel_game::commands::CommandTree>>,
+    pub(super) username: String,
+    pub(super) suggestions: Option<CommandSuggestions>,
+    pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
+    pub(super) next_chat_index: i32,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
-    drop_spam: i32,
-    dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
-    forgotten_chunks: Vec<(i32, i32)>,
-    clocks: std::collections::BTreeMap<i32, ClockState>,
+    pub(super) drop_spam: i32,
+    pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
+    pub(super) forgotten_chunks: Vec<(i32, i32)>,
+    pub(super) clocks: std::collections::BTreeMap<i32, ClockState>,
 }
 
 /// `ClientClockManager`'s state for one world clock.
 #[derive(Debug, Clone, Copy)]
-struct ClockState {
-    total_ticks: i64,
-    partial_tick: f32,
-    rate: f32,
+pub(super) struct ClockState {
+    pub(super) total_ticks: i64,
+    pub(super) partial_tick: f32,
+    pub(super) rate: f32,
 }
 
 /// The packet a parser made, or nothing after logging why it could not: the
 /// reference ignores a packet it cannot place, and the log keeps the reason.
-fn parsed<T, E: std::fmt::Display>(result: Result<T, E>, packet: &str) -> Option<T> {
+pub(super) fn parsed<T, E: std::fmt::Display>(result: Result<T, E>, packet: &str) -> Option<T> {
     result
         .map_err(|error| log::debug!("ignored {packet} packet: {error}"))
         .ok()
 }
 
-fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {
+pub(super) fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {
     super::protocol::read_f32(input, "float")
 }
 
-fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
+pub(super) fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
     voxel_core::wire::take(input)
         .map(i64::from_be_bytes)
         .ok_or_else(|| {
@@ -208,7 +230,7 @@ impl Default for PlayerStatus {
 
 /// A salt for a chat message: the clock's nanoseconds, which only has to
 /// differ from one message to the next.
-fn rand_salt() -> u32 {
+pub(super) fn rand_salt() -> u32 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |time| time.subsec_nanos())
@@ -381,8 +403,3 @@ mod tests {
         assert_eq!(session.removed_player_vehicle, None);
     }
 }
-
-mod containers;
-mod incoming;
-mod player_position;
-mod session;

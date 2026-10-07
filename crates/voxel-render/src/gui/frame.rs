@@ -73,9 +73,9 @@ pub enum Positioner {
     /// `DefaultTooltipPositioner`: by the mouse.
     Default,
     /// `MenuTooltipPositioner`: by the mouse, off the widget.
-    Menu(crate::gui::navigation::Rectangle),
+    Menu(crate::gui::widgets::navigation::Rectangle),
     /// `BelowOrAboveWidgetTooltipPositioner`: under the widget, or over it.
-    BelowOrAbove(crate::gui::navigation::Rectangle),
+    BelowOrAbove(crate::gui::widgets::navigation::Rectangle),
 }
 
 impl Positioner {
@@ -287,6 +287,9 @@ pub(crate) fn glyph_quads(
     quads
 }
 
+mod text;
+mod texture;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -347,6 +350,3 @@ mod tests {
         );
     }
 }
-
-mod gui_frame_text;
-mod gui_frame_texture;

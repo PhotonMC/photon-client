@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/animation/KeyframeAnimation.java`, `client/animation/AnimationDefinition.java`, `client/model/AnimationUtils.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (model bölümlerinin pozu), `crates/voxel-net/src/connection/play.rs` (paket işleme; `PLAY_CLIENTBOUND_*` kimlikleri `protocol.rs`'te), `crates/voxel-world/src/living.rs` (istemci tik durumları), `crates/voxel-data/src/entity_model.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (model bölümlerinin pozu), `crates/voxel-net/src/connection/play.rs` (paket işleme; `PLAY_CLIENTBOUND_*` kimlikleri `protocol.rs`'te), `crates/voxel-world/src/living.rs` (istemci tik durumları), `crates/voxel-data/src/entity_model.rs`.
 
 ## Yapılacaklar
 1. Animasyon tanımları tablo olarak oracle'dan (`AnimationDefinition` statik alanları → üretilmiş Rust tablosu, her parity koşusunda karşılaştırılır).

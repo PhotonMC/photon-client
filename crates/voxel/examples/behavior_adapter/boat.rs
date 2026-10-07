@@ -2,10 +2,12 @@ use super::*;
 
 /// `flier_item_pose`: where a vex's or an allay's hands carry what they hold.
 pub(super) fn flier_item_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::held_item::{allay_hand_pose, vex_hand_pose};
+    use voxel_render::entity::held_item::{allay_hand_pose, vex_hand_pose};
+    use voxel_render::entity::mob_model::{
+        AllayRenderState, MobModel, QuadrupedState, VexRenderState,
+    };
+    use voxel_render::entity::player_model::Arm;
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::{AllayRenderState, MobModel, QuadrupedState, VexRenderState};
-    use voxel_render::player_model::Arm;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -52,7 +54,7 @@ pub(super) fn flier_item_pose_result(request: &Value) -> Result<Value, String> {
                 holding_animation_progress: bits("holding_progress")?,
             });
         }
-        let child = |part: &voxel_render::player_model::Part, name: &str| {
+        let child = |part: &voxel_render::entity::player_model::Part, name: &str| {
             part.children()
                 .iter()
                 .find(|child| child.name() == name)
@@ -86,7 +88,9 @@ pub(super) fn flier_item_pose_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
-pub(super) fn boat_state_of(row: &Value) -> Result<voxel_render::boat::BoatRenderState, String> {
+pub(super) fn boat_state_of(
+    row: &Value,
+) -> Result<voxel_render::objects::boat::BoatRenderState, String> {
     let bits = |key: &str| -> Result<f32, String> {
         u32::from_str_radix(
             row[key].as_str().ok_or(format!("{key} must be a string"))?,
@@ -95,7 +99,7 @@ pub(super) fn boat_state_of(row: &Value) -> Result<voxel_render::boat::BoatRende
         .map(f32::from_bits)
         .map_err(|error| error.to_string())
     };
-    Ok(voxel_render::boat::BoatRenderState {
+    Ok(voxel_render::objects::boat::BoatRenderState {
         y_rot: bits("y_rot")?,
         hurt_dir: i32_field(row, "hurt_dir")?,
         hurt_time: bits("hurt_time")?,
@@ -109,7 +113,7 @@ pub(super) fn boat_state_of(row: &Value) -> Result<voxel_render::boat::BoatRende
 
 /// `boat_model`: a boat's, chest boat's or raft's model, or the water patch, posed and drawn.
 pub(super) fn boat_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -126,8 +130,8 @@ pub(super) fn boat_model_result(request: &Value) -> Result<Value, String> {
 /// `boat_pose`: where a boat's model (and its water patch, above water) is drawn from an
 /// identity pose.
 pub(super) fn boat_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::boat::boat_pose;
     use voxel_render::joml::Pose;
+    use voxel_render::objects::boat::boat_pose;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -152,9 +156,9 @@ pub(super) fn boat_pose_result(request: &Value) -> Result<Value, String> {
 
 /// `thrown_item_pose`: the pose a thrown item (or a firework rocket) is drawn from, seen by a camera.
 pub(super) fn thrown_item_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::entity::name_tag::camera_orientation;
     use voxel_render::joml::Pose;
-    use voxel_render::name_tag::camera_orientation;
-    use voxel_render::projectile::{firework_pose, thrown_item_pose};
+    use voxel_render::objects::projectile::{firework_pose, thrown_item_pose};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -188,7 +192,7 @@ pub(super) fn thrown_item_pose_result(request: &Value) -> Result<Value, String> 
 /// `painting_geometry`: the vertices a painting of this size and facing is drawn with.
 pub(super) fn painting_geometry_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::painting::{SpriteUv, painting_pose, painting_vertices};
+    use voxel_render::objects::painting::{SpriteUv, painting_pose, painting_vertices};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -247,7 +251,7 @@ pub(super) fn painting_geometry_result(request: &Value) -> Result<Value, String>
 /// `lightning_bolt`: the vertices a bolt of this seed is drawn with.
 pub(super) fn lightning_bolt_result(request: &Value) -> Result<Value, String> {
     use voxel_render::joml::Pose;
-    use voxel_render::lightning::lightning_bolt;
+    use voxel_render::objects::lightning::lightning_bolt;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {

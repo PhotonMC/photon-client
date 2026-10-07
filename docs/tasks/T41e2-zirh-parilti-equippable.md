@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/EquipmentLayerRenderer.java`, `client/renderer/rendertype/RenderTypes.java` (`armorEntityGlint`), `world/item/ItemStack.java` (`hasFoil`), `world/item/component/Equippable.java`.
-- Rust: `crates/voxel/src/armor.rs`, `voxel-render/src/vulkan.rs` (entity boru hattı), `voxel-game/src/item_values.rs`.
+- Rust: `crates/voxel/src/equipment/armor.rs`, `voxel-render/src/vulkan.rs` (entity boru hattı), `voxel-game/src/item_values.rs`.
 
 ## Oracle
 `entity/equipment-layers` satırları (`hasFoil` kararı), parıltı dokusu matrisi için sayısal oracle.

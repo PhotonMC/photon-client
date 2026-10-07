@@ -4,7 +4,7 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/BrewingStandScreen.java`, `world/inventory/BrewingStandMenu.java`, `world/item/alchemy/PotionBrewing.java` (`isIngredient`, `isPotionIngredient`). Rust: `crates/voxel-game/src/container_menu.rs` (iksir tarifleri: `grep -rn potion crates/voxel-data/src -l`).
+Java: `client/gui/screens/inventory/BrewingStandScreen.java`, `world/inventory/BrewingStandMenu.java`, `world/item/alchemy/PotionBrewing.java` (`isIngredient`, `isPotionIngredient`). Rust: `crates/voxel-game/src/menus/container.rs` (iksir tarifleri: `grep -rn potion crates/voxel-data/src -l`).
 
 ## Oracle
 Menü: `movement/container-clicks` simya satırları; ekran: `container_screen` brewing (ilerleme değerleri). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).

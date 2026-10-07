@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/parrot/ParrotModel.java`, `client/renderer/entity/ParrotRenderer.java`, `world/entity/animal/parrot/Parrot.java` (`calculateFlapping`).
-- Rust: `crates/voxel/src/monsters.rs`, `crates/voxel-render/src/mob_model.rs`.
+- Rust: `crates/voxel/src/mobs/monsters.rs`, `crates/voxel-render/src/entity/mob_model.rs`.
 
 ## Oracle
 `airborne_model` kalıbı; gerçek varlık tiki için `living-entity-animations`.

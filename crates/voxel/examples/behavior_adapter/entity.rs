@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::player_model::{Arm, PlayerModel, PlayerRenderState};
+    use voxel_render::entity::player_model::{Arm, PlayerModel, PlayerRenderState};
     match string(request, "operation")? {
         "walk_animation" => return walk_animation_result(request),
         "model_layers" => return Ok(model_layers_result()),

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{HumanoidArmorLayer,EquipmentLayerRenderer}.java`, `client/renderer/entity/ArmorModelSet.java`, `client/resources/model/{EquipmentClientInfo,EquipmentAssetManager}.java`, `world/item/equipment/{Equippable,trim/ArmorTrim}.java`, `client/model/geom/LayerDefinitions.java` (zırh katmanı tanımları), `world/item/component/DyedItemColor.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs`, `player_model.rs`, `crates/voxel/src/{mobs,overlays,held_items}.rs`, `crates/voxel-world/src/entity.rs` (`equipment`, T41).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs`, `player_model.rs`, `crates/voxel/src/{mobs,overlays,held_items}.rs`, `crates/voxel-world/src/entity.rs` (`equipment`, T41).
 
 ## Yapılacaklar
 1. Zırh modeli katmanları (`humanoid_armor_*#inner/outer`, bebek) T23 tablosunda var mı bak; yoksa oracle'dan tablo.

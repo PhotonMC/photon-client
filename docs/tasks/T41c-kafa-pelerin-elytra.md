@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{CustomHeadLayer,CapeLayer,WingsLayer,PlayerItemInHandLayer}.java`, `client/model/object/equipment/ElytraModel.java`, `client/renderer/entity/player/AvatarRenderer.java` (`extractCapeState`).
-- Rust: `crates/voxel/src/held_items.rs` (`Hands`, `HeldItem`), `voxel-render/src/held_item.rs`, `player_model.rs`.
+- Rust: `crates/voxel/src/equipment/held_items.rs` (`Hands`, `HeldItem`), `voxel-render/src/held_item.rs`, `player_model.rs`.
 
 ## Yapılacaklar
 1. Baş yuvası: `Head` görüntü bağlamı ile eşya/blok, kafa dönüşümü (`translateToHead`).

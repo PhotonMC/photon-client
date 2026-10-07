@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §4.1, §4.3
-- `crates/voxel/src/mobs.rs:600-660`, `foxes.rs`, `play.rs:640-700`, `crates/voxel-render/src/mob_model.rs`
+- `crates/voxel/src/mobs.rs:600-660`, `foxes.rs`, `play.rs:640-700`, `crates/voxel-render/src/entity/mob_model.rs`
 
 ## Yapılacaklar
 - `voxel-render::entity`: `RenderContext` (görünüm, partial, dokular, modeller) ve `EntityRenderState`.

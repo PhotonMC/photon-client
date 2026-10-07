@@ -1,21 +1,26 @@
 //! The mobs the frame draws: which entity types have a model and a texture,
 //! and where the server's mobs stand between two ticks.
 
+pub(crate) mod animals;
+pub(crate) mod aquatic;
+pub(crate) mod humanoids;
+pub(crate) mod monsters;
+
 use std::collections::HashMap;
 
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
-use voxel_render::entity_textures::EntityTextures;
-use voxel_render::mob_model::{
+use voxel_render::entity::mob_model::{
     ChickenState, MobModel, MobPlacement, PiglinArmPose, PiglinState, QuadrupedState,
     SkeletonState, ZombieState, mob_vertices, mob_vertices_coloured, placement_pose,
 };
-use voxel_render::player_model::{Arm, ArmPose, PlayerRenderState};
+use voxel_render::entity::player_model::{Arm, ArmPose, PlayerRenderState};
+use voxel_render::entity::textures::EntityTextures;
 use voxel_render::scene::Vertex;
 use voxel_world::EquipmentSlot;
 
-use crate::armor::{Armor, Worn};
-use crate::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
+use crate::equipment::armor::{Armor, Worn};
+use crate::equipment::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::overlays::{FrameView, packed_light};
 
 /// A mob that wears a variant the server names: its entity type, the kind
@@ -317,6 +322,11 @@ impl Default for MobModels {
     }
 }
 
+mod wild;
+pub use wild::*;
+mod pose;
+pub(crate) use pose::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -340,8 +350,3 @@ mod tests {
         assert!(voxel_data::entity_type::variant("cow", DEFAULT_VARIANT).is_some());
     }
 }
-
-mod wild;
-pub use wild::*;
-mod pose;
-pub(crate) use pose::*;

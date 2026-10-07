@@ -3,9 +3,11 @@ use super::*;
 /// `villager_held_layers`: where the layers that hold something on a villager,
 /// a trader and a witch put it, from an identity entity pose.
 pub(super) fn villager_held_layers_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::held_item::{crossed_arms_item_pose, head_item_pose, witch_potion_pose};
+    use voxel_render::entity::held_item::{
+        crossed_arms_item_pose, head_item_pose, witch_potion_pose,
+    };
+    use voxel_render::entity::mob_model::{MobModel, QuadrupedState, VillagerState, WitchState};
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::{MobModel, QuadrupedState, VillagerState, WitchState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -39,7 +41,7 @@ pub(super) fn villager_held_layers_result(request: &Value) -> Result<Value, Stri
                 entity_id: row["entity_id"].as_i64().ok_or("entity_id")? as i32,
                 holding_item: true,
             });
-            let part = |from: &voxel_render::player_model::Part, name: &str| {
+            let part = |from: &voxel_render::entity::player_model::Part, name: &str| {
                 from.children()
                     .iter()
                     .find(|part| part.name() == name)
@@ -93,7 +95,7 @@ pub(super) fn villager_held_layers_result(request: &Value) -> Result<Value, Stri
 
 /// `goat_model`: the goat's model posed and drawn.
 pub(super) fn goat_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{GoatState, MobModel};
+    use voxel_render::entity::mob_model::{GoatState, MobModel};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -116,7 +118,7 @@ pub(super) fn goat_model_result(request: &Value) -> Result<Value, String> {
 
 /// `wolf_model`: a wolf's model posed and drawn.
 pub(super) fn wolf_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, WolfState};
+    use voxel_render::entity::mob_model::{MobModel, WolfState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -163,7 +165,7 @@ pub(super) fn strider_textures_result() -> Value {
 
 /// `strider_model`: a strider's model (grown, baby or saddle) posed and drawn.
 pub(super) fn strider_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, StriderState};
+    use voxel_render::entity::mob_model::{MobModel, StriderState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -185,7 +187,7 @@ pub(super) fn strider_model_result(request: &Value) -> Result<Value, String> {
 
 /// `ravager_model`: a ravager's model posed and drawn.
 pub(super) fn ravager_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, RavagerState};
+    use voxel_render::entity::mob_model::{MobModel, RavagerState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
@@ -229,7 +231,7 @@ pub(super) fn panda_textures_result() -> Value {
 
 /// `panda_model`: a panda's model posed and drawn.
 pub(super) fn panda_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, PandaState};
+    use voxel_render::entity::mob_model::{MobModel, PandaState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -273,10 +275,10 @@ pub(super) fn matrix_bits(pose: &voxel_render::joml::Pose) -> Vec<String> {
 /// `setup_rotations`: what a panda's, a cat's or a fox's renderer leaves the pose at (from an
 /// identity entity pose), and what a panda's layer carries its item with.
 pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::joml::Pose;
-    use voxel_render::mob_model::{
+    use voxel_render::entity::mob_model::{
         MobPlacement, PandaRotation, panda_item_pose, placement_rotations,
     };
+    use voxel_render::joml::Pose;
     let matrix_of = matrix_bits;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -317,14 +319,14 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                 }
             }
             "squid" => {
-                placed.squid = Some(voxel_render::mob_model::SquidTurns {
+                placed.squid = Some(voxel_render::entity::mob_model::SquidTurns {
                     x_body_rot: bits("x_body_rot")?,
                     z_body_rot: bits("z_body_rot")?,
                     baby,
                 });
             }
             kind @ ("cod" | "salmon" | "tropical_fish" | "pufferfish") => {
-                use voxel_render::mob_model::{
+                use voxel_render::entity::mob_model::{
                     cod_turns, pufferfish_turns, salmon_turns, tropical_fish_turns,
                 };
                 let in_water = flag("in_water")?;
@@ -355,11 +357,11 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                 }
             }
             "sulfur_cube" => {
-                placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {
+                placed.cube_mob = Some(voxel_render::entity::mob_model::CubeMobScale {
                     size: i32_field(row, "size")?,
                     squish: bits("squish")?,
                     downscale: true,
-                    sulfur: Some(voxel_render::mob_model::SulfurCubeScale {
+                    sulfur: Some(voxel_render::entity::mob_model::SulfurCubeScale {
                         fuse_remaining: bits("fuse_remaining")?,
                         baby,
                         holds_block: row.get("contained_block").is_some(),
@@ -369,21 +371,22 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
                     placed.scale = bits("scale")?;
                 }
-                let pose = voxel_render::mob_model::placement_pose(&placed);
+                let pose = voxel_render::entity::mob_model::placement_pose(&placed);
                 full_pose = Some(matrix_of(&pose));
                 if row.get("contained_block").is_some() {
                     poses.push(matrix_of(
-                        &voxel_render::entity_block::sulfur_cube_block_pose(&pose, baby),
+                        &voxel_render::entity::block::sulfur_cube_block_pose(&pose, baby),
                     ));
-                    let (red, white) = voxel_render::mob_model::sulfur_cube_overlay(
+                    let (red, white) = voxel_render::entity::mob_model::sulfur_cube_overlay(
                         bits("fuse_remaining")?,
                         row.get("red_overlay").is_some(),
                     );
-                    block_overlay = Some(voxel_render::mob_model::overlay_coords(red, white));
+                    block_overlay =
+                        Some(voxel_render::entity::mob_model::overlay_coords(red, white));
                 }
             }
             kind @ ("slime" | "magma_cube") => {
-                placed.cube_mob = Some(voxel_render::mob_model::CubeMobScale {
+                placed.cube_mob = Some(voxel_render::entity::mob_model::CubeMobScale {
                     size: i32_field(row, "size")?,
                     squish: bits("squish")?,
                     downscale: kind == "slime",
@@ -396,7 +399,9 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                     placed.feet = [bits("feet_x")?, bits("feet_y")?, bits("feet_z")?];
                     placed.scale = bits("scale")?;
                 }
-                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
+                full_pose = Some(matrix_of(&voxel_render::entity::mob_model::placement_pose(
+                    &placed,
+                )));
             }
             "phantom" => {
                 let scale =
@@ -407,7 +412,9 @@ pub(super) fn setup_rotations_result(request: &Value) -> Result<Value, String> {
                 if row.get("death_time").is_some() {
                     placed.death_time = bits("death_time")?;
                 }
-                full_pose = Some(matrix_of(&voxel_render::mob_model::placement_pose(&placed)));
+                full_pose = Some(matrix_of(&voxel_render::entity::mob_model::placement_pose(
+                    &placed,
+                )));
             }
             "cat" => placed.cat_lying(bits("lie_down_amount")?, flag("on_sleeping_player")?),
             "fox" => {

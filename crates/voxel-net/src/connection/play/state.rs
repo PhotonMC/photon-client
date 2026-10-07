@@ -1,0 +1,115 @@
+use super::*;
+
+impl PlaySession {
+    pub fn world(&self) -> &ClientWorld {
+        &self.trace.world
+    }
+
+    /// The sounds the world's events and the player's own blocks made since the last call.
+    pub fn take_world_sounds(&mut self) -> Vec<voxel_world::local_player::LocalSound> {
+        self.trace.world.take_sounds()
+    }
+
+    /// Where an entity is drawn between two ticks.
+    pub fn entity_snapshot(
+        &self,
+        entity_id: i32,
+        partial_tick: f32,
+    ) -> Option<voxel_world::EntitySnapshot> {
+        self.trace.world.entity_snapshot(entity_id, partial_tick)
+    }
+
+    /// How many of the entities tick (those in a loaded chunk).
+    pub fn ticking_entity_count(&self) -> usize {
+        self.trace
+            .world
+            .entities()
+            .filter(|entity| entity.is_ticking())
+            .count()
+    }
+
+    /// How many entities the world holds besides the player.
+    pub fn entity_count(&self) -> usize {
+        self.trace.world.entities().count()
+    }
+
+    pub fn player(&self) -> Option<&LocalPlayer> {
+        self.player.as_ref()
+    }
+
+    pub fn player_mut(&mut self) -> Option<&mut LocalPlayer> {
+        self.player.as_mut()
+    }
+
+    /// The server's view distance in chunks, from the login packet.
+    pub fn view_distance(&self) -> i32 {
+        self.view_distance
+    }
+
+    /// The hashed world seed the biome zoom is jittered with.
+    pub fn hashed_seed(&self) -> i64 {
+        self.hashed_seed
+    }
+
+    /// The current dimension type's registry name.
+    pub fn dimension_type(&self) -> Option<&str> {
+        self.registry_names("minecraft:dimension_type")
+            .get(usize::try_from(self.dimension_type_id).ok()?)
+            .map(String::as_str)
+    }
+
+    /// The entry names of one synchronised registry, in network order.
+    pub fn registry_names(&self, registry: &str) -> &[String] {
+        self.trace
+            .registry_entry_names
+            .get(registry)
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// The level's game time, as the server last set it and the ticks since.
+    pub fn game_time(&self) -> i64 {
+        self.game_time
+    }
+
+    /// Whether the level is hardcore.
+    pub fn hardcore(&self) -> bool {
+        self.hardcore
+    }
+
+    /// The player's game mode, as the server last set it.
+    pub fn game_mode(&self) -> ClientPlayerGameMode {
+        self.game_mode
+    }
+
+    /// The sound packets that arrived since the last call, in order (`handleSoundEvent`,
+    /// `handleSoundEntityEvent`, `handleStopSoundEvent`): the sound engine's to carry out.
+    pub fn take_sounds(&mut self) -> Vec<voxel_game::sounds::SoundCommand> {
+        std::mem::take(&mut self.sounds)
+    }
+
+    /// The player's profile id, as the server logged it in.
+    pub fn profile_id(&self) -> Option<voxel_core::binary::Uuid> {
+        self.trace.profile_id
+    }
+
+    /// Whether the server replaced the level since the last call, so
+    /// everything drawn from the old one should go.
+    pub fn take_level_reset(&mut self) -> bool {
+        std::mem::take(&mut self.level_reset)
+    }
+
+    /// What the HUD shows of the player.
+    pub fn status(&self) -> &PlayerStatus {
+        &self.status
+    }
+
+    /// `Level.getRainLevel`: how hard it rains, 0 to 1.
+    pub fn rain_level(&self) -> f32 {
+        self.rain_level
+    }
+
+    /// `Level.getThunderLevel`: the thunder level scaled by the rain.
+    pub fn thunder_level(&self) -> f32 {
+        self.thunder_level * self.rain_level
+    }
+}

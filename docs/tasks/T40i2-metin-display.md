@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/DisplayRenderer.java` (`TextDisplayRenderer`), `world/entity/Display.java` (`TextDisplay`), `client/gui/Font.java` (`split`, `width`).
-- Rust: `crates/voxel-world/src/display.rs`, `crates/voxel/src/displays.rs`, `crates/voxel-render/src/name_tag.rs` (yazı çizimi).
+- Rust: `crates/voxel-world/src/objects/display.rs`, `crates/voxel/src/objects/displays.rs`, `crates/voxel-render/src/entity/name_tag.rs` (yazı çizimi).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon text_display`.

@@ -22,7 +22,7 @@ referansla karşılaştırılır (`block` ailesi `parity_passed`).
 
 ## Ekran
 
-`crates/voxel-game/src/creative_menu.rs` `ItemPickerMenu`u ve ekranın `slotClicked`ini taşır,
+`crates/voxel-game/src/menus/creative.rs` `ItemPickerMenu`u ve ekranın `slotClicked`ini taşır,
 `crates/voxel-render/src/gui/screen/creative.rs` yerleşimi, fareyi ve çizimi:
 
 - Pencere 5×9 yuva; satır satır kayar (`scrollTo`, `getRowIndexForScroll`,

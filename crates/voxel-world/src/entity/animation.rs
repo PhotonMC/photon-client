@@ -1,15 +1,134 @@
 use super::*;
 
 impl ClientEntity {
+    /// What a living entity's drawn pose follows from its tick: the limbs'
+    /// swing with the distance moved, and the body turning (a player's after
+    /// where it walks, a mob's by its body control), and for a player the
+    /// swimming pose easing in or out.
+    pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
+        let moved = (
+            self.position.x.get() - self.old_position.x.get(),
+            self.position.z.get() - self.old_position.z.get(),
+        );
+        if kind == LivingKind::Player {
+            self.old_swim_amount = self.swim_amount;
+            self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
+                self.swim_amount.get(),
+                self.pose == ClientEntityPose::Swimming,
+            ));
+        }
+        let mut body = self.y_body_rot.get();
+        let mut body_old = self.old_y_body_rot.get();
+        let mut head = self.y_head_rot.get();
+        let mut head_old = self.old_y_head_rot.get();
+        if kind == LivingKind::Mob && self.is_shulker() {
+            // `Shulker.ShulkerBodyRotationControl`: the body does not follow.
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+        } else if kind == LivingKind::Mob {
+            let mut control = crate::living::MobBodyControl {
+                head_stable_time: self.head_stable_time,
+                last_stable_y_head_rot: self.last_stable_y_head_rot.get(),
+            };
+            crate::living::tick_mob_body(
+                &mut control,
+                (&mut body, &mut head),
+                self.y_rot.get(),
+                moved,
+                !self.passenger_ids.is_empty(),
+            );
+            self.head_stable_time = control.head_stable_time;
+            self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+            self.y_head_rot = JavaF32::new(head);
+        } else {
+            crate::living::turn_body(
+                (&mut body, &mut body_old),
+                (self.y_rot.get(), head, &mut head_old),
+                moved,
+            );
+        }
+        self.y_body_rot = JavaF32::new(body);
+        self.old_y_body_rot = JavaF32::new(body_old);
+        self.old_y_head_rot = JavaF32::new(head_old);
+        // `calculateEntityAnimation`: a rider or a dead entity stands still.
+        // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
+        if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
+            let camel = matches!(
+                voxel_data::entity_type::name(self.type_id),
+                Some("minecraft:camel" | "minecraft:camel_husk")
+            );
+            if camel {
+                // `Camel.updateWalkAnimation`: only a standing camel that is
+                // not dashing walks, and its stride is quicker to settle.
+                let walking = self.pose == ClientEntityPose::Standing
+                    && !self
+                        .kind
+                        .horse()
+                        .is_some_and(|horse| horse.camel.is_dash_animation_started());
+                let target = if walking {
+                    ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
+                } else {
+                    0.0
+                };
+                self.walk
+                    .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
+            } else if self.is_creaking() {
+                // `Creaking.updateWalkAnimation`: a quicker stride, capped at three.
+                let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
+                self.walk.update(target, 0.4, 1.0);
+            } else if self.is_frog() {
+                let target = self.kind.frog().map_or_else(
+                    || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
+                    |frog| frog.walk_target(moved.0.hypot(moved.1)),
+                );
+                self.walk
+                    .update(target, 0.4, if self.baby { 3.0 } else { 1.0 });
+            } else {
+                self.walk.follow(moved.0.hypot(moved.1), self.baby);
+            }
+        } else {
+            self.walk.stop();
+        }
+    }
+
+    /// What a cat or a panda does of its own after `super.tick`, given what
+    /// the world around it holds (a sleeper near a cat, thunder).
+    pub(crate) fn tick_species(&mut self, (sleeper_near_cat, thundering): (bool, bool)) {
+        self.tick_cat(sleeper_near_cat);
+        self.tick_panda(thundering);
+        self.tick_bat();
+        self.tick_parrot();
+        self.tick_allay();
+        self.tick_warden();
+        self.tick_creaking();
+        self.tick_armadillo();
+        if self.is_end_crystal() {
+            self.end_crystal_mut().tick();
+        }
+        if self.is_abstract_arrow() {
+            self.arrow_mut().tick();
+        }
+        if self.is_evoker_fangs() {
+            self.evoker_fangs_mut().tick();
+        }
+        if self.is_primed_tnt() {
+            self.primed_tnt_mut().tick();
+        }
+        if self.is_lightning_bolt() {
+            let seed = i64::from(self.id);
+            self.lightning_done = self
+                .kind
+                .lightning_or_insert_with(|| {
+                    Box::new(crate::objects::lightning::LightningState::new(seed))
+                })
+                .tick();
+        }
+    }
+
     /// A chicken's `flap` and `flapSpeed` between two ticks.
     pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
         let animal = &self.living.animal;
         (animal.flap_at(partial), animal.flap_speed_at(partial))
-    }
-
-    /// An armor stand's flags and poses.
-    pub fn armor_stand(&self) -> &crate::armor_stand::ArmorStandState {
-        &self.living.armor_stand
     }
 
     /// The swing of an arm (`LivingEntity.swing`).
@@ -33,7 +152,7 @@ impl ClientEntity {
     pub(crate) fn swing_durations(&self) -> [i32; 2] {
         [EquipmentSlot::MainHand, EquipmentSlot::OffHand].map(|slot| {
             self.equipment(slot)
-                .and_then(|stack| crate::block_rules::item(stack.item_registry_id()))
+                .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
                 .and_then(|item| voxel_data::spear::spear_of(item.name))
                 .map_or(crate::living::DEFAULT_SWING_DURATION, |spear| {
                     spear.swing_ticks
@@ -108,7 +227,7 @@ impl ClientEntity {
                     (self.tick_count, self.on_ground, self.vehicle_id.is_some());
                 let horse = self
                     .kind
-                    .horse_or_insert_with(|| Box::new(crate::horse::HorseState::new()));
+                    .horse_or_insert_with(|| Box::new(crate::mobs::horse::HorseState::new()));
                 horse.tick(alive);
                 if camel {
                     let in_liquid = self.mount_ride.in_liquid;
@@ -121,7 +240,7 @@ impl ClientEntity {
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
                 self.kind
-                    .rabbit_or_insert_with(|| Box::new(crate::rabbit::RabbitState::new()))
+                    .rabbit_or_insert_with(|| Box::new(crate::mobs::rabbit::RabbitState::new()))
                     .tick(tick_count, no_ai);
             }
             Some("minecraft:copper_golem") => {
@@ -132,7 +251,7 @@ impl ClientEntity {
                 );
                 self.kind
                     .copper_golem_or_insert_with(|| {
-                        Box::new(crate::copper_golem::CopperGolemAnimations::new())
+                        Box::new(crate::mobs::copper_golem::CopperGolemAnimations::new())
                     })
                     .tick(action, tick_count, flags);
             }
@@ -144,41 +263,5 @@ impl ClientEntity {
             }
             _ => {}
         }
-    }
-
-    /// `getItemHeldByArm`.
-    pub fn item_held_by_arm(&self, left: bool) -> Option<&ClientItemStackState> {
-        self.equipment(if left == self.main_arm_is_left() {
-            EquipmentSlot::MainHand
-        } else {
-            EquipmentSlot::OffHand
-        })
-    }
-
-    /// `ItemEntity.bobOffs`.
-    pub fn bob_offset(&self) -> f32 {
-        self.bob_offset.get()
-    }
-
-    /// Whether the entity is a player.
-    pub fn is_player(&self) -> bool {
-        is_vanilla_player_entity_type(self.type_id)
-    }
-
-    /// Whether the player only watches (its game mode, as the server told).
-    pub fn is_spectator(&self) -> bool {
-        self.spectator
-    }
-
-    pub fn is_invisible(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_INVISIBLE)
-    }
-
-    pub fn is_glowing(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_GLOWING)
-    }
-
-    pub fn is_fall_flying(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 }

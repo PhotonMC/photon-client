@@ -8,8 +8,8 @@ use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::chat::split;
 use crate::gui::font::Font;
-use crate::gui::navigation::Rectangle;
-use crate::gui::slider::InputType;
+use crate::gui::widgets::navigation::Rectangle;
+use crate::gui::widgets::slider::InputType;
 use crate::gui::{GuiAtlas, GuiFrame, Positioner};
 
 /// `Tooltip.MAX_WIDTH`.

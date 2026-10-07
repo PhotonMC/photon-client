@@ -1,26 +1,310 @@
 use super::*;
 
-pub(super) fn joml_sin_f32(value: f32) -> f32 {
-    f64::from(value).sin() as f32
+/// Return Java `Mth.lengthSquared(double, double)` in source order.
+pub fn mth_length_squared_f64_2(x: f64, y: f64) -> f64 {
+    let x_squared = x * x;
+    let y_squared = y * y;
+    x_squared + y_squared
 }
 
-pub(super) fn joml_cos_from_sin(sine: f32, angle: f32) -> f32 {
-    const JOML_HALF_PI: f32 = f32::from_bits(0x3fc9_0fdb);
-    const JOML_TWO_PI: f32 = f32::from_bits(0x40c9_0fdb);
-    const JOML_PI: f32 = f32::from_bits(0x4049_0fdb);
+/// Return Java `Mth.length(double, double)` in source order.
+pub fn mth_length_f64_2(x: f64, y: f64) -> f64 {
+    mth_length_squared_f64_2(x, y).sqrt()
+}
 
-    let magnitude = f64::from(1.0_f32 - sine * sine).sqrt() as f32;
-    let mut quadrant = angle + JOML_HALF_PI;
-    let turns = (quadrant / JOML_TWO_PI) as i32;
-    quadrant -= turns as f32 * JOML_TWO_PI;
-    if quadrant < 0.0 {
-        quadrant += JOML_TWO_PI;
+/// Return Java `Mth.length(float, float)`, including its double helper call.
+pub fn mth_length_f32_2(x: f32, y: f32) -> f32 {
+    mth_length_squared_f64_2(f64::from(x), f64::from(y)).sqrt() as f32
+}
+
+/// Return Java `Mth.lengthSquared(double, double, double)` in source order.
+pub fn mth_length_squared_f64_3(x: f64, y: f64, z: f64) -> f64 {
+    let x_squared = x * x;
+    let y_squared = y * y;
+    let z_squared = z * z;
+    x_squared + y_squared + z_squared
+}
+
+/// Return Java `Mth.length(double, double, double)` in source order.
+pub fn mth_length_f64_3(x: f64, y: f64, z: f64) -> f64 {
+    mth_length_squared_f64_3(x, y, z).sqrt()
+}
+
+/// Return Java `Mth.lengthSquared(float, float, float)` with f32 rounding.
+pub fn mth_length_squared_f32_3(x: f32, y: f32, z: f32) -> f32 {
+    java_f32_add(java_f32_add(x * x, y * y), z * z)
+}
+
+/// Return Java `Mth.quantize(double, int)`, including Java i32 overflow.
+pub fn mth_quantize(value: f64, resolution: i32) -> i32 {
+    let floored = (value / f64::from(resolution)).floor() as i32;
+    floored.wrapping_mul(resolution)
+}
+
+/// Return Java `Mth.outFromOrigin(int, int, int, int)` as an ordered list.
+pub fn mth_out_from_origin(
+    origin: i32,
+    lower_bound: i32,
+    upper_bound: i32,
+    step_size: i32,
+) -> Result<Vec<i32>, String> {
+    if lower_bound > upper_bound {
+        return Err(format!(
+            "upperBound {upper_bound} expected to be > lowerBound {lower_bound}"
+        ));
     }
-    if quadrant >= JOML_PI {
-        -magnitude
+    if step_size < 1 {
+        return Err(format!("step size expected to be >= 1, was {step_size}"));
+    }
+
+    let clamped_origin = clamp_i32(origin, lower_bound, upper_bound);
+    let mut cursor = clamped_origin;
+    let mut values = Vec::new();
+    loop {
+        let current_distance = clamped_origin.wrapping_sub(cursor).wrapping_abs();
+        let has_next = clamped_origin.wrapping_sub(current_distance) >= lower_bound
+            || clamped_origin.wrapping_add(current_distance) <= upper_bound;
+        if !has_next {
+            break;
+        }
+        values.push(cursor);
+
+        let previous_was_negative = cursor <= clamped_origin;
+        let can_move_positive = clamped_origin
+            .wrapping_add(current_distance)
+            .wrapping_add(step_size)
+            <= upper_bound;
+        if !previous_was_negative || !can_move_positive {
+            let attempted_step = clamped_origin
+                .wrapping_sub(current_distance)
+                .wrapping_sub(if previous_was_negative { step_size } else { 0 });
+            if attempted_step >= lower_bound {
+                cursor = attempted_step;
+                continue;
+            }
+        }
+
+        cursor = clamped_origin
+            .wrapping_add(current_distance)
+            .wrapping_add(step_size);
+    }
+    Ok(values)
+}
+
+/// Return Java `Mth.mulAndTruncate(Fraction, int)` for a Fraction's fields.
+pub fn mth_mul_and_truncate(numerator: i32, denominator: i32, factor: i32) -> i32 {
+    let product = numerator.wrapping_mul(factor);
+    if product == i32::MIN && denominator == -1 {
+        i32::MIN
     } else {
-        magnitude
+        product / denominator
     }
+}
+
+/// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
+pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
+    if divisor == 0 {
+        panic!("division by zero");
+    }
+    // Java's integer division defines MIN_VALUE / -1 as MIN_VALUE; Rust's
+    // checked debug division would otherwise panic here.
+    if dividend == i32::MIN && divisor == -1 {
+        return i32::MIN;
+    }
+    let quotient = dividend / divisor;
+    let remainder = dividend % divisor;
+    if remainder != 0 && (dividend < 0) != (divisor < 0) {
+        quotient.wrapping_sub(1)
+    } else {
+        quotient
+    }
+}
+
+/// Return Java `Math.floorMod(int, int)` as used by `Mth.positiveModulo`.
+pub fn positive_modulo_i32(input: i32, modulus: i32) -> i32 {
+    let quotient = floor_div_i32(input, modulus);
+    input.wrapping_sub(quotient.wrapping_mul(modulus))
+}
+
+/// Return `Mth.positiveCeilDiv(int, int)` with Java negation semantics.
+pub fn positive_ceil_div_i32(input: i32, divisor: i32) -> i32 {
+    floor_div_i32(input.wrapping_neg(), divisor).wrapping_neg()
+}
+
+/// Return `Mth.positiveCeilDiv(long, long)` with Java negation semantics.
+pub fn positive_ceil_div_i64(input: i64, divisor: i64) -> i64 {
+    floor_div_i64(input.wrapping_neg(), divisor).wrapping_neg()
+}
+
+/// Return `Mth.roundToward(int, int)` with Java multiplication semantics.
+pub fn round_toward_i32(input: i32, multiple: i32) -> i32 {
+    positive_ceil_div_i32(input, multiple).wrapping_mul(multiple)
+}
+
+/// Return `Mth.roundToward(long, long)` with Java multiplication semantics.
+pub fn round_toward_i64(input: i64, multiple: i64) -> i64 {
+    positive_ceil_div_i64(input, multiple).wrapping_mul(multiple)
+}
+
+pub(super) fn floor_div_i64(dividend: i64, divisor: i64) -> i64 {
+    if divisor == 0 {
+        panic!("division by zero");
+    }
+    if dividend == i64::MIN && divisor == -1 {
+        return i64::MIN;
+    }
+    let quotient = dividend / divisor;
+    let remainder = dividend % divisor;
+    if remainder != 0 && (dividend < 0) != (divisor < 0) {
+        quotient.wrapping_sub(1)
+    } else {
+        quotient
+    }
+}
+
+/// Return Java `Mth.ceilLong(double)` with Java's floating-point-to-long narrowing.
+pub fn ceil_long_f64(value: f64) -> i64 {
+    value.ceil() as i64
+}
+
+/// Return Java `Mth.abs(float)` while preserving raw NaN payload bits.
+pub fn mth_abs_f32(value: f32) -> f32 {
+    value.abs()
+}
+
+/// Return Java `Mth.smallestEncompassingPowerOfTwo(int)` with i32 wrapping.
+pub fn smallest_encompassing_power_of_two(input: i32) -> i32 {
+    let mut result = input.wrapping_sub(1);
+    result |= result >> 1;
+    result |= result >> 2;
+    result |= result >> 4;
+    result |= result >> 8;
+    result |= result >> 16;
+    result.wrapping_add(1)
+}
+
+/// Return Java `Mth.smallestSquareSide(int)` for a valid nonnegative count.
+pub fn smallest_square_side(item_count: i32) -> Result<i32, String> {
+    if item_count < 0 {
+        Err("itemCount must be greater than or equal to zero".into())
+    } else {
+        Ok(f64::from(item_count).sqrt().ceil() as i32)
+    }
+}
+
+/// Return Java `Mth.isPowerOfTwo(int)` using the input's wrapped bit pattern.
+pub fn is_power_of_two_i32(input: i32) -> bool {
+    input != 0 && (input & input.wrapping_sub(1)) == 0
+}
+
+/// Return Java `Mth.isPowerOfTwo(long)` using the input's wrapped bit pattern.
+pub fn is_power_of_two_i64(input: i64) -> bool {
+    input != 0 && (input & input.wrapping_sub(1)) == 0
+}
+
+/// Return Java `Mth.ceillog2(int)` with its De Bruijn lookup.
+pub fn ceillog2(input: i32) -> i32 {
+    let input = if is_power_of_two_i32(input) {
+        input
+    } else {
+        smallest_encompassing_power_of_two(input)
+    };
+    let index = (((i64::from(input) * 125_613_361_i64) >> 27) as i32) & 31;
+    MULTIPLY_DE_BRUIJN_BIT_POSITION[index as usize]
+}
+
+/// Return Java `Mth.log2(int)`, including its zero/non-power correction.
+pub fn log2(input: i32) -> i32 {
+    ceillog2(input) - i32::from(!is_power_of_two_i32(input))
+}
+
+/// Return Java `Mth.positiveModulo(float)` without changing operation order.
+pub fn positive_modulo_f32(input: f32, modulus: f32) -> f32 {
+    let result = (input % modulus + modulus) % modulus;
+    if result.is_nan() {
+        if input.is_finite() && modulus.is_infinite() {
+            f32::from_bits(0xffc0_0000)
+        } else {
+            f32::from_bits(0x7fc0_0000)
+        }
+    } else {
+        result
+    }
+}
+
+/// Return Java `Mth.positiveModulo(double)` without changing operation order.
+pub fn positive_modulo_f64(input: f64, modulus: f64) -> f64 {
+    let result = (input % modulus + modulus) % modulus;
+    if result.is_nan() {
+        if input.is_finite() && modulus.is_infinite() {
+            f64::from_bits(0xfff8_0000_0000_0000)
+        } else {
+            f64::from_bits(0x7ff8_0000_0000_0000)
+        }
+    } else {
+        result
+    }
+}
+
+/// Return Java `Mth.absMax(float)` with Java NaN and absolute-value bits.
+pub fn abs_max_f32(first: f32, second: f32) -> f32 {
+    let first = f32::from_bits(first.to_bits() & 0x7fff_ffff);
+    let second = f32::from_bits(second.to_bits() & 0x7fff_ffff);
+    if first.is_nan() {
+        first
+    } else if second.is_nan() {
+        second
+    } else {
+        first.max(second)
+    }
+}
+
+/// Return Java `Mth.absMax(double)` with Java NaN and absolute-value bits.
+pub fn abs_max_f64(first: f64, second: f64) -> f64 {
+    let first = f64::from_bits(first.to_bits() & 0x7fff_ffff_ffff_ffff);
+    let second = f64::from_bits(second.to_bits() & 0x7fff_ffff_ffff_ffff);
+    if first.is_nan() {
+        first
+    } else if second.is_nan() {
+        second
+    } else {
+        first.max(second)
+    }
+}
+
+/// Return Java `Mth.equal(float, float)` with its strict f32 threshold.
+pub fn equal_f32(first: f32, second: f32) -> bool {
+    (second - first).abs() < 1.0e-5_f32
+}
+
+/// Return Java `Mth.equal(double, double)` with its promoted f32 threshold.
+pub fn equal_f64(first: f64, second: f64) -> bool {
+    (second - first).abs() < f64::from(1.0e-5_f32)
+}
+
+/// Return Java `Mth.square(float)` in source order.
+pub fn mth_square_f32(x: f32) -> f32 {
+    x * x
+}
+
+/// Return Java `Mth.cube(float)` in source order.
+pub fn mth_cube_f32(x: f32) -> f32 {
+    x * x * x
+}
+
+/// Return Java `Mth.square(double)` in source order.
+pub fn mth_square_f64(x: f64) -> f64 {
+    x * x
+}
+
+/// Return Java `Mth.square(int)` with Java's wrapping i32 multiplication.
+pub fn mth_square_i32(x: i32) -> i32 {
+    x.wrapping_mul(x)
+}
+
+/// Return Java `Mth.square(long)` with Java's wrapping i64 multiplication.
+pub fn mth_square_i64(x: i64) -> i64 {
+    x.wrapping_mul(x)
 }
 
 /// Block-to-section coordinate conversion, flooring toward negative infinity.
@@ -74,40 +358,6 @@ pub fn is_multiple_of_i32(dividend: i32, divisor: i32) -> bool {
     dividend % divisor == 0
 }
 
-/// Return Java `Mth.wrapDegrees(int)`.
-pub fn wrap_degrees_i32(angle: i32) -> i32 {
-    let mut normalized_angle = angle % 360;
-    if normalized_angle >= 180 {
-        normalized_angle -= 360;
-    }
-    if normalized_angle < -180 {
-        normalized_angle += 360;
-    }
-    normalized_angle
-}
-
-/// Return Java `Mth.wrapDegrees(long)`, including the final f32 narrowing.
-pub fn wrap_degrees_i64(angle: i64) -> f32 {
-    let mut normalized_angle = (angle % 360) as f32;
-    if normalized_angle >= 180.0 {
-        normalized_angle -= 360.0;
-    }
-    if normalized_angle < -180.0 {
-        normalized_angle += 360.0;
-    }
-    normalized_angle
-}
-
-/// Return Java `Mth.packDegrees(float)` with byte narrowing semantics.
-pub fn pack_degrees_f32(angle: f32) -> i8 {
-    floor_f32(angle * 256.0 / 360.0) as i8
-}
-
-/// Return Java `Mth.unpackDegrees(byte)`.
-pub fn unpack_degrees_i8(rotation: i8) -> f32 {
-    (i32::from(rotation) * 360) as f32 / 256.0
-}
-
 /// Return Java `Mth.ceil(float)` with Java's floating-point-to-int narrowing.
 pub fn ceil_f32(value: f32) -> i32 {
     f64::from(value).ceil() as i32
@@ -131,22 +381,6 @@ pub fn frac_f32(value: f32) -> f32 {
 /// Return Java `Mth.frac(double)` with its lfloor result widened to f64.
 pub fn frac_f64(value: f64) -> f64 {
     value - lfloor_f64(value) as f64
-}
-
-/// Return Java `Mth.createInsecureUUID(RandomSource)` from two long draws.
-pub fn mth_create_insecure_uuid(random: &mut RandomSource) -> Uuid {
-    let most = (random.next_long() as u64 & (-61_441_i64 as u64)) | 16_384_u64;
-    let least = (random.next_long() as u64 & 4_611_686_018_427_387_903_u64) | (i64::MIN as u64);
-    Uuid::new(most, least)
-}
-
-/// Return Java `Mth.murmurHash3Mixer(int)` with i32 wrapping arithmetic.
-pub fn mth_murmur_hash3_mixer(mut hash: i32) -> i32 {
-    hash ^= ((hash as u32) >> 16) as i32;
-    hash = hash.wrapping_mul(-2_048_144_789);
-    hash ^= ((hash as u32) >> 13) as i32;
-    hash = hash.wrapping_mul(-1_028_477_387);
-    hash ^ ((hash as u32) >> 16) as i32
 }
 
 /// Return Java `Mth.binarySearch(int, int, IntPredicate)` with i32 wrapping steps.
@@ -208,28 +442,6 @@ pub fn mth_ray_intersects_aabb(ray_start: Vec3, ray_dir: Vec3, aabb: Aabb) -> bo
     f.abs() < box_extent_x * andrew_woo_diff_y + box_extent_y * andrew_woo_diff_x
 }
 
-/// Return Java `Mth.fastInvSqrt(double)` with the raw-bit seed and one correction.
-pub fn mth_fast_inv_sqrt_f64(mut value: f64) -> f64 {
-    let half = 0.5 * value;
-    let bits = (value.to_bits() as i64) >> 1;
-    let bits = 6_910_469_410_427_058_090_i64.wrapping_sub(bits);
-    value = f64::from_bits(bits as u64);
-    value * (1.5 - half * value * value)
-}
-
-/// Return Java `Mth.fastInvCubeRoot(float)` with two f32 corrections.
-pub fn mth_fast_inv_cube_root_f32(value: f32) -> f32 {
-    let bits = if value.is_nan() {
-        0x7fc0_0000
-    } else {
-        value.to_bits()
-    };
-    let seed = 1_419_967_116_i32.wrapping_sub((bits as i32) / 3);
-    let mut estimate = f32::from_bits(seed as u32);
-    estimate = 0.6666667_f32 * estimate + 1.0_f32 / (3.0_f32 * estimate * estimate * value);
-    0.6666667_f32 * estimate + 1.0_f32 / (3.0_f32 * estimate * estimate * value)
-}
-
 /// Return Java `Mth.hsvToRgb(float, float, float)` with alpha zero.
 pub fn mth_hsv_to_rgb_f32(hue: f32, saturation: f32, value: f32) -> Result<i32, &'static str> {
     mth_hsv_to_argb_f32(hue, saturation, value, 0)
@@ -263,151 +475,48 @@ pub fn mth_hsv_to_argb_f32(
     Ok((((alpha as u32 & 0xff) << 24) | (red << 16) | (green << 8) | blue) as i32)
 }
 
-/// Return Java `Mth.wrapDegrees90(float)` with its 90-degree remainder path.
-pub fn mth_wrap_degrees_90_f32(angle: f32) -> f32 {
-    let mut normalized_angle = angle % 90.0_f32;
-    if normalized_angle >= 45.0_f32 {
-        normalized_angle -= 90.0_f32;
-    }
-    if normalized_angle < -45.0_f32 {
-        normalized_angle += 90.0_f32;
-    }
-    normalized_angle
-}
-
-/// Return Java `Mth.degreesDifference(float, float)` in source order.
-pub fn mth_degrees_difference_f32(from_angle: f32, to_angle: f32) -> f32 {
-    wrap_degrees_f32(to_angle - from_angle)
-}
-
-/// Return Java `Mth.degreesDifferenceAbs(float, float)` with Java abs semantics.
-pub fn mth_degrees_difference_abs_f32(angle_a: f32, angle_b: f32) -> f32 {
-    mth_abs_f32(mth_degrees_difference_f32(angle_a, angle_b))
-}
-
-/// Return Java `Mth.rotateIfNecessary(float, float, float)`.
-pub fn mth_rotate_if_necessary_f32(base_angle: f32, target_angle: f32, max_angle_diff: f32) -> f32 {
-    let delta_angle = mth_degrees_difference_f32(base_angle, target_angle);
-    let delta_angle_clamped = clamp_f32(delta_angle, -max_angle_diff, max_angle_diff);
-    target_angle - delta_angle_clamped
-}
-
-/// Return Java `Mth.approach(float, float, float)`.
-pub fn mth_approach_f32(current: f32, target: f32, increment: f32) -> f32 {
-    let increment = mth_abs_f32(increment);
-    if current < target {
-        clamp_f32(current + increment, current, target)
-    } else {
-        clamp_f32(current - increment, target, current)
-    }
-}
-
-/// Return Java `Mth.approachDegrees(float, float, float)`.
-pub fn mth_approach_degrees_f32(current: f32, target: f32, increment: f32) -> f32 {
-    let difference = mth_degrees_difference_f32(current, target);
-    mth_approach_f32(current, current + difference, increment)
-}
-
-pub(super) fn java_decimal_digit(character: char) -> Option<i64> {
-    const DIGIT_RANGES: &[(u32, u32)] = &[
-        (0x0030, 0x0039),
-        (0x0660, 0x0669),
-        (0x06f0, 0x06f9),
-        (0x07c0, 0x07c9),
-        (0x0966, 0x096f),
-        (0x09e6, 0x09ef),
-        (0x0a66, 0x0a6f),
-        (0x0ae6, 0x0aef),
-        (0x0b66, 0x0b6f),
-        (0x0be6, 0x0bef),
-        (0x0c66, 0x0c6f),
-        (0x0ce6, 0x0cef),
-        (0x0d66, 0x0d6f),
-        (0x0de6, 0x0def),
-        (0x0e50, 0x0e59),
-        (0x0ed0, 0x0ed9),
-        (0x0f20, 0x0f29),
-        (0x1040, 0x1049),
-        (0x1090, 0x1099),
-        (0x17e0, 0x17e9),
-        (0x1810, 0x1819),
-        (0x1946, 0x194f),
-        (0x19d0, 0x19d9),
-        (0x1a80, 0x1a89),
-        (0x1a90, 0x1a99),
-        (0x1b50, 0x1b59),
-        (0x1bb0, 0x1bb9),
-        (0x1c40, 0x1c49),
-        (0x1c50, 0x1c59),
-        (0xa620, 0xa629),
-        (0xa8d0, 0xa8d9),
-        (0xa900, 0xa909),
-        (0xa9d0, 0xa9d9),
-        (0xa9f0, 0xa9f9),
-        (0xaa50, 0xaa59),
-        (0xabf0, 0xabf9),
-        (0xff10, 0xff19),
-    ];
-    let codepoint = character as u32;
-    DIGIT_RANGES.iter().find_map(|&(first, last)| {
-        if (first..=last).contains(&codepoint) {
-            Some(i64::from(codepoint - first))
-        } else {
-            None
+// The same contract at two precisions, without a public numeric trait hierarchy.
+macro_rules! scalar_operations {
+    ($ty:ty, $floor:ident, $wrap:ident, $clamp:ident) => {
+        /// Round downward and convert to i32, saturating at the signed bounds.
+        /// NaN converts to zero, as with the reference's Java narrowing cast.
+        pub fn $floor(value: $ty) -> i32 {
+            f64::from(value).floor() as i32
         }
-    })
-}
 
-pub(super) fn parse_java_i32(input: &str) -> Option<i32> {
-    let mut characters = input.chars();
-    let first = characters.next()?;
-    let (negative, first_digit) = match first {
-        '-' => (true, None),
-        '+' => (false, None),
-        character => (false, Some(java_decimal_digit(character)?)),
-    };
-    let limit = if negative {
-        i64::from(i32::MIN)
-    } else {
-        -i64::from(i32::MAX)
-    };
-    let mut result = 0_i64;
-    let mut digit_count = 0;
-    if let Some(digit) = first_digit {
-        result = -digit;
-        digit_count = 1;
-    }
-    for character in characters {
-        let digit = java_decimal_digit(character)?;
-        result = result.checked_mul(10)?.checked_sub(digit)?;
-        if result < limit {
-            return None;
+        /// Wrap degrees to [-180, 180), retaining the sign of zero.
+        pub fn $wrap(value: $ty) -> $ty {
+            let remainder = value % 360.0;
+            if remainder >= 180.0 {
+                remainder - 360.0
+            } else if remainder < -180.0 {
+                remainder + 360.0
+            } else {
+                remainder
+            }
         }
-        digit_count += 1;
-    }
-    if digit_count == 0 {
-        return None;
-    }
-    if negative {
-        Some(result as i32)
-    } else {
-        Some((-result) as i32)
-    }
+
+        /// Reference clamp semantics, including NaN and signed-zero behavior.
+        /// Unlike a general clamp API, this does not assert ordered bounds.
+        pub fn $clamp(value: $ty, min: $ty, max: $ty) -> $ty {
+            if value < min {
+                min
+            } else if value.is_nan() {
+                value
+            } else if max.is_nan() {
+                max
+            } else if value == 0.0 && max == 0.0 {
+                // Java Math.min chooses negative zero when either zero is negative.
+                <$ty>::from_bits(value.to_bits() | max.to_bits())
+            } else if value <= max {
+                value
+            } else {
+                max
+            }
+        }
+    };
 }
 
-/// Return Java `Mth.getInt(String, int)`, including `Integer.parseInt` digit rules.
-pub fn mth_get_int(input: Option<&str>, default: i32) -> i32 {
-    input.and_then(parse_java_i32).unwrap_or(default)
-}
+scalar_operations!(f32, floor_f32, wrap_degrees_f32, clamp_f32);
 
-/// Return Java `Mth.getSeed(int, int, int)` with Java-width overflow.
-pub fn mth_get_seed(x: i32, y: i32, z: i32) -> i64 {
-    let mut seed = i64::from(x.wrapping_mul(3_129_871))
-        ^ i64::from(z).wrapping_mul(116_129_781)
-        ^ i64::from(y);
-    seed = seed
-        .wrapping_mul(seed)
-        .wrapping_mul(42_317_861)
-        .wrapping_add(seed.wrapping_mul(11));
-    seed >> 16
-}
+scalar_operations!(f64, floor_f64, wrap_degrees_f64, clamp_f64);

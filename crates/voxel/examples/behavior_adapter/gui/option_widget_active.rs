@@ -7,12 +7,12 @@ impl OptionWidget {
         kind: &str,
         value: &Value,
     ) -> Result<Self, String> {
-        use voxel_game::option::{IntRange, UnitDouble};
         use voxel_game::options::ChatVisibility;
+        use voxel_game::options::values::{IntRange, UnitDouble};
         use voxel_game::text::Component;
-        use voxel_render::gui::cycle::CycleButton;
-        use voxel_render::gui::option_text as text;
-        use voxel_render::gui::slider::OptionSlider;
+        use voxel_render::gui::options::text;
+        use voxel_render::gui::widgets::cycle::CycleButton;
+        use voxel_render::gui::widgets::slider::OptionSlider;
         let caption = |key: &str| Component::translatable(key);
         let double = || value.as_f64().ok_or("value must be a number");
         Ok(match kind {
@@ -83,7 +83,7 @@ impl OptionWidget {
         arena: &voxel_render::gui::layout::Arena,
         step: &Value,
     ) -> Result<(), String> {
-        use voxel_render::gui::slider::{InputType, SliderKey};
+        use voxel_render::gui::widgets::slider::{InputType, SliderKey};
         let number = |key: &str| step[key].as_f64().unwrap_or(0.0);
         let shift = step["shift"].as_bool().unwrap_or(false);
         let key = match step["key"].as_str() {

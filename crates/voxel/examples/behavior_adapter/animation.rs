@@ -8,7 +8,7 @@ pub(super) fn dolphin_item_pose_result(request: &Value) -> Result<Value, String>
         let x_rot = u32::from_str_radix(row["x_rot"].as_str().ok_or("x_rot")?, 16)
             .map(f32::from_bits)
             .map_err(|error| error.to_string())?;
-        let mut pose = voxel_render::mob_model::dolphin_item_pose(&Pose::default(), x_rot);
+        let mut pose = voxel_render::entity::mob_model::dolphin_item_pose(&Pose::default(), x_rot);
         // The stack's own display transform is none: the model is moved to its corner.
         pose.translate(-0.5, -0.5, -0.5);
         out.push(json!({"label": row["label"], "pose": matrix_bits(&pose)}));
@@ -18,7 +18,7 @@ pub(super) fn dolphin_item_pose_result(request: &Value) -> Result<Value, String>
 
 /// `fish_model`: a fish's model posed and drawn, by its layer.
 pub(super) fn fish_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -47,7 +47,7 @@ pub(super) fn fish_model_result(request: &Value) -> Result<Value, String> {
 /// `fish_textures`: the textures the fish wear, and a tropical fish's by its
 /// packed variant.
 pub(super) fn fish_textures_result(request: &Value) -> Result<Value, String> {
-    use voxel_world::fish::{
+    use voxel_world::mobs::fish::{
         COD_TEXTURE, PUFFERFISH_TEXTURE, SALMON_TEXTURE, TropicalPattern, tropical_base_dye,
         tropical_pattern_dye,
     };
@@ -79,7 +79,7 @@ pub(super) fn fish_textures_result(request: &Value) -> Result<Value, String> {
 
 /// `shulker_model`: a shulker's model posed and drawn.
 pub(super) fn shulker_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, ShulkerRenderState};
+    use voxel_render::entity::mob_model::{MobModel, ShulkerRenderState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -107,7 +107,7 @@ pub(super) fn shulker_model_result(request: &Value) -> Result<Value, String> {
 
 /// `magma_cube_model`: a magma cube's model posed and drawn.
 pub(super) fn magma_cube_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -126,7 +126,7 @@ pub(super) fn magma_cube_model_result(request: &Value) -> Result<Value, String> 
 pub(super) fn glow_squid_light_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
-        let light = voxel_render::mob_model::glow_squid_block_light(
+        let light = voxel_render::entity::mob_model::glow_squid_block_light(
             i32_field(row, "dark_ticks")?,
             i32_field(row, "block_light")?,
         );
@@ -137,9 +137,9 @@ pub(super) fn glow_squid_light_result(request: &Value) -> Result<Value, String> 
 
 /// `copper_golem_model`: a copper golem's model posed and drawn.
 pub(super) fn copper_golem_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
+    use voxel_render::entity::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
     use voxel_world::animation_state::AnimationState;
-    use voxel_world::copper_golem::CopperGolemPlaying;
+    use voxel_world::mobs::copper_golem::CopperGolemPlaying;
     let layer = voxel_data::entity_model::layer("minecraft:copper_golem#main").ok_or("no layer")?;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -184,12 +184,12 @@ pub(super) fn copper_golem_model_result(request: &Value) -> Result<Value, String
 /// `copper_golem_layers`: where the layers a copper golem carries things with put them, on the
 /// model as posed.
 pub(super) fn copper_golem_layers_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::held_item::{
+    use voxel_render::entity::held_item::{
         copper_golem_antenna_pose, copper_golem_hand_pose, copper_golem_head_pose,
     };
+    use voxel_render::entity::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
+    use voxel_render::entity::player_model::Arm;
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::{CopperGolemModelState, MobModel, QuadrupedState};
-    use voxel_render::player_model::Arm;
     let layer = voxel_data::entity_model::layer("minecraft:copper_golem#main").ok_or("no layer")?;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -217,8 +217,8 @@ pub(super) fn copper_golem_layers_result(request: &Value) -> Result<Value, Strin
         let root = model.root();
         fn part<'a>(
             name: &str,
-            of: &'a voxel_render::player_model::Part,
-        ) -> Result<&'a voxel_render::player_model::Part, String> {
+            of: &'a voxel_render::entity::player_model::Part,
+        ) -> Result<&'a voxel_render::entity::player_model::Part, String> {
             of.children()
                 .iter()
                 .find(|part| part.name() == name)
@@ -314,7 +314,7 @@ pub(super) fn animation_definitions_result() -> Value {
 
 /// `keyframe_animation`: a rabbit model posed by a definition at a time, drawn.
 pub(super) fn keyframe_animation_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)

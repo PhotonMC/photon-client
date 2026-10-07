@@ -5,7 +5,7 @@
 
 ## Ne pinlendi
 
-`crates/voxel-game/src/container_menu.rs`, oyuncunun kendi envanter menüsü (`ContainerMenu`)
+`crates/voxel-game/src/menus/container.rs`, oyuncunun kendi envanter menüsü (`ContainerMenu`)
 için `AbstractContainerMenu.doClick` ve
 `MultiPlayerGameMode.handleContainerInput`:
 

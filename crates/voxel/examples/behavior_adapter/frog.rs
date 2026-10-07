@@ -3,7 +3,7 @@ use super::*;
 /// `axolotl_model`: an axolotl's model posed and drawn, an adult from its blend factors, a baby
 /// from the animation states it runs.
 pub(super) fn axolotl_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{AxolotlRenderState, MobModel, QuadrupedState};
+    use voxel_render::entity::mob_model::{AxolotlRenderState, MobModel, QuadrupedState};
     use voxel_world::animation_state::AnimationState;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -58,7 +58,9 @@ pub(super) fn axolotl_model_result(request: &Value) -> Result<Value, String> {
 /// `frog_model`: a frog's model posed and drawn from the animation states it runs, a tadpole's
 /// from its age and whether it is in water.
 pub(super) fn frog_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{FrogRenderState, MobModel, QuadrupedState, TadpoleState};
+    use voxel_render::entity::mob_model::{
+        FrogRenderState, MobModel, QuadrupedState, TadpoleState,
+    };
     use voxel_world::animation_state::AnimationState;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -109,7 +111,7 @@ pub(super) fn frog_model_result(request: &Value) -> Result<Value, String> {
 
 /// `airborne_model`: a blaze's, ghast's or phantom's model posed and drawn.
 pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{
+    use voxel_render::entity::mob_model::{
         AllayRenderState, BatRenderState, MobModel, QuadrupedState, VexRenderState,
     };
     use voxel_world::animation_state::AnimationState;
@@ -136,7 +138,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 model.setup_happy_ghast(bits("age_in_ticks")?, flag("body_item")?);
             }
         } else if id.contains("breeze") {
-            use voxel_render::mob_model::BreezeRenderState;
+            use voxel_render::entity::mob_model::BreezeRenderState;
             let started = |key: &str| {
                 let mut state = AnimationState::default();
                 if let Some(tick) = row[key].as_i64() {
@@ -166,19 +168,19 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
         } else if id.contains("trident") {
             model.setup_trident();
         } else if id.contains("arrow") {
-            use voxel_render::mob_model::ArrowRenderState;
+            use voxel_render::entity::mob_model::ArrowRenderState;
             model.setup_arrow(&ArrowRenderState {
                 shake: bits("shake")?,
             });
         } else if id.contains("end_crystal") {
-            use voxel_render::mob_model::EndCrystalRenderState;
+            use voxel_render::entity::mob_model::EndCrystalRenderState;
             model.setup_end_crystal(&EndCrystalRenderState {
                 age_in_ticks: bits("age_in_ticks")?,
                 shows_bottom: flag("shows_bottom")?,
             });
         } else if id.contains("ender_dragon") {
-            use voxel_render::mob_model::EnderDragonRenderState;
-            use voxel_world::ender_dragon::FlightHistory;
+            use voxel_render::entity::mob_model::EnderDragonRenderState;
+            use voxel_world::mobs::ender_dragon::FlightHistory;
             let mut history = FlightHistory::default();
             for sample in row["history"].as_array().ok_or("history")? {
                 let y = u64::from_str_radix(sample["y"].as_str().ok_or("y")?, 16)
@@ -204,7 +206,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 distance_to_egg: distance,
             });
         } else if id.contains("wither") {
-            use voxel_render::mob_model::WitherRenderState;
+            use voxel_render::entity::mob_model::WitherRenderState;
             model.setup_wither(&WitherRenderState {
                 age_in_ticks: bits("age_in_ticks")?,
                 y_rot: bits("y_rot")?,
@@ -214,7 +216,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 y_head_rots: [bits("y_head_0")?, bits("y_head_1")?],
             });
         } else if id.contains("sniffer") {
-            use voxel_render::mob_model::SnifferRenderState;
+            use voxel_render::entity::mob_model::SnifferRenderState;
             let started = |key: &str| {
                 let mut state = AnimationState::default();
                 if let Some(tick) = row[key].as_i64() {
@@ -238,7 +240,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 scenting: started("scenting"),
             });
         } else if id.contains("armadillo") {
-            use voxel_render::mob_model::ArmadilloRenderState;
+            use voxel_render::entity::mob_model::ArmadilloRenderState;
             let started = |key: &str| {
                 let mut state = AnimationState::default();
                 if let Some(tick) = row[key].as_i64() {
@@ -263,7 +265,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 id.contains("baby"),
             );
         } else if id.contains("creaking") {
-            use voxel_render::mob_model::CreakingRenderState;
+            use voxel_render::entity::mob_model::CreakingRenderState;
             let started = |key: &str| {
                 let mut state = AnimationState::default();
                 if let Some(tick) = row[key].as_i64() {
@@ -285,7 +287,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 death: started("death"),
             });
         } else if id.contains("warden") {
-            use voxel_render::mob_model::WardenRenderState;
+            use voxel_render::entity::mob_model::WardenRenderState;
             let started = |key: &str| {
                 let mut state = AnimationState::default();
                 if let Some(tick) = row[key].as_i64() {
@@ -310,7 +312,7 @@ pub(super) fn airborne_model_result(request: &Value) -> Result<Value, String> {
                 sonic_boom: started("sonic_boom"),
             });
         } else if id.contains("parrot") {
-            use voxel_render::mob_model::{ParrotPose, ParrotRenderState};
+            use voxel_render::entity::mob_model::{ParrotPose, ParrotRenderState};
             let pose = match row["pose"].as_str().ok_or("pose")? {
                 "FLYING" => ParrotPose::Flying,
                 "STANDING" => ParrotPose::Standing,

@@ -3,7 +3,7 @@ use super::*;
 /// Clicks in the player's own inventory menu, as the client predicts them
 /// and sends them.
 pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::container_menu::{ClickType, ContainerMenu, Player};
+    use voxel_game::menus::container::{ClickType, ContainerMenu, Player};
     use voxel_world::ClientItemStackState;
     let stack = |described: &Value| -> Result<ClientItemStackState, String> {
         let name = described["item"].as_str().ok_or("item must be a string")?;
@@ -37,7 +37,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         if row.get("carried").is_some() {
             menu.carried = Some(stack(&row["carried"])?);
         }
-        if menu.kind == voxel_game::container_menu::MenuKind::Merchant {
+        if menu.kind == voxel_game::menus::container::MenuKind::Merchant {
             // Setting the payments made the result, as the reference's slots do.
             menu.update_sell_item();
             if let Some(trade) = row.get("select").and_then(Value::as_u64) {

@@ -6,7 +6,7 @@ pub(super) fn sound_engine_result(request: &Value) -> Result<Value, String> {
     use std::cell::RefCell;
     use std::rc::Rc;
     use voxel_core::random::RandomSource;
-    use voxel_game::sound_engine::{
+    use voxel_game::sounds::engine::{
         Attenuation, Channel, ChannelSource, InstanceId, Pool, SoundEngine, SoundInstance,
     };
     use voxel_game::sounds::{SoundRegistry, SoundSource};
@@ -244,10 +244,10 @@ pub(super) fn sound_engine_result(request: &Value) -> Result<Value, String> {
                     match step["op"].as_str().unwrap_or_default() {
                         "play" => {
                             result["result"] = json!(match engine.play(id) {
-                                voxel_game::sound_engine::PlayResult::Started => "STARTED",
-                                voxel_game::sound_engine::PlayResult::StartedSilently =>
+                                voxel_game::sounds::engine::PlayResult::Started => "STARTED",
+                                voxel_game::sounds::engine::PlayResult::StartedSilently =>
                                     "STARTED_SILENTLY",
-                                voxel_game::sound_engine::PlayResult::NotStarted => "NOT_STARTED",
+                                voxel_game::sounds::engine::PlayResult::NotStarted => "NOT_STARTED",
                             });
                         }
                         "play_delayed" => {

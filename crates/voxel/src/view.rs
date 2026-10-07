@@ -141,7 +141,7 @@ pub fn camera_position(
 /// The three vectors the camera looks along (`Camera.setRotation`): forwards, left and up.
 pub fn camera_vectors(rotation: (f32, f32)) -> ([f32; 3], [f32; 3], [f32; 3]) {
     let mut pose = voxel_render::joml::Pose::default();
-    pose.rotate(&voxel_render::name_tag::camera_orientation(
+    pose.rotate(&voxel_render::entity::name_tag::camera_orientation(
         rotation.0, rotation.1,
     ));
     (

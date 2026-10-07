@@ -134,7 +134,7 @@ pub const IDENTITY: Matrix4 = [
 ];
 
 /// The special renderers this client draws.
-pub use crate::special_models::SpecialKind as SpecialModel;
+pub use crate::entity::special_models::SpecialKind as SpecialModel;
 
 /// A client item (`ClientItem`): its model tree and the properties the
 /// hand reads when the held stack changes.
@@ -161,6 +161,11 @@ pub struct ItemLayerRef {
 
 /// A texture's alpha, row by row, with its width and height.
 pub type LayerAlpha = (Vec<u8>, i32, i32);
+
+mod parse;
+pub use parse::*;
+mod generated;
+pub use generated::*;
 
 #[cfg(test)]
 mod special_tests {
@@ -232,8 +237,3 @@ mod transformation_tests {
         assert_eq!(moved, vec![1.0, 0.0, 3.0]);
     }
 }
-
-mod parse;
-pub use parse::*;
-mod generated;
-pub use generated::*;

@@ -1,7 +1,7 @@
 //! The screens of the containers the server opens: `ContainerScreen` (the
 //! chest family), `DispenserScreen`, `HopperScreen` and `ShulkerBoxScreen`,
 //! each `AbstractContainerScreen` over a generic menu. The clicks themselves
-//! run in [`voxel_game::container_menu`].
+//! run in [`voxel_game::menus::container`].
 
 mod beacon;
 mod merchant;
@@ -10,11 +10,11 @@ mod transform;
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
 use super::recipe_book::{RecipeAssets, RecipeBookPanel};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
-use crate::gui::edit_box::Clipboard;
 use crate::gui::font::Font;
 use crate::gui::frame::GuiBlend;
-use voxel_game::container_menu::{ClickType, ContainerMenu, MenuKind, Smelter};
-use voxel_game::recipe_book::BookKind;
+use crate::gui::widgets::edit_box::Clipboard;
+use voxel_game::menus::container::{ClickType, ContainerMenu, MenuKind, Smelter};
+use voxel_game::menus::recipe_book::BookKind;
 
 /// The size of the screen's image for a menu.
 fn image(kind: MenuKind) -> (i32, i32) {
@@ -420,6 +420,10 @@ impl Screen for GenericScreen {
     }
 }
 
+mod book;
+
+mod draw;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -534,7 +538,3 @@ mod tests {
         );
     }
 }
-
-mod generic_screen_book;
-
-mod generic_screen_draw;

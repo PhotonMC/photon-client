@@ -1,15 +1,21 @@
 //! The options screen (`OptionsScreen`): the field of view and one more
 //! button under the title, the buttons that open the other settings screens
 //! in two columns, and Done.
+pub mod chat;
+pub mod language;
+pub mod list;
+pub mod mouse;
+pub mod sound;
+pub mod text;
+pub mod video;
 
-use voxel_game::option::IntRange;
+use voxel_game::options::values::IntRange;
 use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
 use crate::gui::layout::{Arena, Grid, Item, Settings, place_in_frame};
-use crate::gui::navigation::{Candidate, Direction, Rectangle, next_in_direction};
-use crate::gui::option_text;
-use crate::gui::slider::{InputType, OptionSlider, SliderKey};
+use crate::gui::widgets::navigation::{Candidate, Direction, Rectangle, next_in_direction};
+use crate::gui::widgets::slider::{InputType, OptionSlider, SliderKey};
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame};
 
@@ -95,7 +101,7 @@ impl OptionsScreen {
             fov_rect,
             IntRange::new(30, 110),
             Component::translatable("options.fov"),
-            option_text::fov,
+            text::fov,
             fov,
         );
         let mut buttons = Vec::new();

@@ -1,0 +1,237 @@
+use crate::*;
+
+impl ClientWorld {
+    pub fn loaded_block_entity_count(&self) -> usize {
+        self.chunks
+            .values()
+            .map(|chunk| chunk.block_entities.len())
+            .sum()
+    }
+
+    pub fn block_entity_at(&self, x: i32, y: i32, z: i32) -> Option<&ClientBlockEntity> {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        self.chunk_for_query(chunk_key.0, chunk_key.1)?
+            .block_entities
+            .get(&(x, y, z))
+    }
+
+    /// Apply a server-verified block-state update to an already loaded section.
+    pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
+            return false;
+        };
+        let section_y = y.div_euclid(16);
+        let Some(section) = chunk.sections.get_mut(&section_y) else {
+            return false;
+        };
+        let local_x = x.rem_euclid(16) as usize;
+        let local_y = y.rem_euclid(16) as usize;
+        let local_z = z.rem_euclid(16) as usize;
+        let index = local_y * 256 + local_z * 16 + local_x;
+        let Some(previous_state_id) = section.block_states.get(index) else {
+            return false;
+        };
+        if (section.has_only_air() && state_id == VANILLA_AIR_BLOCK_STATE_ID)
+            || previous_state_id == state_id
+        {
+            return false;
+        }
+        let was_empty = section.has_only_air();
+        if section.set_block_state(index, state_id).is_none() {
+            return false;
+        }
+        // `LevelChunk.setBlockState`: the light hears of a section turning
+        // empty or not, and of a change in how light passes the block.
+        let is_empty = section.has_only_air();
+        // A chest block has its own block entity on the client, and a lid that goes with it.
+        self.block_animations.remove(&(x, y, z));
+        if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
+            // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
+            // entity.
+            if block::state_or_air(i64::from(previous_state_id)).block
+                != block::state_or_air(i64::from(state_id)).block
+            {
+                chunk.block_entities.remove(&(x, y, z));
+            }
+            if block::chest::is_drawn_state(state_id) {
+                chunk.chests.insert((x, y, z));
+            } else {
+                chunk.chests.remove(&(x, y, z));
+            }
+        }
+        if was_empty != is_empty {
+            self.light
+                .update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
+        }
+        if light::has_different_light_properties(previous_state_id, state_id) {
+            let chunk = self.chunks.get_mut(&chunk_key).expect("updated above");
+            let sections = &chunk.sections;
+            let read = |lx: i32, y: i32, lz: i32| {
+                sections
+                    .get(&y.div_euclid(16))
+                    .and_then(|section| {
+                        section
+                            .block_states
+                            .get((y.rem_euclid(16) * 256 + lz * 16 + lx) as usize)
+                    })
+                    .unwrap_or(VANILLA_AIR_BLOCK_STATE_ID)
+            };
+            if let Some(sources) = chunk.sky_sources.as_mut() {
+                sources.update(read, local_x as i32, y, local_z as i32);
+            }
+            self.light.check_block((x, y, z));
+        }
+        true
+    }
+
+    /// Apply the horizontal `StairBlock.updateShape` state transition against
+    /// the currently loaded six-neighbor block states.
+    /// `StairBlock.updateShape` after a side neighbour changed: the stair
+    /// takes the shape its neighbours give it. `false` when the block there
+    /// is not a stair.
+    pub fn apply_stair_neighbor_shape_update(&mut self, x: i32, y: i32, z: i32) -> bool {
+        let Some(state_id) = self.block_state_at(x, y, z) else {
+            return false;
+        };
+        let is_stairs = block::state(state_id as u32).is_some_and(|state| {
+            state
+                .block()
+                .class
+                .is(voxel_data::block::classes::BlockClass::StairBlock)
+        });
+        if !is_stairs {
+            return false;
+        }
+        let state_at = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
+        let block::rules::Rule::Known(updated_state_id) = block::rules::update_shape(
+            state_id,
+            &state_at,
+            (x, y, z),
+            voxel_core::direction::Direction::North,
+        ) else {
+            return false;
+        };
+        if updated_state_id == state_id {
+            return true;
+        }
+        self.update_block_state(x, y, z, updated_state_id)
+    }
+
+    pub fn apply_block_entities<'a, I>(&mut self, chunk_x: i32, chunk_z: i32, entities: I) -> usize
+    where
+        I: IntoIterator<Item = BlockEntityInput<'a>>,
+    {
+        let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
+            return 0;
+        };
+        let mut applied = 0;
+        for entity in entities {
+            if entity.x.div_euclid(16) != chunk_x || entity.z.div_euclid(16) != chunk_z {
+                continue;
+            }
+            chunk.block_entities.insert(
+                (entity.x, entity.y, entity.z),
+                ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
+            );
+            applied += 1;
+        }
+        applied
+    }
+
+    pub fn apply_block_entity_update(&mut self, entity: BlockEntityInput<'_>) -> bool {
+        let chunk_key = (entity.x.div_euclid(16), entity.z.div_euclid(16));
+        let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
+            return false;
+        };
+        chunk.block_entities.insert(
+            (entity.x, entity.y, entity.z),
+            ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
+        );
+        true
+    }
+
+    /// Return the resolved global block-state ID at a world coordinate.
+    /// `Level.getHeight(MOTION_BLOCKING, x, z)`: one above the highest
+    /// state in the column that blocks motion or holds a fluid, or the
+    /// bottom of the world where there is none or no chunk.
+    pub fn motion_blocking_height(&self, x: i32, z: i32) -> i32 {
+        let bottom = self.dimension().min_y;
+        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
+            return bottom;
+        };
+        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        for (section_y, section) in chunk.sections.iter().rev() {
+            for local_y in (0..16).rev() {
+                let Some(state) = section.block_states.get(local_y * 256 + column) else {
+                    continue;
+                };
+                if motion_blocking(state) {
+                    return section_y * 16 + local_y as i32 + 1;
+                }
+            }
+        }
+        bottom
+    }
+
+    /// `Heightmap.Types.MOTION_BLOCKING_NO_LEAVES` at a column: like
+    /// [`Self::motion_blocking_height`], but leaves do not count.
+    pub fn motion_blocking_no_leaves_height(&self, x: i32, z: i32) -> i32 {
+        let bottom = self.dimension().min_y;
+        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
+            return bottom;
+        };
+        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        for (section_y, section) in chunk.sections.iter().rev() {
+            for local_y in (0..16).rev() {
+                let Some(state) = section.block_states.get(local_y * 256 + column) else {
+                    continue;
+                };
+                if motion_blocking(state)
+                    && !block::state_or_air(i64::from(state))
+                        .block()
+                        .name
+                        .ends_with("_leaves")
+                {
+                    return section_y * 16 + local_y as i32 + 1;
+                }
+            }
+        }
+        bottom
+    }
+
+    /// How far the dragon egg's place on the End's podium is from a point
+    /// (`BlockPos.distToCenterSqr`), as `EnderDragonRenderer` measures it: the
+    /// podium stands at the origin, on the highest block there that is not a leaf.
+    pub fn end_podium_distance_squared(&self, at: (f64, f64, f64)) -> f64 {
+        let y = f64::from(self.motion_blocking_no_leaves_height(0, 0));
+        let (dx, dy, dz) = (0.5 - at.0, y + 0.5 - at.1, 0.5 - at.2);
+        dx * dx + dy * dy + dz * dz
+    }
+
+    /// How many bytes the loaded chunks' block states take, and how many
+    /// they would take stored as a number for every block.
+    pub fn block_state_bytes(&self) -> (usize, usize) {
+        self.chunks
+            .values()
+            .flat_map(|chunk| chunk.sections.values())
+            .fold((0, 0), |(stored, plain), section| {
+                (
+                    stored + section.block_states.bytes(),
+                    plain + paletted::SECTION_VOLUME * std::mem::size_of::<i32>(),
+                )
+            })
+    }
+
+    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+        let chunk_key = (x.div_euclid(16), z.div_euclid(16));
+        let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
+        let section_y = y.div_euclid(16);
+        let section = chunk.sections.get(&section_y)?;
+        let local_x = x.rem_euclid(16) as usize;
+        let local_y = y.rem_euclid(16) as usize;
+        let local_z = z.rem_euclid(16) as usize;
+        let index = local_y * 256 + local_z * 16 + local_x;
+        section.block_states.get(index)
+    }
+}

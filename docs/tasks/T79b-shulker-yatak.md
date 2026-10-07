@@ -4,7 +4,7 @@
 **Bağımlılık:** T79. **Boy:** M.
 
 ## Oku
-Java: `client/renderer/blockentity/{ShulkerBoxRenderer,BedRenderer}.java`, `client/renderer/blockentity/state/{ShulkerBoxRenderState,BedRenderState}.java`. Rust: `crates/voxel-render/src/chest.rs`, `crates/voxel-world/src/chest.rs`, `crates/voxel/src/chests.rs` (iskelet).
+Java: `client/renderer/blockentity/{ShulkerBoxRenderer,BedRenderer}.java`, `client/renderer/blockentity/state/{ShulkerBoxRenderState,BedRenderState}.java`. Rust: `crates/voxel-render/src/block_entity/chest.rs`, `crates/voxel-world/src/block/chest.rs`, `crates/voxel/src/chests.rs` (iskelet).
 
 ## Oracle
 Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (köşe, UV, ışık). Java kaynağı önce satır satır okunur.

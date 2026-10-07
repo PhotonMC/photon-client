@@ -4,7 +4,7 @@
 **Bağımlılık:** T50. **Boy:** L.
 
 ## Oku
-Java: `client/gui/screens/inventory/MerchantScreen.java`, `world/inventory/{MerchantMenu,MerchantContainer,MerchantResultSlot}.java`, `world/item/trading/{MerchantOffers,MerchantOffer,ItemCost}.java`, `network/protocol/game/{ClientboundMerchantOffersPacket,ServerboundSelectTradePacket}.java`. Rust: `crates/voxel-net/src/connection/{protocol,play}.rs`, `crates/voxel-game/src/container_menu.rs`.
+Java: `client/gui/screens/inventory/MerchantScreen.java`, `world/inventory/{MerchantMenu,MerchantContainer,MerchantResultSlot}.java`, `world/item/trading/{MerchantOffers,MerchantOffer,ItemCost}.java`, `network/protocol/game/{ClientboundMerchantOffersPacket,ServerboundSelectTradePacket}.java`. Rust: `crates/voxel-net/src/connection/{protocol,play}.rs`, `crates/voxel-game/src/menus/container.rs`.
 
 ## Oracle
 Paket: `wire` ailesi `merchant_offers` çözümü; menü: `container-clicks`; ekran: `container_screen` merchant (liste kaydırma, seçili teklif, kullanılmış teklif çarpısı, ilerleme). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).

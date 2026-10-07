@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/wither/WitherBossModel.java`, `client/model/monster/warden/WardenModel.java`, `client/model/monster/shulker/ShulkerModel.java`, `client/model/monster/slime/SlimeModel.java`, `client/model/animal/sniffer/SnifferModel.java`, `client/renderer/entity/EnderDragonRenderer.java`, `client/renderer/entity/WitherBossRenderer.java`, `client/renderer/entity/WardenRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Her tür ayrı dal; en çok kullanılandan (slime/shulker/warden) başla, ender ejderhası en sona (parçalar `EnderDragonPart` entity'leri; T26 notu: seçilebilirlik).

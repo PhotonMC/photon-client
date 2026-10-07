@@ -226,8 +226,9 @@ pub(super) fn block_properties(
 ) -> Result<std::collections::BTreeMap<String, String>> {
     let definition = voxel_data::block::registry::block(name)
         .ok_or_else(|| format!("{block}: not in the block registry"))?;
-    let mut properties =
-        voxel_render::blockstate::parse_properties(&env::var("VOXEL_STATE").unwrap_or_default());
+    let mut properties = voxel_render::block::blockstate::parse_properties(
+        &env::var("VOXEL_STATE").unwrap_or_default(),
+    );
     for (key, value) in &properties {
         let property = definition
             .properties
@@ -290,7 +291,7 @@ pub(super) fn model_scene(
         angle("VOXEL_ROTATE_Z", 2)?,
     ];
     let [rotate_x, rotate_y, rotate_z] = rotation;
-    let state = voxel_render::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
+    let state = voxel_render::block::rotation::model_state_transform(rotate_x, rotate_y, rotate_z)
         .ok_or("variant rotation must be a multiple of ninety")?;
     let identity = rotate_x % 360 == 0 && rotate_y % 360 == 0 && rotate_z % 360 == 0;
     // Outside a world a block's tints are fixed per block, so they come from
@@ -351,10 +352,10 @@ pub(super) fn grid_mesh(
     let [rotate_x, rotate_y, rotate_z] = turn.rotation;
     let uv_lock = turn.uv_lock;
     let uv_transform = |facing| {
-        voxel_render::rotation::inverse_face_transform(
+        voxel_render::block::rotation::inverse_face_transform(
             rotate_x, rotate_y, rotate_z, facing, uv_lock,
         )
-        .unwrap_or(voxel_render::rotation::FLAT_IDENTITY)
+        .unwrap_or(voxel_render::block::rotation::FLAT_IDENTITY)
     };
     let mut mesh = voxel_render::Mesh::default();
     for cell_x in 0..grid {

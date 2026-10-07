@@ -4,23 +4,23 @@
 
 use voxel_core::math::Vec3;
 use voxel_game::game_mode::{Aim, MAIN_HAND, OFF_HAND};
-use voxel_game::item_in_hand::ItemInHand;
+use voxel_game::item::in_hand::ItemInHand;
 use voxel_net::connection::PlaySession;
-use voxel_render::biome_tint::BiomeTints;
-use voxel_render::outline::LineVertex;
-use voxel_render::player_model::{Arm, PlayerModel, PlayerRenderState};
-use voxel_render::player_renderer::{HandView, Placement};
+use voxel_render::block::biome_tint::BiomeTints;
+use voxel_render::block::outline::LineVertex;
+use voxel_render::block::world_mesh::BlockRenderer;
+use voxel_render::entity::player_model::{Arm, PlayerModel, PlayerRenderState};
+use voxel_render::entity::player_renderer::{HandView, Placement};
 use voxel_render::scene::Vertex;
-use voxel_render::world_mesh::BlockRenderer;
 use voxel_world::local_player::LocalPlayer;
 use voxel_world::{ClientItemStackState, EquipmentSlot};
 
-use crate::armor::{Armor, Worn};
-use crate::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
+use crate::equipment::armor::{Armor, Worn};
+use crate::equipment::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
+use crate::equipment::item_layers::ItemLayerCache;
 use crate::hud_input::attack_speed;
-use crate::item_layers::ItemLayerCache;
 use crate::view::eye_position;
-use voxel_game::pick::pick;
+use voxel_game::input::pick::pick;
 
 /// Where the frame is drawn from: how far between ticks, the light at the
 /// eyes (packed block and sky light), and the point meshes are measured
@@ -35,7 +35,7 @@ pub struct FrameView {
     /// The camera's yaw and pitch, in degrees.
     pub rotation: (f32, f32),
     /// Where the skin the local player wears is in the entity textures.
-    pub skin: voxel_render::entity_textures::TextureRect,
+    pub skin: voxel_render::entity::textures::TextureRect,
 }
 
 impl FrameView {

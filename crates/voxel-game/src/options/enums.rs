@@ -1,0 +1,176 @@
+/// `ChatVisiblity`: which chat the client shows, and tells the server it
+/// wants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChatVisibility {
+    Full,
+    System,
+    Hidden,
+}
+
+/// `InactivityFpsLimit`: when the frame rate is lowered for a window nobody is using.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InactivityFpsLimit {
+    Minimized,
+    Afk,
+}
+
+/// `framerateLimit`'s default, and the value from which the limit is off.
+pub const FRAMERATE_LIMIT_DEFAULT: i32 = 120;
+
+pub const UNLIMITED_FRAMERATE_CUTOFF: i32 = 260;
+
+/// `AttackIndicatorStatus`: where the attack strength is shown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttackIndicator {
+    Off,
+    Crosshair,
+    Hotbar,
+}
+
+/// `MusicManager.MusicFrequency`: how long the music waits between songs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MusicFrequency {
+    Default,
+    Frequent,
+    Constant,
+}
+
+/// `MusicToastDisplayState`: where the playing song is announced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MusicToast {
+    Never,
+    Pause,
+    PauseAndToast,
+}
+
+impl ChatVisibility {
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Full => 0,
+            Self::System => 1,
+            Self::Hidden => 2,
+        }
+    }
+
+    pub const fn from_id(id: i32) -> Option<Self> {
+        match id {
+            0 => Some(Self::Full),
+            1 => Some(Self::System),
+            2 => Some(Self::Hidden),
+            _ => None,
+        }
+    }
+}
+
+impl InactivityFpsLimit {
+    pub const ALL: [Self; 2] = [Self::Minimized, Self::Afk];
+
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Minimized => "minimized",
+            Self::Afk => "afk",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Minimized => "options.inactivityFpsLimit.minimized",
+            Self::Afk => "options.inactivityFpsLimit.afk",
+        }
+    }
+
+    pub fn from_caption_key(key: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.caption_key() == key)
+    }
+}
+
+impl AttackIndicator {
+    pub const ALL: [Self; 3] = [Self::Off, Self::Crosshair, Self::Hotbar];
+
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Off => 0,
+            Self::Crosshair => 1,
+            Self::Hotbar => 2,
+        }
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Off => "options.off",
+            Self::Crosshair => "options.attack.crosshair",
+            Self::Hotbar => "options.attack.hotbar",
+        }
+    }
+
+    pub fn from_caption_key(key: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.caption_key() == key)
+    }
+}
+
+impl MusicFrequency {
+    pub const ALL: [Self; 3] = [Self::Default, Self::Frequent, Self::Constant];
+
+    /// The codec's name, which is what the file holds.
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Default => "DEFAULT",
+            Self::Frequent => "FREQUENT",
+            Self::Constant => "CONSTANT",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The caption's translation key.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Default => "options.music_frequency.default",
+            Self::Frequent => "options.music_frequency.frequent",
+            Self::Constant => "options.music_frequency.constant",
+        }
+    }
+}
+
+impl MusicToast {
+    pub const ALL: [Self; 3] = [Self::Never, Self::Pause, Self::PauseAndToast];
+
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Never => "never",
+            Self::Pause => "pause",
+            Self::PauseAndToast => "pause_and_toast",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The label's translation key; the tooltip's is this and `.tooltip`.
+    pub const fn text_key(self) -> &'static str {
+        match self {
+            Self::Never => "options.musicToast.never",
+            Self::Pause => "options.musicToast.pauseMenu",
+            Self::PauseAndToast => "options.musicToast.pauseMenuAndToast",
+        }
+    }
+}

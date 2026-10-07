@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{CustomHeadLayer,PlayerItemInHandLayer}.java`, `client/renderer/blockentity/SkullBlockRenderer.java`, `client/model/object/skull/*.java`.
-- Rust: `crates/voxel/src/held_items.rs` (`Hands`, `HEAD_TRANSFORMS`), `voxel-render/src/held_item.rs`.
+- Rust: `crates/voxel/src/equipment/held_items.rs` (`Hands`, `HEAD_TRANSFORMS`), `voxel-render/src/held_item.rs`.
 
 ## Oracle
 `entity/held-item-pose` satırlarına kafatası başı ve dürbün (aynı operation).

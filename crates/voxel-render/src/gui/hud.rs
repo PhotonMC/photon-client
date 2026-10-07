@@ -2,10 +2,15 @@
 //!
 //! Sprites come from the GUI atlas, the reference's `gui/sprites` folder,
 //! drawn at the size the HUD asks for.
+pub mod boss_bar;
+pub mod locator;
+pub mod sidebar;
+pub mod tab_list;
+pub mod titles;
 
+use self::locator::{LocatorInput, WaypointStyles};
 use super::atlas::GuiAtlas;
 use super::frame::{GuiBlend, GuiFrame, ItemDrawer};
-use super::locator::{self, LocatorInput, WaypointStyles};
 use voxel_core::random::RandomSource;
 use voxel_game::options::AttackIndicator;
 

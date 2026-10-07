@@ -2,8 +2,8 @@
 //! atlas and blits it into a 16 by 16 slot: the item's GUI transform, lit by
 //! one of the two item lights, the texel times its tint.
 
+use crate::block::world_mesh::ItemLayer;
 use crate::model::ItemTransform;
-use crate::world_mesh::ItemLayer;
 
 /// One vertex of an item in the GUI: GUI units, with depth towards the
 /// viewer, its atlas coordinate and its lit, tinted colour.

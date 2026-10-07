@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ItemFrameRenderer,PaintingRenderer,LeashKnotRenderer,EndCrystalRenderer,TntRenderer,FallingBlockRenderer,LightningBoltRenderer,DisplayRenderer}.java`, `world/entity/decoration/{ItemFrame,Painting,HangingEntity}.java`, `client/renderer/state/` ilgili durumlar.
-- Rust: `crates/voxel/src/armor_stands.rs` (yeni entity çizim kalıbı), `crates/voxel-world/src/armor_stand.rs` (veri birleştirme kalıbı), `voxel-render/src/item_entity.rs` (eşya çizimi).
+- Rust: `crates/voxel/src/mobs/humanoids/armor_stands.rs` (yeni entity çizim kalıbı), `crates/voxel-world/src/objects/armor_stand.rs` (veri birleştirme kalıbı), `voxel-render/src/item_entity.rs` (eşya çizimi).
 
 ## Yapılacaklar
 1. Çerçeve: yön verisi (`Direction`), içerik eşyası ve dönüşü; çerçeve bloğu modeli (blok modeli çizimi).

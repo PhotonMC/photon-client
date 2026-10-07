@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/multiplayer/ClientLevel.java` (satır ~260–310, ~990), `world/entity/LightningBolt.java`, `client/Options.java` (`hideLightningFlash`).
-- Rust: `crates/voxel/src/sky.rs`, `crates/voxel/src/atmosphere.rs` (gökyüzü rengi), `crates/voxel-world` (ışık çarpanı).
+- Rust: `crates/voxel/src/world/sky.rs`, `crates/voxel/src/world/atmosphere.rs` (gökyüzü rengi), `crates/voxel-world` (ışık çarpanı).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

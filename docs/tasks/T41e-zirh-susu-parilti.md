@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/EquipmentLayerRenderer.java` (`TrimSpriteKey`, glint), `world/item/equipment/trim/ArmorTrim.java`, `client/renderer/rendertype/RenderTypes.java` (`armorEntityGlint`, `armorTrimsSheet`), `client/renderer/texture/` süs atlası (`atlases/armor_trims.json`).
-- Rust: `crates/voxel/src/armor.rs`, `voxel-render/src/equipment.rs`, `voxel-game/src/item_values.rs` (bileşen okuma), `voxel-render/src/vulkan.rs` (entity boru hattı).
+- Rust: `crates/voxel/src/equipment/armor.rs`, `voxel-render/src/equipment.rs`, `voxel-game/src/item_values.rs` (bileşen okuma), `voxel-render/src/vulkan.rs` (entity boru hattı).
 
 ## Yapılacaklar
 1. Süs: `TRIM` bileşenini oku, süs atlasını (varlık dokuları arasına) kur, her giyilen parça için süs katmanını çiz.

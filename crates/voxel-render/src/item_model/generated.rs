@@ -4,7 +4,7 @@ use super::*;
 pub fn tint_colour(
     tint: &TintSource,
     grass: &dyn Fn(f64, f64) -> u32,
-    values: &voxel_game::item_values::Values,
+    values: &voxel_game::item::values::Values,
 ) -> u32 {
     match *tint {
         TintSource::Constant(rgb) | TintSource::Default(rgb) => 0xFF00_0000 | rgb,
@@ -54,7 +54,7 @@ pub fn generated_elements(
     textures: &crate::model::TextureSlots,
     layer_alpha: &dyn Fn(&Identifier) -> Option<LayerAlpha>,
 ) -> Vec<crate::model::ModelElement> {
-    use crate::geometry::{FaceUvs, Quadrant};
+    use crate::block::geometry::{FaceUvs, Quadrant};
     use crate::model::{ModelElement, ModelFace};
     use voxel_core::direction::Direction;
     let mut elements = Vec::new();

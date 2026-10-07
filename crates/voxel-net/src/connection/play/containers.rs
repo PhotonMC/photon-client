@@ -54,14 +54,14 @@ impl PlaySession {
     /// Nothing once the banner has six layers.
     pub(super) fn loom_patterns(
         world: &voxel_world::ClientWorld,
-        menu: &voxel_game::container_menu::ContainerMenu,
+        menu: &voxel_game::menus::container::ContainerMenu,
     ) -> (Vec<i32>, usize) {
         let stack = |slot: usize| menu.slots.get(slot).and_then(Option::as_ref);
         let (Some(banner), Some(_dye)) = (stack(0), stack(1)) else {
             return (Vec::new(), 0);
         };
         let layers =
-            voxel_game::item_values::Values::new(banner.item_registry_id(), banner.patch_bytes())
+            voxel_game::item::values::Values::new(banner.item_registry_id(), banner.patch_bytes())
                 .banner_layers()
                 .len();
         let tags = world.block_state_registry().banner_pattern_tags();
@@ -89,9 +89,9 @@ impl PlaySession {
         &mut self,
         slot: i32,
         button: i32,
-        kind: voxel_game::container_menu::ClickType,
+        kind: voxel_game::menus::container::ClickType,
     ) -> Result<(), ConnectionError> {
-        let player = voxel_game::container_menu::Player {
+        let player = voxel_game::menus::container::Player {
             selected: self.status.selected_slot.clamp(0, 8) as usize,
             infinite_materials: self.game_mode == voxel_world::ClientPlayerGameMode::Creative,
         };
@@ -146,15 +146,15 @@ impl PlaySession {
     /// the click as the client predicts it, then what it sends for it.
     pub fn creative_click(
         &mut self,
-        creative: &mut voxel_game::creative_menu::CreativeMenu,
-        click: voxel_game::creative_menu::Click,
+        creative: &mut voxel_game::menus::creative::CreativeMenu,
+        click: voxel_game::menus::creative::Click,
     ) -> Result<(), ConnectionError> {
-        use voxel_game::creative_menu::Effect;
+        use voxel_game::menus::creative::Effect;
         let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
             return Ok(());
         };
         self.container_menu.load(slots, carried, state_id);
-        let player = voxel_game::container_menu::Player {
+        let player = voxel_game::menus::container::Player {
             selected: self.status.selected_slot.clamp(0, 8) as usize,
             infinite_materials: self.game_mode == voxel_world::ClientPlayerGameMode::Creative,
         };
@@ -236,287 +236,226 @@ impl PlaySession {
         self.game_mode_state.take_items_used()
     }
 
-    /// The attack and use keys' part of `handleKeybinds`, with what the
-    /// player aims at. Runs before the tick, as the reference handles keys
-    /// before the level ticks the player.
-    pub fn keys(
-        &mut self,
-        keys: voxel_game::game_mode::Keys,
-        aim: voxel_game::game_mode::Aim,
-    ) -> Result<(), ConnectionError> {
-        use voxel_game::game_mode::{Context, Miner, Outgoing};
-        self.aimed_entity = match aim {
-            voxel_game::game_mode::Aim::Entity { id, .. } => Some(id),
-            _ => None,
-        };
-        self.ensure_has_sent_carried_item()?;
-        let Some(player) = self.player.as_mut() else {
-            return Ok(());
-        };
-        let miner = Miner::of(&self.trace.world, self.status.selected_slot);
-        let mut ctx = Context {
-            world: &mut self.trace.world,
-            player,
-            miner: &miner,
-            mode: self.game_mode,
-            selected_slot: self.status.selected_slot,
-        };
-        let sent = self.game_mode_state.keys_tick(&mut ctx, keys, aim);
-        for packet in sent {
-            let id = match packet {
-                Outgoing::Swing { .. } => {
-                    self.swings += 1;
-                    PLAY_SERVERBOUND_SWING_PACKET_ID
-                }
-                Outgoing::PlayerAction { x, y, z, .. } => {
-                    // A predicted break changes the block it names.
-                    self.mark_block(x, y, z);
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID
-                }
-                Outgoing::UseItemOn { x, y, z, face, .. } => {
-                    // A predicted placement changes the block or the one
-                    // in front of the face, and its neighbours.
-                    let (dx, dy, dz) =
-                        voxel_core::direction::Direction::from_3d_data_value(i32::from(face))
-                            .step();
-                    self.mark_block(x, y, z);
-                    self.mark_block(x + dx, y + dy, z + dz);
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
-                }
-                Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                Outgoing::Attack { .. } => PLAY_SERVERBOUND_ATTACK_PACKET_ID,
-                Outgoing::PickItemFromBlock { .. } => {
-                    PLAY_SERVERBOUND_PICK_ITEM_FROM_BLOCK_PACKET_ID
-                }
-                Outgoing::PickItemFromEntity { .. } => {
-                    PLAY_SERVERBOUND_PICK_ITEM_FROM_ENTITY_PACKET_ID
-                }
-                Outgoing::SpectatorAction { .. } => PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID,
-                Outgoing::Interact { .. } => PLAY_SERVERBOUND_INTERACT_PACKET_ID,
-            };
-            let body = packet.encode_body();
-            self.send(id, |output| {
-                output.extend_from_slice(&body);
-                Ok(())
-            })?;
-        }
-        Ok(())
+    /// Whether the server has opened a container this client has no menu for.
+    pub fn open_container_unsupported(&self) -> bool {
+        self.trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .is_some_and(|container| {
+                voxel_game::menus::container::MenuKind::from_menu_type(container.menu_type_id())
+                    .is_none()
+            })
     }
 
-    /// One client tick: the local player, its packets, then the tick end.
-    pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
-        // The game mode's tick runs before the player moves.
-        self.ensure_has_sent_carried_item()?;
-        if self.loaded {
-            self.drop_spam = (self.drop_spam - 1).max(0);
+    /// The menu an open screen is over: the container the server opened, or
+    /// the player's own.
+    pub fn active_menu(&mut self) -> &voxel_game::menus::container::ContainerMenu {
+        if self.open_container_menu().is_some() {
+            return self.open_menu.as_ref().expect("synced above");
         }
-        let main_hand = self
+        self.container_menu()
+    }
+
+    /// The menu of the container the server opened, as the client holds it
+    /// now; `None` until its contents have come.
+    pub fn open_container_menu(&mut self) -> Option<&voxel_game::menus::container::ContainerMenu> {
+        let voxel_world::OpenContainerMenu {
+            container_id,
+            menu_type_id,
+            slots,
+            carried,
+            state_id,
+        } = self.trace.world.local_player_container_menu()?;
+        let kind = voxel_game::menus::container::MenuKind::from_menu_type(menu_type_id)?;
+        match self.open_menu.as_mut() {
+            Some(menu) if menu.container_id == container_id && menu.kind == kind => {
+                menu.load(slots, carried, state_id);
+            }
+            _ => {
+                self.open_menu = Some(voxel_game::menus::container::ContainerMenu::for_menu(
+                    kind,
+                    container_id,
+                    slots,
+                    carried,
+                    state_id,
+                ));
+            }
+        }
+        // What a furnace menu reads besides its slots.
+        if let Some(menu) = self.open_menu.as_mut() {
+            menu.accepted = menu
+                .kind
+                .input_sets()
+                .iter()
+                .map(|set| self.trace.world.recipe_property_set(set))
+                .collect();
+            if menu.kind == voxel_game::menus::container::MenuKind::Stonecutter {
+                menu.accepted = vec![std::sync::Arc::new(self.trace.world.stonecutter_inputs())];
+                menu.options = menu
+                    .slots
+                    .first()
+                    .and_then(Option::as_ref)
+                    .map(|input| {
+                        self.trace
+                            .world
+                            .stonecutter_options(input.item_registry_id())
+                    })
+                    .unwrap_or_default();
+            }
+            if menu.kind == voxel_game::menus::container::MenuKind::Loom {
+                let (patterns, layers) = Self::loom_patterns(&self.trace.world, menu);
+                menu.patterns = patterns;
+                menu.banner_layers = layers;
+            }
+            menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
+            menu.xp_level = self.status.experience_level;
+            if menu.kind == voxel_game::menus::container::MenuKind::Merchant {
+                // The merchant's offers; the result is the client's own to make.
+                if let Some((_, state)) = self
+                    .merchant
+                    .as_ref()
+                    .filter(|(id, _)| *id == menu.container_id)
+                {
+                    menu.offers = std::sync::Arc::new(state.offers.clone());
+                    menu.trader = state.trader;
+                }
+                menu.update_sell_item();
+            }
+            if let Some(container) = self
+                .trace
+                .world
+                .local_player()
+                .and_then(|player| player.open_container())
+            {
+                menu.data = (0..10).map(|index| container.data(index)).collect();
+            }
+        }
+        self.open_menu.as_ref()
+    }
+
+    /// `MultiPlayerGameMode.handleInventoryButtonClick`: a button of the open
+    /// menu (a stonecutter recipe, a loom pattern, an enchantment) pressed.
+    pub fn container_button(&mut self, button: i32) -> Result<(), ConnectionError> {
+        let Some(container_id) = self
             .trace
             .world
             .local_player()
-            .and_then(|state| state.inventory_slot((36 + self.status.selected_slot) as i16))
-            .map_or(0, |stack| stack.item_registry_id());
-        // The level ticks a vehicle before its passengers: a boat the player rides moves first
-        // (and tells the server of its paddles), then the player sits in it.
-        // What the rider steers with: its input, its look, and the stick in its hands.
-        if let Some(player) = self.player.as_ref() {
-            let mut controls = player.controller();
-            let holds = |name: &str| {
-                [main_hand, self.off_hand_item()].into_iter().any(|item| {
-                    voxel_world::block_rules::item(item).is_some_and(|item| item.name == name)
-                })
-            };
-            controls.holds_carrot_on_a_stick = holds("minecraft:carrot_on_a_stick");
-            controls.holds_warped_fungus_on_a_stick = holds("minecraft:warped_fungus_on_a_stick");
-            self.trace.world.set_rider_controls(controls);
-        }
-        let ridden = self.trace.world.ridden_vehicle_of_local_player();
-        if ridden.is_some() {
-            if let Some(player) = self.player.as_ref() {
-                let position = player.position();
-                self.trace
-                    .world
-                    .set_local_player_chunk(position.x, position.z);
-            }
-            self.trace.world.tick_entities();
-            for (left, right) in self.trace.world.take_paddle_packets() {
-                self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
-            }
-        }
-        if self.loaded
-            && let Some(player) = self.player.as_mut()
-        {
-            player.set_hand_state(self.trace.world.local_hand_state(self.status.selected_slot));
-            let ticked = match ridden.and_then(|id| self.trace.world.vehicle_view(id)) {
-                Some(view) => player
-                    .tick_riding(&self.trace.world, keys, &view)
-                    .map(|rode| {
-                        if view.kind == voxel_world::VehicleKind::Boat && view.controlled {
-                            self.trace
-                                .world
-                                .set_boat_input(view.vehicle_id, rode.boat_input);
-                        }
-                        if let Some(amount) = rode.jump {
-                            self.trace.world.on_player_jump(view.vehicle_id, amount);
-                        }
-                        rode.sent
-                    }),
-                None => player.tick(&self.trace.world, keys),
-            };
-            match ticked {
-                Ok(sent) => {
-                    for packet in sent {
-                        self.send_movement(packet)?;
-                    }
-                }
-                Err(unsupported) => {
-                    let message = unsupported.to_string();
-                    if self.warned.as_deref() != Some(message.as_str()) {
-                        log::warn!("movement: {message}");
-                        self.warned = Some(message);
-                    }
-                }
-            }
-        }
-        // `ClientLevel.tickEntities`: the entities the server added move on.
-        if let Some(player) = self.player.as_ref() {
-            let position = player.position();
+            .and_then(|player| player.open_container())
+            .map(|container| container.container_id())
+        else {
+            return Ok(());
+        };
+        // `StonecutterMenu.clickMenuButton`: the entry is chosen, and the
+        // result, which only the server can make, is emptied.
+        let stonecutter = self
+            .open_menu
+            .as_ref()
+            .is_some_and(|menu| menu.kind == voxel_game::menus::container::MenuKind::Stonecutter);
+        let loom = self
+            .open_menu
+            .as_ref()
+            .is_some_and(|menu| menu.kind == voxel_game::menus::container::MenuKind::Loom);
+        if loom {
+            // `LoomMenu.clickMenuButton`: the pattern is chosen.
             self.trace
                 .world
-                .set_local_player_chunk(position.x, position.z);
+                .apply_local_player_container_data(container_id, 0, button as i16);
         }
-        if ridden.is_none() {
-            self.trace.world.tick_entities();
+        if stonecutter {
+            self.trace
+                .world
+                .apply_local_player_container_data(container_id, 0, button as i16);
+            if let Some(voxel_world::OpenContainerMenu {
+                mut slots, carried, ..
+            }) = self.trace.world.local_player_container_menu()
+            {
+                slots[1] = None;
+                self.trace
+                    .world
+                    .set_local_player_container_menu(&slots, carried);
+            }
         }
-        self.trace.world.tick_sky_flash();
-        // ClientLevel.tickTime: the game time and the clocks move on.
-        self.tick_clocks(self.game_time + 1);
-        self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
-    }
-
-    pub(super) fn send<F>(&mut self, id: i32, body: F) -> Result<(), ConnectionError>
-    where
-        F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
-    {
-        // Nothing is sent over a connection that is over.
-        if self.disconnect.is_some() {
-            return Ok(());
-        }
-        send_packet(
-            &mut self.writer,
-            ConnectionProtocol::Play,
-            id,
-            body,
-            self.compression_threshold,
+        self.send(
+            PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID,
+            |output| {
+                voxel_core::wire::write_varint(container_id, output);
+                voxel_core::wire::write_varint(button, output);
+                Ok(())
+            },
         )
     }
 
-    pub(super) fn send_movement(
-        &mut self,
-        packet: ServerboundMovement,
-    ) -> Result<(), ConnectionError> {
-        let id = match packet {
-            ServerboundMovement::PlayerInput(_) => PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID,
-            ServerboundMovement::PlayerCommand { .. } => PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID,
-            ServerboundMovement::PlayerAbilities { .. } => {
-                PLAY_SERVERBOUND_PLAYER_ABILITIES_PACKET_ID
-            }
-            ServerboundMovement::MovePlayerPos { .. } => PLAY_SERVERBOUND_MOVE_PLAYER_POS_PACKET_ID,
-            ServerboundMovement::MovePlayerPosRot { .. } => {
-                PLAY_SERVERBOUND_MOVE_PLAYER_POS_ROT_PACKET_ID
-            }
-            ServerboundMovement::MovePlayerRot { .. } => PLAY_SERVERBOUND_MOVE_PLAYER_ROT_PACKET_ID,
-            ServerboundMovement::MovePlayerStatusOnly { .. } => {
-                PLAY_SERVERBOUND_MOVE_PLAYER_STATUS_ONLY_PACKET_ID
-            }
-            ServerboundMovement::MoveVehicle { .. } => PLAY_SERVERBOUND_MOVE_VEHICLE_PACKET_ID,
-            ServerboundMovement::PaddleBoat { .. } => PLAY_SERVERBOUND_PADDLE_BOAT_PACKET_ID,
-        };
-        let body = packet.encode_body();
-        self.send(id, |output| {
-            output.extend_from_slice(&body);
+    /// The open menu's container id; 0 is the player's own.
+    pub(super) fn open_container_id(&self) -> i32 {
+        self.trace
+            .world
+            .local_player()
+            .and_then(|player| player.open_container())
+            .map_or(0, |container| container.container_id())
+    }
+
+    /// `ServerboundRenameItemPacket`: the anvil's name box changed.
+    pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID, |output| {
+            voxel_core::wire::write_varint(name.len() as i32, output);
+            output.extend_from_slice(name.as_bytes());
             Ok(())
         })
     }
 
-    /// A packet from the reader thread: the heavy ones arrive parsed.
-    pub(super) fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
-        match packet {
-            Incoming::Raw(body) => self.handle(&body),
-            Incoming::Chunk(chunk) => {
-                self.apply_chunk(&chunk);
-                Ok(())
-            }
-            Incoming::Light(update) => {
-                self.apply_light_update(&update);
-                Ok(())
-            }
+    /// `MerchantScreen.postButtonClick`: the chosen trade is tried first and its payments moved
+    /// in, and the server is told.
+    pub fn select_trade(&mut self, trade: i32) -> Result<(), ConnectionError> {
+        let Some(menu) = self
+            .open_menu
+            .as_mut()
+            .filter(|menu| menu.kind == voxel_game::menus::container::MenuKind::Merchant)
+        else {
+            return Ok(());
+        };
+        let index = usize::try_from(trade).unwrap_or(0);
+        menu.selection_hint = index;
+        menu.update_sell_item();
+        menu.try_move_items(index);
+        let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
+        self.trace
+            .world
+            .set_local_player_container_menu(&slots, carried);
+        self.send(PLAY_SERVERBOUND_SELECT_TRADE_PACKET_ID, |output| {
+            output.extend_from_slice(&encode_select_trade(trade));
+            Ok(())
+        })
+    }
+
+    /// The breaking state, for drawing the crack and reporting.
+    pub fn game_mode_state(&self) -> &voxel_game::game_mode::GameMode {
+        &self.game_mode_state
+    }
+
+    /// The player's inventory menu as the client holds it now.
+    pub fn container_menu(&mut self) -> &voxel_game::menus::container::ContainerMenu {
+        if let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() {
+            self.container_menu.load(slots, carried, state_id);
         }
+        &self.container_menu
     }
 
-    /// `handleLevelChunkWithLight`: the chunk, then its light.
-    pub(super) fn apply_chunk(&mut self, chunk: &ChunkPacketObservation) {
-        self.mark_columns_around(chunk.x, chunk.z);
-        self.trace.world.replace_chunk(
-            chunk.x,
-            chunk.z,
-            chunk
-                .section_observations
-                .iter()
-                .map(|section| SectionInput {
-                    non_empty_block_count: section.non_empty_block_count,
-                    fluid_count: section.fluid_count,
-                    block_states: &section.block_state_values,
-                    biomes: &section.biome_values,
-                }),
-        );
-        self.trace.world.apply_block_entities(
-            chunk.x,
-            chunk.z,
-            chunk.block_entities.iter().map(|entity| BlockEntityInput {
-                x: entity.x,
-                y: entity.y,
-                z: entity.z,
-                type_id: entity.type_id,
-                tag: entity.tag.as_deref(),
-            }),
-        );
-        self.trace.world.apply_chunk_light(
-            chunk.x,
-            chunk.z,
-            LightUpdateInput {
-                sky: LightLayerInput {
-                    mask: &chunk.light_data.sky_mask,
-                    empty_mask: &chunk.light_data.empty_sky_mask,
-                    updates: &chunk.light_data.sky_updates,
-                },
-                block: LightLayerInput {
-                    mask: &chunk.light_data.block_mask,
-                    empty_mask: &chunk.light_data.empty_block_mask,
-                    updates: &chunk.light_data.block_updates,
-                },
-            },
-        );
-    }
-
-    /// `handleLightUpdatePacket`: `readSectionList` redraws the sections
-    /// whose light arrived when the queued task runs.
-    pub(super) fn apply_light_update(&mut self, update: &LightUpdateObservation) {
-        self.trace.world.apply_light_updates(
-            update.x,
-            update.z,
-            LightUpdateInput {
-                sky: LightLayerInput {
-                    mask: &update.light_data.sky_mask,
-                    empty_mask: &update.light_data.empty_sky_mask,
-                    updates: &update.light_data.sky_updates,
-                },
-                block: LightLayerInput {
-                    mask: &update.light_data.block_mask,
-                    empty_mask: &update.light_data.empty_block_mask,
-                    updates: &update.light_data.block_updates,
-                },
-            },
-        );
+    /// The container the server opened, as a screen needs to know it: its id,
+    /// the menu it is and its title as NBT. `None` with none open, or one of
+    /// a kind not modelled yet.
+    pub fn open_container_info(
+        &self,
+    ) -> Option<(i32, voxel_game::menus::container::MenuKind, Vec<u8>)> {
+        let container = self.trace.world.local_player()?.open_container()?;
+        let kind =
+            voxel_game::menus::container::MenuKind::from_menu_type(container.menu_type_id())?;
+        // A screen opens once the server has sent what is in the container.
+        self.trace.world.local_player_container_menu()?;
+        Some((
+            container.container_id(),
+            kind,
+            container.title_nbt().to_vec(),
+        ))
     }
 }

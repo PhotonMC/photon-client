@@ -179,7 +179,7 @@ impl VulkanBackend {
     /// terrain's.
     pub fn set_outline(
         &mut self,
-        vertices: &[crate::outline::LineVertex],
+        vertices: &[crate::block::outline::LineVertex],
     ) -> Result<(), VulkanError> {
         let mut buffer = std::mem::take(&mut self.outline.buffer);
         let bytes = as_bytes(vertices);
@@ -246,7 +246,7 @@ impl VulkanBackend {
     /// Replace the clouds' faces, placed from the camera's cell corner.
     pub fn set_cloud_faces(
         &mut self,
-        vertices: &[crate::clouds::CloudVertex],
+        vertices: &[crate::sky::clouds::CloudVertex],
     ) -> Result<(), VulkanError> {
         // SAFETY: the fence wait leaves the previous frame done with the buffer, so it may be
         // replaced and written.

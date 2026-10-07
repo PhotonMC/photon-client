@@ -2,10 +2,10 @@
 //! the registry's ids), effects, stacks and status.
 
 use voxel_game::game_mode::Aim;
+use voxel_game::input::pick::pick;
 use voxel_game::options::AttackIndicator;
-use voxel_game::pick::pick;
 use voxel_net::connection::PlaySession;
-use voxel_render::gui::locator::{LocatorCamera, LocatorInput, Viewer};
+use voxel_render::gui::hud::locator::{LocatorCamera, LocatorInput, Viewer};
 use voxel_world::ClientPlayerState;
 use voxel_world::local_player::attack_strength_delay;
 

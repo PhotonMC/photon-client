@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/FishingHookRenderer.java`, `world/entity/projectile/FishingHook.java`.
-- Rust: `crates/voxel/src/dropped_items.rs` (sprite), `crates/voxel-render/src/guardian_beam.rs` (çizgi geometrisi kalıbı).
+- Rust: `crates/voxel/src/objects/dropped_items.rs` (sprite), `crates/voxel-render/src/objects/guardian_beam.rs` (çizgi geometrisi kalıbı).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

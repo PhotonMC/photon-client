@@ -7,61 +7,61 @@ use voxel_game::registries::Registries;
 use voxel_game::text::{Lang, Style};
 use voxel_net::connection::{BossOperation, ChatEvent, ChatHolder, HudEvent, PlaySession};
 use voxel_render::VulkanBackend;
-use voxel_render::biome_tint::BiomeTints;
-use voxel_render::gui::boss_bar::BossBars;
+use voxel_render::block::biome_tint::BiomeTints;
+use voxel_render::block::world_mesh::BlockRenderer;
+use voxel_render::entity::player_model::{PlayerModel, PlayerRenderState};
 use voxel_render::gui::chat::ChatLog;
 use voxel_render::gui::font::Font;
-use voxel_render::gui::items::GuiItemVertex;
-use voxel_render::gui::locator::LocatorCamera;
-use voxel_render::gui::pause::PauseScreen;
-use voxel_render::gui::screen::ScreenDraw;
-use voxel_render::gui::sidebar::{self, SidebarLine};
-use voxel_render::gui::tab_list::{
+use voxel_render::gui::hud::boss_bar::BossBars;
+use voxel_render::gui::hud::locator::LocatorCamera;
+use voxel_render::gui::hud::sidebar::{self, SidebarLine};
+use voxel_render::gui::hud::tab_list::{
     self, HealthStates, TabEntry, TabObjective, TabPlayer, TabScores,
 };
-use voxel_render::gui::titles::Titles;
+use voxel_render::gui::hud::titles::Titles;
+use voxel_render::gui::items::GuiItemVertex;
+use voxel_render::gui::screen::ScreenDraw;
+use voxel_render::gui::screen::pause::PauseScreen;
 use voxel_render::gui::{GuiAtlas, Hud};
-use voxel_render::player_model::{PlayerModel, PlayerRenderState};
 use voxel_render::window::WindowSurface;
-use voxel_render::world_mesh::BlockRenderer;
 use voxel_world::ClientItemStackState;
 
 use crate::controls::Controls;
+use crate::equipment::item_layers::ItemLayerCache;
 use crate::hud_input::hud_input;
-use crate::item_layers::ItemLayerCache;
 use crate::screens::ScreenAssets;
 use crate::view::CameraType;
 
 /// The HUD's sprites and font, its own state, the client's language, and
 /// each item's GUI layers, built the first time a slot shows it.
 pub struct Gui {
-    font: Arc<Font>,
-    alt_font: Arc<Font>,
-    atlas: GuiAtlas,
-    lang: Arc<Lang>,
+    pub(super) font: Arc<Font>,
+    pub(super) alt_font: Arc<Font>,
+    pub(super) atlas: GuiAtlas,
+    pub(super) lang: Arc<Lang>,
     /// Where the other languages are, if the asset folder has them.
-    languages: Option<Arc<voxel_game::language::LanguageSource>>,
+    pub(super) languages: Option<Arc<voxel_game::language::LanguageSource>>,
     /// The data-driven registries tooltips read.
-    registries: Arc<Registries>,
-    hud: Hud,
+    pub(super) registries: Arc<Registries>,
+    pub(super) hud: Hud,
     /// Where the skin the local player's model wears in the inventory is.
-    player_skin: voxel_render::entity_textures::TextureRect,
-    titles: Titles,
-    boss_bars: BossBars,
-    tab_health: HealthStates,
-    gui_ticks: i64,
+    pub(super) player_skin: voxel_render::entity::textures::TextureRect,
+    pub(super) titles: Titles,
+    pub(super) boss_bars: BossBars,
+    pub(super) tab_health: HealthStates,
+    pub(super) gui_ticks: i64,
     /// The tab list's header and footer, and when the HUD last ticked (for
     /// the partial tick the fades are drawn at).
-    tab_header: Vec<voxel_game::text::Run>,
-    tab_footer: Vec<voxel_game::text::Run>,
-    last_tick: std::time::Instant,
-    items: ItemLayerCache,
-    started_at: std::time::Instant,
+    pub(super) tab_header: Vec<voxel_game::text::Run>,
+    pub(super) tab_footer: Vec<voxel_game::text::Run>,
+    pub(super) last_tick: std::time::Instant,
+    pub(super) items: ItemLayerCache,
+    pub(super) started_at: std::time::Instant,
 }
 
 /// `FilterMask.applyWithFormatting`: the text with the hidden characters
 /// shown as dark grey hashes, each run in one piece.
-fn filtered_content(
+pub(super) fn filtered_content(
     text: &str,
     mask: &voxel_net::connection::FilterMask,
 ) -> voxel_game::text::Component {
@@ -86,6 +86,11 @@ fn filtered_content(
     }
     result
 }
+
+mod assets;
+mod chat;
+mod draw;
+mod hud;
 
 #[cfg(test)]
 mod tests {
@@ -113,6 +118,3 @@ mod tests {
         );
     }
 }
-
-mod gui_chat;
-mod gui_draw;

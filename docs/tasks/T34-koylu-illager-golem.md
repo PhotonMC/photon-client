@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/npc/VillagerModel.java`, `client/model/monster/illager/IllagerModel.java`, `client/model/monster/witch/WitchModel.java`, `client/model/animal/golem/IronGolemModel.java`, `client/model/animal/golem/SnowGolemModel.java`, `client/model/animal/golem/CopperGolemModel.java`, `client/model/monster/enderman/EndermanModel.java`, `client/renderer/entity/VillagerRenderer.java`, `client/renderer/entity/IllagerRenderer.java`, `client/renderer/entity/EndermanRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Villager meslek/seviye katmanı (`VillagerData` verisi; T24b yürüyüşü bunu atlıyor, okuyucu eklenir).

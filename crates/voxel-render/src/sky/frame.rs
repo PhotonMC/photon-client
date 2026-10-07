@@ -1,5 +1,80 @@
 use super::*;
 
+/// A sky vertex, in view-rotated space around the camera.
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct SkyVertex {
+    pub position: [f32; 3],
+    /// Atlas coordinate, or negative for an untextured vertex.
+    pub uv: [f32; 2],
+    pub colour: [f32; 4],
+    /// The spherical and cylindrical distances fog is measured over, or
+    /// negative for no fog.
+    pub fog_distance: [f32; 2],
+}
+
+/// How a run of sky vertices blends onto what is below it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkyBlend {
+    /// Source alpha over the destination.
+    Translucent,
+    /// Source times its alpha added to the destination.
+    Overlay,
+}
+
+/// Everything one frame of sky needs.
+#[derive(Debug, Clone)]
+pub struct SkyFrame {
+    /// The colour the frame is cleared to, which is the fog colour.
+    pub clear_colour: [f32; 4],
+    pub fog_colour: [f32; 4],
+    /// Where fog on the sky is complete, in blocks.
+    pub sky_fog_end: f32,
+    /// The terrain's fog, in blocks: where the environmental fog starts and
+    /// ends over spherical distance, and where the render distance fog
+    /// starts and ends over cylindrical distance.
+    pub terrain_fog: [f32; 4],
+    /// The cloud colour (red, green, blue, alpha, 0 to 1), the height of the
+    /// clouds' bottom, and where cloud fog is complete, in blocks.
+    pub cloud_colour: [f32; 4],
+    pub cloud_height: f32,
+    pub cloud_fog_end: f32,
+    /// Triangles, three vertices each.
+    pub vertices: Vec<SkyVertex>,
+    /// Runs of triangles and how each blends.
+    pub batches: Vec<(SkyBlend, u32, u32)>,
+}
+
+/// Where the sky's sprites sit on the atlas.
+pub struct SkySprites {
+    pub sun: [f32; 4],
+    pub moon: [[f32; 4]; 8],
+}
+
+/// The inputs a frame of sky reads besides the attributes.
+pub struct SkyView {
+    /// The camera's forward direction.
+    pub forward: [f32; 3],
+    /// The camera's eye height above the horizon (sea level on a normal world).
+    pub eye_above_horizon: f64,
+    pub eye_in_water: bool,
+    /// The effective render distance in chunks.
+    pub render_distance: i32,
+    /// The cloud range option, in chunks.
+    pub cloud_range: i32,
+    /// The level's rain and thunder at this frame.
+    pub weather: Weather,
+    /// How far rain has pulled the fog in, 0 to 1.
+    pub rain_fog: f32,
+}
+
+/// The moon phase sprite names, in the phases' order.
+pub fn moon_sprites() -> impl Iterator<Item = String> {
+    MOON_PHASES
+        .iter()
+        .map(|phase| format!("minecraft:environment/celestial/moon/{phase}"))
+}
+
 /// Build one frame of sky from the blended attributes.
 #[expect(
     clippy::too_many_lines,

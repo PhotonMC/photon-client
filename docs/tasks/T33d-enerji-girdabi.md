@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{EnergySwirlLayer,CreeperPowerLayer}.java`, `client/renderer/rendertype/RenderTypes.java` (`energySwirl`), `RenderPipelines.ENERGY_SWIRL`, `world/entity/monster/Creeper.java` (`isPowered`, `DATA_IS_POWERED`).
-- Rust: `crates/voxel-render/src/{render_types.rs,vulkan.rs,mob_model.rs}` (T33c'nin glow yolu), `crates/voxel/src/monsters.rs`, `voxel-world/src/metadata.rs`.
+- Rust: `crates/voxel-render/src/{render_types.rs,vulkan.rs,mob_model.rs}` (T33c'nin glow yolu), `crates/voxel/src/mobs/monsters.rs`, `voxel-world/src/metadata.rs`.
 
 ## Yapılacaklar
 1. `ENERGY_SWIRL` hattı: kayma, `ALPHA_CUTOUT 0.1`, toplamalı harman, `cull false`. Dokuyu atlasta sarmak için kaymayı alt dikdörtgen içinde sarmalayan shader (`% 1`); referans `GL_REPEAT` kullanır.

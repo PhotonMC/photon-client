@@ -110,7 +110,7 @@ kalın ve eğik yazı henüz yok.
 
 ## Yuva seçimi
 
-`crates/voxel-game/src/hotbar.rs`:
+`crates/voxel-game/src/input/hotbar.rs`:
 
 - 1–9 tuşları yuvayı doğrudan seçiyor.
 - Tekerlek referansın işleyicisiyle ilerliyor: kesirli adımlar

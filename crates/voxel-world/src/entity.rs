@@ -9,15 +9,132 @@ use voxel_core::math::{
     mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32, wrap_degrees_f32,
 };
 
-mod accessors;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientEntity {
+    pub(crate) id: i32,
+    pub uuid: voxel_core::binary::Uuid,
+    pub type_id: i32,
+    pub(crate) tick_count: i32,
+    pub(crate) first_tick: bool,
+    /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
+    pub(crate) start_block: (i32, i32, i32),
+    pub(crate) position: DVec3,
+    pub(crate) old_position: DVec3,
+    pub(crate) motion: DVec3,
+    pub(crate) motion_lerp_target: DVec3,
+    pub(crate) motion_lerp_steps: u8,
+    pub(crate) x_rot: JavaF32,
+    pub(crate) y_rot: JavaF32,
+    pub(crate) y_head_rot: JavaF32,
+    pub(crate) y_body_rot: JavaF32,
+    pub(crate) old_x_rot: JavaF32,
+    pub(crate) old_y_rot: JavaF32,
+    pub(crate) old_y_head_rot: JavaF32,
+    pub(crate) old_y_body_rot: JavaF32,
+    pub(crate) delta_rotation: JavaF32,
+    pub(crate) boat_input: BoatInput,
+    /// What a boat the local player rides keeps between ticks (status, water level, fall).
+    pub(crate) boat_ride: crate::ride::boat::RideState,
+    /// The same of a saddled horse the local player rides.
+    pub(crate) mount_ride: crate::ride::mount::MountState,
+    /// A flying projectile's owner and whether it has left it.
+    pub(crate) flight: crate::objects::flight::FlightState,
+    pub(crate) paddle_left: bool,
+    pub(crate) paddle_right: bool,
+    pub(crate) head_rotation_target: JavaF32,
+    pub(crate) head_lerp_steps: u8,
+    pub(crate) interpolation: Option<EntityInterpolationState>,
+    pub(crate) on_ground: bool,
+    pub(crate) tracking: Tracking,
+    pub(crate) always_ticking: bool,
+    pub(crate) ticking: bool,
+    /// The limbs' walk animation and the swimming pose's ease (a player's).
+    pub(crate) walk: crate::living::WalkAnimation,
+    pub(crate) swim_amount: JavaF32,
+    pub(crate) old_swim_amount: JavaF32,
+    /// A mob's `BodyRotationControl` state: how long its head has been still,
+    /// and where it was when it last moved far.
+    pub(crate) head_stable_time: i32,
+    pub(crate) last_stable_y_head_rot: JavaF32,
+    /// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its
+    /// spin it started (`bobOffs`).
+    pub(crate) item_stack: Option<ClientItemStackState>,
+    pub(crate) bob_offset: JavaF32,
+    /// What it holds and wears, by `EquipmentSlot`.
+    pub(crate) equipment: [Option<ClientItemStackState>; EquipmentSlot::COUNT],
+    pub data: i32,
+    pub(crate) metadata: Option<Vec<u8>>,
+    pub(crate) shared_flags: u8,
+    pub(crate) living_flags: u8,
+    pub(crate) mob_flags: u8,
+    pub(crate) air_supply: i32,
+    pub(crate) health_bits: Option<u32>,
+    pub(crate) living: EntityState,
+    pub(crate) arrow_count: i32,
+    pub(crate) stinger_count: i32,
+    pub(crate) effect_ambience: bool,
+    pub(crate) effect_particle_type_ids: Vec<i32>,
+    pub(crate) sleeping_pos: Option<voxel_core::binary::BlockPos>,
+    pub(crate) custom_name_present: bool,
+    pub(crate) custom_name_visible: bool,
+    pub(crate) no_gravity: bool,
+    pub(crate) silent: bool,
+    pub(crate) pose: ClientEntityPose,
+    pub(crate) baby: bool,
+    pub(crate) alive: bool,
+    pub(crate) spectator: bool,
+    pub(crate) on_climbable: bool,
+    pub(crate) flying: bool,
+    pub(crate) happy_ghast_still_timeout: bool,
+    pub(crate) happy_ghast_is_vehicle: bool,
+    pub(crate) ticks_frozen: i32,
+    pub(crate) vehicle_id: Option<i32>,
+    pub(crate) passenger_ids: Vec<i32>,
+    /// What the server changed of the attributes the type starts with.
+    pub(crate) attributes: Vec<ClientAttributeState>,
+    /// What kind of entity this is, with the state that kind keeps (a rabbit's hops, a warden's
+    /// pulses…), made when something first reaches it.
+    pub(crate) kind: crate::entity_kind::EntityKind,
+    /// A primed tnt's fuse and block, made when its data or ticks first reach it.
+    /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
+    pub(crate) item_frame_rotation: i32,
+    /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
+    pub(crate) leash_holder_id: i32,
+    /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
+    pub(crate) lightning_done: bool,
+    /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
+    pub(crate) shot_at_angle: bool,
+}
+
 mod animation;
-mod kinds;
-mod state;
-
-mod entity_2;
-pub use entity_2::*;
-
-mod dimensions;
-pub use dimensions::*;
-mod attribute;
-pub use attribute::*;
+mod attributes;
+pub use attributes::*;
+mod boat;
+pub use boat::*;
+mod equipment;
+pub use equipment::*;
+mod flags;
+pub(crate) use flags::*;
+mod identity;
+pub(crate) use identity::*;
+mod inputs;
+pub use inputs::*;
+mod interpolation;
+pub(crate) use interpolation::*;
+mod item_frame;
+mod minecart;
+pub(crate) use minecart::*;
+mod motion;
+pub(crate) use motion::*;
+mod mounts;
+mod pose;
+pub use pose::*;
+mod projectile;
+pub(crate) use projectile::*;
+mod rotation;
+pub(crate) use rotation::*;
+mod tracking;
+pub(crate) use tracking::*;
+mod types;
+pub(crate) use types::*;
+mod species;

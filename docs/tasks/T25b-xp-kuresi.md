@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/renderer/entity/ExperienceOrbRenderer.java`, `.../state/ExperienceOrbRenderState.java`, `.../world/entity/ExperienceOrb.java` (`getIcon`), `AddExperienceOrb` paketi (`ClientboundAddExperienceOrbPacket`).
-- Rust: `crates/voxel/src/dropped_items.rs`, `crates/voxel-render/src/item_entity.rs` (oracle ve çizim kalıbı), `entity_textures.rs` (doku paketleme).
+- Rust: `crates/voxel/src/objects/dropped_items.rs`, `crates/voxel-render/src/objects/item.rs` (oracle ve çizim kalıbı), `entity_textures.rs` (doku paketleme).
 
 ## Yapılacaklar
 1. Orb'un `value`'su (paket) → `ClientEntity`; ikon indeksi, renk salınımı (`age` + `partial_tick`), her zaman kameraya dönük dörtgen.

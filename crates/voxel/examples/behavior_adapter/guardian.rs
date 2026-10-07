@@ -2,8 +2,9 @@ use super::*;
 
 /// `bell_pose`: the bell's model and sprite for its ticks and the direction it was struck from.
 pub(super) fn bell_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
-    let layer = voxel_data::entity_model::layer(voxel_render::bell::LAYER).ok_or("no layer")?;
+    use voxel_render::entity::mob_model::MobModel;
+    let layer = voxel_data::entity_model::layer(voxel_render::block_entity::bell::LAYER)
+        .ok_or("no layer")?;
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let ticks = f32::from_bits(
@@ -20,7 +21,7 @@ pub(super) fn bell_pose_result(request: &Value) -> Result<Value, String> {
             "label": row["label"],
             "ticks": format!("{:08x}", ticks.to_bits()),
             "light": row["light"],
-            "texture": voxel_render::bell::TEXTURE,
+            "texture": voxel_render::block_entity::bell::TEXTURE,
             "quads": posed_quads(&model),
         }));
     }
@@ -30,9 +31,11 @@ pub(super) fn bell_pose_result(request: &Value) -> Result<Value, String> {
 /// `skull_block_pose`: where, with what texture and light a skull block is drawn, and the model
 /// posed for the animation.
 pub(super) fn skull_block_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::block_entity::skull::{
+        SkullKind, block_pose, ground_transformation, wall_transformation,
+    };
+    use voxel_render::entity::mob_model::MobModel;
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::MobModel;
-    use voxel_render::skull::{SkullKind, block_pose, ground_transformation, wall_transformation};
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let animation = f32::from_bits(
@@ -79,13 +82,13 @@ pub(super) fn skull_block_pose_result(request: &Value) -> Result<Value, String> 
 
 /// `banner_pose`: every model a banner block submits, in the order it is drawn.
 pub(super) fn banner_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::banner::{
+    use voxel_render::block_entity::banner::{
         BASE_TEXTURE, MAX_PATTERNS, PATTERN_BASE_TEXTURE, ground_transformation, layers,
         pattern_texture, wall_transformation,
     };
+    use voxel_render::block_entity::skull::block_pose;
+    use voxel_render::entity::mob_model::MobModel;
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::MobModel;
-    use voxel_render::skull::block_pose;
     let dye = |name: &str| -> Result<u32, String> {
         let id = [
             "white",
@@ -214,7 +217,7 @@ pub(super) fn parrot_textures_result(request: &Value) -> Result<Value, String> {
         let id = i32_field(row, "id")?;
         out.push(json!({
             "label": row["label"],
-            "texture": format!("minecraft:textures/{}.png", voxel_world::parrot::variant_texture(id)),
+            "texture": format!("minecraft:textures/{}.png", voxel_world::mobs::parrot::variant_texture(id)),
         }));
     }
     Ok(json!({"rows": out}))
@@ -222,8 +225,8 @@ pub(super) fn parrot_textures_result(request: &Value) -> Result<Value, String> {
 
 /// `guardian_beam`: the vertices of a guardian's beam from the pose its eye leaves.
 pub(super) fn guardian_beam_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::guardian_beam::{BEAM_LIGHT, guardian_beam};
     use voxel_render::joml::Pose;
+    use voxel_render::objects::guardian_beam::{BEAM_LIGHT, guardian_beam};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -283,8 +286,8 @@ pub(super) fn guardian_beam_result(request: &Value) -> Result<Value, String> {
 
 /// `crystal_beam`: the vertices of an end crystal's beam from the pose it is submitted at.
 pub(super) fn crystal_beam_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::crystal_beam::crystal_beam;
     use voxel_render::joml::Pose;
+    use voxel_render::objects::crystal_beam::crystal_beam;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -329,8 +332,8 @@ pub(super) fn crystal_beam_result(request: &Value) -> Result<Value, String> {
 
 /// `dragon_rays`: the vertices of a dying ender dragon's rays from the pose its death leaves.
 pub(super) fn dragon_rays_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::dragon_rays::dragon_rays;
     use voxel_render::joml::Pose;
+    use voxel_render::objects::dragon_rays::dragon_rays;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -369,7 +372,7 @@ pub(super) fn dragon_rays_result(request: &Value) -> Result<Value, String> {
 /// `guardian_model`: a guardian's model posed and drawn from the look, the spikes' and the tail's
 /// animation and what its eye follows.
 pub(super) fn guardian_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{GuardianLook, GuardianState, MobModel};
+    use voxel_render::entity::mob_model::{GuardianLook, GuardianState, MobModel};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
@@ -418,7 +421,7 @@ pub(super) fn guardian_model_result(request: &Value) -> Result<Value, String> {
 /// `nautilus_model`: a nautilus's model posed and drawn from the look, the stride, the age and
 /// whether it wears body armor.
 pub(super) fn nautilus_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, NautilusState, QuadrupedState};
+    use voxel_render::entity::mob_model::{MobModel, NautilusState, QuadrupedState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;

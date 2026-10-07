@@ -276,7 +276,7 @@ pub(super) fn decode_sprite(
 /// A placed sprite's mip levels; an animated sprite's are its first
 /// frame's, with every frame's kept for playback.
 pub(super) fn sprite_levels(
-    placement: &crate::atlas::SpritePlacement,
+    placement: &crate::texture::atlas::SpritePlacement,
     key: String,
     (image, metadata, animated): &DecodedSprite,
     level_count: u32,

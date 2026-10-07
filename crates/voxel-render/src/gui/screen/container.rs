@@ -3,7 +3,7 @@
 //! keys, and drawing a slot and the carried stack.
 
 use super::ScreenDraw;
-use voxel_game::container_menu::{ClickType, max_stack_size};
+use voxel_game::menus::container::{ClickType, max_stack_size};
 use voxel_world::ClientItemStackState as Stack;
 
 /// `MouseHandler`'s double click window.

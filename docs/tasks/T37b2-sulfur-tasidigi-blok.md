@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{SulfurCubeRenderer,layers/SulfurCubeInnerLayer}.java`, `world/entity/monster/cubemob/SulfurCube.java` (`hasBodyItem`, `canUseSlot`), `world/item/component/BlockItemStateProperties.java`.
-- Rust: `crates/voxel/src/cube_mobs.rs`, `crates/voxel/src/` (T34d blok çizimi), `crates/voxel-world/src/entity.rs` (ekipman).
+- Rust: `crates/voxel/src/mobs/monsters/cube_mobs.rs`, `crates/voxel/src/` (T34d blok çizimi), `crates/voxel-world/src/entity.rs` (ekipman).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

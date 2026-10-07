@@ -1,0 +1,17 @@
+//! What is drawn of entities that are posed models: their textures, shadows, name tags, equipment and the animation they run.
+
+pub mod block;
+pub mod equipment;
+pub mod held_item;
+pub mod keyframe;
+pub mod mob_model;
+pub mod name_tag;
+pub mod player_model;
+pub mod player_renderer;
+pub mod shadow;
+pub mod spear_animation;
+pub mod special_models;
+pub mod textures;
+pub mod trim;
+pub mod villager;
+pub mod wool;

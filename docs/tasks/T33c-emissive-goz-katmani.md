@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{SpiderEyesLayer,EyesLayer,EnderEyesLayer,CreeperPowerLayer,EnergySwirlLayer}.java`, `client/renderer/rendertype/RenderTypes.java` (`eyes`, `energySwirl`), `world/entity/monster/Creeper.java` (`isPowered`).
-- Rust: `crates/voxel-render/src/vulkan.rs` (entity boru hattı, ışık/örtü kodu), `crates/voxel-render/src/scene.rs` (`Vertex`), `crates/voxel/src/monsters.rs`, `voxel-render/src/mob_model.rs` (`mob_vertices_coloured`, `overlay_code`), `voxel-world/src/animal.rs`.
+- Rust: `crates/voxel-render/src/vulkan.rs` (entity boru hattı, ışık/örtü kodu), `crates/voxel-render/src/scene.rs` (`Vertex`), `crates/voxel/src/mobs/monsters.rs`, `voxel-render/src/mob_model.rs` (`mob_vertices_coloured`, `overlay_code`), `voxel-world/src/animal.rs`.
 
 ## Yapılacaklar
 Işıksız, harmanlı üst katman çizim yolu ve iki katmanın dokuları (`entity/spider/spider_eyes`, `entity/enderman/enderman_eyes`).

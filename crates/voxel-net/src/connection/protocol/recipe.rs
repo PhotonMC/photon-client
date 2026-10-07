@@ -1,216 +1,5 @@
 use super::*;
 
-pub(crate) fn encode_set_carried_item(
-    output: &mut Vec<u8>,
-    slot: i16,
-) -> Result<(), ConnectionError> {
-    output.extend_from_slice(&slot.to_be_bytes());
-    Ok(())
-}
-
-pub(crate) fn encode_player_action(
-    output: &mut Vec<u8>,
-    action: i32,
-    position: (i32, i32, i32),
-    direction: u8,
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    wire::write_varint(action, output);
-    output.extend_from_slice(&pack_block_position(position).to_be_bytes());
-    output.push(direction);
-    wire::write_varint(sequence, output);
-    Ok(())
-}
-
-pub(crate) fn pack_block_position(position: (i32, i32, i32)) -> i64 {
-    const HORIZONTAL_MASK: i64 = (1_i64 << 26) - 1;
-    const Y_MASK: i64 = (1_i64 << 12) - 1;
-
-    ((i64::from(position.0) & HORIZONTAL_MASK) << 38)
-        | ((i64::from(position.2) & HORIZONTAL_MASK) << 12)
-        | (i64::from(position.1) & Y_MASK)
-}
-
-pub(crate) fn support_block_position(position: (f64, f64, f64, f32, f32)) -> (i32, i32, i32) {
-    let block = voxel_core::binary::BlockPos::containing(position.0, position.1 - 1.0, position.2);
-    (block.x, block.y, block.z)
-}
-
-pub(crate) fn encode_packet_frame(
-    body: &[u8],
-    compression_threshold: Option<usize>,
-) -> Result<Vec<u8>, ConnectionError> {
-    if body.len() > MAX_PACKET_UNCOMPRESSED_LENGTH {
-        return Err(ConnectionError::Frame(FrameError::PacketTooLarge));
-    }
-
-    let mut payload = Vec::new();
-    match compression_threshold {
-        Some(threshold) if body.len() < threshold => {
-            wire::write_varint(0, &mut payload);
-            payload.extend_from_slice(body);
-        }
-        Some(_) => {
-            wire::write_varint(
-                i32::try_from(body.len())
-                    .map_err(|_| ConnectionError::Frame(FrameError::PacketTooLarge))?,
-                &mut payload,
-            );
-            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-            encoder.write_all(body)?;
-            payload.extend_from_slice(
-                &encoder
-                    .finish()
-                    .map_err(|error| ConnectionError::Compression(error.to_string()))?,
-            );
-        }
-        None => payload.extend_from_slice(body),
-    }
-    frame::prepend(&payload).map_err(ConnectionError::from)
-}
-
-pub(crate) fn decode_packet_frame(
-    frame: &[u8],
-    compression_threshold: Option<usize>,
-) -> Result<Vec<u8>, ConnectionError> {
-    let Some(_) = compression_threshold else {
-        return Ok(frame.to_vec());
-    };
-
-    let mut input = frame;
-    let uncompressed_length = wire::read_varint(&mut input)?;
-    if uncompressed_length < 0 {
-        return Err(ConnectionError::Compression(
-            "negative uncompressed length".to_owned(),
-        ));
-    }
-    if uncompressed_length == 0 {
-        return Ok(input.to_vec());
-    }
-
-    let uncompressed_length = usize::try_from(uncompressed_length)
-        .map_err(|_| ConnectionError::Compression("invalid uncompressed length".to_owned()))?;
-    if uncompressed_length > MAX_PACKET_UNCOMPRESSED_LENGTH {
-        return Err(ConnectionError::Compression(
-            "uncompressed packet exceeds 8 MiB".to_owned(),
-        ));
-    }
-
-    let decoder = ZlibDecoder::new(input);
-    let mut output = Vec::with_capacity(uncompressed_length);
-    decoder
-        .take((uncompressed_length as u64) + 1)
-        .read_to_end(&mut output)?;
-    if output.len() != uncompressed_length {
-        return Err(ConnectionError::Compression(format!(
-            "declared {uncompressed_length} bytes, decoded {}",
-            output.len()
-        )));
-    }
-    Ok(output)
-}
-
-pub(crate) fn split_packet(body: &[u8]) -> Result<(i32, &[u8]), ConnectionError> {
-    let mut input = body;
-    let packet_id = wire::read_varint(&mut input)?;
-    Ok((packet_id, input))
-}
-
-pub(crate) fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
-    let mut input = input;
-    let packet = LoginObservation {
-        player_id: read_i32(&mut input, "login player id")?,
-        hardcore: read_bool(&mut input, "login hardcore")?,
-        level_count: {
-            let count = read_count(&mut input, "login level count")?;
-            for _ in 0..count {
-                read_identifier_string(&mut input, "login level identifier")?;
-            }
-            count
-        },
-        max_players: read_varint(&mut input, "login max players")?,
-        chunk_radius: read_varint(&mut input, "login chunk radius")?,
-        simulation_distance: read_varint(&mut input, "login simulation distance")?,
-        reduced_debug_info: read_bool(&mut input, "login reduced debug info")?,
-        show_death_screen: read_bool(&mut input, "login show death screen")?,
-        do_limited_crafting: read_bool(&mut input, "login limited crafting")?,
-        spawn_info: parse_spawn_info(&mut input)?,
-        online_mode: read_bool(&mut input, "login online mode")?,
-        enforces_secure_chat: read_bool(&mut input, "login secure chat")?,
-    };
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("login trailing payload"));
-    }
-    Ok(packet)
-}
-
-pub(crate) fn parse_respawn_packet(
-    input: &[u8],
-) -> Result<(SpawnInfoObservation, u8), ConnectionError> {
-    let mut input = input;
-    let spawn_info = parse_spawn_info(&mut input)?;
-    let data_to_keep = read_byte(&mut input, "respawn data to keep")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("respawn trailing payload"));
-    }
-    Ok((spawn_info, data_to_keep))
-}
-
-pub(crate) fn parse_open_screen_packet(
-    input: &[u8],
-) -> Result<OpenScreenObservation, ConnectionError> {
-    let mut input = input;
-    let container_id = read_varint(&mut input, "open screen container id")?;
-    let menu_type_id = read_varint(&mut input, "open screen menu type")?;
-    let title_input = input;
-    let title = voxel_core::nbt::read_any_nbt(&mut input)
-        .map_err(|_| ConnectionError::Codec("open screen title"))?;
-    if title.is_none() {
-        return Err(ConnectionError::Codec("open screen title"));
-    }
-    let title_length = title_input.len() - input.len();
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("open screen trailing payload"));
-    }
-    Ok(OpenScreenObservation {
-        container_id,
-        menu_type_id,
-        title_nbt: title_input[..title_length].to_vec(),
-        applied_to_world: false,
-    })
-}
-
-pub(crate) fn parse_container_close_packet(
-    input: &[u8],
-) -> Result<ContainerCloseObservation, ConnectionError> {
-    let mut input = input;
-    let container_id = read_varint(&mut input, "container close id")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("container close trailing payload"));
-    }
-    Ok(ContainerCloseObservation {
-        container_id,
-        applied_to_world: false,
-    })
-}
-
-pub(crate) fn parse_container_set_data_packet(
-    input: &[u8],
-) -> Result<ContainerDataObservation, ConnectionError> {
-    let mut input = input;
-    let container_id = read_varint(&mut input, "container data id")?;
-    let id = read_i16(&mut input, "container data slot")?;
-    let value = read_i16(&mut input, "container data value")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("container data trailing payload"));
-    }
-    Ok(ContainerDataObservation {
-        container_id,
-        id,
-        value,
-    })
-}
-
 /// `SlotDisplay.STREAM_CODEC`.
 pub(super) fn read_slot_display(
     input: &mut &[u8],
@@ -447,4 +236,35 @@ pub(crate) fn parse_recipe_book_remove_packet(input: &[u8]) -> Result<Vec<i32>, 
         ids.push(read_varint(&mut input, "recipe book remove id")?);
     }
     Ok(ids)
+}
+
+/// `RecipeBookSettings.read`: open and filtering flags for crafting,
+/// furnace, blast furnace and smoker, in that order.
+pub(crate) fn parse_recipe_book_settings_packet(
+    input: &[u8],
+) -> Result<[voxel_world::BookTypeSettings; 4], ConnectionError> {
+    let mut input = input;
+    let mut settings = [voxel_world::BookTypeSettings::default(); 4];
+    for entry in &mut settings {
+        entry.open = read_byte(&mut input, "recipe book open")? != 0;
+        entry.filtering = read_byte(&mut input, "recipe book filtering")? != 0;
+    }
+    Ok(settings)
+}
+
+/// `ClientboundPlaceGhostRecipePacket`.
+pub(crate) fn parse_place_ghost_recipe_packet(
+    input: &[u8],
+) -> Result<(i32, voxel_world::RecipeDisplay), ConnectionError> {
+    let mut input = input;
+    let container = read_varint(&mut input, "ghost container")?;
+    Ok((container, read_recipe_display(&mut input)?))
+}
+
+/// What a clientbound update-recipes packet carries: the item sets by name
+/// (the items a furnace, a blast furnace or a smoker accepts, and so on, as
+/// registry ids) and the stonecutter's entries.
+pub(crate) struct RecipeUpdate {
+    pub sets: Vec<(String, Vec<i32>)>,
+    pub stonecutter: Vec<voxel_world::StonecutterEntry>,
 }

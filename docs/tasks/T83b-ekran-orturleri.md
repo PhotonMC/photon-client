@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/ScreenEffectRenderer.java`, `client/renderer/fog/*`, `client/renderer/GameRenderer.java` (`spinningEffectTime`, `renderLevel`), `client/renderer/LightmapRenderStateExtractor.java`.
-- Rust: `crates/voxel-render/src/{camera,sky,atmosphere}.rs`, `crates/voxel/src/atmosphere.rs`.
+- Rust: `crates/voxel-render/src/{camera,sky,atmosphere}.rs`, `crates/voxel/src/world/atmosphere.rs`.
 
 ## Oracle
 Gerçek `ScreenEffectRenderer`/`fog` sayısal çıktısı ve `gui` ailesinde örtü satırları.

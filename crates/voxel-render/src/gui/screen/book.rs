@@ -4,16 +4,16 @@
 
 use std::sync::Arc;
 
-use voxel_game::container_menu::{ClickType, ContainerMenu};
+use voxel_game::menus::container::{ClickType, ContainerMenu};
 use voxel_game::text::{ClickEvent, Component, Lang, Run, Style};
 
 use super::container::ContainerLayout;
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::chat::split;
-use crate::gui::edit_box::Clipboard;
 use crate::gui::font::Font;
 use crate::gui::layout::Arena;
 use crate::gui::text_hit::style_under;
+use crate::gui::widgets::edit_box::Clipboard;
 use crate::gui::widgets::{Kind, Widget};
 
 /// `BookViewScreen.IMAGE_WIDTH`, and the page's text box.
@@ -111,7 +111,7 @@ impl BookScreen {
             .first()
             .and_then(Option::as_ref)
             .and_then(|book| {
-                voxel_game::item_values::Values::new(book.item_registry_id(), book.patch_bytes())
+                voxel_game::item::values::Values::new(book.item_registry_id(), book.patch_bytes())
                     .book_pages()
             })
             .unwrap_or_default()
@@ -309,7 +309,7 @@ impl Screen for BookScreen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use voxel_game::container_menu::MenuKind;
+    use voxel_game::menus::container::MenuKind;
     use voxel_world::ClientItemStackState as Stack;
 
     fn book_menu(pages: usize, page: i16) -> ContainerMenu {

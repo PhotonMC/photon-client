@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use crate::sections::SectionMeshes;
+use crate::world::sections::SectionMeshes;
 
 /// The frame's spans summed since the last print: ticking, meshing,
 /// building the frame, drawing it, and the whole frame.

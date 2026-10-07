@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/LivingEntityRenderer.java` (`isShaking`, `setupRotations`), `HoglinRenderer.java`, `Hoglin.isConverting`, `EnvironmentAttributes.PIGLINS_ZOMBIFY`, dimension türü `attributes` alanı (kayıt verisi).
-- Rust: `crates/voxel-world/src/dimension.rs` (`DimensionEnvironment`), `ClientEntity::is_fully_frozen`, `crates/voxel/src/mobs.rs` (`placement`), `crates/voxel/src/hoglins.rs`.
+- Rust: `crates/voxel-world/src/dimension.rs` (`DimensionEnvironment`), `ClientEntity::is_fully_frozen`, `crates/voxel/src/mobs.rs` (`placement`), `crates/voxel/src/mobs/monsters/hoglins.rs`.
 
 ## Yapılacaklar
 1. `placement` titremeyi `body_rot`a ekler (tüm mobların donmuş hâli).

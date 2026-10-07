@@ -10,9 +10,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::biome_tint::BiomeTints;
+use crate::block::biome_tint::BiomeTints;
+use crate::block::world_mesh::BlockRenderer;
 use crate::scene::Mesh;
-use crate::world_mesh::BlockRenderer;
 use voxel_world::RegionCopy;
 
 /// A section: chunk x, section y, chunk z.
@@ -134,7 +134,7 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
     };
     let tint = |kind, position| tints.tint_from(kind, position, &biome_at);
     let region = renderer.mesh_region(
-        &crate::world_mesh::MeshWorld {
+        &crate::block::world_mesh::MeshWorld {
             read: &read,
             light: &light,
             biome_tint: &tint,

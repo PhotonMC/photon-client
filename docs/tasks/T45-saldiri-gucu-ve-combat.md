@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/gui/Hud.java`.
-- Rust: `crates/voxel-game/src/attack.rs` (saldırı gücü/bekleme), `crates/voxel-render/src/gui/hud.rs` (HUD), `crates/voxel-net/src/connection/play.rs` (paket işleme).
+- Rust: `crates/voxel-game/src/input/attack.rs` (saldırı gücü/bekleme), `crates/voxel-render/src/gui/hud.rs` (HUD), `crates/voxel-net/src/connection/play.rs` (paket işleme).
 
 ## Yapılacaklar
 1. Saldırı göstergesi oracle'ı (`gui` ailesi: `AttackIndicator` çizimi, gerçek `Hud`).

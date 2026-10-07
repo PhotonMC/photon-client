@@ -1,6 +1,12 @@
 //! Items as the client knows them without the server: the registry and the
 //! default components, from the reference's table.
 
+#[cfg(test)]
+mod component_tests;
+pub mod default_components;
+pub mod in_hand;
+pub mod values;
+
 use voxel_data::item::registry::{ITEMS, Item, RuleBlocks, Tool};
 use voxel_world::ClientBlockStateRegistry;
 

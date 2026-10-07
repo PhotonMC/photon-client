@@ -1,0 +1,427 @@
+use super::*;
+
+impl Options {
+    /// `Options.load`: `path` read over the defaults; a missing file leaves
+    /// them, a line or a value that does not read is skipped.
+    pub fn load(path: &Path) -> Self {
+        let mut options = Self::default();
+        let Ok(bytes) = std::fs::read(path) else {
+            return options;
+        };
+        for line in String::from_utf8_lossy(&bytes).lines() {
+            let Some((key, value)) = line.split_once(':') else {
+                continue;
+            };
+            match options.lines.iter_mut().find(|(known, _)| known == key) {
+                Some(entry) => value.clone_into(&mut entry.1),
+                None => options.lines.push((key.to_owned(), value.to_owned())),
+            }
+        }
+        for (name, key) in KEYS {
+            let value = options
+                .lines
+                .iter()
+                .find(|(known, _)| known == name)
+                .map(|(_, value)| value.clone());
+            if let Some(value) = value {
+                options.read(key, &value);
+            }
+        }
+        options
+    }
+
+    /// `read` for the sound options.
+    pub(super) fn read_sound(&mut self, key: Key, json: &Json) {
+        match (key, json) {
+            (Key::ShowSubtitles, Json::Bool(value)) => self.show_subtitles = *value,
+            (Key::HideLightningFlashes, Json::Bool(value)) => self.hide_lightning_flashes = *value,
+            (Key::DirectionalAudio, Json::Bool(value)) => self.directional_audio = *value,
+            (Key::SoundDevice, Json::Text(device)) => self.sound_device.clone_from(device),
+            (Key::MusicFrequency, Json::Text(name)) => {
+                if let Some(value) = MusicFrequency::from_serialized(name) {
+                    self.music_frequency = value;
+                }
+            }
+            (Key::MusicToast, Json::Text(name)) => {
+                if let Some(value) = MusicToast::from_serialized(name) {
+                    self.music_toast = value;
+                }
+            }
+            (Key::SoundCategory(source), Json::Number(number)) => {
+                if let Some(value) = UnitDouble::validate_value(double_value(number)) {
+                    self.sound_volumes[source.ordinal() as usize] = value;
+                }
+            }
+            (Key::SoundCategory(source), Json::Bool(value)) => {
+                self.sound_volumes[source.ordinal() as usize] = if *value { 1.0 } else { 0.0 };
+            }
+            _ => {}
+        }
+    }
+
+    /// `option.codec().parse` and `set`: a value its codec refuses leaves
+    /// the option as it was; one its value set refuses falls to the default.
+    pub(super) fn read(&mut self, key: Key, text: &str) {
+        let json = parse_json(text);
+        let unit = || match json {
+            Json::Number(number) => UnitDouble::validate_value(double_value(number)),
+            Json::Bool(value) => Some(if value { 1.0 } else { 0.0 }),
+            Json::Text(_) | Json::Other => None,
+        };
+        let boolean = || match json {
+            Json::Bool(value) => Some(value),
+            _ => None,
+        };
+        match key {
+            Key::Fov => {
+                if let Json::Number(number) = json {
+                    let degrees = (double_value(number) * 40.0 + 70.0) as i32;
+                    self.fov = FOV.validate_value(degrees).unwrap_or(FOV_DEFAULT);
+                }
+            }
+            Key::GuiScale => {
+                if let Json::Number(number) = json {
+                    let scale = int_value(number);
+                    if (0..=GUI_SCALE_MAX + 1).contains(&scale) {
+                        self.gui_scale =
+                            ClampingLazyMaxIntRange::new(0, || GUI_SCALE_MAX, GUI_SCALE_MAX)
+                                .validate_value(scale);
+                    }
+                }
+            }
+            Key::EnableVsync => self.enable_vsync = boolean().unwrap_or(self.enable_vsync),
+            Key::MaxFps => {
+                // `Codec.intRange(10, 260)`.
+                if let Json::Number(number) = json {
+                    let limit = int_value(number);
+                    if (10..=UNLIMITED_FRAMERATE_CUTOFF).contains(&limit) {
+                        self.framerate_limit = limit;
+                    }
+                }
+            }
+            Key::InactivityFpsLimit => {
+                if let Json::Text(name) = &json
+                    && let Some(value) = InactivityFpsLimit::from_serialized(name)
+                {
+                    self.inactivity_fps_limit = value;
+                }
+            }
+            Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
+            Key::SaveChatDrafts => {
+                self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
+            }
+            Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
+            Key::AttackIndicator => {
+                if let Json::Number(number) = json {
+                    // `ByIdMap` wraps an id out of range.
+                    let id = int_value(number).rem_euclid(3);
+                    self.attack_indicator = AttackIndicator::ALL
+                        .into_iter()
+                        .find(|value| value.id() == id)
+                        .unwrap_or(self.attack_indicator);
+                }
+            }
+            Key::ShowSubtitles
+            | Key::HideLightningFlashes
+            | Key::DirectionalAudio
+            | Key::SoundDevice
+            | Key::MusicFrequency
+            | Key::MusicToast
+            | Key::SoundCategory(_) => self.read_sound(key, &json),
+            Key::MouseSensitivity => self.sensitivity = unit().unwrap_or(self.sensitivity),
+            Key::Lang => text.clone_into(&mut self.language_code),
+            Key::ChatVisibility => {
+                if let Json::Number(number) = json {
+                    // `ByIdMap` wraps an id out of range.
+                    let id = int_value(number).rem_euclid(3);
+                    self.chat_visibility =
+                        ChatVisibility::from_id(id).unwrap_or(self.chat_visibility);
+                }
+            }
+            Key::ChatOpacity => self.chat_opacity = unit().unwrap_or(self.chat_opacity),
+            Key::ChatLineSpacing => {
+                self.chat_line_spacing = unit().unwrap_or(self.chat_line_spacing)
+            }
+            Key::TextBackgroundOpacity => {
+                self.text_background_opacity = unit().unwrap_or(self.text_background_opacity);
+            }
+            Key::ChatHeightFocused => {
+                self.chat_height_focused = unit().unwrap_or(self.chat_height_focused);
+            }
+            Key::ChatHeightUnfocused => {
+                self.chat_height_unfocused = unit().unwrap_or(self.chat_height_unfocused);
+            }
+            Key::ChatScale => self.chat_scale = unit().unwrap_or(self.chat_scale),
+            Key::ChatWidth => self.chat_width = unit().unwrap_or(self.chat_width),
+            Key::MouseWheelSensitivity => {
+                if let Json::Number(number) = json {
+                    let value = double_value(number);
+                    if (log_mouse(-200)..=log_mouse(100)).contains(&value) {
+                        self.mouse_wheel_sensitivity =
+                            mouse_wheel_step(value).unwrap_or(log_mouse(0));
+                    }
+                }
+            }
+        }
+    }
+
+    /// The value the file holds for an option.
+    pub(super) fn write(&self, key: Key) -> String {
+        match key {
+            Key::EnableVsync => self.enable_vsync.to_string(),
+            Key::MaxFps => self.framerate_limit.to_string(),
+            Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
+            Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
+            Key::GuiScale => self.gui_scale.to_string(),
+            Key::InvertXMouse => self.invert_mouse_x.to_string(),
+            Key::SaveChatDrafts => self.save_chat_drafts.to_string(),
+            Key::InvertYMouse => self.invert_mouse_y.to_string(),
+            Key::MouseSensitivity => java_double(self.sensitivity),
+            Key::Lang => self.language_code.clone(),
+            Key::ChatVisibility => self.chat_visibility.id().to_string(),
+            Key::ChatOpacity => java_double(self.chat_opacity),
+            Key::ChatLineSpacing => java_double(self.chat_line_spacing),
+            Key::TextBackgroundOpacity => java_double(self.text_background_opacity),
+            Key::ChatHeightFocused => java_double(self.chat_height_focused),
+            Key::ChatHeightUnfocused => java_double(self.chat_height_unfocused),
+            Key::ChatScale => java_double(self.chat_scale),
+            Key::ChatWidth => java_double(self.chat_width),
+            Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
+            Key::AttackIndicator => self.attack_indicator.id().to_string(),
+            Key::ShowSubtitles => self.show_subtitles.to_string(),
+            Key::HideLightningFlashes => self.hide_lightning_flashes.to_string(),
+            Key::DirectionalAudio => self.directional_audio.to_string(),
+            Key::SoundDevice => write_string(&self.sound_device),
+            Key::MusicFrequency => write_string(self.music_frequency.serialized()),
+            Key::MusicToast => write_string(self.music_toast.serialized()),
+            Key::SoundCategory(source) => {
+                java_double(self.sound_volumes[source.ordinal() as usize])
+            }
+        }
+    }
+
+    /// `Options.save`: the version, then the lines as they were read with
+    /// the values this holds, then the options the file did not have.
+    pub fn save(&self, path: &Path) -> io::Result<()> {
+        let mut text = format!("version:{DATA_VERSION}\n");
+        let mut written = Vec::new();
+        for (name, value) in &self.lines {
+            if name == "version" {
+                continue;
+            }
+            let known = KEYS.iter().find(|(known, _)| known == name);
+            let value = known.map_or_else(|| value.clone(), |(_, key)| self.write(*key));
+            text.push_str(&format!("{name}:{value}\n"));
+            written.push(name.as_str());
+        }
+        for (name, key) in KEYS {
+            if !written.contains(&name) {
+                text.push_str(&format!("{name}:{}\n", self.write(key)));
+            }
+        }
+        if let Some(directory) = path.parent() {
+            std::fs::create_dir_all(directory)?;
+        }
+        std::fs::write(path, text)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn loaded(text: &str) -> Options {
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let number = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let directory = std::env::temp_dir().join(format!("voxel-options-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join(format!("{number}.txt"));
+        std::fs::write(&path, text).unwrap();
+        Options::load(&path)
+    }
+
+    #[test]
+    fn the_defaults_are_the_references() {
+        let options = Options::default();
+        assert_eq!((options.fov, options.gui_scale), (70, 0));
+        assert_eq!(
+            (options.sensitivity, options.mouse_wheel_sensitivity),
+            (0.5, 1.0)
+        );
+        assert_eq!(
+            (options.chat_opacity, options.chat_scale, options.chat_width),
+            (1.0, 1.0, 1.0)
+        );
+        assert_eq!(options.chat_height_unfocused, 0.4375);
+        assert_eq!(options.text_background_opacity, 0.5);
+        assert_eq!(options.language_code, "en_us");
+    }
+
+    #[test]
+    fn the_field_of_view_is_stored_as_a_share_of_its_range() {
+        // `(int)(value * 40.0 + 70.0)`; outside 30 to 110 the default holds.
+        assert_eq!(loaded("fov:0.5").fov, 90);
+        assert_eq!(loaded("fov:-1.0").fov, 30);
+        assert_eq!(loaded("fov:1.0").fov, 110);
+        assert_eq!(loaded("fov:2.0").fov, 70);
+        assert_eq!(loaded("fov:-2.0").fov, 70);
+        assert_eq!(loaded("fov:true").fov, 70);
+    }
+
+    #[test]
+    fn a_unit_value_outside_its_range_leaves_the_option() {
+        assert_eq!(loaded("mouseSensitivity:0.25").sensitivity, 0.25);
+        assert_eq!(loaded("mouseSensitivity:1.5").sensitivity, 0.5);
+        assert_eq!(loaded("mouseSensitivity:true").sensitivity, 1.0);
+        assert_eq!(loaded("chatOpacity:false").chat_opacity, 0.0);
+        assert_eq!(loaded("chatOpacity:nonsense").chat_opacity, 1.0);
+    }
+
+    #[test]
+    fn the_gui_scale_and_the_visibility_read_as_integers() {
+        assert_eq!(loaded("guiScale:3").gui_scale, 3);
+        assert_eq!(loaded("guiScale:-1").gui_scale, 0);
+        assert_eq!(loaded("guiScale:2.9").gui_scale, 2);
+        assert_eq!(
+            loaded("chatVisibility:1").chat_visibility,
+            ChatVisibility::System
+        );
+        // The id wraps round.
+        assert_eq!(
+            loaded("chatVisibility:3").chat_visibility,
+            ChatVisibility::Full
+        );
+        assert_eq!(
+            loaded("chatVisibility:-1").chat_visibility,
+            ChatVisibility::Hidden
+        );
+    }
+
+    #[test]
+    fn the_wheel_takes_the_step_at_or_below_its_value() {
+        assert_eq!(
+            loaded("mouseWheelSensitivity:1.0").mouse_wheel_sensitivity,
+            1.0
+        );
+        assert_eq!(
+            loaded("mouseWheelSensitivity:10.0").mouse_wheel_sensitivity,
+            10.0
+        );
+        assert_eq!(
+            loaded("mouseWheelSensitivity:11.0").mouse_wheel_sensitivity,
+            1.0
+        );
+        let stepped = loaded("mouseWheelSensitivity:0.5").mouse_wheel_sensitivity;
+        assert!((stepped - 10.0_f64.powf(-0.31)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn booleans_and_the_language_read_as_they_are() {
+        let options = loaded("invertYMouse:true\ninvertXMouse:1\nlang:tr_tr");
+        assert!(options.invert_mouse_y);
+        assert!(!options.invert_mouse_x);
+        assert_eq!(options.language_code, "tr_tr");
+    }
+
+    #[test]
+    fn a_double_is_written_as_java_writes_it() {
+        assert_eq!(java_double(0.0), "0.0");
+        assert_eq!(java_double(1.0), "1.0");
+        assert_eq!(java_double(0.4375), "0.4375");
+        assert_eq!(java_double(-0.5), "-0.5");
+        assert_eq!(java_double(1.0e-4), "1.0E-4");
+        assert_eq!(java_double(1.5e-5), "1.5E-5");
+        assert_eq!(java_double(12_345_678.0), "1.2345678E7");
+        assert_eq!(java_double(0.001), "0.001");
+    }
+
+    #[test]
+    fn what_is_saved_reads_back_and_what_is_not_known_stays() {
+        let directory = std::env::temp_dir().join("voxel-options-roundtrip");
+        let path = directory.join("options.txt");
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            &path,
+            "version:1\nkey_key.jump:key.keyboard.space\nfov:0.5\nbad line\nsoundCategory_master:0.8\n",
+        )
+        .unwrap();
+        let mut options = Options::load(&path);
+        assert_eq!(options.fov, 90);
+        options.fov = 100;
+        options.chat_width = 0.25;
+        options.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines[0], "version:4903");
+        assert_eq!(lines[1], "key_key.jump:key.keyboard.space");
+        assert_eq!(lines[2], "fov:0.75");
+        assert_eq!(lines[3], "soundCategory_master:0.8");
+        assert!(lines.contains(&"chatWidth:0.25"));
+        assert!(lines.contains(&"guiScale:0"));
+        let again = Options::load(&path);
+        assert_eq!((again.fov, again.chat_width), (100, 0.25));
+    }
+
+    #[test]
+    fn the_sound_options_read_and_write_as_the_file_holds_them() {
+        let directory = std::env::temp_dir().join("voxel-options-sound");
+        let path = directory.join("options.txt");
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            &path,
+            "soundCategory_music:0.25\nsoundCategory_ui:2.0\nshowSubtitles:true\nmusicFrequency:\"CONSTANT\"\nmusicToast:\"pause_and_toast\"\nsoundDevice:\"Speakers\"\n",
+        )
+        .unwrap();
+        let options = Options::load(&path);
+        assert_eq!(options.sound_category_volume(SoundSource::Music), 0.25);
+        // Out of range: the option keeps its default.
+        assert_eq!(options.sound_category_volume(SoundSource::Ui), 1.0);
+        assert!(options.show_subtitles);
+        assert_eq!(options.music_frequency, MusicFrequency::Constant);
+        assert_eq!(options.music_toast, MusicToast::PauseAndToast);
+        assert_eq!(options.sound_device, "Speakers");
+        options.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("musicFrequency:\"CONSTANT\"\n"));
+        assert!(text.contains("soundCategory_music:0.25\n"));
+        assert!(text.contains("soundDevice:\"Speakers\"\n"));
+    }
+
+    #[test]
+    fn the_attack_indicator_reads_by_id_and_wraps() {
+        let options = loaded("attackIndicator:2");
+        assert_eq!(options.attack_indicator, AttackIndicator::Hotbar);
+        assert_eq!(
+            loaded("attackIndicator:5").attack_indicator,
+            AttackIndicator::Hotbar
+        );
+        assert_eq!(
+            loaded("attackIndicator:3").attack_indicator,
+            AttackIndicator::Off
+        );
+        assert_eq!(
+            loaded("attackIndicator:true").attack_indicator,
+            AttackIndicator::Crosshair
+        );
+    }
+
+    #[test]
+    fn the_display_options_read_and_write_as_the_game_does() {
+        let mut options = loaded("enableVsync:false\nmaxFps:30\ninactivityFpsLimit:\"minimized\"");
+        assert!(!options.enable_vsync);
+        assert_eq!(options.framerate_limit, 30);
+        assert_eq!(options.inactivity_fps_limit, InactivityFpsLimit::Minimized);
+        // A limit outside `intRange(10, 260)` and a value that is not a name leave the option.
+        let refused = loaded("maxFps:5\ninactivityFpsLimit:\"never\"");
+        assert_eq!(refused.framerate_limit, FRAMERATE_LIMIT_DEFAULT);
+        assert_eq!(refused.inactivity_fps_limit, InactivityFpsLimit::Afk);
+        assert_eq!(loaded("maxFps:260").framerate_limit, 260);
+        options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
+        let path = std::env::temp_dir().join(format!("voxel-display-{}.txt", std::process::id()));
+        options.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("enableVsync:false\n"));
+        assert!(text.contains("maxFps:260\n"));
+        assert!(text.contains("inactivityFpsLimit:\"minimized\"\n"));
+    }
+}

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/ambient/BatModel.java`, `client/model/animal/parrot/ParrotModel.java`, `client/model/animal/allay/AllayModel.java`, `client/model/monster/vex/VexModel.java`, `client/model/monster/phantom/PhantomModel.java`, `client/model/monster/blaze/BlazeModel.java`, `client/model/monster/ghast/GhastModel.java`, `client/renderer/entity/BreezeRenderer.java`, `client/renderer/entity/layers/EyesLayer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Emissive/göz katmanı (`EyesLayer`, `RenderTypes.eyes`): yeni boru hattı ya da ışıksız çizim; tek karar bu görevde.

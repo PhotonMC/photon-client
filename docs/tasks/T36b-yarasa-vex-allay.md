@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/ambient/BatModel.java`, `client/model/animal/allay/AllayModel.java`, `client/model/monster/vex/VexModel.java`, `client/renderer/entity/{Bat,Vex,Allay}Renderer.java` ve durum sınıfları, `world/entity/ambient/Bat.java`, `world/entity/monster/Vex.java`, `world/entity/animal/allay/Allay.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`setup_phantom`, `setup_ghast`: yaşa bağlı kanat kalıbı), `crates/voxel/src/monsters.rs` (`MONSTERS` tablosu, `pose_monster`).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`setup_phantom`, `setup_ghast`: yaşa bağlı kanat kalıbı), `crates/voxel/src/mobs/monsters.rs` (`MONSTERS` tablosu, `pose_monster`).
 
 ## Oracle
 `airborne_model` kalıbı (gerçek model + durum); gerçek varlık tiki için `living-entity-animations`.

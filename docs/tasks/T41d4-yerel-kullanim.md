@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/player/LocalPlayer.java` (`startUsingItem`, `updateUsingItem`), `world/entity/LivingEntity.java` (`getCurrentSwingDuration`, `startUsingItem`), `world/effect/MobEffectUtil.java`.
-- Rust: `crates/voxel/src/overlays.rs` (`player_model`), `voxel-world/src/local_player.rs` (`SWING_DURATION`), `crates/voxel/src/arm_poses.rs`.
+- Rust: `crates/voxel/src/overlays.rs` (`player_model`), `voxel-world/src/local_player.rs` (`SWING_DURATION`), `crates/voxel/src/equipment/arm_poses.rs`.
 
 ## Oracle
 Gerçek `LocalPlayer` sahnesi (`MovementOracle.buildScene`) ile sallama süresi ve kullanım sayacı; kol pozları `entity/held-item-pose` ile zaten kapalı.

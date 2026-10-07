@@ -2,7 +2,7 @@ use super::*;
 
 /// `witch_model`: the witch's model posed and drawn.
 pub(super) fn witch_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, QuadrupedState, WitchState};
+    use voxel_render::entity::mob_model::{MobModel, QuadrupedState, WitchState};
     let layer = voxel_data::entity_model::layer("minecraft:witch#main").ok_or("no witch layer")?;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -34,8 +34,8 @@ pub(super) fn witch_model_result(request: &Value) -> Result<Value, String> {
 /// `creeper_render`: the scale a swelling creeper's renderer applies, and how
 /// far it flashes white.
 pub(super) fn creeper_render_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::entity::mob_model::{creeper_scale, creeper_white_overlay};
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::{creeper_scale, creeper_white_overlay};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let swelling = u32::from_str_radix(row["swelling"].as_str().ok_or("swelling")?, 16)
@@ -60,7 +60,7 @@ pub(super) fn creeper_render_result(request: &Value) -> Result<Value, String> {
 /// `sheep_model`: a sheep's models (the body, the undercoat, the wool) posed
 /// and drawn.
 pub(super) fn sheep_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, QuadrupedState, SheepState};
+    use voxel_render::entity::mob_model::{MobModel, QuadrupedState, SheepState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
@@ -92,7 +92,7 @@ pub(super) fn sheep_model_result(request: &Value) -> Result<Value, String> {
 
 /// `chicken_model`: a chicken's model posed with its flap and drawn.
 pub(super) fn chicken_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{ChickenState, MobModel};
+    use voxel_render::entity::mob_model::{ChickenState, MobModel};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
@@ -122,7 +122,7 @@ pub(super) fn chicken_model_result(request: &Value) -> Result<Value, String> {
 /// `sheep_colors`: what a sheep's wool is multiplied by, for each dye and for
 /// a `jeb_` sheep at points of its cycle.
 pub(super) fn sheep_colors_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::wool::{jeb_colour, wool_colour};
+    use voxel_render::entity::wool::{jeb_colour, wool_colour};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         // The reference answers a signed int with the alpha in its top byte.
@@ -147,7 +147,7 @@ pub(super) fn sheep_colors_result(request: &Value) -> Result<Value, String> {
 
 /// `sheep_eat`: how far a sheep's head is down and how it is tipped.
 pub(super) fn sheep_eat_result(request: &Value) -> Result<Value, String> {
-    use voxel_world::animal::{head_eat_angle_scale, head_eat_position_scale};
+    use voxel_world::mobs::animal::{head_eat_angle_scale, head_eat_position_scale};
     let hex = |value: f32| format!("{:08x}", value.to_bits());
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {

@@ -1,4 +1,46 @@
 use super::*;
+use crate::equipment::armor;
+use crate::mobs::animals::armadillos;
+use crate::mobs::animals::bears;
+use crate::mobs::animals::farm_animals;
+use crate::mobs::animals::felines;
+use crate::mobs::animals::foxes;
+use crate::mobs::animals::happy_ghasts;
+use crate::mobs::animals::pandas;
+use crate::mobs::animals::sheep;
+use crate::mobs::animals::sniffers;
+use crate::mobs::animals::wolves;
+use crate::mobs::aquatic::axolotls;
+use crate::mobs::aquatic::dolphins;
+use crate::mobs::aquatic::fish;
+use crate::mobs::aquatic::frogs;
+use crate::mobs::aquatic::guardians;
+use crate::mobs::aquatic::nautilus;
+use crate::mobs::aquatic::squids;
+use crate::mobs::aquatic::turtles;
+use crate::mobs::humanoids::armor_stands;
+use crate::mobs::humanoids::copper_golems;
+use crate::mobs::humanoids::golems;
+use crate::mobs::humanoids::illagers;
+use crate::mobs::humanoids::villagers;
+use crate::mobs::monsters;
+use crate::mobs::monsters::cube_mobs;
+use crate::mobs::monsters::ender_dragons;
+use crate::mobs::monsters::hoglins;
+use crate::mobs::monsters::ravagers;
+use crate::mobs::monsters::shulkers;
+use crate::mobs::monsters::striders;
+use crate::objects::arrows;
+use crate::objects::boats;
+use crate::objects::bullets;
+use crate::objects::charges;
+use crate::objects::end_crystals;
+use crate::objects::fishing_hooks;
+use crate::objects::item_frames;
+use crate::objects::lightning_bolts;
+use crate::objects::minecarts;
+use crate::objects::paintings;
+use crate::world::block_entities;
 
 /// The model layer a variant's model family asks for (`PigRenderer.models`,
 /// `CowRenderer.models`): a pig's baby has one model whatever the family.
@@ -46,45 +88,45 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     });
     variants
         .chain(zombies)
-        .chain(crate::sheep::textures())
-        .chain(crate::monsters::textures())
-        .chain(crate::illagers::textures())
-        .chain(crate::golems::textures())
-        .chain(crate::farm_animals::textures())
-        .chain(crate::wolves::textures())
-        .chain(crate::felines::textures())
-        .chain(crate::bears::textures())
-        .chain(crate::armadillos::textures())
-        .chain(crate::sniffers::textures())
-        .chain(crate::ender_dragons::textures())
-        .chain(crate::end_crystals::textures())
-        .chain(crate::block_entities::textures())
-        .chain(crate::minecarts::textures())
-        .chain(crate::arrows::textures())
-        .chain(crate::charges::textures())
-        .chain(crate::bullets::textures())
-        .chain(crate::fishing_hooks::textures())
-        .chain(crate::paintings::textures())
-        .chain(crate::item_frames::textures())
-        .chain(crate::hoglins::textures())
-        .chain(crate::foxes::textures())
-        .chain(crate::pandas::textures())
-        .chain(crate::ravagers::textures())
-        .chain(crate::striders::textures())
-        .chain(crate::squids::textures())
-        .chain(crate::cube_mobs::textures())
-        .chain(crate::shulkers::textures())
-        .chain(crate::fish::textures())
-        .chain(crate::dolphins::textures())
-        .chain(crate::turtles::textures())
-        .chain(crate::axolotls::textures())
-        .chain(crate::frogs::textures())
-        .chain(crate::guardians::textures())
-        .chain(crate::nautilus::textures())
-        .chain(crate::happy_ghasts::textures())
-        .chain(crate::boats::textures())
-        .chain(crate::copper_golems::textures())
-        .chain([crate::armor_stands::TEXTURE])
+        .chain(sheep::textures())
+        .chain(monsters::textures())
+        .chain(illagers::textures())
+        .chain(golems::textures())
+        .chain(farm_animals::textures())
+        .chain(wolves::textures())
+        .chain(felines::textures())
+        .chain(bears::textures())
+        .chain(armadillos::textures())
+        .chain(sniffers::textures())
+        .chain(ender_dragons::textures())
+        .chain(end_crystals::textures())
+        .chain(block_entities::textures())
+        .chain(minecarts::textures())
+        .chain(arrows::textures())
+        .chain(charges::textures())
+        .chain(bullets::textures())
+        .chain(fishing_hooks::textures())
+        .chain(paintings::textures())
+        .chain(item_frames::textures())
+        .chain(hoglins::textures())
+        .chain(foxes::textures())
+        .chain(pandas::textures())
+        .chain(ravagers::textures())
+        .chain(striders::textures())
+        .chain(squids::textures())
+        .chain(cube_mobs::textures())
+        .chain(shulkers::textures())
+        .chain(fish::textures())
+        .chain(dolphins::textures())
+        .chain(turtles::textures())
+        .chain(axolotls::textures())
+        .chain(frogs::textures())
+        .chain(guardians::textures())
+        .chain(nautilus::textures())
+        .chain(happy_ghasts::textures())
+        .chain(boats::textures())
+        .chain(copper_golems::textures())
+        .chain([armor_stands::TEXTURE])
 }
 
 /// Hand what the glowing layers, the swirls, the enchantment glints (the armor's), the dissolving
@@ -92,7 +134,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 pub fn hand_layers(
     models: &mut MobModels,
     backend: &mut voxel_render::VulkanBackend,
-    armor: &mut crate::armor::Armor,
+    armor: &mut armor::Armor,
 ) -> Result<(), voxel_render::VulkanError> {
     backend.set_draw(
         voxel_render::vulkan::DrawKind::EntityGlint,
@@ -134,7 +176,7 @@ pub(crate) fn placement(
         scale,
         light: packed_light(world, Vec3::new(x, y + 0.5, z)),
         death_time: snapshot.death_time,
-        flip_degrees: voxel_render::mob_model::FLIP_DEGREES,
+        flip_degrees: voxel_render::entity::mob_model::FLIP_DEGREES,
         red_overlay: snapshot.red_overlay,
         shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
         ..MobPlacement::default()
@@ -231,24 +273,20 @@ pub(super) fn remote_wild_animals(
     textures: &EntityTextures,
     view: FrameView,
 ) -> Vec<Vertex> {
-    let mut vertices = crate::felines::remote_felines(session, models, textures, view);
-    vertices.extend(crate::bears::remote_bears(session, models, textures, view));
-    vertices.extend(crate::armadillos::remote_armadillos(
+    let mut vertices = felines::remote_felines(session, models, textures, view);
+    vertices.extend(bears::remote_bears(session, models, textures, view));
+    vertices.extend(armadillos::remote_armadillos(
         session, models, textures, view,
     ));
-    vertices.extend(crate::hoglins::remote_hoglins(
+    vertices.extend(hoglins::remote_hoglins(session, models, textures, view));
+    vertices.extend(sniffers::remote_sniffers(session, models, textures, view));
+    vertices.extend(ender_dragons::remote_ender_dragons(
         session, models, textures, view,
     ));
-    vertices.extend(crate::sniffers::remote_sniffers(
+    vertices.extend(end_crystals::remote_end_crystals(
         session, models, textures, view,
     ));
-    vertices.extend(crate::ender_dragons::remote_ender_dragons(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::end_crystals::remote_end_crystals(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::block_entities::block_entities(
+    vertices.extend(block_entities::block_entities(
         session, models, textures, view,
     ));
     vertices
@@ -261,17 +299,13 @@ pub(super) fn remote_projectiles_and_vehicles(
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
-    let mut vertices = crate::arrows::remote_arrows(session, models, textures, view);
-    vertices.extend(crate::charges::remote_charges(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::bullets::remote_bullets(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::paintings::remote_paintings(session, textures, view));
-    crate::minecarts::remote_primed_tnt(session, (view, &mut *held));
-    crate::lightning_bolts::remote_lightning(session, models, view);
-    vertices.extend(crate::minecarts::remote_minecarts(
+    let mut vertices = arrows::remote_arrows(session, models, textures, view);
+    vertices.extend(charges::remote_charges(session, models, textures, view));
+    vertices.extend(bullets::remote_bullets(session, models, textures, view));
+    vertices.extend(paintings::remote_paintings(session, textures, view));
+    minecarts::remote_primed_tnt(session, (view, &mut *held));
+    lightning_bolts::remote_lightning(session, models, view);
+    vertices.extend(minecarts::remote_minecarts(
         session,
         models,
         textures,
@@ -296,93 +330,89 @@ pub(super) fn remote_families(
         textures,
         (view, held),
     ));
-    vertices.extend(crate::sheep::remote_sheep(session, models, textures, view));
+    vertices.extend(sheep::remote_sheep(session, models, textures, view));
     vertices.extend(remote_hostiles(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::villagers::remote_villagers(
+    vertices.extend(villagers::remote_villagers(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::wolves::remote_wolves(
-        session, models, textures, view,
-    ));
+    vertices.extend(wolves::remote_wolves(session, models, textures, view));
     vertices.extend(remote_wild_animals(session, models, textures, view));
-    vertices.extend(crate::foxes::remote_foxes(
+    vertices.extend(foxes::remote_foxes(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::pandas::remote_pandas(
+    vertices.extend(pandas::remote_pandas(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::ravagers::remote_ravagers(
-        session, models, textures, view,
-    ));
+    vertices.extend(ravagers::remote_ravagers(session, models, textures, view));
     vertices.extend(remote_projectiles_and_vehicles(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::farm_animals::remote_farm_animals(
+    vertices.extend(farm_animals::remote_farm_animals(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::golems::remote_golems(
+    vertices.extend(golems::remote_golems(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::villagers::remote_witches(
+    vertices.extend(villagers::remote_witches(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::illagers::remote_illagers(
+    vertices.extend(illagers::remote_illagers(
         session,
         models,
         textures,
         (view, held),
     ));
-    vertices.extend(crate::striders::remote_striders(
+    vertices.extend(striders::remote_striders(
         session,
         (models, &mut *armor),
         textures,
         view,
     ));
-    vertices.extend(crate::happy_ghasts::remote_happy_ghasts(
+    vertices.extend(happy_ghasts::remote_happy_ghasts(
         session,
         (&mut *models, &mut *armor),
         textures,
         view,
     ));
-    vertices.extend(crate::fish::remote_water_animals(
+    vertices.extend(fish::remote_water_animals(
         session,
         (&mut *models, &mut *armor),
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::copper_golems::remote_copper_golems(
+    vertices.extend(copper_golems::remote_copper_golems(
         session,
         models,
         textures,
         (view, &mut *held),
     ));
-    vertices.extend(crate::armor_stands::remote_armor_stands(
+    vertices.extend(armor_stands::remote_armor_stands(
         session,
         (models, armor),
         textures,
@@ -399,19 +429,14 @@ pub(super) fn remote_hostiles(
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
-    let mut vertices =
-        crate::monsters::remote_monsters(session, models, textures, (view, &mut *held));
-    vertices.extend(crate::cube_mobs::remote_cube_mobs(
-        session, models, textures, view,
-    ));
-    vertices.extend(crate::cube_mobs::remote_sulfur_cubes(
+    let mut vertices = monsters::remote_monsters(session, models, textures, (view, &mut *held));
+    vertices.extend(cube_mobs::remote_cube_mobs(session, models, textures, view));
+    vertices.extend(cube_mobs::remote_sulfur_cubes(
         session,
         models,
         textures,
         (view, held),
     ));
-    vertices.extend(crate::shulkers::remote_shulkers(
-        session, models, textures, view,
-    ));
+    vertices.extend(shulkers::remote_shulkers(session, models, textures, view));
     vertices
 }

@@ -2,12 +2,12 @@
 //!
 //! This is scaffolding, not a parity claim. What it does carry over from the
 //! verified slices is the data: the corner order and default UVs come from
-//! [`crate::geometry`], the sprite rectangle from
-//! [`crate::atlas`], and the texels from [`crate::png`]. The
+//! [`crate::block::geometry`], the sprite rectangle from
+//! [`crate::texture::atlas`], and the texels from [`crate::texture::png`]. The
 //! camera, the shaders and the lighting are this module's own invention and
 //! match nothing in the reference yet.
 
-use crate::geometry::{Quadrant, default_face_uv, face_vertex_uv, face_vertices};
+use crate::block::geometry::{Quadrant, default_face_uv, face_vertex_uv, face_vertices};
 use voxel_core::direction::Direction;
 
 /// How an entity's vertex carries the colour its texel is multiplied by

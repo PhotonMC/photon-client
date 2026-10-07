@@ -19,86 +19,44 @@ use voxel_core::{
     shape::{BooleanOp, Shapes, VoxelShape},
 };
 
-pub mod allay;
-pub mod animal;
 pub mod animation_state;
-pub mod armadillo;
-pub mod armor_stand;
-pub mod arrow;
-pub mod axolotl;
-pub mod bat;
 pub mod block;
-mod block_entity;
-pub mod block_rules;
-pub mod block_state;
-pub mod boat;
-mod boat_ride;
-mod mount_ride;
-mod vehicle_ride;
-pub use boat_ride::{RideState, Status};
-pub use mount_ride::{Controller, MountKind, MountState};
-pub use vehicle_ride::{VehicleKind, VehicleView};
+pub use ride::boat::{RideState, Status};
+pub use ride::mount::{Controller, MountKind, MountState};
+pub use ride::vehicle::{VehicleKind, VehicleView};
 mod border;
-pub mod breeze;
-pub mod cat;
-mod chest;
 mod chunk;
 mod collision;
 mod constants;
 mod container;
-pub mod copper_golem;
-pub mod creaking;
-pub mod cube_mob;
 mod dimension;
-pub mod display;
 pub mod elytra;
-pub mod end_crystal;
-pub mod ender_dragon;
 mod entity;
 pub(crate) mod entity_kind;
 mod entity_random;
-pub mod evoker_fangs;
-pub mod fish;
-mod flight;
 mod fluid;
-pub mod fox;
-pub mod frog;
-pub mod guardian;
-pub mod horse;
 pub mod item_components;
 mod item_physics;
 mod java_math;
 pub mod light;
-pub mod lightning;
 pub mod living;
 pub mod map;
 mod metadata;
-pub mod minecart;
-pub mod minecart_track;
+pub mod mobs;
+pub mod objects;
 mod paletted;
-pub mod panda;
-pub mod parrot;
 mod pick;
 mod player;
-pub mod polar_bear;
 mod prediction;
-pub mod primed_tnt;
-pub mod rabbit;
-pub mod ravager;
 mod recipes;
 mod region_copy;
+mod ride;
 mod shadow;
-pub mod shulker;
-pub mod sniffer;
-pub mod squid;
-pub mod warden;
-pub mod wither;
-pub mod wolf;
 
-pub use block_entity::*;
-pub use block_state::*;
+pub use block::chest::{BannerView, ChestView, DYES, ShulkerBoxView, SkullBlockView};
+pub use block::entity::*;
+pub use block::registry::*;
 pub use border::*;
-pub use chest::{BannerView, ChestView, DYES, ShulkerBoxView, SkullBlockView};
 pub use chunk::*;
 pub use collision::*;
 pub use constants::*;
@@ -154,7 +112,7 @@ pub struct ClientWorld {
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
     world_border: ClientWorldBorder,
-    block_animations: chest::BlockAnimations,
+    block_animations: block::chest::BlockAnimations,
     /// `ClientLevel.serverSimulationDistance`, in chunks.
     server_simulation_distance: i32,
     /// The chunk the client's own player stands in, as the session last said
@@ -164,7 +122,7 @@ pub struct ClientWorld {
     /// The paddles each ridden boat's tick told the server of, until the session sends them.
     paddle_packets: Vec<(bool, bool)>,
     /// What the player on a mount steers it with, as of its last tick.
-    rider_controls: mount_ride::Controller,
+    rider_controls: ride::mount::Controller,
     /// `ClientLevel.skyFlashTime`: ticks the sky still flashes for.
     sky_flash_time: i32,
     /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
@@ -270,20 +228,21 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
     if entity.is_abstract_arrow() {
         let ticked = entity.tick_count > 0;
-        if let Some(in_ground) = metadata_boolean_value(metadata, arrow::IN_GROUND_DATA_ID) {
+        if let Some(in_ground) = metadata_boolean_value(metadata, objects::arrow::IN_GROUND_DATA_ID)
+        {
             entity.arrow_mut().set_in_ground(in_ground, ticked);
         }
-        if let Some(color) = metadata_int_value(metadata, arrow::EFFECT_COLOR_DATA_ID) {
+        if let Some(color) = metadata_int_value(metadata, objects::arrow::EFFECT_COLOR_DATA_ID) {
             entity.arrow_mut().set_color(color);
         }
     }
     if entity.is_primed_tnt() {
         let state = entity.primed_tnt_mut();
-        if let Some(fuse) = metadata_int_value(metadata, primed_tnt::FUSE_DATA_ID) {
+        if let Some(fuse) = metadata_int_value(metadata, objects::primed_tnt::FUSE_DATA_ID) {
             state.set_fuse(fuse);
         }
-        if let Some((primed_tnt::BLOCK_STATE_SERIALIZER_ID, mut value)) =
-            find_metadata_field(metadata, primed_tnt::BLOCK_STATE_DATA_ID)
+        if let Some((objects::primed_tnt::BLOCK_STATE_SERIALIZER_ID, mut value)) =
+            find_metadata_field(metadata, objects::primed_tnt::BLOCK_STATE_DATA_ID)
             && let Some(id) = voxel_core::wire::read_varint(&mut value)
                 .ok()
                 .and_then(|id| u32::try_from(id).ok())
@@ -310,11 +269,11 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
         state.show_bottom = show_bottom.unwrap_or(state.show_bottom);
     }
     if entity.is_ender_dragon()
-        && let Some(id) = metadata_int_value(metadata, ender_dragon::PHASE_DATA_ID)
+        && let Some(id) = metadata_int_value(metadata, mobs::ender_dragon::PHASE_DATA_ID)
     {
         entity
             .ender_dragon_mut()
-            .set_phase(ender_dragon::DragonPhase::from_id(id));
+            .set_phase(mobs::ender_dragon::DragonPhase::from_id(id));
     }
     if entity.is_creaking() {
         creaking_data_from_metadata(metadata).apply(entity.creaking_mut());
@@ -460,10 +419,4 @@ fn tick_projectile(entity: &mut ClientEntity, kind: VanillaProjectileKind, path_
         VanillaProjectileKind::Firework => entity.tick_firework(),
     }
 }
-
-mod chunk_queries;
-mod entity_state;
-mod entity_ticking;
-mod player_state;
-mod terrain_and_minecarts;
-mod world_setup;
+mod world;

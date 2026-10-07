@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §2, §7
-- `crates/voxel/examples/behavior_adapter/main.rs`, `crates/voxel-world/src/{tests,lib}.rs`, `crates/voxel-net/src/connection/protocol.rs`, `crates/voxel-render/src/mob_model.rs`
+- `crates/voxel/examples/behavior_adapter/main.rs`, `crates/voxel-world/src/{tests,lib}.rs`, `crates/voxel-net/src/connection/protocol.rs`, `crates/voxel-render/src/entity/mob_model.rs`
 
 ## Yapılacaklar
 - `crates/voxel-oracle` (publish=false) crate'i; adaptör aileye göre modüllere (GUI örneği zaten var).

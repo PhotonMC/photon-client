@@ -166,17 +166,17 @@ impl ClientWorld {
                 continue;
             };
             let read = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
-            let updated = match crate::block_rules::update_shape(
+            let updated = match crate::block::rules::update_shape(
                 current,
                 &read,
                 neighbour,
                 direction.opposite(),
             ) {
-                crate::block_rules::Rule::Known(updated) => updated,
-                crate::block_rules::Rule::Unported => continue,
+                crate::block::rules::Rule::Known(updated) => updated,
+                crate::block::rules::Rule::Unported => continue,
             };
             // A client never destroys a block that reshapes into air.
-            if updated != current && !crate::block_rules::state_is_air(updated) {
+            if updated != current && !crate::block::rules::state_is_air(updated) {
                 self.set_block_with_updates(
                     neighbour,
                     updated,

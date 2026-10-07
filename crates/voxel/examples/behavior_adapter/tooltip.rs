@@ -168,16 +168,16 @@ pub(super) fn default_components(
         .iter()
         .any(|component| matches!(component, Component::ItemName(_)));
     if !declared_name {
-        let key = voxel_game::default_components::description_key(item);
+        let key = voxel_game::item::default_components::description_key(item);
         put(
             voxel_data::item::component_types::ITEM_NAME,
             json!({"translate": key}),
-            &voxel_game::default_components::translatable(&key),
+            &voxel_game::item::default_components::translatable(&key),
         );
     }
     for component in item.components {
         if let Some((id, bytes)) =
-            voxel_game::default_components::encode(component, Some(registries))
+            voxel_game::item::default_components::encode(component, Some(registries))
         {
             put(id, component_json(component), &bytes);
         }

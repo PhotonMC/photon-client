@@ -22,7 +22,7 @@ Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka c
 
 - Bir modül tek bir sorumluluk taşır ve adı o sorumluluktur (`sections`, `controls`, `atmosphere`). `utils` veya `helpers` gibi toplama modülleri açılmaz.
 - Modül belgesi (`//!`) modülün ne olduğunu bir iki cümleyle söyler; referansta karşılığı varsa Java sınıfının adını verir.
-- Arayüz kodu `voxel-render::gui` altındadır: çizim (`frame`, `atlas`, `font`, `items`), HUD (`hud`), metin kutusu (`edit_box`) ve ekranlar (`screen`).
+- Arayüz kodu `voxel-render::gui` altındadır: çizim (`frame`, `atlas`, `font`, `items`), HUD (`hud`), widget'lar (`widgets`: `edit_box`, `slider`, `cycle`), sohbet (`chat`), ayar ekranları (`options`) ve diğer ekranlar (`screen`).
 - Birden fazla modülün paylaştığı bir yardımcı, en alttaki ortak crate'e ve oradaki doğru modüle konur. Yeni bir yardımcı yazmadan önce aynısının var olup olmadığına bakılır: sabit boyutlu okuma `voxel_core::wire::take`, JSON dosyası `voxel_core::json::read_object`, ARGB `voxel_render::tint`, Java `Math` kuralları `voxel-world` içinde `java_math`.
 
 ## Dosya boyutu
@@ -30,6 +30,16 @@ Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka c
 - **Bir kod dosyası 500–600 satırı geçmez** (Rust, Python, Java; boş satır ve yorum dahil). Sınıra yaklaşan dosya yeni özellikle birlikte sorumluluğuna göre bölünür; bölme sonradan değil, eklemeden önce yapılır.
 - Bölme sorumluluğa göredir, satır sayısına göre değil: `impl` blokları alt modüllere (`entity/state.rs`, `controls/events.rs`), testler konuya göre (`tests/entities.rs`), paket ayrıştırıcıları paket ailesine göre. Modül adı içeriği söyler (`part`, `misc` açılmaz).
 - Üretilmiş tablolar (`voxel-data/src/generated/`) ve oracle'ın ürettiği veri bu sınırın dışındadır; üretici kaldırılınca (D görevleri) o istisna da kalkar. Sınırı aşan mevcut dosyalar [A06](tasks/A06-dev-dosyalar.md) ve bağlı görevlerle küçültülür; yeni dosya veya mevcut dosyaya ekleme bu sınırı aşan bir dosya bırakmaz.
+
+## Dosya adlandırma ve yerleşim
+
+- Modül düzeni Rust kitabının güncel biçimidir: `foo.rs` ve yanında `foo/`; `mod.rs` kullanılmaz. Dosya ve modül adları `snake_case`tir (Rust API Guidelines C-CASE).
+- Ad, içinde bulunduğu klasörün söylediğini tekrar etmez: `gui/` altında `gui_draw.rs` değil `draw.rs`, `options/` altında `options_sound.rs` değil `sound.rs` (clippy `module_name_repetitions` ile aynı ilke). Aynı ad farklı klasörlerde bulunabilir; klasör yolu ayırt eder.
+- Ortak ön eki olan dosya ailesi bir klasöre taşınır (`options*.rs` → `options/`); önek klasörün adı olur ve dosya adından düşer. Aynı konudaki düz dosyalar (`wolves.rs`, `foxes.rs`, `pandas.rs`) bir klasörde toplanır (`mobs/animals/`).
+- `_2`, `_3` gibi numaralı sonekler ve `part`, `misc`, `more`, `extra` adları kullanılmaz. Bir dosyayı böyle bölmek gerekiyorsa sorumluluk yanlış çizilmiştir: içerik konuya göre adlandırılmış dosyalara dağıtılır. Satır sınırını numaralı kopyalarla dolanma.
+- `impl` bloğu bölünürse dosyalar konuya göre adlanır (`entity/motion.rs`, `play/chat.rs`). Alt modüller üst modülün özel alanlarına erişir; görünürlük gerektiğinden fazla genişletilmez.
+- Satır içi testler dosyanın sonunda `#[cfg(test)] mod tests` olarak durur (clippy `items_after_test_module`); `mod` bildirimleri ondan önce gelir. Konuya göre bölünmüş testler `tests/` alt klasöründedir.
+- Dayanak: Rust Book "Packages, Crates, and Modules", Rust API Guidelines (C-CASE) ve Rust Style Guide.
 
 ## Adlandırma ve yorumlar
 

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ShulkerBulletRenderer,LlamaSpitRenderer,EvokerFangsRenderer}.java` ve modelleri.
-- Rust: `crates/voxel-render/src/mob_model.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

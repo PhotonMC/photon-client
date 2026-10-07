@@ -24,7 +24,7 @@ New code goes into the lowest crate its responsibility belongs to. When a type m
 
 - A module has a single responsibility and is named after it (`sections`, `controls`, `atmosphere`). Catch-all modules such as `utils` or `helpers` are not created.
 - The module doc (`//!`) says in a sentence or two what the module is; if the reference has a counterpart, it names the Java class.
-- User interface code lives under `voxel-render::gui`: drawing (`frame`, `atlas`, `font`, `items`), the HUD (`hud`), the text box (`edit_box`) and the screens (`screen`).
+- User interface code lives under `voxel-render::gui`: drawing (`frame`, `atlas`, `font`, `items`), the HUD (`hud`), widgets (`widgets`: `edit_box`, `slider`, `cycle`), chat (`chat`), settings screens (`options`) and the other screens (`screen`).
 - A helper shared by several modules goes into the lowest common crate and the right module there. Before writing a new helper, check whether one exists: fixed-size reads `voxel_core::wire::take`, JSON files `voxel_core::json::read_object`, ARGB `voxel_render::tint`, Java `Math` rules `java_math` in `voxel-world`.
 
 ## File size
@@ -32,6 +32,16 @@ New code goes into the lowest crate its responsibility belongs to. When a type m
 - **A code file does not exceed 500–600 lines** (Rust, Python, Java; blank lines and comments included). A file approaching the limit is split by responsibility together with the new feature; the split is done before adding, not afterwards.
 - Splitting is by responsibility, not by line count: `impl` blocks into submodules (`entity/state.rs`, `controls/events.rs`), tests by topic (`tests/entities.rs`), packet parsers by packet family. A module name says what is in it (no `part` or `misc`).
 - Generated tables (`voxel-data/src/generated/`) and data produced by the oracle are outside this limit; when the generator is removed (the D tasks) that exception goes too. Existing files over the limit are reduced through [A06](../tasks/A06-dev-dosyalar.md) and the tasks that depend on it; a new file, or an addition to an existing one, must not leave a file over the limit.
+
+## File naming and layout
+
+- Module layout is the current form from the Rust book: `foo.rs` with `foo/` beside it; `mod.rs` is not used. File and module names are `snake_case` (Rust API Guidelines C-CASE).
+- A name does not repeat what its folder already says: `draw.rs` under `gui/`, not `gui_draw.rs`; `sound.rs` under `options/`, not `options_sound.rs` (the same principle as clippy's `module_name_repetitions`). The same name may exist in different folders; the path tells them apart.
+- A family of files with a common prefix moves into a folder (`options*.rs` → `options/`); the prefix becomes the folder name and drops out of the file names. Flat files on one topic (`wolves.rs`, `foxes.rs`, `pandas.rs`) are gathered in a folder (`mobs/animals/`).
+- Numbered suffixes such as `_2`, `_3` and names like `part`, `misc`, `more`, `extra` are not used. If a file has to be split that way, the responsibility was drawn wrongly: spread the content over files named for their topic. Do not use numbered copies to get around the line limit.
+- When an `impl` block is split, the files are named for the topic (`entity/motion.rs`, `play/chat.rs`). Child modules reach their parent's private fields; visibility is not widened more than needed.
+- Inline tests sit at the end of the file as `#[cfg(test)] mod tests` (clippy `items_after_test_module`), with the `mod` declarations before them. Tests split by topic live in a `tests/` subfolder.
+- Sources: the Rust book "Packages, Crates, and Modules", the Rust API Guidelines (C-CASE) and the Rust Style Guide.
 
 ## Naming and comments
 

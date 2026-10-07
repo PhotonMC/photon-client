@@ -4,7 +4,7 @@
 **Bağımlılık:** –. **Boy:** L.
 
 ## Oku
-Java: `world/inventory/{AnvilMenu,GrindstoneMenu,ItemCombinerMenu}.java`, `world/item/enchantment/EnchantmentHelper.java`, `world/item/enchantment/Repairable.java`. Rust: `crates/voxel-game/src/container_menu/transform.rs`, `crates/voxel-game/src/item_values.rs`.
+Java: `world/inventory/{AnvilMenu,GrindstoneMenu,ItemCombinerMenu}.java`, `world/item/enchantment/EnchantmentHelper.java`, `world/item/enchantment/Repairable.java`. Rust: `crates/voxel-game/src/menus/container/transform.rs`, `crates/voxel-game/src/item/values.rs`.
 
 ## Oracle
 `movement/container-clicks` ailesine anvil/grindstone satırları: onarım malzemesi, iki aynı eşya, büyülü kitap, ad değişimi, maliyet ve `RenameItem` paketi; `container_screen` anvil maliyet etiketi. G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).

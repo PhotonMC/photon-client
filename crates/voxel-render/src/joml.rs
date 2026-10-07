@@ -517,6 +517,8 @@ fn java_signum(value: f32) -> f32 {
     }
 }
 
+mod matrix4;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -533,5 +535,3 @@ mod tests {
         assert!(x.abs() < 1e-6 && y.abs() < 1e-6 && (z + 1.0).abs() < 1e-6);
     }
 }
-
-mod matrix4_rotate;

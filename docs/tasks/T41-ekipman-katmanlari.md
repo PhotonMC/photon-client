@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/HumanoidArmorLayer.java`, `client/renderer/entity/layers/ItemInHandLayer.java`, `client/renderer/entity/layers/CustomHeadLayer.java`, `client/renderer/entity/layers/CapeLayer.java`, `client/renderer/entity/layers/EquipmentLayerRenderer.java`, `client/renderer/entity/layers/PlayerItemInHandLayer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. `SetEquipment` ayrıştırma ve `ClientEntity.equipment` (slot → yığın; yığın okuyucusu `item_components` artık voxel-world'de).

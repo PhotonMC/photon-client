@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/monster/creaking/Creaking.java`, `client/model/monster/creaking/CreakingModel.java`, `client/renderer/entity/{CreakingRenderer,state/CreakingRenderState}.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs`, `crates/voxel-world/src/animation_state.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs`, `crates/voxel-world/src/animation_state.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

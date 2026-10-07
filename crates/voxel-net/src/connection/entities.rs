@@ -7,7 +7,7 @@ use voxel_world::{
     EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput, EquipmentSlot,
 };
 
-use voxel_world::minecart_track::MinecartStep;
+use voxel_world::objects::minecart_track::MinecartStep;
 
 use super::protocol::{
     AddEntityObservation, EntityEquipmentObservation, EntityHeadRotationObservation,
@@ -110,7 +110,7 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
     let stack_data_id = if is_frame {
         voxel_world::ITEM_FRAME_ITEM_DATA_ID
     } else if is_item_display {
-        voxel_world::display::ITEM_STACK_DATA_ID
+        voxel_world::objects::display::ITEM_STACK_DATA_ID
     } else {
         ITEM_ENTITY_STACK_DATA_ID
     };

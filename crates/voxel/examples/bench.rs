@@ -9,8 +9,8 @@ mod assets;
 
 use std::time::Instant;
 
+use voxel_render::block::world_mesh::BlockRenderer;
 use voxel_render::section_workers::SectionWorkers;
-use voxel_render::world_mesh::BlockRenderer;
 use voxel_world::{ClientWorld, DimensionBounds, SectionInput};
 
 /// How many times each section is meshed for its average.
@@ -163,7 +163,7 @@ fn main() {
     let world = world();
     let (stored, plain) = world.block_state_bytes();
     println!("block states stored={stored} bytes plain={plain} bytes");
-    let tint = |_: voxel_render::biome_tint::TintKind, _: [i32; 3]| 0xff79_c05a_u32;
+    let tint = |_: voxel_render::block::biome_tint::TintKind, _: [i32; 3]| 0xff79_c05a_u32;
     for section_y in [-3, 0, 3, 4, 5] {
         let key = (0, section_y, 0);
         let (min, size, quart_min, quart_size) = SectionWorkers::region(key);
@@ -175,7 +175,7 @@ fn main() {
         let mut digest = 0;
         for _ in 0..REPEATS {
             let region = renderer.mesh_region(
-                &voxel_render::world_mesh::MeshWorld {
+                &voxel_render::block::world_mesh::MeshWorld {
                     read: &|x, y, z| copy.block_state_at(x, y, z),
                     light: &|x, y, z| copy.light_at(x, y, z),
                     biome_tint: &tint,

@@ -9,16 +9,16 @@
 
 use std::collections::BTreeMap;
 
-use crate::atlas::{AtlasSprite, SpriteEntry, Stitcher};
-use crate::geometry::{default_face_uv, face_vertex_uv, face_vertices};
-use crate::mipmap::{compute_transparency, generate_mip_levels_with};
+use crate::block::geometry::{default_face_uv, face_vertex_uv, face_vertices};
+use crate::block::rotation::rotate_vertex;
 use crate::model::{
     CuboidModel, GuiLight, Material, ModelElement, TextureSlots, TextureSlotsResolver, parse_model,
 };
-use crate::png::{DecodedImage, decode_rgba};
-use crate::rotation::rotate_vertex;
 use crate::scene::{BlockVertex, Mesh};
-use crate::texture_metadata::{AnimationFrames, TextureMetadata};
+use crate::texture::atlas::{AtlasSprite, SpriteEntry, Stitcher};
+use crate::texture::metadata::{AnimationFrames, TextureMetadata};
+use crate::texture::mipmap::{compute_transparency, generate_mip_levels_with};
+use crate::texture::png::{DecodedImage, decode_rgba};
 use voxel_core::identifier::Identifier;
 
 /// Where model and texture files come from.
@@ -337,18 +337,23 @@ impl SpriteAnimation {
 /// metadata, and an animated strip with its playback.
 type DecodedSprite = (
     DecodedImage,
-    crate::texture_metadata::TextureMetadata,
+    crate::texture::metadata::TextureMetadata,
     Option<(DecodedImage, Vec<(i32, i32)>, bool)>,
 );
 
 /// One sprite's levels, ready to write into the atlas.
 struct BuiltSprite {
-    placement: crate::atlas::SpritePlacement,
+    placement: crate::texture::atlas::SpritePlacement,
     key: String,
     rect: [f32; 4],
     mips: Vec<DecodedImage>,
     animation: Option<SpriteAnimation>,
 }
+
+mod sprite;
+pub use sprite::*;
+mod tint;
+pub use tint::*;
 
 #[cfg(test)]
 mod tests {
@@ -534,8 +539,3 @@ mod tests {
         assert_eq!(effective_mip_level(&[(256, 256)], 2), 2);
     }
 }
-
-mod sprite;
-pub use sprite::*;
-mod tint;
-pub use tint::*;

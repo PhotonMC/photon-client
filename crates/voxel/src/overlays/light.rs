@@ -1,4 +1,5 @@
 use super::*;
+use crate::equipment::arm_poses;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
 /// the attack strength recovers.
@@ -77,7 +78,7 @@ pub fn hands(
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);
     let hand = if main_item.is_none() {
-        voxel_render::player_renderer::hand_vertices(model, &hand_view)
+        voxel_render::entity::player_renderer::hand_vertices(model, &hand_view)
     } else {
         Vec::new()
     };
@@ -90,7 +91,7 @@ pub fn hands(
             continue;
         };
         let layers = held_layers[usize::from(!right)].get(stack, renderer, tints);
-        held.extend(voxel_render::player_renderer::held_item_vertices(
+        held.extend(voxel_render::entity::player_renderer::held_item_vertices(
             &hand_view, layers, right, attack, height,
         ));
     }
@@ -131,11 +132,11 @@ pub fn outline(
         return Vec::new();
     };
     let shape = voxel_world::outline_shape(state as u32, [x, y, z]);
-    voxel_render::outline::outline_vertices(
+    voxel_render::block::outline::outline_vertices(
         &shape,
         view.relative([x, y, z]),
         eye,
-        voxel_render::outline::OUTLINE_COLOUR,
+        voxel_render::block::outline::OUTLINE_COLOUR,
         line_width,
     )
 }
@@ -168,7 +169,7 @@ pub fn cracks(
             continue;
         };
         let (quads, offset) = renderer.block_quads(state as u32, [x, y, z]);
-        breaking.extend(voxel_render::breaking::breaking_vertices(
+        breaking.extend(voxel_render::block::breaking::breaking_vertices(
             &quads,
             offset,
             view.relative([x, y, z]),
@@ -185,11 +186,11 @@ pub(super) fn local_arms(
     player: &LocalPlayer,
     stacks: (Option<&ClientItemStackState>, Option<&ClientItemStackState>),
     partial: f32,
-) -> (crate::arm_poses::ArmState, Arm) {
-    let arms = crate::arm_poses::arm_state_of(
+) -> (arm_poses::ArmState, Arm) {
+    let arms = arm_poses::arm_state_of(
         session,
         stacks,
-        &crate::arm_poses::ArmSource {
+        &arm_poses::ArmSource {
             main_arm_left: false,
             swinging: player.is_swinging(),
             using_item: player.is_using_item(),
@@ -214,7 +215,7 @@ pub fn player_model(
     (armor, worn, textures): (
         &mut Armor,
         Worn,
-        &voxel_render::entity_textures::EntityTextures,
+        &voxel_render::entity::textures::EntityTextures,
     ),
 ) -> Vec<Vertex> {
     let feet = player.interpolated_position(view.partial);
@@ -224,9 +225,9 @@ pub fn player_model(
     let attack_time = player.attack_anim(partial);
     let (arms, attack_arm) = local_arms(session, player, stacks, partial);
     let arm_poses = (arms.right, arms.left);
-    let spears = crate::arm_poses::stacks_spear_view(
+    let spears = arm_poses::stacks_spear_view(
         stacks,
-        crate::arm_poses::SpearRest {
+        arm_poses::SpearRest {
             main_arm: Arm::Right,
             attack: (attack_time, attack_arm),
             arm_poses,
@@ -277,7 +278,7 @@ pub fn player_model(
         auto_spin: None,
     };
     let hands = Hands {
-        base: &voxel_render::player_renderer::placement_pose(&placement),
+        base: &voxel_render::entity::player_renderer::placement_pose(&placement),
         root: &model.root,
         hand_shift: if model.slim { 0.5 } else { 0.0 },
         baby: false,
@@ -291,7 +292,7 @@ pub fn player_model(
     };
     hands.collect(held);
     let skull = hands.skull();
-    let mut vertices = voxel_render::player_renderer::player_vertices(model, &placement);
+    let mut vertices = voxel_render::entity::player_renderer::player_vertices(model, &placement);
     vertices.extend(armor.skull_vertices(
         skull,
         pose.walk_position,
@@ -310,7 +311,7 @@ pub fn player_model(
         (false, pose.crouching, player.elytra_rotations(partial)),
         textures,
         &|model, rect, colour| {
-            voxel_render::player_renderer::layer_vertices(model, &placement, rect, colour)
+            voxel_render::entity::player_renderer::layer_vertices(model, &placement, rect, colour)
         },
     ));
     vertices
@@ -322,17 +323,20 @@ pub(super) fn remote_render_state(
     session: &PlaySession,
     (entity, snapshot): (&voxel_world::ClientEntity, &voxel_world::EntitySnapshot),
     partial: f32,
-) -> (PlayerRenderState, voxel_render::held_item::SpearView) {
+) -> (
+    PlayerRenderState,
+    voxel_render::entity::held_item::SpearView,
+) {
     let world = session.world();
     let crouching = snapshot.pose == voxel_world::ClientEntityPose::Crouching;
     let main_left = entity.main_arm_is_left();
-    let arms = crate::arm_poses::arm_state(session, entity, partial);
+    let arms = arm_poses::arm_state(session, entity, partial);
     let attack_arm = if snapshot.attack_arm_left {
         Arm::Left
     } else {
         Arm::Right
     };
-    let spears = crate::arm_poses::entity_spear_view(
+    let spears = arm_poses::entity_spear_view(
         entity,
         (snapshot.attack_time, attack_arm),
         (arms.right, arms.left),

@@ -1,4 +1,6 @@
 use super::*;
+use crate::equipment::arm_poses;
+use crate::mobs::humanoids::villagers;
 
 /// `LivingEntityRenderer` for the humanoid mobs the server added (zombies,
 /// skeletons, piglins), each posed by its model's `setupAnim` from where it is
@@ -67,7 +69,7 @@ pub(super) fn remote_humanoids(
                         HEAD_TRANSFORMS
                     },
                     eye: None,
-                    motions: crate::arm_poses::entity_spear_view(
+                    motions: arm_poses::entity_spear_view(
                         entity,
                         (humanoid.attack_time, humanoid.attack_arm),
                         (humanoid.right_arm_pose, humanoid.left_arm_pose),
@@ -114,8 +116,7 @@ pub(super) fn humanoid_state(
 ) -> (PlayerRenderState, bool, PiglinArmPose) {
     let (mut humanoid, holding_bow) = humanoid_pose(entity, snapshot, kind, partial);
     humanoid.ticks_using_item = entity.ticks_using_item(partial);
-    humanoid.max_crossbow_charge_duration =
-        crate::arm_poses::charge_duration_of_use(session, entity);
+    humanoid.max_crossbow_charge_duration = arm_poses::charge_duration_of_use(session, entity);
     (
         humanoid,
         holding_bow,
@@ -177,8 +178,8 @@ pub(super) fn profession_layers(
     let Some(folder) = kind.profession_folder else {
         return vertices;
     };
-    for pass in crate::villagers::profession_layer(entity, folder, baby) {
-        let id = crate::villagers::layer(folder, pass.hatless, baby);
+    for pass in villagers::profession_layer(entity, folder, baby) {
+        let id = villagers::layer(folder, pass.hatless, baby);
         let (Some(rect), Some(model)) = (textures.rect(&pass.texture), models.model(&id)) else {
             continue;
         };
@@ -217,11 +218,7 @@ pub(super) fn humanoid_pose(
         {
             ArmPose::BowAndArrow
         } else {
-            crate::arm_poses::mob_spear_pose(
-                entity,
-                left,
-                matches!(kind.family, Family::Zombie { .. }),
-            )
+            arm_poses::mob_spear_pose(entity, left, matches!(kind.family, Family::Zombie { .. }))
         }
     };
     let attack_arm = if snapshot.attack_arm_left {
@@ -230,7 +227,7 @@ pub(super) fn humanoid_pose(
         Arm::Right
     };
     let (right_arm_pose, left_arm_pose) = (arm_pose(false), arm_pose(true));
-    let spears = crate::arm_poses::entity_spear_view(
+    let spears = arm_poses::entity_spear_view(
         entity,
         (snapshot.attack_time, attack_arm),
         (right_arm_pose, left_arm_pose),
@@ -296,7 +293,7 @@ pub(super) fn piglin_arm_pose(
     let off = entity.equipment(EquipmentSlot::OffHand);
     let melee = entity.is_aggressive()
         && main.is_some_and(|stack| {
-            voxel_game::item_values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+            voxel_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
                 .has(voxel_data::item::component_types::TOOL)
         });
     if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:piglin_brute") {
@@ -322,7 +319,7 @@ pub(super) fn piglin_arm_pose(
         .into_iter()
         .flatten()
         .any(|stack| is_item(stack, "minecraft:crossbow"))
-        && main.is_some_and(crate::arm_poses::is_charged_crossbow)
+        && main.is_some_and(arm_poses::is_charged_crossbow)
     {
         PiglinArmPose::CrossbowHold
     } else {

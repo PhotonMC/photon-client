@@ -9,9 +9,9 @@ use super::*;
 pub fn build_mesh(
     model: &ResolvedModel,
     atlas: &BuiltAtlas,
-    model_state: Option<&crate::rotation::Matrix4>,
+    model_state: Option<&crate::block::rotation::Matrix4>,
     tints: &[u32],
-    uv_transform: impl Fn(voxel_core::direction::Direction) -> crate::rotation::FlatMatrix,
+    uv_transform: impl Fn(voxel_core::direction::Direction) -> crate::block::rotation::FlatMatrix,
     occluded: impl Fn(voxel_core::direction::Direction) -> bool,
 ) -> Result<Mesh, ResolveError> {
     let mut mesh = Mesh::default();
@@ -24,7 +24,7 @@ pub fn build_mesh(
                 // The side is named in the model's own frame, so the variant's
                 // rotation has to be applied before the neighbour is asked.
                 let cull = match model_state {
-                    Some(state) => crate::rotation::rotate_direction(state, cull),
+                    Some(state) => crate::block::rotation::rotate_direction(state, cull),
                     None => cull,
                 };
                 if occluded(cull) {
@@ -68,21 +68,19 @@ pub fn build_mesh(
                 // Without it the transform is identity and the coordinate
                 // passes through.
                 let (u, v) = face_vertex_uv(uvs, face.rotation, slot as u32);
-                let (u, v) = crate::rotation::transform_face_uv(&face_uv, u, v);
+                let (u, v) = crate::block::rotation::transform_face_uv(&face_uv, u, v);
                 packed_uvs[slot] = (u64::from(u.to_bits()) << 32) | u64::from(v.to_bits());
             }
             // FaceBakery: the quad faces whichever side its normal is closest
             // to, and without an element rotation its corners are put back in
             // that side's order.
-            let direction = crate::geometry::closest_direction(crate::geometry::triangle_normal(
-                positions[0],
-                positions[1],
-                positions[2],
-            ));
+            let direction = crate::block::geometry::closest_direction(
+                crate::block::geometry::triangle_normal(positions[0], positions[1], positions[2]),
+            );
             if element.rotation.is_none()
                 && let Some(direction) = direction
             {
-                let _ = crate::geometry::recalculate_winding(
+                let _ = crate::block::geometry::recalculate_winding(
                     &mut positions,
                     &mut packed_uvs,
                     direction,
@@ -105,7 +103,7 @@ pub fn build_mesh(
             mesh.quads.push(crate::scene::QuadInfo {
                 direction,
                 cull: face.cull_for_direction.map(|cull| match model_state {
-                    Some(state) => crate::rotation::rotate_direction(state, cull),
+                    Some(state) => crate::block::rotation::rotate_direction(state, cull),
                     None => cull,
                 }),
                 shade: element.shade,

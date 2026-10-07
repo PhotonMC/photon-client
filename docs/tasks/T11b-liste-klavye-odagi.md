@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/components/ContainerObjectSelectionList.java` (`nextFocusPath`, `Entry.focusPathAtIndex`), `.data/minecraft/source/net/minecraft/client/gui/components/ObjectSelectionList.java` (`nextFocusPath`), `AbstractSelectionList.java` (`setFocused`, `scrollToEntry`, `nextEntry`), `.data/minecraft/source/net/minecraft/client/gui/screens/Screen.java` (`keyPressed`, `changeFocus`).
-- Rust: `crates/voxel-render/src/gui/navigation.rs` (düz ekran gezintisi), `options_list.rs` (`focus_on`, `Control`), `language_select.rs`.
+- Rust: `crates/voxel-render/src/gui/widgets/navigation.rs` (düz ekran gezintisi), `options_list.rs` (`focus_on`, `Control`), `language_select.rs`.
 
 ## Yapılacaklar
 1. `SubScreen.key_pressed`: Tab/Shift+Tab ve oklar; liste içinde `ContainerObjectSelectionList.nextFocusPath` (satır içinde sağ/sol, satırlar arası yukarı/aşağı, `index` korunumu), liste dışı widget'lar (Done) `navigation.rs` ile.

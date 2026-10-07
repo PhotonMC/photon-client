@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/effects/SpearAnimations.java`, `client/renderer/entity/layers/ItemInHandLayer.java`, `world/item/component/KineticWeapon.java`, `client/player/LocalPlayer.java`.
-- Rust: `voxel-render/src/player_model.rs`, `crates/voxel/src/arm_poses.rs`, `voxel-world/src/local_player.rs`.
+- Rust: `voxel-render/src/player_model.rs`, `crates/voxel/src/equipment/arm_poses.rs`, `voxel-world/src/local_player.rs`.
 
 ## Oracle
 `entity/held-item-pose` satırları (poz `spear`).

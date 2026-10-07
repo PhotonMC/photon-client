@@ -1,31 +1,16 @@
 //! Items, menus and the player's actions, built on the client's world copy.
 
-pub mod attack;
 pub mod chat;
 pub mod commands;
-pub mod container_menu;
-pub mod creative_menu;
-pub mod default_components;
 pub mod game_mode;
-pub mod hotbar;
-pub mod input_event;
 pub mod item;
 pub use voxel_world::item_components;
-#[cfg(test)]
-mod item_component_tests;
-pub mod item_in_hand;
-pub mod item_values;
-pub mod key_mapping;
+pub mod input;
 pub mod language;
-pub mod merchant;
-pub mod option;
+pub mod menus;
 pub mod options;
-pub mod pick;
-pub mod recipe_book;
 pub mod registries;
 pub mod scoreboard;
-pub mod scroll;
-pub mod sound_engine;
 pub mod sounds;
 pub mod text;
 pub mod tooltip;

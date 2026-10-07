@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/MapRenderer.java`, `client/renderer/state/MapRenderState.java`, `client/multiplayer/ClientPacketListener.handleMapItemData`, `network/protocol/game/ClientboundMapItemDataPacket.java`, `world/level/saveddata/maps/MapItemSavedData.java`, `ItemFrameRenderer.java` (map kolu).
-- Rust: `crates/voxel/src/item_frames.rs`, `crates/voxel-render/src/item_frame.rs`.
+- Rust: `crates/voxel/src/objects/item_frames.rs`, `crates/voxel-render/src/objects/item_frame.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

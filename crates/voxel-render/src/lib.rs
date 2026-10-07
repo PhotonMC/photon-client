@@ -2,104 +2,57 @@
 //! OpenGL; this client targets the Vulkan one, for the reasons recorded in
 //! `docs/render-backend-decision.md`.
 
-pub mod atlas;
-pub mod bake;
-pub mod banner;
-pub mod bell;
-pub mod biome_tint;
-pub mod block_light;
-pub mod blockstate;
-pub mod boat;
-pub mod breaking;
+pub mod block;
+pub mod block_entity;
 pub mod camera;
-pub mod chest;
-pub mod clouds;
-pub mod crystal_beam;
-pub mod display;
-pub mod dragon_rays;
-pub mod entity_block;
-pub mod entity_textures;
-pub mod equipment;
-pub mod fishing;
+pub mod entity;
 pub mod frame_timing;
-pub mod geometry;
-pub mod guardian_beam;
 pub mod gui;
-pub mod held_item;
-pub mod item_entity;
-pub mod item_frame;
 pub mod item_model;
 pub mod joml;
-pub mod keyframe;
-pub mod leash;
-pub mod lightning;
-pub mod map;
-pub mod minecart;
-pub mod mipmap;
-pub mod mob_model;
 pub mod model;
-pub mod name_tag;
-pub mod outline;
-pub mod painting;
-pub mod player_model;
-pub mod player_renderer;
-pub mod png;
-pub mod projectile;
+pub mod objects;
 pub mod render_types;
 pub mod resolve;
-pub mod rotation;
 pub mod scene;
 pub mod section_workers;
-pub mod shadow;
-pub mod shulker_box;
-pub mod skull;
 pub mod sky;
-pub mod spear_animation;
-pub mod special_models;
-pub mod texture_metadata;
-pub mod tint;
-pub mod trim;
-pub mod uv_lock;
-pub mod villager;
+pub mod texture;
 pub mod visibility;
 pub mod vulkan;
-pub mod weather;
 pub mod window;
-pub mod wool;
-pub mod world_mesh;
-pub mod xp_orb;
 
-pub use atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
-pub use blockstate::{
+pub use block::blockstate::{
     BlockStateFile, Condition, Operation, Selector, Term, Variant, parse_block_state,
 };
-pub use frame_timing::{BackendTimings, GPU_PASSES, GpuTimings};
-pub use geometry::{
+pub use block::geometry::{
     FaceUvs, Quadrant, WindingError, approximate_nearest_direction, closest_direction,
     default_face_uv, face_vertex_uv, face_vertices, recalculate_winding, triangle_normal,
 };
-pub use mipmap::{
-    MipmapStrategy, SrgbTables, Transparency, compute_transparency, generate_mip_levels,
-    generate_mip_levels_with,
+pub use block::rotation::{
+    Matrix4, RotationAxis, element_transform, euler_element_transform, model_state_transform,
+    rotate_vertex,
 };
+pub use block::tint::{
+    ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,
+    constant_tints, multiply,
+};
+pub use block::world_mesh::{WorldMesh, build_world_mesh};
+pub use frame_timing::{BackendTimings, GPU_PASSES, GpuTimings};
 pub use model::{
     CuboidModel, ElementRotation, GuiLight, Material, ModelElement, ModelFace, ModelParseError,
     SlotContents, TextureSlots, TextureSlotsData, TextureSlotsResolver, parse_model,
 };
-pub use png::{DecodedImage, PngError, decode_rgba};
 pub use resolve::{
     AssetSource, BuiltAtlas, ResolveError, ResolvedModel, build_atlas, build_atlas_for, build_mesh,
     resolve_model,
 };
-pub use rotation::{
-    Matrix4, RotationAxis, element_transform, euler_element_transform, model_state_transform,
-    rotate_vertex,
-};
 pub use scene::{BlockVertex, Mesh, SpriteRect, Vertex, full_cube};
-pub use texture_metadata::{AnimationFrames, TextureMetadata};
-pub use tint::{
-    ColourMap, ColourMapOutOfBounds, FOLIAGE_MANGROVE, LILY_PAD_IN_WORLD, colour_map_lookup,
-    constant_tints, multiply,
+pub use texture::atlas::{AtlasSprite, SpriteEntry, SpritePlacement, StitchError, Stitcher};
+pub use texture::metadata::{AnimationFrames, TextureMetadata};
+pub use texture::mipmap::{
+    MipmapStrategy, SrgbTables, Transparency, compute_transparency, generate_mip_levels,
+    generate_mip_levels_with,
 };
+pub use texture::png::{DecodedImage, PngError, decode_rgba};
 pub use vulkan::{CapturedFrame, SectionMemory, VulkanBackend, VulkanError, validation_findings};
-pub use world_mesh::{WorldMesh, build_world_mesh};

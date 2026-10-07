@@ -10,8 +10,8 @@
 //! templates, map, container, book and bee lines, the adventure predicates
 //! and the advanced lines (the `F3+H` toggle is off).
 
+use crate::item::values::{AttributeDisplay, Explosion, PaintingVariant, Values};
 use crate::item_components::ids;
-use crate::item_values::{AttributeDisplay, Explosion, PaintingVariant, Values};
 use crate::registries::Registries;
 use crate::text::{Component, Lang, Style};
 use voxel_core::json::JsonValue;
@@ -39,6 +39,11 @@ const FIREWORK_COLOURS: [i32; 16] = [
 ];
 
 const SHAPES: [&str; 5] = ["small_ball", "large_ball", "star", "creeper", "burst"];
+
+mod name;
+pub use name::*;
+mod lines;
+pub use lines::*;
 
 #[cfg(test)]
 mod tests {
@@ -89,17 +94,12 @@ mod tests {
             return;
         }
         let registries = registries();
-        for tab in crate::creative_menu::shown_tabs() {
+        for tab in crate::menus::creative::shown_tabs() {
             for entry in voxel_data::item::creative_tabs::CREATIVE_TABS[tab].items {
-                let stack = crate::creative_menu::table_stack(entry, &registries);
+                let stack = crate::menus::creative::table_stack(entry, &registries);
                 let text = search_lines(&stack, &lang, &registries);
                 assert!(!text.is_empty(), "{}", item_name_of(&stack));
             }
         }
     }
 }
-
-mod name;
-pub use name::*;
-mod lines;
-pub use lines::*;

@@ -1,7 +1,135 @@
 use super::*;
 
+pub(super) fn model_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "nearest_direction" {
+        let rows = request["rows"]
+            .as_array()
+            .ok_or("model rows must be an array")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let read = |name: &str| -> Result<f32, String> {
+                Ok(f32::from_bits(
+                    u32::from_str_radix(string(row, name)?, 16)
+                        .map_err(|error| format!("{name}: {error}"))?,
+                ))
+            };
+            let vector = [read("x")?, read("y")?, read("z")?];
+            out.push(json!({
+                "label": string(row, "label")?,
+                "outcome": "resolved",
+                "direction": voxel_render::approximate_nearest_direction(vector).name(),
+            }));
+        }
+        return Ok(json!({"rows": out}));
+    }
+    if string(request, "operation")? == "cull_rotation" {
+        use voxel_core::direction::Direction;
+        use voxel_render::block::rotation;
+        let rows = request["rows"]
+            .as_array()
+            .ok_or("model rows must be an array")?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let facing = Direction::from_name(string(row, "facing")?).ok_or("unknown facing")?;
+            let rotated = rotation::rotate_cull_direction(
+                i32_field(row, "x")?,
+                i32_field(row, "y")?,
+                i32_field(row, "z")?,
+                facing,
+            )
+            .ok_or("rotation must be a multiple of ninety")?;
+            out.push(json!({
+                "label": string(row, "label")?,
+                "outcome": "resolved",
+                "direction": rotated.name(),
+            }));
+        }
+        return Ok(json!({"rows": out}));
+    }
+    if string(request, "operation")? == "uv_lock" {
+        return model_uv_lock_result(request);
+    }
+    if string(request, "operation")? == "blockstate_parse" {
+        return model_blockstate_result(request);
+    }
+    if string(request, "operation")? == "model_state" {
+        return model_state_result(request);
+    }
+    if string(request, "operation")? == "parse_model" {
+        return model_parse_result(request);
+    }
+    if string(request, "operation")? == "face_uv_rotation" {
+        return model_uv_rotation_result(request);
+    }
+    if string(request, "operation")? == "euler_rotation" {
+        return model_euler_result(request);
+    }
+    if string(request, "operation")? == "quad_winding" {
+        return model_winding_result(request);
+    }
+    if string(request, "operation")? == "element_rotation" {
+        return model_rotation_result(request);
+    }
+    if string(request, "operation")? == "face_geometry" {
+        return model_geometry_result(request);
+    }
+    if string(request, "operation")? != "texture_slots" {
+        return Err("unknown model operation".into());
+    }
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
+    let probes = [
+        "all", "top", "bottom", "side", "north", "particle", "missing", "#all", "#top",
+    ];
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let mut resolver = voxel_render::TextureSlotsResolver::new();
+        let chain = row["chain"].as_array().ok_or("chain must be an array")?;
+        for level in chain {
+            let slots = level.as_array().ok_or("chain level must be an array")?;
+            let mut entries = Vec::with_capacity(slots.len());
+            for slot in slots {
+                let name = string(slot, "slot")?;
+                let contents = if slot.get("raw").is_some() {
+                    voxel_render::SlotContents::parse_string(string(slot, "raw")?)
+                        .map_err(|error| format!("texture value: {error:?}"))?
+                } else {
+                    voxel_render::SlotContents::Value(voxel_render::Material {
+                        sprite: Identifier::parse(string(slot, "sprite")?)
+                            .map_err(|error| format!("sprite: {error:?}"))?,
+                        force_translucent: slot["force_translucent"]
+                            .as_bool()
+                            .ok_or("force_translucent must be a bool")?,
+                    })
+                };
+                entries.push((name.to_owned(), contents));
+            }
+            resolver.add_last(voxel_render::TextureSlotsData::from_entries(entries));
+        }
+        let resolved = resolver.resolve();
+        let mut lookups = Vec::new();
+        for probe in probes {
+            if let Some(material) = resolved.material(probe) {
+                lookups.push(json!({
+                    "probe": probe,
+                    "sprite": material.sprite.as_string(),
+                    "force_translucent": material.force_translucent,
+                }));
+            }
+        }
+        lookups.sort_by(|left, right| left["probe"].as_str().cmp(&right["probe"].as_str()));
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "resolved",
+            "lookups": lookups,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
 pub(super) fn model_rotation_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::rotation;
+    use voxel_render::block::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;
@@ -157,7 +285,7 @@ pub(super) fn direction_name(direction: voxel_core::direction::Direction) -> &'s
 }
 
 pub(super) fn model_euler_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::rotation;
+    use voxel_render::block::rotation;
     let rows = request["rows"]
         .as_array()
         .ok_or("model rows must be an array")?;

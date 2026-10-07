@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/illager/IllagerModel.java`, `client/model/monster/witch/WitchModel.java`, `client/model/animal/golem/{IronGolemModel,SnowGolemModel,CopperGolemModel}.java`, `client/model/monster/enderman/EndermanModel.java`, `client/model/monster/zombie/ZombieVillagerModel.java`, `client/renderer/entity/{Illager,Witch,IronGolem,SnowGolem,Enderman,ZombieVillager}Renderer.java`.
-- Rust: `crates/voxel/src/villagers.rs` (köylü kalıbı), `voxel-render/src/{mob_model,villager}.rs`, `voxel/src/mobs.rs` (`HUMANOIDS`, zombi kolları), `voxel-world/src/metadata.rs`.
+- Rust: `crates/voxel/src/mobs/humanoids/villagers.rs` (köylü kalıbı), `voxel-render/src/{mob_model,villager}.rs`, `voxel/src/mobs.rs` (`HUMANOIDS`, zombi kolları), `voxel-world/src/metadata.rs`.
 
 ## Yapılacaklar
 1. Illager kol pozları (`IllagerModel.ArmPose`) ve cadı; illagerlar tablo satırı.

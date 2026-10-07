@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{TntMinecartRenderer,SpawnerMinecartRenderer}.java`, `world/entity/vehicle/minecart/{MinecartTNT,MinecartSpawner}.java`.
-- Rust: `crates/voxel/src/minecarts.rs`, T37b3 (blok kaplaması: fitil beyazı) ve T40'taki TNT/düşen blok çizimi kalıbı.
+- Rust: `crates/voxel/src/objects/minecarts.rs`, T37b3 (blok kaplaması: fitil beyazı) ve T40'taki TNT/düşen blok çizimi kalıbı.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

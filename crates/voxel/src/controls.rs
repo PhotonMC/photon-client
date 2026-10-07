@@ -2,34 +2,56 @@
 //! steps, and the inventory screen they may be typing into.
 
 use std::time::{Duration, Instant};
-use voxel_game::attack::AttackKey;
-use voxel_game::hotbar::ScrollWheel;
+
+use voxel_game::input::attack::AttackKey;
+
+use voxel_game::input::hotbar::ScrollWheel;
+
 use voxel_game::options::Options;
+
 use voxel_net::connection::PlaySession;
+
 use voxel_render::gui::chat::ChatSettings;
+
 use voxel_render::gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
-use voxel_render::gui::chat_options::ChatOptionsScreen;
-use voxel_render::gui::confirm::ConfirmAction as LinkAction;
-use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
-use voxel_render::gui::death::{DeathAction, DeathScreen};
-use voxel_render::gui::disconnected::DisconnectedScreen;
-use voxel_render::gui::language_select::LanguageSelectScreen;
-use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
+
+use voxel_render::gui::options::chat::ChatOptionsScreen;
+
+use voxel_render::gui::options::language::LanguageSelectScreen;
+
+use voxel_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+
+use voxel_render::gui::options::sound::SoundOptionsScreen;
+
+use voxel_render::gui::options::video::{VideoSettingsScreen, VideoValues};
+
 use voxel_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
-use voxel_render::gui::pause::{PauseAction, PauseScreen};
+
+use voxel_render::gui::screen::confirm::ConfirmAction as LinkAction;
+
+use voxel_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+
+use voxel_render::gui::screen::death::{DeathAction, DeathScreen};
+
+use voxel_render::gui::screen::disconnected::DisconnectedScreen;
+
+use voxel_render::gui::screen::pause::{PauseAction, PauseScreen};
+
 use voxel_render::gui::screen::{KeyMods, KeyResult};
-use voxel_render::gui::slider::SliderKey;
-use voxel_render::gui::sound_options::SoundOptionsScreen;
-use voxel_render::gui::video::{VideoSettingsScreen, VideoValues};
+
+use voxel_render::gui::widgets::slider::SliderKey;
+
 use voxel_render::window::WindowSurface;
 
 use crate::screens::{
     OpenScreen, ScreenAssets, WindowClipboard, close_inventory, open_inventory, run_actions,
 };
+
 use crate::script::HeldKeys;
+
 use crate::view::CameraType;
 
-type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+pub(super) type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
 /// What the player is holding and pointing at between events.
 pub struct Controls {
@@ -43,16 +65,16 @@ pub struct Controls {
     /// down (`Minecraft.hasControlDown`), which asks for the item's data too.
     pub pick_key: AttackKey,
     pub ctrl_down: bool,
-    scroll_wheel: ScrollWheel,
+    pub(super) scroll_wheel: ScrollWheel,
     /// F5 cycles first person, third person from behind and from the front.
     pub camera_type: CameraType,
     /// Whether the mouse is grabbed to look around.
     pub captured: bool,
-    last_cursor: Option<(f64, f64)>,
+    pub(super) last_cursor: Option<(f64, f64)>,
     /// The open inventory screen, if any.
     pub screen: OpenScreen,
     /// The id of the container the server opened, while its screen is up.
-    server_container: Option<i32>,
+    pub(super) server_container: Option<i32>,
     /// The creative screen's tab, kept for the next time it opens.
     pub creative_tab: usize,
     /// The chat box, while it is open, what was sent through it and the
@@ -72,9 +94,9 @@ pub struct Controls {
     pub controls_screen: Option<ControlsScreen>,
     /// The language screen, and the language it chose, for the game to load.
     pub language_screen: Option<LanguageSelectScreen>,
-    language_request: Option<String>,
+    pub(super) language_request: Option<String>,
     /// When and where the primary button last went down.
-    last_press: Option<(Instant, (i32, i32))>,
+    pub(super) last_press: Option<(Instant, (i32, i32))>,
     pub mouse_screen: Option<MouseSettingsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
@@ -88,27 +110,27 @@ pub struct Controls {
     pub disconnected: Option<DisconnectedScreen>,
     /// The values of `options.txt` the client reads.
     pub options: Options,
-    chat_history: Vec<String>,
+    pub(super) chat_history: Vec<String>,
     /// `ChatComponent.latestDraft`.
-    chat_drafts: ChatDrafts,
+    pub(super) chat_drafts: ChatDrafts,
     /// `CommandHistory`: the commands sent, kept in a file.
-    command_history: Vec<String>,
+    pub(super) command_history: Vec<String>,
     /// `Minecraft.hasControlDown`: a control key is down (the command key on
     /// macOS).
     pub control_held: bool,
     /// Whether a shift key is down, which wheel events carry no mark of.
-    shift_held: bool,
+    pub(super) shift_held: bool,
     pub chat_log: ChatLog,
     /// Whether the tab list key is held.
     pub tab_held: bool,
     /// The mouse in GUI units.
     pub gui_mouse: (f64, f64),
     /// The button a drag is held with (`MouseHandler.activeButton`).
-    active_button: Option<i32>,
+    pub(super) active_button: Option<i32>,
 }
 
 /// `Util.getPlatform().openUri`: the system's own opener.
-fn open_uri(uri: &str) {
+pub(super) fn open_uri(uri: &str) {
     let (program, arguments): (&str, &[&str]) = if cfg!(target_os = "macos") {
         ("open", &[])
     } else if cfg!(target_os = "windows") {
@@ -125,7 +147,7 @@ fn open_uri(uri: &str) {
 /// `MouseHandler.turnPlayer` for a mouse that moved `(dx, dy)`: scaled by
 /// the sensitivity cubed (`* 0.6F + 0.2F` widens floats), either axis
 /// reversed by its inversion option.
-fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
+pub(super) fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
     let sensitivity = options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
     let scaled = sensitivity * sensitivity * sensitivity * 8.0;
     let (turn_x, turn_y) = (dx * scaled, dy * scaled);
@@ -145,12 +167,12 @@ fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
 
 /// A key a settings screen gives to its widgets: Tab and Shift+Tab, or an
 /// arrow, Enter or Space with whether Shift is held.
-enum MenuKey {
+pub(super) enum MenuKey {
     Tab(bool),
     Key(SliderKey, bool),
 }
 
-fn menu_key(event: &glfw::WindowEvent) -> Option<MenuKey> {
+pub(super) fn menu_key(event: &glfw::WindowEvent) -> Option<MenuKey> {
     use glfw::{Action, Key, Modifiers, WindowEvent};
     let WindowEvent::Key(key, _, action, modifiers) = event else {
         return None;
@@ -171,7 +193,7 @@ fn menu_key(event: &glfw::WindowEvent) -> Option<MenuKey> {
 }
 
 /// `CommandHistory.MAX_PERSISTED_COMMAND_HISTORY`.
-const COMMAND_HISTORY_LIMIT: usize = 50;
+pub(super) const COMMAND_HISTORY_LIMIT: usize = 50;
 
 /// Where the game keeps its files (`gameDirectory`).
 pub(crate) fn game_directory() -> std::path::PathBuf {
@@ -180,13 +202,13 @@ pub(crate) fn game_directory() -> std::path::PathBuf {
 }
 
 /// `Options.optionsFile`.
-fn options_path() -> std::path::PathBuf {
+pub(super) fn options_path() -> std::path::PathBuf {
     game_directory().join("options.txt")
 }
 
 /// `Options.load`: `options.txt` of the game directory, written when it
 /// was not there.
-fn load_options() -> Options {
+pub(super) fn load_options() -> Options {
     let path = options_path();
     let options = Options::load(&path);
     if !path.exists() {
@@ -196,14 +218,14 @@ fn load_options() -> Options {
 }
 
 /// `CommandHistory`'s constructor: the lines of `command_history.txt`.
-fn read_command_history() -> Vec<String> {
+pub(super) fn read_command_history() -> Vec<String> {
     std::fs::read_to_string(game_directory().join("command_history.txt"))
         .map(|text| text.lines().map(str::to_owned).collect())
         .unwrap_or_default()
 }
 
 /// `CommandHistory.save`.
-fn write_command_history(commands: &[String]) {
+pub(super) fn write_command_history(commands: &[String]) {
     let directory = game_directory();
     let _ = std::fs::create_dir_all(&directory);
     let mut text = commands.join("\n");
@@ -212,7 +234,7 @@ fn write_command_history(commands: &[String]) {
 }
 
 /// A scripted key: a click on this tick, and whether it is held.
-fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
+pub(super) fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
     if click {
         key.press();
     }
@@ -225,7 +247,7 @@ fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
 }
 
 /// The number key for a hotbar slot, 1 to 9.
-fn hotbar_key(key: glfw::Key) -> Option<i32> {
+pub(super) fn hotbar_key(key: glfw::Key) -> Option<i32> {
     use glfw::Key;
     [
         Key::Num1,
@@ -241,6 +263,69 @@ fn hotbar_key(key: glfw::Key) -> Option<i32> {
     .iter()
     .position(|candidate| *candidate == key)
     .map(|slot| slot as i32)
+}
+
+mod chat;
+
+mod confirm;
+
+mod death;
+
+mod events;
+
+mod options;
+
+mod pause;
+
+mod scripted;
+
+mod settings;
+
+impl Controls {
+    pub fn new(camera_type: CameraType, captured: bool) -> Self {
+        let command_history = read_command_history();
+        let options = load_options();
+        let chat_settings = ChatSettings::from(&options);
+        Self {
+            keys: HeldKeys::default(),
+            attack_key: AttackKey::default(),
+            use_key: AttackKey::default(),
+            pick_key: AttackKey::default(),
+            ctrl_down: false,
+            scroll_wheel: ScrollWheel::default(),
+            camera_type,
+            captured,
+            last_cursor: None,
+            screen: None,
+            server_container: None,
+            creative_tab: voxel_game::menus::creative::default_tab(),
+            chat: None,
+            pause: None,
+            options_screen: None,
+            video_screen: None,
+            chat_options_screen: None,
+            sound_screen: None,
+            controls_screen: None,
+            language_screen: None,
+            language_request: None,
+            last_press: None,
+            mouse_screen: None,
+            death: None,
+            confirm: None,
+            link_confirm: None,
+            disconnected: None,
+            options,
+            chat_history: command_history.clone(),
+            chat_drafts: ChatDrafts::default(),
+            command_history,
+            shift_held: false,
+            control_held: false,
+            chat_log: ChatLog::with_settings(chat_settings),
+            tab_held: false,
+            gui_mouse: (0.0, 0.0),
+            active_button: None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -264,6 +349,3 @@ mod tests {
         assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, -high));
     }
 }
-
-mod events;
-mod screens;

@@ -10,11 +10,11 @@ use std::sync::Arc;
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, SlotView, slot_key_clicks};
 use super::inventory::empty_icon;
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
-use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
 use crate::gui::font::Font;
+use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
 use voxel_data::item::creative_tabs::{CREATIVE_TABS, TabKind};
-use voxel_game::container_menu::{ClickType, ContainerMenu, max_stack_size};
-use voxel_game::creative_menu::{
+use voxel_game::menus::container::{ClickType, ContainerMenu, max_stack_size};
+use voxel_game::menus::creative::{
     Click, CreativeMenu, SearchTrees, Target, shown_tabs, tab_contains, table_stack,
 };
 use voxel_game::text::{Run, Style};
@@ -441,10 +441,12 @@ fn tab_y(tab: usize) -> i32 {
     if CREATIVE_TABS[tab].top { -32 } else { IMAGE.1 }
 }
 
+mod tab;
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use voxel_game::creative_menu::default_tab;
+    use voxel_game::menus::creative::default_tab;
 
     /// A screen with no language, no font and no titles.
     fn test_screen(tab: usize) -> CreativeScreen {
@@ -541,5 +543,3 @@ mod tests {
         assert_eq!(slot_position(true, BIN), (173, 112));
     }
 }
-
-mod creative_screen_tab;

@@ -408,6 +408,10 @@ pub struct Lang {
     texts: HashMap<String, String>,
 }
 
+mod translatable;
+
+mod lang_texts;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -526,7 +530,3 @@ mod tests {
         assert_eq!(lang().plain(&from_nbt), "Apple");
     }
 }
-
-mod component_translatable;
-
-mod lang_texts;

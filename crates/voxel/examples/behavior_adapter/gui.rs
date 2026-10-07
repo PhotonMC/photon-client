@@ -10,7 +10,7 @@ use super::{Value, json};
 /// A clipboard for a test with nothing to copy.
 struct NoClipboard;
 
-impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
+impl voxel_render::gui::widgets::edit_box::Clipboard for NoClipboard {
     fn get(&mut self) -> String {
         String::new()
     }
@@ -22,15 +22,15 @@ impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
 /// A key step of a settings screen.
 enum MenuKey {
     Tab(bool),
-    Key(voxel_render::gui::slider::SliderKey),
+    Key(voxel_render::gui::widgets::slider::SliderKey),
 }
 
 /// The widget an option makes, of the kinds the scenarios name.
 enum OptionWidget {
-    Fov(voxel_render::gui::slider::OptionSlider<voxel_game::option::IntRange>),
-    Unit(voxel_render::gui::slider::OptionSlider<voxel_game::option::UnitDouble>),
-    Boolean(voxel_render::gui::cycle::CycleButton<bool>),
-    Visibility(voxel_render::gui::cycle::CycleButton<voxel_game::options::ChatVisibility>),
+    Fov(voxel_render::gui::widgets::slider::OptionSlider<voxel_game::options::values::IntRange>),
+    Unit(voxel_render::gui::widgets::slider::OptionSlider<voxel_game::options::values::UnitDouble>),
+    Boolean(voxel_render::gui::widgets::cycle::CycleButton<bool>),
+    Visibility(voxel_render::gui::widgets::cycle::CycleButton<voxel_game::options::ChatVisibility>),
 }
 
 mod option_widget_active;

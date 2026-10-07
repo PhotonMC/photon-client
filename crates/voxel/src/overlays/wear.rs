@@ -1,4 +1,6 @@
 use super::*;
+use crate::equipment::arm_poses;
+use crate::objects::displays;
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -7,7 +9,7 @@ use super::*;
 pub fn remote_players(
     session: &PlaySession,
     (models, armor): (&mut RemoteModels, &mut Armor),
-    textures: &voxel_render::entity_textures::EntityTextures,
+    textures: &voxel_render::entity::textures::EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
 ) -> Vec<Vertex> {
     let world = session.world();
@@ -21,7 +23,7 @@ pub fn remote_players(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let skin = voxel_render::player_renderer::default_skin(entity.uuid);
+        let skin = voxel_render::entity::player_renderer::default_skin(entity.uuid);
         let Some(rect) = textures.rect(skin.texture) else {
             continue;
         };
@@ -55,7 +57,7 @@ pub fn remote_players(
             skin: rect,
             death_time: snapshot.death_time,
             red_overlay: snapshot.red_overlay,
-            fall_flying: crate::arm_poses::fall_flying(entity, &snapshot, partial),
+            fall_flying: arm_poses::fall_flying(entity, &snapshot, partial),
             auto_spin: entity
                 .is_auto_spin_attack()
                 .then(|| entity.tick_count() as f32 + partial),
@@ -67,7 +69,7 @@ pub fn remote_players(
             feet: entity.equipment(EquipmentSlot::Feet),
         };
         let hands = Hands {
-            base: &voxel_render::player_renderer::placement_pose(&placement),
+            base: &voxel_render::entity::player_renderer::placement_pose(&placement),
             root: &model.root,
             hand_shift: if model.slim { 0.5 } else { 0.0 },
             baby: false,
@@ -76,7 +78,7 @@ pub fn remote_players(
             left,
             head: worn.head_item(armor),
             head_transforms: HEAD_TRANSFORMS,
-            eye: crate::arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
+            eye: arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
             motions: spears.motions,
         };
         hands.collect(held);
@@ -87,7 +89,7 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        vertices.extend(voxel_render::player_renderer::player_vertices(
+        vertices.extend(voxel_render::entity::player_renderer::player_vertices(
             model, &placement,
         ));
         vertices.extend(wear(
@@ -102,7 +104,9 @@ pub fn remote_players(
             (false, crouching, entity.elytra_rotations(partial)),
             textures,
             &|model, rect, colour| {
-                voxel_render::player_renderer::layer_vertices(model, &placement, rect, colour)
+                voxel_render::entity::player_renderer::layer_vertices(
+                    model, &placement, rect, colour,
+                )
             },
         ));
     }
@@ -115,7 +119,7 @@ pub(super) fn wear(
     armor: &mut Armor,
     worn: Worn,
     slim: bool,
-    textures: &voxel_render::entity_textures::EntityTextures,
+    textures: &voxel_render::entity::textures::EntityTextures,
     (state, placement): (&PlayerRenderState, &Placement),
 ) -> Vec<Vertex> {
     let prefix = if slim {
@@ -129,7 +133,7 @@ pub(super) fn wear(
         textures,
         &|model| model.setup_humanoid(state),
         &|model, rect, colour| {
-            voxel_render::player_renderer::layer_vertices(model, placement, rect, colour)
+            voxel_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
         },
     )
 }
@@ -144,7 +148,9 @@ pub fn name_tags(
     camera: &TagCamera,
     view: FrameView,
 ) -> (Vec<Vertex>, Vec<Vertex>) {
-    use voxel_render::name_tag::{DisplayMode, Viewer, camera_orientation, name_tag, submits};
+    use voxel_render::entity::name_tag::{
+        DisplayMode, Viewer, camera_orientation, name_tag, submits,
+    };
     let world = session.world();
     let partial = view.partial as f32;
     let viewer = Viewer {
@@ -184,7 +190,7 @@ pub fn name_tags(
             &orientation,
             0.25,
         ) {
-            let vertices = voxel_render::name_tag::submit_vertices(
+            let vertices = voxel_render::entity::name_tag::submit_vertices(
                 &submit,
                 &tag.text,
                 font,
@@ -204,7 +210,7 @@ pub fn name_tags(
 /// to the camera, with the icon its value picks.
 pub fn experience_orbs(
     session: &PlaySession,
-    textures: &voxel_render::entity_textures::EntityTextures,
+    textures: &voxel_render::entity::textures::EntityTextures,
     camera: &TagCamera,
     view: FrameView,
 ) -> Vec<Vertex> {
@@ -217,7 +223,7 @@ pub fn experience_orbs(
     let world = session.world();
     let partial = view.partial as f32;
     let orientation =
-        voxel_render::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
+        voxel_render::entity::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
     let mut vertices = Vec::new();
     for entity in world.entities().filter(|entity| entity.type_id == orb_type) {
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
@@ -228,8 +234,8 @@ pub fn experience_orbs(
         let light = packed_light(world, Vec3::new(x, y + 0.425, z));
         let block = ((light >> 4 & 15) + 7).min(15);
         let light = (light & !(15 << 4)) | block << 4;
-        let corners = voxel_render::xp_orb::corners(
-            voxel_render::xp_orb::icon(entity.orb_value().unwrap_or(0)),
+        let corners = voxel_render::objects::xp_orb::corners(
+            voxel_render::objects::xp_orb::icon(entity.orb_value().unwrap_or(0)),
             entity.tick_count() as f32 + partial,
             [
                 (x - camera.position.x) as f32,
@@ -238,7 +244,7 @@ pub fn experience_orbs(
             ],
             &orientation,
         );
-        vertices.extend(voxel_render::xp_orb::vertices(
+        vertices.extend(voxel_render::objects::xp_orb::vertices(
             &corners,
             rect,
             camera.relative,
@@ -256,7 +262,7 @@ pub fn experience_orbs(
 /// the camera shows them.
 pub fn entity_shadows(
     session: &PlaySession,
-    textures: &voxel_render::entity_textures::EntityTextures,
+    textures: &voxel_render::entity::textures::EntityTextures,
     camera: &TagCamera,
     local: Option<Vec3>,
     view: FrameView,
@@ -293,7 +299,7 @@ pub fn entity_shadows(
             let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
                 continue;
             };
-            let Some(shadow) = crate::displays::display_shadow(
+            let Some(shadow) = displays::display_shadow(
                 entity,
                 snapshot.position,
                 (camera.position.x, camera.position.y, camera.position.z),
@@ -348,7 +354,7 @@ pub fn entity_shadows(
             (drawn.1 - camera.position.y) as f32,
             (drawn.2 - camera.position.z) as f32,
         ];
-        vertices.extend(voxel_render::shadow::vertices(
+        vertices.extend(voxel_render::entity::shadow::vertices(
             &pieces,
             radius,
             translation,

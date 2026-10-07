@@ -4,6 +4,7 @@
 //! The chat's width, height, scale, opacity, background opacity and line
 //! spacing are the options' ([`ChatSettings`]). Not drawn: the chat queue
 //! and the prompt of a chat that the options disable.
+pub mod suggestions;
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -14,9 +15,9 @@ use voxel_game::text::{Component, HoverEvent, Lang, Run, Style};
 
 use crate::gui::GuiAtlas;
 use crate::gui::GuiFrame;
-use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
+use crate::gui::chat::suggestions::{ListKey, SuggestionsList};
 use crate::gui::font::Font;
-use crate::gui::suggestions::{ListKey, SuggestionsList};
+use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
 
 /// The lines the chat keeps.
 const MAX_LINES: usize = 100;
@@ -424,6 +425,10 @@ pub fn plain_runs(text: &str) -> Vec<Run> {
     }]
 }
 
+mod screen;
+
+mod log;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -577,7 +582,3 @@ mod tests {
         assert_eq!(screen.edit.value(), "x");
     }
 }
-
-mod chat_screen_key;
-
-mod chat_log_settings;

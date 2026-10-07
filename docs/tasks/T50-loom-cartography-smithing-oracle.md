@@ -4,7 +4,7 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/{LoomScreen,CartographyTableScreen,SmithingScreen,ItemCombinerScreen,CyclingSlotBackground}.java`, `world/inventory/{LoomMenu,CartographyTableMenu,SmithingMenu}.java`. Rust: `crates/voxel-render/src/gui/screen/container.rs`, `crates/voxel-game/src/container_menu/transform.rs`. Oracle: `container_screen` operation'ı (`grep -n container_screen tests/behavior/java/GuiOracle.java tools/behavior/cases_gui.py`).
+Java: `client/gui/screens/inventory/{LoomScreen,CartographyTableScreen,SmithingScreen,ItemCombinerScreen,CyclingSlotBackground}.java`, `world/inventory/{LoomMenu,CartographyTableMenu,SmithingMenu}.java`. Rust: `crates/voxel-render/src/gui/screen/container.rs`, `crates/voxel-game/src/menus/container/transform.rs`. Oracle: `container_screen` operation'ı (`grep -n container_screen tests/behavior/java/GuiOracle.java tools/behavior/cases_gui.py`).
 
 ## Oracle
 G tarifi; `container_screen` satırlarına loom (desen listesi, kaydırma, seçili), cartography (harita, kilit, kopya), smithing (boş/şablonlu yuvalar, sonuç önizleme). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).

@@ -11,7 +11,7 @@ Bu kayıt `wind_charge`, `breeze_wind_charge` (`WindChargeRenderer`) ve `dragon_
 ## Kapsam
 
 - `entity/wind-charge-model` 7 satır (yaşlar 0 … 100,1); `entity/dragon-fireball-quad` 7 satır (kamera dört yön, eğik, uzak konum, iki ışık değeri).
-- Rust: `MobModel::setup_wind_charge`, `mob_vertices_scrolled_posed`, `projectile::{dragon_fireball_quad, dragon_fireball_triangles}`, oyunda `crates/voxel/src/charges.rs`.
+- Rust: `MobModel::setup_wind_charge`, `mob_vertices_scrolled_posed`, `projectile::{dragon_fireball_quad, dragon_fireball_triangles}`, oyunda `crates/voxel/src/objects/charges.rs`.
 
 ## Sapmalar ve açık kalanlar
 

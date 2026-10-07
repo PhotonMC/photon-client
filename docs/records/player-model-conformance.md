@@ -98,7 +98,7 @@ Elin kendi projeksiyonu var (görüş 70°, suda daralıyor; yakın 0,05, uzak
 100) ve derinlik temizlenip en son çiziliyor. `xBob/yBob` movement
 ailesinde her tick bit bit eşleşiyor.
 
-**Vuruş** (`crates/voxel-game/src/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
+**Vuruş** (`crates/voxel-game/src/input/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
 
 1. Sol tuşa her basış bir tık sayılıyor; tuşun basılı hâli ayrıca tutuluyor.
 2. Her tik oyuncu hareket etmeden önce tıklar harcanıyor. Iska beklemesi

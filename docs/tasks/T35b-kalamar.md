@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/animal/squid/{Squid,GlowSquid}.java`, `client/model/animal/squid/*.java`, `client/renderer/entity/{Squid,GlowSquid}Renderer.java`, `LivingEntity.aiStep`, `Entity.updateFluidInteraction`.
-- Rust: `crates/voxel-world/src/{squid,fluid,entity}.rs`, `crates/voxel/src/squids.rs`.
+- Rust: `crates/voxel-world/src/{squid,fluid,entity}.rs`, `crates/voxel/src/mobs/aquatic/squids.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

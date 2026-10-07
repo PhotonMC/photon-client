@@ -319,6 +319,9 @@ impl GraphWorld<'_> {
     }
 }
 
+mod index;
+pub use index::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -440,6 +443,3 @@ mod tests {
         assert!(!reached.is_empty());
     }
 }
-
-mod index;
-pub use index::*;

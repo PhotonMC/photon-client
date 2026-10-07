@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/block/BlockModelRenderState.java` (`submit`), `layers/{SulfurCubeInnerLayer,CarriedBlockLayer}.java`, `OverlayTexture.java`.
-- Rust: `crates/voxel/src/held_items.rs` (`Carried::Block`), `crates/voxel-render/src/{item_entity,vulkan}.rs` (`entity_block_vertices`, entity ve yer hatları).
+- Rust: `crates/voxel/src/equipment/held_items.rs` (`Carried::Block`), `crates/voxel-render/src/{item_entity,vulkan}.rs` (`entity_block_vertices`, entity ve yer hatları).
 
 ## Yapılacaklar
 Önce hangi katmanların gerçekten kaplama verdiğini Java'da doğrula; kaplamayı taşıyan hatta (entity shader'ı `in_shade`'i kaplama kodu olarak okur) blok köşelerini çiz ya da yer hattına kaplama ekle. Çözüm geçici olmasın; oracle'a kaplama kodunu ekle.

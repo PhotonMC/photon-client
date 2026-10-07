@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/fox/FoxModel.java`, `client/model/animal/panda/PandaModel.java`, `client/model/animal/polarbear/PolarBearModel.java`, ilgili `*Renderer.java`, `world/entity/animal/{fox/Fox,panda/Panda,polarbear/PolarBear}.java`.
-- Rust: `crates/voxel/src/wolves.rs` (kalıp: çeşit dokusu, tasma katmanı), `voxel-render/src/mob_model.rs` (`setup_wolf`), `voxel-world/src/wolf.rs`, `docs/records/client-wolf-parity-conformance.md`.
+- Rust: `crates/voxel/src/mobs/animals/wolves.rs` (kalıp: çeşit dokusu, tasma katmanı), `voxel-render/src/mob_model.rs` (`setup_wolf`), `voxel-world/src/wolf.rs`, `docs/records/client-wolf-parity-conformance.md`.
 
 ## Yapılacaklar
 1. Her aile için `setupAnim` dalı ve istemci durumu (`Fox` bayrakları, `Panda` sayaçları, kutup ayısı `standScale`).
@@ -24,7 +24,7 @@ Evcil hayvan etkileşimi (sunucu), zırh/ekipman katmanları.
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: yalnız kutup ayısı (bölündü). `setup_polar_bear` (yetişkin + bebek, ayağa kalkma), `voxel-world/src/polar_bear.rs` (kalkış sayacı, olay yok: veri bayrağı 18), `crates/voxel/src/bears.rs`. Kayıt: `docs/records/client-polar-bear-parity-conformance.md`.
+- Yapıldı: yalnız kutup ayısı (bölündü). `setup_polar_bear` (yetişkin + bebek, ayağa kalkma), `voxel-world/src/polar_bear.rs` (kalkış sayacı, olay yok: veri bayrağı 18), `crates/voxel/src/mobs/animals/bears.rs`. Kayıt: `docs/records/client-polar-bear-parity-conformance.md`.
 - Oracle: `polar-bear-model` 10, `living-entity-animations` 2 ayı, `variant-fields` +1.
 - Sapma: ayağa kalkınca çarpışma kutusu uzamıyor (mob kutusu poz taşımaz); ses yok.
 - Açık: T32e tilki, T32f panda.

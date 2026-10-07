@@ -159,7 +159,7 @@ mod tests {
         let (bamboo, offset) = state("minecraft:bamboo", &[]);
         let id = bamboo.first_state_id() + offset;
         let at = |position: [i32; 3]| {
-            crate::block_state::collision_shape_at(id, position)
+            crate::block::registry::collision_shape_at(id, position)
                 .bounds()
                 .expect("a box")
         };

@@ -1,320 +1,5 @@
 use super::*;
 
-pub(super) fn model_state_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::rotation;
-    let rows = request["rows"]
-        .as_array()
-        .ok_or("model rows must be an array")?;
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        let label = string(row, "label")?;
-        let Some(transform) = rotation::model_state_transform(
-            i32_field(row, "x")?,
-            i32_field(row, "y")?,
-            i32_field(row, "z")?,
-        ) else {
-            out.push(json!({"label": label, "outcome": "rejected"}));
-            continue;
-        };
-        let mut matrix = Vec::with_capacity(16);
-        for column in &transform {
-            for value in column {
-                matrix.push(json!(format!("{:08x}", value.to_bits())));
-            }
-        }
-        let uv_lock = row["uvlock"].as_bool().ok_or("uvlock must be a boolean")?;
-        let (x, y, z) = (
-            i32_field(row, "x")?,
-            i32_field(row, "y")?,
-            i32_field(row, "z")?,
-        );
-        let flat = |matrix: rotation::FlatMatrix| -> Vec<Value> {
-            matrix
-                .iter()
-                .map(|value| json!(format!("{:08x}", value.to_bits())))
-                .collect()
-        };
-        let mut faces = Vec::with_capacity(6);
-        for facing in [
-            voxel_core::direction::Direction::Down,
-            voxel_core::direction::Direction::Up,
-            voxel_core::direction::Direction::North,
-            voxel_core::direction::Direction::South,
-            voxel_core::direction::Direction::West,
-            voxel_core::direction::Direction::East,
-        ] {
-            let forward = rotation::face_transform(x, y, z, facing, uv_lock)
-                .ok_or("no face transform for that rotation")?;
-            let inverse = rotation::inverse_face_transform(x, y, z, facing, uv_lock)
-                .ok_or("no inverse face transform for that rotation")?;
-            faces.push(json!({
-                "face": facing.name(),
-                "forward": flat(forward),
-                "inverse": flat(inverse),
-            }));
-        }
-        out.push(json!({
-            "label": label,
-            "outcome": "resolved",
-            "transformation": matrix,
-            "faces": faces,
-        }));
-    }
-    Ok(json!({"rows": out}))
-}
-
-pub(super) fn model_uv_lock_result(request: &Value) -> Result<Value, String> {
-    use voxel_core::direction::Direction;
-    use voxel_render::rotation;
-    let rows = request["rows"]
-        .as_array()
-        .ok_or("model rows must be an array")?;
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        let facing = Direction::from_name(string(row, "facing")?).ok_or("unknown facing")?;
-        let matrix = rotation::inverse_face_transform(
-            i32_field(row, "x")?,
-            i32_field(row, "y")?,
-            i32_field(row, "z")?,
-            facing,
-            row["uvlock"].as_bool().ok_or("uvlock must be a boolean")?,
-        )
-        .ok_or("no face transform for that rotation")?;
-        let read = |name: &str| -> Result<f32, String> {
-            Ok(f32::from_bits(
-                u32::from_str_radix(string(row, name)?, 16)
-                    .map_err(|error| format!("{name}: {error}"))?,
-            ))
-        };
-        let (u, v) = rotation::transform_face_uv(&matrix, read("u")?, read("v")?);
-        out.push(json!({
-            "label": string(row, "label")?,
-            "outcome": "transformed",
-            "identity": rotation::is_flat_identity(&matrix),
-            "u": format!("{:08x}", u.to_bits()),
-            "v": format!("{:08x}", v.to_bits()),
-        }));
-    }
-    Ok(json!({"rows": out}))
-}
-
-pub(super) fn describe_variants(variants: &[voxel_render::Variant]) -> Value {
-    Value::Array(
-        variants
-            .iter()
-            .map(|variant| {
-                json!({
-                    "model": variant.model.as_string(),
-                    "x": variant.x.name(),
-                    "y": variant.y.name(),
-                    "z": variant.z.name(),
-                    "uvlock": variant.uvlock,
-                    "weight": variant.weight,
-                })
-            })
-            .collect::<Vec<_>>(),
-    )
-}
-
-pub(super) fn describe_condition(condition: &voxel_render::Condition) -> Value {
-    match condition {
-        voxel_render::Condition::KeyValue(tests) => {
-            let mut described = serde_json::Map::new();
-            for (property, terms) in tests {
-                described.insert(
-                    property.clone(),
-                    Value::Array(
-                        terms
-                            .iter()
-                            .map(|term| json!({"value": term.value, "negated": term.negated}))
-                            .collect(),
-                    ),
-                );
-            }
-            json!({"kind": "key_value", "tests": Value::Object(described)})
-        }
-        voxel_render::Condition::Combined { operation, terms } => json!({
-            "kind": "combined",
-            "operation": operation.name(),
-            "terms": terms.iter().map(describe_condition).collect::<Vec<_>>(),
-        }),
-    }
-}
-
-pub(super) fn model_blockstate_result(request: &Value) -> Result<Value, String> {
-    let rows = request["rows"]
-        .as_array()
-        .ok_or("model rows must be an array")?;
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        let label = string(row, "label")?;
-        match voxel_render::parse_block_state(string(row, "json")?) {
-            None => out.push(json!({"label": label, "outcome": "rejected"})),
-            Some(file) => {
-                let mut described = serde_json::Map::new();
-                described.insert("label".into(), json!(label));
-                described.insert("outcome".into(), json!("parsed"));
-                if let Some(variants) = &file.variants {
-                    let mut listed = serde_json::Map::new();
-                    for (key, value) in variants {
-                        listed.insert(key.clone(), describe_variants(value));
-                    }
-                    described.insert("variants".into(), Value::Object(listed));
-                }
-                if let Some(multipart) = &file.multipart {
-                    described.insert(
-                        "multipart".into(),
-                        Value::Array(
-                            multipart
-                                .iter()
-                                .map(|selector| {
-                                    let mut piece = serde_json::Map::new();
-                                    if let Some(condition) = &selector.condition {
-                                        piece.insert("when".into(), describe_condition(condition));
-                                    }
-                                    piece
-                                        .insert("apply".into(), describe_variants(&selector.apply));
-                                    Value::Object(piece)
-                                })
-                                .collect(),
-                        ),
-                    );
-                }
-                out.push(Value::Object(described));
-            }
-        }
-    }
-    Ok(json!({"rows": out}))
-}
-
-pub(super) fn model_result(request: &Value) -> Result<Value, String> {
-    if string(request, "operation")? == "nearest_direction" {
-        let rows = request["rows"]
-            .as_array()
-            .ok_or("model rows must be an array")?;
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            let read = |name: &str| -> Result<f32, String> {
-                Ok(f32::from_bits(
-                    u32::from_str_radix(string(row, name)?, 16)
-                        .map_err(|error| format!("{name}: {error}"))?,
-                ))
-            };
-            let vector = [read("x")?, read("y")?, read("z")?];
-            out.push(json!({
-                "label": string(row, "label")?,
-                "outcome": "resolved",
-                "direction": voxel_render::approximate_nearest_direction(vector).name(),
-            }));
-        }
-        return Ok(json!({"rows": out}));
-    }
-    if string(request, "operation")? == "cull_rotation" {
-        use voxel_core::direction::Direction;
-        use voxel_render::rotation;
-        let rows = request["rows"]
-            .as_array()
-            .ok_or("model rows must be an array")?;
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            let facing = Direction::from_name(string(row, "facing")?).ok_or("unknown facing")?;
-            let rotated = rotation::rotate_cull_direction(
-                i32_field(row, "x")?,
-                i32_field(row, "y")?,
-                i32_field(row, "z")?,
-                facing,
-            )
-            .ok_or("rotation must be a multiple of ninety")?;
-            out.push(json!({
-                "label": string(row, "label")?,
-                "outcome": "resolved",
-                "direction": rotated.name(),
-            }));
-        }
-        return Ok(json!({"rows": out}));
-    }
-    if string(request, "operation")? == "uv_lock" {
-        return model_uv_lock_result(request);
-    }
-    if string(request, "operation")? == "blockstate_parse" {
-        return model_blockstate_result(request);
-    }
-    if string(request, "operation")? == "model_state" {
-        return model_state_result(request);
-    }
-    if string(request, "operation")? == "parse_model" {
-        return model_parse_result(request);
-    }
-    if string(request, "operation")? == "face_uv_rotation" {
-        return model_uv_rotation_result(request);
-    }
-    if string(request, "operation")? == "euler_rotation" {
-        return model_euler_result(request);
-    }
-    if string(request, "operation")? == "quad_winding" {
-        return model_winding_result(request);
-    }
-    if string(request, "operation")? == "element_rotation" {
-        return model_rotation_result(request);
-    }
-    if string(request, "operation")? == "face_geometry" {
-        return model_geometry_result(request);
-    }
-    if string(request, "operation")? != "texture_slots" {
-        return Err("unknown model operation".into());
-    }
-    let rows = request["rows"]
-        .as_array()
-        .ok_or("model rows must be an array")?;
-    let probes = [
-        "all", "top", "bottom", "side", "north", "particle", "missing", "#all", "#top",
-    ];
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        let mut resolver = voxel_render::TextureSlotsResolver::new();
-        let chain = row["chain"].as_array().ok_or("chain must be an array")?;
-        for level in chain {
-            let slots = level.as_array().ok_or("chain level must be an array")?;
-            let mut entries = Vec::with_capacity(slots.len());
-            for slot in slots {
-                let name = string(slot, "slot")?;
-                let contents = if slot.get("raw").is_some() {
-                    voxel_render::SlotContents::parse_string(string(slot, "raw")?)
-                        .map_err(|error| format!("texture value: {error:?}"))?
-                } else {
-                    voxel_render::SlotContents::Value(voxel_render::Material {
-                        sprite: Identifier::parse(string(slot, "sprite")?)
-                            .map_err(|error| format!("sprite: {error:?}"))?,
-                        force_translucent: slot["force_translucent"]
-                            .as_bool()
-                            .ok_or("force_translucent must be a bool")?,
-                    })
-                };
-                entries.push((name.to_owned(), contents));
-            }
-            resolver.add_last(voxel_render::TextureSlotsData::from_entries(entries));
-        }
-        let resolved = resolver.resolve();
-        let mut lookups = Vec::new();
-        for probe in probes {
-            if let Some(material) = resolved.material(probe) {
-                lookups.push(json!({
-                    "probe": probe,
-                    "sprite": material.sprite.as_string(),
-                    "force_translucent": material.force_translucent,
-                }));
-            }
-        }
-        lookups.sort_by(|left, right| left["probe"].as_str().cmp(&right["probe"].as_str()));
-        out.push(json!({
-            "label": string(row, "label")?,
-            "outcome": "resolved",
-            "lookups": lookups,
-        }));
-    }
-    Ok(json!({"rows": out}))
-}
-
 pub(super) fn image_tables_result(request: &Value) -> Result<Value, String> {
     let tables = voxel_render::SrgbTables::new();
     let mut forward = String::with_capacity(256 * 4);
@@ -419,6 +104,174 @@ pub(super) fn image_transparency_result(request: &Value) -> Result<Value, String
                 }));
             }
         }
+    }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn image_texture_metadata_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let parsed =
+            voxel_core::json::parse(string(row, "json")?)
+                .ok()
+                .and_then(|value| match value {
+                    voxel_core::json::JsonValue::Object(object) => {
+                        voxel_render::TextureMetadata::parse(&object)
+                    }
+                    _ => None,
+                });
+        match parsed {
+            None => out.push(json!({"label": label, "outcome": "rejected"})),
+            Some(metadata) => out.push(json!({
+                "label": label,
+                "outcome": "parsed",
+                "blur": metadata.blur,
+                "clamp": metadata.clamp,
+                "strategy": metadata.mipmap_strategy.name(),
+                "bias": format!("{:08x}", metadata.alpha_cutoff_bias.to_bits()),
+            })),
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn image_sprite_uv_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let width = i32_field(row, "width")?;
+        let height = i32_field(row, "height")?;
+        let placement = voxel_render::SpritePlacement {
+            name: voxel_core::identifier::Identifier::parse("minecraft:block/parity")
+                .map_err(|_| "sprite name")?,
+            x: i32_field(row, "x")?,
+            y: i32_field(row, "y")?,
+            padding: i32_field(row, "padding")?,
+        };
+        let sprite = voxel_render::AtlasSprite::new(
+            &placement,
+            width,
+            height,
+            i32_field(row, "atlas_width")?,
+            i32_field(row, "atlas_height")?,
+        );
+        let mut interpolated = Vec::new();
+        for offset in row["offsets"]
+            .as_array()
+            .ok_or("offsets must be an array")?
+        {
+            let bits = u32::from_str_radix(offset.as_str().ok_or("offset must be a string")?, 16)
+                .map_err(|error| format!("offset: {error}"))?;
+            let offset = f32::from_bits(bits);
+            interpolated.push(json!({
+                "u": format!("{:08x}", sprite.u(offset).to_bits()),
+                "v": format!("{:08x}", sprite.v(offset).to_bits()),
+            }));
+        }
+        out.push(json!({
+            "label": label,
+            "outcome": "placed",
+            "x": sprite.x,
+            "y": sprite.y,
+            "u0": format!("{:08x}", sprite.u0.to_bits()),
+            "u1": format!("{:08x}", sprite.u1.to_bits()),
+            "v0": format!("{:08x}", sprite.v0.to_bits()),
+            "v1": format!("{:08x}", sprite.v1.to_bits()),
+            "interpolated": interpolated,
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn image_colour_map_result(request: &Value) -> Result<Value, String> {
+    let bytes = hex_bytes(string(request, "colour_map")?)?;
+    let map = voxel_render::decode_rgba(&bytes).map_err(|_| "colour map did not decode")?;
+    // The reference reads the map as packed colours, not as bytes.
+    let pixels: Vec<u32> = map
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|texel| {
+            (u32::from(texel[3]) << 24)
+                | (u32::from(texel[0]) << 16)
+                | (u32::from(texel[1]) << 8)
+                | u32::from(texel[2])
+        })
+        .collect();
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = string(row, "label")?;
+        let kind = match string(row, "kind")? {
+            "grass" => voxel_render::ColourMap::Grass,
+            "foliage" => voxel_render::ColourMap::Foliage,
+            "dry_foliage" => voxel_render::ColourMap::DryFoliage,
+            other => return Err(format!("unknown colour map kind: {other}")),
+        };
+        let read = |name: &str| -> Result<f64, String> {
+            let bits = u64::from_str_radix(string(row, name)?, 16)
+                .map_err(|error| format!("{name}: {error}"))?;
+            Ok(f64::from_bits(bits))
+        };
+        match voxel_render::colour_map_lookup(kind, &pixels, read("temperature")?, read("rain")?) {
+            Err(_) => out.push(json!({"label": label, "outcome": "out_of_bounds"})),
+            Ok(colour) => out.push(json!({
+                "label": label,
+                "outcome": "resolved",
+                "colour": format!("{colour:08x}"),
+            })),
+        }
+    }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn image_argb_multiply_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let read = |name: &str| -> Result<u32, String> {
+            u32::from_str_radix(string(row, name)?, 16).map_err(|error| format!("{name}: {error}"))
+        };
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "multiplied",
+            "colour": format!("{:08x}", voxel_render::multiply(read("lhs")?, read("rhs")?)),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn image_tint_constants_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("image rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "listed",
+            "values": {
+                "foliage_default": format!("{:08x}", voxel_render::ColourMap::Foliage.default_colour()),
+                "foliage_evergreen": format!("{:08x}", voxel_render::constant_tints("minecraft:spruce_leaves")[0]),
+                "foliage_birch": format!("{:08x}", voxel_render::constant_tints("minecraft:birch_leaves")[0]),
+                "foliage_mangrove": format!("{:08x}", voxel_render::FOLIAGE_MANGROVE),
+                "dry_foliage_default": format!("{:08x}", voxel_render::ColourMap::DryFoliage.default_colour()),
+                "lily_pad_in_hand": format!("{:08x}", voxel_render::constant_tints("minecraft:lily_pad")[0]),
+                "lily_pad_in_world": format!("{:08x}", voxel_render::LILY_PAD_IN_WORLD),
+            },
+        }));
     }
     Ok(json!({"rows": out}))
 }

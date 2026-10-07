@@ -27,104 +27,29 @@ use super::entities;
 use super::protocol::*;
 use super::session::*;
 
+mod observe;
+pub(crate) use observe::*;
+mod open;
+pub(crate) use open::*;
+mod mode;
+use mode::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PlayProbeConfig {
-    action: ProbeAction,
-    select_known_packs: bool,
-    use_item_on_delay: Duration,
-    movement_yaws: Option<&'static [i16]>,
-    movement_pause: Duration,
-    movement_hold: Duration,
-    observe_player_interpolation: bool,
-    observe_player_position_snap: bool,
-    observe_player_motion: bool,
-    drain_timeout_override: Option<Duration>,
-}
-
-impl PlayProbeConfig {
-    const fn new(action: ProbeAction) -> Self {
-        Self {
-            action,
-            select_known_packs: true,
-            use_item_on_delay: Duration::ZERO,
-            movement_yaws: None,
-            movement_pause: Duration::ZERO,
-            movement_hold: Duration::ZERO,
-            observe_player_interpolation: false,
-            observe_player_position_snap: false,
-            observe_player_motion: false,
-            drain_timeout_override: None,
-        }
-    }
-
-    const fn without_known_packs(action: ProbeAction) -> Self {
-        Self {
-            action,
-            select_known_packs: false,
-            use_item_on_delay: Duration::ZERO,
-            movement_yaws: None,
-            movement_pause: Duration::ZERO,
-            movement_hold: Duration::ZERO,
-            observe_player_interpolation: false,
-            observe_player_position_snap: false,
-            observe_player_motion: false,
-            drain_timeout_override: None,
-        }
-    }
-
-    const fn with_use_item_on_delay(action: ProbeAction, delay: Duration) -> Self {
-        Self {
-            action,
-            select_known_packs: true,
-            use_item_on_delay: delay,
-            movement_yaws: None,
-            movement_pause: Duration::ZERO,
-            movement_hold: Duration::ZERO,
-            observe_player_interpolation: false,
-            observe_player_position_snap: false,
-            observe_player_motion: false,
-            drain_timeout_override: None,
-        }
-    }
-
-    const fn with_movement_yaws(mut self, yaws: &'static [i16]) -> Self {
-        self.movement_yaws = Some(yaws);
-        self
-    }
-
-    const fn with_movement_pause(mut self, pause: Duration) -> Self {
-        self.movement_pause = pause;
-        self
-    }
-
-    const fn with_movement_hold(mut self, hold: Duration) -> Self {
-        self.movement_hold = hold;
-        self
-    }
-
-    const fn with_player_interpolation_observation(mut self) -> Self {
-        self.observe_player_interpolation = true;
-        self
-    }
-
-    const fn with_player_position_snap_observation(mut self) -> Self {
-        self.observe_player_position_snap = true;
-        self
-    }
-
-    const fn with_player_motion_observation(mut self) -> Self {
-        self.observe_player_motion = true;
-        self
-    }
-
-    const fn with_drain_timeout(mut self, timeout: Duration) -> Self {
-        self.drain_timeout_override = Some(timeout);
-        self
-    }
+pub(super) struct PlayProbeConfig {
+    pub(super) action: ProbeAction,
+    pub(super) select_known_packs: bool,
+    pub(super) use_item_on_delay: Duration,
+    pub(super) movement_yaws: Option<&'static [i16]>,
+    pub(super) movement_pause: Duration,
+    pub(super) movement_hold: Duration,
+    pub(super) observe_player_interpolation: bool,
+    pub(super) observe_player_position_snap: bool,
+    pub(super) observe_player_motion: bool,
+    pub(super) drain_timeout_override: Option<Duration>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ProbeAction {
+pub(super) enum ProbeAction {
     Basic,
     Movement,
     WorldChunkUnload,
@@ -198,15 +123,101 @@ enum ProbeAction {
     SurvivalSpawnProtection,
 }
 
-mod remote;
-pub use remote::*;
-mod use_ops;
-pub use use_ops::*;
-mod survival;
-pub use survival::*;
-mod observe;
-pub(crate) use observe::*;
-mod play;
-pub(crate) use play::*;
-mod mode;
-use mode::*;
+impl PlayProbeConfig {
+    pub(super) const fn new(action: ProbeAction) -> Self {
+        Self {
+            action,
+            select_known_packs: true,
+            use_item_on_delay: Duration::ZERO,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
+            observe_player_position_snap: false,
+            observe_player_motion: false,
+            drain_timeout_override: None,
+        }
+    }
+
+    pub(super) const fn without_known_packs(action: ProbeAction) -> Self {
+        Self {
+            action,
+            select_known_packs: false,
+            use_item_on_delay: Duration::ZERO,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
+            observe_player_position_snap: false,
+            observe_player_motion: false,
+            drain_timeout_override: None,
+        }
+    }
+
+    pub(super) const fn with_use_item_on_delay(action: ProbeAction, delay: Duration) -> Self {
+        Self {
+            action,
+            select_known_packs: true,
+            use_item_on_delay: delay,
+            movement_yaws: None,
+            movement_pause: Duration::ZERO,
+            movement_hold: Duration::ZERO,
+            observe_player_interpolation: false,
+            observe_player_position_snap: false,
+            observe_player_motion: false,
+            drain_timeout_override: None,
+        }
+    }
+
+    pub(super) const fn with_movement_yaws(mut self, yaws: &'static [i16]) -> Self {
+        self.movement_yaws = Some(yaws);
+        self
+    }
+
+    pub(super) const fn with_movement_pause(mut self, pause: Duration) -> Self {
+        self.movement_pause = pause;
+        self
+    }
+
+    pub(super) const fn with_movement_hold(mut self, hold: Duration) -> Self {
+        self.movement_hold = hold;
+        self
+    }
+
+    pub(super) const fn with_player_interpolation_observation(mut self) -> Self {
+        self.observe_player_interpolation = true;
+        self
+    }
+
+    pub(super) const fn with_player_position_snap_observation(mut self) -> Self {
+        self.observe_player_position_snap = true;
+        self
+    }
+
+    pub(super) const fn with_player_motion_observation(mut self) -> Self {
+        self.observe_player_motion = true;
+        self
+    }
+
+    pub(super) const fn with_drain_timeout(mut self, timeout: Duration) -> Self {
+        self.drain_timeout_override = Some(timeout);
+        self
+    }
+}
+
+mod breaking;
+pub use breaking::*;
+mod containers;
+pub use containers::*;
+mod entity_updates;
+pub use entity_updates::*;
+mod inventory;
+pub use inventory::*;
+mod items;
+pub use items::*;
+mod projectiles;
+pub use projectiles::*;
+mod remote_player;
+pub use remote_player::*;
+mod world;
+pub use world::*;

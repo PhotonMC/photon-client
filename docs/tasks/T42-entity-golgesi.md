@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/EntityRenderDispatcher.java`, `client/renderer/entity/EntityRenderer.java`.
-- Rust: `crates/voxel/src/mobs.rs`, `overlays.rs` (çizim listeleri), `crates/voxel-render/src/vulkan.rs` (`TextTranslucent` boru hattı, T25b), `crates/voxel-render/src/xp_orb.rs` (yarı saydam dörtgen kalıbı), `crates/voxel-world/src/collision.rs` (zemin taraması için blok kutuları).
+- Rust: `crates/voxel/src/mobs.rs`, `overlays.rs` (çizim listeleri), `crates/voxel-render/src/vulkan.rs` (`TextTranslucent` boru hattı, T25b), `crates/voxel-render/src/objects/xp_orb.rs` (yarı saydam dörtgen kalıbı), `crates/voxel-world/src/collision.rs` (zemin taraması için blok kutuları).
 
 ## Yapılacaklar
 1. `EntityRenderDispatcher.extractShadowPieces` kuralları: yarıçap tablosu (tür başına `shadowRadius`, bebek ölçeği), zemin taraması (en çok kaç blok aşağı), kutu kesişimi ve alfa.

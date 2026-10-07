@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/monster/warden/Warden.java`, `client/model/monster/warden/WardenModel.java`, `client/renderer/entity/{WardenRenderer,state/WardenRenderState}.java`, `layers/LivingEntityEmissiveLayer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`animate`, `setup_*`), `crates/voxel-world/src/animation_state.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`animate`, `setup_*`), `crates/voxel-world/src/animation_state.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

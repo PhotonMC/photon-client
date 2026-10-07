@@ -2,7 +2,7 @@ use super::*;
 
 /// `item_frame_pose`: the poses an item frame's model and the item in it are drawn from.
 pub(super) fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::item_frame::item_frame_poses;
+    use voxel_render::objects::item_frame::item_frame_poses;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -33,7 +33,7 @@ pub(super) fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
             } else {
                 i32_field(row, "light")?
             };
-            for quad in voxel_render::map::map_quads(&poses.map, &[], true) {
+            for quad in voxel_render::objects::map::map_quads(&poses.map, &[], true) {
                 for (corner, uv) in quad.corners.iter().zip(quad.uvs) {
                     map_vertices.push(json!(format!(
                         "{:08x}{:08x}{:08x},{:08x}{:08x},-1,{light}",
@@ -58,8 +58,8 @@ pub(super) fn item_frame_pose_result(request: &Value) -> Result<Value, String> {
 
 /// `display_pose`: the pose (and its normal matrix) a display's block or item is drawn from.
 pub(super) fn display_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::display::{DisplayTurns, display_pose, item_display_pose};
-    use voxel_world::display::{Billboard, Transformation};
+    use voxel_render::objects::display::{DisplayTurns, display_pose, item_display_pose};
+    use voxel_world::objects::display::{Billboard, Transformation};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let float = |value: &Value| -> Result<f32, String> {
@@ -119,7 +119,7 @@ pub(super) fn display_light_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         let brightness = i32_field(row, "brightness")?;
         // Only an override is asked, so the world's light does not show.
-        let light = voxel_render::display::displayed_light(0, brightness);
+        let light = voxel_render::objects::display::displayed_light(0, brightness);
         out.push(json!({"label": row["label"], "light": light}));
     }
     Ok(json!({"rows": out}))
@@ -127,8 +127,8 @@ pub(super) fn display_light_result(request: &Value) -> Result<Value, String> {
 
 /// `text_display_submit`: what a text display submits for lines of given widths.
 pub(super) fn text_display_submit_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::display::{DisplayTurns, display_pose, text_submit};
-    use voxel_world::display::{Billboard, Transformation};
+    use voxel_render::objects::display::{DisplayTurns, display_pose, text_submit};
+    use voxel_world::objects::display::{Billboard, Transformation};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let bits = |key: &str| -> Result<f32, String> {
@@ -211,7 +211,7 @@ pub(super) fn text_display_submit_result(request: &Value) -> Result<Value, Strin
 
 /// `map_render`: the quads a map and its decorations are drawn with.
 pub(super) fn map_render_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::map::{DecorationDraw, Sheet, map_quads};
+    use voxel_render::objects::map::{DecorationDraw, Sheet, map_quads};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let float = |value: &Value| -> Result<f32, String> {
@@ -269,7 +269,7 @@ pub(super) fn map_render_result(request: &Value) -> Result<Value, String> {
 
 /// `item_foil`: whether a stack has the enchantment glint, from the component patch it carries.
 pub(super) fn item_foil_result(request: &Value) -> Result<Value, String> {
-    use voxel_game::item_values::Values;
+    use voxel_game::item::values::Values;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         if row.get("all").is_some() {
@@ -295,7 +295,7 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         let item = voxel_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
         let patch = hex_bytes(string(row, "patch")?)?;
-        let found = voxel_game::item_values::equippable_of(item as i32, &patch);
+        let found = voxel_game::item::values::equippable_of(item as i32, &patch);
         out.push(json!({
             "label": row["label"],
             "slot": found.as_ref().map_or("none", |found| found.slot),
@@ -338,7 +338,7 @@ pub(super) fn glint_layers_result(request: &Value) -> Result<Value, String> {
 
 /// `chest_model`: a chest's model with its lid at an eased opening.
 pub(super) fn chest_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::MobModel;
+    use voxel_render::entity::mob_model::MobModel;
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let id = row["layer"].as_str().ok_or("layer")?;
@@ -356,7 +356,7 @@ pub(super) fn chest_model_result(request: &Value) -> Result<Value, String> {
 
 /// `chest_pose`: where, with what lid, light and texture a chest is drawn.
 pub(super) fn chest_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
+    use voxel_render::block_entity::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
     use voxel_render::joml::Pose;
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -396,9 +396,9 @@ pub(super) fn chest_pose_result(request: &Value) -> Result<Value, String> {
 
 /// `shulker_box_pose`: where, with what lid, light and texture a shulker box is drawn.
 pub(super) fn shulker_box_pose_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::block_entity::shulker_box::{LAYER, box_pose, texture};
+    use voxel_render::entity::mob_model::MobModel;
     use voxel_render::joml::Pose;
-    use voxel_render::mob_model::MobModel;
-    use voxel_render::shulker_box::{LAYER, box_pose, texture};
     let layer = voxel_data::entity_model::layer(LAYER).ok_or("no such layer")?;
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {

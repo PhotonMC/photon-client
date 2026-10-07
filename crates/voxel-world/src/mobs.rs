@@ -1,0 +1,29 @@
+//! Per-species state of the mobs the client keeps: what the server syncs of each and what the client works out from it.
+
+pub mod allay;
+pub mod animal;
+pub mod armadillo;
+pub mod axolotl;
+pub mod bat;
+pub mod breeze;
+pub mod cat;
+pub mod copper_golem;
+pub mod creaking;
+pub mod cube_mob;
+pub mod ender_dragon;
+pub mod fish;
+pub mod fox;
+pub mod frog;
+pub mod guardian;
+pub mod horse;
+pub mod panda;
+pub mod parrot;
+pub mod polar_bear;
+pub mod rabbit;
+pub mod ravager;
+pub mod shulker;
+pub mod sniffer;
+pub mod squid;
+pub mod warden;
+pub mod wither;
+pub mod wolf;

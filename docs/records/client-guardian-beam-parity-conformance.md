@@ -24,7 +24,7 @@ gözlem `server-conformance`.
 ## Kapsam
 
 `entity/guardian-beam` 14 satır (her eksen boyunca ve eğik, kısa ve uzun, hedefe oturmuş ve sıfır uzunluk,
-saldırının başı, tek tik, dolu, elder süresi, kayık göz, uzak). Çizim (`crates/voxel/src/guardians.rs`) canlı
+saldırının başı, tek tik, dolu, elder süresi, kayık göz, uzak). Çizim (`crates/voxel/src/mobs/aquatic/guardians.rs`) canlı
 gözlenmedi.
 
 ## Sapmalar (açık)

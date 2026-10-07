@@ -3,8 +3,10 @@ use super::*;
 /// `name_tags`: a remote player's name tag, whether it shows and what is
 /// submitted for it, with the viewer the scene names.
 pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::entity::name_tag::{
+        DisplayMode, Viewer, camera_orientation, name_tag, submits,
+    };
     use voxel_render::gui::font::Font;
-    use voxel_render::name_tag::{DisplayMode, Viewer, camera_orientation, name_tag, submits};
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets");
     let font = Font::load(&root).ok_or("font")?;
@@ -171,7 +173,7 @@ pub(super) fn entity_shadows_result(request: &Value) -> Result<Value, String> {
             .collect();
         let vertices: Vec<Value> = pieces
             .iter()
-            .flat_map(|piece| voxel_render::shadow::corners(piece, radius, translation))
+            .flat_map(|piece| voxel_render::entity::shadow::corners(piece, radius, translation))
             .map(|corner| {
                 json!({
                     "x": hex(corner.position[0]),

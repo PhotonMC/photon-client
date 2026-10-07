@@ -1,8 +1,8 @@
 //! The trading screen (`MerchantScreen`): the list of offers with its scroller, what each offer
 //! asks and gives, the merchant's experience bar, and the buttons that choose a trade.
 
-use voxel_game::container_menu::ContainerMenu;
-use voxel_game::merchant::{MerchantOffer, can_level_up, level_xp_range};
+use voxel_game::menus::container::ContainerMenu;
+use voxel_game::menus::merchant::{MerchantOffer, can_level_up, level_xp_range};
 use voxel_world::ClientItemStackState as Stack;
 
 use super::{ScreenAction, ScreenDraw};
@@ -359,13 +359,13 @@ impl MerchantPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use voxel_game::container_menu::MenuKind;
+    use voxel_game::menus::container::MenuKind;
 
     fn menu(offers: usize) -> ContainerMenu {
         let mut menu = ContainerMenu::for_menu(MenuKind::Merchant, 3, Vec::new(), None, 0);
         let item = voxel_game::item::id_of("minecraft:emerald").unwrap();
-        let offer = voxel_game::merchant::MerchantOffer {
-            cost_a: voxel_game::merchant::ItemCost {
+        let offer = voxel_game::menus::merchant::MerchantOffer {
+            cost_a: voxel_game::menus::merchant::ItemCost {
                 item,
                 count: 1,
                 components: Vec::new(),

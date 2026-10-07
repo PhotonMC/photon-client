@@ -4,8 +4,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::atlas::{AtlasSprite, SpriteEntry, Stitcher};
-use crate::png::DecodedImage;
+use crate::texture::atlas::{AtlasSprite, SpriteEntry, Stitcher};
+use crate::texture::png::DecodedImage;
 use voxel_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
@@ -130,7 +130,7 @@ impl GuiAtlas {
         }
         for name in sprite_names(assets_root) {
             let path = assets_root.join(format!("minecraft/textures/gui/sprites/{name}.png"));
-            let image = crate::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+            let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,
                 height: image.height as i32,
@@ -140,7 +140,7 @@ impl GuiAtlas {
         }
         for name in WHOLE_TEXTURES {
             let path = assets_root.join(format!("minecraft/textures/gui/{name}.png"));
-            let image = crate::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+            let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
             let key = format!("minecraft:texture/{name}");
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,
@@ -153,7 +153,7 @@ impl GuiAtlas {
         // piece of.
         for name in banner_texture_names(assets_root) {
             let path = assets_root.join(format!("minecraft/textures/entity/banner/{name}.png"));
-            let image = crate::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+            let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
             let key = format!("minecraft:banner/{name}");
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,

@@ -13,7 +13,7 @@ use std::path::Path;
 
 use voxel_core::json::{JsonObject, JsonValue};
 
-use crate::png::DecodedImage;
+use crate::texture::png::DecodedImage;
 
 /// One bitmap glyph: where its cell is in its provider's image, and how it
 /// is placed.
@@ -121,7 +121,7 @@ impl Font {
         let file = provider.text("file")?;
         let file = file.as_str();
         let (namespace, path) = file.split_once(':').unwrap_or(("minecraft", file));
-        let image = crate::png::decode_rgba(
+        let image = crate::texture::png::decode_rgba(
             &std::fs::read(root.join(format!("{namespace}/textures/{path}"))).ok()?,
         )
         .ok()?;

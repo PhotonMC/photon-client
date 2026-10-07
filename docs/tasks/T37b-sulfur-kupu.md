@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/monster/cubemob/SulfurCube.java`, `client/model/monster/slime/{SulfurCubeModel,SmallSulfurCubeModel}.java`, `client/renderer/entity/{SulfurCubeRenderer,TntRenderer,layers/SulfurCubeInnerLayer}.java`.
-- Rust: `crates/voxel/src/cube_mobs.rs`, `crates/voxel-world/src/cube_mob.rs`, `crates/voxel-render/src/mob_model.rs` (`CubeMobScale`).
+- Rust: `crates/voxel/src/mobs/monsters/cube_mobs.rs`, `crates/voxel-world/src/mobs/cube_mob.rs`, `crates/voxel-render/src/entity/mob_model.rs` (`CubeMobScale`).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

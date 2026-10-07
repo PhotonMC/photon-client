@@ -11,93 +11,6 @@ pub(crate) fn inventory_component_spec(
         .find(|spec| spec.component_path == component_path)
 }
 
-pub(crate) fn encode_move_player_pos_rot(
-    output: &mut Vec<u8>,
-    position: (f64, f64, f64, f32, f32),
-    flags: u8,
-) -> Result<(), ConnectionError> {
-    output.extend_from_slice(&position.0.to_be_bytes());
-    output.extend_from_slice(&position.1.to_be_bytes());
-    output.extend_from_slice(&position.2.to_be_bytes());
-    output.extend_from_slice(&position.3.to_be_bytes());
-    output.extend_from_slice(&position.4.to_be_bytes());
-    output.push(flags);
-    Ok(())
-}
-
-pub(crate) fn encode_perform_respawn(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
-    output.push(0);
-    Ok(())
-}
-
-pub(crate) fn encode_abort_destroy_block(
-    output: &mut Vec<u8>,
-    position: (i32, i32, i32),
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    encode_player_action(output, 1, position, 0, sequence)
-}
-
-pub(crate) fn encode_start_destroy_block(
-    output: &mut Vec<u8>,
-    position: (i32, i32, i32),
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    encode_player_action(output, 0, position, 1, sequence)
-}
-
-pub(crate) fn encode_stop_destroy_block(
-    output: &mut Vec<u8>,
-    position: (i32, i32, i32),
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    encode_player_action(output, 2, position, 1, sequence)
-}
-
-pub(crate) fn encode_release_use_item(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
-    encode_player_action(output, 5, (0, 0, 0), 0, 0)
-}
-
-pub(crate) fn encode_use_item_on(
-    output: &mut Vec<u8>,
-    position: (i32, i32, i32),
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    encode_use_item_on_hit(output, position, 1, (0.5, 1.0, 0.5), sequence)
-}
-
-pub(crate) fn encode_use_item(
-    output: &mut Vec<u8>,
-    sequence: i32,
-    y_rot: f32,
-    x_rot: f32,
-) -> Result<(), ConnectionError> {
-    wire::write_varint(0, output);
-    wire::write_varint(sequence, output);
-    output.extend_from_slice(&y_rot.to_be_bytes());
-    output.extend_from_slice(&x_rot.to_be_bytes());
-    Ok(())
-}
-
-pub(crate) fn encode_use_item_on_hit(
-    output: &mut Vec<u8>,
-    position: (i32, i32, i32),
-    direction: u8,
-    click: (f32, f32, f32),
-    sequence: i32,
-) -> Result<(), ConnectionError> {
-    wire::write_varint(0, output);
-    output.extend_from_slice(&pack_block_position(position).to_be_bytes());
-    wire::write_varint(i32::from(direction), output);
-    output.extend_from_slice(&click.0.to_be_bytes());
-    output.extend_from_slice(&click.1.to_be_bytes());
-    output.extend_from_slice(&click.2.to_be_bytes());
-    output.push(0);
-    output.push(0);
-    wire::write_varint(sequence, output);
-    Ok(())
-}
-
 pub(crate) fn encode_creative_stone_slot(
     output: &mut Vec<u8>,
     slot: i16,
@@ -442,4 +355,31 @@ pub(crate) fn encode_inventory_swap_state_correction(
     wire::write_varint(0, output);
     output.push(0);
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InventoryComponentCodec {
+    VarInt,
+    RegistryId,
+    Unit,
+    Float,
+    Byte,
+    Int,
+    Identifier,
+    UseEffects,
+    CustomModelData,
+    Food,
+    Tool,
+    Weapon,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct InventoryComponentProbeSpec {
+    pub(crate) component_path: &'static str,
+    pub(crate) component_type_id: i32,
+    pub(crate) codec: InventoryComponentCodec,
+    pub(crate) component_hash: i32,
+    pub(crate) item_registry_id: i32,
+    pub(crate) expected_positive_component_type_ids: &'static [i32],
+    pub(crate) carried_components: &'static [(i32, i32)],
 }

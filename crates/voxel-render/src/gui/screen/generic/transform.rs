@@ -8,8 +8,8 @@
 use std::time::Instant;
 
 use super::{GenericScreen, GuiBlend, KeyResult, MenuKind, ScreenAction, ScreenDraw};
-use crate::gui::edit_box::{Clipboard, EditBox, edit_key};
-use voxel_game::container_menu::ContainerMenu;
+use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
+use voxel_game::menus::container::ContainerMenu;
 
 /// Where a slot sits in the image, for the menus this module knows; `None`
 /// for the rest.
@@ -328,6 +328,6 @@ fn brewing_progress(
     }
 }
 
-mod generic_screen_anvil;
-mod generic_screen_name;
-mod generic_screen_stone;
+mod anvil;
+mod name;
+mod stone;

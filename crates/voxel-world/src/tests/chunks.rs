@@ -1,0 +1,383 @@
+use super::*;
+
+#[test]
+fn chunk_sections_are_queryable_with_java_local_order() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
+    world.replace_chunk(
+        -1,
+        2,
+        [SectionInput {
+            non_empty_block_count: 6,
+            fluid_count: 1,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+
+    assert_eq!(world.loaded_chunk_count(), 1);
+    assert_eq!(world.loaded_section_count(), 1);
+    assert_eq!(world.section_counts_at(-1, -4, 2), Some((6, 1)));
+    assert_eq!(world.block_state_at(-16, -64, 32), Some(11));
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(12));
+    assert_eq!(world.block_state_at(-16, -64, 33), Some(13));
+    assert_eq!(world.block_state_at(-1, -64, 47), Some(14));
+    assert_eq!(world.block_state_at(-16, -63, 32), Some(15));
+    assert_eq!(world.block_state_at(-1, -49, 47), Some(16));
+    assert_eq!(world.block_state_at(-17, -64, 32), None);
+    assert_eq!(world.biome_at(-16, -64, 32), Some(21));
+    assert_eq!(world.biome_at(-4, -64, 32), Some(22));
+    assert_eq!(world.biome_at(-16, -64, 36), Some(23));
+    assert_eq!(world.biome_at(-1, -49, 47), Some(24));
+}
+
+#[test]
+fn chunk_cache_hides_stale_slots_from_world_queries() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
+    world.configure_chunk_cache(0);
+    assert!(world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 6,
+            fluid_count: 1,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    ));
+
+    assert!(world.contains_chunk(0, 0));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(11));
+    assert_eq!(world.section_counts_at(0, -4, 0), Some((6, 1)));
+    assert_eq!(world.biome_at(0, -64, 0), Some(21));
+    assert!(world.update_block_state(0, -64, 0, 86));
+
+    world.update_chunk_cache_center(8, 0);
+    assert_eq!(world.loaded_chunk_count(), 1);
+    assert!(!world.contains_chunk(0, 0));
+    assert_eq!(world.block_state_at(0, -64, 0), None);
+    assert_eq!(world.section_counts_at(0, -4, 0), None);
+    assert_eq!(world.biome_at(0, -64, 0), None);
+    assert!(!world.update_block_state(0, -64, 0, 87));
+
+    world.update_chunk_cache_center(0, 0);
+    assert!(world.contains_chunk(0, 0));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(86));
+}
+
+#[test]
+fn server_block_update_replaces_loaded_state() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::default();
+    world.replace_chunk(
+        -1,
+        2,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(12));
+    assert!(world.update_block_state(-1, -64, 32, 86));
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(86));
+    assert!(!world.update_block_state(-17, -64, 32, 86));
+    assert!(!world.update_block_state(-1, -48, 32, 86));
+}
+
+#[test]
+fn chunk_light_stores_java_nibble_order_and_empty_sections() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::default();
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+
+    let mut sky = vec![0; 2_048];
+    sky[0] = 0xc3;
+    sky[8] = 0x05;
+    sky[128] = 0x09;
+    let mut block = vec![0; 2_048];
+    block[0] = 0xa6;
+    let application = world.apply_chunk_light(
+        0,
+        0,
+        LightUpdateInput {
+            sky: LightLayerInput {
+                mask: &BitSet::from_bits(&[1]),
+                empty_mask: &BitSet::from_bits(&[2]),
+                updates: &[sky],
+            },
+            block: LightLayerInput {
+                mask: &BitSet::from_bits(&[1]),
+                empty_mask: &BitSet::from_bits(&[2]),
+                updates: &[block],
+            },
+        },
+    );
+
+    assert_eq!(application.applied_sky_sections, 2);
+    assert_eq!(application.applied_block_sections, 2);
+    assert_eq!(application.invalid_sky_updates, 0);
+    assert_eq!(application.invalid_block_updates, 0);
+    // Nothing reaches the engine until a frame runs the queued task.
+    assert_eq!(world.sky_light_at(0, -64, 0), None);
+    world.flush_light();
+    // The filled section and its neighbours above and below hold light.
+    assert_eq!(world.loaded_light_section_count(), 3);
+    assert_eq!(world.sky_light_at(0, -64, 0), Some(3));
+    assert_eq!(world.sky_light_at(1, -64, 0), Some(12));
+    assert_eq!(world.sky_light_at(0, -64, 1), Some(5));
+    assert_eq!(world.sky_light_at(0, -63, 0), Some(9));
+    assert_eq!(world.block_light_at(0, -64, 0), Some(6));
+    assert_eq!(world.block_light_at(1, -64, 0), Some(10));
+    assert_eq!(world.sky_light_at(0, -48, 0), Some(0));
+    assert_eq!(world.block_light_at(0, -48, 0), Some(0));
+
+    assert!(world.unload_chunk(0, 0));
+    world.flush_light();
+    assert_eq!(world.sky_light_at(0, -64, 0), None);
+    assert_eq!(world.loaded_light_section_count(), 0);
+}
+
+#[test]
+fn light_updates_for_unloaded_chunks_stay_queued_in_the_engine() {
+    let mut world = ClientWorld::default();
+    let (first, second) = (vec![sky_update(0x05)], vec![sky_update(0x0a)]);
+    assert!(world.apply_light_updates(3, -2, sky_only(&first)).queued);
+    assert!(world.apply_light_updates(3, -2, sky_only(&second)).queued);
+    assert_eq!(world.pending_light_update_count(), 2);
+    assert_eq!(world.sky_light_at(48, -64, -32), None);
+
+    // The later layer replaces the earlier one in the engine's queue, which
+    // the getters read before any section stores it.
+    world.flush_light();
+    assert_eq!(world.pending_light_update_count(), 0);
+    assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
+
+    let (blocks, biomes) = section(0, 0);
+    world.replace_chunk(
+        3,
+        -2,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    assert_eq!(world.sky_light_at(48, -64, -32), Some(10));
+    assert_eq!(world.loaded_light_section_count(), 0);
+}
+
+#[test]
+fn unloading_a_chunk_removes_its_queued_light() {
+    let mut world = ClientWorld::default();
+    let (blocks, biomes) = section(0, 0);
+    world.replace_chunk(
+        3,
+        -2,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    let sky = vec![sky_update(0x0f)];
+    world.apply_light_updates(3, -2, sky_only(&sky));
+    assert!(world.unload_chunk(3, -2));
+    assert_eq!(world.pending_light_update_count(), 2);
+    world.flush_light();
+    assert_eq!(world.sky_light_at(48, -64, -32), None);
+}
+
+#[test]
+fn block_entities_are_queryable_and_removed_with_their_chunk() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::default();
+    world.replace_chunk(
+        -1,
+        2,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    let tag = [10, 0];
+
+    assert_eq!(
+        world.apply_block_entities(
+            -1,
+            2,
+            [BlockEntityInput {
+                x: -1,
+                y: -63,
+                z: 32,
+                type_id: 7,
+                tag: Some(&tag),
+            }],
+        ),
+        1
+    );
+    assert_eq!(world.loaded_block_entity_count(), 1);
+    assert_eq!(
+        world.block_entity_at(-1, -63, 32),
+        Some(&crate::ClientBlockEntity {
+            type_id: 7,
+            tag: Some(tag.to_vec()),
+            spawner_state: None,
+        })
+    );
+
+    let replacement = [10, 0, 0];
+    assert!(world.apply_block_entity_update(BlockEntityInput {
+        x: -1,
+        y: -63,
+        z: 32,
+        type_id: 8,
+        tag: Some(&replacement),
+    }));
+    assert_eq!(world.block_entity_at(-1, -63, 32).unwrap().type_id, 8);
+    assert_eq!(
+        world.block_entity_at(-1, -63, 32).unwrap().tag,
+        Some(replacement.to_vec())
+    );
+    assert!(world.unload_chunk(-1, 2));
+    assert_eq!(world.loaded_block_entity_count(), 0);
+    assert_eq!(world.block_entity_at(-1, -63, 32), None);
+}
+
+#[test]
+fn replacing_and_unloading_a_chunk_updates_the_section_cache() {
+    let (first_blocks, first_biomes) = section(7, 8);
+    let (mut second_blocks, mut second_biomes) = section(17, 18);
+    second_blocks[0] = 31;
+    second_biomes[0] = 32;
+    let mut world = ClientWorld::default();
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &first_blocks,
+            biomes: &first_biomes,
+        }],
+    );
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 2,
+            fluid_count: 0,
+            block_states: &second_blocks,
+            biomes: &second_biomes,
+        }],
+    );
+
+    assert_eq!(world.loaded_chunk_count(), 1);
+    assert_eq!(world.loaded_section_count(), 1);
+    assert_eq!(world.block_state_at(0, -64, 0), Some(31));
+    assert_eq!(world.biome_at(0, -64, 0), Some(32));
+    assert!(world.unload_chunk(0, 0));
+    assert!(!world.contains_chunk(0, 0));
+    assert_eq!(world.loaded_section_count(), 0);
+    assert_eq!(world.block_state_at(0, -64, 0), None);
+    assert!(!world.unload_chunk(0, 0));
+}
+
+#[test]
+fn client_world_applies_block_update_tags_to_state_registry() {
+    let mut world = ClientWorld::default();
+    let packet = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+        Identifier::parse("minecraft:block").unwrap(),
+        vec![
+            TagEntry::new(
+                Identifier::parse("minecraft:climbable").unwrap(),
+                vec![221, 366],
+            ),
+            TagEntry::new(
+                Identifier::parse("minecraft:can_glide_through").unwrap(),
+                vec![366],
+            ),
+        ],
+    )]);
+
+    world.apply_update_tags_packet(&packet);
+    assert!(world.block_state_registry().is_climbable_state(5720));
+    assert!(world.block_state_registry().is_climbable_state(8389));
+    assert!(world.block_state_registry().is_glide_through_state(8389));
+    assert!(!world.block_state_registry().is_glide_through_state(5720));
+
+    let replacement = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+        Identifier::parse("minecraft:block").unwrap(),
+        vec![TagEntry::new(
+            Identifier::parse("minecraft:climbable").unwrap(),
+            vec![221],
+        )],
+    )]);
+    world.apply_update_tags_packet(&replacement);
+    assert!(world.block_state_registry().is_climbable_state(5720));
+    assert!(!world.block_state_registry().is_climbable_state(8389));
+    assert!(!world.block_state_registry().is_glide_through_state(8389));
+}
+
+#[test]
+fn client_world_updates_stair_shape_from_loaded_neighbors() {
+    let mut target_blocks = vec![0; 4_096];
+    target_blocks[0] = 3918;
+    let mut north_blocks = vec![0; 4_096];
+    north_blocks[15 * 16] = 3958;
+    let biomes = vec![0; 64];
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &target_blocks,
+            biomes: &biomes,
+        }],
+    );
+    world.replace_chunk(
+        0,
+        -1,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &north_blocks,
+            biomes: &biomes,
+        }],
+    );
+
+    assert!(world.apply_stair_neighbor_shape_update(0, 0, 0));
+    assert_eq!(world.block_state_at(0, 0, 0), Some(3924));
+    assert_eq!(
+        world.block_state_registry().stair_shape_name(3924),
+        Some("outer_left")
+    );
+    assert_eq!(
+        world
+            .block_state_registry()
+            .collision_shape(3924)
+            .to_aabbs(),
+        vec![
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+            Aabb::new(0.0, 0.5, 0.0, 0.5, 1.0, 0.5),
+        ]
+    );
+}

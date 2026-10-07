@@ -120,10 +120,10 @@ pub(super) fn load_world(
         },
         // This older snapshot path draws every biome as plains.
         |kind, _| match kind {
-            voxel_render::biome_tint::TintKind::Grass => 0xFF91_BD59,
-            voxel_render::biome_tint::TintKind::Foliage => 0xFF77_AB2F,
-            voxel_render::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
-            voxel_render::biome_tint::TintKind::Water => 0xFF3F_76E4,
+            voxel_render::block::biome_tint::TintKind::Grass => 0xFF91_BD59,
+            voxel_render::block::biome_tint::TintKind::Foliage => 0xFF77_AB2F,
+            voxel_render::block::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
+            voxel_render::block::biome_tint::TintKind::Water => 0xFF3F_76E4,
         },
         origin,
         size,

@@ -171,8 +171,8 @@ impl TextureSlots {
     }
 }
 
-use crate::geometry::{FaceUvs, Quadrant};
-use crate::rotation::{Matrix4, RotationAxis, element_transform, euler_element_transform};
+use crate::block::geometry::{FaceUvs, Quadrant};
+use crate::block::rotation::{Matrix4, RotationAxis, element_transform, euler_element_transform};
 use voxel_core::direction::Direction;
 use voxel_core::json::{JsonObject, JsonValue};
 

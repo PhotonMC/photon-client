@@ -11,7 +11,7 @@ use voxel_audio::mixer::ListenerTransform;
 use voxel_audio::output::Output;
 use voxel_core::random::RandomSource;
 use voxel_game::options::Options;
-use voxel_game::sound_engine::{SoundEngine, SoundInstance};
+use voxel_game::sounds::engine::{SoundEngine, SoundInstance};
 use voxel_game::sounds::{
     SoundCommand, SoundEntityPacket, SoundHolder, SoundRegistry, SoundSource,
 };

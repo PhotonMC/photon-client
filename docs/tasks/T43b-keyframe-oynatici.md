@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/animation/KeyframeAnimation.java`, `client/animation/AnimationDefinition.java`, `client/animation/definitions/` (kullanılacak aileninki), `world/entity/AnimationState.java`, `client/model/AnimationUtils.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (parçaların pozu, `child_mut`), `crates/voxel-world/src/animal.rs` (durum kalıbı), `crates/voxel/src/mobs.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (parçaların pozu, `child_mut`), `crates/voxel-world/src/mobs/animal.rs` (durum kalıbı), `crates/voxel/src/mobs.rs`.
 
 ## Yapılacaklar
 1. `AnimationDefinition` tablosu (kullanılan aile için) oracle'dan, her koşuda karşılaştırılır; `KeyframeAnimation.apply` Rust'ta (doğrusal ve Catmull-Rom).

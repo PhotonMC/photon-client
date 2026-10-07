@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/squid/SquidModel.java`, `client/model/animal/fish/CodModel.java`, `client/model/animal/dolphin/DolphinModel.java`, `client/model/animal/turtle/TurtleModel.java`, `client/model/animal/frog/FrogModel.java`, `client/model/monster/guardian/GuardianModel.java`, `client/renderer/entity/SquidRenderer.java`, `client/renderer/entity/TropicalFishRenderer.java`, `client/renderer/entity/PufferfishRenderer.java`, `client/renderer/entity/GuardianRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Suda dönüş/yüzme durumları (`Squid.xBodyRot` vb.) entity tikinde (yalnız oracle'lanmış kollar).

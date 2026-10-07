@@ -1,0 +1,294 @@
+use super::super::*;
+
+#[test]
+fn entity_dimensions_and_block_fit_follow_java_epsilon() {
+    let dimensions = ClientEntityDimensions::scalable(0.6, 1.8);
+    assert_eq!(
+        dimensions.eye_height().to_bits(),
+        (1.8_f32 * 0.85).to_bits()
+    );
+    assert_eq!(
+        dimensions.make_bounding_box(Vec3::new(0.5, 0.0, 0.5)),
+        Aabb::new(
+            0.19999998807907104,
+            0.0,
+            0.19999998807907104,
+            0.800000011920929,
+            1.7999999523162842,
+            0.800000011920929,
+        )
+    );
+
+    let scaled = dimensions.scale(0.5, 2.0).with_eye_height(2.75);
+    assert_eq!(scaled.width().to_bits(), (0.6_f32 * 0.5).to_bits());
+    assert_eq!(scaled.height().to_bits(), (1.8_f32 * 2.0).to_bits());
+    assert_eq!(scaled.eye_height().to_bits(), 2.75_f32.to_bits());
+
+    let fixed = ClientEntityDimensions::fixed(1.0, 2.0);
+    assert_eq!(fixed.scale(0.5, 0.5), fixed);
+
+    let mut blocks = vec![0; 4_096];
+    blocks[0] = 1;
+    let biomes = vec![0; 64];
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 1,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    let shapes = BTreeMap::from([(1, Shapes::block())]);
+    let unit = ClientEntityDimensions::scalable(1.0, 1.0);
+    assert!(world.entity_fits_in_blocks(Vec3::new(1.5, 0.25, 0.5), unit, &shapes));
+    assert!(!world.entity_fits_in_blocks(Vec3::new(1.4999997, 0.25, 0.5), unit, &shapes));
+}
+
+#[test]
+fn living_entity_dimensions_follow_sleep_and_scale_branches() {
+    let default_dimensions = ClientEntityDimensions::scalable(0.6, 1.8).with_eye_height(1.62);
+    let regular =
+        living_entity_dimensions(ClientEntityPose::Standing, default_dimensions, 0.5, 1.5);
+    assert_eq!(regular.width().to_bits(), 0x3ee6_6667);
+    assert_eq!(regular.height().to_bits(), 0x3fac_cccc);
+    assert_eq!(regular.eye_height().to_bits(), 0x3f9b_851f);
+
+    let sleeping =
+        living_entity_dimensions(ClientEntityPose::Sleeping, default_dimensions, 0.5, 2.0);
+    assert_eq!(
+        sleeping,
+        ClientEntityDimensions::fixed(0.2, 0.2).with_eye_height(0.2)
+    );
+
+    let fixed = ClientEntityDimensions::fixed(1.0, 2.0).with_eye_height(1.7);
+    assert_eq!(
+        living_entity_dimensions(ClientEntityPose::Crouching, fixed, 0.5, 2.0),
+        fixed
+    );
+}
+
+#[test]
+fn refresh_entity_dimensions_reapplies_box_and_client_gate() {
+    let old_dimensions = ClientEntityDimensions::scalable(0.6, 1.5).with_eye_height(1.27);
+    let new_dimensions = ClientEntityDimensions::scalable(0.6, 1.8).with_eye_height(1.62);
+    let position = Vec3::new(-1.25, 2.0, 3.75);
+    let refreshed = refresh_entity_dimensions(
+        old_dimensions,
+        new_dimensions,
+        position,
+        true,
+        false,
+        false,
+        false,
+    );
+    assert_eq!(refreshed.dimensions, new_dimensions);
+    assert_eq!(
+        refreshed.bounding_box,
+        new_dimensions.make_bounding_box(position)
+    );
+    assert!(!refreshed.should_fudge_position);
+
+    let server_resize = refresh_entity_dimensions(
+        old_dimensions,
+        new_dimensions,
+        position,
+        false,
+        false,
+        false,
+        false,
+    );
+    assert!(server_resize.should_fudge_position);
+
+    let player_resize = refresh_entity_dimensions(
+        old_dimensions,
+        new_dimensions,
+        position,
+        false,
+        false,
+        false,
+        true,
+    );
+    assert!(!player_resize.should_fudge_position);
+}
+
+#[test]
+fn player_pose_dimensions_follow_avatar_table_and_fallback() {
+    let expected = [
+        (
+            ClientEntityPose::Standing,
+            0.6_f32,
+            1.8_f32,
+            1.62_f32,
+            false,
+        ),
+        (ClientEntityPose::Sleeping, 0.2, 0.2, 0.2, true),
+        (ClientEntityPose::FallFlying, 0.6, 0.6, 0.4, false),
+        (ClientEntityPose::Swimming, 0.6, 0.6, 0.4, false),
+        (ClientEntityPose::SpinAttack, 0.6, 0.6, 0.4, false),
+        (ClientEntityPose::Crouching, 0.6, 1.5, 1.27, false),
+        (ClientEntityPose::Dying, 0.2, 0.2, 1.62, true),
+    ];
+    for (pose, width, height, eye_height, fixed) in expected {
+        let dimensions = pose.player_dimensions();
+        assert_eq!(dimensions.width().to_bits(), width.to_bits());
+        assert_eq!(dimensions.height().to_bits(), height.to_bits());
+        assert_eq!(dimensions.eye_height().to_bits(), eye_height.to_bits());
+        assert_eq!(dimensions.is_fixed(), fixed);
+    }
+
+    for id in [-1, 18] {
+        assert_eq!(ClientEntityPose::from_id(id), ClientEntityPose::from_id(0));
+    }
+    let standing = ClientEntityPose::Standing.player_dimensions();
+    for pose in [
+        ClientEntityPose::LongJumping,
+        ClientEntityPose::Croaking,
+        ClientEntityPose::UsingTongue,
+        ClientEntityPose::Sitting,
+        ClientEntityPose::Roaring,
+        ClientEntityPose::Sniffing,
+        ClientEntityPose::Emerging,
+        ClientEntityPose::Digging,
+        ClientEntityPose::Sliding,
+        ClientEntityPose::Shooting,
+        ClientEntityPose::Inhaling,
+    ] {
+        assert_eq!(pose.player_dimensions(), standing);
+    }
+}
+
+#[test]
+fn player_pose_selection_follows_java_priority_and_fit_fallbacks() {
+    let cases = [
+        (
+            ClientPlayerPoseInput {
+                sleeping: true,
+                swimming: true,
+                fall_flying: true,
+                auto_spin_attack: true,
+                shift_key_down: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Sleeping,
+            Some(ClientEntityPose::Sleeping),
+        ),
+        (
+            ClientPlayerPoseInput {
+                swimming: true,
+                fall_flying: true,
+                auto_spin_attack: true,
+                shift_key_down: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Swimming,
+            Some(ClientEntityPose::Swimming),
+        ),
+        (
+            ClientPlayerPoseInput {
+                fall_flying: true,
+                auto_spin_attack: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::FallFlying,
+            Some(ClientEntityPose::FallFlying),
+        ),
+        (
+            ClientPlayerPoseInput {
+                auto_spin_attack: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::SpinAttack,
+            Some(ClientEntityPose::SpinAttack),
+        ),
+        (
+            ClientPlayerPoseInput {
+                shift_key_down: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Crouching,
+            Some(ClientEntityPose::Crouching),
+        ),
+        (
+            ClientPlayerPoseInput {
+                shift_key_down: true,
+                flying: true,
+                swimming_fits: true,
+                desired_fits: true,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            Some(ClientEntityPose::Standing),
+        ),
+        (
+            ClientPlayerPoseInput {
+                swimming_fits: false,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            None,
+        ),
+        (
+            ClientPlayerPoseInput {
+                swimming_fits: true,
+                desired_fits: false,
+                crouching_fits: true,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            Some(ClientEntityPose::Crouching),
+        ),
+        (
+            ClientPlayerPoseInput {
+                swimming_fits: true,
+                desired_fits: false,
+                crouching_fits: false,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            Some(ClientEntityPose::Swimming),
+        ),
+        (
+            ClientPlayerPoseInput {
+                spectator: true,
+                swimming_fits: true,
+                desired_fits: false,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            Some(ClientEntityPose::Standing),
+        ),
+        (
+            ClientPlayerPoseInput {
+                passenger: true,
+                swimming_fits: true,
+                desired_fits: false,
+                ..ClientPlayerPoseInput::default()
+            },
+            ClientEntityPose::Standing,
+            Some(ClientEntityPose::Standing),
+        ),
+    ];
+    for (input, desired, actual) in cases {
+        assert_eq!(input.desired_pose(), desired);
+        assert_eq!(input.updated_pose(), actual);
+    }
+}

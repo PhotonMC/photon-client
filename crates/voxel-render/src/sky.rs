@@ -14,6 +14,9 @@
 //! phase on quads a hundred blocks out, the seeded star field, and the dark
 //! disc below the horizon.
 
+pub mod clouds;
+pub mod weather;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -21,7 +24,24 @@ use voxel_core::json::{JsonObject, JsonValue};
 use voxel_core::math::{mth_cos_f64, mth_sin_f64};
 use voxel_core::random::RandomSource;
 
-use crate::tint::{argb, multiply};
+use crate::block::tint::{argb, multiply};
+
+mod attribute;
+pub use attribute::*;
+mod environment;
+pub use environment::*;
+mod frame;
+pub use frame::*;
+mod lerp;
+pub use lerp::*;
+mod lightmap;
+pub use lightmap::*;
+mod matrix;
+use matrix::*;
+mod parse;
+use parse::*;
+mod stars;
+pub use stars::*;
 
 #[cfg(test)]
 mod tests {
@@ -68,15 +88,3 @@ mod tests {
         assert_eq!(phase.sample(24000), Value::Phase(1));
     }
 }
-
-mod environment_load;
-
-mod lerp;
-pub use lerp::*;
-mod frame;
-pub use frame::*;
-
-mod attribute;
-pub use attribute::*;
-mod sky_2;
-pub use sky_2::*;

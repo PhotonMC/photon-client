@@ -1,5 +1,10 @@
 //! Buttons and labels (`Button`, `AbstractButton`, `SpriteIconButton`,
 //! `StringWidget`): how each is drawn, hovered, focused and pressed.
+pub mod cycle;
+pub mod edit_box;
+pub mod navigation;
+pub mod scroll_area;
+pub mod slider;
 
 use voxel_game::text::Run;
 

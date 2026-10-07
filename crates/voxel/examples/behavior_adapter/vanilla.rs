@@ -24,7 +24,7 @@ pub(super) fn shape_table(label: &str, outline: bool) -> Value {
                 let shape = if outline {
                     states.outline(info)
                 } else {
-                    origin_collision = voxel_world::block_state::collision_shape_at(
+                    origin_collision = voxel_world::block::registry::collision_shape_at(
                         block.first_state_id() + offset,
                         [0; 3],
                     );
@@ -92,14 +92,14 @@ pub(super) fn shape_table(label: &str, outline: bool) -> Value {
 
 /// `palette_permutation`: a picture recoloured by a palette, as the atlas's paletted permutations do.
 pub(super) fn palette_permutation_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::trim::permute;
+    use voxel_render::entity::trim::permute;
     let image = |row: &Value, key: &str| -> Result<voxel_render::DecodedImage, String> {
         let hex = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         let bytes: Vec<u8> = (0..hex.len() / 2)
             .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16))
             .collect::<Result<_, _>>()
             .map_err(|error| error.to_string())?;
-        voxel_render::png::decode_rgba(&bytes).map_err(|error| format!("{error:?}"))
+        voxel_render::texture::png::decode_rgba(&bytes).map_err(|error| format!("{error:?}"))
     };
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
@@ -122,7 +122,7 @@ pub(super) fn palette_permutation_result(request: &Value) -> Result<Value, Strin
 
 /// `trim_sprite_id`: the picture a pattern in a material takes on an armor's layer.
 pub(super) fn trim_sprite_id_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::trim::{TrimData, sprite_path};
+    use voxel_render::entity::trim::{TrimData, sprite_path};
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
     let data = TrimData::load(&data_root);
@@ -183,7 +183,8 @@ pub(super) fn image_result(request: &Value) -> Result<Value, String> {
                 .join("../../.data/minecraft/assets/jar")
                 .join(string(row, "texture")?);
             let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let image = voxel_render::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
+            let image =
+                voxel_render::texture::png::decode_rgba(&bytes).map_err(|e| format!("{e:?}"))?;
             let alpha: Vec<u8> = image.rgba.chunks(4).map(|pixel| pixel[3]).collect();
             let faces: Vec<String> = voxel_render::item_model::side_faces(
                 &alpha,

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/goat/{GoatModel,BabyGoatModel}.java`, `client/renderer/entity/GoatRenderer.java`, `client/model/animal/rabbit/{RabbitModel,AdultRabbitModel,BabyRabbitModel}.java`, `client/renderer/entity/RabbitRenderer.java`, `client/renderer/entity/MushroomCowRenderer.java`, `client/renderer/entity/layers/MushroomCowMushroomLayer.java`, `world/entity/animal/rabbit/Rabbit.java` (`jumpCompletion`, `setupAnim` girdileri), `world/entity/animal/goat/Goat.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`setup_sheep`, `setup_chicken` kalıbı), `crates/voxel/src/{mobs,sheep}.rs`, `crates/voxel-world/src/animal.rs` (tavuk/koyun durumu), `tools/behavior/cases.py` `entity_sheep_cases`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`setup_sheep`, `setup_chicken` kalıbı), `crates/voxel/src/{mobs,sheep}.rs`, `crates/voxel-world/src/mobs/animal.rs` (tavuk/koyun durumu), `tools/behavior/cases.py` `entity_sheep_cases`.
 
 ## Yapılacaklar
 1. Keçi modeli `setupAnim` kolları, baş indirme zamanlayıcısı (olay 58/59) ve boynuz verisi.

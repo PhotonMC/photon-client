@@ -5,7 +5,7 @@
 use voxel_data::item::mob_effects::MOB_EFFECTS;
 
 use super::{ScreenAction, ScreenDraw};
-use voxel_game::container_menu::ContainerMenu;
+use voxel_game::menus::container::ContainerMenu;
 
 /// `BeaconBlockEntity.BEACON_EFFECTS`: the effects each tier of levels gives.
 const TIERS: [&[&str]; 4] = [
@@ -268,7 +268,7 @@ impl BeaconPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use voxel_game::container_menu::MenuKind;
+    use voxel_game::menus::container::MenuKind;
     use voxel_world::ClientItemStackState as Stack;
 
     fn menu(levels: i16, primary: i16, secondary: i16, payment: bool) -> ContainerMenu {

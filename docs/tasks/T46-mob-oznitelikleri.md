@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/ai/attributes/{AttributeMap,AttributeInstance}.java`, `network/protocol/game/ClientboundUpdateAttributesPacket.java`, `world/entity/LivingEntity.java` (`getMaxHealth`, `getScale`).
-- Rust: `crates/voxel-world/src/entity.rs` (`ClientAttributeState`, `ClientAttributeModifierState`), `crates/voxel-world/src/lib.rs` (`apply_local_player_attributes`), `crates/voxel-net/src/connection/` (öznitelik paketi), `crates/voxel/src/golems.rs` (`IRON_GOLEM_MAX_HEALTH`).
+- Rust: `crates/voxel-world/src/entity.rs` (`ClientAttributeState`, `ClientAttributeModifierState`), `crates/voxel-world/src/lib.rs` (`apply_local_player_attributes`), `crates/voxel-net/src/connection/` (öznitelik paketi), `crates/voxel/src/mobs/humanoids/golems.rs` (`IRON_GOLEM_MAX_HEALTH`).
 
 ## Yapılacaklar
 1. `UpdateAttributes` paketini mob için de uygula; taban değer + değiştiriciler (`AttributeInstance` hesabı, oyuncu için varolan koddan).

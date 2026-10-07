@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/block/{BlockModelRenderState,BlockModelResolver}.java`, `client/renderer/entity/layers/{SnowGolemHeadLayer,IronGolemFlowerLayer,CarriedBlockLayer}.java`, `client/renderer/entity/{SnowGolemRenderer,IronGolemRenderer,EndermanRenderer}.java`.
-- Rust: `crates/voxel/src/golems.rs`, `monsters.rs`, `voxel-render/src/{world_mesh,item_entity,held_item}.rs` (blok modeli ağı), `voxel-world/src/metadata.rs` (`enderman_flags_from_metadata`: taşıma durumunun blok kimliği de okunur).
+- Rust: `crates/voxel/src/mobs/humanoids/golems.rs`, `monsters.rs`, `voxel-render/src/{world_mesh,item_entity,held_item}.rs` (blok modeli ağı), `voxel-world/src/metadata.rs` (`enderman_flags_from_metadata`: taşıma durumunun blok kimliği de okunur).
 
 ## Yapılacaklar
 1. Bir blok durumunu (kimlikle) blok modeli köşelerine çeviren ve katman dönüşümüyle çizen yol (`BlockDisplayContext`, ışık, saydamlık).

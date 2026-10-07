@@ -1,5 +1,109 @@
 use super::*;
 
+/// `ClientboundDisconnectPacket`: the reason the server gives.
+pub(crate) fn read_disconnect_reason(
+    input: &mut &[u8],
+) -> Result<voxel_game::text::Component, ConnectionError> {
+    read_chat_component(input, "disconnect reason")
+}
+
+impl Default for SignatureCache {
+    fn default() -> Self {
+        Self {
+            entries: vec![None; 128],
+        }
+    }
+}
+
+/// Wire-level fields decoded from one clientbound system-chat packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemChatObservation {
+    pub overlay: bool,
+    pub translation_key: Option<String>,
+}
+
+/// How a chat type is named on the wire (`Holder<ChatType>`): by its
+/// registry id, or written out.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatHolder {
+    Registry(i32),
+    Direct(voxel_game::chat::ChatDecoration),
+}
+
+/// `ChatType.Bound`: the type, the sender's name and the target's.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChatBound {
+    pub holder: ChatHolder,
+    pub name: voxel_game::text::Component,
+    pub target: Option<voxel_game::text::Component>,
+}
+
+/// A `MessageSignature`: 256 bytes.
+pub type ChatSignature = Vec<u8>;
+
+/// `MessageSignature.Packed`: an id in the signature cache, or the signature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PackedSignature {
+    Cached(i32),
+    Full(ChatSignature),
+}
+
+/// `FilterMask`: what the server hid of a message.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum FilterMask {
+    #[default]
+    PassThrough,
+    FullyFiltered,
+    /// The bit set of hidden characters, as the words the network writes.
+    Partial(Vec<u64>),
+}
+
+/// `ClientboundPlayerChatPacket` as it arrives, its signatures not yet
+/// looked up in the cache.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlayerChatPacket {
+    pub global_index: i32,
+    pub sender: (u64, u64),
+    pub signature: Option<ChatSignature>,
+    pub signed_text: String,
+    pub timestamp_millis: i64,
+    pub last_seen: Vec<PackedSignature>,
+    pub unsigned: Option<voxel_game::text::Component>,
+    pub filter: FilterMask,
+    pub bound: ChatBound,
+}
+
+/// A chat packet as the client shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatEvent {
+    /// `ClientboundSystemChatPacket`: the action bar when `overlay`.
+    System {
+        content: voxel_game::text::Component,
+        overlay: bool,
+    },
+    /// `ClientboundDisguisedChatPacket`.
+    Disguised {
+        content: voxel_game::text::Component,
+        bound: ChatBound,
+    },
+    /// `ClientboundPlayerChatPacket`, its signatures looked up; whether the
+    /// sender is a player the client knows and is the local player.
+    Player {
+        packet: PlayerChatPacket,
+        sender_known: bool,
+        sender_is_local: bool,
+    },
+    /// `ClientboundDeleteChatPacket`: the signature of the message to delete.
+    Delete(ChatSignature),
+}
+
+/// `MessageSignatureCache`: the last 128 signatures, by place, which the
+/// packets refer to by number.
+#[derive(Debug, Clone)]
+pub struct SignatureCache {
+    pub(super) entries: Vec<Option<ChatSignature>>,
+}
+
 pub(super) fn read_chat_component(
     input: &mut &[u8],
     name: &'static str,
@@ -70,18 +174,6 @@ pub(super) fn read_chat_bound(input: &mut &[u8]) -> Result<ChatBound, Connection
         name,
         target,
     })
-}
-
-pub(super) fn skip_bytes(
-    input: &mut &[u8],
-    count: usize,
-    name: &'static str,
-) -> Result<(), ConnectionError> {
-    if input.len() < count {
-        return Err(ConnectionError::Codec(name));
-    }
-    *input = &input[count..];
-    Ok(())
 }
 
 /// `ClientboundSystemChatPacket`.
@@ -188,255 +280,73 @@ pub(crate) fn encode_chat(message: &str, millis: i64, salt: i64, output: &mut Ve
     output.push(1);
 }
 
-pub(super) fn read_lp_vec3(
-    input: &mut &[u8],
-    name: &'static str,
-) -> Result<(f64, f64, f64), ConnectionError> {
-    let movement =
-        voxel_core::binary::read_lp_vec3(input).map_err(|_| ConnectionError::Codec(name))?;
-    Ok((movement.x, movement.y, movement.z))
-}
-
-pub(super) fn decode_packed_degrees(value: u8) -> f32 {
-    i8::from_ne_bytes([value]) as f32 * 360.0 / 256.0
-}
-
-pub(super) fn read_nbt_bytes(
-    input: &mut &[u8],
-    name: &'static str,
-) -> Result<Option<Vec<u8>>, ConnectionError> {
-    let before = *input;
-    let value = voxel_core::nbt::read_nbt(input).map_err(|_| ConnectionError::Codec(name))?;
-    let consumed = before.len() - input.len();
-    Ok(value.map(|_| before[..consumed].to_vec()))
-}
-
-pub(crate) fn parse_chunk_packet(
-    mut input: &[u8],
-) -> Result<ChunkPacketObservation, ConnectionError> {
-    let x = read_i32(&mut input, "chunk x")?;
-    let z = read_i32(&mut input, "chunk z")?;
-
-    let heightmap_count = read_count(&mut input, "heightmap count")?;
-    let mut heightmap_observations = Vec::with_capacity(heightmap_count);
-    for _ in 0..heightmap_count {
-        let type_id = read_varint(&mut input, "heightmap type")?;
-        let word_count = read_long_array(&mut input, "heightmap data")?.len();
-        heightmap_observations.push(HeightmapObservation {
-            type_id,
-            word_count,
-        });
-    }
-
-    let section_data =
-        read_length_prefixed_bytes(&mut input, MAX_CHUNK_DATA_LENGTH, "chunk section data")?;
-    let section_data_length = section_data.len();
-    let section_observations = parse_section_data(section_data)?;
-
-    let block_entity_count = read_count(&mut input, "block entity count")?;
-    let mut block_entities = Vec::with_capacity(block_entity_count);
-    for _ in 0..block_entity_count {
-        let packed_xz = read_byte(&mut input, "block entity packed xz")?;
-        let y = i32::from(read_i16(&mut input, "block entity y")?);
-        let type_id = read_varint(&mut input, "block entity type")?;
-        let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
-        let local_x = i32::from(packed_xz >> 4);
-        let local_z = i32::from(packed_xz & 0x0f);
-        let x = x.wrapping_mul(16).wrapping_add(local_x);
-        let z = z.wrapping_mul(16).wrapping_add(local_z);
-        let tag_length = tag.as_ref().map_or(0, Vec::len);
-        block_entities.push(BlockEntityObservation {
-            x,
-            y,
-            z,
-            type_id,
-            tag_length,
-            applied_to_world: false,
-            tag,
-        });
-    }
-
-    let light_data = parse_light_data(&mut input)?;
-    let sky_mask_word_count = light_data.sky_mask.to_longs().len();
-    let block_mask_word_count = light_data.block_mask.to_longs().len();
-    let empty_sky_mask_word_count = light_data.empty_sky_mask.to_longs().len();
-    let empty_block_mask_word_count = light_data.empty_block_mask.to_longs().len();
-    let sky_update_lengths = light_data
-        .sky_updates
-        .iter()
-        .map(Vec::len)
-        .collect::<Vec<_>>();
-    let block_update_lengths = light_data
-        .block_updates
-        .iter()
-        .map(Vec::len)
-        .collect::<Vec<_>>();
-
+pub(crate) fn parse_system_chat_packet(
+    input: &[u8],
+) -> Result<SystemChatObservation, ConnectionError> {
+    let mut input = input;
+    let component = voxel_core::nbt::read_nbt(&mut input)
+        .map_err(|_| ConnectionError::Codec("system chat component"))?;
+    let translation_key = component.and_then(|fields| {
+        fields.into_iter().find_map(|field| {
+            if field.key == "translate" {
+                match field.value {
+                    voxel_core::nbt::FieldValue::Str(value) => Some(value),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+    });
+    let overlay = read_byte(&mut input, "system chat overlay")? != 0;
     if !input.is_empty() {
-        return Err(ConnectionError::Codec("chunk trailing payload"));
+        return Err(ConnectionError::Codec("system chat trailing payload"));
     }
-
-    Ok(ChunkPacketObservation {
-        x,
-        z,
-        heightmap_count,
-        heightmap_observations,
-        section_data_length,
-        section_observations,
-        block_entity_count,
-        block_entities,
-        sky_mask_word_count,
-        block_mask_word_count,
-        empty_sky_mask_word_count,
-        empty_block_mask_word_count,
-        sky_update_count: sky_update_lengths.len(),
-        sky_update_lengths,
-        block_update_count: block_update_lengths.len(),
-        block_update_lengths,
-        light_data,
+    Ok(SystemChatObservation {
+        overlay,
+        translation_key,
     })
 }
 
-pub(crate) fn parse_light_update_packet(
-    mut input: &[u8],
-) -> Result<LightUpdateObservation, ConnectionError> {
-    let x = read_varint(&mut input, "light update chunk x")?;
-    let z = read_varint(&mut input, "light update chunk z")?;
-    let light_data = parse_light_data(&mut input)?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec("light update trailing payload"));
+impl SignatureCache {
+    /// `MessageSignature.Packed.unpack`: `None` for a number nothing holds.
+    pub fn unpack(&self, packed: &PackedSignature) -> Option<ChatSignature> {
+        match packed {
+            PackedSignature::Full(signature) => Some(signature.clone()),
+            PackedSignature::Cached(id) => usize::try_from(*id)
+                .ok()
+                .and_then(|id| self.entries.get(id))
+                .and_then(Clone::clone),
+        }
     }
-    let sky_mask_word_count = light_data.sky_mask.to_longs().len();
-    let block_mask_word_count = light_data.block_mask.to_longs().len();
-    let empty_sky_mask_word_count = light_data.empty_sky_mask.to_longs().len();
-    let empty_block_mask_word_count = light_data.empty_block_mask.to_longs().len();
-    let sky_update_lengths = light_data
-        .sky_updates
-        .iter()
-        .map(Vec::len)
-        .collect::<Vec<_>>();
-    let block_update_lengths = light_data
-        .block_updates
-        .iter()
-        .map(Vec::len)
-        .collect::<Vec<_>>();
-    Ok(LightUpdateObservation {
-        x,
-        z,
-        sky_mask_word_count,
-        block_mask_word_count,
-        empty_sky_mask_word_count,
-        empty_block_mask_word_count,
-        sky_update_lengths,
-        block_update_lengths,
-        applied_sky_sections: 0,
-        applied_block_sections: 0,
-        queued_for_chunk: false,
-        light_data,
-    })
-}
 
-pub(super) fn parse_light_data(input: &mut &[u8]) -> Result<LightUpdateData, ConnectionError> {
-    let sky_mask = read_bitset(input, "sky light mask")?;
-    let block_mask = read_bitset(input, "block light mask")?;
-    let empty_sky_mask = read_bitset(input, "empty sky light mask")?;
-    let empty_block_mask = read_bitset(input, "empty block light mask")?;
-    let sky_updates = read_light_update_bytes(input, "sky light updates")?;
-    let block_updates = read_light_update_bytes(input, "block light updates")?;
-    Ok(LightUpdateData {
-        sky_mask,
-        block_mask,
-        empty_sky_mask,
-        empty_block_mask,
-        sky_updates,
-        block_updates,
-    })
-}
-
-pub(crate) fn parse_forget_level_chunk_packet(
-    mut input: &[u8],
-) -> Result<(i32, i32), ConnectionError> {
-    let packed = read_i64(&mut input, "forget level chunk position")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec(
-            "forget level chunk trailing payload",
-        ));
+    /// `MessageSignatureCache.push`: the new signatures go in at the front,
+    /// the old ones they do not repeat shifted back.
+    pub fn push(&mut self, mut queue: std::collections::VecDeque<ChatSignature>) {
+        let new: std::collections::HashSet<ChatSignature> = queue.iter().cloned().collect();
+        for index in 0..self.entries.len() {
+            if queue.is_empty() {
+                break;
+            }
+            let old = self.entries[index].take();
+            self.entries[index] = queue.pop_back();
+            if let Some(old) = old
+                && !new.contains(&old)
+            {
+                queue.push_front(old);
+            }
+        }
     }
-    Ok((packed as i32, (packed >> 32) as i32))
 }
 
-pub(crate) fn parse_set_chunk_cache_radius_packet(
-    mut input: &[u8],
-) -> Result<i32, ConnectionError> {
-    let radius = read_varint(&mut input, "chunk cache radius")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec(
-            "chunk cache radius trailing payload",
-        ));
+impl FilterMask {
+    /// Whether character `index` is hidden.
+    pub fn hides(&self, index: usize) -> bool {
+        match self {
+            Self::Partial(words) => words
+                .get(index / 64)
+                .is_some_and(|word| word >> (index % 64) & 1 == 1),
+            _ => false,
+        }
     }
-    Ok(radius)
-}
-
-pub(crate) fn parse_set_chunk_cache_center_packet(
-    mut input: &[u8],
-) -> Result<(i32, i32), ConnectionError> {
-    let x = read_varint(&mut input, "chunk cache center x")?;
-    let z = read_varint(&mut input, "chunk cache center z")?;
-    if !input.is_empty() {
-        return Err(ConnectionError::Codec(
-            "chunk cache center trailing payload",
-        ));
-    }
-    Ok((x, z))
-}
-
-pub(crate) fn read_varint(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
-    wire::read_varint(input).map_err(|_| ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_count(input: &mut &[u8], name: &'static str) -> Result<usize, ConnectionError> {
-    let count = read_varint(input, name)?;
-    usize::try_from(count).map_err(|_| ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_byte(input: &mut &[u8], name: &'static str) -> Result<u8, ConnectionError> {
-    let Some((&byte, rest)) = input.split_first() else {
-        return Err(ConnectionError::Codec(name));
-    };
-    *input = rest;
-    Ok(byte)
-}
-
-pub(crate) fn read_bool(input: &mut &[u8], name: &'static str) -> Result<bool, ConnectionError> {
-    Ok(read_byte(input, name)? != 0)
-}
-
-pub(crate) fn read_i64(input: &mut &[u8], name: &'static str) -> Result<i64, ConnectionError> {
-    wire::take(input)
-        .map(i64::from_be_bytes)
-        .ok_or(ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_i16(input: &mut &[u8], name: &'static str) -> Result<i16, ConnectionError> {
-    wire::take(input)
-        .map(i16::from_be_bytes)
-        .ok_or(ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_i32(input: &mut &[u8], name: &'static str) -> Result<i32, ConnectionError> {
-    wire::take(input)
-        .map(i32::from_be_bytes)
-        .ok_or(ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_f32(input: &mut &[u8], name: &'static str) -> Result<f32, ConnectionError> {
-    wire::take(input)
-        .map(f32::from_be_bytes)
-        .ok_or(ConnectionError::Codec(name))
-}
-
-pub(crate) fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, ConnectionError> {
-    wire::take(input)
-        .map(f64::from_be_bytes)
-        .ok_or(ConnectionError::Codec(name))
 }

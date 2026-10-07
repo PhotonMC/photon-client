@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/sheep/SheepModel.java`, `client/renderer/entity/SheepRenderer.java`, `client/renderer/entity/layers/SheepWoolLayer.java`, `client/model/animal/chicken/ChickenModel.java`, `client/renderer/entity/ChickenRenderer.java`, `client/model/animal/goat/GoatModel.java`, `client/renderer/entity/GoatRenderer.java`, `client/model/animal/rabbit/RabbitModel.java`, `client/renderer/entity/RabbitRenderer.java`, `client/renderer/entity/MushroomCowRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Koyun: `SheepWoolLayer` (renk verisinden), `sheared` bayrağı, jeb_ adı; entity verisi okuyucusu T24b'deki yürüyüşle.

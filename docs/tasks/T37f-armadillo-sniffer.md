@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/animal/armadillo/Armadillo.java`, `world/entity/animal/sniffer/Sniffer.java`, `client/model/animal/{armadillo,sniffer}/*.java`, `client/renderer/entity/{ArmadilloRenderer,SnifferRenderer}.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs`, `crates/voxel-world/src/animation_state.rs`.
+- Rust: `crates/voxel-render/src/entity/mob_model.rs`, `crates/voxel-world/src/animation_state.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

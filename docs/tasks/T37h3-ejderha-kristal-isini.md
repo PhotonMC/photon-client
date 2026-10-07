@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/boss/enderdragon/{EnderDragon,EndCrystal}.java`, `client/renderer/entity/{EnderDragonRenderer,EndCrystalRenderer}.java`, `client/model/object/crystal/EndCrystalModel.java`.
-- Rust: `crates/voxel/src/ender_dragons.rs`.
+- Rust: `crates/voxel/src/mobs/monsters/ender_dragons.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

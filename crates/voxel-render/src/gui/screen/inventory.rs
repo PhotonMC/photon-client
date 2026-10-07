@@ -1,16 +1,16 @@
 //! The survival inventory screen: `AbstractContainerScreen` over the
 //! player's own menu, as `InventoryScreen` lays it out with its recipe book
 //! closed. The screen turns mouse and key input into menu clicks and draws
-//! the menu; the clicks themselves run in [`voxel_game::container_menu`].
+//! the menu; the clicks themselves run in [`voxel_game::menus::container`].
 //!
 //! The recipe book beside it is [`super::recipe_book`]'s.
 
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, SlotView, slot_key_clicks};
 use super::recipe_book::{RecipeAssets, RecipeBookPanel};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
-use crate::gui::edit_box::Clipboard;
-use voxel_game::container_menu::{ClickType, ContainerMenu, SLOT_COUNT};
-use voxel_game::recipe_book::BookKind;
+use crate::gui::widgets::edit_box::Clipboard;
+use voxel_game::menus::container::{ClickType, ContainerMenu, SLOT_COUNT};
+use voxel_game::menus::recipe_book::BookKind;
 use voxel_world::ClientItemStackState as Stack;
 
 const IMAGE: (i32, i32) = (176, 166);

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/Options.java` (2011 satır — **bütün okuma**; `grep -n "processOptions\|private final OptionInstance<.*> \(fov\|guiScale\|sensitivity\|chatOpacity\|chatScale\|chatWidth\|chatHeightFocused\|chatHeightUnfocused\|chatLineSpacing\|textBackgroundOpacity\|chatVisibility\|language\|invertMouse\|mouseWheelSensitivity\|renderDistance\|hideGui\)\|public void load\|public void save"` ile çapaları bul, her biri için ~40 satırlık pencere), `.data/minecraft/source/net/minecraft/client/OptionInstance.java` (`ValueSet`, `IntRange`, `UnitDouble`, `CaptionBasedToString`; `grep -n "class\|record\|enum"`).
-- Rust: `crates/voxel-game/src/option.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/records/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
+- Rust: `crates/voxel-game/src/options/values.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/records/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
 - Bağlanacak yerler: `crates/voxel-render/src/camera.rs` (FOV), `crates/voxel/src/controls.rs` (~880 duyarlılık), `crates/voxel-render/src/gui/chat.rs` (WIDTH 320, LINES_*, sabitler), `crates/voxel-render/src/window/scale.rs` (GUI ölçeği — zaten `gui_scale` parametreli mi bak).
 - Örnek dosya: `command_history.txt` yazımı `controls.rs`/`chat.rs`'de (oyun dizini çözümü; aynı konumu kullan).
 

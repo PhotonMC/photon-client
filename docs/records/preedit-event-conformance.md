@@ -15,7 +15,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/inpu
 - Caret, callback'in codepoint offset'i olarak okunur. Her codepoint öncesinde bulunduğu block'ın birikmiş UTF-16 uzunluğuna çevrilir; offset tüm preedit'in sonunda ise full text UTF-16 uzunluğu kullanılır. Hiçbir eşleşme yoksa Java başlangıç değeri korunur.
 - Constructor focused block indeksini `[0, block sayısı)` aralığında ister. `toFormattedText` sonucu Component/Style katmanına bağlı olduğundan bu headless veri sözleşmesine dahil değildir.
 
-Rust karşılığı `crates/voxel-game/src/input_event.rs` içindeki `PreeditEvent` tipidir. Java `String` alanları, unpaired/supplementary UTF-16 içeriğini kaybetmemek için `Vec<u16>` ve `Vec<Vec<u16>>` olarak taşınır; callback'in null sonucu `None`, constructor ve veri hataları `PreeditError` ile temsil edilir.
+Rust karşılığı `crates/voxel-game/src/input/event.rs` içindeki `PreeditEvent` tipidir. Java `String` alanları, unpaired/supplementary UTF-16 içeriğini kaybetmemek için `Vec<u16>` ve `Vec<Vec<u16>>` olarak taşınır; callback'in null sonucu `None`, constructor ve veri hataları `PreeditError` ile temsil edilir.
 
 ## JSONL sınırı
 
@@ -24,7 +24,7 @@ Rust karşılığı `crates/voxel-game/src/input_event.rs` içindeki `PreeditEve
 
 ## Client-parity doğrulaması
 
-`crates/voxel-game/src/input_event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre IME pre-edit callback verisini, UTF-16 text block'larını ve caret dönüşümünü uygular. Java oracle, gerçek `PreeditEvent.createFromCallback` yolunu çalıştırır; native pointer belleği yalnızca test glue tarafından hazırlanır ve beklenen sonuç Rust çıktısından türetilmez.
+`crates/voxel-game/src/input/event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre IME pre-edit callback verisini, UTF-16 text block'larını ve caret dönüşümünü uygular. Java oracle, gerçek `PreeditEvent.createFromCallback` yolunu çalıştırır; native pointer belleği yalnızca test glue tarafından hazırlanır ve beklenen sonuç Rust çıktısından türetilmez.
 
 Math referansı `7718a9a86f52fa96b5a5f104ce7b26e5db72febf33c9abc5550495ccf418a797`; tam corpus referansı `66fbb3e93e420267b5a728e46c1924b78feab7af86f879c6d78d3fa76be110b8` olarak kaydedildi. Math debug/release karşılaştırmaları `compare-xw9ri3c2` ve `compare-ohe3yaqh`; tam debug/release karşılaştırmaları `compare-ijb41va0` ve `compare-h0_y8ft2` raporlarında fark üretmedi.
 

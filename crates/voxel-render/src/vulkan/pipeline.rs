@@ -108,13 +108,13 @@ impl VulkanBackend {
             let stride = if sky {
                 std::mem::size_of::<crate::sky::SkyVertex>()
             } else if clouds {
-                std::mem::size_of::<crate::clouds::CloudVertex>()
+                std::mem::size_of::<crate::sky::clouds::CloudVertex>()
             } else if gui {
                 std::mem::size_of::<crate::gui::GuiVertex>()
             } else if gui_item {
                 std::mem::size_of::<crate::gui::items::GuiItemVertex>()
             } else if lines {
-                std::mem::size_of::<crate::outline::LineVertex>()
+                std::mem::size_of::<crate::block::outline::LineVertex>()
             } else if section {
                 std::mem::size_of::<BlockVertex>()
             } else {

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/TntRenderer.java`, `world/entity/item/PrimedTnt.java`.
-- Rust: `crates/voxel/src/minecarts.rs` (aynı beyaz blok), `crates/voxel-render/src/minecart.rs` (`tnt_swell_amount`, `tnt_is_lit`), `crates/voxel-world/src/entity.rs` (`tick_primed_tnt`).
+- Rust: `crates/voxel/src/objects/minecarts.rs` (aynı beyaz blok), `crates/voxel-render/src/objects/minecart.rs` (`tnt_swell_amount`, `tnt_is_lit`), `crates/voxel-world/src/entity.rs` (`tick_primed_tnt`).
 
 ## Oracle
 Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).

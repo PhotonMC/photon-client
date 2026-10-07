@@ -54,13 +54,13 @@ impl ScreenAssets {
     /// menu's title as the network wrote it.
     pub fn container_screen(
         &self,
-        kind: voxel_game::container_menu::MenuKind,
+        kind: voxel_game::menus::container::MenuKind,
         title_nbt: &[u8],
         width: i32,
         height: i32,
         may_build: bool,
     ) -> Box<dyn Screen> {
-        if kind == voxel_game::container_menu::MenuKind::Lectern {
+        if kind == voxel_game::menus::container::MenuKind::Lectern {
             return Box::new(voxel_render::gui::screen::book::BookScreen::new(
                 width,
                 height,
@@ -140,7 +140,7 @@ impl ScreenAssets {
 /// The window's clipboard, for an edit box.
 pub struct WindowClipboard<'a>(pub &'a mut WindowSurface);
 
-impl voxel_render::gui::edit_box::Clipboard for WindowClipboard<'_> {
+impl voxel_render::gui::widgets::edit_box::Clipboard for WindowClipboard<'_> {
     fn get(&mut self) -> String {
         self.0.clipboard()
     }

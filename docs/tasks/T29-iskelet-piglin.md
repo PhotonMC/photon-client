@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/skeleton/SkeletonModel.java`, `client/model/monster/piglin/PiglinModel.java`, `client/renderer/entity/AbstractSkeletonRenderer.java`, `client/renderer/entity/SkeletonRenderer.java`, `client/renderer/entity/BoggedRenderer.java`, `client/renderer/entity/PiglinRenderer.java`, `client/renderer/entity/ZombifiedPiglinRenderer.java`.
-- Rust: `crates/voxel-render/src/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity_textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. `ArmPose` seçimi (elde tutulan eşya `SetEquipment`'e bağlı: eşya yokken varsayılan poz; T41 sonrası tam).

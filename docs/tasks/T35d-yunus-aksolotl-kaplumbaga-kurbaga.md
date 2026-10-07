@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/{dolphin,axolotl,turtle,frog}/*.java`, ilgili `client/renderer/entity/*Renderer.java`, `world/entity/animal/{dolphin,axolotl,turtle,frog}/*.java` (animasyon durumları, `DATA_*`).
-- Rust: `crates/voxel-world/src/{squid,rabbit,copper_golem}.rs` (durum ve tik kalıpları), `crates/voxel-render/src/mob_model.rs` (`setup_rabbit`: animasyon uygulama kalıbı).
+- Rust: `crates/voxel-world/src/{squid,rabbit,copper_golem}.rs` (durum ve tik kalıpları), `crates/voxel-render/src/entity/mob_model.rs` (`setup_rabbit`: animasyon uygulama kalıbı).
 
 ## Oracle
 `rabbit_model` ve `copper_golem_model` kalıbı (gerçek model + animasyon durumları), gerçek varlık tiki için `living-entity-animations`.

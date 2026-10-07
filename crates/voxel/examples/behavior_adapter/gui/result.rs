@@ -306,7 +306,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 continue;
             }
             "titles" => {
-                use voxel_render::gui::titles::Titles;
+                use voxel_render::gui::hud::titles::Titles;
                 let mut titles = Titles::default();
                 titles.set_times(int("fade_in"), int("stay"), int("fade_out"));
                 let runs = |text: &str| voxel_render::gui::chat::plain_runs(text);
@@ -335,7 +335,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "sidebar" => {
-                use voxel_render::gui::sidebar;
+                use voxel_render::gui::hud::sidebar;
                 let lang = voxel_game::text::Lang::new([]);
                 let board = scoreboard_from(row)?;
                 let style = voxel_game::text::Style::default();
@@ -358,10 +358,11 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 }
             }
             "pause_screen" => {
-                use voxel_render::gui::navigation::Direction;
+                use voxel_render::gui::widgets::navigation::Direction;
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));
-                let mut screen = voxel_render::gui::pause::PauseScreen::new(&font, &lang, size);
+                let mut screen =
+                    voxel_render::gui::screen::pause::PauseScreen::new(&font, &lang, size);
                 let mouse = (
                     row["mouse"][0].as_i64().unwrap_or(0) as i32,
                     row["mouse"][1].as_i64().unwrap_or(0) as i32,
@@ -390,7 +391,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 screen.draw(&mut frame, &atlas, &font, mouse, size, true);
             }
             "confirm_screen" => {
-                use voxel_render::gui::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+                use voxel_render::gui::screen::confirm::{
+                    ConfirmAction, ConfirmBackground, ConfirmScreen,
+                };
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));
                 let text = |key: &str| {
@@ -498,7 +501,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             }
             "options_screen" => {
                 use voxel_render::gui::options::OptionsScreen;
-                use voxel_render::gui::slider::SliderKey;
+                use voxel_render::gui::widgets::slider::SliderKey;
                 let lang = voxel_game::text::Lang::load(&root);
                 let size = (int("width"), int("height"));
                 let mouse = (
@@ -554,7 +557,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 continue;
             }
             "video_settings_screen" => {
-                use voxel_render::gui::video::VideoSettingsScreen;
+                use voxel_render::gui::options::video::VideoSettingsScreen;
                 use voxel_render::window::scale::WindowScale;
                 let lang = voxel_game::text::Lang::load(&root);
                 let framebuffer = (
@@ -576,7 +579,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     row["in_world"].as_bool().unwrap_or(false),
                     gui_scale,
                     max_scale,
-                    voxel_render::gui::video::VideoValues::default(),
+                    voxel_render::gui::options::video::VideoValues::default(),
                 );
                 let mut last = (0.0, 0.0);
                 let mut clock = 0_u64;
@@ -650,9 +653,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             | "mouse_settings_screen"
             | "controls_screen"
             | "sound_options_screen" => {
-                use voxel_render::gui::chat_options::ChatOptionsScreen;
-                use voxel_render::gui::mouse_options::{ControlsScreen, MouseSettingsScreen};
-                use voxel_render::gui::sound_options::SoundOptionsScreen;
+                use voxel_render::gui::options::chat::ChatOptionsScreen;
+                use voxel_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+                use voxel_render::gui::options::sound::SoundOptionsScreen;
                 // The settings screens that have the same inputs.
                 enum Shell {
                     Chat(ChatOptionsScreen),
@@ -804,10 +807,10 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 continue;
             }
             "language_screen" => {
-                use voxel_render::gui::language_select::LanguageSelectScreen;
+                use voxel_render::gui::options::language::LanguageSelectScreen;
                 use voxel_render::window::scale::WindowScale;
                 struct NoClipboard;
-                impl voxel_render::gui::edit_box::Clipboard for NoClipboard {
+                impl voxel_render::gui::widgets::edit_box::Clipboard for NoClipboard {
                     fn get(&mut self) -> String {
                         String::new()
                     }
@@ -906,7 +909,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 let cause = row["cause"]
                     .as_str()
                     .map(voxel_game::text::Component::literal);
-                let mut screen = voxel_render::gui::death::DeathScreen::new(
+                let mut screen = voxel_render::gui::screen::death::DeathScreen::new(
                     &lang,
                     size,
                     cause.as_ref(),
@@ -928,7 +931,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 let reason = voxel_game::text::Component::literal(
                     row["reason"].as_str().unwrap_or_default(),
                 );
-                let screen = voxel_render::gui::disconnected::DisconnectedScreen::new(
+                let screen = voxel_render::gui::screen::disconnected::DisconnectedScreen::new(
                     &font, &lang, size, &reason,
                 );
                 let mouse = (
@@ -1065,7 +1068,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 continue;
             }
             "boss_bar" => {
-                use voxel_render::gui::boss_bar::BossBars;
+                use voxel_render::gui::hud::boss_bar::BossBars;
                 let mut bars = BossBars::default();
                 for (index, bar) in row["bars"].as_array().ok_or("bars")?.iter().enumerate() {
                     bars.add(
@@ -1083,7 +1086,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 bars.draw(&mut frame, &atlas, &font, (int("width"), int("height")), 0);
             }
             "locator_bar" => {
-                use voxel_render::gui::locator::{
+                use voxel_render::gui::hud::locator::{
                     self, LocatorCamera, LocatorInput, Viewer, WaypointStyles,
                 };
                 let numbers = |value: &Value| -> Vec<f64> {
@@ -1136,7 +1139,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "tab_list" => {
-                use voxel_render::gui::tab_list::{self, HealthStates, TabPlayer, TabScores};
+                use voxel_render::gui::hud::tab_list::{self, HealthStates, TabPlayer, TabScores};
                 let runs = |key: &str| {
                     row[key]
                         .as_str()
@@ -1205,7 +1208,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     menu.slots[index] = Some(stack);
                 }
                 // Setting the payments made the merchant's result, as the reference's slots do.
-                if menu.kind == voxel_game::container_menu::MenuKind::Merchant {
+                if menu.kind == voxel_game::menus::container::MenuKind::Merchant {
                     menu.update_sell_item();
                 }
                 // The stonecutter's entries for the item in its slot, each
@@ -1243,7 +1246,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 };
                 let (width, height) = (int("width"), int("height"));
                 let mut screen: Box<dyn Screen> =
-                    if menu.kind == voxel_game::container_menu::MenuKind::Lectern {
+                    if menu.kind == voxel_game::menus::container::MenuKind::Lectern {
                         Box::new(voxel_render::gui::screen::book::BookScreen::new(
                             width,
                             height,
@@ -1259,8 +1262,8 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 // once it has ticked.
                 if matches!(
                     menu.kind,
-                    voxel_game::container_menu::MenuKind::Smithing
-                        | voxel_game::container_menu::MenuKind::Beacon
+                    voxel_game::menus::container::MenuKind::Smithing
+                        | voxel_game::menus::container::MenuKind::Beacon
                 ) {
                     screen.tick(&menu);
                 }

@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use voxel_game::sound_engine::{Channel, ChannelSource, Pool};
+use voxel_game::sounds::engine::{Channel, ChannelSource, Pool};
 
 use crate::decode::{LoopingOggStream, OggStream, decode_ogg};
 use crate::mixer::{Mixer, Samples, State, StreamFeed};

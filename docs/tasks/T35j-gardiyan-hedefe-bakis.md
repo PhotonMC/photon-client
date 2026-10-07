@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/monster/Guardian.java` (`aiStep`), `world/entity/ai/control/LookControl.java`, `Mob.java` (`aiStep`, `baseTick`), `LivingEntity.aiStep` (yerel dönüş ve konum enterpolasyonu).
-- Rust: `crates/voxel-world/src/guardian.rs` (başlıkta eksik çekilişler), `crates/voxel-world/src/entity.rs` (`tick_guardian`, `tick_living_pose`, `tick_head_rotation`).
+- Rust: `crates/voxel-world/src/mobs/guardian.rs` (başlıkta eksik çekilişler), `crates/voxel-world/src/entity.rs` (`tick_guardian`, `tick_living_pose`, `tick_head_rotation`).
 
 ## Oracle
 Gerçek `Guardian` tiki için `living-entity-animations`; hedefin oracle sahnesinde gerçek bir varlık olması gerekir (şimdiki `living()` satırı tek varlık kurar; ikinci varlık için sahne yardımcısı genişletilmeli).

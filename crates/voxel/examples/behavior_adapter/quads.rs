@@ -59,8 +59,8 @@ pub(super) fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Val
 
 /// `experience_orb`: the quad an orb is drawn as.
 pub(super) fn experience_orb_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::name_tag::camera_orientation;
-    use voxel_render::xp_orb::corners;
+    use voxel_render::entity::name_tag::camera_orientation;
+    use voxel_render::objects::xp_orb::corners;
     let bits = |row: &Value, key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
@@ -103,7 +103,7 @@ pub(super) fn experience_orb_result(request: &Value) -> Result<Value, String> {
 
 /// `living_pose`: the pose a mob is drawn from.
 pub(super) fn living_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{FLIP_DEGREES, MobPlacement, placement_pose};
+    use voxel_render::entity::mob_model::{FLIP_DEGREES, MobPlacement, placement_pose};
     let bits = |row: &Value, key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
@@ -137,7 +137,7 @@ pub(super) fn living_pose_result(request: &Value) -> Result<Value, String> {
 
 /// A dropped item's poses for a model of a given extent.
 pub(super) fn item_entity_pose_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::item_entity::{ModelExtent, item_entity_poses};
+    use voxel_render::objects::item::{ModelExtent, item_entity_poses};
     let bits = |row: &Value, key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
@@ -182,7 +182,7 @@ pub(super) fn item_entity_pose_result(request: &Value) -> Result<Value, String> 
 
 /// A quadruped's model from the layer table, posed and drawn.
 pub(super) fn quadruped_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, QuadrupedState};
+    use voxel_render::entity::mob_model::{MobModel, QuadrupedState};
     let bits = |row: &Value, key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
@@ -226,14 +226,14 @@ pub(super) fn quadruped_model_result(request: &Value) -> Result<Value, String> {
 }
 
 /// The sorted quads of a posed model, as the oracle lists them.
-pub(super) fn posed_quads(model: &voxel_render::mob_model::MobModel) -> Vec<String> {
+pub(super) fn posed_quads(model: &voxel_render::entity::mob_model::MobModel) -> Vec<String> {
     sorted_quads(model.render(&Default::default()))
 }
 
 /// A model's faces as the oracle lists them: each quad's corners as bits,
 /// sorted.
 pub(super) fn sorted_quads(
-    faces: Vec<(String, [voxel_render::player_model::ModelVertex; 4])>,
+    faces: Vec<(String, [voxel_render::entity::player_model::ModelVertex; 4])>,
 ) -> Vec<String> {
     let hex = |value: f32| format!("{:08x}", value.to_bits());
     let mut quads: Vec<String> = faces
@@ -260,14 +260,14 @@ pub(super) fn sorted_quads(
 /// The humanoid fields every humanoid operation's row names.
 pub(super) fn humanoid_state(
     row: &Value,
-) -> Result<voxel_render::player_model::PlayerRenderState, String> {
+) -> Result<voxel_render::entity::player_model::PlayerRenderState, String> {
     let bits = |key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
             .map(f32::from_bits)
             .map_err(|error| error.to_string())
     };
-    Ok(voxel_render::player_model::PlayerRenderState {
+    Ok(voxel_render::entity::player_model::PlayerRenderState {
         head_y_rot: bits("head_y_rot")?,
         x_rot: bits("x_rot")?,
         walk_position: bits("walk_position")?,
@@ -282,7 +282,7 @@ pub(super) fn humanoid_state(
 /// `armor_stand_model`: an armor stand's model, or the model of the armor it
 /// wears, posed and drawn.
 pub(super) fn armor_stand_model_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::mob_model::{ArmorStandState, MobModel};
+    use voxel_render::entity::mob_model::{ArmorStandState, MobModel};
     let bits = |text: &Value| -> Result<f32, String> {
         u32::from_str_radix(text.as_str().ok_or("bits must be strings")?, 16)
             .map(f32::from_bits)
@@ -324,7 +324,7 @@ pub(super) fn armor_stand_model_result(request: &Value) -> Result<Value, String>
 /// `equipment_layers`: every equipment asset of the game's resources, the
 /// layers of each for the humanoid layer types.
 pub(super) fn equipment_layers_result() -> Result<Value, String> {
-    use voxel_render::equipment::parse_equipment_info;
+    use voxel_render::entity::equipment::parse_equipment_info;
     let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets/minecraft/equipment");
     let mut names: Vec<String> = std::fs::read_dir(&folder)
@@ -361,7 +361,7 @@ pub(super) fn equipment_layers_result() -> Result<Value, String> {
 /// `spider_model` and `creeper_model`: a spider's or a creeper's model posed
 /// and drawn.
 pub(super) fn spider_model_result(request: &Value, creeper: bool) -> Result<Value, String> {
-    use voxel_render::mob_model::{MobModel, QuadrupedState};
+    use voxel_render::entity::mob_model::{MobModel, QuadrupedState};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let layer = voxel_data::entity_model::layer(row["layer"].as_str().ok_or("layer")?)
@@ -418,7 +418,7 @@ pub(super) fn villager_registries_result() -> Value {
 /// `villager_layers`: the passes `VillagerProfessionLayer` makes for each
 /// villager: the model and the texture of each.
 pub(super) fn villager_layers_result(request: &Value) -> Result<Value, String> {
-    use voxel_render::villager::profession_passes;
+    use voxel_render::entity::villager::profession_passes;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let baby = row["baby"].as_bool().ok_or("baby")?;

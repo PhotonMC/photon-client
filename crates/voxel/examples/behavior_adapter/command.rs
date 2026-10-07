@@ -238,8 +238,8 @@ pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
 pub(super) fn menu_named(
     name: &str,
     row: &Value,
-) -> Result<voxel_game::container_menu::ContainerMenu, String> {
-    use voxel_game::container_menu::{ContainerMenu, MenuKind, Smelter};
+) -> Result<voxel_game::menus::container::ContainerMenu, String> {
+    use voxel_game::menus::container::{ContainerMenu, MenuKind, Smelter};
     let kind = match name.strip_prefix("minecraft:").unwrap_or(name) {
         "crafting" => MenuKind::Crafting,
         "anvil" => MenuKind::Anvil,
@@ -334,9 +334,9 @@ pub(super) fn menu_named(
     }
     menu.item_tags = std::sync::Arc::new(vanilla_item_tags()?);
     if kind == MenuKind::Merchant {
-        let item = |pair: &Value| -> Result<voxel_game::merchant::ItemCost, String> {
+        let item = |pair: &Value| -> Result<voxel_game::menus::merchant::ItemCost, String> {
             let name = pair[0].as_str().ok_or("item must be a string")?;
-            Ok(voxel_game::merchant::ItemCost {
+            Ok(voxel_game::menus::merchant::ItemCost {
                 item: voxel_game::item::id_of(name)
                     .ok_or_else(|| format!("unknown item {name}"))?,
                 count: pair[1].as_i64().ok_or("count must be a number")? as i32,
@@ -347,7 +347,7 @@ pub(super) fn menu_named(
         for offer in row["offers"].as_array().into_iter().flatten() {
             let cost_a = item(&offer["buy"])?;
             let result = item(&offer["sell"])?;
-            offers.push(voxel_game::merchant::MerchantOffer {
+            offers.push(voxel_game::menus::merchant::MerchantOffer {
                 cost_a,
                 cost_b: offer.get("buy_b").map(item).transpose()?,
                 result: result.stack(result.count),
@@ -361,7 +361,7 @@ pub(super) fn menu_named(
         }
         menu.offers = std::sync::Arc::new(offers);
         if let Some(state) = row.get("merchant") {
-            menu.trader = voxel_game::merchant::Trader {
+            menu.trader = voxel_game::menus::merchant::Trader {
                 level: state["level"].as_i64().unwrap_or(0) as i32,
                 xp: state["xp"].as_i64().unwrap_or(0) as i32,
                 show_progress: state["progress"].as_bool().unwrap_or(false),

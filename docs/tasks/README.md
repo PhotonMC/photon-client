@@ -24,7 +24,7 @@ GUI görevleri bu beş adımı izler; görev dosyaları "G" diye anar.
 4. `docs/gui-oracle.md` kapsam tablosuna operation satırı.
 5. `python3 tools/voxel.py parity --capture --family gui` yeşil olana dek yinele. Fark çıkarsa Rust'ı düzelt; beklenen değeri Rust çıktısından türetme.
 
-Rust ekran kalıbı: `voxel-render/src/gui/{pause,death,disconnected}.rs` (ızgara: `layout.rs`, düğme/simge: `widgets.rs`, sprite: `atlas.rs`); oyuna bağlama `crates/voxel/src/{controls,gui,play}.rs` (`open_pause`, `receive_death` örnek).
+Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs` (ızgara: `gui/layout.rs`, düğme/simge: `gui/widgets.rs`, sprite: `gui/atlas.rs`); oyuna bağlama `crates/voxel/src/{controls,gui,play}.rs` ve `controls/{pause,death,confirm}.rs` (`open_pause`, `receive_death` örnek).
 
 ## Görevler
 

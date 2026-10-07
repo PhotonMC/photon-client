@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/EnderDragonRenderer.java` (`submitRays`), `RenderTypes.entityCutoutDissolve`/`dragonRays`, `shaders/core/entity.fsh` (`DISSOLVE`).
-- Rust: `crates/voxel/src/ender_dragons.rs`, `crates/voxel-render/src/vulkan.rs` (entity gölgelendiricisi).
+- Rust: `crates/voxel/src/mobs/monsters/ender_dragons.rs`, `crates/voxel-render/src/vulkan.rs` (entity gölgelendiricisi).
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

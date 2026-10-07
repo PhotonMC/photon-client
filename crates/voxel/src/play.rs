@@ -8,34 +8,35 @@ use std::time::{Duration, Instant};
 use voxel_core::math::Vec3;
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
-use voxel_render::biome_tint::BiomeTints;
+use voxel_render::block::biome_tint::BiomeTints;
+use voxel_render::block::world_mesh::BlockRenderer;
 use voxel_render::window::{DisplayData, WindowSurface};
-use voxel_render::world_mesh::BlockRenderer;
 
-use crate::animated_atlas::AnimatedAtlas;
-use crate::armor::{Armor, Worn};
 use crate::assets::FolderAssets;
 use crate::bench::{Bench, RunInfo};
 use crate::controls::Controls;
-use crate::dropped_items::{WorldItemLayers, world_items};
-use crate::falling_blocks::falling_blocks;
-use crate::fishing_hooks::{HookView, fishing_hooks};
+use crate::equipment::armor::{Armor, Worn};
+use crate::equipment::held_items::held_item_vertices;
+use crate::equipment::item_layers::ItemLayerCache;
 use crate::frame_limiter::{FrameLimiter, is_input};
 use crate::gui::Gui;
-use crate::held_items::held_item_vertices;
-use crate::item_layers::ItemLayerCache;
+use crate::mobs;
+use crate::mobs::humanoids::villagers;
+use crate::objects::dropped_items::{WorldItemLayers, world_items};
+use crate::objects::falling_blocks::falling_blocks;
+use crate::objects::fishing_hooks::{HookView, fishing_hooks};
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::FrameProfile;
 use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
-use crate::sections::SectionMeshes;
-use crate::sky::{Sky, SkyCamera};
 use crate::sound::SoundSystem;
 use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
-use crate::{mobs, villagers};
+use crate::world::animated_atlas::AnimatedAtlas;
+use crate::world::sections::SectionMeshes;
+use crate::world::sky::{Sky, SkyCamera};
+use voxel_game::input::pick::pick;
 use voxel_game::options::UNLIMITED_FRAMERATE_CUTOFF;
-use voxel_game::pick::pick;
 use voxel_world::local_player::LocalPlayer;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -93,7 +94,7 @@ struct FrameCamera {
     /// `Camera.getCullFrustum`.
     frustum: voxel_render::visibility::Frustum,
     /// What the locator bar reads of the camera.
-    locator: voxel_render::gui::locator::LocatorCamera,
+    locator: voxel_render::gui::hud::locator::LocatorCamera,
 }
 
 /// A joined session with its window, renderer and everything the frames
@@ -110,7 +111,7 @@ struct Play {
     origin: [i32; 3],
     sections: SectionMeshes,
     sky: Sky,
-    player_model: voxel_render::player_model::PlayerModel,
+    player_model: voxel_render::entity::player_model::PlayerModel,
     /// The other players' models, and which default skin the local player wears.
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
@@ -119,12 +120,12 @@ struct Play {
     armor: Armor,
     /// The layers of what humanoids hold, in the right and the left hand.
     worn_layers: [ItemLayerCache; 4],
-    entity_textures: voxel_render::entity_textures::EntityTextures,
-    skin_rect: voxel_render::entity_textures::TextureRect,
+    entity_textures: voxel_render::entity::textures::EntityTextures,
+    skin_rect: voxel_render::entity::textures::TextureRect,
     gui: Gui,
     screen_assets: ScreenAssets,
     /// `ItemInHandRenderer`: the stacks the hands show and how high they are.
-    item_in_hand: voxel_game::item_in_hand::ItemInHand,
+    item_in_hand: voxel_game::item::in_hand::ItemInHand,
     /// Each item's first-person layers, by item and hand.
     held_item_layers: [ItemLayerCache; 2],
     camera: voxel_render::camera::Camera,
@@ -298,8 +299,10 @@ fn join(server: SocketAddr, username: &str, auto_jump: bool) -> Result<PlaySessi
 /// label for its errors.
 pub fn texture(root: &str, name: &str, label: &str) -> Result<voxel_render::DecodedImage> {
     let path = std::path::Path::new(root).join(format!("minecraft/textures/{name}.png"));
-    Ok(voxel_render::png::decode_rgba(&std::fs::read(path)?)
-        .map_err(|error| format!("{label}: {error:?}"))?)
+    Ok(
+        voxel_render::texture::png::decode_rgba(&std::fs::read(path)?)
+            .map_err(|error| format!("{label}: {error:?}"))?,
+    )
 }
 
 /// `ModelBakery.DESTROY_STAGES`, stacked into one image.
@@ -357,5 +360,5 @@ fn set_moving_blocks(
     Ok(())
 }
 
-mod play_draw;
-mod play_ticks;
+mod draw;
+mod ticks;

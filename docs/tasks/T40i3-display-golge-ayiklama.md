@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/DisplayRenderer.java` (`getShadowRadius`, `getBoundingBoxForCulling`, `getSkyLightLevel`), `world/entity/Display.java` (`updateCulling`, `shouldRenderAtSqrDistance`, `getTeamColor`).
-- Rust: `crates/voxel/src/displays.rs`, `crates/voxel-render/src/shadow.rs`.
+- Rust: `crates/voxel/src/objects/displays.rs`, `crates/voxel-render/src/entity/shadow.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

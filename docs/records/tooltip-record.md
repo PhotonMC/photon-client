@@ -48,7 +48,7 @@ referanstan karşılaştırılır.
 
 ## Yaratıcı arama
 
-Arama sekmesinin kutusu `EditBox`ın (`crates/voxel-render/src/gui/edit_box.rs`) taşıdır: yazı,
+Arama sekmesinin kutusu `EditBox`ın (`crates/voxel-render/src/gui/widgets/edit_box.rs`) taşıdır: yazı,
 imleç, seçim, imleci görünür tutan kayma, Backspace/Delete/oklar/Home/End
 (Ctrl ile kelime), hepsini seç/kopyala/yapıştır/kes (pencere panosuyla),
 elli karakter. `T` arama sekmesini açar ve o tuşun harfi yazılmaz. Arama

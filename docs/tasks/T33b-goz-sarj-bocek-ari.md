@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{SpiderEyesLayer,EyesLayer,CreeperPowerLayer,EnergySwirlLayer}.java`, `client/renderer/rendertype/RenderTypes.java` (`eyes`, `energySwirl`), `client/model/monster/{silverfish/SilverfishModel,endermite/EndermiteModel}.java`, `client/model/animal/bee/BeeModel.java`, `client/renderer/entity/{Silverfish,Endermite,Bee}Renderer.java`, `world/entity/animal/bee/Bee.java` (`getRollAmount`, `isAngry`).
-- Rust: `crates/voxel-render/src/vulkan.rs` (entity boru hattı, `overlay_code`), `crates/voxel/src/monsters.rs`, `voxel-render/src/mob_model.rs` (`setup_spider`, `setup_creeper`), `voxel-world/src/animal.rs`.
+- Rust: `crates/voxel-render/src/vulkan.rs` (entity boru hattı, `overlay_code`), `crates/voxel/src/mobs/monsters.rs`, `voxel-render/src/mob_model.rs` (`setup_spider`, `setup_creeper`), `voxel-world/src/animal.rs`.
 
 ## Yapılacaklar
 Gümüş balığı, endermite, arı model `setupAnim` kolları ve durumları (`Bee.getRollAmount`, `isAngry` verisi).

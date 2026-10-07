@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/golem/CopperGolemModel.java`, `client/renderer/entity/CopperGolemRenderer.java` ve katmanları, `world/entity/animal/golem/CopperGolem.java`.
-- Rust: `crates/voxel/src/golems.rs` (kalıp), `voxel-render/src/mob_model.rs`.
+- Rust: `crates/voxel/src/mobs/humanoids/golems.rs` (kalıp), `voxel-render/src/mob_model.rs`.
 
 ## Oracle
 `ironGolemModel` kalıbı: gerçek model + `setupAnim`; animasyon durumları T43b'nin oynatıcısıyla.

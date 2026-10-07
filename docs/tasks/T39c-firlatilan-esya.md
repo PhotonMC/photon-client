@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ThrownItemRenderer,FireworkEntityRenderer}.java`, `client/renderer/entity/state/ThrownItemRenderState.java`.
-- Rust: `crates/voxel-render/src/item_entity.rs` (eşya çizimi), `crates/voxel/src/dropped_items.rs`.
+- Rust: `crates/voxel-render/src/objects/item.rs` (eşya çizimi), `crates/voxel/src/objects/dropped_items.rs`.
 
 ## Kabul
 `tools/voxel.py check --capture` → `CHECK OK`.

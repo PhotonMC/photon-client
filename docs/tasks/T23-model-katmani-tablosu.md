@@ -6,7 +6,7 @@
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/model/geom/LayerDefinitions.java` (565; `createRoots`), `.data/minecraft/source/net/minecraft/client/model/geom/{ModelPart,PartPose,ModelLayerLocation,ModelLayers}.java`, `.data/minecraft/source/net/minecraft/client/model/geom/builders/{LayerDefinition,MeshDefinition,PartDefinition,CubeDefinition,CubeListBuilder,UVPair}.java`, `.data/minecraft/source/net/minecraft/client/model/geom/builders/MeshTransformer.java` (bebek dönüşümü).
 - Kalıp: `tools/generate/` (üretici örnekleri: `ls tools/generate; sed -n 1,40p tools/generate/all.py`), `crates/voxel-data/src/generated/` (biçim kuralı: `docs/coding-standards.md` "Referans verisi"), mevcut oracle tablo örneği: blok tablosu `tests/behavior/java/BlockOracle.java` + adaptör kolu.
-- Rust: `crates/voxel-render/src/player_model.rs`, `special_models.rs` (el yazımı modeller; tablo gelince birleştirilecek, bu görevde dokunma).
+- Rust: `crates/voxel-render/src/entity/player_model.rs`, `special_models.rs` (el yazımı modeller; tablo gelince birleştirilecek, bu görevde dokunma).
 
 ## Yapılacaklar
 1. `tests/behavior/java/EntityModelOracle.java` (veya `EntityOracle`'a operation): `LayerDefinitions.createRoots()` → her `ModelLayerLocation` için ModelPart ağacı (ad, `PartPose` konum/dönüş, küpler: origin, boyut, `dilation`, UV, mirror; texture genişlik/yükseklik) JSON; `Oracle.vanillaRegistries()` gerekli mi kontrol et (headless sorunu varsa AGENTS.md uyarılarına bak).

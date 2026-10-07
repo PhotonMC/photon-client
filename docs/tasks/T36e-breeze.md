@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/breeze/BreezeModel.java`, `client/renderer/entity/BreezeRenderer.java`, `client/renderer/entity/layers/Breeze{Wind,Eyes}Layer.java`, `client/renderer/rendertype/RenderTypes.java` (`breezeWind`, `breezeEyes`), `world/entity/monster/breeze/Breeze.java` (`onSyncedDataUpdated`, `tick`).
-- Rust: `crates/voxel-world/src/frog.rs` (poza bağlı animasyon durumu kalıbı), `crates/voxel-render/src/{mob_model,render_types}.rs` (`mob_vertices_swirl`: kaydırılan doku), `crates/voxel/src/monsters.rs`.
+- Rust: `crates/voxel-world/src/mobs/frog.rs` (poza bağlı animasyon durumu kalıbı), `crates/voxel-render/src/{mob_model,render_types}.rs` (`mob_vertices_swirl`: kaydırılan doku), `crates/voxel/src/mobs/monsters.rs`.
 
 ## Oracle
 `frog_model` kalıbı (gerçek model + animasyon durumları); üç katman ayrı satırlar; gerçek varlık tiki için `living-entity-animations`.
