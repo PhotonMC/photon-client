@@ -190,6 +190,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     "iron_golem" => iron_golem_extra(entity, &mut described)?,
                     "creeper" => creeper_extra(entity, &mut described)?,
                     "chicken" => chicken_extra(entity, &mut described)?,
+                    "cull" => cull_extra(entity, &mut described)?,
                     other => return Err(format!("unknown extra {other}")),
                 }
             }

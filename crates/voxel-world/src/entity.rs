@@ -104,6 +104,8 @@ pub struct ClientEntity {
     pub(crate) lightning_done: bool,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
+    /// `FireworkRocketEntity.isAttachedToEntity`: its data names an entity it flies with.
+    pub(crate) attached_to_entity: bool,
 }
 
 mod animation;
@@ -121,6 +123,7 @@ mod inputs;
 pub use inputs::*;
 mod interpolation;
 pub(crate) use interpolation::*;
+mod culling;
 mod item_frame;
 mod minecart;
 pub(crate) use minecart::*;

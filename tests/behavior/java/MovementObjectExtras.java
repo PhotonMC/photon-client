@@ -147,4 +147,71 @@ class MovementObjectExtras extends MovementMobExtras {
         }
         described.add("render_at", near);
     }
+    /**
+     * How far the entity may be from the camera and still be drawn (at two view scales), and the
+     * box its renderer tests against the view: the reference's own renderer class for the types
+     * whose renderer changes it, a plain living or plain renderer for the rest.
+     */
+    static void extraCull(LivingRow ctx, JsonObject described) throws Exception {
+        var entity = ctx.entity();
+        Class<?> rendererClass = switch (entity) {
+            case net.minecraft.world.entity.Display.BlockDisplay ignored ->
+                net.minecraft.client.renderer.entity.DisplayRenderer.BlockDisplayRenderer.class;
+            case net.minecraft.world.entity.Display.ItemDisplay ignored ->
+                net.minecraft.client.renderer.entity.DisplayRenderer.ItemDisplayRenderer.class;
+            case net.minecraft.world.entity.Display.TextDisplay ignored ->
+                net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class;
+            case net.minecraft.world.entity.monster.illager.Illusioner ignored ->
+                net.minecraft.client.renderer.entity.IllusionerRenderer.class;
+            case net.minecraft.world.entity.animal.happyghast.HappyGhast ignored ->
+                net.minecraft.client.renderer.entity.HappyGhastRenderer.class;
+            case net.minecraft.world.entity.animal.sniffer.Sniffer ignored ->
+                net.minecraft.client.renderer.entity.SnifferRenderer.class;
+            case net.minecraft.world.entity.vehicle.minecart.AbstractMinecart ignored ->
+                net.minecraft.client.renderer.entity.MinecartRenderer.class;
+            case net.minecraft.world.entity.projectile.arrow.ThrownTrident ignored ->
+                net.minecraft.client.renderer.entity.ThrownTridentRenderer.class;
+            case net.minecraft.world.entity.projectile.FishingHook ignored ->
+                net.minecraft.client.renderer.entity.FishingHookRenderer.class;
+            case net.minecraft.world.entity.LightningBolt ignored ->
+                net.minecraft.client.renderer.entity.LightningBoltRenderer.class;
+            case net.minecraft.world.entity.boss.enderdragon.EnderDragon ignored ->
+                net.minecraft.client.renderer.entity.EnderDragonRenderer.class;
+            case net.minecraft.world.entity.LivingEntity ignored ->
+                net.minecraft.client.renderer.entity.PigRenderer.class;
+            default -> net.minecraft.client.renderer.entity.NoopRenderer.class;
+        };
+        var renderer = unsafe.allocateInstance(rendererClass);
+        var base = net.minecraft.client.renderer.entity.EntityRenderer.class;
+        var affected = base.getDeclaredMethod("affectedByCulling", net.minecraft.world.entity.Entity.class);
+        affected.setAccessible(true);
+        var box = base.getDeclaredMethod("getBoundingBoxForCulling", net.minecraft.world.entity.Entity.class);
+        box.setAccessible(true);
+        boolean culled = (boolean) affected.invoke(renderer, entity);
+        described.addProperty("culled", culled);
+        if (culled) {
+            var aabb = (net.minecraft.world.phys.AABB) box.invoke(renderer, entity);
+            described.addProperty("culling_box", Oracle.bits(aabb.minX) + "," + Oracle.bits(aabb.minY) + ","
+                + Oracle.bits(aabb.minZ) + "," + Oracle.bits(aabb.maxX) + "," + Oracle.bits(aabb.maxY) + ","
+                + Oracle.bits(aabb.maxZ));
+        }
+        for (double scale : CULL_VIEW_SCALES) {
+            net.minecraft.world.entity.Entity.setViewScale(scale);
+            var near = new StringBuilder();
+            for (double distance : CULL_DISTANCES) {
+                double camX = entity.getX() + Math.sqrt(distance);
+                near.append(entity.shouldRender(camX, entity.getY(), entity.getZ()) ? '1' : '0');
+            }
+            described.addProperty("render_at_" + scale, near.toString());
+        }
+        net.minecraft.world.entity.Entity.setViewScale(1.0);
+    }
+
+    /** The view scales the culling extra asks at: the least and the most a render distance gives. */
+    static final double[] CULL_VIEW_SCALES = {1.0, 2.5};
+
+    /** The squared distances the culling extra asks at, across every type's limits. */
+    static final double[] CULL_DISTANCES = {
+        0.0, 12.0, 12.5, 400.0, 1000.0, 1100.0, 2500.0, 4000.0, 4200.0, 8000.0, 16000.0, 16500.0,
+        40000.0, 100000.0, 400000.0, 1.0E6, 4.0E6, 1.0E7, 1.0E8, 1.0E9};
 }

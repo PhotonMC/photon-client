@@ -32,6 +32,11 @@ impl ClientEntity {
     /// The size the type starts with (a baby's, for the types that have
     /// babies, a player's by pose). Not carried: the scale attribute and the
     /// poses of the mobs that change size with them, bar a fish's.
+    /// `Entity.getBbHeight`.
+    pub fn bb_height(&self) -> f32 {
+        self.dimensions().height()
+    }
+
     pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
         match voxel_data::entity_type::pick(self.type_id) {
             Some(pick) if !self.is_player() => {

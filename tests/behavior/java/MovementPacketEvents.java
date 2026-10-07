@@ -136,7 +136,9 @@ class MovementPacketEvents extends MovementLivingRow {
                 .getValue(net.minecraft.resources.Identifier.parse(event.get("item").getAsString())));
         listener.handleSetEquipment(new net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket(
             entityId, java.util.List.of(com.mojang.datafixers.util.Pair.of(
-                net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack))));
+                event.has("slot") && event.get("slot").getAsString().equals("head")
+                    ? net.minecraft.world.entity.EquipmentSlot.HEAD
+                    : net.minecraft.world.entity.EquipmentSlot.MAINHAND, stack))));
     }
 
     static void eventPassengers(LivingRow ctx, JsonObject event) throws Exception {

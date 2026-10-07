@@ -128,6 +128,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T26 — Entity hedefleme, `Attack`/`Interact`/`SpectatorAction` — client-parity](records/client-entity-aim-parity-conformance.md)
 - [T46 — Varlık öznitelikleri — client-parity](records/client-entity-attributes-parity-conformance.md)
 - [T34d — Varlık üstünde blok durumu çizimi — client-parity](records/client-entity-block-parity-conformance.md)
+- [T47 — Entity uzaklık ve bölüm görünürlüğü ayıklaması — client-parity](records/client-entity-culling-parity-conformance.md)
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](records/client-entity-hurt-death-parity-conformance.md)
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](records/client-entity-metadata-variants-parity-conformance.md)
 - [T42 — Entity gölgesi — client-parity](records/client-entity-shadow-parity-conformance.md)

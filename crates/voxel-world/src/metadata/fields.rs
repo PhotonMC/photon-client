@@ -78,7 +78,7 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
         | 12
         | 14
         | 15
-        | 19
+        | ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID
         | 21..=32
         | 35..=38
         | 42 => varint(metadata)?,
@@ -208,6 +208,22 @@ pub(crate) fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<
         return None;
     }
     Some(value)
+}
+
+/// An optional unsigned int: zero for none, else the value plus one.
+pub(crate) fn metadata_optional_unsigned_int_value(
+    metadata: &[u8],
+    target_data_id: u8,
+) -> Option<Option<i32>> {
+    let (serializer_id, mut value_input) = find_metadata_field(metadata, target_data_id)?;
+    if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID {
+        return None;
+    }
+    let value = voxel_core::wire::read_varint(&mut value_input).ok()?;
+    if value_input.is_empty() {
+        return None;
+    }
+    Some(value.checked_sub(1))
 }
 
 pub(crate) fn metadata_float_value(metadata: &[u8], target_data_id: u8) -> Option<f32> {

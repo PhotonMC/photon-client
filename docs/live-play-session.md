@@ -42,9 +42,9 @@ güncellemesi, Java'daki gibi ayrı iş parçacığında koşuyor; kare yalnız
 girdilerin kopyasını alıyor ve sonuç gelene dek öncekini kullanıyor.
 `VOXEL_CULLING=0` oklüzyon grafını ve frustum'u kapatıp görüş mesafesindeki bütün
 section'ları ve entity'leri derler ve çizer; görüntü farkı şüphesinde kıyaslamak içindir.
-Entity'ler, kutuları Java'nın ayıklama kutusundan (`shouldRender`) geniş tutularak
-yalnız frustum'un tamamen dışındayken atlanıyor; uzaklık ve bölüm görünürlüğü
-ayıklaması henüz yok, bu yüzden Java'nın gizlediği uzak entity'ler hâlâ çiziliyor.
+Entity'ler Java'nın `isEntityVisible` kuralıyla atlanıyor: türün uzaklık sınırı,
+çizicinin ayıklama kutusu ve bölümün gösterilmiş olması
+([kayıt](records/client-entity-culling-parity-conformance.md)).
 Yarı saydam yüzler bölüm merkezinin kameraya uzaklığına göre uzaktan yakına
 çiziliyor.
 

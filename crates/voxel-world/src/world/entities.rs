@@ -227,6 +227,7 @@ impl ClientWorld {
                 leash_holder_id: 0,
                 lightning_done: false,
                 shot_at_angle: false,
+                attached_to_entity: false,
             },
         );
         self.entities_mut()

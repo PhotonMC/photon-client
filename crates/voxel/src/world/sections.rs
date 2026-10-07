@@ -179,6 +179,14 @@ impl SectionMeshes {
         Ok(())
     }
 
+    /// `LevelRenderer.isSectionCompiledAndVisible`: the section has shown and is at least
+    /// three tenths into its fade.
+    pub fn compiled_and_visible(&self, key: SectionKey) -> bool {
+        self.fades
+            .get(&key)
+            .is_some_and(|fade| fade.visibility(Instant::now()) >= 0.3)
+    }
+
     /// A section fades in from the fog the first time it shows, unless it is
     /// near the camera; its later rebuilds keep that first time.
     fn fade(&mut self, key: SectionKey, camera_block: [i64; 3]) -> SectionFade {

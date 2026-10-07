@@ -334,7 +334,15 @@ impl Play {
         let frame = self.frame_camera(player);
         self.particles.set_camera(frame.camera);
         let out_of_view = if self.sections.culling() {
-            cull::out_of_view(self.session.world(), &frame.frustum, frame.partial as f32)
+            cull::out_of_view(
+                self.session.world(),
+                &self.sections,
+                &cull::CullView {
+                    frustum: &frame.frustum,
+                    camera: (frame.camera.x, frame.camera.y, frame.camera.z),
+                    render_distance: frame.render_distance,
+                },
+            )
         } else {
             Default::default()
         };

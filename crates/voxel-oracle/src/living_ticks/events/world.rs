@@ -81,9 +81,11 @@ pub(crate) fn equipment_event(
         let id = voxel_data::item::registry::index(name).unwrap_or(0);
         voxel_world::ClientItemStackState::new(1, id as i32)
     });
-    world
-        .entities_mut()
-        .apply_equipment(entity_id, voxel_world::EquipmentSlot::MainHand, stack);
+    let slot = match event["slot"].as_str() {
+        Some("head") => voxel_world::EquipmentSlot::Head,
+        _ => voxel_world::EquipmentSlot::MainHand,
+    };
+    world.entities_mut().apply_equipment(entity_id, slot, stack);
     Ok(())
 }
 

@@ -26,3 +26,10 @@ Gölge, ad etiketi ve tasma çizgisi geçişleri (Java'da çizilen entity'ye ba�
 `docs/live-play-session.md` ayıklama paragrafı; yeni `client-*-parity-conformance.md` kaydı ve `docs/index.md` satırı.
 
 ## Devir notu
+Yapılan: `ClientEntity::{should_render, should_render_at_sqr_distance, culling_box}`
+(`voxel-world/src/entity/culling.rs`), `play/cull.rs` Java'nın `isEntityVisible`'ı (uzaklık,
+kutu, tasma, gardiyan/kristal ışını, shulker kayışı, yolcu, bölüm solması ≥ 0.3). Display ve
+şamandıra çizimi artık `drawn()` listesinden; havai fişeğin bağlı entity verisi okunuyor.
+Oracle: `cull` extra'sı, 34 satır, gerçek çizici sınıfları Unsafe ile.
+Sapma: uzak oyuncu satırı yok (kurulamıyor); bölüm koşulu bir önceki karenin solmasını okur.
+Açık: asılı kutu ve kalan mermi tikleri → T47b. Bench ölçülmedi (canlı oturum gerekmez görüldü).

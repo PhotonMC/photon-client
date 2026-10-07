@@ -31,13 +31,13 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %76 bitti** (ağırlıklı) · 207/251 madde işaretli, **44 madde kaldı** (tahmini 95 M-görev eşdeğeri iş).
+**Toplam: %76 bitti** (ağırlıklı) · 208/252 madde işaretli, **44 madde kaldı** (tahmini 96 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
 | Temel (pano öncesi) | `████████████████████` | 100 | 7/7 |
 | M3.d Sunucunun açtığı kaplar | `████████████░░░░░░░░` | 58 | 7/11 |
-| M4 Entity'ler | `████████████████████` | 98 | 128/130 |
+| M4 Entity'ler | `████████████████████` | 98 | 129/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `███████████░░░░░░░░░` | 55 | 15/17 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/3 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47, PLAN-M6, T64d, T72, T73, T74, T75, T76, T77, T78, T80d, T81, T82, T83b, T84b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, PLAN-M6, T64d, T72, T73, T74, T75, T76, T77, T78, T80d, T81, T82, T83b, T84b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -211,7 +211,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T45](T45-saldiri-gucu-ve-combat.md) Saldırı gücü göstergesi ve `PlayerCombat*` paketleri — S · bağımlı: T26 · bitti (fd8d309d)
 - [x] [T46](T46-mob-oznitelikleri.md) Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek — S · bağımlı: T34c · bitti (99446dc2)
 - [ ] **K-M4** P24 kapsam denetimi: her entity türünün çizilip çizilmediğinin otomatik listesi, eksikler — M×2
-- [ ] [T47](T47-entity-uzaklik-ayiklamasi.md) Entity uzaklık ve bölüm görünürlüğü ayıklaması — S · bağımlı: T24
+- [x] [T47](T47-entity-uzaklik-ayiklamasi.md) Entity uzaklık ve bölüm görünürlüğü ayıklaması — S · bağımlı: T24 · bitti
+- [ ] [T47b](T47b-asili-kutu-mermi-tiki.md) Asılı entity kutusu ve kalan mermilerin istemci tiki — M · bağımlı: T47
 
 ### M5 Metin ve sohbet
 

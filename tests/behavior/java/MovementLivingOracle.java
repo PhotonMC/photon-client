@@ -198,6 +198,7 @@ class MovementLivingOracle extends MovementObjectExtras {
                         case "goat" -> extraGoat(ctx, described);
                         case "iron_golem" -> extraIronGolem(ctx, described);
                         case "creeper" -> extraCreeper(ctx, described);
+                        case "cull" -> extraCull(ctx, described);
                         default -> throw new IllegalArgumentException("Unknown extra " + extra);
                     }
                 }

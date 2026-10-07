@@ -196,6 +196,9 @@ enum LightTask {
 /// `FireworkRocketEntity.DATA_SHOT_AT_ANGLE`'s data id: the item and the attached target come first.
 pub const FIREWORK_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 
+/// `FireworkRocketEntity.DATA_ATTACHED_TO_TARGET`'s data id, an optional unsigned int.
+const FIREWORK_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
+
 /// The data of a display (`Display`) and of an item frame's turn, which this entity may have.
 fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
     if let Some(display) = entity.kind.display_mut() {
@@ -222,6 +225,12 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
         && let Some(angled) = metadata_boolean_value(metadata, FIREWORK_SHOT_AT_ANGLE_DATA_ID)
     {
         entity.shot_at_angle = angled;
+    }
+    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
+        && let Some(target) =
+            metadata_optional_unsigned_int_value(metadata, FIREWORK_ATTACHED_TO_TARGET_DATA_ID)
+    {
+        entity.attached_to_entity = target.is_some();
     }
     if let Some(mode) = sniffer_state_from_metadata(entity.type_id, metadata) {
         entity.set_sniffer_mode(mode);

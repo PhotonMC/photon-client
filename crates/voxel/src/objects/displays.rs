@@ -60,7 +60,7 @@ pub fn displays(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(display) = entity.display() else {
             continue;
         };
@@ -71,16 +71,6 @@ pub fn displays(
             continue;
         };
         let (x, y, z) = snapshot.position;
-        // `Display.shouldRenderAtSqrDistance`.
-        let camera = (
-            f64::from(view.origin[0]) + f64::from(view.camera[0]),
-            f64::from(view.origin[1]) + f64::from(view.camera[1]),
-            f64::from(view.origin[2]) + f64::from(view.camera[2]),
-        );
-        let distance_sqr = (x - camera.0).powi(2) + (y - camera.1).powi(2) + (z - camera.2).powi(2);
-        if !display.should_render_at_sqr_distance(distance_sqr, VIEW_SCALE) {
-            continue;
-        }
         let progress = display.interpolation_progress(entity.tick_count(), partial);
         let transformation = state.transformation.get(progress);
         let turns = DisplayTurns {
@@ -160,7 +150,7 @@ pub fn display_texts(
     let world = session.world();
     let partial = view.partial as f32;
     let (mut see_through, mut normal) = (Vec::new(), Vec::new());
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(display) = entity.display() else {
             continue;
         };
@@ -172,15 +162,6 @@ pub fn display_texts(
             continue;
         };
         let (x, y, z) = snapshot.position;
-        let camera = (
-            f64::from(view.origin[0]) + f64::from(view.camera[0]),
-            f64::from(view.origin[1]) + f64::from(view.camera[1]),
-            f64::from(view.origin[2]) + f64::from(view.camera[2]),
-        );
-        let distance_sqr = (x - camera.0).powi(2) + (y - camera.1).powi(2) + (z - camera.2).powi(2);
-        if !display.should_render_at_sqr_distance(distance_sqr, VIEW_SCALE) {
-            continue;
-        }
         let progress = display.interpolation_progress(entity.tick_count(), partial);
         let turns = DisplayTurns {
             entity: (entity.y_rot_at(partial), entity.x_rot_at(partial)),

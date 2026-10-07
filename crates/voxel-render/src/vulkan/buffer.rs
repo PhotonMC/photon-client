@@ -274,7 +274,7 @@ impl SectionFade {
         }
     }
 
-    pub(super) fn visibility(&self, now: std::time::Instant) -> f32 {
+    pub fn visibility(&self, now: std::time::Instant) -> f32 {
         let elapsed = now.saturating_duration_since(self.since).as_millis();
         let length = self.length.as_millis();
         if elapsed >= length {
