@@ -176,7 +176,22 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T44c4](T44c4-minecart-binme-inme.md) | Minecart yolcusu ve binme/inme | M | T44c3 | bitti (37f8c4ea) |
 | [T45](T45-saldiri-gucu-ve-combat.md) | Saldırı gücü göstergesi ve `PlayerCombat*` paketleri | S | T26 | bitti (fd8d309d) |
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
-| PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
+| PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | bitti (HASH) |
+| [T70](T70-parcacik-cekirdegi.md) | Partikül motoru çekirdeği ve `LevelParticles` paketi | L | – | açık |
+| [T71](T71-blok-parcaciklari.md) | Blok parçacıkları: kırılma ve çatlama (`TerrainParticle`) | M | T70 | açık |
+| [T72](T72-yukselen-parcaciklar.md) | Yükselen duman/ateş aileleri | M | T70 | açık |
+| [T73](T73-su-parcaciklari.md) | Su ve kabarcık parçacıkları | M | T70 | açık |
+| [T74](T74-toz-buyu-parcaciklari.md) | Toz, büyü ve renkli parçacıklar | M | T70 | açık |
+| [T75](T75-cekim-parcaciklari.md) | Portal, büyü masası ve çeken parçacıklar | M | T70 | açık |
+| [T76](T76-vurus-patlama-parcaciklari.md) | Vuruş, patlama ve ifade parçacıkları | M | T70 | açık |
+| [T77](T77-esya-parcaciklari.md) | Eşya parçacıkları ve eşya toplama animasyonu | M | T70, T25 | açık |
+| [T78](T78-seviye-olaylari.md) | `LevelEvent` ve `BlockEvent` işleyicileri | L | T71, T64b | açık |
+| [T79](T79-blok-entity-cizici-iskeleti.md) | Blok entity çizici iskeleti ve sandık ailesi | L | – | açık |
+| [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | açık |
+| [T81](T81-isin-ve-portal-blok-entity.md) | Işın, portal ve efektli blok entity'ler | M | T79 | açık |
+| [T82](T82-spawner-vault-kafes.md) | Spawner, vault ve deneme spawner'ı çizimi | M | T79, T24 | açık |
+| [T83](T83-hasar-ve-etki-orturleri.md) | Ekran örtüleri ve kamera sallanması | M | – | açık |
+| [T84](T84-dunya-siniri.md) | Dünya sınırı | M | – | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
 | [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (f64024d2) |
 | [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | bitti (12e5d8ea) |
