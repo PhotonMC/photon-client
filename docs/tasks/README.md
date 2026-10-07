@@ -190,7 +190,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T79b](T79b-shulker-yatak.md) | Shulker kutusu çizimi | M | T79 | bitti (de6b3611) |
 | [T80](T80-tabela-bayrak-kafa.md) | Tabela, bayrak, kafa ve çan blok entity çizimi | L | T79 | bölündü (4077713c) |
 | [T80b](T80b-kafa-blogu.md) | Yerleştirilmiş kafa ve kafatası blokları | M | T80 | bitti (a911614e) |
-| [T80c](T80c-bayrak-blogu.md) | Bayrak bloğu | M | T80 | bitti |
+| [T80c](T80c-bayrak-blogu.md) | Bayrak bloğu | M | T80 | bitti (090c9716) |
 | [T80d](T80d-tabela-blogu.md) | Tabela bloğu (ayakta ve asılı) | L | T80 | açık |
 | [T81](T81-isin-ve-portal-blok-entity.md) | Işın, portal ve efektli blok entity'ler | M | T79 | açık |
 | [T82](T82-spawner-vault-kafes.md) | Spawner, vault ve deneme spawner'ı çizimi | M | T79, T24 | açık |
