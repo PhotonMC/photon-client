@@ -58,6 +58,8 @@ def main():
     bench_parser.add_argument("--repeat", type=int, default=1, help="runs in a row, compared by p50")
     bench_parser.add_argument("--warmup", type=float, default=10, help="seconds left out at the start")
     bench_parser.add_argument("--size", nargs=2, default=["1280", "720"], metavar=("WIDTH", "HEIGHT"))
+    bench_parser.add_argument("--route", choices=["still", "run"], default="still",
+                              help="stand and turn (default), or sprint out and back while chunks stream")
     bench_parser.add_argument("--no-build", action="store_true", help="skip `cargo build --release`")
     bench_parser.add_argument("--vsync", choices=["on", "off"], default="on",
                               help="wait for the display (default on)")

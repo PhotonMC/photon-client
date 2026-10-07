@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import socket
 import subprocess
 
@@ -14,6 +15,14 @@ from .common import ASSETS, DATA, ROOT, say, tool_environment
 BENCH_SCRIPT = "none=200;turn:90;none=100;turn:90;none=100;turn:90;none=100;turn:90;none=300"
 # A user of its own, so its saved position is the world's spawn and stays there.
 BENCH_USER = "Bench"
+# Sprinting out and turning, so chunks arrive, sections mesh and the
+# occlusion flood reruns while frames are measured: where frame spikes show.
+# Each run is a new user (no saved position), so every run starts at the
+# world's spawn and takes the same path.
+RUN_SCRIPT = ("none=200;forward,sprint,jump=300;turn:90;forward,sprint,jump=100;turn:90;"
+              "forward,sprint,jump=300;turn:90;forward,sprint,jump=100;none=100")
+ROUTES = {"still": (lambda: BENCH_USER, BENCH_SCRIPT),
+          "run": (lambda: f"Run{secrets.token_hex(6)}", RUN_SCRIPT)}
 
 
 def server_listening(address):
@@ -36,8 +45,12 @@ def bench_summary(report):
     else:
         passes = "" if gpu["pass_breakdown_resolved"] else " (no per-pass breakdown on this driver)"
         gpu_text = f" gpu_scene={triple(gpu['scene'])}{passes}"
-    return (f"frames={report['frames']} work_ms={triple(report['work_ms'])} "
-            f"work_fps={report['work_fps']:.0f} wall_fps={report['wall_fps']:.1f}{gpu_text}")
+    work = report["work_ms"]
+    parts = report.get("parts_ms", {})
+    heaviest = sorted(parts.items(), key=lambda item: item[1]["max"], reverse=True)[:3]
+    parts_text = " max_parts=" + ",".join(f"{name}:{stats['max']:.1f}" for name, stats in heaviest) if heaviest else ""
+    return (f"frames={report['frames']} work_ms={triple(work)} max={work['max']:.2f} "
+            f"work_fps={report['work_fps']:.0f} wall_fps={report['wall_fps']:.1f}{gpu_text}{parts_text}")
 
 
 def bench(args):
@@ -57,7 +70,8 @@ def bench(args):
         path = directory / f"{args.name}-{number}.json"
         path.unlink(missing_ok=True)
         environment = tool_environment()
-        environment.update({"VOXEL_USER": BENCH_USER, "VOXEL_SCRIPT": BENCH_SCRIPT,
+        user, script = ROUTES[args.route]
+        environment.update({"VOXEL_USER": user(), "VOXEL_SCRIPT": script,
                             "VOXEL_BENCH": str(path), "VOXEL_BENCH_WARMUP": str(args.warmup)})
         if args.validation:
             environment["VOXEL_VALIDATION"] = "1"

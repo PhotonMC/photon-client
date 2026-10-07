@@ -200,6 +200,8 @@ impl Play {
     pub(super) fn run(mut self) -> Result<()> {
         while !self.surface.should_close() {
             let frame_start = Instant::now();
+            // A frame that ended early (nothing to draw yet) leaves its parts behind.
+            profile::take_parts();
             for event in self.surface.poll() {
                 if is_input(&event) {
                     self.limiter.input_received(frame_start);
@@ -226,7 +228,7 @@ impl Play {
             let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
-            self.session.drain()?;
+            profile::timed(Span::Drain, || self.session.drain())?;
             self.controls.receive_suggestions(&mut self.session);
             self.controls
                 .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);

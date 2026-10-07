@@ -3,7 +3,7 @@
 //! camera through them (`SectionOcclusionGraph`) and the camera's view cone
 //! (`Frustum`).
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use voxel_core::direction::Direction;
 
@@ -301,21 +301,25 @@ impl GraphWorld<'_> {
         (x, y, z)
     }
 
-    /// `ViewArea.getRenderSection`: a section inside the view area.
-    fn exists(&self, key: SectionKey) -> bool {
-        let camera = self.camera_section();
+    /// `ViewArea.getRenderSection`: a section inside the view area around
+    /// the camera's section.
+    fn exists(&self, camera: SectionKey, key: SectionKey) -> bool {
         (self.min_section_y..=self.max_section_y).contains(&key.1)
             && (key.0 - camera.0).abs() <= self.view_distance
             && (key.2 - camera.2).abs() <= self.view_distance
     }
 
     /// `getRelativeFrom`.
-    fn relative(&self, from: SectionKey, direction: Direction) -> Option<SectionKey> {
-        let camera = self.camera_section();
+    fn relative(
+        &self,
+        camera: SectionKey,
+        from: SectionKey,
+        direction: Direction,
+    ) -> Option<SectionKey> {
         let next = step(from, direction);
         let in_range = in_view_distance((camera.0, camera.2), self.view_distance, (next.0, next.2))
             && (camera.1 - next.1).abs() <= self.view_distance;
-        (in_range && self.exists(next)).then_some(next)
+        (in_range && self.exists(camera, next)).then_some(next)
     }
 }
 

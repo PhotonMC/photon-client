@@ -76,6 +76,23 @@ impl ClientWorld {
             .is_none_or(|section| section.has_only_air())
     }
 
+    /// [`Self::section_is_empty`] for each of a loaded column's sections,
+    /// bottom to top, with the chunk found once; `None` if it is not loaded.
+    pub fn column_is_empty(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        sections: std::ops::Range<i32>,
+    ) -> Option<impl Iterator<Item = bool> + '_> {
+        let chunk = self.chunk_for_query(chunk_x, chunk_z)?;
+        Some(sections.map(|section_y| {
+            chunk
+                .sections
+                .get(&section_y)
+                .is_none_or(|section| section.has_only_air())
+        }))
+    }
+
     /// Copy the blocks and light in `[min, min + size)` and the quart biomes
     /// in `[quart_min, quart_min + quart_size)`. Every value is what the
     /// world's own lookups answer.

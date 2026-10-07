@@ -505,7 +505,8 @@ impl VulkanBackend {
     }
 
     /// Make `slot` hold a buffer of at least `size` bytes, replacing a smaller one with one of at
-    /// least `minimum`; the old buffer is freed first.
+    /// least `minimum`; the old buffer is freed first. A replacement has room to the next power of
+    /// two, so contents that grow a little each frame do not allocate each frame.
     ///
     /// # Safety
     ///
@@ -518,8 +519,8 @@ impl VulkanBackend {
     ) -> Result<&'a HostBuffer, VulkanError> {
         if slot.as_ref().is_none_or(|buffer| buffer.capacity < size) {
             *slot = None;
-            // SAFETY: live handles; `size.max(minimum)` is not 0 because `minimum` is not.
-            *slot = Some(unsafe { HostBuffer::new(self, size.max(minimum))? });
+            // SAFETY: live handles; the size is not 0 because `minimum` is not.
+            *slot = Some(unsafe { HostBuffer::new(self, size.next_power_of_two().max(minimum))? });
         }
         Ok(slot.as_ref().expect("filled above"))
     }

@@ -33,7 +33,13 @@ atılıyor. Mesh'ler GPU belleğindeki büyük bloklardan parça olarak ayrılı
 ve bir hazırlık tamponundan kopyalanıyor, çünkü CPU'nun yazabildiği GPU
 belleği (Resizable BAR kapalıyken) 256 MB ile sınırlı. Aşıldığında köşe
 verisi her karede PCIe'den okunuyor ve kare 30 ms'ye çıkıyordu.
-`VOXEL_PROFILE=1` her iki saniyede kare süresinin dağılımını yazıyor.
+`VOXEL_PROFILE=1` her iki saniyede kare süresini ortalama/p99/maks olarak,
+kare içi parçalarla (`drain`, `light`, `graph`, `hand_out`, `show_built`,
+`overlays`) yazıyor; `VOXEL_LOG=debug` ile medyanın iki katını aşan kare
+dökülüyor. `python3 tools/voxel.py bench --route run` yeni bir kullanıcıyla
+spawn'dan koşarak chunk akışı altında ölçer. Oklüzyon grafının tam
+güncellemesi, Java'daki gibi ayrı iş parçacığında koşuyor; kare yalnız
+girdilerin kopyasını alıyor ve sonuç gelene dek öncekini kullanıyor.
 `VOXEL_CULLING=0` oklüzyon grafını ve frustum'u kapatıp görüş mesafesindeki bütün
 section'ları derler ve çizer; görüntü farkı şüphesinde kıyaslamak içindir.
 Yarı saydam yüzler bölüm merkezinin kameraya uzaklığına göre uzaktan yakına

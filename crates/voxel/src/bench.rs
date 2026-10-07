@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 
 use voxel_render::{BackendTimings, GPU_PASSES, GpuTimings, VulkanBackend};
 
+use crate::profile;
+
 /// How long after the first frame samples are left out, so the sections the
 /// world is still meshing do not count.
 const DEFAULT_WARMUP: Duration = Duration::from_secs(10);
@@ -27,6 +29,8 @@ fn backend_spans(timings: &BackendTimings) -> [Duration; 4] {
 struct Sample {
     /// Ticking, meshing, building the frame, drawing it, and the whole frame.
     cpu: [f64; 5],
+    /// The parts of [`profile::SPANS`].
+    parts: [f64; profile::SPANS.len()],
     backend: BackendTimings,
     gpu: Option<GpuTimings>,
 }
@@ -77,6 +81,7 @@ impl Bench {
     pub fn record(
         &mut self,
         [start, ticked, meshed, built, drawn]: [Instant; 5],
+        parts: [f64; profile::SPANS.len()],
         backend: &VulkanBackend,
     ) {
         let first = *self.first_frame.get_or_insert(start);
@@ -93,6 +98,7 @@ impl Bench {
                 ms(built, drawn),
                 ms(start, drawn),
             ],
+            parts,
             backend: backend.timings(),
             gpu: backend.gpu_timings(),
         });
@@ -169,6 +175,18 @@ impl Bench {
             };
             let stats =
                 column(&|sample| backend_spans(&sample.backend)[index].as_secs_f64() * 1000.0);
+            let _ = writeln!(out, "    \"{name}\": {}{comma}", stats.json());
+        }
+        out.push_str("  },\n");
+        // The parts inside the spans above, so a spike can be traced to one.
+        out.push_str("  \"parts_ms\": {\n");
+        for (index, name) in profile::SPANS.iter().enumerate() {
+            let comma = if index + 1 < profile::SPANS.len() {
+                ","
+            } else {
+                ""
+            };
+            let stats = column(&|sample| sample.parts[index]);
             let _ = writeln!(out, "    \"{name}\": {}{comma}", stats.json());
         }
         out.push_str("  },\n");

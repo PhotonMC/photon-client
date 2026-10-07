@@ -10,14 +10,20 @@ use std::time::{Duration, Instant};
 use voxel_net::connection::PlaySession;
 use voxel_render::VulkanBackend;
 use voxel_render::section_workers::{SectionKey, SectionWorkers};
-use voxel_render::visibility::{
-    Frustum, GraphWorld, SectionState, VisibilitySet, visible_sections,
-};
+use voxel_render::visibility::{Frustum, SectionState, VisibilitySet};
 use voxel_render::vulkan::SectionFade;
+
+use super::flood::{Flood, FloodInputs};
+use crate::profile::{self, Span};
 
 /// The squared distance, in blocks, within which a section counts as near
 /// the camera: it does not fade in.
 const NEAR: i64 = 768;
+
+/// The time a frame may spend copying regions for the workers: at several
+/// hundred frames a second this still hands out hundreds of sections a
+/// second, and a frame spending more shows as a spike.
+const COPY_BUDGET: Duration = Duration::from_millis(1);
 
 /// Whether a section's centre is near the camera's block.
 fn near(key: SectionKey, camera_block: [i64; 3]) -> bool {
@@ -65,9 +71,16 @@ pub struct SectionMeshes {
     fades: HashMap<SectionKey, SectionFade>,
     /// Each built section's face visibility (`CompiledSectionMesh`).
     compiled: HashMap<SectionKey, VisibilitySet>,
+    /// What the flood last read of each dirtied section: whether its chunk
+    /// was here and whether it held only air. A section dirtied by a change
+    /// that leaves both as they were (light, a block swapped for another)
+    /// does not make the flood run again.
+    flood_inputs: HashMap<SectionKey, (bool, bool)>,
     /// The occlusion flood's sections, and whether it has to run again.
     graph: Vec<SectionKey>,
     graph_stale: bool,
+    /// The thread the flood runs on.
+    flood: Flood,
     /// The camera's eight-block cell and the view distance the flood last
     /// ran with (`invalidateIfNeeded`).
     graph_from: Option<([i64; 3], i32)>,
@@ -85,7 +98,9 @@ pub struct SectionMeshes {
 
 impl SectionMeshes {
     /// The sections the session has dirtied so far, and workers to mesh
-    /// them, leaving one core for the game.
+    /// them, leaving two cores: one for the game's frames and one for the
+    /// connection's reader and the sound, so a burst of meshing does not
+    /// keep the frame waiting for a core.
     pub fn new(
         session: &mut PlaySession,
         renderer: Arc<voxel_render::block::world_mesh::BlockRenderer>,
@@ -95,7 +110,7 @@ impl SectionMeshes {
         let pending: HashSet<SectionKey> = session.take_dirty_sections().into_iter().collect();
         let unchecked = pending.iter().copied().collect();
         let worker_count = std::thread::available_parallelism()
-            .map_or(2, |count| count.get().saturating_sub(1))
+            .map_or(2, |count| count.get().saturating_sub(2))
             .clamp(1, 8);
         let dimension = session.world().dimension();
         let low = dimension.min_y.div_euclid(16);
@@ -106,8 +121,10 @@ impl SectionMeshes {
             next_generation: 0,
             fades: HashMap::new(),
             compiled: HashMap::new(),
+            flood_inputs: HashMap::new(),
             graph: Vec::new(),
             graph_stale: true,
+            flood: Flood::new(),
             graph_from: None,
             workers: SectionWorkers::new(worker_count, renderer, tints),
             worker_count,
@@ -125,8 +142,10 @@ impl SectionMeshes {
         self.latest.clear();
         self.fades.clear();
         self.compiled.clear();
+        self.flood_inputs.clear();
         self.graph.clear();
         self.graph_stale = true;
+        self.flood.forget();
     }
 
     /// Drop the sections of chunks the server forgot.
@@ -143,6 +162,7 @@ impl SectionMeshes {
                 self.latest.remove(&key);
                 self.fades.remove(&key);
                 self.compiled.remove(&key);
+                self.flood_inputs.remove(&key);
                 backend.set_section(
                     key,
                     &voxel_render::Mesh::default(),
@@ -180,22 +200,31 @@ impl SectionMeshes {
         script_done: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // `ClientLevel.update`: queued light and the light engine, each frame.
-        session.update_light();
+        profile::timed(Span::Light, || session.update_light());
         let dirtied = session.take_dirty_sections();
-        // A chunk arriving or a section turning empty changes the flood.
-        self.graph_stale |= !dirtied.is_empty();
+        // A chunk arriving or a section turning empty or not changes the flood.
+        let world = session.world();
+        for &(x, y, z) in &dirtied {
+            let inputs = (world.contains_chunk(x, z), world.section_is_empty(x, y, z));
+            self.graph_stale |= self.flood_inputs.insert((x, y, z), inputs) != Some(inputs);
+        }
         self.unchecked.extend(dirtied.iter().copied());
         self.pending.extend(dirtied);
         let camera_block = view.camera.map(|value| value.floor() as i64);
         loop {
-            self.show_built(backend, camera_block)?;
+            profile::timed(Span::ShowBuilt, || self.show_built(backend, camera_block))?;
             self.show_empty(session, backend, camera_block)?;
             let visible = self.visible(session, view);
-            backend.set_visible_sections(self.culling.then_some(&visible[..]));
             let ordered = self.ready(session, &visible, camera_block);
+            backend.set_visible_sections(self.culling.then_some(visible));
             let nothing_to_hand_out = ordered.is_empty();
-            self.hand_out(session, ordered, view.origin);
-            if !script_done || (nothing_to_hand_out && self.workers.in_flight() == 0) {
+            profile::timed(Span::HandOut, || {
+                self.hand_out(session, ordered, view.origin)
+            });
+            let flood_settled = !self.graph_stale && !self.flood.busy();
+            if !script_done
+                || (nothing_to_hand_out && self.workers.in_flight() == 0 && flood_settled)
+            {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(1));
@@ -215,8 +244,9 @@ impl SectionMeshes {
             *self.stats.counts.entry(built.key).or_insert(0_u32) += 1;
             if self.latest.get(&built.key) == Some(&built.generation) {
                 self.latest.remove(&built.key);
-                self.compiled.insert(built.key, built.visibility);
-                self.graph_stale = true;
+                // Most rebuilds leave which faces see each other as it was.
+                self.graph_stale |=
+                    self.compiled.insert(built.key, built.visibility) != Some(built.visibility);
                 let fade = self.fade(built.key, camera_block);
                 backend.set_section(built.key, &built.mesh, built.centre, fade)?;
             }
@@ -275,30 +305,42 @@ impl SectionMeshes {
             self.graph_from = Some((cell, view.view_distance));
             self.graph_stale = true;
         }
-        if self.graph_stale {
+        if let Some(graph) = self.flood.finished() {
+            self.graph = graph;
+        }
+        // The flood runs on its own thread; the frames keep the last one
+        // meanwhile, and one that went stale starts again when it is done.
+        if self.graph_stale && !self.flood.busy() {
             self.graph_stale = false;
             let world = session.world();
             let compiled = &self.compiled;
-            let section = |(x, y, z): SectionKey| {
-                if world.section_is_empty(x, y, z) {
-                    SectionState::Empty
-                } else {
-                    compiled
-                        .get(&(x, y, z))
-                        .map_or(SectionState::Uncompiled, |visibility| {
-                            SectionState::Compiled(*visibility)
-                        })
-                }
+            let sections = self.sections.clone();
+            let column = |x: i32, z: i32, states: &mut Vec<SectionState>| {
+                let Some(empty) = world.column_is_empty(x, z, sections.clone()) else {
+                    return false;
+                };
+                states.extend(sections.clone().zip(empty).map(|(y, empty)| {
+                    if empty {
+                        SectionState::Empty
+                    } else {
+                        compiled
+                            .get(&(x, y, z))
+                            .map_or(SectionState::Uncompiled, |visibility| {
+                                SectionState::Compiled(*visibility)
+                            })
+                    }
+                }));
+                true
             };
-            self.graph = visible_sections(&GraphWorld {
-                camera: view.camera,
-                view_distance: view.view_distance,
-                min_section_y: self.sections.start,
-                max_section_y: self.sections.end - 1,
-                loaded: &|x, z| world.contains_chunk(x, z),
-                section: &section,
-                smart_cull: true,
+            let inputs = profile::timed(Span::Graph, || {
+                FloodInputs::capture(
+                    view.camera,
+                    view.view_distance,
+                    self.sections.clone(),
+                    column,
+                )
             });
+            self.flood.start(inputs);
         }
         let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
         self.graph
@@ -345,15 +387,13 @@ impl SectionMeshes {
     }
 
     /// Hand sections to the workers, keeping every worker busy with a
-    /// little queued behind it, and spending at most a few milliseconds of
-    /// the frame copying.
+    /// little queued behind it, and spending at most [`COPY_BUDGET`] of the
+    /// frame copying.
     fn hand_out(&mut self, session: &PlaySession, ordered: Vec<SectionKey>, origin: [i32; 3]) {
         let world = session.world();
         let budget = Instant::now();
         for key in ordered {
-            if self.workers.in_flight() >= self.worker_count * 4
-                || budget.elapsed() > Duration::from_millis(4)
-            {
+            if self.workers.in_flight() >= self.worker_count * 4 || budget.elapsed() > COPY_BUDGET {
                 break;
             }
             self.pending.remove(&key);

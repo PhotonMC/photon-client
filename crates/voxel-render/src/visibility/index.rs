@@ -30,21 +30,83 @@ pub(super) fn in_view_distance(center: (i32, i32), distance: i32, chunk: (i32, i
     dx * dx + dz * dz < i64::from(distance) * i64::from(distance)
 }
 
+/// The flood's nodes over the view area (`ViewArea`): one slot per section
+/// within the view distance of the camera's column, so a node is found by
+/// arithmetic rather than by hashing its key.
+pub(super) struct Nodes {
+    /// The view area's lowest corner.
+    low: SectionKey,
+    /// Columns per row, and sections per column.
+    width: usize,
+    height: usize,
+    slots: Vec<Option<Node>>,
+    /// Whether each column's chunk has arrived, asked once per column.
+    loaded: Vec<bool>,
+}
+
+impl Nodes {
+    fn new(world: &GraphWorld<'_>) -> Self {
+        let camera = world.camera_section();
+        let reach = world.view_distance.max(0);
+        let low = (camera.0 - reach, world.min_section_y, camera.2 - reach);
+        let width = (2 * reach + 1) as usize;
+        let height = (world.max_section_y - world.min_section_y + 1).max(0) as usize;
+        let loaded = (0..width * width)
+            .map(|column| {
+                let (dx, dz) = (column / width, column % width);
+                (world.loaded)(low.0 + dx as i32, low.2 + dz as i32)
+            })
+            .collect();
+        Self {
+            low,
+            width,
+            height,
+            slots: vec![None; width * width * height],
+            loaded,
+        }
+    }
+
+    /// The column of a key inside the view area.
+    fn column(&self, key: SectionKey) -> usize {
+        (key.0 - self.low.0) as usize * self.width + (key.2 - self.low.2) as usize
+    }
+
+    /// The slot of a key inside the view area (`GraphWorld::exists`).
+    fn slot(&self, key: SectionKey) -> usize {
+        self.column(key) * self.height + (key.1 - self.low.1) as usize
+    }
+
+    pub(super) fn get(&self, key: SectionKey) -> Option<Node> {
+        self.slots[self.slot(key)]
+    }
+
+    fn get_mut(&mut self, key: SectionKey) -> &mut Option<Node> {
+        let slot = self.slot(key);
+        &mut self.slots[slot]
+    }
+
+    fn loaded(&self, key: SectionKey) -> bool {
+        self.loaded[self.column(key)]
+    }
+}
+
 /// `SectionOcclusionGraph`'s full update: flood from the camera's section
 /// through the sections whose faces see each other, and return every
 /// non-empty section reached in a loaded chunk, in the order reached.
 pub fn visible_sections(world: &GraphWorld<'_>) -> Vec<SectionKey> {
-    let mut nodes: HashMap<SectionKey, Node> = HashMap::new();
+    let mut nodes = Nodes::new(world);
     let mut queue: VecDeque<SectionKey> = VecDeque::new();
     for (key, node) in initial_nodes(world) {
-        nodes.insert(key, node);
+        *nodes.get_mut(key) = Some(node);
         queue.push_back(key);
     }
     let camera = world.camera_section();
     let mut reached = Vec::new();
     while let Some(key) = queue.pop_front() {
-        let node = nodes[&key];
-        if !(world.loaded)(key.0, key.2) {
+        let Some(node) = nodes.get(key) else {
+            continue;
+        };
+        if !nodes.loaded(key) {
             continue;
         }
         let state = (world.section)(key);
@@ -55,7 +117,7 @@ pub fn visible_sections(world: &GraphWorld<'_>) -> Vec<SectionKey> {
             .iter()
             .any(|delta| delta.abs() > 60 / 16);
         for direction in DIRECTIONS {
-            let Some(next) = world.relative(key, direction) else {
+            let Some(next) = world.relative(camera, key, direction) else {
                 continue;
             };
             if world.smart_cull && node.directions & (1 << direction.opposite() as u8) != 0 {
@@ -64,19 +126,16 @@ pub fn visible_sections(world: &GraphWorld<'_>) -> Vec<SectionKey> {
             if world.smart_cull && node.sources != 0 && !sees_through(state, node, direction) {
                 continue;
             }
-            if world.smart_cull && distant && !ray_clear(world, &nodes, key, direction) {
+            if world.smart_cull && distant && !ray_clear(world, camera, &nodes, key, direction) {
                 continue;
             }
-            match nodes.get_mut(&next) {
+            match nodes.get_mut(next) {
                 Some(existing) => existing.sources |= 1 << direction as u8,
-                None => {
-                    nodes.insert(
-                        next,
-                        Node {
-                            sources: 1 << direction as u8,
-                            directions: node.directions | 1 << direction as u8,
-                        },
-                    );
+                empty @ None => {
+                    *empty = Some(Node {
+                        sources: 1 << direction as u8,
+                        directions: node.directions | 1 << direction as u8,
+                    });
                     queue.push_back(next);
                 }
             }
@@ -104,7 +163,7 @@ pub(super) fn sees_through(state: SectionState, node: Node, direction: Direction
 /// each as if reached from beyond the world towards the camera's column.
 pub(super) fn initial_nodes(world: &GraphWorld<'_>) -> Vec<(SectionKey, Node)> {
     let camera = world.camera_section();
-    if world.exists(camera) {
+    if world.exists(camera, camera) {
         return vec![(camera, Node::default())];
     }
     let below = camera.1 < world.min_section_y;
@@ -117,7 +176,7 @@ pub(super) fn initial_nodes(world: &GraphWorld<'_>) -> Vec<(SectionKey, Node)> {
     for dx in -world.view_distance..=world.view_distance {
         for dz in -world.view_distance..=world.view_distance {
             let key = (camera.0 + dx, layer, camera.2 + dz);
-            if !world.exists(key)
+            if !world.exists(camera, key)
                 || !in_view_distance((camera.0, camera.2), world.view_distance, (key.0, key.2))
             {
                 continue;
@@ -157,11 +216,11 @@ pub(super) fn initial_nodes(world: &GraphWorld<'_>) -> Vec<(SectionKey, Node)> {
 /// flood has not reached.
 pub(super) fn ray_clear(
     world: &GraphWorld<'_>,
-    nodes: &HashMap<SectionKey, Node>,
+    camera: SectionKey,
+    nodes: &Nodes,
     key: SectionKey,
     direction: Direction,
 ) -> bool {
-    let camera = world.camera_section();
     let centre = [camera.0, camera.1, camera.2].map(|value| value * 16 + 8);
     let origin = [key.0, key.1, key.2].map(|value| value * 16);
     let axis = direction.axis() as usize;
@@ -197,7 +256,7 @@ pub(super) fn ray_clear(
         }
         let section = check.map(|value| (value.floor() as i32).div_euclid(16));
         let section = (section[0], section[1], section[2]);
-        if !world.exists(section) || !nodes.contains_key(&section) {
+        if !world.exists(camera, section) || nodes.get(section).is_none() {
             return false;
         }
     }

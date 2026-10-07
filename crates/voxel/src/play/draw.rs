@@ -292,7 +292,7 @@ impl Play {
         };
         let frame = self.frame_camera(player);
         self.particles.set_camera(frame.camera);
-        self.draw_overlays(&frame)?;
+        profile::timed(Span::Overlays, || self.draw_overlays(&frame))?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
         self.sections
             .forget_chunks(self.session.take_forgotten_chunks(), &mut self.backend)?;
@@ -340,14 +340,15 @@ impl Play {
         let built = Instant::now();
         self.backend.draw_scene(colour, frame.view_projection)?;
         self.frames += 1;
+        let parts = profile::take_parts();
         if self.profile.is_some() || self.bench.is_some() {
             let drawn = Instant::now();
             let spans = [frame_start, ticked, meshed, built, drawn];
             if let Some(profile) = self.profile.as_mut() {
-                profile.record(spans, &mut self.sections);
+                profile.record(spans, parts, &mut self.sections);
             }
             if let Some(bench) = self.bench.as_mut() {
-                bench.record(spans, &self.backend);
+                bench.record(spans, parts, &self.backend);
             }
         }
         Ok(Flow::Next)
