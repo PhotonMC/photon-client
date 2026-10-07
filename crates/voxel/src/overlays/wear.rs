@@ -11,11 +11,11 @@ pub fn remote_players(
     (models, armor): (&mut RemoteModels, &mut Armor),
     textures: &voxel_render::entity::textures::EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         // A player who only watches, or who is invisible, is not drawn.
         if !entity.is_player() || entity.is_spectator() || entity.is_invisible() {
             continue;
@@ -110,7 +110,6 @@ pub fn remote_players(
             },
         ));
     }
-    vertices
 }
 
 /// What a player wears, drawn over its model: the armor models of its build,
@@ -213,18 +212,18 @@ pub fn experience_orbs(
     textures: &voxel_render::entity::textures::EntityTextures,
     camera: &TagCamera,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(rect) = textures.rect(ORB_TEXTURE) else {
-        return Vec::new();
+        return;
     };
     let Some(orb_type) = voxel_data::entity_type::id("minecraft:experience_orb") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
     let orientation =
         voxel_render::entity::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
         .all()
@@ -255,7 +254,6 @@ pub fn experience_orbs(
             light,
         ));
     }
-    vertices
 }
 
 /// `EntityRenderer.extractShadow` and `ShadowFeatureRenderer` for the
@@ -270,10 +268,11 @@ pub fn entity_shadows(
     camera: &TagCamera,
     local: Option<Vec3>,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     use voxel_world::ShadowInput;
     let Some(rect) = textures.rect(SHADOW_TEXTURE) else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
@@ -333,7 +332,6 @@ pub fn entity_shadows(
             strength: 1.0,
         });
     }
-    let mut vertices = Vec::new();
     for Caster {
         drawn,
         ticked,
@@ -366,5 +364,4 @@ pub fn entity_shadows(
             camera.relative,
         ));
     }
-    vertices
 }

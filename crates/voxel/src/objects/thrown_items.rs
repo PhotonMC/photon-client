@@ -22,13 +22,13 @@ pub fn thrown_items(
     layers: &mut ItemLayerCache,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     let rocket = voxel_data::entity_type::id("minecraft:firework_rocket");
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let look = entity.thrown_item_look();
         if look.is_none() && Some(entity.type_id) != rocket {
             continue;
@@ -61,5 +61,4 @@ pub fn thrown_items(
         let item_layers = layers.get(stack, renderer, tints);
         vertices.extend(item_entity_vertices(item_layers, &[pose], light));
     }
-    vertices
 }

@@ -23,16 +23,16 @@ pub fn remote_sniffers(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let Some(sniffer) = voxel_data::entity_type::id("minecraft:sniffer") else {
-        return Vec::new();
+        return;
     };
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == sniffer)
     {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
@@ -64,5 +64,4 @@ pub fn remote_sniffers(
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
     }
-    vertices
 }

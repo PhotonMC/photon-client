@@ -394,7 +394,18 @@ impl DynamicBuffer {
 /// every owner before the device goes). It must not outlive the device.
 pub(super) struct HostBuffer {
     pub(super) bound: BoundBuffer,
+    /// The whole buffer, mapped once when it is made: mapping again each frame costs the driver
+    /// a fresh mapping and the CPU its page faults.
+    pub(super) mapped: *mut u8,
     pub(super) capacity: usize,
+}
+
+impl Drop for HostBuffer {
+    fn drop(&mut self) {
+        // SAFETY: the memory is mapped once, for good, when the buffer is made, and this runs
+        // once, before the buffer and its memory are freed with the field.
+        unsafe { self.bound.device.unmap_memory(self.bound.memory) };
+    }
 }
 
 impl std::ops::Deref for HostBuffer {

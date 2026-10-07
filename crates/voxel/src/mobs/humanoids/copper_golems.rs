@@ -57,17 +57,17 @@ pub fn remote_copper_golems(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(golem) = voxel_data::entity_type::id("minecraft:copper_golem") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     let mut glow = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == golem)
     {
         let (body, eyes) = TEXTURES[usize::from(entity.copper_golem_weather().min(3))];
@@ -112,7 +112,6 @@ pub fn remote_copper_golems(
         }
     }
     models.glow.extend(glow);
-    vertices
 }
 
 /// What the golem carries, each where its layer puts it: the stacks in its

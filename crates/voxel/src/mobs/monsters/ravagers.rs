@@ -25,16 +25,16 @@ pub fn remote_ravagers(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(ravager) = voxel_data::entity_type::id("minecraft:ravager") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == ravager)
     {
         let (Some(snapshot), Some(rect), Some(model)) = (
@@ -75,5 +75,4 @@ pub fn remote_ravagers(
             rect,
         ));
     }
-    vertices
 }

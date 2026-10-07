@@ -76,17 +76,17 @@ pub fn remote_villagers(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let (Some(villager), Some(trader)) = (
         voxel_data::entity_type::id("minecraft:villager"),
         voxel_data::entity_type::id("minecraft:wandering_trader"),
     ) else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let is_villager = entity.type_id == villager;
         if !is_villager && entity.type_id != trader {
             continue;
@@ -166,7 +166,6 @@ pub fn remote_villagers(
             held.push(HeldItem::stack(stack, pose, Place::Head, placed.light));
         }
     }
-    vertices
 }
 
 /// A part of a model's tree by its name.
@@ -181,14 +180,14 @@ pub fn remote_witches(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(witch) = voxel_data::entity_type::id("minecraft:witch") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let (true, Some(snapshot), Some(rect), Some(model)) = (
             entity.type_id == witch,
             world.entity_snapshot(entity.id(), partial),
@@ -230,5 +229,4 @@ pub fn remote_witches(
         };
         held.push(HeldItem::stack(stack, pose, Place::Ground, placed.light));
     }
-    vertices
 }

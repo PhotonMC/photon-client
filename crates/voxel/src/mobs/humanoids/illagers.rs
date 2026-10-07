@@ -116,15 +116,15 @@ pub fn remote_illagers(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let ids: Vec<(i32, &Illager)> = ILLAGERS
         .iter()
         .filter_map(|illager| Some((voxel_data::entity_type::id(illager.type_name)?, illager)))
         .collect();
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(illager) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)
@@ -177,5 +177,4 @@ pub fn remote_illagers(
         .collect(held);
         vertices.extend(mob_vertices(model, &placed, rect));
     }
-    vertices
 }

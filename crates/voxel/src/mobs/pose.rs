@@ -12,11 +12,11 @@ pub(super) fn remote_humanoids(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(kind) = models.humanoids.get(&entity.type_id).copied() else {
             continue;
         };
@@ -95,15 +95,15 @@ pub(super) fn remote_humanoids(
             (humanoid, aggressive, holding_bow, arm_pose),
             (&placement, partial),
         ));
-        vertices.extend(profession_layers(
+        profession_layers(
             (models, textures),
             kind,
             (entity, baby),
             (humanoid, aggressive, holding_bow, arm_pose),
             &placement,
-        ));
+            vertices,
+        );
     }
-    vertices
 }
 
 /// What a humanoid mob's model is posed from: its walk, arms and use, whether it holds a bow, and a
@@ -173,10 +173,10 @@ pub(super) fn profession_layers(
     (entity, baby): (&voxel_world::ClientEntity, bool),
     (humanoid, aggressive, holding_bow, arm_pose): (PlayerRenderState, bool, bool, PiglinArmPose),
     placement: &MobPlacement,
-) -> Vec<Vertex> {
-    let mut vertices = Vec::new();
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(folder) = kind.profession_folder else {
-        return vertices;
+        return;
     };
     for pass in villagers::profession_layer(entity, folder, baby) {
         let id = villagers::layer(folder, pass.hatless, baby);
@@ -191,7 +191,6 @@ pub(super) fn profession_layers(
         );
         vertices.extend(mob_vertices(model, placement, rect));
     }
-    vertices
 }
 
 /// What a humanoid mob's model is posed from, and whether its main hand holds

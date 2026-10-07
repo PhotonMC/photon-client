@@ -62,19 +62,19 @@ pub fn remote_felines(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let (Some(cat), Some(ocelot)) = (
         voxel_data::entity_type::id("minecraft:cat"),
         voxel_data::entity_type::id("minecraft:ocelot"),
     ) else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == cat || entity.type_id == ocelot)
     {
         let is_cat = entity.type_id == cat;
@@ -153,5 +153,4 @@ pub fn remote_felines(
             ));
         }
     }
-    vertices
 }

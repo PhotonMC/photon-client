@@ -433,11 +433,27 @@ impl HostBuffer {
         backend: &VulkanBackend,
         capacity: usize,
     ) -> Result<Self, VulkanError> {
-        // SAFETY: the caller's contract; `capacity` is not 0 (see above).
-        let bound = unsafe {
-            backend.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])
-        }?;
-        Ok(Self { bound, capacity })
+        // SAFETY: the caller's contract; `capacity` is not 0 (see above). The memory is
+        // host-visible and coherent, and is mapped over the whole buffer until it is dropped.
+        unsafe {
+            let bound = backend
+                .upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])?;
+            let mapped = backend
+                .device
+                .map_memory(
+                    bound.memory,
+                    0,
+                    capacity as u64,
+                    vk::MemoryMapFlags::empty(),
+                )
+                .map_err(|result| VulkanError::Call("vkMapMemory", result))?
+                .cast::<u8>();
+            Ok(Self {
+                bound,
+                mapped,
+                capacity,
+            })
+        }
     }
 
     /// Write the parts one after another from the start of the buffer. Nothing is mapped for no
@@ -456,21 +472,15 @@ impl HostBuffer {
             "{size} bytes in a {}-byte buffer",
             self.capacity
         );
-        // SAFETY: the memory is host-visible and coherent and mapped over `size` bytes, which fit
-        // the buffer (checked above); each part is copied inside that range, and the memory is
-        // unmapped before the GPU may read it (see `# Safety`).
+        // SAFETY: the memory is host-visible and coherent and stays mapped over the whole
+        // buffer; each part is copied inside the `size` bytes, which fit it (checked above), and
+        // the GPU is not reading it (see `# Safety`).
         unsafe {
-            let mapped = self
-                .device
-                .map_memory(self.memory, 0, size as u64, vk::MemoryMapFlags::empty())
-                .map_err(|result| VulkanError::Call("vkMapMemory", result))?
-                .cast::<u8>();
             let mut at = 0;
             for part in parts {
-                std::ptr::copy_nonoverlapping(part.as_ptr(), mapped.add(at), part.len());
+                std::ptr::copy_nonoverlapping(part.as_ptr(), self.mapped.add(at), part.len());
                 at += part.len();
             }
-            self.device.unmap_memory(self.memory);
         }
         Ok(())
     }

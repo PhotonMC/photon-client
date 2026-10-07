@@ -38,16 +38,16 @@ pub fn remote_wolves(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(wolf) = voxel_data::entity_type::id("minecraft:wolf") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let (partial, game_time) = (view.partial as f32, world.game_time());
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == wolf)
     {
         let name = match entity.variant() {
@@ -112,5 +112,4 @@ pub fn remote_wolves(
             ));
         }
     }
-    vertices
 }

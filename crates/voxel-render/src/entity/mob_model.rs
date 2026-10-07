@@ -161,6 +161,13 @@ impl MobModel {
         self.root.render(pose, "", &mut out);
         out
     }
+
+    /// The faces of `render`, without the paths of their parts.
+    pub fn quads(&self, pose: &Pose) -> Vec<[ModelVertex; 4]> {
+        let mut out = Vec::new();
+        self.root.render_quads(pose, &mut out);
+        out
+    }
 }
 
 #[cfg(test)]

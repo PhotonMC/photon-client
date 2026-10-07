@@ -23,16 +23,16 @@ pub fn remote_bears(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(polar_bear) = voxel_data::entity_type::id("minecraft:polar_bear") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == polar_bear)
     {
         let baby = entity.is_baby();
@@ -65,5 +65,4 @@ pub fn remote_bears(
             rect,
         ));
     }
-    vertices
 }

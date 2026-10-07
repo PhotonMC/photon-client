@@ -66,11 +66,11 @@ pub fn remote_boats(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all().filter(|entity| entity.is_boat()) {
+    for entity in world.entities().drawn().filter(|entity| entity.is_boat()) {
         let Some((layer, texture)) =
             voxel_data::entity_type::name(entity.type_id).and_then(model_of)
         else {
@@ -105,5 +105,4 @@ pub fn remote_boats(
             rect,
         ));
     }
-    vertices
 }

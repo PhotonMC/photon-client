@@ -15,7 +15,7 @@ pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: Fra
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.is_lightning_bolt())
     {
         let (Some(state), Some(snapshot)) = (

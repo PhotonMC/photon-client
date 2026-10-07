@@ -156,8 +156,29 @@ impl Part {
     /// `ModelPart.render`: every visible face, posed, each with the path of
     /// the part it belongs to.
     pub fn render(&self, pose: &Pose, path: &str, out: &mut Vec<(String, [ModelVertex; 4])>) {
-        if !self.visible || (self.cubes.is_empty() && self.children.is_empty()) {
+        let Some(pose) = self.own_quads(pose, |quad| out.push((path.to_owned(), quad))) else {
             return;
+        };
+        for child in &self.children {
+            child.render(&pose, &format!("{path}/{}", child.name), out);
+        }
+    }
+
+    /// The same faces as `render`, in the same order, without the paths of their parts.
+    pub fn render_quads(&self, pose: &Pose, out: &mut Vec<[ModelVertex; 4]>) {
+        let Some(pose) = self.own_quads(pose, |quad| out.push(quad)) else {
+            return;
+        };
+        for child in &self.children {
+            child.render_quads(&pose, out);
+        }
+    }
+
+    /// Hand each face of this part's own cubes to `emit`, and give back the pose its children
+    /// are drawn from; nothing when the part is not drawn.
+    fn own_quads(&self, pose: &Pose, mut emit: impl FnMut([ModelVertex; 4])) -> Option<Pose> {
+        if !self.visible || (self.cubes.is_empty() && self.children.is_empty()) {
+            return None;
         }
         let mut pose = *pose;
         self.translate_and_rotate(&mut pose);
@@ -176,14 +197,9 @@ impl Part {
                         normal,
                     }
                 };
-                out.push((
-                    path.to_owned(),
-                    [corner(0), corner(1), corner(2), corner(3)],
-                ));
+                emit([corner(0), corner(1), corner(2), corner(3)]);
             }
         }
-        for child in &self.children {
-            child.render(&pose, &format!("{path}/{}", child.name), out);
-        }
+        Some(pose)
     }
 }

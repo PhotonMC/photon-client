@@ -137,21 +137,56 @@ impl Play {
             frame.camera,
             view,
         ))?;
-        // The other players, and the local player's own once the camera
-        // leaves its eyes.
+        let spectating = player.spectating();
+        let local =
+            (!first_person && !spectating).then(|| player.interpolated_position(frame.partial));
+        let held = self.draw_entities(view, first_person, hook_sprites)?;
+        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
+        self.set_billboards(frame, (spectating, local), view)?;
+        let tints = (&*self.block_renderer, &*self.biome_tints);
+        let with_textures = (tints.0, tints.1, &self.entity_textures);
+        let items = &mut self.item_vertices;
+        items.clear();
+        world_items(
+            &self.session,
+            &mut self.item_layers,
+            with_textures,
+            view,
+            items,
+        );
+        items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
+        self.item_layers
+            .hand_over(&mut self.backend, &self.item_vertices)?;
+        set_moving_blocks(&mut self.backend, &self.session, tints, view)
+    }
+
+    /// The other players, the mobs and the objects the server added, the
+    /// bobbers, and the local player's own model once the camera leaves its
+    /// eyes; what they hold is given back for the item pass.
+    fn draw_entities(
+        &mut self,
+        view: overlays::FrameView,
+        first_person: bool,
+        hook_sprites: Vec<voxel_render::scene::Vertex>,
+    ) -> Result<Vec<crate::equipment::held_items::HeldItem>> {
+        let player = self.session.player().ok_or("no local player")?;
         let mut held = Vec::new();
-        let mut models = overlays::remote_players(
+        let models = &mut self.entity_vertices;
+        models.clear();
+        overlays::remote_players(
             &self.session,
             (&mut self.remote_models, &mut self.armor),
             &self.entity_textures,
             (view, &mut held),
+            models,
         );
-        models.extend(mobs::remote_mobs(
+        mobs::remote_mobs(
             &self.session,
             (&mut self.mob_models, &mut self.armor),
             &self.entity_textures,
             (view, &mut held),
-        ));
+            models,
+        );
         models.extend(hook_sprites);
         if !first_person {
             // What the local player holds: the selected hotbar slot and the
@@ -181,18 +216,11 @@ impl Play {
                 ),
             ));
         }
-        self.backend
-            .set_draw(voxel_render::vulkan::DrawKind::Entities, &models)?;
-        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
-        let local = (!first_person && !player.spectating())
-            .then(|| player.interpolated_position(frame.partial));
-        self.set_billboards(frame, (player.spectating(), local), view)?;
-        let tints = (&*self.block_renderer, &*self.biome_tints);
-        let with_textures = (tints.0, tints.1, &self.entity_textures);
-        let mut items = world_items(&self.session, &mut self.item_layers, with_textures, view);
-        items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
-        self.item_layers.hand_over(&mut self.backend, &items)?;
-        set_moving_blocks(&mut self.backend, &self.session, tints, view)
+        self.backend.set_draw(
+            voxel_render::vulkan::DrawKind::Entities,
+            &self.entity_vertices,
+        )?;
+        Ok(held)
     }
 
     /// The fishing bobbers' sprites and lines for the frame.
@@ -248,12 +276,19 @@ impl Play {
         see_through.extend(shown_through);
         normal.extend(shown);
         // The leads are a flat colour lit by the lightmap, as the world text is.
-        normal.extend(leashes::leashes(&self.session, view));
+        leashes::leashes(&self.session, view, &mut normal);
         self.backend.set_name_tags(&see_through, &normal)?;
-        self.backend.set_draw(
-            voxel_render::vulkan::DrawKind::Shadows,
-            &overlays::entity_shadows(&self.session, &self.entity_textures, &camera, local, view),
-        )?;
+        let mut shadows = Vec::new();
+        overlays::entity_shadows(
+            &self.session,
+            &self.entity_textures,
+            &camera,
+            local,
+            view,
+            &mut shadows,
+        );
+        self.backend
+            .set_draw(voxel_render::vulkan::DrawKind::Shadows, &shadows)?;
         let particle_camera = voxel_render::particles::ParticleCamera {
             orientation: voxel_render::entity::name_tag::camera_orientation(
                 frame.rotation.0,
@@ -270,10 +305,16 @@ impl Play {
             .set_draw(voxel_render::vulkan::DrawKind::Particles, &particles)?;
         self.backend
             .set_draw(voxel_render::vulkan::DrawKind::BlockParticles, &flakes)?;
-        self.backend.set_draw(
-            voxel_render::vulkan::DrawKind::ExperienceOrbs,
-            &overlays::experience_orbs(&self.session, &self.entity_textures, &camera, view),
-        )?;
+        let mut orbs = Vec::new();
+        overlays::experience_orbs(
+            &self.session,
+            &self.entity_textures,
+            &camera,
+            view,
+            &mut orbs,
+        );
+        self.backend
+            .set_draw(voxel_render::vulkan::DrawKind::ExperienceOrbs, &orbs)?;
         Ok(())
     }
 
@@ -292,6 +333,12 @@ impl Play {
         };
         let frame = self.frame_camera(player);
         self.particles.set_camera(frame.camera);
+        let out_of_view = if self.sections.culling() {
+            cull::out_of_view(self.session.world(), &frame.frustum, frame.partial as f32)
+        } else {
+            Default::default()
+        };
+        self.session.set_entities_out_of_view(out_of_view);
         profile::timed(Span::Overlays, || self.draw_overlays(&frame))?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
         self.sections

@@ -180,7 +180,7 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
     let pose = placement_pose(placement);
     let light = crate::block::light::light_uv(placement.light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -207,7 +207,7 @@ pub fn layer_vertices(
     let light = crate::block::light::light_uv(placement.light);
     let colour = colour.map_or(0.0, crate::scene::entity_colour);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -275,7 +275,7 @@ pub fn gui_player_vertices(
     let lift = height / 2.0 + offset_y;
     let lights = inventory_lights();
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         let normal = turn(corners[0].normal);
         // The view space flips z.
         let view = [normal[0], normal[1], -normal[2]];
@@ -485,7 +485,7 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     pose.translate(invert * 5.6, 0.0, 0.0);
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render_arm(crate::entity::player_model::Arm::Right, &pose) {
+    for corners in model.render_arm(crate::entity::player_model::Arm::Right, &pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {

@@ -87,7 +87,7 @@ pub(super) fn posed_vertices(
 ) -> Vec<Vertex> {
     let light = crate::block::light::light_uv(packed_light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(pose) {
+    for corners in model.quads(pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -131,7 +131,7 @@ pub fn mob_vertices_coloured(
     let pose = placement_pose(placement);
     let light = crate::block::light::light_uv(placement.light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -201,7 +201,7 @@ pub fn mob_vertices_glow(
 /// [`mob_vertices_glow`] for a model the renderer has already placed.
 pub fn mob_vertices_glow_posed(model: &MobModel, pose: &Pose, texture: TextureRect) -> Vec<Vertex> {
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(pose) {
+    for corners in model.quads(pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -236,7 +236,7 @@ pub fn mob_vertices_swirl(
         texture[3] - texture[1],
     ];
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -293,7 +293,7 @@ pub(super) fn emissive_vertices(
 ) -> Vec<Vertex> {
     let pose = placement_pose(placement);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(&pose) {
+    for corners in model.quads(&pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
@@ -335,7 +335,7 @@ pub fn mob_vertices_scrolled_posed(
 ) -> Vec<Vertex> {
     let light = crate::block::light::light_uv(packed_light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(pose) {
+    for corners in model.quads(pose) {
         let scrolled: Vec<([f32; 3], [f32; 2])> = corners
             .iter()
             .map(|corner| (corner.position, [corner.uv[0] + u_offset, corner.uv[1]]))

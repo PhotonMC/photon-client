@@ -25,14 +25,14 @@ pub fn remote_armor_stands(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(stand_type) = voxel_data::entity_type::id("minecraft:armor_stand") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(snapshot) = world
             .entity_snapshot(entity.id(), partial)
             .filter(|_| entity.type_id == stand_type)
@@ -95,5 +95,4 @@ pub fn remote_armor_stands(
             &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
         ));
     }
-    vertices
 }

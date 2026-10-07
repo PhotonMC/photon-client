@@ -35,13 +35,13 @@ pub fn remote_frogs(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let frog = voxel_data::entity_type::id("minecraft:frog");
     let tadpole = voxel_data::entity_type::id("minecraft:tadpole");
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let is_frog = Some(entity.type_id) == frog;
         if !is_frog && Some(entity.type_id) != tadpole {
             continue;
@@ -100,5 +100,4 @@ pub fn remote_frogs(
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
     }
-    vertices
 }

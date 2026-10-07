@@ -115,17 +115,17 @@ pub fn remote_monsters(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let ids: Vec<(i32, &Monster)> = MONSTERS
         .iter()
         .filter_map(|monster| Some((voxel_data::entity_type::id(monster.type_name)?, monster)))
         .collect();
-    let mut vertices = Vec::new();
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(monster) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)
@@ -179,12 +179,13 @@ pub fn remote_monsters(
         {
             glow.extend(mob_vertices_glow(model, &placed, eyes));
         }
-        vertices.extend(glowing_layers(
+        glowing_layers(
             models,
             textures,
             (monster.pose, entity, look, partial),
             (&placed, &mut glow, &mut swirl),
-        ));
+            vertices,
+        );
         // A charged creeper's swirl: the armor model, posed as the creeper is.
         if monster.pose == Pose::Creeper
             && entity.is_powered()
@@ -216,5 +217,4 @@ pub fn remote_monsters(
     }
     models.glow.extend(glow);
     models.swirl.extend(swirl);
-    vertices
 }

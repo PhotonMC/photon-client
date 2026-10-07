@@ -54,10 +54,10 @@ pub fn remote_cube_mobs(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for (name, texture_path) in [(SLIME, SLIME_TEXTURE), (MAGMA_CUBE, MAGMA_CUBE_TEXTURE)] {
         let Some(type_id) = voxel_data::entity_type::id(name) else {
             continue;
@@ -65,7 +65,7 @@ pub fn remote_cube_mobs(
         let magma = name == MAGMA_CUBE;
         for entity in world
             .entities()
-            .all()
+            .drawn()
             .filter(|entity| entity.type_id == type_id)
         {
             let (Some(snapshot), Some(rect)) = (
@@ -105,7 +105,6 @@ pub fn remote_cube_mobs(
             vertices.extend(shell);
         }
     }
-    vertices
 }
 
 /// `SulfurCubeRenderer` for the sulfur cubes the server added: the inner body
@@ -116,16 +115,16 @@ pub fn remote_sulfur_cubes(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     let Some(type_id) = voxel_data::entity_type::id(SULFUR_CUBE) else {
-        return vertices;
+        return;
     };
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == type_id)
     {
         let baby = usize::from(entity.is_baby());
@@ -179,5 +178,4 @@ pub fn remote_sulfur_cubes(
             vertices.extend(shell);
         }
     }
-    vertices
 }

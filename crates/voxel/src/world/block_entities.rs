@@ -152,14 +152,14 @@ pub fn block_entities(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let centre = (
         (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
         (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
     );
-    let mut vertices = Vec::new();
     for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
         let Some(chest) = world.chest_view(x, y, z) else {
             if let Some(shulker) = world.shulker_box_view(x, y, z) {
@@ -172,14 +172,15 @@ pub fn block_entities(
                     shulker,
                 ));
             } else if let Some(banner) = world.banner_view((x, y, z)) {
-                vertices.extend(banner_vertices(
+                banner_vertices(
                     session,
                     models,
                     textures,
                     view,
                     (x, y, z),
                     &banner,
-                ));
+                    vertices,
+                );
             } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
                 vertices.extend(skull_vertices(
                     session,
@@ -237,7 +238,6 @@ pub fn block_entities(
         let pose = chest_pose(&base, facing);
         vertices.extend(mob_vertices_posed(model, &pose, rect, (light, false)));
     }
-    vertices
 }
 
 /// One shulker box, its lid as far up and turned as its progress says.
@@ -340,7 +340,8 @@ fn banner_vertices(
     view: FrameView,
     (x, y, z): (i32, i32, i32),
     banner: &BannerView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let (main, flag) = banner::layers(banner.wall.is_some());
     let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
@@ -356,13 +357,12 @@ fn banner_vertices(
     };
     let pose = voxel_render::block_entity::skull::block_pose(&base, &transformation);
     let phase = banner::flag_phase((x, y, z), world.game_time() as i64, view.partial as f32);
-    let mut vertices = Vec::new();
     if let (Some(rect), Some(pole)) = (textures.rect(banner::BASE_TEXTURE), models.model(main)) {
         pole.setup_banner_flag(phase);
         vertices.extend(mob_vertices_posed(pole, &pose, rect, (light, false)));
     }
     let Some(cloth) = models.model(flag) else {
-        return vertices;
+        return;
     };
     cloth.setup_banner_flag(phase);
     if let Some(rect) = textures.rect(banner::BASE_TEXTURE) {
@@ -388,5 +388,4 @@ fn banner_vertices(
         };
         vertices.extend(mob_vertices_tinted(cloth, &pose, rect, light, colour));
     }
-    vertices
 }

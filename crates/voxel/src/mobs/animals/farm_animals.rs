@@ -462,7 +462,8 @@ pub fn remote_farm_animals(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let kinds: Vec<(i32, Animal)> = [
         ("minecraft:goat", Animal::Goat),
         ("minecraft:mooshroom", Animal::Mooshroom),
@@ -483,8 +484,7 @@ pub fn remote_farm_animals(
     .collect();
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(animal) = kinds
             .iter()
             .find(|(id, _)| *id == entity.type_id)
@@ -522,5 +522,4 @@ pub fn remote_farm_animals(
             vertices.extend(mob_vertices(model, &placed, marking));
         }
     }
-    vertices
 }

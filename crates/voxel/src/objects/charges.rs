@@ -30,12 +30,12 @@ pub fn remote_charges(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let name = voxel_data::entity_type::name(entity.type_id);
         let is_fireball = name == Some("minecraft:dragon_fireball");
         if !is_fireball
@@ -84,5 +84,4 @@ pub fn remote_charges(
             (rect, scroll),
         ));
     }
-    vertices
 }

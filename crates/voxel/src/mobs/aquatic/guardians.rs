@@ -125,13 +125,13 @@ pub fn remote_guardians(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let guardian = voxel_data::entity_type::id("minecraft:guardian");
     let elder = voxel_data::entity_type::id("minecraft:elder_guardian");
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let is_elder = Some(entity.type_id) == elder;
         if !is_elder && Some(entity.type_id) != guardian {
             continue;
@@ -177,5 +177,4 @@ pub fn remote_guardians(
             textures,
         ));
     }
-    vertices
 }

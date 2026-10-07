@@ -442,7 +442,7 @@ impl PlayerModel {
     /// `AvatarRenderer.renderHand`: one arm alone, as the first-person view
     /// draws it, reset to where the mesh put it, turned out a tenth of a
     /// radian, with its sleeve.
-    pub fn render_arm(&mut self, arm: Arm, pose: &Pose) -> Vec<(String, [ModelVertex; 4])> {
+    pub fn render_arm(&mut self, arm: Arm, pose: &Pose) -> Vec<[ModelVertex; 4]> {
         let name = match arm {
             Arm::Left => "left_arm",
             Arm::Right => "right_arm",
@@ -458,9 +458,7 @@ impl PlayerModel {
             Arm::Right => 0.1,
         };
         let mut out = Vec::new();
-        self.root
-            .child(name)
-            .render(pose, &format!("/{name}"), &mut out);
+        self.root.child(name).render_quads(pose, &mut out);
         out
     }
 
@@ -468,6 +466,13 @@ impl PlayerModel {
     pub fn render(&self, pose: &Pose) -> Vec<(String, [ModelVertex; 4])> {
         let mut out = Vec::new();
         self.root.render(pose, "", &mut out);
+        out
+    }
+
+    /// The faces of `render`, without the paths of their parts.
+    pub fn quads(&self, pose: &Pose) -> Vec<[ModelVertex; 4]> {
+        let mut out = Vec::new();
+        self.root.render_quads(pose, &mut out);
         out
     }
 }

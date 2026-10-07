@@ -56,10 +56,10 @@ pub fn displays(
     layers: &mut DisplayLayers,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world.entities().all() {
         let Some(display) = entity.display() else {
             continue;
@@ -123,7 +123,6 @@ pub fn displays(
             ));
         }
     }
-    vertices
 }
 
 /// What a display casts as a shadow (`DisplayRenderer.getShadowRadius` and `getShadowStrength`

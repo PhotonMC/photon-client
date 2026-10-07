@@ -97,6 +97,11 @@ pub struct SectionMeshes {
 }
 
 impl SectionMeshes {
+    /// Whether the view chooses what is drawn (`VOXEL_CULLING` is not `0`).
+    pub fn culling(&self) -> bool {
+        self.culling
+    }
+
     /// The sections the session has dirtied so far, and workers to mesh
     /// them, leaving two cores: one for the game's frames and one for the
     /// connection's reader and the sound, so a burst of meshing does not

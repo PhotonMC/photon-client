@@ -74,19 +74,19 @@ pub fn remote_ender_dragons(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let Some(dragon) = voxel_data::entity_type::id("minecraft:ender_dragon") else {
-        return Vec::new();
+        return;
     };
-    let mut vertices = Vec::new();
     let (mut glow, mut dissolving, mut rays) = (Vec::new(), Vec::new(), Vec::new());
     let mut beams = Vec::new();
     let mut mask_offset = None;
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == dragon)
     {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (
@@ -152,7 +152,6 @@ pub fn remote_ender_dragons(
     if let Some(offset) = mask_offset {
         models.dissolve_mask_offset = offset;
     }
-    vertices
 }
 
 /// The beam from the end crystal a dragon holds: from where the dragon is to the crystal

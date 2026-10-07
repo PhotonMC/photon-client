@@ -70,14 +70,14 @@ pub fn remote_sheep(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(sheep) = voxel_data::entity_type::id("minecraft:sheep") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(snapshot) = world
             .entity_snapshot(entity.id(), partial)
             .filter(|_| entity.type_id == sheep)
@@ -119,5 +119,4 @@ pub fn remote_sheep(
             vertices.extend(mob_vertices_coloured(model, &placement, rect, colour));
         }
     }
-    vertices
 }

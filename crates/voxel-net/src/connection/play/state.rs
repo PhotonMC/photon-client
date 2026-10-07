@@ -5,6 +5,11 @@ impl PlaySession {
         &self.trace.world
     }
 
+    /// Set which entities the frames leave out as wholly outside the view.
+    pub fn set_entities_out_of_view(&mut self, ids: std::collections::BTreeSet<i32>) {
+        self.trace.world.entities_mut().set_out_of_view(ids);
+    }
+
     /// The sounds the world's events and the player's own blocks made since the last call.
     pub fn take_world_sounds(&mut self) -> Vec<voxel_world::local_player::LocalSound> {
         self.trace.world.take_sounds()

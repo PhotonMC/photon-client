@@ -60,7 +60,7 @@ pub fn boat_vertices(
 ) -> Vec<Vertex> {
     let light = crate::block::light::light_uv(light);
     let mut vertices = Vec::new();
-    for (_, corners) in model.render(pose) {
+    for corners in model.quads(pose) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {

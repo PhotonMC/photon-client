@@ -26,14 +26,14 @@ pub fn dropped_items(
     layers: &mut ItemLayerCache,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(item_type) = voxel_data::entity_type::id("minecraft:item") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         if entity.type_id != item_type {
             continue;
         }
@@ -65,7 +65,6 @@ pub fn dropped_items(
         let light = packed_light(world, Vec3::new(x, y + 0.2125, z));
         vertices.extend(item_entity_vertices(item_layers, &poses, light));
     }
-    vertices
 }
 
 /// The layers of the items in the world, by the display context they are drawn in.
@@ -104,25 +103,22 @@ pub fn world_items(
     layers: &mut WorldItemLayers,
     (renderer, tints, textures): (&BlockRenderer, &BiomeTints, &EntityTextures),
     view: FrameView,
-) -> Vec<Vertex> {
-    let mut items = dropped_items(session, &mut layers.ground, (renderer, tints), view);
-    items.extend(thrown_items::thrown_items(
-        session,
-        &mut layers.ground,
-        (renderer, tints),
-        view,
-    ));
-    items.extend(item_frames::item_frames(
+    items: &mut Vec<Vertex>,
+) {
+    dropped_items(session, &mut layers.ground, (renderer, tints), view, items);
+    thrown_items::thrown_items(session, &mut layers.ground, (renderer, tints), view, items);
+    item_frames::item_frames(
         session,
         &mut layers.frames,
         (renderer, tints, textures),
         view,
-    ));
-    items.extend(displays::displays(
+        items,
+    );
+    displays::displays(
         session,
         &mut layers.displays,
         (renderer, tints),
         view,
-    ));
-    items
+        items,
+    );
 }

@@ -190,15 +190,15 @@ pub fn remote_mobs(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     models.glow.clear();
     models.swirl.clear();
     models.dissolve.clear();
     models.rays.clear();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;
         };
@@ -257,13 +257,7 @@ pub fn remote_mobs(
             rect,
         ));
     }
-    vertices.extend(remote_families(
-        session,
-        (models, armor),
-        textures,
-        (view, held),
-    ));
-    vertices
+    remote_families(session, (models, armor), textures, (view, held), vertices);
 }
 
 /// The felines, bears, armadillos, hoglins, sniffers, ender dragons and end crystals the server added.
@@ -272,24 +266,16 @@ pub(super) fn remote_wild_animals(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
-    let mut vertices = felines::remote_felines(session, models, textures, view);
-    vertices.extend(bears::remote_bears(session, models, textures, view));
-    vertices.extend(armadillos::remote_armadillos(
-        session, models, textures, view,
-    ));
-    vertices.extend(hoglins::remote_hoglins(session, models, textures, view));
-    vertices.extend(sniffers::remote_sniffers(session, models, textures, view));
-    vertices.extend(ender_dragons::remote_ender_dragons(
-        session, models, textures, view,
-    ));
-    vertices.extend(end_crystals::remote_end_crystals(
-        session, models, textures, view,
-    ));
-    vertices.extend(block_entities::block_entities(
-        session, models, textures, view,
-    ));
-    vertices
+    vertices: &mut Vec<Vertex>,
+) {
+    felines::remote_felines(session, models, textures, view, vertices);
+    bears::remote_bears(session, models, textures, view, vertices);
+    armadillos::remote_armadillos(session, models, textures, view, vertices);
+    hoglins::remote_hoglins(session, models, textures, view, vertices);
+    sniffers::remote_sniffers(session, models, textures, view, vertices);
+    ender_dragons::remote_ender_dragons(session, models, textures, view, vertices);
+    end_crystals::remote_end_crystals(session, models, textures, view, vertices);
+    block_entities::block_entities(session, models, textures, view, vertices);
 }
 
 /// The arrows, wind charges, paintings and minecarts the server added.
@@ -298,20 +284,15 @@ pub(super) fn remote_projectiles_and_vehicles(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
-    let mut vertices = arrows::remote_arrows(session, models, textures, view);
-    vertices.extend(charges::remote_charges(session, models, textures, view));
-    vertices.extend(bullets::remote_bullets(session, models, textures, view));
-    vertices.extend(paintings::remote_paintings(session, textures, view));
+    vertices: &mut Vec<Vertex>,
+) {
+    arrows::remote_arrows(session, models, textures, view, vertices);
+    charges::remote_charges(session, models, textures, view, vertices);
+    bullets::remote_bullets(session, models, textures, view, vertices);
+    paintings::remote_paintings(session, textures, view, vertices);
     minecarts::remote_primed_tnt(session, (view, &mut *held));
     lightning_bolts::remote_lightning(session, models, view);
-    vertices.extend(minecarts::remote_minecarts(
-        session,
-        models,
-        textures,
-        (view, held),
-    ));
-    vertices
+    minecarts::remote_minecarts(session, models, textures, (view, held), vertices);
 }
 
 /// The renderers of the families that have a module of their own, one after
@@ -322,103 +303,39 @@ pub(super) fn remote_families(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
-    let mut vertices = Vec::new();
-    vertices.extend(remote_humanoids(
-        session,
-        (models, armor),
-        textures,
-        (view, held),
-    ));
-    vertices.extend(sheep::remote_sheep(session, models, textures, view));
-    vertices.extend(remote_hostiles(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(villagers::remote_villagers(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(wolves::remote_wolves(session, models, textures, view));
-    vertices.extend(remote_wild_animals(session, models, textures, view));
-    vertices.extend(foxes::remote_foxes(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(pandas::remote_pandas(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(ravagers::remote_ravagers(session, models, textures, view));
-    vertices.extend(remote_projectiles_and_vehicles(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(farm_animals::remote_farm_animals(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(golems::remote_golems(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(villagers::remote_witches(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(illagers::remote_illagers(
-        session,
-        models,
-        textures,
-        (view, held),
-    ));
-    vertices.extend(striders::remote_striders(
-        session,
-        (models, &mut *armor),
-        textures,
-        view,
-    ));
-    vertices.extend(happy_ghasts::remote_happy_ghasts(
+    vertices: &mut Vec<Vertex>,
+) {
+    remote_humanoids(session, (models, armor), textures, (view, held), vertices);
+    sheep::remote_sheep(session, models, textures, view, vertices);
+    remote_hostiles(session, models, textures, (view, &mut *held), vertices);
+    villagers::remote_villagers(session, models, textures, (view, &mut *held), vertices);
+    wolves::remote_wolves(session, models, textures, view, vertices);
+    remote_wild_animals(session, models, textures, view, vertices);
+    foxes::remote_foxes(session, models, textures, (view, &mut *held), vertices);
+    pandas::remote_pandas(session, models, textures, (view, &mut *held), vertices);
+    ravagers::remote_ravagers(session, models, textures, view, vertices);
+    remote_projectiles_and_vehicles(session, models, textures, (view, &mut *held), vertices);
+    farm_animals::remote_farm_animals(session, models, textures, (view, &mut *held), vertices);
+    golems::remote_golems(session, models, textures, (view, &mut *held), vertices);
+    villagers::remote_witches(session, models, textures, (view, &mut *held), vertices);
+    illagers::remote_illagers(session, models, textures, (view, held), vertices);
+    striders::remote_striders(session, (models, &mut *armor), textures, view, vertices);
+    happy_ghasts::remote_happy_ghasts(
         session,
         (&mut *models, &mut *armor),
         textures,
         view,
-    ));
-    vertices.extend(fish::remote_water_animals(
+        vertices,
+    );
+    fish::remote_water_animals(
         session,
         (&mut *models, &mut *armor),
         textures,
         (view, &mut *held),
-    ));
-    vertices.extend(copper_golems::remote_copper_golems(
-        session,
-        models,
-        textures,
-        (view, &mut *held),
-    ));
-    vertices.extend(armor_stands::remote_armor_stands(
-        session,
-        (models, armor),
-        textures,
-        (view, held),
-    ));
-    vertices
+        vertices,
+    );
+    copper_golems::remote_copper_golems(session, models, textures, (view, &mut *held), vertices);
+    armor_stands::remote_armor_stands(session, (models, armor), textures, (view, held), vertices);
 }
 
 /// The hostile mobs that are not humanoids: the spiders, creepers and endermen,
@@ -428,15 +345,10 @@ pub(super) fn remote_hostiles(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
-    let mut vertices = monsters::remote_monsters(session, models, textures, (view, &mut *held));
-    vertices.extend(cube_mobs::remote_cube_mobs(session, models, textures, view));
-    vertices.extend(cube_mobs::remote_sulfur_cubes(
-        session,
-        models,
-        textures,
-        (view, held),
-    ));
-    vertices.extend(shulkers::remote_shulkers(session, models, textures, view));
-    vertices
+    vertices: &mut Vec<Vertex>,
+) {
+    monsters::remote_monsters(session, models, textures, (view, &mut *held), vertices);
+    cube_mobs::remote_cube_mobs(session, models, textures, view, vertices);
+    cube_mobs::remote_sulfur_cubes(session, models, textures, (view, held), vertices);
+    shulkers::remote_shulkers(session, models, textures, view, vertices);
 }

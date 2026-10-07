@@ -118,6 +118,9 @@ struct Play {
     remote_models: overlays::RemoteModels,
     mob_models: mobs::MobModels,
     item_layers: WorldItemLayers,
+    /// The frame's entity and item triangles, kept between frames so their room is reused.
+    entity_vertices: Vec<voxel_render::scene::Vertex>,
+    item_vertices: Vec<voxel_render::scene::Vertex>,
     /// What humanoids wear.
     armor: Armor,
     /// The layers of what humanoids hold, in the right and the left hand.
@@ -364,5 +367,6 @@ fn set_moving_blocks(
     Ok(())
 }
 
+mod cull;
 mod draw;
 mod ticks;

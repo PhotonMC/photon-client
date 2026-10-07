@@ -142,12 +142,12 @@ pub fn item_frames(
     state: &mut FrameState,
     (renderer, tints, textures): (&BlockRenderer, &BiomeTints, &EntityTextures),
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.is_item_frame())
     {
         let glowing =
@@ -209,7 +209,6 @@ pub fn item_frames(
             ));
         }
     }
-    vertices
 }
 
 /// The quads of a map in a frame (`MapRenderer.render` with only the decorations a frame shows):

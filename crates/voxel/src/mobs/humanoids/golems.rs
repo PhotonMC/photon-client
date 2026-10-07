@@ -58,17 +58,17 @@ pub fn remote_golems(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let (Some(iron), Some(snow)) = (
         voxel_data::entity_type::id("minecraft:iron_golem"),
         voxel_data::entity_type::id("minecraft:snow_golem"),
     ) else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let is_iron = entity.type_id == iron;
         if !is_iron && entity.type_id != snow {
             continue;
@@ -159,5 +159,4 @@ pub fn remote_golems(
             held.push(HeldItem::block(state, pose, placed.light, overlay));
         }
     }
-    vertices
 }

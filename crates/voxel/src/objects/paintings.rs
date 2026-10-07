@@ -75,14 +75,14 @@ pub fn remote_paintings(
     session: &PlaySession,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let names = session.registry_names("minecraft:painting_variant");
     let Some(back) = textures.rect(BACK) else {
-        return Vec::new();
+        return;
     };
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         if voxel_data::entity_type::name(entity.type_id) != Some("minecraft:painting") {
             continue;
         }
@@ -120,7 +120,6 @@ pub fn remote_paintings(
             vertices.extend([0, 1, 2, 0, 2, 3].map(|index| vertex(&quad[index])));
         }
     }
-    vertices
 }
 
 /// A painting's vertex for the entity shader: lit by the world and by its normal.

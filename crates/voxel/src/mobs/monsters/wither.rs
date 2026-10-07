@@ -129,7 +129,8 @@ pub(super) fn warden_layers(
     textures: &EntityTextures,
     (entity, state, partial): (&ClientEntity, &WardenRenderState, f32),
     placed: &MobPlacement,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let own = entity.warden().copied().unwrap_or_default();
     let age = state.age_in_ticks;
     let pi = std::f64::consts::PI as f32;
@@ -147,7 +148,6 @@ pub(super) fn warden_layers(
         ),
         (WARDEN_HEART.0, WARDEN_HEART.1, own.heart_animation(partial)),
     ];
-    let mut vertices = Vec::new();
     for (layer, texture, alpha) in layers {
         // `LivingEntityEmissiveLayer.submit`: nothing below this alpha.
         if alpha <= 1.0e-5 {
@@ -159,7 +159,6 @@ pub(super) fn warden_layers(
         model.setup_warden(state);
         vertices.extend(mob_vertices_emissive_faded(model, placed, rect, alpha));
     }
-    vertices
 }
 
 /// `WitherBossRenderer.extractRenderState`: what is left of the invulnerable
@@ -237,7 +236,8 @@ pub(super) fn glowing_layers(
     textures: &EntityTextures,
     (pose, entity, look, partial): (Pose, &ClientEntity, QuadrupedState, f32),
     (placed, glow, swirl): (&MobPlacement, &mut Vec<Vertex>, &mut Vec<Vertex>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     match pose {
         Pose::Wither => {
             // `WitherArmorLayer`: the armor's swirl while it is hurt, posed as the body is.
@@ -265,7 +265,6 @@ pub(super) fn glowing_layers(
                     POWER_COLOUR as u32,
                 ));
             }
-            Vec::new()
         }
         Pose::Creaking => {
             // The eyes: the same posed model, drawn unlit when they glow.
@@ -278,14 +277,19 @@ pub(super) fn glowing_layers(
                 model.setup_creaking(&state);
                 glow.extend(mob_vertices_glow(model, placed, rect));
             }
-            Vec::new()
         }
-        Pose::Breeze => breeze_layers(models, textures, (entity, partial), placed),
+        Pose::Breeze => breeze_layers(models, textures, (entity, partial), placed, vertices),
         Pose::Warden => {
             let state = warden_state(entity, look, partial);
-            warden_layers(models, textures, (entity, &state, partial), placed)
+            warden_layers(
+                models,
+                textures,
+                (entity, &state, partial),
+                placed,
+                vertices,
+            )
         }
-        _ => Vec::new(),
+        _ => {}
     }
 }
 
@@ -296,9 +300,9 @@ pub(super) fn breeze_layers(
     textures: &EntityTextures,
     (entity, partial): (&ClientEntity, f32),
     placed: &MobPlacement,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let state = breeze_state(entity, partial);
-    let mut vertices = Vec::new();
     // `BreezeWindLayer.xOffset`: a fiftieth of the age, within one texture.
     let scroll = (state.age_in_ticks * 0.02) % 1.0;
     for (layer, texture) in [BREEZE_WIND, BREEZE_EYES] {
@@ -312,7 +316,6 @@ pub(super) fn breeze_layers(
             mob_vertices_emissive(model, placed, rect)
         });
     }
-    vertices
 }
 
 /// `ParrotModel.setupAnim`, posed by what the parrot is doing.

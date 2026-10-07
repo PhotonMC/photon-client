@@ -24,16 +24,16 @@ pub fn remote_turtles(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(turtle) = voxel_data::entity_type::id("minecraft:turtle") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == turtle)
     {
         let baby = entity.is_baby();
@@ -61,5 +61,4 @@ pub fn remote_turtles(
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(mob_vertices(model, &placed, rect));
     }
-    vertices
 }

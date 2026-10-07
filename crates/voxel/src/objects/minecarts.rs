@@ -48,11 +48,15 @@ pub fn remote_minecarts(
     models: &mut MobModels,
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all().filter(|entity| entity.is_minecart()) {
+    for entity in world
+        .entities()
+        .drawn()
+        .filter(|entity| entity.is_minecart())
+    {
         let Some(name) = voxel_data::entity_type::name(entity.type_id) else {
             continue;
         };
@@ -132,7 +136,6 @@ pub fn remote_minecarts(
             held.push(HeldItem::block(block, poses.block, light, overlay));
         }
     }
-    vertices
 }
 
 /// `TntRenderer` for the blocks of primed tnt the server added: the block it shows (the tnt block's
@@ -142,7 +145,7 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.is_primed_tnt())
     {
         let (Some(snapshot), Some(own)) = (

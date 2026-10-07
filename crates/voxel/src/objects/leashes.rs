@@ -132,12 +132,11 @@ fn light_at(session: &PlaySession, at: [f64; 3]) -> (i32, i32) {
 
 /// The leads of the frame, as triangles for the world text pipeline (a flat colour, lit by the
 /// lightmap at each vertex).
-pub fn leashes(session: &PlaySession, view: FrameView) -> Vec<Vertex> {
+pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex>) {
     let world = session.world();
     let partial = view.partial as f32;
     let player = session.player();
     let game_time = world.game_time() as i64;
-    let mut vertices = Vec::new();
     for entity in world.entities().all() {
         let Some(holder_id) = entity.leash_holder_id() else {
             continue;
@@ -231,7 +230,6 @@ pub fn leashes(session: &PlaySession, view: FrameView) -> Vec<Vertex> {
             }
         }
     }
-    vertices
 }
 
 /// Whether the holder's type holds four lines.

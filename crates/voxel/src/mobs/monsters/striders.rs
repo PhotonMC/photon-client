@@ -36,16 +36,16 @@ pub fn remote_striders(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let Some(strider) = voxel_data::entity_type::id("minecraft:strider") else {
-        return Vec::new();
+        return;
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
     for entity in world
         .entities()
-        .all()
+        .drawn()
         .filter(|entity| entity.type_id == strider)
     {
         let baby = entity.is_baby();
@@ -89,5 +89,4 @@ pub fn remote_striders(
             ));
         }
     }
-    vertices
 }

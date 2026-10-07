@@ -40,11 +40,11 @@ pub fn remote_bullets(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let (layer, texture) = match voxel_data::entity_type::name(entity.type_id) {
             Some("minecraft:shulker_bullet") => (BULLET_LAYER, BULLET),
             Some("minecraft:llama_spit") => (SPIT_LAYER, SPIT),
@@ -104,5 +104,4 @@ pub fn remote_bullets(
             vertices.extend(boat_vertices(model, &pose, light, rect));
         }
     }
-    vertices
 }

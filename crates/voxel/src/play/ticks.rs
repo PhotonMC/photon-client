@@ -162,6 +162,8 @@ impl Play {
             remote_models: overlays::RemoteModels::new(),
             mob_models: mobs::MobModels::new(),
             item_layers: WorldItemLayers::new(),
+            entity_vertices: Vec::new(),
+            item_vertices: Vec::new(),
             armor,
             worn_layers: [
                 ItemLayerCache::new(voxel_render::model::DisplayContext::ThirdPersonRightHand),

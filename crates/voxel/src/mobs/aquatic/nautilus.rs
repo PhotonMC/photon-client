@@ -39,13 +39,13 @@ pub fn remote_nautiluses(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
     let nautilus = voxel_data::entity_type::id("minecraft:nautilus");
     let zombie = voxel_data::entity_type::id("minecraft:zombie_nautilus");
-    let mut vertices = Vec::new();
-    for entity in world.entities().all() {
+    for entity in world.entities().drawn() {
         let is_zombie = Some(entity.type_id) == zombie;
         if !is_zombie && Some(entity.type_id) != nautilus {
             continue;
@@ -129,5 +129,4 @@ pub fn remote_nautiluses(
             ));
         }
     }
-    vertices
 }

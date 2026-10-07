@@ -51,28 +51,18 @@ pub fn remote_water_animals(
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
-) -> Vec<Vertex> {
-    let mut vertices = squids::remote_squids(session, models, textures, view);
+    vertices: &mut Vec<Vertex>,
+) {
+    squids::remote_squids(session, models, textures, view, vertices);
     // The boats afloat on the same water.
-    vertices.extend(boats::remote_boats(session, models, textures, view));
-    vertices.extend(remote_fish(session, models, textures, view));
-    vertices.extend(dolphins::remote_dolphins(
-        session,
-        models,
-        textures,
-        (view, held),
-    ));
-    vertices.extend(turtles::remote_turtles(session, models, textures, view));
-    vertices.extend(axolotls::remote_axolotls(session, models, textures, view));
-    vertices.extend(frogs::remote_frogs(session, models, textures, view));
-    vertices.extend(guardians::remote_guardians(session, models, textures, view));
-    vertices.extend(nautilus::remote_nautiluses(
-        session,
-        (models, armor),
-        textures,
-        view,
-    ));
-    vertices
+    boats::remote_boats(session, models, textures, view, vertices);
+    remote_fish(session, models, textures, view, vertices);
+    dolphins::remote_dolphins(session, models, textures, (view, held), vertices);
+    turtles::remote_turtles(session, models, textures, view, vertices);
+    axolotls::remote_axolotls(session, models, textures, view, vertices);
+    frogs::remote_frogs(session, models, textures, view, vertices);
+    guardians::remote_guardians(session, models, textures, view, vertices);
+    nautilus::remote_nautiluses(session, (models, armor), textures, view, vertices);
 }
 
 /// The fish the server added, each posed from where it is between two ticks.
@@ -81,11 +71,11 @@ fn remote_fish(
     models: &mut MobModels,
     textures: &EntityTextures,
     view: FrameView,
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let world = session.world();
     let partial = view.partial as f32;
-    let mut vertices = Vec::new();
-    for entity in world.entities().all().filter(|entity| entity.is_fish()) {
+    for entity in world.entities().drawn().filter(|entity| entity.is_fish()) {
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
@@ -130,15 +120,9 @@ fn remote_fish(
                     vertices.extend(mob_vertices(model, &placed, rect));
                 }
             }
-            _ => vertices.extend(tropical_fish(
-                entity,
-                models,
-                textures,
-                (&placed, age, in_water),
-            )),
+            _ => tropical_fish(entity, models, textures, (&placed, age, in_water), vertices),
         }
     }
-    vertices
 }
 
 /// `TropicalFishRenderer` and its `TropicalFishPatternLayer`: the fish tinted
@@ -148,7 +132,8 @@ fn tropical_fish(
     models: &mut MobModels,
     textures: &EntityTextures,
     (placed, age, in_water): (&MobPlacement, f32, bool),
-) -> Vec<Vertex> {
+    vertices: &mut Vec<Vertex>,
+) {
     let packed = entity.tropical_fish_variant();
     let pattern = TropicalPattern::from_packed(packed);
     let (main, layer) = pattern.layers();
@@ -156,7 +141,6 @@ fn tropical_fish(
     placed.fish = Some(tropical_fish_turns(age, in_water));
     let dye =
         |dye| voxel_data::entity_type::dye_texture_colour(dye).map(|colour| colour & 0x00FF_FFFF);
-    let mut vertices = Vec::new();
     if let (Some(rect), Some(model)) = (textures.rect(pattern.base_texture()), models.model(main)) {
         model.setup_tail_fish("tail", age, in_water);
         vertices.extend(mob_vertices_coloured(
@@ -180,5 +164,4 @@ fn tropical_fish(
             dye(tropical_pattern_dye(packed)),
         ));
     }
-    vertices
 }
