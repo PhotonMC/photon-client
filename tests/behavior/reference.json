@@ -235,6 +235,13 @@
         "org.lwjgl:lwjgl-stb",
         "org.lwjgl:lwjgl-stb-natives-linux",
         "org.slf4j:slf4j-api"
+      ],
+      "extra_sources": [
+        "BlockDeclarationOracle.java",
+        "BlockItemOracle.java",
+        "BlockPropertyOracle.java",
+        "BlockShapeOracle.java",
+        "BlockSupport.java"
       ]
     },
     "image": {
@@ -354,6 +361,9 @@
         "org.apache.commons:commons-lang3",
         "com.mojang:authlib",
         "org.jspecify:jspecify"
+      ],
+      "extra_sources": [
+        "ModelMath.java"
       ]
     },
     "movement": {
@@ -382,6 +392,22 @@
         "org.lwjgl:lwjgl-stb",
         "org.lwjgl:lwjgl-stb-natives-linux",
         "org.slf4j:slf4j-api"
+      ],
+      "extra_sources": [
+        "MovementAnimalEvents.java",
+        "MovementAnimalExtras.java",
+        "MovementEntityOracle.java",
+        "MovementLivingOracle.java",
+        "MovementLivingRow.java",
+        "MovementMenuOracle.java",
+        "MovementMobEvents.java",
+        "MovementMobExtras.java",
+        "MovementObjectEvents.java",
+        "MovementObjectExtras.java",
+        "MovementPacketEvents.java",
+        "MovementPlayerOracle.java",
+        "MovementSupport.java",
+        "MovementWorldOracle.java"
       ]
     },
     "nbt": {
@@ -468,6 +494,13 @@
         "org.apache.commons:commons-lang3",
         "com.mojang:logging",
         "org.slf4j:slf4j-api"
+      ],
+      "extra_sources": [
+        "WireConfigurationOracle.java",
+        "WireFrameOracle.java",
+        "WireLoginOracle.java",
+        "WireRegistryOracle.java",
+        "WireSupport.java"
       ]
     },
     "entity": {
@@ -541,7 +574,30 @@
         "org.lwjgl:lwjgl-glfw-natives-linux"
       ],
       "extra_sources": [
-        "MovementOracle.java"
+        "GuiChatOracle.java",
+        "GuiCommandOracle.java",
+        "GuiFonts.java",
+        "GuiHudOracle.java",
+        "GuiLanguageOracle.java",
+        "GuiOverlayOracle.java",
+        "GuiRecorder.java",
+        "GuiScreenOracle.java",
+        "GuiSettingsOracle.java",
+        "MovementAnimalEvents.java",
+        "MovementAnimalExtras.java",
+        "MovementEntityOracle.java",
+        "MovementLivingOracle.java",
+        "MovementLivingRow.java",
+        "MovementMenuOracle.java",
+        "MovementMobEvents.java",
+        "MovementMobExtras.java",
+        "MovementObjectEvents.java",
+        "MovementObjectExtras.java",
+        "MovementOracle.java",
+        "MovementPacketEvents.java",
+        "MovementPlayerOracle.java",
+        "MovementSupport.java",
+        "MovementWorldOracle.java"
       ]
     },
     "sound": {
@@ -566,13 +622,14 @@
         "org.lwjgl:lwjgl"
       ],
       "extra_sources": [
+        "SoundSupport.java",
         "com/mojang/blaze3d/audio/Channel.java",
+        "com/mojang/blaze3d/audio/DeviceList.java",
+        "com/mojang/blaze3d/audio/DeviceTracker.java",
         "com/mojang/blaze3d/audio/Library.java",
-        "com/mojang/blaze3d/audio/SoundBuffer.java",
         "com/mojang/blaze3d/audio/Listener.java",
         "com/mojang/blaze3d/audio/ListenerTransform.java",
-        "com/mojang/blaze3d/audio/DeviceList.java",
-        "com/mojang/blaze3d/audio/DeviceTracker.java"
+        "com/mojang/blaze3d/audio/SoundBuffer.java"
       ]
     }
   }

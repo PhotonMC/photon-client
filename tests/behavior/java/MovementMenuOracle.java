@@ -1,0 +1,203 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+/** A menu opened in a scene, and clicks on its slots. */
+class MovementMenuOracle extends MovementPlayerOracle {
+    /**
+     * Clicks in the player's own inventory menu, as the inventory screen
+     * sends them: `MultiPlayerGameMode.handleContainerInput` runs the menu's
+     * click as the client predicts it and sends the click packet. After
+     * every click the packets sent, as their codecs write them, every slot
+     * and the carried stack are reported. Stacks carry no components, so
+     * their hashes are never asked for.
+     */
+    /** A menu and the game around it: the scene, the player and the menu, slots and data set. */
+    record OpenMenu(Scene scene, net.minecraft.client.player.LocalPlayer player,
+                    net.minecraft.world.inventory.AbstractContainerMenu menu, int containerId) {}
+
+    static OpenMenu openMenu(JsonObject row) throws Exception {
+        var scene = buildScene(row);
+        var listener = scene.listener();
+        var minecraft = scene.minecraft();
+        var level = scene.level();
+        setField(listener, "decoratedHashOpsGenerator",
+            (net.minecraft.network.HashedPatchMap.HashGenerator) component -> 0);
+        var player = new net.minecraft.client.player.LocalPlayer(
+            minecraft, level, listener, null, null,
+            net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        player.setId(1);
+        setField(minecraft, "player", player);
+        var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
+        var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
+        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+            "setGameMode", net.minecraft.world.level.GameType.class);
+        setMode.setAccessible(true);
+        setMode.invoke(info, gameType);
+        setField(player, "playerInfo", info);
+        var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);
+        gameMode.setLocalMode(gameType);
+        gameMode.adjustPlayer(player);
+        setField(minecraft, "gameMode", gameMode);
+        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+        player.getInventory().setSelectedSlot(row.get("selected").getAsInt());
+        net.minecraft.world.inventory.AbstractContainerMenu menu = player.inventoryMenu;
+        int containerId = 0;
+        if (row.has("menu")) {
+            // A menu the server opened: built the way the client builds it,
+            // over the player's own inventory.
+            containerId = row.get("container_id").getAsInt();
+            // A furnace menu reads the items its recipes accept from the
+            // server's recipe sets, and what burns from the client's fuel
+            // values.
+            setField(listener, "fuelValues", net.minecraft.world.level.block.entity.FuelValues
+                .vanillaBurnTimes(Oracle.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
+            var accepted = new java.util.ArrayList<net.minecraft.world.item.crafting.Ingredient>();
+            if (row.has("furnace_inputs")) {
+                for (var name : row.getAsJsonArray("furnace_inputs")) {
+                    accepted.add(net.minecraft.world.item.crafting.Ingredient.of(
+                        net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(name.getAsString()))));
+                }
+            }
+            var inputs = net.minecraft.world.item.crafting.RecipePropertySet.create(accepted);
+            var sets = new java.util.HashMap<net.minecraft.resources.ResourceKey<
+                net.minecraft.world.item.crafting.RecipePropertySet>,
+                net.minecraft.world.item.crafting.RecipePropertySet>();
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.FURNACE_INPUT, inputs);
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.BLAST_FURNACE_INPUT, inputs);
+            sets.put(net.minecraft.world.item.crafting.RecipePropertySet.SMOKER_INPUT, inputs);
+            if (row.has("recipe_sets")) {
+                for (var setEntry : row.getAsJsonObject("recipe_sets").entrySet()) {
+                    var members = new java.util.ArrayList<net.minecraft.world.item.crafting.Ingredient>();
+                    for (var name : setEntry.getValue().getAsJsonArray()) {
+                        members.add(net.minecraft.world.item.crafting.Ingredient.of(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                                net.minecraft.resources.Identifier.parse(name.getAsString()))));
+                    }
+                    sets.put(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.world.item.crafting.RecipePropertySet.TYPE_KEY,
+                            net.minecraft.resources.Identifier.parse(setEntry.getKey())),
+                        net.minecraft.world.item.crafting.RecipePropertySet.create(members));
+                }
+            }
+            var cutter = new java.util.ArrayList<net.minecraft.world.item.crafting.SelectableRecipe.SingleInputEntry<
+                net.minecraft.world.item.crafting.StonecutterRecipe>>();
+            if (row.has("stonecutter_inputs")) {
+                for (var name : row.getAsJsonArray("stonecutter_inputs")) {
+                    cutter.add(new net.minecraft.world.item.crafting.SelectableRecipe.SingleInputEntry<>(
+                        net.minecraft.world.item.crafting.Ingredient.of(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                                net.minecraft.resources.Identifier.parse(name.getAsString()))),
+                        new net.minecraft.world.item.crafting.SelectableRecipe<>(
+                            net.minecraft.world.item.crafting.display.SlotDisplay.AnyFuel.INSTANCE,
+                            java.util.Optional.empty())));
+                }
+            }
+            setField(listener, "recipes", new net.minecraft.client.multiplayer.ClientRecipeContainer(
+                sets, new net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet<>(cutter)));
+            var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
+            if (row.has("xp_level")) {
+                player.experienceLevel = row.get("xp_level").getAsInt();
+            }
+            menu = type.create(containerId, player.getInventory());
+            player.containerMenu = menu;
+            if (menu instanceof net.minecraft.world.inventory.MerchantMenu merchantMenu) {
+                // What the server's merchant offers, and how far it has levelled.
+                var offers = new net.minecraft.world.item.trading.MerchantOffers();
+                var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+                java.util.function.Function<com.google.gson.JsonElement, net.minecraft.world.item.trading.ItemCost> cost =
+                    pair -> new net.minecraft.world.item.trading.ItemCost(
+                        items.getValue(net.minecraft.resources.Identifier.parse(pair.getAsJsonArray().get(0).getAsString())),
+                        pair.getAsJsonArray().get(1).getAsInt());
+                if (row.has("offers")) {
+                    for (var element : row.getAsJsonArray("offers")) {
+                        var offer = element.getAsJsonObject();
+                        var sell = offer.getAsJsonArray("sell");
+                        var made = new net.minecraft.world.item.trading.MerchantOffer(
+                            cost.apply(offer.get("buy")),
+                            offer.has("buy_b") ? java.util.Optional.of(cost.apply(offer.get("buy_b"))) : java.util.Optional.empty(),
+                            new net.minecraft.world.item.ItemStack(
+                                items.getValue(net.minecraft.resources.Identifier.parse(sell.get(0).getAsString())),
+                                sell.get(1).getAsInt()),
+                            offer.get("uses").getAsInt(), offer.get("max_uses").getAsInt(), offer.get("xp").getAsInt(),
+                            offer.get("multiplier").getAsFloat(), offer.get("demand").getAsInt());
+                        made.setSpecialPriceDiff(offer.get("special").getAsInt());
+                        offers.add(made);
+                    }
+                }
+                merchantMenu.setOffers(offers);
+                if (row.has("merchant")) {
+                    var state = row.getAsJsonObject("merchant");
+                    merchantMenu.setXp(state.get("xp").getAsInt());
+                    merchantMenu.setMerchantLevel(state.get("level").getAsInt());
+                    merchantMenu.setShowProgressBar(state.get("progress").getAsBoolean());
+                    merchantMenu.setCanRestock(state.get("restock").getAsBoolean());
+                }
+            }
+        }
+        for (var element : row.getAsJsonArray("slots")) {
+            var slot = element.getAsJsonObject();
+            menu.getSlot(slot.get("slot").getAsInt()).set(stack(slot));
+        }
+        if (row.has("carried")) {
+            menu.setCarried(stack(row.getAsJsonObject("carried")));
+        }
+        if (row.has("select") && menu instanceof net.minecraft.world.inventory.MerchantMenu merchantMenu) {
+            // A trade chosen on the screen: tried first, and its payments moved in.
+            merchantMenu.setSelectionHint(row.get("select").getAsInt());
+            merchantMenu.tryMoveItems(row.get("select").getAsInt());
+        }
+        // What the server last sent of the menu's data, after the slots are
+        // set, which would make a menu work its own out.
+        if (row.has("data")) {
+            var values = row.getAsJsonArray("data");
+            for (int index = 0; index < values.size(); index++) {
+                menu.setData(index, values.get(index).getAsInt());
+            }
+        }
+        setField(menu, "stateId", row.get("state_id").getAsInt());
+        return new OpenMenu(scene, player, menu, containerId);
+    }
+
+    static JsonObject containerClicks(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var open = openMenu(row);
+        var scene = open.scene();
+        var listener = scene.listener();
+        var minecraft = scene.minecraft();
+        var player = open.player();
+        var menu = open.menu();
+        int containerId = open.containerId();
+        var gameMode = minecraft.gameMode;
+        var wire = scene.wire();
+        var clicks = new JsonArray();
+        for (var element : row.getAsJsonArray("clicks")) {
+            var click = element.getAsJsonObject();
+            wire.sent.clear();
+            gameMode.handleContainerInput(containerId, click.get("slot").getAsInt(), click.get("button").getAsInt(),
+                net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
+            var described = new JsonObject();
+            var packets = new JsonArray();
+            for (var packet : wire.sent) {
+                var packetJson = new JsonObject();
+                packetJson.addProperty("type", packet.type().id().toString());
+                packetJson.addProperty("bytes", encode(packet));
+                packets.add(packetJson);
+            }
+            described.add("sent", packets);
+            var slots = new JsonArray();
+            for (var slot : menu.slots) {
+                slots.add(describeStack(slot.getItem()));
+            }
+            described.add("slots", slots);
+            described.add("carried", describeStack(menu.getCarried()));
+            described.addProperty("selected", player.getInventory().getSelectedSlot());
+            clicks.add(described);
+        }
+        entry.addProperty("outcome", "clicked");
+        entry.add("clicks", clicks);
+        return entry;
+    }
+}

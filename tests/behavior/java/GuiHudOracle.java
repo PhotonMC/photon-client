@@ -1,0 +1,340 @@
+import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
+import java.util.HashMap;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+/** Boss bars, the locator bar and the hotbar and status HUD. */
+class GuiHudOracle extends GuiCommandOracle {
+    /** The boss bars: each event as the packet adds it, drawn by the overlay. */
+    static JsonObject bossBar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var overlay = new net.minecraft.client.gui.components.BossHealthOverlay(screen.minecraft());
+            int index = 0;
+            for (var barElement : row.getAsJsonArray("bars")) {
+                var bar = barElement.getAsJsonObject();
+                var colors = net.minecraft.world.BossEvent.BossBarColor.values();
+                var overlays = net.minecraft.world.BossEvent.BossBarOverlay.values();
+                var id = new java.util.UUID(0L, ++index);
+                ((java.util.Map<java.util.UUID, net.minecraft.client.gui.components.LerpingBossEvent>)
+                    get(overlay, "events")).put(id, new net.minecraft.client.gui.components.LerpingBossEvent(
+                        id, Component.literal(bar.get("name").getAsString()), bar.get("progress").getAsFloat(),
+                        colors[bar.get("color").getAsInt()], overlays[bar.get("overlay").getAsInt()],
+                        false, false, false));
+            }
+            overlay.extractRenderState(screen.graphics());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The locator bar over the waypoints packets track, seen from a camera and a player. */
+    static JsonObject locatorBar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var deviceInfo = new com.mojang.blaze3d.systems.DeviceInfo(null, null, null, true, null, 0.0F, null, null,
+            null, null, null);
+        var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
+            GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
+            (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);
+        var device = unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
+        set(device, "backend", backend);
+        var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
+        deviceField.setAccessible(true);
+        deviceField.set(null, device);
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var screen = screen(width, height, 0, 0);
+            var minecraft = screen.minecraft();
+            var camera = row.getAsJsonObject("camera");
+            var at = camera.getAsJsonArray("pos");
+            var feet = row.getAsJsonObject("player").getAsJsonArray("pos");
+            var uuid = row.getAsJsonObject("player").getAsJsonArray("uuid");
+            var fresh = net.minecraft.client.Camera.class.getDeclaredConstructor();
+            fresh.setAccessible(true);
+            var cameraObject = fresh.newInstance();
+            var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class,
+                float.class);
+            setRotation.setAccessible(true);
+            setRotation.invoke(cameraObject, (float) camera.get("yaw").getAsDouble(),
+                (float) camera.get("pitch").getAsDouble());
+            var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition",
+                net.minecraft.world.phys.Vec3.class);
+            setPosition.setAccessible(true);
+            setPosition.invoke(cameraObject, new net.minecraft.world.phys.Vec3(at.get(0).getAsDouble(),
+                at.get(1).getAsDouble(), at.get(2).getAsDouble()));
+            float fov = (float) camera.get("fov").getAsDouble();
+            set(cameraObject, "fov", fov);
+            var projection = (net.minecraft.client.renderer.Projection) get(cameraObject, "projection");
+            projection.setupPerspective(0.05F, (float) camera.get("far").getAsDouble(), fov,
+                (float) camera.get("aspect").getAsDouble(), 1.0F);
+            var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            set(renderer, "mainCamera", cameraObject);
+            set(minecraft, "gameRenderer", renderer);
+
+            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+            set(level, "tickRateManager", new net.minecraft.world.TickRateManager());
+            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            var position = new net.minecraft.world.phys.Vec3(feet.get(0).getAsDouble(), feet.get(1).getAsDouble(),
+                feet.get(2).getAsDouble());
+            set(player, "level", level);
+            set(player, "position", position);
+            set(player, "blockPosition", net.minecraft.core.BlockPos.containing(position));
+            set(player, "uuid", new java.util.UUID(uuid.get(0).getAsLong(), uuid.get(1).getAsLong()));
+            var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            var manager = new net.minecraft.client.waypoints.ClientWaypointManager();
+            set(listener, "waypointManager", manager);
+            set(player, "connection", listener);
+            set(minecraft, "player", player);
+            set(cameraObject, "entity", player);
+
+            var styles = new HashMap<net.minecraft.resources.ResourceKey<
+                net.minecraft.world.waypoints.WaypointStyleAsset>, net.minecraft.client.resources.WaypointStyle>();
+            for (var name : new String[] {"default", "bowtie"}) {
+                try (var stream = GuiOracle.class.getClassLoader().getResourceAsStream(
+                        "assets/minecraft/waypoint_style/" + name + ".json")) {
+                    var json = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream));
+                    styles.put(net.minecraft.world.waypoints.WaypointStyleAssets.createId(name),
+                        net.minecraft.client.resources.WaypointStyle.CODEC
+                            .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow());
+                }
+            }
+            var styleManager = unsafe.allocateInstance(net.minecraft.client.resources.WaypointStyleManager.class);
+            set(styleManager, "waypointStyles", styles);
+            set(screen.hud(), "waypointStyles", styleManager);
+
+            for (var packetElement : row.getAsJsonArray("packets")) {
+                var hex = packetElement.getAsString();
+                var bytes = new byte[hex.length() / 2];
+                for (int i = 0; i < bytes.length; i++) {
+                    bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
+                }
+                var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                    io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Oracle.vanillaRegistries());
+                net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket.STREAM_CODEC.decode(buffer)
+                    .apply(manager);
+            }
+            var bar = new net.minecraft.client.gui.contextualbar.LocatorBar(minecraft);
+            bar.extractBackground(screen.graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            bar.extractRenderState(screen.graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** What the HUD's methods are called against: a real level, a real local player and the stub game. */
+    record HudScene(net.minecraft.client.Minecraft minecraft, net.minecraft.client.multiplayer.ClientLevel level,
+                    net.minecraft.client.player.LocalPlayer local, Screen screen) {}
+
+    /**
+     * The scene the HUD is drawn in: a window of this size, a real local player in a game mode, the camera
+     * on it, and the settings the HUD asks of the game.
+     */
+    static HudScene hudScene(int width, int height, boolean spectator, boolean hardcore) throws Exception {
+        MovementOracle.bootstrap();
+        var empty = new JsonObject();
+        empty.add("blocks", new JsonArray());
+        empty.addProperty("chunk_radius", 0);
+        var scene = MovementOracle.buildScene(empty);
+        var level = scene.level();
+        var minecraft = scene.minecraft();
+        var screen = prepare(minecraft, width, height, 0, 0);
+        if (hardcore) {
+            MovementOracle.setField(level.getLevelData(), "hardcore", true);
+        }
+        var local = new net.minecraft.client.player.LocalPlayer(
+            minecraft, level, scene.listener(), null, null,
+            net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        local.setId(1);
+        var mode = spectator ? net.minecraft.world.level.GameType.SPECTATOR : net.minecraft.world.level.GameType.SURVIVAL;
+        var info = new net.minecraft.client.multiplayer.PlayerInfo(scene.listener().getLocalGameProfile(), false);
+        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+            "setGameMode", net.minecraft.world.level.GameType.class);
+        setMode.setAccessible(true);
+        setMode.invoke(info, mode);
+        MovementOracle.setField(local, "playerInfo", info);
+        MovementOracle.setField(minecraft, "player", local);
+        var gameMode = unsafe.allocateInstance(net.minecraft.client.multiplayer.MultiPlayerGameMode.class);
+        MovementOracle.setField(gameMode, "localPlayerMode", mode);
+        MovementOracle.setField(minecraft, "gameMode", gameMode);
+        var entries = unsafe.allocateInstance(net.minecraft.client.gui.components.debug.DebugScreenEntryList.class);
+        MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
+        MovementOracle.setField(minecraft, "debugEntries", entries);
+        // The camera is the player's; the game renderer holds it.
+        var camera = new net.minecraft.client.Camera();
+        camera.setEntity(local);
+        var gameRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        MovementOracle.setField(gameRenderer, "mainCamera", camera);
+        MovementOracle.setField(minecraft, "gameRenderer", gameRenderer);
+        return new HudScene(minecraft, level, local, screen);
+    }
+
+    /** A private method of the `Hud`, by name. */
+    static java.lang.reflect.Method hudMethod(String name, Class<?>... types) throws Exception {
+        var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method;
+    }
+
+    /**
+     * The game's own crosshair and hotbar (`Hud.extractCrosshair`, then `extractItemHotbar` for
+     * a player who is not spectating) for a real local player: its attack strength, the attack
+     * indicator option, the game mode, the camera and what the crosshair is on.
+     */
+    static JsonObject hudHotbar(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            boolean spectator = row.get("spectator").getAsBoolean();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), spectator, false);
+            var minecraft = scene.minecraft();
+            var level = scene.level();
+            var local = scene.local();
+            var options = minecraft.options;
+            options.attackIndicator().set(net.minecraft.client.AttackIndicatorStatus.values()[
+                row.get("attack_indicator").getAsInt()]);
+            if (row.get("third_person").getAsBoolean()) {
+                options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+            }
+            local.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_SPEED)
+                .setBaseValue(row.get("attack_speed").getAsDouble());
+            MovementOracle.setField(local, "attackStrengthTicker", row.get("attack_ticks").getAsInt());
+            local.getInventory().setSelectedSlot(row.get("selected_slot").getAsInt());
+
+            // What the crosshair is on.
+            net.minecraft.world.entity.Entity target = switch (row.get("target").getAsString()) {
+                case "none" -> null;
+                case "living" -> new net.minecraft.world.entity.animal.pig.Pig(
+                    net.minecraft.world.entity.EntityTypes.PIG, level);
+                case "dead" -> {
+                    var pig = new net.minecraft.world.entity.animal.pig.Pig(
+                        net.minecraft.world.entity.EntityTypes.PIG, level);
+                    pig.setHealth(0.0F);
+                    yield pig;
+                }
+                case "item" -> new net.minecraft.world.entity.item.ItemEntity(level, 0.0, 0.0, 0.0,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STONE));
+                default -> throw new IllegalArgumentException(row.get("target").getAsString());
+            };
+            MovementOracle.setField(minecraft, "crosshairPickEntity", target);
+
+            var graphics = scene.screen().graphics();
+            var hud = scene.screen().hud();
+            var tracker = net.minecraft.client.DeltaTracker.ZERO;
+            hudMethod("extractCrosshair", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
+                .invoke(hud, graphics, tracker);
+            if (!spectator) {
+                hudMethod("extractItemHotbar", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
+                    .invoke(hud, graphics, tracker);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The game's own status bars (`Hud.extractPlayerHealth`: armor, hearts, food and air bubbles, then the
+     * experience bar and its level) for a real local player, drawn through frames: each sets the HUD's tick
+     * count, the clock and the player's health and damage immunity, as the hearts blink by them.
+     */
+    static JsonObject hudStatus(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var clock = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+        clock.setAccessible(true);
+        var clockBefore = clock.get(null);
+        long[] now = {0};
+        clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+        try {
+            for (var element : request.getAsJsonArray("rows")) {
+                var row = element.getAsJsonObject();
+                var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false,
+                    row.get("hardcore").getAsBoolean());
+                var minecraft = scene.minecraft();
+                var local = scene.local();
+                local.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)
+                    .setBaseValue(row.get("max_health").getAsDouble());
+                local.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR)
+                    .setBaseValue(row.get("armor").getAsDouble());
+                // Absorption is held to the attribute's most.
+                local.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION)
+                    .setBaseValue(1000.0);
+                local.setAbsorptionAmount(Oracle.f32(row, "absorption"));
+                local.getFoodData().setFoodLevel(row.get("food").getAsInt());
+                local.getFoodData().setSaturation(Oracle.f32(row, "saturation"));
+                local.setAirSupply(row.get("air").getAsInt());
+                local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                local.experienceLevel = row.get("xp_level").getAsInt();
+                local.experienceProgress = Oracle.f32(row, "xp_progress");
+                for (var effect : row.getAsJsonArray("effects")) {
+                    var holder = switch (effect.getAsString()) {
+                        case "regeneration" -> net.minecraft.world.effect.MobEffects.REGENERATION;
+                        case "poison" -> net.minecraft.world.effect.MobEffects.POISON;
+                        case "wither" -> net.minecraft.world.effect.MobEffects.WITHER;
+                        case "hunger" -> net.minecraft.world.effect.MobEffects.HUNGER;
+                        default -> throw new IllegalArgumentException(effect.getAsString());
+                    };
+                    local.addEffect(new net.minecraft.world.effect.MobEffectInstance(holder, 1000));
+                }
+                if (row.get("eye_in_water").getAsBoolean()) {
+                    var interaction = get(local, "fluidInteraction");
+                    var trackers = (java.util.Map<?, ?>) get(interaction, "trackerByFluid");
+                    MovementOracle.setField(trackers.get(net.minecraft.tags.FluidTags.WATER), "eyesInside", true);
+                }
+                var hud = scene.screen().hud();
+                MovementOracle.setField(hud, "random", net.minecraft.util.RandomSource.create());
+                var tracker = net.minecraft.client.DeltaTracker.ZERO;
+                var health = hudMethod("extractPlayerHealth", GuiGraphicsExtractor.class);
+                var level = net.minecraft.client.gui.contextualbar.ContextualBar.class.getDeclaredMethod(
+                    "extractExperienceLevel", GuiGraphicsExtractor.class, net.minecraft.client.gui.Font.class, int.class);
+                level.setAccessible(true);
+                var frames = new JsonArray();
+                for (var frameElement : row.getAsJsonArray("frames")) {
+                    var frame = frameElement.getAsJsonObject();
+                    MovementOracle.setField(hud, "tickCount", frame.get("tick").getAsInt());
+                    now[0] = frame.get("ms").getAsLong();
+                    local.setHealth(Oracle.f32(frame, "health"));
+                    MovementOracle.setField(local, "invulnerableTime", frame.get("invulnerable").getAsInt());
+                    var state = new GuiRenderState();
+                    var graphics = new GuiGraphicsExtractor(minecraft, state, 0, 0);
+                    health.invoke(hud, graphics);
+                    var bar = new net.minecraft.client.gui.contextualbar.ExperienceBar(minecraft);
+                    bar.extractBackground(graphics, tracker);
+                    if (local.experienceLevel > 0) {
+                        level.invoke(null, graphics, minecraft.font, local.experienceLevel);
+                    }
+                    bar.extractRenderState(graphics, tracker);
+                    frames.add(record(state));
+                }
+                var out = new JsonObject();
+                out.addProperty("label", row.get("label").getAsString());
+                out.add("frames", frames);
+                rows.add(out);
+            }
+        } finally {
+            clock.set(null, clockBefore);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+}
