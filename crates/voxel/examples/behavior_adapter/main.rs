@@ -26682,6 +26682,7 @@ fn menu_named(
         "beacon" => MenuKind::Beacon,
         "crafter_3x3" => MenuKind::Crafter,
         "lectern" => MenuKind::Lectern,
+        "merchant" => MenuKind::Merchant,
         "grindstone" => MenuKind::Grindstone,
         "loom" => MenuKind::Loom,
         "smithing" => MenuKind::Smithing,
@@ -26766,6 +26767,42 @@ fn menu_named(
         menu.xp_level = level as i32;
     }
     menu.item_tags = std::sync::Arc::new(vanilla_item_tags()?);
+    if kind == MenuKind::Merchant {
+        let item = |pair: &Value| -> Result<voxel_game::merchant::ItemCost, String> {
+            let name = pair[0].as_str().ok_or("item must be a string")?;
+            Ok(voxel_game::merchant::ItemCost {
+                item: voxel_game::item::id_of(name)
+                    .ok_or_else(|| format!("unknown item {name}"))?,
+                count: pair[1].as_i64().ok_or("count must be a number")? as i32,
+                components: Vec::new(),
+            })
+        };
+        let mut offers = Vec::new();
+        for offer in row["offers"].as_array().into_iter().flatten() {
+            let cost_a = item(&offer["buy"])?;
+            let result = item(&offer["sell"])?;
+            offers.push(voxel_game::merchant::MerchantOffer {
+                cost_a,
+                cost_b: offer.get("buy_b").map(item).transpose()?,
+                result: result.stack(result.count),
+                uses: offer["uses"].as_i64().ok_or("uses")? as i32,
+                max_uses: offer["max_uses"].as_i64().ok_or("max_uses")? as i32,
+                xp: offer["xp"].as_i64().ok_or("xp")? as i32,
+                special_price_diff: offer["special"].as_i64().ok_or("special")? as i32,
+                demand: offer["demand"].as_i64().ok_or("demand")? as i32,
+                price_multiplier: offer["multiplier"].as_f64().ok_or("multiplier")? as f32,
+            });
+        }
+        menu.offers = std::sync::Arc::new(offers);
+        if let Some(state) = row.get("merchant") {
+            menu.trader = voxel_game::merchant::Trader {
+                level: state["level"].as_i64().unwrap_or(0) as i32,
+                xp: state["xp"].as_i64().unwrap_or(0) as i32,
+                show_progress: state["progress"].as_bool().unwrap_or(false),
+                can_restock: state["restock"].as_bool().unwrap_or(false),
+            };
+        }
+    }
     if let Some(inputs) = row.get("furnace_inputs").and_then(Value::as_array) {
         menu.accepted = vec![std::sync::Arc::new(
             inputs
@@ -26813,6 +26850,15 @@ fn container_clicks_result(request: &Value) -> Result<Value, String> {
         }
         if row.get("carried").is_some() {
             menu.carried = Some(stack(&row["carried"])?);
+        }
+        if menu.kind == voxel_game::container_menu::MenuKind::Merchant {
+            // Setting the payments made the result, as the reference's slots do.
+            menu.update_sell_item();
+            if let Some(trade) = row.get("select").and_then(Value::as_u64) {
+                menu.selection_hint = trade as usize;
+                menu.update_sell_item();
+                menu.try_move_items(trade as usize);
+            }
         }
         menu.state_id = row["state_id"]
             .as_i64()

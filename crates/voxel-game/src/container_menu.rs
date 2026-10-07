@@ -101,6 +101,8 @@ pub enum MenuKind {
     Crafter,
     /// `LecternMenu`: the book, and no inventory under it.
     Lectern,
+    /// `MerchantMenu`: two payments and what they buy.
+    Merchant,
 }
 
 /// Which furnace a [`MenuKind::Furnace`] is: each has its own screen and
@@ -145,6 +147,7 @@ impl MenuKind {
             24 => Self::Stonecutter,
             16 => Self::Hopper,
             17 => Self::Lectern,
+            19 => Self::Merchant,
             20 => Self::ShulkerBox,
             _ => return None,
         })
@@ -165,6 +168,7 @@ impl MenuKind {
             Self::Beacon => 1,
             Self::Crafter => 9,
             Self::Lectern => 1,
+            Self::Merchant => 3,
             Self::Loom | Self::Smithing => 4,
         }
     }
@@ -196,6 +200,7 @@ impl MenuKind {
             Self::Grindstone | Self::Cartography | Self::Anvil => Some(2),
             Self::Loom | Self::Smithing => Some(3),
             Self::Crafter => Some(45),
+            Self::Merchant => Some(2),
             _ => None,
         }
     }
@@ -241,6 +246,15 @@ pub struct ContainerMenu {
     last_input: Option<i32>,
     /// The menu's `ContainerData` (a furnace's burn and cook progress).
     pub data: Vec<i16>,
+    /// What the merchant of a trading menu offers, and the offer the payments are now matched to.
+    pub offers: std::sync::Arc<Vec<crate::merchant::MerchantOffer>>,
+    /// `MerchantContainer.selectionHint`: the offer the player chose, tried first.
+    pub selection_hint: usize,
+    /// The merchant's level and experience, and what its screen shows of them.
+    pub trader: crate::merchant::Trader,
+    active_offer: Option<usize>,
+    /// `MerchantContainer.futureXp`: what the trade would give the merchant.
+    pub future_xp: i32,
     quickcraft_status: i32,
     quickcraft_type: i32,
     quickcraft_slots: Vec<usize>,
@@ -266,6 +280,11 @@ impl Default for ContainerMenu {
             infinite_materials: false,
             last_input: None,
             data: Vec::new(),
+            offers: std::sync::Arc::default(),
+            selection_hint: 0,
+            trader: crate::merchant::Trader::default(),
+            active_offer: None,
+            future_xp: 0,
             quickcraft_status: 0,
             quickcraft_type: 0,
             quickcraft_slots: Vec::new(),
@@ -788,6 +807,10 @@ impl ContainerMenu {
     /// `canTakeItemForPickAll`: the result containers of these menus are
     /// skipped when a double click gathers.
     pub fn can_take_for_pick_all(&self, index: usize) -> bool {
+        // `MerchantMenu.canTakeItemForPickAll`: from none of them.
+        if self.kind == MenuKind::Merchant {
+            return false;
+        }
         !(matches!(
             self.kind,
             MenuKind::Inventory
@@ -1008,6 +1031,9 @@ impl ContainerMenu {
 
     /// `Slot.onTake`: the result slot uses up the crafting grid.
     fn on_take(&mut self, index: usize, _taken: &Stack, player: Player) {
+        if self.kind == MenuKind::Merchant && index == 2 {
+            self.take_merchant_result();
+        }
         self.transform_on_take(index, player);
         if !matches!(self.kind, MenuKind::Inventory | MenuKind::Crafting) || !self.is_result(index)
         {
@@ -1262,6 +1288,148 @@ impl ContainerMenu {
         Some(clicked)
     }
 
+    /// `MerchantMenu.quickMoveStack`.
+    fn quick_move_merchant(&mut self, index: usize, player: Player) -> Option<Stack> {
+        let original = self.slots[index].as_ref()?.clone();
+        let clicked = original.copy_with_count(original.item_count());
+        let mut stack = self.slots[index].take().expect("checked above");
+        let keeps_going = if index == 2 {
+            self.move_item_stack_to(&mut stack, 3, 39, true)
+        } else if index != 0 && index != 1 {
+            if index < 30 {
+                self.move_item_stack_to(&mut stack, 30, 39, false)
+            } else {
+                // The hotbar's slots go on into the inventory; a slot past it stays.
+                index >= 39 || self.move_item_stack_to(&mut stack, 3, 30, false)
+            }
+        } else {
+            self.move_item_stack_to(&mut stack, 3, 39, false)
+        };
+        self.slots[index] = Some(stack);
+        settle(&mut self.slots[index]);
+        if !keeps_going {
+            return None;
+        }
+        let left = self.slots[index].as_ref().map_or(0, Stack::item_count);
+        if left == clicked.item_count() {
+            return None;
+        }
+        let taken = self.slots[index]
+            .clone()
+            .unwrap_or_else(|| clicked.copy_with_count(0));
+        self.on_take(index, &taken, player);
+        Some(clicked)
+    }
+
+    /// `MerchantContainer.updateSellItem`: the offer the payments buy, and its result.
+    pub fn update_sell_item(&mut self) {
+        use crate::merchant::recipe_for;
+        self.active_offer = None;
+        let (buy_a, buy_b) = if self.slots[0].is_none() {
+            (self.slots[1].clone(), None)
+        } else {
+            (self.slots[0].clone(), self.slots[1].clone())
+        };
+        if buy_a.is_none() {
+            self.slots[2] = None;
+            self.future_xp = 0;
+            return;
+        }
+        if self.offers.is_empty() {
+            return;
+        }
+        let offers = self.offers.clone();
+        let mut found = recipe_for(&offers, buy_a.as_ref(), buy_b.as_ref(), self.selection_hint);
+        if found.is_none_or(|index| offers[index].is_out_of_stock()) {
+            self.active_offer = found;
+            found = recipe_for(&offers, buy_b.as_ref(), buy_a.as_ref(), self.selection_hint);
+        }
+        match found.filter(|index| !offers[*index].is_out_of_stock()) {
+            Some(index) => {
+                self.active_offer = Some(index);
+                self.slots[2] = Some(offers[index].result.clone());
+                self.future_xp = offers[index].xp;
+            }
+            None => {
+                self.slots[2] = None;
+                self.future_xp = 0;
+            }
+        }
+    }
+
+    /// `MerchantMenu.tryMoveItems`: the payments go back to the inventory, and the ones the chosen
+    /// offer wants come from it.
+    pub fn try_move_items(&mut self, trade: usize) {
+        let Some(offer) = self.offers.get(trade).cloned() else {
+            return;
+        };
+        for slot in 0..2 {
+            if let Some(mut stack) = self.slots[slot].take() {
+                let moved = self.move_item_stack_to(&mut stack, 3, 39, true);
+                self.slots[slot] = Some(stack);
+                settle(&mut self.slots[slot]);
+                if !moved {
+                    return;
+                }
+            }
+        }
+        if self.slots[0].is_none() && self.slots[1].is_none() {
+            self.fill_payment(0, &offer.cost_a);
+            if let Some(cost) = &offer.cost_b {
+                self.fill_payment(1, cost);
+            }
+        }
+        self.update_sell_item();
+    }
+
+    /// `MerchantMenu.moveFromInventoryToPaymentSlot`.
+    fn fill_payment(&mut self, payment: usize, cost: &crate::merchant::ItemCost) {
+        for index in 3..39 {
+            let Some(inventory) = self.slots[index].as_ref() else {
+                continue;
+            };
+            if !cost.test(Some(inventory)) {
+                continue;
+            }
+            let current = self.slots[payment].as_ref();
+            if current.is_some_and(|stack| !stack.is_same_item_same_components(inventory)) {
+                continue;
+            }
+            let held = current.map_or(0, Stack::item_count);
+            let max = max_stack_size(inventory);
+            let moved = (max - held).min(inventory.item_count());
+            let new = inventory.copy_with_count(held + moved);
+            if let Some(stack) = self.slots[index].as_mut() {
+                stack.shrink(moved);
+            }
+            settle(&mut self.slots[index]);
+            self.slots[payment] = Some(new);
+            if held + moved >= max {
+                break;
+            }
+        }
+    }
+
+    /// `MerchantResultSlot.onTake`: the offer the payments bought takes its price from them.
+    fn take_merchant_result(&mut self) {
+        let Some(offer) = self
+            .active_offer
+            .and_then(|index| self.offers.get(index).cloned())
+        else {
+            return;
+        };
+        let mut buy_a = self.slots[0].take();
+        let mut buy_b = self.slots[1].take();
+        if offer.take(&mut buy_a, &mut buy_b) || offer.take(&mut buy_b, &mut buy_a) {
+            self.slots[0] = buy_a;
+            self.slots[1] = buy_b;
+            self.update_sell_item();
+        } else {
+            self.slots[0] = buy_a;
+            self.slots[1] = buy_b;
+        }
+    }
+
     /// `quickMoveStack` of the menu.
     fn quick_move_stack(&mut self, index: usize, player: Player) -> Option<Stack> {
         match self.kind {
@@ -1278,6 +1446,7 @@ impl ContainerMenu {
             MenuKind::Crafter => self.quick_move_crafter(index, player),
             // `LecternMenu.quickMoveStack` moves nothing.
             MenuKind::Lectern => None,
+            MenuKind::Merchant => self.quick_move_merchant(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),
@@ -1556,8 +1725,9 @@ mod tests {
         assert_eq!(MenuKind::from_menu_type(9), Some(MenuKind::Beacon));
         assert_eq!(MenuKind::from_menu_type(17), Some(MenuKind::Lectern));
         assert_eq!(MenuKind::Lectern.slot_count(), 1);
-        // The merchant's menu is not modelled yet.
-        assert_eq!(MenuKind::from_menu_type(19), None);
+        assert_eq!(MenuKind::from_menu_type(19), Some(MenuKind::Merchant));
+        // The mounts' menus are not modelled yet (they are not in the registry of menus).
+        assert_eq!(MenuKind::from_menu_type(40), None);
     }
 
     #[test]

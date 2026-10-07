@@ -45,6 +45,7 @@ impl ContainerMenu {
             MenuKind::Grindstone | MenuKind::Cartography | MenuKind::Anvil => 0..2,
             MenuKind::Loom => 0..3,
             MenuKind::Smithing => 0..3,
+            MenuKind::Merchant => 0..2,
             _ => 0..0,
         }
     }
@@ -78,6 +79,7 @@ impl ContainerMenu {
                     self.slots[result] = None;
                 }
             }
+            MenuKind::Merchant => self.update_sell_item(),
             _ => self.slots[result] = None,
         }
     }
@@ -140,7 +142,8 @@ impl ContainerMenu {
                 | MenuKind::Enchantment
                 | MenuKind::Brewing
                 | MenuKind::Beacon
-                | MenuKind::Crafter,
+                | MenuKind::Crafter
+                | MenuKind::Merchant,
                 _,
             ) => true,
             _ => return None,

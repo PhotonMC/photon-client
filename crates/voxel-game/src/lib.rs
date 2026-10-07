@@ -17,6 +17,7 @@ pub mod item_in_hand;
 pub mod item_values;
 pub mod key_mapping;
 pub mod language;
+pub mod merchant;
 pub mod option;
 pub mod options;
 pub mod pick;

@@ -87,6 +87,7 @@ pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID: i32 = 74;
 pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID: i32 = 75;
 pub(crate) const PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID: i32 = 76;
 pub(crate) const PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID: i32 = 59;
+pub(crate) const PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID: i32 = 52;
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID: i32 = 64;
 pub(crate) const PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID: i32 = 96;
 pub(crate) const PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID: i32 = 108;
@@ -149,6 +150,7 @@ pub(crate) const PLAY_SERVERBOUND_CONTAINER_BUTTON_CLICK_PACKET_ID: i32 = 17;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID: i32 = 48;
 pub(crate) const PLAY_SERVERBOUND_SET_BEACON_PACKET_ID: i32 = 52;
+pub(crate) const PLAY_SERVERBOUND_SELECT_TRADE_PACKET_ID: i32 = 51;
 pub(crate) const PLAY_SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED_PACKET_ID: i32 = 20;
 pub(crate) const PLAY_SERVERBOUND_PLACE_RECIPE_PACKET_ID: i32 = 39;
 pub(crate) const PLAY_SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS_PACKET_ID: i32 = 46;
@@ -3722,6 +3724,102 @@ pub(crate) fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), Conne
 pub(crate) fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionError> {
     let mut input = input;
     voxel_core::wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("entity id"))
+}
+
+/// `ItemCost.STREAM_CODEC`: an item, a count and the components the payment must carry.
+fn parse_item_cost(input: &mut &[u8]) -> Result<voxel_game::merchant::ItemCost, ConnectionError> {
+    const NAME: &str = "merchant item cost";
+    let item = read_varint(input, NAME)?;
+    let count = read_varint(input, NAME)?;
+    let mut cursor = voxel_game::item_components::Cursor { data: input };
+    let components = cursor.count().map_err(|_| ConnectionError::Codec(NAME))?;
+    let mut expected = Vec::new();
+    for _ in 0..components {
+        let id = cursor.varint().map_err(|_| ConnectionError::Codec(NAME))?;
+        let start = cursor.data;
+        cursor
+            .component(id)
+            .map_err(|_| ConnectionError::Codec(NAME))?;
+        let length = start.len() - cursor.data.len();
+        expected.push((id, start[..length].to_vec()));
+    }
+    *input = cursor.data;
+    Ok(voxel_game::merchant::ItemCost {
+        item,
+        count,
+        components: expected,
+    })
+}
+
+/// `ClientboundMerchantOffersPacket`: the container, the offers, and the merchant's level,
+/// experience and what its screen shows.
+pub(crate) fn parse_merchant_offers_packet(
+    input: &[u8],
+) -> Result<(i32, voxel_game::merchant::MerchantState), ConnectionError> {
+    use voxel_game::merchant::{MerchantOffer, MerchantState, Trader};
+    const NAME: &str = "merchant offers";
+    let mut input = input;
+    let input = &mut input;
+    let container_id = read_varint(input, NAME)?;
+    let count = read_varint(input, NAME)?;
+    let mut offers = Vec::new();
+    for _ in 0..count.max(0) {
+        let cost_a = parse_item_cost(input)?;
+        let result = parse_optional_item_stack(input, NAME)?;
+        let result = voxel_world::ClientItemStackState::from_wire(
+            result.item_count.unwrap_or(0),
+            result.item_registry_id.unwrap_or(0),
+            result.positive_component_type_ids,
+            result.negative_component_type_ids,
+        )
+        .with_patch_bytes(result.patch_bytes);
+        let cost_b = if read_bool(input, NAME)? {
+            Some(parse_item_cost(input)?)
+        } else {
+            None
+        };
+        let out_of_stock = read_bool(input, NAME)?;
+        let uses = read_i32(input, NAME)?;
+        let max_uses = read_i32(input, NAME)?;
+        let xp = read_i32(input, NAME)?;
+        let special_price_diff = read_i32(input, NAME)?;
+        let price_multiplier = f32::from_bits(read_i32(input, NAME)? as u32);
+        let demand = read_i32(input, NAME)?;
+        offers.push(MerchantOffer {
+            cost_a,
+            cost_b,
+            result,
+            uses: if out_of_stock { max_uses } else { uses },
+            max_uses,
+            xp,
+            special_price_diff,
+            demand,
+            price_multiplier,
+        });
+    }
+    let level = read_varint(input, NAME)?;
+    let xp = read_varint(input, NAME)?;
+    let show_progress = read_bool(input, NAME)?;
+    let can_restock = read_bool(input, NAME)?;
+    Ok((
+        container_id,
+        MerchantState {
+            offers,
+            trader: Trader {
+                level,
+                xp,
+                show_progress,
+                can_restock,
+            },
+        },
+    ))
+}
+
+/// `ServerboundSelectTradePacket`: the offer's place in the list.
+pub fn encode_select_trade(trade: i32) -> Vec<u8> {
+    let mut output = Vec::new();
+    voxel_core::wire::write_varint(trade, &mut output);
+    output
 }
 
 /// `ServerboundContainerSlotStateChangedPacket`: the slot, the container and the new state.

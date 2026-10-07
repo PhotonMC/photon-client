@@ -1394,6 +1394,10 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                     }
                     menu.slots[index] = Some(stack);
                 }
+                // Setting the payments made the merchant's result, as the reference's slots do.
+                if menu.kind == voxel_game::container_menu::MenuKind::Merchant {
+                    menu.update_sell_item();
+                }
                 // The stonecutter's entries for the item in its slot, each
                 // showing an item (which the screen draws and this run does not
                 // record).

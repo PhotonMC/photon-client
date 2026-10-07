@@ -203,6 +203,7 @@ pub fn run_actions(
             ScreenAction::SetBeacon { primary, secondary } => {
                 session.set_beacon(primary, secondary)?;
             }
+            ScreenAction::SelectTrade(trade) => session.select_trade(trade)?,
             ScreenAction::SlotState { slot, enabled } => {
                 session.set_crafter_slot_state(slot, enabled)?;
             }

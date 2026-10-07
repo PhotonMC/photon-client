@@ -115,6 +115,8 @@ pub struct PlaySession {
     container_menu: voxel_game::container_menu::ContainerMenu,
     /// The menu of the container the server opened, likewise.
     open_menu: Option<voxel_game::container_menu::ContainerMenu>,
+    /// What the server last said of the merchant whose menu is open, by container.
+    merchant: Option<(i32, voxel_game::merchant::MerchantState)>,
     /// Chat the server sent that the client has not shown yet, and the
     /// `nextChatIndex` its player chat must come in.
     chat_events: Vec<ChatEvent>,
@@ -222,6 +224,7 @@ impl PlaySession {
             game_mode_state: voxel_game::game_mode::GameMode::default(),
             container_menu: voxel_game::container_menu::ContainerMenu::default(),
             open_menu: None,
+            merchant: None,
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),
@@ -660,6 +663,18 @@ impl PlaySession {
             }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.xp_level = self.status.experience_level;
+            if menu.kind == voxel_game::container_menu::MenuKind::Merchant {
+                // The merchant's offers; the result is the client's own to make.
+                if let Some((_, state)) = self
+                    .merchant
+                    .as_ref()
+                    .filter(|(id, _)| *id == menu.container_id)
+                {
+                    menu.offers = std::sync::Arc::new(state.offers.clone());
+                    menu.trader = state.trader;
+                }
+                menu.update_sell_item();
+            }
             if let Some(container) = self
                 .trace
                 .world
@@ -993,6 +1008,30 @@ impl PlaySession {
         self.send(PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID, |output| {
             voxel_core::wire::write_varint(name.len() as i32, output);
             output.extend_from_slice(name.as_bytes());
+            Ok(())
+        })
+    }
+
+    /// `MerchantScreen.postButtonClick`: the chosen trade is tried first and its payments moved
+    /// in, and the server is told.
+    pub fn select_trade(&mut self, trade: i32) -> Result<(), ConnectionError> {
+        let Some(menu) = self
+            .open_menu
+            .as_mut()
+            .filter(|menu| menu.kind == voxel_game::container_menu::MenuKind::Merchant)
+        else {
+            return Ok(());
+        };
+        let index = usize::try_from(trade).unwrap_or(0);
+        menu.selection_hint = index;
+        menu.update_sell_item();
+        menu.try_move_items(index);
+        let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
+        self.trace
+            .world
+            .set_local_player_container_menu(&slots, carried);
+        self.send(PLAY_SERVERBOUND_SELECT_TRADE_PACKET_ID, |output| {
+            output.extend_from_slice(&encode_select_trade(trade));
             Ok(())
         })
     }
@@ -2065,6 +2104,10 @@ impl PlaySession {
                     &packet.items,
                     packet.carried_item.as_ref(),
                 );
+            }
+            PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID => {
+                let (container_id, state) = parse_merchant_offers_packet(payload)?;
+                self.merchant = Some((container_id, state));
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID => {
                 let packet = parse_container_set_data_packet(payload)?;

@@ -2727,6 +2727,39 @@ public final class MovementOracle {
             }
             menu = type.create(containerId, player.getInventory());
             player.containerMenu = menu;
+            if (menu instanceof net.minecraft.world.inventory.MerchantMenu merchantMenu) {
+                // What the server's merchant offers, and how far it has levelled.
+                var offers = new net.minecraft.world.item.trading.MerchantOffers();
+                var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
+                java.util.function.Function<com.google.gson.JsonElement, net.minecraft.world.item.trading.ItemCost> cost =
+                    pair -> new net.minecraft.world.item.trading.ItemCost(
+                        items.getValue(net.minecraft.resources.Identifier.parse(pair.getAsJsonArray().get(0).getAsString())),
+                        pair.getAsJsonArray().get(1).getAsInt());
+                if (row.has("offers")) {
+                    for (var element : row.getAsJsonArray("offers")) {
+                        var offer = element.getAsJsonObject();
+                        var sell = offer.getAsJsonArray("sell");
+                        var made = new net.minecraft.world.item.trading.MerchantOffer(
+                            cost.apply(offer.get("buy")),
+                            offer.has("buy_b") ? java.util.Optional.of(cost.apply(offer.get("buy_b"))) : java.util.Optional.empty(),
+                            new net.minecraft.world.item.ItemStack(
+                                items.getValue(net.minecraft.resources.Identifier.parse(sell.get(0).getAsString())),
+                                sell.get(1).getAsInt()),
+                            offer.get("uses").getAsInt(), offer.get("max_uses").getAsInt(), offer.get("xp").getAsInt(),
+                            offer.get("multiplier").getAsFloat(), offer.get("demand").getAsInt());
+                        made.setSpecialPriceDiff(offer.get("special").getAsInt());
+                        offers.add(made);
+                    }
+                }
+                merchantMenu.setOffers(offers);
+                if (row.has("merchant")) {
+                    var state = row.getAsJsonObject("merchant");
+                    merchantMenu.setXp(state.get("xp").getAsInt());
+                    merchantMenu.setMerchantLevel(state.get("level").getAsInt());
+                    merchantMenu.setShowProgressBar(state.get("progress").getAsBoolean());
+                    merchantMenu.setCanRestock(state.get("restock").getAsBoolean());
+                }
+            }
         }
         for (var element : row.getAsJsonArray("slots")) {
             var slot = element.getAsJsonObject();
@@ -2734,6 +2767,11 @@ public final class MovementOracle {
         }
         if (row.has("carried")) {
             menu.setCarried(stack(row.getAsJsonObject("carried")));
+        }
+        if (row.has("select") && menu instanceof net.minecraft.world.inventory.MerchantMenu merchantMenu) {
+            // A trade chosen on the screen: tried first, and its payments moved in.
+            merchantMenu.setSelectionHint(row.get("select").getAsInt());
+            merchantMenu.tryMoveItems(row.get("select").getAsInt());
         }
         // What the server last sent of the menu's data, after the slots are
         // set, which would make a menu work its own out.

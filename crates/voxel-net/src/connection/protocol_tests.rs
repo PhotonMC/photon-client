@@ -49,21 +49,21 @@ use super::{
     encode_inventory_quick_move_state_correction,
     encode_inventory_secondary_pickup_state_correction, encode_inventory_swap_state_correction,
     encode_inventory_throw_all_state_correction, encode_inventory_throw_one_state_correction,
-    encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_set_beacon,
-    encode_set_carried_item, encode_stop_destroy_block, encode_use_item, encode_use_item_on,
-    encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
+    encode_packet_frame, encode_perform_respawn, encode_release_use_item, encode_select_trade,
+    encode_set_beacon, encode_set_carried_item, encode_stop_destroy_block, encode_use_item,
+    encode_use_item_on, encode_use_item_on_hit, pack_block_position, parse_add_entity_packet,
     parse_block_destruction_packet, parse_block_entity_data_packet, parse_block_update_packet,
     parse_chunk_packet, parse_container_close_packet, parse_container_set_content_packet,
     parse_container_set_slot_packet, parse_cursor_item_packet, parse_damage_event_packet,
     parse_entity_equipment_packet, parse_entity_event_packet, parse_entity_metadata_packet,
     parse_entity_position_sync_packet, parse_entity_teleport_packet,
     parse_forget_level_chunk_packet, parse_game_event_packet, parse_light_update_packet,
-    parse_login_packet, parse_map_item_data_packet, parse_move_entity_pos_packet,
-    parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet, parse_move_minecart_packet,
-    parse_open_screen_packet, parse_optional_item_stack, parse_player_abilities_packet,
-    parse_player_position_packet, parse_remove_entities_packet, parse_remove_mob_effect_packet,
-    parse_respawn_packet, parse_rotate_head_packet, parse_section_data,
-    parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
+    parse_login_packet, parse_map_item_data_packet, parse_merchant_offers_packet,
+    parse_move_entity_pos_packet, parse_move_entity_pos_rot_packet, parse_move_entity_rot_packet,
+    parse_move_minecart_packet, parse_open_screen_packet, parse_optional_item_stack,
+    parse_player_abilities_packet, parse_player_position_packet, parse_remove_entities_packet,
+    parse_remove_mob_effect_packet, parse_respawn_packet, parse_rotate_head_packet,
+    parse_section_data, parse_set_chunk_cache_center_packet, parse_set_chunk_cache_radius_packet,
     parse_set_entity_motion_packet, parse_set_health_packet, parse_set_passengers_packet,
     parse_set_player_inventory_packet, parse_system_chat_packet, parse_update_attributes_packet,
     parse_update_mob_effect_packet, resolve_player_position, support_block_position,
@@ -2769,6 +2769,45 @@ fn a_crafter_slot_state_is_the_slot_the_container_and_a_flag() {
         encode_container_slot_state(300, 2, true),
         vec![0xAC, 0x02, 2, 1]
     );
+}
+
+#[test]
+fn merchant_offers_read_each_offer_and_the_traders_standing() {
+    use voxel_core::wire::write_varint;
+    let mut payload = Vec::new();
+    write_varint(5, &mut payload);
+    write_varint(1, &mut payload);
+    // The cost: item 4, three of it, no components; the result: two of item 7, no patch.
+    for value in [4, 3, 0, 2, 7, 0, 0] {
+        write_varint(value, &mut payload);
+    }
+    // No second cost, not out of stock, then uses, max uses, xp, special price.
+    payload.extend_from_slice(&[0, 0]);
+    for value in [1_i32, 12, 2, -1] {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    payload.extend_from_slice(&0.05_f32.to_be_bytes());
+    payload.extend_from_slice(&3_i32.to_be_bytes());
+    // Level 2, 15 experience, the bar shown, no restocking.
+    for value in [2, 15] {
+        write_varint(value, &mut payload);
+    }
+    payload.extend_from_slice(&[1, 0]);
+    let (container, state) = parse_merchant_offers_packet(&payload).unwrap();
+    assert_eq!(container, 5);
+    let offer = &state.offers[0];
+    assert_eq!((offer.cost_a.item, offer.cost_a.count), (4, 3));
+    assert_eq!(
+        (offer.result.item_registry_id(), offer.result.item_count()),
+        (7, 2)
+    );
+    assert_eq!((offer.uses, offer.max_uses, offer.xp), (1, 12, 2));
+    assert_eq!((offer.special_price_diff, offer.demand), (-1, 3));
+    assert!((offer.price_multiplier - 0.05).abs() < 1e-6);
+    assert!(offer.cost_b.is_none() && !offer.is_out_of_stock());
+    assert_eq!((state.trader.level, state.trader.xp), (2, 15));
+    assert!(state.trader.show_progress && !state.trader.can_restock);
+    assert_eq!(encode_select_trade(3), vec![3]);
 }
 
 #[test]

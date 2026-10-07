@@ -2737,6 +2737,9 @@ public final class GuiOracle {
                     case "minecraft:grindstone" -> new net.minecraft.client.gui.screens.inventory.GrindstoneScreen(
                         (net.minecraft.world.inventory.GrindstoneMenu) menu, inventory,
                         Component.translatable("container.grindstone_title"));
+                    case "minecraft:merchant" -> new net.minecraft.client.gui.screens.inventory.MerchantScreen(
+                        (net.minecraft.world.inventory.MerchantMenu) menu, inventory,
+                        Component.translatable("entity.minecraft.villager"));
                     case "minecraft:lectern" -> new net.minecraft.client.gui.screens.inventory.LecternScreen(
                         (net.minecraft.world.inventory.LecternMenu) menu, inventory,
                         Component.translatable("container.lectern"));

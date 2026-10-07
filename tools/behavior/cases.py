@@ -14118,6 +14118,21 @@ def movement_cases():
         return row
 
     P, Q, SW, CL, TH, QC, PA = "PICKUP", "QUICK_MOVE", "SWAP", "CLONE", "THROW", "QUICK_CRAFT", "PICKUP_ALL"
+
+    def offer(buy, sell, buy_b=None, uses=0, max_uses=12, xp=2, special=0, demand=0, multiplier=0.05):
+        made = {"buy": [f"minecraft:{buy[0]}", buy[1]], "sell": [f"minecraft:{sell[0]}", sell[1]],
+                "uses": uses, "max_uses": max_uses, "xp": xp, "special": special, "demand": demand,
+                "multiplier": multiplier}
+        if buy_b:
+            made["buy_b"] = [f"minecraft:{buy_b[0]}", buy_b[1]]
+        return made
+
+    merchant_offers = [
+        offer(("emerald", 1), ("bread", 6)),
+        offer(("wheat", 20), ("emerald", 1), max_uses=16, demand=4),
+        offer(("emerald", 3), ("bookshelf", 1), buy_b=("paper", 2), special=-1),
+        offer(("diamond", 2), ("cake", 1), uses=12),
+    ]
     click_rows = [
         clicks("pick up and put down", [st(36, "stone", 64)], [cl(36, 0, P), cl(10, 0, P)], state_id=5),
         clicks("halves and single placements", [st(36, "stone", 63)],
@@ -14432,6 +14447,35 @@ def movement_cases():
                [cl(45, 0, P), cl(45, 1, P), cl(45, 0, Q), cl(20, 0, P), cl(45, 0, P), cl(21, 0, PA),
                 cl(45, 0, TH), cl(0, 2, SW), cl(45, 2, SW)],
                menu="crafter_3x3"),
+        clicks("merchant payment makes the result and taking it pays the price",
+               [st(3, "emerald", 5), st(4, "wheat", 40)],
+               [cl(3, 0, P), cl(0, 0, P), cl(2, 0, P), cl(10, 0, P), cl(0, 0, P), cl(4, 0, P), cl(1, 0, P),
+                cl(0, 0, P)],
+               menu="merchant", extra={"offers": merchant_offers}),
+        clicks("merchant demand raises the price",
+               [st(0, "wheat", 30), st(1, "paper", 2), st(10, "emerald", 3)],
+               [cl(2, 0, P), cl(11, 0, P), cl(0, 0, P), cl(10, 0, P), cl(0, 0, P)],
+               menu="merchant", extra={"offers": merchant_offers}),
+        clicks("merchant takes two payments and an out of stock offer gives nothing",
+               [st(0, "emerald", 7), st(1, "paper", 5), st(5, "diamond", 2)],
+               [cl(2, 0, P), cl(12, 0, P), cl(5, 0, P), cl(0, 0, P), cl(0, 0, P), cl(2, 0, P)],
+               menu="merchant", extra={"offers": merchant_offers}),
+        clicks("merchant quick move",
+               [st(0, "emerald", 3), st(1, "paper", 2), st(4, "emerald", 7), st(33, "wheat", 40),
+                st(10, "bread", 12)],
+               [cl(2, 0, Q), cl(4, 0, Q), cl(33, 0, Q), cl(10, 0, Q), cl(0, 0, Q), cl(1, 0, Q)],
+               menu="merchant", extra={"offers": merchant_offers}),
+        clicks("merchant chosen trade moves its payments in",
+               [st(10, "emerald", 5), st(11, "wheat", 40), st(30, "wheat", 30)],
+               [cl(2, 0, Q), cl(0, 0, P)],
+               menu="merchant", extra={"offers": merchant_offers, "select": 1}),
+        clicks("merchant chosen trade gives the payments back first",
+               [st(0, "emerald", 3), st(1, "paper", 2), st(11, "wheat", 25), st(12, "emerald", 9)],
+               [cl(2, 0, Q)],
+               menu="merchant", extra={"offers": merchant_offers, "select": 1}),
+        clicks("merchant double click gathers from no slot",
+               [st(3, "emerald", 5), st(4, "emerald", 5), st(0, "emerald", 3)],
+               [cl(3, 0, P), cl(4, 0, PA)], menu="merchant", extra={"offers": merchant_offers}),
         clicks("brewing stand number keys", [st(0, "potion", 1), st(4, "blaze_powder", 6),
                                               st(30, "glass_bottle", 1), st(31, "stone", 1)],
                [cl(0, 2, SW), cl(4, 3, SW), cl(2, 5, SW), cl(3, 6, SW)], menu="brewing_stand"),

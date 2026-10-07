@@ -19,4 +19,6 @@ Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 `docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-(boş)
+- Yapıldı: `voxel_game::merchant` (`MerchantOffer`, `ItemCost`, fiyat, `satisfiedBy`, `take`, `getRecipeFor`, seviye eşikleri), `MenuKind::Merchant` (sonuç yuvası, alma, `quickMoveStack`, `tryMoveItems`), `MerchantOffersPacket` çözümü ve `SelectTrade` paketi (`PlaySession::select_trade`), `MerchantPanel` ekranı. Kayıt: `docs/generic-container-conformance.md` "Tüccar".
+- Oracle: `container-clicks` 7, `container_screen` 9 satır (gerçek `MerchantMenu` ve `MerchantScreen`; oracle'a `offers`, `merchant`, `select` alanları).
+- Açık: ticaret sesi, köylünün seviye atlaması bildirimi (`notifyTrade`), köylü etkileşimi (T26'nın `Interact`ı menüyü zaten açtırır), bileşenli ödeme eşya karşılaştırması bayt eşitliğidir.

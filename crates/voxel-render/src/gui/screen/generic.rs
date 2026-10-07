@@ -4,6 +4,7 @@
 //! run in [`voxel_game::container_menu`].
 
 mod beacon;
+mod merchant;
 mod transform;
 
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, slot_key_clicks};
@@ -23,6 +24,7 @@ fn image(kind: MenuKind) -> (i32, i32) {
         MenuKind::Hopper => (176, 133),
         MenuKind::ShulkerBox | MenuKind::Inventory => (176, 167),
         MenuKind::Beacon => (230, 219),
+        MenuKind::Merchant => (276, 166),
         _ => (176, 166),
     }
 }
@@ -34,6 +36,9 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     // `CrafterMenu`'s result slot comes after the player's slots.
     if kind == MenuKind::Crafter && index == 45 {
         return (134, 35);
+    }
+    if kind == MenuKind::Merchant && index < 3 {
+        return [(136, 37), (162, 37), (220, 37)][index];
     }
     if matches!(kind, MenuKind::Furnace(_)) && index < top {
         return [(56, 17), (56, 53), (116, 35)][index];
@@ -64,6 +69,7 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
         MenuKind::Chest(rows) => (8, rows as i32 * 18 + 31),
         MenuKind::Hopper => (8, 51),
         MenuKind::Beacon => (36, 137),
+        MenuKind::Merchant => (108, 84),
         _ => (8, 84),
     };
     let own = index - top;
@@ -124,6 +130,8 @@ pub struct GenericScreen {
     extras: transform::Extras,
     /// The beacon's buttons, for its menu.
     beacon: Option<beacon::BeaconPanel>,
+    /// The trading screen's list, for the merchant's menu.
+    merchant: Option<merchant::MerchantPanel>,
 }
 
 impl GenericScreen {
@@ -147,6 +155,7 @@ impl GenericScreen {
             book,
             extras: transform::Extras::new(),
             beacon: (kind == MenuKind::Beacon).then(beacon::BeaconPanel::new),
+            merchant: (kind == MenuKind::Merchant).then(merchant::MerchantPanel::new),
         }
     }
 
@@ -219,10 +228,16 @@ impl GenericScreen {
                     MenuKind::ShulkerBox => "container/shulker_box",
                     other => transform::texture(other).unwrap_or("container/hopper"),
                 };
+                // The villager's is twice as wide.
+                let size = if other == MenuKind::Merchant {
+                    (512, 256)
+                } else {
+                    (256, 256)
+                };
                 draw.frame.blit_texture(
                     draw.atlas,
                     texture,
-                    (256, 256),
+                    size,
                     (0, 0),
                     left,
                     top,
@@ -329,11 +344,100 @@ impl GenericScreen {
         })
     }
 
+    /// `MerchantScreen.extractLabels`: the title, with the merchant's level when its bar shows, the
+    /// inventory's label and the list's.
+    fn draw_merchant_labels(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        (left, top): (i32, i32),
+    ) {
+        use voxel_game::text::{Component, Style};
+        let lang = &self.titles.lang;
+        let level = menu.trader.level;
+        let title = if level > 0 && level <= 5 && menu.trader.show_progress {
+            let named = Component::translatable_with(
+                "merchant.title",
+                vec![
+                    Component::literal(self.titles.title.clone()),
+                    Component::translatable(format!("merchant.level.{level}")),
+                ],
+            );
+            lang.runs(&named, &Style::default())
+        } else {
+            lang.runs(
+                &Component::literal(self.titles.title.clone()),
+                &Style::default(),
+            )
+        };
+        let width = draw.font.width_of_runs(&title);
+        let colour = 0xFF40_4040;
+        draw.frame.styled_text(
+            draw.atlas,
+            draw.font,
+            &title,
+            left + 49 + 276 / 2 - width / 2,
+            top + 6,
+            colour,
+            false,
+        );
+        draw.frame.text(
+            draw.atlas,
+            draw.font,
+            &self.titles.inventory,
+            left + 107,
+            top + 166 - 94,
+            colour,
+        );
+        let trades = lang.text("merchant.trades");
+        draw.frame.text(
+            draw.atlas,
+            draw.font,
+            &trades,
+            left + 5 - draw.font.width(&trades) / 2 + 48,
+            top + 6,
+            colour,
+        );
+    }
+
+    /// `CrafterScreen.extractRedstone`, from the middle of the screen; and the hint over a
+    /// switched-on empty slot.
+    fn draw_crafter_redstone(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu) {
+        if self.kind != MenuKind::Crafter {
+            return;
+        }
+        let crafter_data = |slot: usize| menu.data.get(slot).copied().unwrap_or(0);
+        // `CrafterScreen.extractRedstone`, from the middle of the screen; and the hint over
+        // a switched-on empty slot.
+        let sprite = if crafter_data(9) == 1 {
+            "container/crafter/powered_redstone"
+        } else {
+            "container/crafter/unpowered_redstone"
+        };
+        draw.frame.sprite(
+            draw.atlas,
+            sprite,
+            self.layout.width / 2 + 9,
+            self.layout.height / 2 - 48,
+            16,
+            16,
+        );
+        if let Some(slot) = self.hovered.filter(|slot| *slot < 9)
+            && crafter_data(slot) != 1
+            && menu.carried.is_none()
+            && menu.slots[slot].is_none()
+        {
+            let hint = self.titles.lang.text("gui.togglable_slot");
+            self.extras.pending_tooltip = Some(vec![crate::gui::chat::plain_runs(&hint)]);
+        }
+    }
+
     /// The labels of the screen (and, for the beacon, its buttons), which the reference draws
     /// with them: the title and the inventory's, or the beacon's two powers.
     fn draw_labels(
         &mut self,
         draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
         mouse: (f64, f64),
         (left, top): (i32, i32),
         (width, height): (i32, i32),
@@ -358,6 +462,8 @@ impl GenericScreen {
                     0xFFE0_E0E0,
                 );
             }
+        } else if self.kind == MenuKind::Merchant {
+            self.draw_merchant_labels(draw, menu, (left, top));
         } else {
             // The dispenser centres its title; the others keep it at the corner.
             let (label_x, label_y) = transform::title_label(self.kind);
@@ -417,6 +523,11 @@ impl Screen for GenericScreen {
     ) -> Vec<ScreenAction> {
         let double = self.mouse.note_click(now, button);
         let origin = (self.layout.left(), self.layout.top());
+        if let Some(panel) = &mut self.merchant
+            && let Some(actions) = panel.click(mouse, origin, menu, button == 0)
+        {
+            return actions;
+        }
         if button == 0
             && let Some(panel) = &mut self.beacon
             && let Some(actions) = panel.click(mouse, origin, menu)
@@ -461,6 +572,10 @@ impl Screen for GenericScreen {
     }
 
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu) {
+        let top = self.layout.top();
+        if let Some(panel) = &mut self.merchant {
+            panel.drag(mouse, top, menu);
+        }
         self.stone_drag(mouse);
         self.loom_drag(mouse);
         let slot = self.hovered_slot(mouse);
@@ -476,6 +591,9 @@ impl Screen for GenericScreen {
     ) -> Vec<ScreenAction> {
         self.stone_release();
         self.loom_release();
+        if let Some(panel) = &mut self.merchant {
+            panel.release();
+        }
         if self
             .book
             .as_mut()
@@ -537,6 +655,9 @@ impl Screen for GenericScreen {
     }
 
     fn mouse_scrolled(&mut self, y: f64) {
+        if let Some(panel) = &mut self.merchant {
+            panel.wheel(y);
+        }
         self.stone_wheel(y);
         self.loom_wheel(y);
     }
@@ -574,6 +695,9 @@ impl Screen for GenericScreen {
         let (width, height) = image(self.kind);
         self.layout.background(draw);
         self.blit_background(draw);
+        if let Some(panel) = &self.merchant {
+            panel.background(draw, menu, (left, top));
+        }
         if let MenuKind::Furnace(smelter) = self.kind {
             self.furnace_progress(draw, menu, smelter);
         }
@@ -587,7 +711,10 @@ impl Screen for GenericScreen {
             return;
         }
         self.draw_extras(draw, menu, mouse, (left, top));
-        self.draw_labels(draw, mouse, (left, top), (width, height));
+        if let Some(panel) = &self.merchant {
+            panel.buttons(draw, (left, top), mouse);
+        }
+        self.draw_labels(draw, menu, mouse, (left, top), (width, height));
         self.hovered = self.hovered_slot(mouse);
         let kind = self.kind;
         if kind == MenuKind::Smithing {
@@ -623,36 +750,18 @@ impl Screen for GenericScreen {
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(kind, slot), true);
         }
+        if let Some(panel) = &mut self.merchant {
+            let deprecated = self.titles.lang.text("merchant.deprecated");
+            if let Some(lines) = panel.contents(draw, menu, (left, top), mouse, &deprecated) {
+                self.extras.pending_tooltip = Some(lines);
+            }
+        }
         if let Some(book) = &mut self.book {
             book.draw(draw, menu, mouse, left);
             book.draw_ghost(draw, menu, (left, top), &|slot| slot_position(kind, slot));
         }
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
-        if kind == MenuKind::Crafter {
-            // `CrafterScreen.extractRedstone`, from the middle of the screen; and the hint over
-            // a switched-on empty slot.
-            let sprite = if crafter_data(9) == 1 {
-                "container/crafter/powered_redstone"
-            } else {
-                "container/crafter/unpowered_redstone"
-            };
-            draw.frame.sprite(
-                draw.atlas,
-                sprite,
-                self.layout.width / 2 + 9,
-                self.layout.height / 2 - 48,
-                16,
-                16,
-            );
-            if let Some(slot) = self.hovered.filter(|slot| *slot < 9)
-                && crafter_data(slot) != 1
-                && menu.carried.is_none()
-                && menu.slots[slot].is_none()
-            {
-                let hint = self.titles.lang.text("gui.togglable_slot");
-                self.extras.pending_tooltip = Some(vec![crate::gui::chat::plain_runs(&hint)]);
-            }
-        }
+        self.draw_crafter_redstone(draw, menu);
         if let Some(lines) = self.extras.pending_tooltip.take()
             && draw.widget_tooltips
         {

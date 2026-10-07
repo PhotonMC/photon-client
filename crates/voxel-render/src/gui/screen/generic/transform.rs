@@ -57,6 +57,7 @@ pub(super) fn texture(kind: MenuKind) -> Option<&'static str> {
         MenuKind::Brewing => "container/brewing_stand",
         MenuKind::Beacon => "container/beacon",
         MenuKind::Crafter => "container/crafter",
+        MenuKind::Merchant => "container/villager",
         _ => return None,
     })
 }

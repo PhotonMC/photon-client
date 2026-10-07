@@ -793,12 +793,33 @@ def gui_tab_list_cases():
     yield {"case_id": "gui/tab-list", "family": "gui", "operation": "tab_list", "rows": rows}
 
 
+def trader(level, xp, progress=True, restock=True):
+    return {"level": level, "xp": xp, "progress": progress, "restock": restock}
+
+
+def trades():
+    """The offers of the trading screens: a plain one, one the demand has raised, one that asks
+    for two items, and one that is used up."""
+    def offer(buy, sell, buy_b=None, uses=0, max_uses=12, xp=2, special=0, demand=0, multiplier=0.05):
+        made = {"buy": [f"minecraft:{buy[0]}", buy[1]], "sell": [f"minecraft:{sell[0]}", sell[1]],
+                "uses": uses, "max_uses": max_uses, "xp": xp, "special": special, "demand": demand,
+                "multiplier": multiplier}
+        if buy_b:
+            made["buy_b"] = [f"minecraft:{buy_b[0]}", buy_b[1]]
+        return made
+    return [offer(("emerald", 1), ("bread", 6)),
+            offer(("wheat", 20), ("emerald", 1), max_uses=16, demand=4),
+            offer(("emerald", 3), ("bookshelf", 1), buy_b=("paper", 2), special=-1),
+            offer(("diamond", 2), ("cake", 1), uses=12)]
+
+
 def gui_container_screen_cases():
     """The screens of the menus that change their items, over the reference's
     own menu: labels, textures, sprites, name box and what each shows of its
     data. Slots hold items, which are not recorded."""
     def screen(label, menu, title_key, slots=(), data=None, xp=None, keys=(), sync_slot=None,
-               mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True, game_mode="survival", books=None):
+               mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True, game_mode="survival", books=None, offers=None,
+               merchant=None):
         row = {"label": label, "width": width, "height": height, "mouse_x": mouse[0],
                "mouse_y": mouse[1], "menu": f"minecraft:{menu}", "title_key": title_key,
                "container_id": 4, "game_mode": game_mode, "selected": 0, "state_id": 0,
@@ -814,6 +835,10 @@ def gui_container_screen_cases():
             row["sync_slot"] = sync_slot
         if data_after is not None:
             row["data_after"] = data_after
+        if offers is not None:
+            row["offers"] = offers
+        if merchant is not None:
+            row["merchant"] = merchant
         if not tooltips:
             row["tooltips"] = False
         if stonecutter:
@@ -900,6 +925,24 @@ def gui_container_screen_cases():
         screen("lectern-hover-done", "lectern", "container.lectern", mouse=(150, 205)),
         screen("lectern-adventure", "lectern", "container.lectern", slots=[(0, "written_book", 1)],
                sync_slot=0, game_mode="adventure", books={0: ["One", "Two"]}),
+        screen("merchant-empty", "merchant", "entity.minecraft.villager", offers=[], keys=["frame"],
+               merchant=trader(1, 0)),
+        screen("merchant-offers", "merchant", "entity.minecraft.villager", offers=trades(),
+               keys=["frame"], merchant=trader(2, 15)),
+        screen("merchant-scroll-bar", "merchant", "entity.minecraft.villager", offers=trades() * 3,
+               keys=["frame"], merchant=trader(3, 100)),
+        screen("merchant-payment", "merchant", "entity.minecraft.villager", offers=trades(),
+               slots=[(0, "emerald", 1)], keys=["frame"], merchant=trader(2, 15)),
+        screen("merchant-priced", "merchant", "entity.minecraft.villager", offers=trades(),
+               slots=[(0, "wheat", 30)], keys=["frame"], merchant=trader(2, 40)),
+        screen("merchant-out-of-stock", "merchant", "entity.minecraft.villager",
+               offers=trades()[3:] + trades()[:3], keys=["frame"], merchant=trader(4, 180)),
+        screen("merchant-last-level", "merchant", "entity.minecraft.villager", offers=trades(),
+               keys=["frame"], merchant=trader(5, 400)),
+        screen("merchant-no-bar", "merchant", "entity.minecraft.villager", offers=trades(),
+               keys=["frame"], merchant=trader(2, 15, progress=False)),
+        screen("merchant-hover-trade", "merchant", "entity.minecraft.villager", offers=trades(),
+               keys=["frame"], mouse=(160, 70), tooltips=False, merchant=trader(2, 15)),
         screen("smithing-empty", "smithing", "container.upgrade"),
         screen("smithing-template", "smithing", "container.upgrade",
                slots=[(0, "netherite_upgrade_smithing_template", 1)]),
