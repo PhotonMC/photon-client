@@ -12,6 +12,7 @@
 - `PlayListener` (Java `ClientPacketListener`) `ClientState`'i günceller; dünya `trace` içinden çıkar.
 - `*Observation` ve `PlayConnectionTrace` bir `Recorder` arayüzüne; üretimde boş uygulama.
 - Ayrıştırma hataları kaydedilir (Q03).
+- `voxel-net/src/connection/probe/mode.rs` (2267 satır, tek `while` döngüsü ve ~30 yerel durum): `Recorder` geldiğinde aşamalara bölünür ([A06b](A06b-dev-islevler.md)'den devralındı; ayrı bölmek çift iş olur).
 
 ## Kabul
 Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.

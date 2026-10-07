@@ -248,7 +248,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [A05](A05-clientworld-bolme.md) | `ClientWorld` alt sistemlere bölme | M | A02 | bölündü (A05b, 87ff5126) |
 | [A05b](A05b-chunk-isik-hava.md) | `Chunks`, ışık, hava ve düzey bilgisi alt sistemleri | M | A05 | açık |
 | [A06](A06-dev-dosyalar.md) | Dev dosyaları ve oracle adaptörünü bölme | M | – | bölündü |
-| [A06b](A06b-dev-islevler.md) | Tek dev işlev olan dosyalar ve oracle adaptörünün crate'i | L | A06 | açık |
+| [A06b](A06b-dev-islevler.md) | Tek dev işlev olan dosyalar ve oracle adaptörünün crate'i | L | A06 | bölündü (88f77901; `mode.rs`: A04) |
 | [D01](D01-generated-envanter.md) | Üretilmiş tabloların envanteri ve sınıflandırması | S | – | bitti |
 | [D02](D02-animasyonlar-elle.md) | Animasyonlar: Java sınıfı başına elle modül | M | D01 | açık |
 | [D03](D03-modeller-elle.md) | Entity modelleri: model sınıfı başına `create_body_layer` | L | D01 | açık |
