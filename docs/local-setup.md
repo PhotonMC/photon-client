@@ -10,7 +10,8 @@ aracıdır. Yalnız Python standart kütüphanesini kullanır. Windows'ta
 
 - Python 3.9 ya da yenisi.
 - Rust (`cargo`).
-  - GLFW ve shaderc kaynaktan derlendiği için CMake ve bir C/C++ derleyicisi
+  - GLFW ve shaderc (yalnız build'de, shader'ları SPIR-V'ye derlemek için)
+    kaynaktan derlendiği için CMake ve bir C/C++ derleyicisi
     de gerekiyor: Windows'ta Visual Studio Build Tools, macOS'ta Xcode
     komut satırı araçları.
 - Vulkan destekleyen bir sürücü. macOS'ta MoltenVK ile Vulkan loader'ı.
@@ -87,6 +88,4 @@ Linux'a dönünce bütün aileler yeniden yakalanıp karşılaştırılmalı.
   `Oracle.java` sınıf yolunda olmayan sınıflara bağlı); bu HEAD'de de
   aynı, platformdan bağımsız görünüyor. Başka ailelerle birlikte koşunca
   geçiyorlar.
-- **Derlenen binary `libshaderc_shared`'ı bulamıyor** (rpath yok).
-  Çalıştırmak için `DYLD_LIBRARY_PATH=/usr/local/lib` yeterli; test
-  karşılaştırmasında da aynı değişken verilmeli.
+- **`libshaderc_shared` sorunu kalktı.** Shader'lar build'de derlendiğinden (V02) ikili artık shaderc'e bağlanmıyor; `DYLD_LIBRARY_PATH` gerekmez.

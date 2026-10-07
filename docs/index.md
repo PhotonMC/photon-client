@@ -4,6 +4,13 @@
 Davranış kayıtları tek dosyada sözleşme ve kanıt bölümleriyle tutulur.
 Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğinden üretilir.
 
+## English translations of the core documents
+
+- [Running the local behavior tests](en/behavior-runner.md)
+- [Behavior verification contract](en/behavior-testing.md)
+- [Coding standards](en/coding-standards.md)
+- [Local setup and running](en/local-setup.md)
+
 ## Proje ve test yönlendirmeleri
 
 - [Yerel davranış testlerini çalıştırma](behavior-runner.md)

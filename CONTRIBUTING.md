@@ -8,7 +8,7 @@ Thanks for looking. This is a parity project: the target is the Java client's ex
 - **Parity first, optimization later.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds.
 - **Expected values come from the Java oracle**, never from Rust output.
 - Keep slices small and reviewable. One slice, one commit.
-- Code follows the [coding standards](docs/coding-standards.md): crate layers, naming and complexity limits. Clippy must stay warning-free.
+- Code follows the [coding standards](docs/en/coding-standards.md): crate layers, naming and complexity limits. Clippy must stay warning-free.
 - **A source file stays under 500–600 lines.** Split by responsibility before a file reaches the limit.
 
 ## Build and test
@@ -28,7 +28,7 @@ python3 tools/voxel.py check        # prints CHECK OK or CHECK FAILED
 python3 tools/voxel.py parity --family gui
 ```
 
-See the [local setup guide](docs/local-setup.md), [behavior testing](docs/behavior-testing.md) and the [behavior runner](docs/behavior-runner.md). If you changed the oracle sources or the case generators in `tools/behavior/`, run `check --capture`.
+See the [local setup guide](docs/en/local-setup.md), [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md). If you changed the oracle sources or the case generators in `tools/behavior/`, run `check --capture`.
 
 ## Adding a behavior slice
 

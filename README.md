@@ -42,7 +42,7 @@ python3 tools/voxel.py server --accept-eula --background
 python3 tools/voxel.py play --user Walker
 ```
 
-`setup` downloads the game from Mojang's official distribution and checks every file against the published hash. You are responsible for accepting the Minecraft EULA. Details are in the [local setup guide](docs/local-setup.md) (Turkish).
+`setup` downloads the game from Mojang's official distribution and checks every file against the published hash. You are responsible for accepting the Minecraft EULA. Details are in the [local setup guide](docs/en/local-setup.md).
 
 ## Tests
 
@@ -52,14 +52,14 @@ python3 tools/voxel.py check                  # the full commit gate: fmt, build
 python3 tools/voxel.py parity --family gui    # Java-vs-Rust comparison for one family
 ```
 
-The full gate and the parity runs need the local `.data/` reference. See [behavior testing](docs/behavior-testing.md) and the [behavior runner](docs/behavior-runner.md).
+The full gate and the parity runs need the local `.data/` reference. See [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md).
 
 ## Documentation
 
-Most documents are written in Turkish; the repository is still being prepared for a wider audience.
+The core documents (coding standards, behavior testing, behavior runner, local setup) have English translations under [`docs/en/`](docs/en/); the Turkish originals are authoritative. The slice records and the task files are in Turkish.
 
 - [Document index](docs/index.md), with per-slice contract and parity records under [`docs/records/`](docs/records/).
-- [Coding standards](docs/coding-standards.md): crate layers, layout and complexity limits.
+- [Coding standards](docs/en/coding-standards.md): crate layers, layout, file size and complexity limits.
 - [`AGENTS.md`](AGENTS.md): the single rule set for every AI coding agent working here.
 - [Önceki Türkçe README](docs/tr/README.md).
 

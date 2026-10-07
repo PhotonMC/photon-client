@@ -22,4 +22,6 @@ Dilim kayıtlarının (`docs/records/`) ve görev dosyalarının çevirisi.
 Bu görev dosyasının devir notu.
 
 ## Devir notu
-(boş)
+- `docs/en/` altında dört çeviri: `coding-standards.md`, `behavior-testing.md`, `behavior-runner.md`, `local-setup.md`. Her biri başında Türkçe aslın geçerli olduğunu söyler; asıl dosyalar yerinde kaldı (taşıma yok, böylece kayıt bağlantıları ve AGENTS.md yolları bozulmadı). Bağlantılar çeviri belgeleri arasında İngilizceye, diğer belgelere Türkçe asla gider.
+- README ve CONTRIBUTING İngilizce sürümlere bağlandı; "(Turkish)" işaretleri kalktı. Belge dizini üreticisi `docs/en/` için ayrı bir bölüm yazar.
+- Çeviri ve asıl arasında sürüklenme riski var: Türkçe asıl değişince çeviri elle güncellenir (otomatik denetim yok). `local-setup.md`taki eski `libshaderc_shared` notu, V02 ile ikili shaderc'e bağlanmadığı için iki dilde de güncellendi (`otool -L` ile doğrulandı).

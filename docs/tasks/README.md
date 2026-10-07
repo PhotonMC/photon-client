@@ -226,7 +226,7 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |
 | [Q01](Q01-repo-hijyeni-ci.md) | Public repo hijyeni ve CI | S | – | bitti |
 | [Q02](Q02-ingilizce-readme.md) | İngilizce README, katkı belgeleri, belge ayrımı | M | Q01 | bitti |
-| [Q02b](Q02b-ingilizce-cekirdek-belgeler.md) | Çekirdek belgelerin İngilizce sürümü | M | Q02 | açık |
+| [Q02b](Q02b-ingilizce-cekirdek-belgeler.md) | Çekirdek belgelerin İngilizce sürümü | M | Q02 | bitti |
 | [Q03](Q03-log-safety-lint.md) | Log altyapısı, SAFETY yorumları, lint sıkılaştırma | M | Q01 | bitti |
 | [V00](V00-performans-olcumu.md) | Performans ölçümü ve bench | M | – | bitti |
 | [V01](V01-vulkan-modulleri.md) | `vulkan.rs` modüllere bölme ve RAII | M | V00 | bölündü |

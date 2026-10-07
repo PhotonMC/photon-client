@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 RECORDS = DOCS / "records"
+ENGLISH = DOCS / "en"
 INDEX = DOCS / "index.md"
 
 CORE_NAMES = {
@@ -63,6 +64,10 @@ def main() -> None:
         "Davranış kayıtları tek dosyada sözleşme ve kanıt bölümleriyle tutulur.",
         "Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğinden üretilir.",
     ]
+    english = sorted(ENGLISH.glob("*.md"), key=lambda path: path.name)
+    if english:
+        lines.extend(["", "## English translations of the core documents", ""])
+        lines.extend(f"- [{title(path)}]({path.relative_to(DOCS).as_posix()})" for path in english)
     for heading, documents in grouped_documents():
         lines.extend(["", f"## {heading}", ""])
         lines.extend(f"- [{title(path)}]({path.relative_to(DOCS).as_posix()})" for path in documents)
