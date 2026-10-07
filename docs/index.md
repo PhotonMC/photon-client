@@ -677,7 +677,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [Yerel kurulum ve çalıştırma](local-setup.md)
 - [P16.k — Model çözümü ve gerçek blok çizimi — [karma: pinlenmiş parçalar, pinlenmemiş birleştirme]](records/model-resolution-record.md)
 - [P17.a — Hareket fixture'ı — altyapı kaydı](records/movement-fixture-record.md)
-- [Kalan işler ve oynanabilir istemci yol haritası (2026-09-29)](remaining-work.md)
+- [Kalan işler ve oynanabilir istemci yol haritası (2026-10-08)](remaining-work.md)
 - [P15 — Render yığını kararı: GLFW + Vulkan 1.2 (ash), wgpu değil](render-backend-decision.md)
 - [P15.a.1 — Kontrollü Java istemci koşusu — [altyapı, parity iddiası yok]](records/render-reference-launch-record.md)
 - [P15.a.2 — Java referansının kendi değişkenliği — [ölçüm, parity iddiası yok]](render-variability-measurement.md)

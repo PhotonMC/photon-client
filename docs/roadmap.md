@@ -81,30 +81,37 @@ ve bölümü kapatabilen tek sınıftır. Tanımlar [davranış testi
 sözleşmesindedir](behavior-testing.md). P06–P08 ve P12–P13 altındaki mevcut
 kayıtların tamamı `server-conformance` sınıfındadır.
 
-## Oynanabilir istemci sırası (2026-09-29)
+## Oynanabilir istemci sırası
 
-Kalan işlerin tam listesi, paket kapsam ölçüsü ve sıradaki dilimler
-[kalan işler belgesindedir](remaining-work.md).
+Yüzdelik ilerleme, kalan iş miktarı ve görevler [görev panosundadır](tasks/README.md)
+(kutulardan hesaplanır); bilinen boşlukların ayrıntısı [kalan işler
+belgesindedir](remaining-work.md). Bu bölüm yalnız kilometre taşlarının sırasını ve
+bağımlılığını tutar.
 
-`play` modu dünyayı çiziyor ve yürünebiliyor; eylem, eşya, envanter, entity,
-metin, ekran, ses ve parçacık eksik. Kilometre taşları bu sırayla ilerler;
-her biri yukarıdaki bölümlerin dilimlerinden oluşur ve kabul kuralı
-değişmez. Durum kilometre taşının dilim kayıtlarındadır.
+`play` modu vanilla sunucuda dünyayı, entity'leri, partikülleri çiziyor; blok
+eylemi, envanter ve kaplar, sohbet, HUD, duraklatma/ölüm/ayar ekranları ve ses
+çalışıyor. Ana menü ve sunucu listesi, çevrimiçi giriş ve kalan ekranlar
+olmadığı için hâlâ tam bir istemci değildir; P00–P26 bölümlerinin hiçbiri
+`client-parity` ile kapanmadı (M10). Kilometre taşları bu sırayla ilerler;
+her biri yukarıdaki bölümlerin dilimlerinden oluşur ve kabul kuralı değişmez.
+İşaretli taşın kapsamı bitmiştir; işaretsiz olanın kalanı panodaki grubundadır.
 
-| Taş | Bölüm | Kapsam | Bağımlılık |
-| --- | --- | --- | --- |
-| M1 Blok eylemleri | P12 | a: canlı envanter ve tag state'i; b: kırma hızı; c: kırma döngüsü, prediction/ack, hedef çerçevesi, çatlak; d: yerleştirme ve eşya kullanımı | P08–P11 |
-| M2 Eşya çizimi | P18, P22.c | Item modelleri, GUI ikonu, eldeki eşya, sayı ve dayanıklılık | M1.a |
-| M3 Envanter | P13, P22.d | İstemci menu/slot modeli, envanter ekranı, tıklama tahmini, creative | M2, M5'in metin ölçüsü |
-| M4 Entity'ler | P17 | Entity hedefleme/saldırı, yerdeki eşya, mob modelleri | M2 |
-| M5 Metin ve chat | P21, P23.a | Font ölçüsü/wrap, chat paneli ve girişi, komut önerisi | P04 |
-| M6 Ekranlar | P22.b/e | Pause, ölüm, ayarlar, başlık, sunucu listesi | M5 |
-| M7 Ses | P20 | Ses tanımı, tetikler, konumsal miks | Ses çıkışı ve çözücü için kaynak incelemesi ve bağımlılık kararı |
-| M8 Parçacıklar | P19 | Kırılma, yağış sıçraması, efektler | M1, M4 |
+- [x] **M1 Blok eylemleri** (P12): canlı envanter ve tag state'i, kırma hızı, kırma döngüsü, prediction/ack, hedef çerçevesi, çatlak, yerleştirme ve eşya kullanımı. Bağımlılık: P08–P11.
+- [x] **M2 Eşya çizimi** (P18, P22.c): item modelleri, GUI ikonu, eldeki eşya, sayı ve dayanıklılık. Bağımlılık: M1.a.
+- [x] **M3 Envanter** (P13, P22.d): istemci menu/slot modeli, envanter ekranı, tıklama tahmini, creative. Bağımlılık: M2.
+- [ ] **M3.d Sunucunun açtığı kaplar** (P13, P22.d): kalan örs/taş çarkı tahmini, bileşen hash'i, binek envanteri, kap ipuçları. Bağımlılık: M3.
+- [ ] **M4 Entity'ler** (P17): modeller, ekipman, binekler, hedefleme bitti; kalan uzaklık ayıklaması ve P24 kapsam denetimi. Bağımlılık: M2.
+- [ ] **M5 Metin ve chat** (P21, P23.a): sohbet, komut önerisi, başlık, tablist bitti; kalan unifont/bidi/IME ve sohbet kalanları. Bağımlılık: P04.
+- [ ] **M6 Ekranlar** (P22.b/e): duraklatma, ölüm ve ayar ekranları var (video ayarlarının çoğu etkisiz); kalan ana menü, sunucu listesi, kitap/tabela, ilerlemeler. Bağımlılık: M5.
+- [ ] **M7 Ses** (P20): çıkış, çözücü, motor, hareket ve hasar tetikleri bitti; kalan ortam/olay sesleri, müzik, altyazı. Bağımlılık: [ses kararı](audio-backend-decision.md).
+- [ ] **M8 Parçacıklar ve efektler** (P19, P17.e): motor ve blok parçacıkları bitti; kalan parçacık aileleri, `LevelEvent`, kalan blok entity çizicileri, ekran örtüleri. Bağımlılık: M1, M4.
+- [ ] **M9 Sunucu uyumluluğu** (P06, P23.c): çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi, transfer. Bağımlılık: M6.
+- [ ] **M10 Eşitlik ve dağıtım** (P15.a, P26): bölümlerin `client-parity` kapanışları, Java kare karşılaştırması, platform ve paketleme. Bağımlılık: hepsi.
 
 Paralel borç: canlı oturum kaydındaki "referans karelerle karşılaştırılmadı"
-kalemlerinin P15.a kare karşılaştırmasına bağlanması, frustum/mağara
-ayıklaması, bölüm içi yarı saydam sıralama ve P02.b kare zamanlayıcısı.
+kalemlerinin P15.a kare karşılaştırmasına bağlanması, bölüm içi yarı saydam
+sıralama, P02.b kare zamanlayıcısı ve entity'lerin uzaklık/bölüm ayıklaması
+(bugün yalnız frustum dışı entity'ler atlanır).
 
 ## Kritik yol
 

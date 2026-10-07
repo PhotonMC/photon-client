@@ -1,6 +1,6 @@
-# Kalan işler ve oynanabilir istemci yol haritası (2026-09-29)
+# Kalan işler ve oynanabilir istemci yol haritası (2026-10-08)
 
-> Sıradaki işler [görev panosundadır](tasks/README.md). Bu belge bugünkü durumu ve bilinen boşlukları kaydeder; görev bitince ilgili satır güncellenir.
+> Sıradaki işler, yüzdelik ilerleme ve kalan iş miktarı [görev panosundadır](tasks/README.md). Bu belge bugünkü durumu ve bilinen boşlukları kaydeder; görev bitince ilgili satır güncellenir.
 
 Bu belge [roadmap](roadmap.md)ın P00–P26 tablosunu yeniden yazmaz; o tablo
 bölüm kapsamını ve kabul kuralını tutar. Burası, bugünkü `play` modunun
@@ -17,46 +17,47 @@ Boyutlar kabadır: **S** birkaç saat, **M** bir iki gün, **L** birkaç gün,
 Çalışan: vanilla 26.2 sunucusuna offline bağlanma, chunk/ışık/blok
 güncellemeleri, gökyüzü/bulut/hava/sis, yürüme-zıplama-sprint-eğilme-yüzme,
 blok kırma ve koyma (tahmin ve ack dahil), eşya kullanma, HUD (can, yemek,
-zırh, hava, deneyim, hotbar), eşya modelleri ve ikonları (özel modeller
-dahil), eldeki eşya, hayatta kalma ve yaratıcı envanter ekranları
-(tıklama tahmini, sürükleme, arama, ipucu, oyuncu modeli), üçüncü şahıs
-oyuncu.
+zırh, hava, deneyim, hotbar, saldırı göstergesi, bossbar, scoreboard,
+locator bar), eşya modelleri ve ikonları, eldeki eşya ve kullanım pozları,
+envanter ve sunucunun açtığı kapların çoğu (sandık ailesi, fırın, tezgâh,
+loom, cartography, smithing, beacon, simya, tüccar, kürsü, crafter), sohbet ve
+komut önerisi, başlık/tablist, duraklatma/ölüm/bağlantı kopması/ayar ekranları,
+dil seçimi, diğer oyuncular ve mob ailelerinin neredeyse tamamı (ekipman,
+animasyon, hasar/ölüm, gölge, ad etiketi), yerdeki eşya, XP küresi, mermiler,
+tekne/at/domuz/deve/strider/minecart sürüşü, dekor nesneleri ve display'ler,
+blok entity çizicilerinin bir kısmı (sandık, shulker, kafa, bayrak), partikül
+motoru ve blok kırıntıları, ses çıkışı ile hareket/hasar sesleri, dünya
+sınırı çarpışması.
 
-Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/voxel-net/src/connection/play.rs`):
+Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/voxel-net/src/connection/play/incoming.rs`; 2026-10-08):
 
 | Yön | İşlenen | Toplam | Eksik olanlar |
 | --- | ---: | ---: | --- |
-| Sunucu → istemci (play) | 33 | ~115 | kalan entity paketleri (`Animate`, `SetEquipment`, `EntityLink`…), chat/başlık/tablist, scoreboard/bossbar, ses, partikül, efekt olayları, blok entity verisi, harita, kap verisi, tarif kitabı, ilerlemeler |
-| İstemci → sunucu (play) | 15 | ~60 | chat/komut, `PlayerInput`/`PlayerCommand`, `Interact`/`Attack`, pick item, kap düğmesi/ad değiştirme/takas, tabela/kitap, araç ve tekne paketleri |
+| Sunucu → istemci (play) | 84 | ~115 | ilerlemeler/istatistik, kitap ve tabela düzenleyici, yeniden yapılandırma, kaynak paketi, transfer/cookie, diyalog, kalan `LevelEvent`/`BlockEvent` |
+| İstemci → sunucu (play) | 40 | ~60 | imzalı sohbet, tabela/kitap, ilerleme sekmesi, komut/yapı bloğu, kaynak paketi yanıtı, cookie |
 
-Bugünkü kanıtın çoğu `server-conformance` (canlı sunucu paketi kabul etti) ve
-canlı görsel gözlemdir; `client-parity` yalnızca sayısal/veri/tablo
-katmanlarında (P01–P04, P09/P10 dalları, blok ve eşya tabloları, kap
-tıklamaları) var. **Hiçbir bölüm `client-parity` ile kapanmadı.**
+Kanıt, oracle'a karşı `client-parity` kayıtları (model, çizim, GUI, ses motoru,
+tik dalları) ile canlı sunucuya karşı `server-conformance` kayıtlarıdır;
+**hiçbir bölüm `client-parity` ile kapanmadı**: kapanış kayıtları M10'dadır.
 
 ## 2. Kilometre taşları
 
-Sıra bağımlılığa ve oynanabilirliğe göre; her taş bir öncekinin bıraktığı
-açığı kullanır. Ayrıntılı iş listeleri sonraki bölümlerde.
+İşaretli taşın kapsamı bitmiştir; işaretsizlerin kalan işi ve yüzdesi
+[görev panosunun](tasks/README.md) ilgili grubundadır.
 
-| Taş | Ne kazandırır | Boyut | Bağımlılık |
-| --- | --- | --- | --- |
-| **M3.d Sunucunun açtığı kaplar** | Sandık, fırın, tezgâh, örs, dağıtıcı ve benzerleri | L | M3 (bitti), tarif tabloları |
-| **M4 Entity'ler** | Diğer oyuncular, mob'lar, yerdeki eşya, saldırı/etkileşim | XL | Entity render iskeleti, M3 eşya çizimi |
-| **M5 Metin ve chat** | Chat paneli/girişi, başlıklar, tablist, komut önerisi, scoreboard | L | Yazı motoru (bitti: stil, ipucu kutusu) |
-| **M6 Ekranlar** | Duraklatma, ölüm, ayarlar, başlık, sunucu listesi, bağlantı kopması | L | M5 |
-| **M7 Ses** | Ses tanımı, tetikler, konumsal miks | XL | Ses çıkışı ve çözücü kararı |
-| **M8 Partikül ve efektler** | Kırılma, sıçrama, patlama, hasar, level olayları | L | M4, M7 (olay ortakları) |
-| **M9 Sunucu uyumluluğu** | Çevrimiçi kimlik doğrulama, kaynak paketi, transfer, yeniden yapılandırma | XL | M6 |
-| **M10 Eşitlik ve dağıtım** | Java karşılaştırması, platform matrisi, paketleme, performans | XL | hepsi |
+- [x] **M1 Blok eylemleri**, **M2 Eşya çizimi**, **M3 Envanter**: pano öncesi.
+- [ ] **M3.d Sunucunun açtığı kaplar** (L): kalan örs/taş çarkı tahmini (T51), bileşen hash'i ve bundle (T52), binek envanteri (T58), kap ipuçları (T59).
+- [ ] **M4 Entity'ler** (XL): içerik bitti; kalan uzaklık/bölüm ayıklaması (T47) ve P24 kapsam denetimi.
+- [ ] **M5 Metin ve chat** (L): kalan unifont/bidi/IME, sohbet kalanları (§5), imzalı sohbet (M9 ile).
+- [ ] **M6 Ekranlar** (L): kalan ana menü, sunucu listesi, yükleme, kitap/tabela, ilerlemeler, kalan ayarlar; planı PLAN-M6.
+- [ ] **M7 Ses** (XL): kalan ortam/olay sesleri ve müzik (T64d), altyazı.
+- [ ] **M8 Partikül ve efektler** (L): kalan parçacık aileleri (T72–T77), `LevelEvent`/`BlockEvent` (T78), tabela/ışın/spawner çizicileri (T80d, T81, T82), ekran örtüleri (T83b), sınır çizimi (T84b).
+- [ ] **M9 Sunucu uyumluluğu** (XL): planı PLAN-M9.
+- [ ] **M10 Eşitlik ve dağıtım** (XL): `client-parity` kapanışları, P15.a, platform, paketleme.
 
-Önerilen sıra: **M3.d → M5 → M6 → M4 → M8/M7 → M9 → M10**. Gerekçe: kap
-ekranları envanter işinin doğal devamı ve yeni altyapı istemez; M5/M6
-oyunun kullanılabilirliğini (chat, duraklatma, çıkış, ölüm) sağlar ve M4'ün
-UI ihtiyaçlarını (isim etiketi, ölüm, oyuncu listesi) önceden kurar; M4 en
-büyük iş olduğu için altyapısı oturduktan sonra başlamak daha az yeniden
-yazım demektir. M7 (ses) ayrı bir bağımlılık kararı ister ve M4'ten
-bağımsız yürüyebilir.
+Önerilen sıra: **M3.d ve M8 (hazır görevler) → M6 → M5 kalanı → M7 kalanı →
+M9 → M10**. M4'ün kalanı küçük ve bağımsızdır; M9 çevrimiçi giriş için M6'nın
+sunucu listesini bekler.
 
 ## 3. M3.d — Sunucunun açtığı kaplar
 
@@ -305,7 +306,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 ## 7. M7 — Ses
 
 - **Karar (S)** Ses çıkışı ve Ogg/Vorbis çözücü için kaynak incelemesi ve
-  bağımlılık kararı ([roadmap](roadmap.md#oynanabilir-istemci-sırası-2026-09-29)
+  bağımlılık kararı ([roadmap](roadmap.md#oynanabilir-istemci-sırası)
   tek üretim bağımlılığı kuralı: `flate2`).
 - **M** Ses tanımı (`sounds.json`), ağırlıklı seçim, `Sound`/`SoundEntity`/
   `StopSound` paketleri, kategori ve ses ayarları.
@@ -399,7 +400,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 
 ## 13. Sıradaki işler
 
-Görevler [görev panosundadır](tasks/README.md) (T-görevleri ve PLAN görevleri); burada ikinci bir liste tutulmaz. Kap ekranları (§3) ve kalan ekranlar (§6) için PLAN-M3d ve PLAN-M6, ses (§7) için PLAN-M7 açıktır.
+Görevler [görev panosundadır](tasks/README.md) (T-görevleri ve PLAN görevleri); burada ikinci bir liste tutulmaz. Kalan ekranlar (§6) için PLAN-M6, sunucu uyumluluğu (§9) için PLAN-M9 açıktır.
 
 ## 14. Mimari ve kod sağlığı kuyruğu
 
