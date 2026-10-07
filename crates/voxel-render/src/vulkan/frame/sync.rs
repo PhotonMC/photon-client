@@ -311,7 +311,7 @@ impl VulkanBackend {
                     self.command_buffer,
                     image,
                     vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                    self.readback.expect("made for the capture").0,
+                    self.readback.as_ref().expect("made for the capture").buffer,
                     &[region],
                 );
                 transition(
@@ -384,7 +384,7 @@ impl VulkanBackend {
             self.wait_in_flight()?;
             let byte_count =
                 (self.description.extent.width * self.description.extent.height * 4) as usize;
-            let memory = self.readback.expect("made for the capture").1;
+            let memory = self.readback.as_ref().expect("made for the capture").memory;
             let mapped = self
                 .device
                 .map_memory(memory, 0, byte_count as u64, vk::MemoryMapFlags::empty())
@@ -393,7 +393,7 @@ impl VulkanBackend {
             let mut rgba = vec![0_u8; byte_count];
             std::ptr::copy_nonoverlapping(mapped, rgba.as_mut_ptr(), byte_count);
             self.device.unmap_memory(memory);
-            self.free_readback();
+            self.readback = None;
             if self.description.surface_format == vk::Format::B8G8R8A8_UNORM {
                 for pixel in rgba.as_chunks_mut::<4>().0 {
                     pixel.swap(0, 2);

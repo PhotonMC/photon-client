@@ -23,7 +23,7 @@
 //!   destroyed only in `Drop`. Every other handle sits in a field that owns it
 //!   and is taken out of that field before it is destroyed. A handle read from
 //!   `self` is therefore valid, and none is destroyed twice.
-//!   Where a type owns its handles and frees them when dropped (`HostBuffer`), the
+//!   Where a type owns its handles and frees them when dropped (`HostBuffer`, `Image`, `Sampler`, `Pipeline`), the
 //!   backend's `Drop` releases the owners while the device is still live.
 //! - **Idle GPU.** A resource is destroyed or overwritten only after the work
 //!   that may read it has finished: those frames' fences were waited on (`complete_through`),
@@ -50,6 +50,7 @@ mod device;
 mod draws;
 mod frame;
 mod memory;
+mod owned;
 mod pipeline;
 mod pipeline_cache;
 mod scene;
@@ -62,6 +63,7 @@ mod validation;
 use bytes::as_bytes;
 pub use draws::DrawKind;
 use frame::transition;
+use owned::{BoundBuffer, Descriptors, Image, Pipeline, Sampler, Texture};
 use swapchain::{choose_present_mode, clamp_extent};
 pub use validation::validation_findings;
 

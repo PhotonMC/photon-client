@@ -3,6 +3,44 @@
 use super::*;
 
 impl VulkanBackend {
+    /// A buffer of `size` bytes bound to memory with `properties`. Nothing leaks if a step fails.
+    ///
+    /// # Safety
+    ///
+    /// Only the live handles.
+    pub(super) unsafe fn bound_buffer(
+        &self,
+        size: u64,
+        usage: vk::BufferUsageFlags,
+        properties: vk::MemoryPropertyFlags,
+    ) -> Result<BoundBuffer, VulkanError> {
+        // SAFETY: live handles; the buffer is owned by the returned value from its creation on
+        // (a null memory frees as a no-op), and its memory is made from its own requirements.
+        unsafe {
+            let buffer = self
+                .device
+                .create_buffer(
+                    &vk::BufferCreateInfo::default()
+                        .size(size)
+                        .usage(usage)
+                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
+            let mut bound = BoundBuffer {
+                device: self.device.clone(),
+                buffer,
+                memory: vk::DeviceMemory::null(),
+            };
+            let requirements = self.device.get_buffer_memory_requirements(buffer);
+            bound.memory = self.allocate(requirements, properties)?;
+            self.device
+                .bind_buffer_memory(buffer, bound.memory, 0)
+                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
+            Ok(bound)
+        }
+    }
+
     /// Allocate a buffer and fill it from host memory.
     ///
     /// # Safety
@@ -12,37 +50,29 @@ impl VulkanBackend {
         &self,
         usage: vk::BufferUsageFlags,
         bytes: &[u8],
-    ) -> Result<(vk::Buffer, vk::DeviceMemory), VulkanError> {
+    ) -> Result<BoundBuffer, VulkanError> {
         // SAFETY: live handles. The buffer is bound to host-visible, coherent memory sized from
         // its own requirements, and `bytes` is not empty, so the mapping covers the `bytes.len()`
         // bytes the copy fills before the unmap.
         unsafe {
-            let buffer = self
-                .device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(bytes.len() as u64)
-                        .usage(usage)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = self.device.get_buffer_memory_requirements(buffer);
-            let memory = self.allocate(
-                requirements,
+            let bound = self.bound_buffer(
+                bytes.len() as u64,
+                usage,
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             )?;
-            self.device
-                .bind_buffer_memory(buffer, memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
             let mapped = self
                 .device
-                .map_memory(memory, 0, bytes.len() as u64, vk::MemoryMapFlags::empty())
+                .map_memory(
+                    bound.memory,
+                    0,
+                    bytes.len() as u64,
+                    vk::MemoryMapFlags::empty(),
+                )
                 .map_err(|result| VulkanError::Call("vkMapMemory", result))?
                 .cast::<u8>();
             std::ptr::copy_nonoverlapping(bytes.as_ptr(), mapped, bytes.len());
-            self.device.unmap_memory(memory);
-            Ok((buffer, memory))
+            self.device.unmap_memory(bound.memory);
+            Ok(bound)
         }
     }
 
@@ -53,47 +83,16 @@ impl VulkanBackend {
     ///
     /// The GPU must not be using the old readback buffer; the caller has waited for the frames that may copy into it.
     pub(super) unsafe fn make_readback(&mut self) -> Result<(), VulkanError> {
-        // SAFETY: live handles; `free_readback` runs first, so the old buffer is gone before the
-        // new pair is stored.
+        // SAFETY: live handles; the old buffer is dropped before the new one is stored.
         unsafe {
-            self.free_readback();
+            self.readback = None;
             let extent = self.description.extent;
-            let buffer = self
-                .device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(u64::from(extent.width) * u64::from(extent.height) * 4)
-                        .usage(vk::BufferUsageFlags::TRANSFER_DST)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = self.device.get_buffer_memory_requirements(buffer);
-            let memory = self.allocate(
-                requirements,
+            self.readback = Some(self.bound_buffer(
+                u64::from(extent.width) * u64::from(extent.height) * 4,
+                vk::BufferUsageFlags::TRANSFER_DST,
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            )?;
-            self.device
-                .bind_buffer_memory(buffer, memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
-            self.readback = Some((buffer, memory));
+            )?);
             Ok(())
-        }
-    }
-
-    /// Free the screenshot buffer, if there is one.
-    ///
-    /// # Safety
-    ///
-    /// The GPU must not be using the readback buffer.
-    pub(super) unsafe fn free_readback(&mut self) {
-        // SAFETY: `take` removes the pair from `self`, so it is destroyed once; the caller
-        // guarantees no pending work uses it.
-        unsafe {
-            if let Some((buffer, memory)) = self.readback.take() {
-                self.device.destroy_buffer(buffer, None);
-                self.device.free_memory(memory, None);
-            }
         }
     }
 
@@ -139,27 +138,21 @@ impl VulkanBackend {
     ///
     /// The GPU must be done with every empty block.
     pub(super) unsafe fn trim_arena(&mut self) {
-        // SAFETY: a block is destroyed only when its free list is the whole block, so no section
-        // uses it, and it is nulled afterwards, so it is destroyed once; the caller guarantees the
-        // GPU is done with it.
-        unsafe {
-            let mut spare = false;
-            for block in &mut self.arena {
-                let empty = block.buffer != vk::Buffer::null()
-                    && block.free.as_slice() == [(0, block.size)];
-                if !empty {
-                    continue;
-                }
-                if !spare {
-                    spare = true;
-                    continue;
-                }
-                self.device.destroy_buffer(block.buffer, None);
-                self.device.free_memory(block.memory, None);
-                block.buffer = vk::Buffer::null();
-                block.memory = vk::DeviceMemory::null();
-                block.free = Vec::new();
+        // SAFETY: a block is dropped only when its free list is the whole block, so no section
+        // uses it; the caller guarantees the GPU is done with it.
+        let mut spare = false;
+        for slot in &mut self.arena {
+            let empty = slot
+                .as_ref()
+                .is_some_and(|block| block.free.as_slice() == [(0, block.size)]);
+            if !empty {
+                continue;
             }
+            if !spare {
+                spare = true;
+                continue;
+            }
+            *slot = None;
         }
     }
 
@@ -171,33 +164,24 @@ impl VulkanBackend {
     /// No chunk may be in flight past `staging_in_flight`: call it once the finished frames' chunks
     /// have been dropped from it.
     pub(super) unsafe fn trim_staging(&mut self) {
-        // SAFETY: only chunks outside `staging_filling` and `staging_in_flight` are unmapped and
-        // destroyed, so no frame copies from them; each is nulled afterwards.
-        unsafe {
-            let mut idle = 0;
-            for (index, chunk) in self.staging.iter_mut().enumerate() {
-                if chunk.buffer == vk::Buffer::null()
-                    || self.staging_filling.contains(&index)
-                    || self
-                        .staging_in_flight
-                        .iter()
-                        .any(|&(_, busy)| busy == index)
-                {
-                    continue;
-                }
-                idle += 1;
-                if idle <= STAGING_SPARE {
-                    continue;
-                }
-                self.device.unmap_memory(chunk.memory);
-                self.device.destroy_buffer(chunk.buffer, None);
-                self.device.free_memory(chunk.memory, None);
-                chunk.buffer = vk::Buffer::null();
-                chunk.memory = vk::DeviceMemory::null();
-                chunk.mapped = std::ptr::null_mut();
-                chunk.size = 0;
-                chunk.used = 0;
+        // SAFETY: only chunks outside `staging_filling` and `staging_in_flight` are dropped, so no
+        // frame copies from them.
+        let mut idle = 0;
+        for (index, slot) in self.staging.iter_mut().enumerate() {
+            if slot.is_none()
+                || self.staging_filling.contains(&index)
+                || self
+                    .staging_in_flight
+                    .iter()
+                    .any(|&(_, busy)| busy == index)
+            {
+                continue;
             }
+            idle += 1;
+            if idle <= STAGING_SPARE {
+                continue;
+            }
+            *slot = None;
         }
     }
 
@@ -215,6 +199,7 @@ impl VulkanBackend {
             let size = (bytes.len() as u64).div_ceil(16) * 16;
             let found = self.arena.iter().enumerate().find_map(|(block, arena)| {
                 arena
+                    .as_ref()?
                     .free
                     .iter()
                     .position(|&(_, length)| length >= size)
@@ -224,23 +209,20 @@ impl VulkanBackend {
                 Some(found) => found,
                 None => {
                     let block = self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?;
-                    let given_back = self
-                        .arena
-                        .iter()
-                        .position(|own| own.buffer == vk::Buffer::null());
+                    let given_back = self.arena.iter().position(Option::is_none);
                     match given_back {
                         Some(slot) => {
-                            self.arena[slot] = block;
+                            self.arena[slot] = Some(block);
                             (slot, 0)
                         }
                         None => {
-                            self.arena.push(block);
+                            self.arena.push(Some(block));
                             (self.arena.len() - 1, 0)
                         }
                     }
                 }
             };
-            let arena = &mut self.arena[block];
+            let arena = self.arena[block].as_mut().expect("found or made above");
             let (offset, length) = arena.free[range];
             if length == size {
                 arena.free.remove(range);
@@ -252,12 +234,12 @@ impl VulkanBackend {
                 offset,
                 size,
             };
-            let chunk = match self
-                .staging_filling
-                .iter()
-                .copied()
-                .find(|&chunk| self.staging[chunk].size - self.staging[chunk].used >= size)
-            {
+            let chunk = match self.staging_filling.iter().copied().find(|&chunk| {
+                let held = self.staging[chunk]
+                    .as_ref()
+                    .expect("filling chunks are live");
+                held.size - held.used >= size
+            }) {
                 Some(chunk) => chunk,
                 None => {
                     let free = (0..self.staging.len()).find(|chunk| {
@@ -266,34 +248,36 @@ impl VulkanBackend {
                                 .staging_in_flight
                                 .iter()
                                 .any(|&(_, busy)| busy == *chunk)
-                            && self.staging[*chunk].size >= size
+                            && self.staging[*chunk]
+                                .as_ref()
+                                .is_some_and(|held| held.size >= size)
                     });
                     let chunk = match free {
                         Some(chunk) => chunk,
                         None => {
                             let made = self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?;
-                            let given_back = self
-                                .staging
-                                .iter()
-                                .position(|own| own.buffer == vk::Buffer::null());
+                            let given_back = self.staging.iter().position(Option::is_none);
                             match given_back {
                                 Some(slot) => {
-                                    self.staging[slot] = made;
+                                    self.staging[slot] = Some(made);
                                     slot
                                 }
                                 None => {
-                                    self.staging.push(made);
+                                    self.staging.push(Some(made));
                                     self.staging.len() - 1
                                 }
                             }
                         }
                     };
-                    self.staging[chunk].used = 0;
+                    self.staging[chunk]
+                        .as_mut()
+                        .expect("chosen or made above")
+                        .used = 0;
                     self.staging_filling.push(chunk);
                     chunk
                 }
             };
-            let staging = &mut self.staging[chunk];
+            let staging = self.staging[chunk].as_mut().expect("chosen or made above");
             let source = staging.used;
             std::ptr::copy_nonoverlapping(
                 bytes.as_ptr(),
@@ -312,7 +296,10 @@ impl VulkanBackend {
     }
 
     pub(super) fn arena_free(&mut self, slice: ArenaSlice) {
-        let free = &mut self.arena[slice.block].free;
+        let free = &mut self.arena[slice.block]
+            .as_mut()
+            .expect("a section's block is not given back")
+            .free;
         let at = free.partition_point(|&(offset, _)| offset < slice.offset);
         free.insert(at, (slice.offset, slice.size));
         // Join with the ranges on either side.
@@ -334,28 +321,14 @@ impl VulkanBackend {
     pub(super) unsafe fn create_arena_block(&self, size: u64) -> Result<ArenaBlock, VulkanError> {
         // SAFETY: live handles; the buffer is bound to memory made from its own requirements.
         unsafe {
-            let buffer = self
-                .device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(size)
-                        .usage(
-                            vk::BufferUsageFlags::VERTEX_BUFFER
-                                | vk::BufferUsageFlags::INDEX_BUFFER
-                                | vk::BufferUsageFlags::TRANSFER_DST,
-                        )
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = self.device.get_buffer_memory_requirements(buffer);
-            let memory = self.allocate(requirements, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
-            self.device
-                .bind_buffer_memory(buffer, memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
             Ok(ArenaBlock {
-                buffer,
-                memory,
+                buffer: self.bound_buffer(
+                    size,
+                    vk::BufferUsageFlags::VERTEX_BUFFER
+                        | vk::BufferUsageFlags::INDEX_BUFFER
+                        | vk::BufferUsageFlags::TRANSFER_DST,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                )?,
                 size,
                 free: vec![(0, size)],
             })
@@ -374,32 +347,18 @@ impl VulkanBackend {
         // SAFETY: live handles; the memory is host-visible and coherent, and mapped over the
         // chunk's whole size.
         unsafe {
-            let buffer = self
-                .device
-                .create_buffer(
-                    &vk::BufferCreateInfo::default()
-                        .size(size)
-                        .usage(vk::BufferUsageFlags::TRANSFER_SRC)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateBuffer", result))?;
-            let requirements = self.device.get_buffer_memory_requirements(buffer);
-            let memory = self.allocate(
-                requirements,
+            let buffer = self.bound_buffer(
+                size,
+                vk::BufferUsageFlags::TRANSFER_SRC,
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             )?;
-            self.device
-                .bind_buffer_memory(buffer, memory, 0)
-                .map_err(|result| VulkanError::Call("vkBindBufferMemory", result))?;
             let mapped = self
                 .device
-                .map_memory(memory, 0, size, vk::MemoryMapFlags::empty())
+                .map_memory(buffer.memory, 0, size, vk::MemoryMapFlags::empty())
                 .map_err(|result| VulkanError::Call("vkMapMemory", result))?
                 .cast::<u8>();
             Ok(StagingChunk {
                 buffer,
-                memory,
                 mapped,
                 size,
                 used: 0,
@@ -423,8 +382,16 @@ impl VulkanBackend {
             for copy in std::mem::take(&mut self.staged) {
                 self.device.cmd_copy_buffer(
                     self.command_buffer,
-                    self.staging[copy.chunk].buffer,
-                    self.arena[copy.target.block].buffer,
+                    self.staging[copy.chunk]
+                        .as_ref()
+                        .expect("a copy's chunk is live")
+                        .buffer
+                        .buffer,
+                    self.arena[copy.target.block]
+                        .as_ref()
+                        .expect("a copy's block is live")
+                        .buffer
+                        .buffer,
                     &[vk::BufferCopy {
                         src_offset: copy.source,
                         dst_offset: copy.target.offset,
@@ -467,15 +434,10 @@ impl HostBuffer {
         capacity: usize,
     ) -> Result<Self, VulkanError> {
         // SAFETY: the caller's contract; `capacity` is not 0 (see above).
-        let (buffer, memory) = unsafe {
+        let bound = unsafe {
             backend.upload_buffer(vk::BufferUsageFlags::VERTEX_BUFFER, &vec![0_u8; capacity])
         }?;
-        Ok(Self {
-            device: backend.device.clone(),
-            buffer,
-            memory,
-            capacity,
-        })
+        Ok(Self { bound, capacity })
     }
 
     /// Write the parts one after another from the start of the buffer. Nothing is mapped for no

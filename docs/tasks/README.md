@@ -230,8 +230,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [Q03](Q03-log-safety-lint.md) | Log altyapısı, SAFETY yorumları, lint sıkılaştırma | M | Q01 | bitti |
 | [V00](V00-performans-olcumu.md) | Performans ölçümü ve bench | M | – | bitti |
 | [V01](V01-vulkan-modulleri.md) | `vulkan.rs` modüllere bölme ve RAII | M | V00 | bölündü |
-| [V01b](V01b-vulkan-sahiplik.md) | Vulkan nesnelerinde sahiplik, `create`'in bölünmesi, `DrawList` | M | V01 | açık |
-| [V02](V02-shader-dosyalari.md) | Shader dosyaları, build-time SPIR-V, pipeline cache | M | V01 | bitti |
+| [V01b](V01b-vulkan-sahiplik.md) | Vulkan nesnelerinde sahiplik, `create`'in bölünmesi, `DrawList` | M | V01 | bitti (22f03b5a) |
+| [V02](V02-shader-dosyalari.md) | Shader dosyaları, build-time SPIR-V, pipeline cache | M | V01 | bitti (22f03b5a) |
 | [V03](V03-kare-ucusta.md) | İki kare uçuşta, halka tampon, `RenderType` tablosu | L | V01 | bölündü |
 | [V03b](V03b-render-type-tablosu.md) | `RenderType` tablosu ve `DrawList` | M | V03 | bölündü |
 | [V03c](V03c-record-scene-tablosu.md) | `RenderType` tablosu ve `record_scene`'in tek döngüye inmesi | M | V03b | açık |

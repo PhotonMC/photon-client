@@ -45,14 +45,14 @@ impl VulkanBackend {
                 staged.extend_from_slice(&region.rgba);
                 deepest = deepest.max(region.level);
             }
-            let (staging, staging_memory) =
-                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
-            let image = scene.texture;
+            let staging = self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
+            let image = scene.texture.image.image;
             let range = vk::ImageSubresourceRange::default()
                 .aspect_mask(vk::ImageAspectFlags::COLOR)
                 .level_count(deepest + 1)
                 .layer_count(1);
-            let result = self.run_once(|command| {
+
+            self.run_once(|command| {
                 transition(
                     &self.device,
                     command,
@@ -63,7 +63,7 @@ impl VulkanBackend {
                 );
                 self.device.cmd_copy_buffer_to_image(
                     command,
-                    staging,
+                    staging.buffer,
                     image,
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &copies,
@@ -76,10 +76,7 @@ impl VulkanBackend {
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 );
-            });
-            self.device.destroy_buffer(staging, None);
-            self.device.free_memory(staging_memory, None);
-            result
+            })
         }
     }
 
@@ -88,14 +85,10 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// No frame may be recording: it submits setup work and waits for the queue.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
-    )]
     pub(super) unsafe fn upload_texture(
         &self,
         levels: &[DecodedImage],
-    ) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), VulkanError> {
+    ) -> Result<Image, VulkanError> {
         // SAFETY: live handles; the staging buffer lives only until `run_once` has finished the
         // copies, and the image's memory is bound before it is viewed.
         unsafe {
@@ -106,8 +99,7 @@ impl VulkanBackend {
                 offsets.push(staged.len() as u64);
                 staged.extend_from_slice(&level.rgba);
             }
-            let (staging, staging_memory) =
-                self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
+            let staging = self.upload_buffer(vk::BufferUsageFlags::TRANSFER_SRC, &staged)?;
             let format = vk::Format::R8G8B8A8_UNORM;
             let image = self
                 .device
@@ -140,6 +132,18 @@ impl VulkanBackend {
                 .aspect_mask(vk::ImageAspectFlags::COLOR)
                 .level_count(levels.len() as u32)
                 .layer_count(1);
+            let view = self
+                .device
+                .create_image_view(
+                    &vk::ImageViewCreateInfo::default()
+                        .image(image)
+                        .view_type(vk::ImageViewType::TYPE_2D)
+                        .format(format)
+                        .subresource_range(range),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
+            let texture = Image::new(&self.device, (image, memory, view), format);
             // Every level is already built on the processor, so nothing is
             // blitted here: each one is its own copy out of the staging buffer.
             let regions: Vec<vk::BufferImageCopy> = levels
@@ -162,7 +166,7 @@ impl VulkanBackend {
                         })
                 })
                 .collect();
-            self.run_once(|command| {
+            let copied = self.run_once(|command| {
                 transition(
                     &self.device,
                     command,
@@ -173,7 +177,7 @@ impl VulkanBackend {
                 );
                 self.device.cmd_copy_buffer_to_image(
                     command,
-                    staging,
+                    staging.buffer,
                     image,
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     &regions,
@@ -186,46 +190,9 @@ impl VulkanBackend {
                     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 );
-            })?;
-            self.device.destroy_buffer(staging, None);
-            self.device.free_memory(staging_memory, None);
-
-            let view = self
-                .device
-                .create_image_view(
-                    &vk::ImageViewCreateInfo::default()
-                        .image(image)
-                        .view_type(vk::ImageViewType::TYPE_2D)
-                        .format(format)
-                        .subresource_range(range),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
-            Ok((image, memory, view))
-        }
-    }
-
-    /// Destroy an image with its view and memory, and the sampler it was read with, if they were made.
-    ///
-    /// # Safety
-    ///
-    /// The GPU must be done with the objects.
-    pub(super) unsafe fn destroy_texture(
-        &self,
-        texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-        sampler: Option<vk::Sampler>,
-    ) {
-        // SAFETY: each object is passed by value, so it is destroyed once; the caller guarantees
-        // the GPU is done with them.
-        unsafe {
-            if let Some((image, memory, view)) = texture {
-                self.device.destroy_image_view(view, None);
-                self.device.destroy_image(image, None);
-                self.device.free_memory(memory, None);
-            }
-            if let Some(sampler) = sampler {
-                self.device.destroy_sampler(sampler, None);
-            }
+            });
+            copied?;
+            Ok(texture)
         }
     }
 
@@ -238,10 +205,10 @@ impl VulkanBackend {
     ) -> Result<(), VulkanError> {
         // SAFETY: live handles; this only creates objects and stores them in the scene.
         unsafe {
-            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
+            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptors.layout) else {
                 return Ok(());
             };
-            let pool = self.scene.as_ref().expect("checked above").descriptor_pool;
+            let pool = self.scene.as_ref().expect("checked above").descriptors.pool;
             let sampler = self
                 .device
                 .create_sampler(
@@ -256,10 +223,11 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+            let sampler = Sampler::new(&self.device, sampler);
             let mut textures = Vec::new();
             let mut sets = Vec::new();
             for image in [rain, snow] {
-                let (texture, memory, view) = self.upload_texture(std::slice::from_ref(image))?;
+                let texture = self.upload_texture(std::slice::from_ref(image))?;
                 let layouts = [layout];
                 let set = self
                     .device
@@ -271,15 +239,15 @@ impl VulkanBackend {
                     .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
                 let image_info = [vk::DescriptorImageInfo::default()
                     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .image_view(view)
-                    .sampler(sampler)];
+                    .image_view(texture.view)
+                    .sampler(sampler.handle)];
                 let write = vk::WriteDescriptorSet::default()
                     .dst_set(set)
                     .dst_binding(0)
                     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                     .image_info(&image_info);
                 self.device.update_descriptor_sets(&[write], &[]);
-                textures.push((texture, memory, view));
+                textures.push(texture);
                 sets.push(set);
             }
             let scene = self.scene.as_mut().expect("checked above");
@@ -300,12 +268,11 @@ impl VulkanBackend {
         {
             return Ok(());
         }
-        let Some((texture, sampler, set)) = self.upload_sampled_texture(stages)? else {
+        let Some((texture, set)) = self.upload_sampled_texture(stages)? else {
             return Ok(());
         };
         let scene = self.scene.as_mut().expect("checked above");
         scene.crack_texture = Some(texture);
-        scene.crack_sampler = Some(sampler);
         scene.crack_set = Some(set);
         Ok(())
     }
@@ -318,12 +285,11 @@ impl VulkanBackend {
         {
             return Ok(());
         }
-        let Some((texture, sampler, set)) = self.upload_sampled_texture(skin)? else {
+        let Some((texture, set)) = self.upload_sampled_texture(skin)? else {
             return Ok(());
         };
         let scene = self.scene.as_mut().expect("checked above");
         scene.entity_texture = Some(texture);
-        scene.entity_sampler = Some(sampler);
         scene.entity_set = Some(set);
         Ok(())
     }
@@ -339,27 +305,29 @@ impl VulkanBackend {
             .as_ref()
             .is_some_and(|scene| scene.map_set.is_none())
         {
-            let Some((texture, sampler, set)) = self.upload_sampled_texture(image)? else {
+            let Some((texture, set)) = self.upload_sampled_texture(image)? else {
                 return Ok(());
             };
             let scene = self.scene.as_mut().expect("checked above");
             scene.map_texture = Some(texture);
-            scene.map_sampler = Some(sampler);
             scene.map_set = Some(set);
             return Ok(());
         }
         // SAFETY: live handles; `device_wait_idle` runs before an old texture is replaced.
         unsafe {
             let _ = self.device.device_wait_idle();
-            let (texture, memory, view) = self.upload_texture(std::slice::from_ref(image))?;
+            let image = self.upload_texture(std::slice::from_ref(image))?;
             let scene = self.scene.as_mut().expect("checked above");
-            let (set, sampler) = (
-                scene.map_set.expect("checked above"),
-                scene.map_sampler.expect("made with the set"),
-            );
+            let set = scene.map_set.expect("checked above");
+            let sampler = scene
+                .map_texture
+                .as_ref()
+                .expect("made with the set")
+                .sampler
+                .handle;
             let image_info = [vk::DescriptorImageInfo::default()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .image_view(view)
+                .image_view(image.view)
                 .sampler(sampler)];
             let write = vk::WriteDescriptorSet::default()
                 .dst_set(set)
@@ -367,12 +335,9 @@ impl VulkanBackend {
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
-            if let Some((old_image, old_memory, old_view)) =
-                scene.map_texture.replace((texture, memory, view))
-            {
-                self.device.destroy_image_view(old_view, None);
-                self.device.destroy_image(old_image, None);
-                self.device.free_memory(old_memory, None);
+            // The old image is dropped after the set points at the new one; the device is idle.
+            if let Some(texture) = scene.map_texture.as_mut() {
+                texture.image = image;
             }
         }
         Ok(())
@@ -387,39 +352,27 @@ impl VulkanBackend {
         {
             return Ok(());
         }
-        let Some((texture, sampler, set)) = self.upload_sampled_texture(atlas)? else {
+        let Some((texture, set)) = self.upload_sampled_texture(atlas)? else {
             return Ok(());
         };
         let scene = self.scene.as_mut().expect("checked above");
         scene.gui_texture = Some(texture);
-        scene.gui_sampler = Some(sampler);
         scene.gui_set = Some(set);
         Ok(())
     }
 
     /// Upload one texture with a nearest, clamped sampler and a descriptor
     /// set for it.
-    #[expect(
-        clippy::type_complexity,
-        reason = "the handles one upload creates, returned together"
-    )]
     pub(super) fn upload_sampled_texture(
         &mut self,
         skin: &DecodedImage,
-    ) -> Result<
-        Option<(
-            (vk::Image, vk::DeviceMemory, vk::ImageView),
-            vk::Sampler,
-            vk::DescriptorSet,
-        )>,
-        VulkanError,
-    > {
+    ) -> Result<Option<(Texture, vk::DescriptorSet)>, VulkanError> {
         // SAFETY: live handles; this only creates objects, which the caller stores.
         unsafe {
-            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptor_layout) else {
+            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptors.layout) else {
                 return Ok(None);
             };
-            let pool = self.scene.as_ref().expect("checked above").descriptor_pool;
+            let pool = self.scene.as_ref().expect("checked above").descriptors.pool;
             let sampler = self
                 .device
                 .create_sampler(
@@ -434,7 +387,8 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
-            let (texture, memory, view) = self.upload_texture(std::slice::from_ref(skin))?;
+            let sampler = Sampler::new(&self.device, sampler);
+            let image = self.upload_texture(std::slice::from_ref(skin))?;
             let layouts = [layout];
             let set = self
                 .device
@@ -446,15 +400,15 @@ impl VulkanBackend {
                 .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
             let image_info = [vk::DescriptorImageInfo::default()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .image_view(view)
-                .sampler(sampler)];
+                .image_view(image.view)
+                .sampler(sampler.handle)];
             let write = vk::WriteDescriptorSet::default()
                 .dst_set(set)
                 .dst_binding(0)
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
-            Ok(Some(((texture, memory, view), sampler, set)))
+            Ok(Some((Texture { image, sampler }, set)))
         }
     }
 }

@@ -39,8 +39,8 @@ pub struct VulkanBackend {
     /// The frames up to this number are known to have finished on the GPU.
     pub(super) completed: std::cell::Cell<u64>,
     /// The buffer a screenshot is copied into, there only while one is taken.
-    pub(super) readback: Option<(vk::Buffer, vk::DeviceMemory)>,
-    pub(super) depth: Option<DepthTarget>,
+    pub(super) readback: Option<BoundBuffer>,
+    pub(super) depth: Option<Image>,
     /// Set when the surface no longer matches the swapchain.
     pub(super) out_of_date: bool,
     pub(super) scene: Option<SceneResources>,
@@ -100,10 +100,10 @@ pub struct VulkanBackend {
     pub(super) visible_sections: Option<Vec<(i32, i32, i32)>>,
     /// The falling blocks' meshes for the frame, drawn with the sections.
     pub(super) moving_sections: Vec<SectionBuffers>,
-    pub(super) arena: Vec<ArenaBlock>,
+    pub(super) arena: Vec<Option<ArenaBlock>>,
     /// Staging chunks: every chunk, the ones taking uploads for the next
     /// frame, and the ones the frame in flight still copies from.
-    pub(super) staging: Vec<StagingChunk>,
+    pub(super) staging: Vec<Option<StagingChunk>>,
     pub(super) staging_filling: Vec<usize>,
     pub(super) staging_in_flight: Vec<(u64, usize)>,
     pub(super) staged: Vec<StagedCopy>,

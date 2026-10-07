@@ -9,7 +9,7 @@ impl VulkanBackend {
     /// this backend; the surface borrows them.
     #[expect(
         clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
+        reason = "the backend's fields, each given its starting value"
     )]
     pub unsafe fn create(
         display_handle: raw_window_handle::RawDisplayHandle,
@@ -17,257 +17,45 @@ impl VulkanBackend {
         width: u32,
         height: u32,
     ) -> Result<Self, VulkanError> {
-        // SAFETY: the caller keeps the window alive (see `# Safety`). Each handle is made from
-        // handles created before it, in the order Vulkan requires, and ends up in the returned
-        // backend, whose `Drop` destroys them.
+        // SAFETY: the caller keeps the window alive (see `# Safety`). Each stage makes its handles
+        // from the ones the stages before it made, in the order Vulkan requires, and they all end
+        // up in the returned backend, whose `Drop` destroys them.
         unsafe {
-            let entry =
-                ash::Entry::load().map_err(|error| VulkanError::Loader(error.to_string()))?;
-
-            // The reference takes its instance extensions from GLFW and names
-            // the application the same way on every run.
-            let mut extensions = ash_window::enumerate_required_extensions(display_handle)
-                .map_err(|result| VulkanError::Call("enumerate surface extensions", result))?
-                .to_vec();
-            extensions.retain(|name| !name.is_null());
-
-            // Layered drivers such as MoltenVK register as portability drivers,
-            // which the loader hides unless the instance opts in. Opting in only
-            // widens enumeration; conformant drivers are listed either way.
-            let portability = entry
-                .enumerate_instance_extension_properties(None)
-                .map_err(|result| VulkanError::Call("enumerate instance extensions", result))?
-                .iter()
-                .any(|available| {
-                    CStr::from_ptr(available.extension_name.as_ptr())
-                        == ash::khr::portability_enumeration::NAME
-                });
-            let mut instance_flags = vk::InstanceCreateFlags::empty();
-            if portability {
-                extensions.push(ash::khr::portability_enumeration::NAME.as_ptr());
-                instance_flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
-            }
-
-            let mut layers: Vec<*const i8> = Vec::new();
-            let validation_names = validation::requested()
-                .then(|| validation::names(&entry))
-                .flatten();
-            if let Some((layer, extension)) = validation_names {
-                layers.push(layer);
-                extensions.push(extension);
-            }
-
-            let application_name = CString::new("Minecraft Java Edition").expect("static name");
-            let engine_name = CString::new("MinecraftJE").expect("static name");
-            let application_info = vk::ApplicationInfo::default()
-                .application_name(&application_name)
-                .engine_name(&engine_name)
-                .engine_version(0)
-                .api_version(API_VERSION);
-            let instance_info = vk::InstanceCreateInfo::default()
-                .flags(instance_flags)
-                .application_info(&application_info)
-                .enabled_layer_names(&layers)
-                .enabled_extension_names(&extensions);
-            let instance = entry
-                .create_instance(&instance_info, None)
-                .map_err(|result| VulkanError::Call("vkCreateInstance", result))?;
-
-            let validation = if validation_names.is_some() {
-                Some(validation::Validation::new(&entry, &instance)?)
-            } else {
-                None
-            };
-            let surface_instance = ash::khr::surface::Instance::new(&entry, &instance);
-            let surface =
-                ash_window::create_surface(&entry, &instance, display_handle, window_handle, None)
-                    .map_err(|result| VulkanError::Call("vkCreateSurfaceKHR", result))?;
-
-            let (physical_device, queue_family, properties) =
-                select_physical_device(&instance, &surface_instance, surface)?;
-
-            let queue_priorities = [1.0_f32];
-            let queue_info = [vk::DeviceQueueCreateInfo::default()
-                .queue_family_index(queue_family)
-                .queue_priorities(&queue_priorities)];
-            let mut extension_names: Vec<*const i8> = REQUIRED_DEVICE_EXTENSIONS
-                .iter()
-                .map(|name| name.as_ptr())
-                .collect();
-            // A portability driver's device must be created with this extension
-            // enabled whenever it advertises it.
-            let portability_subset = instance
-                .enumerate_device_extension_properties(physical_device)
-                .map_err(|result| VulkanError::Call("enumerate device extensions", result))?
-                .iter()
-                .any(|available| {
-                    CStr::from_ptr(available.extension_name.as_ptr())
-                        == ash::khr::portability_subset::NAME
-                });
-            if portability_subset {
-                extension_names.push(ash::khr::portability_subset::NAME.as_ptr());
-            }
-
-            // The reference enables these by name; the ones that gate rendering
-            // are requested here so device selection matches what it would pick.
-            let mut features_11 =
-                vk::PhysicalDeviceVulkan11Features::default().shader_draw_parameters(true);
-            let mut features_12 = vk::PhysicalDeviceVulkan12Features::default()
-                .timeline_semaphore(true)
-                .host_query_reset(true);
-            let mut features_sync2 =
-                vk::PhysicalDeviceSynchronization2Features::default().synchronization2(true);
-            let mut features_dynamic =
-                vk::PhysicalDeviceDynamicRenderingFeatures::default().dynamic_rendering(true);
-            let mut features_divisor =
-                vk::PhysicalDeviceVertexAttributeDivisorFeaturesEXT::default()
-                    .vertex_attribute_instance_rate_divisor(true);
-            let features_10 = vk::PhysicalDeviceFeatures::default()
-                .multi_draw_indirect(true)
-                .fill_mode_non_solid(true)
-                .sampler_anisotropy(true);
-
-            let device_info = vk::DeviceCreateInfo::default()
-                .queue_create_infos(&queue_info)
-                .enabled_extension_names(&extension_names)
-                .enabled_features(&features_10)
-                .push_next(&mut features_11)
-                .push_next(&mut features_12)
-                .push_next(&mut features_sync2)
-                .push_next(&mut features_dynamic)
-                .push_next(&mut features_divisor);
-            let device = instance
-                .create_device(physical_device, &device_info, None)
-                .map_err(|result| VulkanError::Call("vkCreateDevice", result))?;
-            let queue = device.get_device_queue(queue_family, 0);
-
-            let surface_format = pick_surface_format(&surface_instance, physical_device, surface)?;
-            let capabilities = surface_instance
-                .get_physical_device_surface_capabilities(physical_device, surface)
-                .map_err(|result| {
-                    VulkanError::Call("vkGetPhysicalDeviceSurfaceCapabilities", result)
-                })?;
-            let extent = clamp_extent(&capabilities, width, height);
-
-            let swapchain_device = ash::khr::swapchain::Device::new(&instance, &device);
-            let dynamic_rendering = ash::khr::dynamic_rendering::Device::new(&instance, &device);
-            let present_mode = choose_present_mode(
-                &surface_instance
-                    .get_physical_device_surface_present_modes(physical_device, surface)
-                    .map_err(|result| {
-                        VulkanError::Call("vkGetPhysicalDeviceSurfacePresentModes", result)
-                    })?,
-                true,
-            );
-            let swapchain_info = vk::SwapchainCreateInfoKHR::default()
-                .surface(surface)
-                .min_image_count(REQUESTED_IMAGE_COUNT.max(capabilities.min_image_count))
-                .image_format(surface_format)
-                .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
-                .image_extent(extent)
-                .image_array_layers(1)
-                .image_usage(
-                    vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST,
-                )
-                .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-                .pre_transform(capabilities.current_transform)
-                .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                .present_mode(present_mode)
-                .clipped(true);
-            let swapchain = swapchain_device
-                .create_swapchain(&swapchain_info, None)
-                .map_err(|result| VulkanError::Call("vkCreateSwapchainKHR", result))?;
-            let images = swapchain_device
-                .get_swapchain_images(swapchain)
-                .map_err(|result| VulkanError::Call("vkGetSwapchainImagesKHR", result))?;
-
-            let mut image_views = Vec::with_capacity(images.len());
-            for image in &images {
-                image_views.push(
-                    device
-                        .create_image_view(
-                            &vk::ImageViewCreateInfo::default()
-                                .image(*image)
-                                .view_type(vk::ImageViewType::TYPE_2D)
-                                .format(surface_format)
-                                .subresource_range(
-                                    vk::ImageSubresourceRange::default()
-                                        .aspect_mask(vk::ImageAspectFlags::COLOR)
-                                        .level_count(1)
-                                        .layer_count(1),
-                                ),
-                            None,
-                        )
-                        .map_err(|result| VulkanError::Call("vkCreateImageView", result))?,
-                );
-            }
-
-            let command_pool = device
-                .create_command_pool(
-                    &vk::CommandPoolCreateInfo::default()
-                        .queue_family_index(queue_family)
-                        .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateCommandPool", result))?;
-            let command_buffers = device
-                .allocate_command_buffers(
-                    &vk::CommandBufferAllocateInfo::default()
-                        .command_pool(command_pool)
-                        .level(vk::CommandBufferLevel::PRIMARY)
-                        .command_buffer_count(FRAMES_IN_FLIGHT as u32),
-                )
-                .map_err(|result| VulkanError::Call("vkAllocateCommandBuffers", result))?;
-            let mut frames = Vec::with_capacity(FRAMES_IN_FLIGHT);
-            for command_buffer in command_buffers {
-                frames.push(FrameSlot {
-                    command_buffer,
-                    in_flight: device
-                        .create_fence(
-                            &vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED),
-                            None,
-                        )
-                        .map_err(|result| VulkanError::Call("vkCreateFence", result))?,
-                    image_available: device
-                        .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
-                        .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?,
-                    stamp: 0,
-                });
-            }
+            let instance_parts = create_instance(display_handle, window_handle)?;
+            let device_parts = create_logical_device(&instance_parts)?;
+            let presentation = create_presentation(&instance_parts, &device_parts, width, height)?;
+            let sync = create_sync(&instance_parts, &device_parts, presentation.images.len())?;
+            let InstanceParts {
+                entry,
+                instance,
+                surface_instance,
+                surface,
+                validation,
+            } = instance_parts;
+            let DeviceParts {
+                physical_device,
+                properties,
+                device,
+                queue,
+                ..
+            } = device_parts;
+            let PresentationParts {
+                swapchain_device,
+                dynamic_rendering,
+                swapchain,
+                images,
+                image_views,
+                surface_format,
+                present_mode,
+                extent,
+            } = presentation;
+            let SyncParts {
+                command_pool,
+                frames,
+                render_finished,
+                timestamps,
+            } = sync;
             let command_buffer = frames[0].command_buffer;
-            // Present waits are per image: reusing one semaphore across images
-            // is what trips validation on a FIFO swapchain.
-            let mut render_finished = Vec::with_capacity(images.len());
-            for _ in 0..images.len() {
-                render_finished.push(
-                    device
-                        .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
-                        .map_err(|result| VulkanError::Call("vkCreateSemaphore", result))?,
-                );
-            }
-            let valid_bits = instance.get_physical_device_queue_family_properties(physical_device)
-                [queue_family as usize]
-                .timestamp_valid_bits;
-            let timestamps =
-                if valid_bits > 0 && properties.limits.timestamp_compute_and_graphics == vk::TRUE {
-                    let pool = device
-                        .create_query_pool(
-                            &vk::QueryPoolCreateInfo::default()
-                                .query_type(vk::QueryType::TIMESTAMP)
-                                .query_count(TIMESTAMP_COUNT * FRAMES_IN_FLIGHT as u32),
-                            None,
-                        )
-                        .map_err(|result| VulkanError::Call("vkCreateQueryPool", result))?;
-                    Some(TimestampQueries {
-                        pool,
-                        period_ns: f64::from(properties.limits.timestamp_period),
-                        valid_bits,
-                        pending: [false; FRAMES_IN_FLIGHT],
-                        last: None,
-                    })
-                } else {
-                    None
-                };
             let device_name = CStr::from_ptr(properties.device_name.as_ptr())
                 .to_string_lossy()
                 .into_owned();

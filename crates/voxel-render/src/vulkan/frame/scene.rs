@@ -75,11 +75,11 @@ impl VulkanBackend {
                 for &(blend, first, count) in &sky.batches {
                     let (layout, pipeline) = match blend {
                         crate::sky::SkyBlend::Translucent => {
-                            (scene.sky_pipeline_layout, scene.sky_pipeline)
+                            (scene.sky_pipeline.layout, scene.sky_pipeline.handle)
                         }
                         crate::sky::SkyBlend::Overlay => (
-                            scene.sky_overlay_pipeline_layout,
-                            scene.sky_overlay_pipeline,
+                            scene.sky_overlay_pipeline.layout,
+                            scene.sky_overlay_pipeline.handle,
                         ),
                     };
                     self.device.cmd_bind_pipeline(
@@ -116,12 +116,12 @@ impl VulkanBackend {
             self.device.cmd_bind_pipeline(
                 self.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                scene.pipeline,
+                scene.pipeline.handle,
             );
             self.device.cmd_bind_descriptor_sets(
                 self.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
-                scene.pipeline_layout,
+                scene.pipeline.layout,
                 0,
                 &[scene.descriptor_set],
                 &[],
@@ -137,7 +137,7 @@ impl VulkanBackend {
             terrain_push[32..].copy_from_slice(&self.fog);
             self.device.cmd_push_constants(
                 self.command_buffer,
-                scene.pipeline_layout,
+                scene.pipeline.layout,
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
                 &as_bytes(&terrain_push)[..160],
@@ -147,7 +147,7 @@ impl VulkanBackend {
                 .into_iter()
                 .filter(|section| section.index_count > 0)
             {
-                self.bind_section(section, scene.pipeline_layout, now);
+                self.bind_section(section, scene.pipeline.layout, now);
                 self.device
                     .cmd_draw_indexed(self.command_buffer, section.index_count, 1, 0, 0, 0);
             }
@@ -162,12 +162,12 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.held_pipeline,
+                    scene.held_pipeline.handle,
                 );
                 self.device.cmd_bind_descriptor_sets(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.held_pipeline_layout,
+                    scene.held_pipeline.layout,
                     0,
                     &[scene.descriptor_set],
                     &[],
@@ -177,7 +177,7 @@ impl VulkanBackend {
                 ground_push[40] = 1.0;
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.held_pipeline_layout,
+                    scene.held_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&ground_push)[..164],
@@ -194,19 +194,19 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline,
+                    scene.entity_pipeline.handle,
                 );
                 self.device.cmd_bind_descriptor_sets(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.entity_pipeline_layout,
+                    scene.entity_pipeline.layout,
                     0,
                     &[set],
                     &[],
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.entity_pipeline_layout,
+                    scene.entity_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&terrain_push)[..160],
@@ -228,11 +228,11 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.lines_pipeline,
+                    scene.lines_pipeline.handle,
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.lines_pipeline_layout,
+                    scene.lines_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&line_push)[..160],
@@ -249,19 +249,19 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.crumbling_pipeline,
+                    scene.crumbling_pipeline.handle,
                 );
                 self.device.cmd_bind_descriptor_sets(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.crumbling_pipeline_layout,
+                    scene.crumbling_pipeline.layout,
                     0,
                     &[set],
                     &[],
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.crumbling_pipeline_layout,
+                    scene.crumbling_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&terrain_push)[..160],
@@ -289,26 +289,26 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.translucent_pipeline,
+                    scene.translucent_pipeline.handle,
                 );
                 self.device.cmd_bind_descriptor_sets(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.translucent_pipeline_layout,
+                    scene.translucent_pipeline.layout,
                     0,
                     &[scene.descriptor_set],
                     &[],
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.translucent_pipeline_layout,
+                    scene.translucent_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&terrain_push)[..160],
                 );
             }
             for section in translucent {
-                self.bind_section(section, scene.translucent_pipeline_layout, now);
+                self.bind_section(section, scene.translucent_pipeline.layout, now);
                 self.device.cmd_draw_indexed(
                     self.command_buffer,
                     section.translucent_index_count,
@@ -327,11 +327,11 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.cloud_pipeline,
+                    scene.cloud_pipeline.handle,
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.cloud_pipeline_layout,
+                    scene.cloud_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&clouds.push)[..96],
@@ -354,11 +354,11 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.weather_pipeline,
+                    scene.weather_pipeline.handle,
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.weather_pipeline_layout,
+                    scene.weather_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&terrain_push)[..160],
@@ -376,7 +376,7 @@ impl VulkanBackend {
                     self.device.cmd_bind_descriptor_sets(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.weather_pipeline_layout,
+                        scene.weather_pipeline.layout,
                         0,
                         &[set],
                         &[],
@@ -422,19 +422,19 @@ impl VulkanBackend {
                     self.device.cmd_bind_pipeline(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.entity_pipeline,
+                        scene.entity_pipeline.handle,
                     );
                     self.device.cmd_bind_descriptor_sets(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.entity_pipeline_layout,
+                        scene.entity_pipeline.layout,
                         0,
                         &[set],
                         &[],
                     );
                     self.device.cmd_push_constants(
                         self.command_buffer,
-                        scene.entity_pipeline_layout,
+                        scene.entity_pipeline.layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
                         &as_bytes(&hand_push)[..160],
@@ -448,12 +448,12 @@ impl VulkanBackend {
                     self.device.cmd_bind_pipeline(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.held_pipeline,
+                        scene.held_pipeline.handle,
                     );
                     self.device.cmd_bind_descriptor_sets(
                         self.command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
-                        scene.held_pipeline_layout,
+                        scene.held_pipeline.layout,
                         0,
                         &[scene.descriptor_set],
                         &[],
@@ -463,7 +463,7 @@ impl VulkanBackend {
                     held_push[40] = 1.0;
                     self.device.cmd_push_constants(
                         self.command_buffer,
-                        scene.held_pipeline_layout,
+                        scene.held_pipeline.layout,
                         vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                         0,
                         &as_bytes(&held_push)[..164],
@@ -485,12 +485,15 @@ impl VulkanBackend {
                 let push = [2.0 / self.gui_size[0], 2.0 / self.gui_size[1], 0.0, 0.0];
                 for &(blend, first, count) in &self.gui_batches {
                     let (pipeline, layout, set, vertices) = match blend {
-                        crate::gui::GuiBlend::Translucent => {
-                            (scene.gui_pipeline, scene.gui_pipeline_layout, set, buffer)
-                        }
+                        crate::gui::GuiBlend::Translucent => (
+                            scene.gui_pipeline.handle,
+                            scene.gui_pipeline.layout,
+                            set,
+                            buffer,
+                        ),
                         crate::gui::GuiBlend::Invert => (
-                            scene.gui_invert_pipeline,
-                            scene.gui_invert_pipeline_layout,
+                            scene.gui_invert_pipeline.handle,
+                            scene.gui_invert_pipeline.layout,
                             set,
                             buffer,
                         ),
@@ -530,8 +533,8 @@ impl VulkanBackend {
                                 }],
                             );
                             (
-                                scene.gui_item_pipeline,
-                                scene.gui_item_pipeline_layout,
+                                scene.gui_item_pipeline.handle,
+                                scene.gui_item_pipeline.layout,
                                 samples,
                                 items,
                             )

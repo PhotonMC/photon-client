@@ -25,12 +25,20 @@ impl VulkanBackend {
             self.device.cmd_bind_vertex_buffers(
                 self.command_buffer,
                 0,
-                &[self.arena[section.vertices.block].buffer],
+                &[self.arena[section.vertices.block]
+                    .as_ref()
+                    .expect("a section's block is live")
+                    .buffer
+                    .buffer],
                 &[section.vertices.offset],
             );
             self.device.cmd_bind_index_buffer(
                 self.command_buffer,
-                self.arena[section.indices.block].buffer,
+                self.arena[section.indices.block]
+                    .as_ref()
+                    .expect("a section's block is live")
+                    .buffer
+                    .buffer,
                 section.indices.offset,
                 vk::IndexType::UINT32,
             );
@@ -62,19 +70,19 @@ impl VulkanBackend {
                 self.device.cmd_bind_pipeline(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.dissolve_pipeline,
+                    scene.dissolve_pipeline.handle,
                 );
                 self.device.cmd_bind_descriptor_sets(
                     self.command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    scene.dissolve_pipeline_layout,
+                    scene.dissolve_pipeline.layout,
                     0,
                     &[set],
                     &[],
                 );
                 self.device.cmd_push_constants(
                     self.command_buffer,
-                    scene.dissolve_pipeline_layout,
+                    scene.dissolve_pipeline.layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     &as_bytes(&push)[..176],
@@ -102,7 +110,7 @@ impl VulkanBackend {
         unsafe {
             if let (Some(buffer), Some(set)) = (self.map.buffer.as_ref(), scene.map_set) {
                 self.draw_triangles(
-                    (scene.text_pipeline, scene.text_pipeline_layout),
+                    (scene.text_pipeline.handle, scene.text_pipeline.layout),
                     set,
                     (buffer, self.map.count),
                     terrain_push,
@@ -113,8 +121,8 @@ impl VulkanBackend {
             {
                 self.draw_triangles(
                     (
-                        scene.text_translucent_pipeline,
-                        scene.text_translucent_pipeline_layout,
+                        scene.text_translucent_pipeline.handle,
+                        scene.text_translucent_pipeline.layout,
                     ),
                     set,
                     (buffer, self.map_decoration.count),
@@ -142,7 +150,7 @@ impl VulkanBackend {
             // shadow texture over the blocks' tops.
             if let (Some(buffer), Some(set)) = (self.shadow.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
-                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    (scene.shadow_pipeline.handle, scene.shadow_pipeline.layout),
                     set,
                     (buffer, self.shadow.count),
                     terrain_push,
@@ -154,7 +162,7 @@ impl VulkanBackend {
             // times the colour with no light and no cut-out, then fog.
             if let (Some(buffer), Some(set)) = (self.glow.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
-                    (scene.shadow_pipeline, scene.shadow_pipeline_layout),
+                    (scene.shadow_pipeline.handle, scene.shadow_pipeline.layout),
                     set,
                     (buffer, self.glow.count),
                     terrain_push,
@@ -168,17 +176,17 @@ impl VulkanBackend {
                     (
                         self.swirl.buffer.as_ref(),
                         self.swirl.count,
-                        (scene.swirl_pipeline, scene.swirl_pipeline_layout),
+                        (scene.swirl_pipeline.handle, scene.swirl_pipeline.layout),
                     ),
                     (
                         self.glint.buffer.as_ref(),
                         self.glint.count,
-                        (scene.glint_pipeline, scene.glint_pipeline_layout),
+                        (scene.glint_pipeline.handle, scene.glint_pipeline.layout),
                     ),
                     (
                         self.rays.buffer.as_ref(),
                         self.rays.count,
-                        (scene.rays_pipeline, scene.rays_pipeline_layout),
+                        (scene.rays_pipeline.handle, scene.rays_pipeline.layout),
                     ),
                 ] {
                     if let Some(buffer) = buffer {
@@ -190,8 +198,8 @@ impl VulkanBackend {
             if let (Some(buffer), Some(set)) = (self.orb.buffer.as_ref(), scene.entity_set) {
                 self.draw_triangles(
                     (
-                        scene.text_translucent_pipeline,
-                        scene.text_translucent_pipeline_layout,
+                        scene.text_translucent_pipeline.handle,
+                        scene.text_translucent_pipeline.layout,
                     ),
                     set,
                     (buffer, self.orb.count),
@@ -207,14 +215,14 @@ impl VulkanBackend {
                         self.name_tag_see.buffer.as_ref(),
                         self.name_tag_see.count,
                         (
-                            scene.text_see_through_pipeline,
-                            scene.text_see_through_pipeline_layout,
+                            scene.text_see_through_pipeline.handle,
+                            scene.text_see_through_pipeline.layout,
                         ),
                     ),
                     (
                         self.name_tag.buffer.as_ref(),
                         self.name_tag.count,
-                        (scene.text_pipeline, scene.text_pipeline_layout),
+                        (scene.text_pipeline.handle, scene.text_pipeline.layout),
                     ),
                 ] {
                     if let Some(buffer) = buffer {

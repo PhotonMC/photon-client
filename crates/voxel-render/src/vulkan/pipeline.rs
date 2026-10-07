@@ -21,7 +21,7 @@ impl VulkanBackend {
         &self,
         descriptor_layout: vk::DescriptorSetLayout,
         kind: PipelineKind,
-    ) -> Result<(vk::PipelineLayout, vk::Pipeline), VulkanError> {
+    ) -> Result<Pipeline, VulkanError> {
         let sky = matches!(
             kind,
             PipelineKind::SkyTranslucent | PipelineKind::SkyOverlay
@@ -476,14 +476,19 @@ impl VulkanBackend {
                 .color_blend_state(&blend)
                 .layout(pipeline_layout)
                 .push_next(&mut rendering);
-            let pipeline = self
-                .device
-                .create_graphics_pipelines(self.pipeline_cache, &[create], None)
-                .map_err(|(_, result)| VulkanError::Call("vkCreateGraphicsPipelines", result))?[0];
-
+            let created =
+                self.device
+                    .create_graphics_pipelines(self.pipeline_cache, &[create], None);
+            // The modules are only needed while the pipeline is made.
             self.device.destroy_shader_module(vertex_module, None);
             self.device.destroy_shader_module(fragment_module, None);
-            Ok((pipeline_layout, pipeline))
+            match created {
+                Ok(pipelines) => Ok(Pipeline::new(&self.device, pipeline_layout, pipelines[0])),
+                Err((_, result)) => {
+                    self.device.destroy_pipeline_layout(pipeline_layout, None);
+                    Err(VulkanError::Call("vkCreateGraphicsPipelines", result))
+                }
+            }
         }
     }
 }

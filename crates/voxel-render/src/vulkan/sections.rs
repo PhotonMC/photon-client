@@ -139,7 +139,7 @@ impl VulkanBackend {
             sections: count,
             vertex_bytes,
             index_bytes,
-            arena_bytes: self.arena.iter().map(|block| block.size).sum(),
+            arena_bytes: self.arena.iter().flatten().map(|block| block.size).sum(),
         }
     }
 

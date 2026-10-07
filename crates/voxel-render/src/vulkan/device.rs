@@ -32,14 +32,9 @@ impl Drop for VulkanBackend {
             self.breaking.buffer.clear();
             self.gui_buffer.clear();
             self.gui_item_buffer.clear();
-            for block in self.arena.drain(..) {
-                self.device.destroy_buffer(block.buffer, None);
-                self.device.free_memory(block.memory, None);
-            }
-            for chunk in self.staging.drain(..) {
-                self.device.destroy_buffer(chunk.buffer, None);
-                self.device.free_memory(chunk.memory, None);
-            }
+            self.arena.clear();
+            self.staging.clear();
+            self.readback = None;
             for view in self.image_views.drain(..) {
                 self.device.destroy_image_view(view, None);
             }
@@ -56,7 +51,6 @@ impl Drop for VulkanBackend {
                 self.device.destroy_query_pool(queries.pool, None);
             }
             self.device.destroy_command_pool(self.command_pool, None);
-            self.free_readback();
             self.swapchain_device
                 .destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
@@ -183,3 +177,12 @@ pub(super) unsafe fn pick_surface_format(
 }
 
 mod create;
+mod instance;
+mod logical;
+mod presentation;
+mod sync;
+
+use instance::*;
+use logical::*;
+use presentation::*;
+use sync::*;

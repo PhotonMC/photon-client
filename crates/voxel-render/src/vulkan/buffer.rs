@@ -167,83 +167,46 @@ pub(super) struct TimestampQueries {
     pub(super) last: Option<GpuTimings>,
 }
 
-/// Depth attachment matching the swapchain extent.
-pub(super) struct DepthTarget {
-    pub(super) image: vk::Image,
-    pub(super) memory: vk::DeviceMemory,
-    pub(super) view: vk::ImageView,
-    pub(super) format: vk::Format,
-}
-
 /// Everything needed to draw one textured mesh.
 pub(super) struct SceneResources {
-    pub(super) texture: vk::Image,
-    pub(super) texture_memory: vk::DeviceMemory,
-    pub(super) texture_view: vk::ImageView,
-    pub(super) sampler: vk::Sampler,
-    pub(super) descriptor_pool: vk::DescriptorPool,
-    pub(super) descriptor_layout: vk::DescriptorSetLayout,
+    pub(super) texture: Texture,
+    pub(super) descriptors: Descriptors,
     pub(super) descriptor_set: vk::DescriptorSet,
-    pub(super) pipeline_layout: vk::PipelineLayout,
-    pub(super) pipeline: vk::Pipeline,
-    pub(super) translucent_pipeline_layout: vk::PipelineLayout,
-    pub(super) translucent_pipeline: vk::Pipeline,
-    pub(super) sky_pipeline_layout: vk::PipelineLayout,
-    pub(super) sky_pipeline: vk::Pipeline,
-    pub(super) sky_overlay_pipeline_layout: vk::PipelineLayout,
-    pub(super) sky_overlay_pipeline: vk::Pipeline,
-    pub(super) cloud_pipeline_layout: vk::PipelineLayout,
-    pub(super) cloud_pipeline: vk::Pipeline,
-    pub(super) weather_pipeline_layout: vk::PipelineLayout,
-    pub(super) weather_pipeline: vk::Pipeline,
+    pub(super) pipeline: Pipeline,
+    pub(super) translucent_pipeline: Pipeline,
+    pub(super) sky_pipeline: Pipeline,
+    pub(super) sky_overlay_pipeline: Pipeline,
+    pub(super) cloud_pipeline: Pipeline,
+    pub(super) weather_pipeline: Pipeline,
     /// The rain and snow textures, once loaded, with their sampler and sets.
-    pub(super) weather_textures: Vec<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-    pub(super) weather_sampler: Option<vk::Sampler>,
+    pub(super) weather_textures: Vec<Image>,
+    pub(super) weather_sampler: Option<Sampler>,
     pub(super) weather_sets: Vec<vk::DescriptorSet>,
-    pub(super) entity_pipeline_layout: vk::PipelineLayout,
-    pub(super) entity_pipeline: vk::Pipeline,
-    pub(super) lines_pipeline_layout: vk::PipelineLayout,
-    pub(super) lines_pipeline: vk::Pipeline,
-    pub(super) crumbling_pipeline_layout: vk::PipelineLayout,
-    pub(super) crumbling_pipeline: vk::Pipeline,
-    pub(super) held_pipeline_layout: vk::PipelineLayout,
-    pub(super) held_pipeline: vk::Pipeline,
-    pub(super) text_pipeline_layout: vk::PipelineLayout,
-    pub(super) text_pipeline: vk::Pipeline,
-    pub(super) text_see_through_pipeline_layout: vk::PipelineLayout,
-    pub(super) text_see_through_pipeline: vk::Pipeline,
-    pub(super) text_translucent_pipeline_layout: vk::PipelineLayout,
-    pub(super) text_translucent_pipeline: vk::Pipeline,
-    pub(super) shadow_pipeline_layout: vk::PipelineLayout,
-    pub(super) shadow_pipeline: vk::Pipeline,
-    pub(super) swirl_pipeline_layout: vk::PipelineLayout,
-    pub(super) swirl_pipeline: vk::Pipeline,
-    pub(super) glint_pipeline_layout: vk::PipelineLayout,
-    pub(super) glint_pipeline: vk::Pipeline,
-    pub(super) dissolve_pipeline_layout: vk::PipelineLayout,
-    pub(super) dissolve_pipeline: vk::Pipeline,
-    pub(super) rays_pipeline_layout: vk::PipelineLayout,
-    pub(super) rays_pipeline: vk::Pipeline,
-    pub(super) crack_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-    pub(super) crack_sampler: Option<vk::Sampler>,
+    pub(super) entity_pipeline: Pipeline,
+    pub(super) lines_pipeline: Pipeline,
+    pub(super) crumbling_pipeline: Pipeline,
+    pub(super) held_pipeline: Pipeline,
+    pub(super) text_pipeline: Pipeline,
+    pub(super) text_see_through_pipeline: Pipeline,
+    pub(super) text_translucent_pipeline: Pipeline,
+    pub(super) shadow_pipeline: Pipeline,
+    pub(super) swirl_pipeline: Pipeline,
+    pub(super) glint_pipeline: Pipeline,
+    pub(super) dissolve_pipeline: Pipeline,
+    pub(super) rays_pipeline: Pipeline,
+    pub(super) crack_texture: Option<Texture>,
     pub(super) crack_set: Option<vk::DescriptorSet>,
     /// The skin entities are drawn with.
-    pub(super) entity_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-    pub(super) entity_sampler: Option<vk::Sampler>,
+    pub(super) entity_texture: Option<Texture>,
     pub(super) entity_set: Option<vk::DescriptorSet>,
-    pub(super) gui_pipeline_layout: vk::PipelineLayout,
-    pub(super) gui_pipeline: vk::Pipeline,
-    pub(super) gui_invert_pipeline_layout: vk::PipelineLayout,
-    pub(super) gui_invert_pipeline: vk::Pipeline,
-    pub(super) gui_item_pipeline_layout: vk::PipelineLayout,
-    pub(super) gui_item_pipeline: vk::Pipeline,
+    pub(super) gui_pipeline: Pipeline,
+    pub(super) gui_invert_pipeline: Pipeline,
+    pub(super) gui_item_pipeline: Pipeline,
     /// The GUI sprites' atlas.
-    pub(super) gui_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-    pub(super) gui_sampler: Option<vk::Sampler>,
+    pub(super) gui_texture: Option<Texture>,
     pub(super) gui_set: Option<vk::DescriptorSet>,
     /// The maps' colours and the decoration sprites, packed in one image, and its sampler and set.
-    pub(super) map_texture: Option<(vk::Image, vk::DeviceMemory, vk::ImageView)>,
-    pub(super) map_sampler: Option<vk::Sampler>,
+    pub(super) map_texture: Option<Texture>,
     pub(super) map_set: Option<vk::DescriptorSet>,
 }
 
@@ -326,11 +289,9 @@ impl SectionFade {
 /// from: a few big allocations instead of two per section, which drivers
 /// cap, and nothing read across the bus while drawing.
 pub(super) struct ArenaBlock {
-    pub(super) buffer: vk::Buffer,
-    pub(super) memory: vk::DeviceMemory,
+    pub(super) buffer: BoundBuffer,
     pub(super) size: u64,
-    /// Free ranges, offset and length, in offset order. A block given back
-    /// to the driver has a null buffer and none.
+    /// Free ranges, offset and length, in offset order.
     pub(super) free: Vec<(u64, u64)>,
 }
 
@@ -359,11 +320,18 @@ pub(super) const ARENA_BLOCK_SIZE: u64 = 32 << 20;
 /// Host memory that section bytes pass through on their way into the
 /// arena, which lives where only the GPU can write.
 pub(super) struct StagingChunk {
-    pub(super) buffer: vk::Buffer,
-    pub(super) memory: vk::DeviceMemory,
+    pub(super) buffer: BoundBuffer,
     pub(super) mapped: *mut u8,
     pub(super) size: u64,
     pub(super) used: u64,
+}
+
+impl Drop for StagingChunk {
+    fn drop(&mut self) {
+        // SAFETY: the memory is mapped once, for good, when the chunk is made, and this runs once,
+        // before the buffer and its memory are freed with the field.
+        unsafe { self.buffer.device.unmap_memory(self.buffer.memory) };
+    }
 }
 
 /// One staged copy into the arena, recorded before the next frame draws.
@@ -425,20 +393,15 @@ impl DynamicBuffer {
 /// (every replacement makes one), or once the device is idle (the backend's `Drop`, which clears
 /// every owner before the device goes). It must not outlive the device.
 pub(super) struct HostBuffer {
-    pub(super) device: ash::Device,
-    pub(super) buffer: vk::Buffer,
-    pub(super) memory: vk::DeviceMemory,
+    pub(super) bound: BoundBuffer,
     pub(super) capacity: usize,
 }
 
-impl Drop for HostBuffer {
-    fn drop(&mut self) {
-        // SAFETY: this value owns both handles and runs once, so each is destroyed once; the
-        // owner keeps the contract above, so the device is live and the GPU is done with them.
-        unsafe {
-            self.device.destroy_buffer(self.buffer, None);
-            self.device.free_memory(self.memory, None);
-        }
+impl std::ops::Deref for HostBuffer {
+    type Target = BoundBuffer;
+
+    fn deref(&self) -> &BoundBuffer {
+        &self.bound
     }
 }
 

@@ -160,10 +160,7 @@ impl VulkanBackend {
             self.description.image_count = self.images.len() as u32;
             self.description.present_mode = present_mode;
 
-            if let Some(depth) = self.depth.take() {
-                self.device.destroy_image_view(depth.view, None);
-                self.device.destroy_image(depth.image, None);
-                self.device.free_memory(depth.memory, None);
+            if self.depth.take().is_some() {
                 self.depth = Some(self.create_depth_target()?);
             }
             self.out_of_date = false;
@@ -176,7 +173,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// No frame may be recording: it submits setup work and waits for the queue.
-    pub(super) unsafe fn create_depth_target(&self) -> Result<DepthTarget, VulkanError> {
+    pub(super) unsafe fn create_depth_target(&self) -> Result<Image, VulkanError> {
         // SAFETY: live handles; the image's memory is bound before the view is made, and the
         // target owns all three.
         unsafe {
@@ -223,6 +220,7 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
+            let depth_image = Image::new(&self.device, (image, memory, view), format);
             // The scene's rendering expects the depth image in its attachment layout, and clears
             // it on load, so nothing needs to survive from the first use.
             let depth = vk::ImageSubresourceRange::default()
@@ -239,12 +237,7 @@ impl VulkanBackend {
                     vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
                 );
             })?;
-            Ok(DepthTarget {
-                image,
-                memory,
-                view,
-                format,
-            })
+            Ok(depth_image)
         }
     }
 }
