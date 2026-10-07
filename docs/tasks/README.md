@@ -178,7 +178,17 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | PLAN-M4 | Kalan entity içeriğini görevlere böl (insansı/dört ayaklı aileler, zırh, ad etiketi, hasar/ölüm (T27 ayrıldı: kırmızı örtü ve ölüm yatışı), binekler, mermiler, çerçeve/tablo) | S | T24 | bitti (8ab67211) |
 | PLAN-M8 | Blok entity çizicileri + `LevelEvent` + partikül sistemini görevlere böl (`TakeItemEntity` paketi + `ItemPickupParticle` eşya toplama animasyonu da burada: parçacık motoru olmadan yapılmaz) | S | T24 | açık |
 | [T46](T46-mob-oznitelikleri.md) | Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek | S | T34c | bitti (99446dc2) |
-| [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | açık |
+| [PLAN-M3d](PLAN-M3d.md) | Kalan kap ekranları ve tarif kitabını görevlere böl | S | – | bitti (HASH) |
+| [T50](T50-loom-cartography-smithing-oracle.md) | Loom, cartography ve smithing ekranlarının oracle'ı | M | – | açık |
+| [T51](T51-anvil-sonuc-tahmini.md) | Örs ve taş çarkı sonucunun istemci tahmini | L | – | açık |
+| [T52](T52-ipucu-bilesen-hash.md) | Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması | M | – | açık |
+| [T53](T53-beacon.md) | İşaret ışığı menüsü ve ekranı (`SetBeacon`) | M | T50 | açık |
+| [T54](T54-brewing-stand.md) | Simya standı menüsü ve ekranı | M | – | açık |
+| [T55](T55-tuccar-menusu.md) | Tüccar menüsü ve `MerchantOffers` | L | T50 | açık |
+| [T56](T56-lectern-kitap.md) | Kürsü menüsü ve kitap görünümü | M | – | açık |
+| [T57](T57-crafter.md) | Crafter menüsü ve ekranı | M | – | açık |
+| [T58](T58-binek-envanteri.md) | At, eşek, katır ve nautilus envanteri | L | T50 | açık |
+| [T59](T59-kap-ipuclari.md) | Kap içeriği ipucu, `#etiket` araması ve eşya süsleri | M | – | açık |
 | [PLAN-M6](PLAN-M3d.md) | Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl | S | – | açık |
 | PLAN-M7 | Ses: bağımlılık kararı ([karar](../audio-backend-decision.md): çıkış `cpal`, çözücü `lewton`) ve görevlere bölme | S | – | bitti |
 | [T60](T60-sounds-json-secim.md) | `sounds.json` çözümü ve ağırlıklı ses seçimi | M | – | bitti (bcbec5b0) |

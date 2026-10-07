@@ -1,0 +1,22 @@
+# T56 — Kürsü menüsü ve kitap görünümü
+
+**Amaç:** `LecternMenu` (kitap yuvası, `ContainerButtonClick` ile sayfa/kitabı alma), `LecternScreen` (`BookViewScreen`'i genişletir), `BookViewScreen` (sayfa çizimi, sayfa düğmeleri); yazılabilir kitap düzenleme ve imzalama [PLAN-M6](PLAN-M3d.md).
+**Bağımlılık:** –. **Boy:** M.
+
+## Oku
+Java: `client/gui/screens/inventory/{LecternScreen,BookViewScreen,PageButton}.java`, `world/inventory/LecternMenu.java`. Rust: `crates/voxel-render/src/gui/screen/container.rs`, `crates/voxel-render/src/gui/font.rs`.
+
+## Oracle
+`container_screen` lectern + `book_view` operation'ı (sayfa metni sarma, sayfa göstergesi, düğme durumları). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
+
+## Kabul
+`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+
+## Kapsam dışı
+Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
+
+## Belgeler
+`docs/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
+
+## Devir notu
+(boş)
