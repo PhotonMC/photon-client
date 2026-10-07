@@ -254,6 +254,21 @@ impl Play {
             voxel_render::vulkan::DrawKind::Shadows,
             &overlays::entity_shadows(&self.session, &self.entity_textures, &camera, local, view),
         )?;
+        let particle_camera = voxel_render::particles::ParticleCamera {
+            orientation: voxel_render::entity::name_tag::camera_orientation(
+                frame.rotation.0,
+                frame.rotation.1,
+            ),
+            position: frame.camera,
+        };
+        self.backend.set_draw(
+            voxel_render::vulkan::DrawKind::Particles,
+            &self.particles.vertices(
+                self.session.world(),
+                &particle_camera,
+                (&frame.frustum, frame.relative, frame.partial as f32),
+            ),
+        )?;
         self.backend.set_draw(
             voxel_render::vulkan::DrawKind::ExperienceOrbs,
             &overlays::experience_orbs(&self.session, &self.entity_textures, &camera, view),

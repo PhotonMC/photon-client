@@ -80,6 +80,59 @@ fn describe(particle: &Particle, world: &ClientWorld, partials: &[f32]) -> Value
     })
 }
 
+/// The particle a row asks for, made by its type's provider with the row's seeds.
+fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Particle, String> {
+    let at = (
+        parsed64(row, "x")?,
+        parsed64(row, "y")?,
+        parsed64(row, "z")?,
+    );
+    let push = (
+        parsed64(row, "xa")?,
+        parsed64(row, "ya")?,
+        parsed64(row, "za")?,
+    );
+    let random = RandomSource::create(row["seed"].as_i64().ok_or("seed must be an integer")?);
+    let mut engine_random = RandomSource::create(
+        row["engine_seed"]
+            .as_i64()
+            .ok_or("engine_seed must be an integer")?,
+    );
+    match string(row, "particle")? {
+        "smoke" => Ok(Particle::smoke(random, at, push, sprites)),
+        "flame" => Ok(Particle::flame(
+            random,
+            at,
+            push,
+            sprites,
+            &mut engine_random,
+        )),
+        "small_flame" => Ok(Particle::small_flame(
+            random,
+            at,
+            push,
+            sprites,
+            &mut engine_random,
+        )),
+        other => Err(format!("unknown particle {other}")),
+    }
+}
+
+/// An array of numbers given as the bits of an `f32` each.
+fn f32_bits(list: &Value) -> Result<Vec<f32>, String> {
+    list.as_array()
+        .ok_or("f32 bits must be an array")?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .and_then(|text| u32::from_str_radix(text, 16).ok())
+                .map(f32::from_bits)
+                .ok_or_else(|| "f32 bits are hex text".to_string())
+        })
+        .collect()
+}
+
 /// `particle_ticks`: a particle made by its type's provider, seeded, then ticked in a scene.
 pub(super) fn particle_ticks_result(request: &Value) -> Result<Value, String> {
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
@@ -91,46 +144,78 @@ pub(super) fn particle_ticks_result(request: &Value) -> Result<Value, String> {
                 .map(|index| format!("sprite_{index}"))
                 .collect(),
         ));
-        let at = (
-            parsed64(row, "x")?,
-            parsed64(row, "y")?,
-            parsed64(row, "z")?,
-        );
-        let push = (
-            parsed64(row, "xa")?,
-            parsed64(row, "ya")?,
-            parsed64(row, "za")?,
-        );
-        let random = RandomSource::create(row["seed"].as_i64().ok_or("seed must be an integer")?);
-        let mut engine_random = RandomSource::create(
-            row["engine_seed"]
-                .as_i64()
-                .ok_or("engine_seed must be an integer")?,
-        );
-        let mut particle = match string(row, "particle")? {
-            "smoke" => Particle::smoke(random, at, push, &sprites),
-            "flame" => Particle::flame(random, at, push, &sprites, &mut engine_random),
-            "small_flame" => Particle::small_flame(random, at, push, &sprites, &mut engine_random),
-            other => return Err(format!("unknown particle {other}")),
-        };
-        let partials: Vec<f32> = row["partials"]
-            .as_array()
-            .ok_or("partials must be an array")?
-            .iter()
-            .map(|value| {
-                value
-                    .as_str()
-                    .and_then(|text| u32::from_str_radix(text, 16).ok())
-                    .map(f32::from_bits)
-                    .ok_or_else(|| "partials are f32 bits".to_string())
-            })
-            .collect::<Result<_, _>>()?;
+        let mut particle = particle_of(row, &sprites)?;
+        let partials = f32_bits(&row["partials"])?;
         let mut states = vec![describe(&particle, &world, &partials)];
         for _ in 0..i32_field(row, "tick_count")? {
             particle.tick(&world);
             states.push(describe(&particle, &world, &partials));
         }
         out.push(json!({"label": string(row, "label")?, "states": states}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `particle_quads`: a particle ticked, then extracted for a camera as the renderer writes it.
+pub(super) fn particle_quads_result(request: &Value) -> Result<Value, String> {
+    use voxel_render::particles::{ParticleCamera, extract};
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let world = movement_world(row)?;
+        let uvs = row["sprite_uvs"]
+            .as_array()
+            .ok_or("sprite_uvs must be an array")?;
+        let sprites = Arc::new(SpriteSet::new(
+            (0..uvs.len())
+                .map(|index| format!("sprite_{index}"))
+                .collect(),
+        ));
+        let mut particle = particle_of(row, &sprites)?;
+        for _ in 0..i32_field(row, "tick_count")? {
+            particle.tick(&world);
+        }
+        let single = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(string(row, key)?, 16)
+                .map(f32::from_bits)
+                .map_err(|error| format!("{key}: {error}"))
+        };
+        if row.get("roll").is_some() {
+            particle.set_roll(single("o_roll")?, single("roll")?);
+        }
+        let camera = ParticleCamera {
+            orientation: voxel_render::entity::name_tag::camera_orientation(
+                single("y_rot")?,
+                single("x_rot")?,
+            ),
+            position: voxel_core::math::Vec3::new(
+                parsed64(row, "camera_x")?,
+                parsed64(row, "camera_y")?,
+                parsed64(row, "camera_z")?,
+            ),
+        };
+        let partial = single("partial")?;
+        let sprite_uvs = f32_bits(&uvs[particle.sprite()])?;
+        let light = particle.light_coords_at(&world, partial);
+        let vertices: Vec<Value> = extract(
+            &particle,
+            &camera,
+            partial,
+            (
+                [sprite_uvs[0], sprite_uvs[1], sprite_uvs[2], sprite_uvs[3]],
+                light,
+            ),
+        )
+        .iter()
+        .map(|vertex| {
+            json!({
+                "x": bits32(vertex.position[0]), "y": bits32(vertex.position[1]),
+                "z": bits32(vertex.position[2]), "u": bits32(vertex.uv[0]),
+                "v": bits32(vertex.uv[1]), "color": vertex.color, "light": vertex.light,
+            })
+        })
+        .collect();
+        out.push(json!({"label": string(row, "label")?, "vertices": vertices}));
     }
     Ok(json!({"rows": out}))
 }
@@ -189,18 +274,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             ),
             status: status_of(string(row, "status")?)?,
         };
-        let partials: Vec<f32> = row["partials"]
-            .as_array()
-            .ok_or("partials must be an array")?
-            .iter()
-            .map(|value| {
-                value
-                    .as_str()
-                    .and_then(|text| u32::from_str_radix(text, 16).ok())
-                    .map(f32::from_bits)
-                    .ok_or_else(|| "partials are f32 bits".to_string())
-            })
-            .collect::<Result<_, _>>()?;
+        let partials = f32_bits(&row["partials"])?;
         let events = row["events"].as_array().ok_or("events must be an array")?;
         let mut ticks = Vec::new();
         for tick in 0..i32_field(row, "tick_count")? {

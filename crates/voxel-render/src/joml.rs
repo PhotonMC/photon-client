@@ -248,6 +248,47 @@ impl Quaternion {
         }
     }
 
+    /// `Quaternionf.rotateZ(angle)`: this turned further about z.
+    pub fn rotate_z(self, angle: f32) -> Self {
+        let sin = sin(angle * 0.5);
+        let cos = cos_from_sin(sin, angle * 0.5);
+        Self {
+            x: self.x * cos + self.y * sin,
+            y: self.y * cos - self.x * sin,
+            z: self.w * sin + self.z * cos,
+            w: self.w * cos - self.z * sin,
+        }
+    }
+
+    /// `Quaternionf.transform(Vector3f)`: a vector turned by the rotation.
+    pub fn transform(&self, [vx, vy, vz]: [f32; 3]) -> [f32; 3] {
+        let w2 = self.w * self.w;
+        let x2 = self.x * self.x;
+        let y2 = self.y * self.y;
+        let z2 = self.z * self.z;
+        let zw = self.z * self.w;
+        let xy = self.x * self.y;
+        let xz = self.x * self.z;
+        let yw = self.y * self.w;
+        let yz = self.y * self.z;
+        let xw = self.x * self.w;
+        let k = 1.0 / (x2 + y2 + z2 + w2);
+        [
+            ((x2 - y2 - z2 + w2) * k).mul_add(
+                vx,
+                (2.0 * (xy - zw) * k).mul_add(vy, 2.0 * (xz + yw) * k * vz),
+            ),
+            (2.0 * (xy + zw) * k).mul_add(
+                vx,
+                ((y2 - x2 - z2 + w2) * k).mul_add(vy, 2.0 * (yz - xw) * k * vz),
+            ),
+            (2.0 * (xz - yw) * k).mul_add(
+                vx,
+                (2.0 * (yz + xw) * k).mul_add(vy, (z2 - x2 - y2 + w2) * k * vz),
+            ),
+        ]
+    }
+
     /// The rotation's 3x3, in the library's shared expansion.
     fn expand(&self) -> [f32; 9] {
         let w2 = self.w * self.w;

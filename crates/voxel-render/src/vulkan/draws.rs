@@ -30,6 +30,9 @@ pub enum DrawKind {
     /// The next frame's experience orbs, as triangles that sample the
     /// entity textures.
     ExperienceOrbs,
+    /// The next frame's particles, as triangles that sample the entity textures: the quads
+    /// the opaque layer draws, each vertex lit by the lightmap.
+    Particles,
 }
 
 impl VulkanBackend {
@@ -131,6 +134,7 @@ impl VulkanBackend {
             DrawKind::GroundItems => &mut self.ground,
             DrawKind::Shadows => &mut self.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
+            DrawKind::Particles => &mut self.particle,
         }
     }
 

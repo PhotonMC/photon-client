@@ -185,6 +185,7 @@ impl VulkanBackend {
             Run::Glint => list(&self.glint),
             Run::Rays => list(&self.rays),
             Run::Orb => list(&self.orb),
+            Run::Particle => list(&self.particle),
             Run::Map => list(&self.map),
             Run::MapDecoration => list(&self.map_decoration),
             Run::NameTagSeeThrough => list(&self.name_tag_see),

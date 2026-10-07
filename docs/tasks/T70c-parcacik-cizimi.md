@@ -19,4 +19,6 @@ Başka partikül sınıfları (T71–T77).
 Bu görevin kaydı ve `docs/index.md`.
 
 ## Devir notu
-(boş)
+- **Yapılan:** `voxel-render/src/particles.rs` (`extract`, `quad`), `Quaternion::{rotate_z,transform}`; Vulkan `DrawKind::Particles`/`Run::Particle`/`Pass::Particles` (varlık boru hattı ve dokusu); uygulamada `Particles::{textures,bind_textures,vertices}` (partikül dokuları varlık atlasına). Oracle `particle_quads`; kayıt: `client-particle-quads-parity-conformance.md`.
+- **Kabul:** `shot` ile `/particle flame|smoke|small_flame` canlı görüldü; çalıştırma raporuna `particle_packets` ve `most_particles` eklendi. İpucu: istemcinin açılışı ~16 sn sürer, `shot` `--wait` ve betik uzunluğu partiküller canlıyken yakalamaya göre seçilir (ör. `none=44`, `--wait 18`).
+- **Açık:** yarı saydam katman ve ayrı partikül atlası; `ParticleStatus` seçeneği; sağlayıcılar (T71–T77).

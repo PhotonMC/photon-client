@@ -101,6 +101,7 @@ impl VulkanBackend {
                 ground: DrawList::default(),
                 name_tag_see: DrawList::default(),
                 orb: DrawList::default(),
+                particle: DrawList::default(),
                 shadow: DrawList::default(),
                 glow: DrawList::default(),
                 swirl: DrawList::default(),

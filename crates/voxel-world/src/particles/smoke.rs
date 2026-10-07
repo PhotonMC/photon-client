@@ -24,10 +24,8 @@ impl Particle {
             random,
             at,
             (0.0, 0.0, 0.0),
-            sprites.first(),
-            Kind::AshSmoke {
-                sprites: Arc::clone(sprites),
-            },
+            (sprites, sprites.first()),
+            Kind::AshSmoke,
         )
         .quad();
         particle.friction = 0.96;
@@ -48,7 +46,7 @@ impl Particle {
             / (f64::from(particle.random.next_float()) * 0.8 + 0.2)
             * f64::from(scale)) as i32;
         particle.lifetime = particle.lifetime.max(1);
-        particle.set_sprite_from_age(sprites);
+        particle.set_sprite_from_age();
         particle.has_physics = has_physics;
         particle
     }

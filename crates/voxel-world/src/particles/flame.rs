@@ -1,5 +1,7 @@
 //! `FlameParticle` on `RisingParticle`.
 
+use std::sync::Arc;
+
 use voxel_core::random::RandomSource;
 
 use super::particle::{Kind, Particle};
@@ -12,7 +14,7 @@ impl Particle {
         random: RandomSource,
         at: (f64, f64, f64),
         push: (f64, f64, f64),
-        sprite: usize,
+        sprite: (&Arc<SpriteSet>, usize),
     ) -> Self {
         let mut particle = Self::thrown(random, at, push, sprite, Kind::Flame).quad();
         particle.friction = 0.96;
@@ -35,11 +37,11 @@ impl Particle {
         random: RandomSource,
         at: (f64, f64, f64),
         push: (f64, f64, f64),
-        sprites: &SpriteSet,
+        sprites: &Arc<SpriteSet>,
         engine_random: &mut RandomSource,
     ) -> Self {
         let sprite = sprites.from_random(engine_random);
-        Self::flame_of(random, at, push, sprite)
+        Self::flame_of(random, at, push, (sprites, sprite))
     }
 
     /// `FlameParticle.SmallFlameProvider`: half the size.
@@ -47,7 +49,7 @@ impl Particle {
         random: RandomSource,
         at: (f64, f64, f64),
         push: (f64, f64, f64),
-        sprites: &SpriteSet,
+        sprites: &Arc<SpriteSet>,
         engine_random: &mut RandomSource,
     ) -> Self {
         let mut particle = Self::flame(random, at, push, sprites, engine_random);

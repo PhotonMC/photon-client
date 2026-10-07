@@ -33,6 +33,7 @@ public final class MovementOracle extends MovementParticleOracle {
                 case "particle_types" -> rows.add(particleTypes(element.getAsJsonObject()));
                 case "particle_ticks" -> rows.add(particleTicks(element.getAsJsonObject()));
                 case "particle_engine" -> rows.add(particleEngine(element.getAsJsonObject()));
+                case "particle_quads" -> rows.add(particleQuads(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }

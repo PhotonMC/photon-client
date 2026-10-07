@@ -12,6 +12,7 @@ pub mod item_model;
 pub mod joml;
 pub mod model;
 pub mod objects;
+pub mod particles;
 pub mod render_types;
 pub mod resolve;
 pub mod scene;

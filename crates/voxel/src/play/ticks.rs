@@ -16,6 +16,7 @@ impl Play {
             .map(|text| Script::parse(&text))
             .transpose()?;
 
+        let mut particles = crate::particles::Particles::load(&root);
         let mut session = join(server, &username, auto_jump)?;
         let position = report_spawn(&session)?;
         let (mut surface, mut backend, size) = open_window(width, height)?;
@@ -82,6 +83,7 @@ impl Play {
                 .map(str::to_owned)
                 .chain(villagers::textures())
                 .chain(armor.textures())
+                .chain(particles.textures().iter().cloned())
                 // A texture two layers share is packed once.
                 .scan(std::collections::HashSet::new(), |seen, name| {
                     Some(seen.insert(name.clone()).then_some(name))
@@ -98,6 +100,7 @@ impl Play {
         )
         .ok_or("the entity textures did not fit")?;
         backend.load_entity_texture(&entity_textures.image)?;
+        particles.bind_textures(&entity_textures);
         let skin_rect = entity_textures
             .rect(skin.texture)
             .ok_or("the player's skin")?;
@@ -184,7 +187,7 @@ impl Play {
             ticks: 0,
             sounds_heard: 0,
             sound,
-            particles: crate::particles::Particles::load(&root),
+            particles,
             frames: 0,
             profile: FrameProfile::from_env(),
             bench: Bench::from_env(),
@@ -277,7 +280,7 @@ impl Play {
             self.limiter.wait(limit);
         }
         println!(
-            "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={}",
+            "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={} particle_packets={} most_particles={}",
             self.frames,
             self.ticks,
             self.session.entity_count(),
@@ -285,7 +288,9 @@ impl Play {
             self.sounds_heard,
             self.sound
                 .as_ref()
-                .map_or(0, SoundSystem::local_sound_count)
+                .map_or(0, SoundSystem::local_sound_count),
+            self.particles.report().0,
+            self.particles.report().1
         );
         Ok(())
     }

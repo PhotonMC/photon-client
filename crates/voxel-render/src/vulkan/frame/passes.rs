@@ -17,6 +17,8 @@ pub(super) enum Pass {
     Cracks,
     /// The translucent terrain, the farthest section first.
     Translucent,
+    /// The particles over the water, before the clouds.
+    Particles,
     /// The clouds after the terrain, tested against and writing depth.
     Clouds,
     /// Rain and snow over everything, leaving the depth alone.
@@ -28,13 +30,14 @@ pub(super) enum Pass {
 }
 
 /// The passes in draw order.
-pub(super) const PASSES: [Pass; 10] = [
+pub(super) const PASSES: [Pass; 11] = [
     Pass::Sky,
     Pass::Terrain,
     Pass::Entities,
     Pass::Outline,
     Pass::Cracks,
     Pass::Translucent,
+    Pass::Particles,
     Pass::Clouds,
     Pass::Weather,
     Pass::Hand,
@@ -52,7 +55,7 @@ impl Pass {
             Self::Translucent => Some(5),
             Self::Weather => Some(6),
             Self::Hand => Some(7),
-            Self::Outline | Self::Clouds | Self::Gui => None,
+            Self::Outline | Self::Particles | Self::Clouds | Self::Gui => None,
         }
     }
 }
@@ -78,6 +81,8 @@ pub(super) enum Run {
     Rays,
     /// Experience orbs: blended quads over the entity textures.
     Orb,
+    /// Particles: quads over the entity textures, cut out by their alpha.
+    Particle,
     /// The maps in item frames, drawn as text is.
     Map,
     MapDecoration,
@@ -144,7 +149,7 @@ impl Run {
     pub(super) fn pipeline(self, scene: &SceneResources) -> &Pipeline {
         match self {
             Self::Ground | Self::Held => &scene.held_pipeline,
-            Self::Entity | Self::Hand => &scene.entity_pipeline,
+            Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
             Self::Swirl => &scene.swirl_pipeline,
@@ -174,6 +179,7 @@ impl Run {
             | Self::Glint
             | Self::Rays
             | Self::Orb
+            | Self::Particle
             | Self::MapDecoration
             | Self::Hand => Sampled::Entity,
         }
@@ -192,7 +198,8 @@ mod tests {
         // The terrain is under the entities, the water over them, the hand over the weather.
         assert!(position(Pass::Terrain) < position(Pass::Entities));
         assert!(position(Pass::Entities) < position(Pass::Translucent));
-        assert!(position(Pass::Translucent) < position(Pass::Clouds));
+        assert!(position(Pass::Translucent) < position(Pass::Particles));
+        assert!(position(Pass::Particles) < position(Pass::Clouds));
         assert!(position(Pass::Clouds) < position(Pass::Weather));
         assert!(position(Pass::Weather) < position(Pass::Hand));
         assert!(position(Pass::Hand) < position(Pass::Gui));

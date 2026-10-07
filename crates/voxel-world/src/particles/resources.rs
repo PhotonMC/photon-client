@@ -39,6 +39,21 @@ impl ParticleResources {
         Self::default()
     }
 
+    /// The textures every bound type lists, each once, in the order they are listed.
+    pub fn texture_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for particle in voxel_data::particle_type::PARTICLE_TYPES {
+            if let Some(sprites) = self.sprite_sets.get(particle.name) {
+                for name in sprites.names() {
+                    if !names.contains(name) {
+                        names.push(name.clone());
+                    }
+                }
+            }
+        }
+        names
+    }
+
     /// Binds the textures of a type (`MutableSpriteSet.rebind`); a type that is not carried is ignored.
     pub fn set_sprites(&mut self, name: &str, sprites: SpriteSet) {
         if let Some(entry) = particle_type::PARTICLE_TYPES

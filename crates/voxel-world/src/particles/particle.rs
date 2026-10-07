@@ -20,7 +20,7 @@ const MAXIMUM_COLLISION_VELOCITY_SQUARED: f64 = 10_000.0;
 pub(super) enum Kind {
     /// `BaseAshSmokeParticle`: the picture follows the age, the quad grows in over the first
     /// thirty-second of its life.
-    AshSmoke { sprites: Arc<SpriteSet> },
+    AshSmoke,
     /// `FlameParticle`: goes through blocks, shrinks and glows as it ages.
     Flame,
 }
@@ -58,6 +58,8 @@ pub struct Particle {
     pub(super) alpha: f32,
     pub(super) roll: f32,
     pub(super) o_roll: f32,
+    /// The textures its type lists, and which of them it shows.
+    pub(super) sprites: Arc<SpriteSet>,
     pub(super) sprite: usize,
     pub(super) kind: Kind,
 }
@@ -67,7 +69,7 @@ impl Particle {
     pub(super) fn at(
         random: RandomSource,
         (x, y, z): (f64, f64, f64),
-        sprite: usize,
+        (sprites, sprite): (&Arc<SpriteSet>, usize),
         kind: Kind,
     ) -> Self {
         let mut particle = Self {
@@ -101,6 +103,7 @@ impl Particle {
             alpha: 1.0,
             roll: 0.0,
             o_roll: 0.0,
+            sprites: Arc::clone(sprites),
             sprite,
             kind,
         };
@@ -116,7 +119,7 @@ impl Particle {
         random: RandomSource,
         at: (f64, f64, f64),
         (xa, ya, za): (f64, f64, f64),
-        sprite: usize,
+        sprite: (&Arc<SpriteSet>, usize),
         kind: Kind,
     ) -> Self {
         let mut particle = Self::at(random, at, sprite, kind);
@@ -191,9 +194,9 @@ impl Particle {
     }
 
     /// `SingleQuadParticle.setSpriteFromAge`.
-    pub(super) fn set_sprite_from_age(&mut self, sprites: &SpriteSet) {
+    pub(super) fn set_sprite_from_age(&mut self) {
         if !self.removed {
-            self.sprite = sprites.from_age(self.age, self.lifetime);
+            self.sprite = self.sprites.from_age(self.age, self.lifetime);
         }
     }
 
@@ -221,9 +224,8 @@ impl Particle {
                 self.zd *= f64::from(0.7_f32);
             }
         }
-        if let Kind::AshSmoke { sprites } = &self.kind {
-            let sprites = Arc::clone(sprites);
-            self.set_sprite_from_age(&sprites);
+        if matches!(self.kind, Kind::AshSmoke) {
+            self.set_sprite_from_age();
         }
     }
 
@@ -275,7 +277,7 @@ impl Particle {
     /// The size of the quad at a partial tick: `getQuadSize`.
     pub fn quad_size_at(&self, partial: f32) -> f32 {
         match self.kind {
-            Kind::AshSmoke { .. } => {
+            Kind::AshSmoke => {
                 self.quad_size
                     * clamp_f32(
                         (self.age as f32 + partial) / self.lifetime as f32 * 32.0,
@@ -294,7 +296,7 @@ impl Particle {
     pub fn light_coords_at(&self, world: &ClientWorld, partial: f32) -> i32 {
         let light = particle_light(world, self.x, self.y, self.z);
         match self.kind {
-            Kind::AshSmoke { .. } => light,
+            Kind::AshSmoke => light,
             Kind::Flame => {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
@@ -347,6 +349,13 @@ impl Particle {
         [self.r_col, self.g_col, self.b_col, self.alpha]
     }
 
+    /// Turns the quad about its own axis: the roll of the last tick and of this one.
+    pub fn set_roll(&mut self, previous: f32, roll: f32) {
+        self.o_roll = previous;
+        self.roll = roll;
+    }
+
+    /// The roll of the last tick and of this one.
     pub fn roll(&self) -> (f32, f32) {
         (self.o_roll, self.roll)
     }
@@ -362,5 +371,10 @@ impl Particle {
     /// Where in its sprite set the picture it has now is.
     pub fn sprite(&self) -> usize {
         self.sprite
+    }
+
+    /// The texture it shows now: one of the names its type lists.
+    pub fn sprite_name(&self) -> &str {
+        &self.sprites.names()[self.sprite]
     }
 }

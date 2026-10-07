@@ -66,6 +66,7 @@ def particle_cases():
     yield from particle_type_cases()
     yield from particle_tick_cases()
     yield from particle_engine_cases()
+    yield from particle_quad_cases()
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
@@ -127,4 +128,45 @@ def particle_engine_cases():
                    ticks=3, seeds=28000, describe=3),
     ]
     yield {"case_id": "movement/particle-engine", "family": "movement", "operation": "particle_engine",
+           "rows": rows}
+
+
+def sprite_uvs(count):
+    return [[float_bits((i * 16 + 1) / 128), float_bits((i * 16 + 15) / 128), float_bits(3 / 64),
+             float_bits(11 / 64)] for i in range(count)]
+
+
+def quad_row(label, particle, seed, ticks, camera, rotation, partial, roll=None, sprites=8):
+    row = {
+        "label": label, "particle": particle, "blocks": [], "chunk_radius": 1,
+        "x": float_bits(0.5, "f64"), "y": float_bits(70.0, "f64"), "z": float_bits(0.5, "f64"),
+        "xa": float_bits(0.01, "f64"), "ya": float_bits(0.02, "f64"), "za": float_bits(-0.01, "f64"),
+        "seed": seed, "engine_seed": 7, "sprite_uvs": sprite_uvs(sprites), "tick_count": ticks,
+        "camera_x": float_bits(camera[0], "f64"), "camera_y": float_bits(camera[1], "f64"),
+        "camera_z": float_bits(camera[2], "f64"), "y_rot": float_bits(rotation[0]),
+        "x_rot": float_bits(rotation[1]), "partial": float_bits(partial),
+    }
+    if roll is not None:
+        row["o_roll"] = float_bits(roll[0])
+        row["roll"] = float_bits(roll[1])
+    return row
+
+
+def particle_quad_cases():
+    rows = [
+        # The quad faces the camera whichever way it looks, at each partial tick.
+        quad_row("smoke-facing-south", "smoke", 12345, 4, (0.5, 70.0, 5.5), (0.0, 0.0), 0.0),
+        quad_row("smoke-turned", "smoke", 12345, 4, (3.25, 71.5, -2.5), (90.0, 30.0), 0.5),
+        quad_row("smoke-behind-and-above", "smoke", 77, 6, (-4.0, 80.0, 6.0), (-135.0, -60.0), 0.37),
+        quad_row("smoke-looking-up", "smoke", 77, 6, (0.5, 60.0, 0.5), (200.0, 80.0), 1.0),
+        quad_row("smoke-far-from-the-origin", "smoke", 5, 3, (1000.25, 70.0, -30000.5), (10.0, 5.0), 0.25),
+        quad_row("flame-facing-south", "flame", 12345, 3, (0.5, 70.0, 5.5), (0.0, 0.0), 0.0, sprites=1),
+        quad_row("flame-turned", "flame", 4242, 5, (-3.0, 69.0, 2.0), (45.0, -20.0), 0.75, sprites=1),
+        quad_row("small-flame", "small_flame", 4242, 5, (-3.0, 69.0, 2.0), (45.0, -20.0), 0.75, sprites=1),
+        # A turn of the quad about its own axis: the particle's roll, between its last and its new.
+        quad_row("smoke-rolled", "smoke", 12345, 4, (3.25, 71.5, -2.5), (90.0, 30.0), 0.5, roll=(0.25, 0.75)),
+        quad_row("smoke-rolled-at-the-end", "smoke", 12345, 4, (0.5, 70.0, 5.5), (0.0, 0.0), 1.0,
+                 roll=(-1.5, 2.0)),
+    ]
+    yield {"case_id": "movement/particle-quads", "family": "movement", "operation": "particle_quads",
            "rows": rows}

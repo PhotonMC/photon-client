@@ -378,4 +378,117 @@ class MovementParticleOracle extends MovementMenuOracle {
         }
         return all;
     }
+
+    /** Keeps each vertex a particle quad writes: where, its texture coordinate, colour and light. */
+    static final class QuadCapture implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final JsonArray vertices = new JsonArray();
+        private JsonObject current;
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.current = new JsonObject();
+            this.current.addProperty("x", Oracle.bits(x));
+            this.current.addProperty("y", Oracle.bits(y));
+            this.current.addProperty("z", Oracle.bits(z));
+            this.vertices.add(this.current);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            this.current.addProperty("color", color);
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            this.current.addProperty("u", Oracle.bits(u));
+            this.current.addProperty("v", Oracle.bits(v));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            this.current.addProperty("light", u | v << 16);
+            return this;
+        }
+
+        @Override
+        public void addVertex(
+            final float x, final float y, final float z, final int color, final float u, final float v,
+            final int overlayCoords, final int lightCoords, final float nx, final float ny, final float nz) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float x, final float y, final float z) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * A particle of the reference, ticked, then extracted for a camera and written as the quad
+     * the renderer writes: the four vertices of its layer's buffer. The sprites are told apart by
+     * the texture coordinates the scenario gives them.
+     */
+    static JsonObject particleQuads(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        var uvs = row.getAsJsonArray("sprite_uvs");
+        var sprites = new SpriteSetProbe(uvs.size());
+        for (int i = 0; i < uvs.size(); i++) {
+            var coordinates = uvs.get(i).getAsJsonArray();
+            var sprite = sprites.sprites.get(i);
+            int at = 0;
+            for (var name : new String[] {"u0", "u1", "v0", "v1"}) {
+                float value = Float.intBitsToFloat(Integer.parseUnsignedInt(coordinates.get(at++).getAsString(), 16));
+                setField(sprite, name, value);
+            }
+        }
+        var at = new double[] {Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+            Oracle.f64(row, "xa"), Oracle.f64(row, "ya"), Oracle.f64(row, "za")};
+        var particle = seededParticle(row.get("seed").getAsLong(),
+            () -> makeParticle(row.get("particle").getAsString(), sprites, level, at,
+                net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong())));
+        for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            particle.tick();
+        }
+        var camera = new net.minecraft.client.Camera();
+        var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition", net.minecraft.world.phys.Vec3.class);
+        setPosition.setAccessible(true);
+        setPosition.invoke(camera, new net.minecraft.world.phys.Vec3(
+            Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"), Oracle.f64(row, "camera_z")));
+        var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class, float.class);
+        setRotation.setAccessible(true);
+        setRotation.invoke(camera, Oracle.f32(row, "y_rot"), Oracle.f32(row, "x_rot"));
+        if (row.has("roll")) {
+            setField(particle, "oRoll", Oracle.f32(row, "o_roll"));
+            setField(particle, "roll", Oracle.f32(row, "roll"));
+        }
+        var state = new net.minecraft.client.renderer.state.level.QuadParticleRenderState();
+        ((net.minecraft.client.particle.SingleQuadParticle) particle).extract(state, camera, Oracle.f32(row, "partial"));
+        var capture = new QuadCapture();
+        for (var layer : state.layers()) {
+            state.buildLayer(layer, capture);
+        }
+        entry.add("vertices", capture.vertices);
+        return entry;
+    }
 }
