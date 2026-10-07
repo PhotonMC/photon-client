@@ -187,7 +187,8 @@ Boyut: S ≈ yarım oturum, M ≈ bir oturum, L ≈ zor oturum (sığmazsa böl)
 | [T62](T62-ogg-vorbis-cozumu.md) | Ogg/Vorbis çözümü (`lewton`, JOrbis ile PCM karşılaştırması) | M | – | bitti (16260689) |
 | [T63](T63-ses-cikisi-cpal.md) | Ses çıkışı (`cpal`): kanal havuzu, sönüm, perde, miks | L | T61b, T62 | bitti (f4381a44) |
 | [T64](T64-ses-tetikleri-muzik.md) | Oyun ses tetikleri (adım, kırma, hasar, ortam) ve müzik | L | T63 | bölündü (3659d38e) |
-| [T64b](T64b-ses-tetikleri-kalan.md) | Kalan oyun sesleri ve müzik (atlama/iniş, hasar, ortam, yağmur, müzik; tetik oracle'ı) | L | T64 | açık |
+| [T64b](T64b-ses-tetikleri-kalan.md) | Oyuncunun hareket sesleri ve tetik oracle'ı (adım, yüzme, sıçrama, iniş, kabarcık sütunu) | L | T64 | bitti (HASH) |
+| [T64c](T64c-ses-tetikleri-son.md) | Hasar, ortam, olay sesleri ve müzik | L | T64b | açık |
 | [T65](T65-ses-ayarlari-ekrani.md) | Ses ayarları ekranı | M | T63, T06 | bitti (a9e6230d) |
 | [T66](T66-hud-durum-oracle.md) | HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) | M | T45 | bitti (5814a8cd) |
 | PLAN-M9 | Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl | S | – | açık |

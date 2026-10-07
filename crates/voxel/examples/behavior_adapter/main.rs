@@ -20668,7 +20668,42 @@ fn movement_result(request: &Value) -> Result<Value, String> {
             packets.extend(sent.iter().map(
                 |packet| json!({"type": packet.type_name(), "bytes": hex(&packet.encode_body())}),
             ));
+            // The sounds the tick asked for (the player's own, and the world's: a block's), in a fixed order.
+            let mut sounds: Vec<String> = player
+                .take_sounds()
+                .into_iter()
+                .chain(world.take_sounds())
+                .map(|sound| {
+                    let source = match sound.source {
+                        voxel_world::local_player::LocalSoundSource::Players => "player",
+                        voxel_world::local_player::LocalSoundSource::Blocks => "block",
+                    };
+                    // The swim and splash sounds' pitch is random in Java and is compared by volume only.
+                    let pitch = if sound.event == "minecraft:entity.player.swim"
+                        || sound.event.starts_with("minecraft:entity.player.splash")
+                    {
+                        0.0_f32
+                    } else {
+                        sound.pitch
+                    };
+                    format!(
+                        "{},{source},{:08x},{:08x},{:016x},{:016x},{:016x}",
+                        sound.event,
+                        sound.volume.to_bits(),
+                        pitch.to_bits(),
+                        sound.position.0.to_bits(),
+                        sound.position.1.to_bits(),
+                        sound.position.2.to_bits()
+                    )
+                })
+                .collect();
+            sounds.sort();
+            // The fall of a vehicle that lands is passed on to its passenger, which is not ported.
+            if ridden.is_some() {
+                sounds.clear();
+            }
             let mut described = json!({
+                "sounds": sounds,
                 "x": format!("{:016x}", position.x.to_bits()),
                 "y": format!("{:016x}", position.y.to_bits()),
                 "z": format!("{:016x}", position.z.to_bits()),

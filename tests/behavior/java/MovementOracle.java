@@ -40,9 +40,45 @@ public final class MovementOracle {
             super(null);
         }
 
+        /** The sounds asked for since the last tick was described: the sound, source, volume, pitch and place. */
+        static final java.util.List<String> PLAYED = new java.util.ArrayList<>();
+
         @Override
         public net.minecraft.client.sounds.SoundEngine.PlayResult play(
             net.minecraft.client.resources.sounds.SoundInstance instance) {
+            // The volume and pitch asked for: the instance has not been resolved against a sound.
+            float volume;
+            float pitch;
+            try {
+                var volumeField = net.minecraft.client.resources.sounds.AbstractSoundInstance.class.getDeclaredField("volume");
+                var pitchField = net.minecraft.client.resources.sounds.AbstractSoundInstance.class.getDeclaredField("pitch");
+                volumeField.setAccessible(true);
+                pitchField.setAccessible(true);
+                volume = (float) volumeField.get(instance);
+                pitch = (float) pitchField.get(instance);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException(failure);
+            }
+            // The player's ambient sounds (underwater additions, the cave's) are drawn by chance from a
+            // random source the scene does not seed: they are left out.
+            // The honey block's slide sound while sliding down it is a one-in-five chance each tick, from
+            // the level's random; the one of landing on it is certain and is kept.
+            boolean chanceSlide = false;
+            for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
+                chanceSlide |= frame.getMethodName().equals("maybeDoSlideEffects");
+            }
+            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT || chanceSlide) {
+                return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
+            }
+            // The swim and splash sounds' pitch is drawn from the entity's own random source, which the scene
+            // does not seed: it is compared by volume and place only.
+            String played = instance.getIdentifier().toString();
+            if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")) {
+                pitch = 0.0F;
+            }
+            PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","
+                + Oracle.bits(volume) + "," + Oracle.bits(pitch) + ","
+                + Oracle.bits(instance.getX()) + "," + Oracle.bits(instance.getY()) + "," + Oracle.bits(instance.getZ()));
             return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
         }
 
@@ -2437,6 +2473,8 @@ public final class MovementOracle {
                 player.setXRot(Oracle.f32(input, "x_rot"));
             }
             wire.sent.clear();
+            // Sounds of the setup (and of earlier scenes) are not this tick's.
+            SilentSoundManager.PLAYED.clear();
             if (input.has("attack")) {
                 attack(minecraft, level, input, startAttack, continueAttack);
             }
@@ -2446,6 +2484,9 @@ public final class MovementOracle {
             level.tickNonPassenger(vehicle != null ? vehicle : player);
             var described = describe(player, wire.sent);
             if (vehicle != null) {
+                // The fall of a vehicle that lands is passed on to its passenger (its sounds); that
+                // is not ported, so a ridden tick's sounds are not compared.
+                described.add("sounds", new JsonArray());
                 described.add("vehicle", describeVehicle(vehicle));
             }
             if (input.has("attack")) {
@@ -2916,6 +2957,11 @@ public final class MovementOracle {
             packets.add(described);
         }
         tick.add("sent", packets);
+        // The sounds the tick asked for, in a fixed order (the order they were asked in is not compared).
+        var sounds = new JsonArray();
+        SilentSoundManager.PLAYED.stream().sorted().forEach(sounds::add);
+        SilentSoundManager.PLAYED.clear();
+        tick.add("sounds", sounds);
         return tick;
     }
 

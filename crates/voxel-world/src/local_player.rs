@@ -859,6 +859,13 @@ pub struct LocalPlayer {
     bob_old: f32,
     first_tick: bool,
     tick_count: i32,
+    /// `Entity.random`: the pitch of the player's sounds is drawn from it. The reference seeds
+    /// it from nowhere in particular; this one from the entity's number.
+    random: voxel_core::random::RandomSource,
+    /// `BubbleColumnAmbientSoundHandler`: whether the last tick was in a bubble column, and
+    /// whether it is the first.
+    was_in_bubble_column: bool,
+    ambient_first_tick: bool,
     /// `LivingEntity.elytraAnimationState`: the local player never glides in this port.
     elytra: crate::elytra::ElytraState,
     /// `Entity.moveDist` and `nextStep`: how far the player has walked, and where the next step sounds.
@@ -976,6 +983,9 @@ impl LocalPlayer {
             bob_old: 0.0,
             first_tick: true,
             tick_count: 0,
+            random: voxel_core::random::RandomSource::create(i64::from(entity_id)),
+            was_in_bubble_column: false,
+            ambient_first_tick: true,
             move_dist: 0.0,
             next_step: 1.0,
             pending_sounds: Vec::new(),
@@ -1401,6 +1411,7 @@ impl LocalPlayer {
             self.last_sent_input = self.input.key_presses;
         }
         self.send_position();
+        self.tick_ambient_sounds(&level);
         Ok(std::mem::take(&mut self.sent))
     }
 
@@ -1469,6 +1480,7 @@ impl LocalPlayer {
                 on_ground: boat.on_ground,
             });
         }
+        self.tick_ambient_sounds(&level);
         if self.sprinting != self.was_sprinting {
             self.sent.push(ServerboundMovement::PlayerCommand {
                 entity_id: self.entity_id,
@@ -2191,7 +2203,7 @@ impl LocalPlayer {
 
         let effect_pos = self.get_on_pos(level, 0.2);
         let effect_state = level.info(effect_pos);
-        self.check_fall_damage(level, movement.y)?;
+        self.check_fall_damage(level, movement.y, effect_pos)?;
 
         if moved_vertically && self.vertical_collision || self.horizontal_collision {
             self.restitute_movement_after_collisions(
@@ -2227,7 +2239,12 @@ impl LocalPlayer {
         Ok(())
     }
 
-    fn check_fall_damage(&mut self, level: &Level<'_>, ya: f64) -> Result<(), Unsupported> {
+    fn check_fall_damage(
+        &mut self,
+        level: &Level<'_>,
+        ya: f64,
+        pos: BlockPos,
+    ) -> Result<(), Unsupported> {
         if !self.is_in_water() {
             self.update_fluid_interaction(level)?;
         }
@@ -2235,7 +2252,10 @@ impl LocalPlayer {
             self.fall_distance -= f64::from(ya as f32);
         }
         if self.on_ground {
-            // The fall itself only hurts on the server; the client resets.
+            // The fall itself only hurts on the server; the client lands with the sounds.
+            if self.fall_distance > 0.0 {
+                self.fall_on(level, pos, self.fall_distance);
+            }
             self.fall_distance = 0.0;
         }
         Ok(())
@@ -2678,6 +2698,9 @@ impl LocalPlayer {
         let in_lava = self.lava.height > 0.0;
         if in_water {
             self.fall_distance = 0.0;
+        }
+        if in_water && !self.was_touching_water && !self.first_tick {
+            self.water_splash_sound();
         }
         self.was_touching_water = in_water;
         if !self.abilities.flying {

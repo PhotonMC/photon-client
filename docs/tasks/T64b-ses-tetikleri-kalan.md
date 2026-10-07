@@ -1,6 +1,6 @@
 # T64b — Kalan oyun sesleri ve müzik
 
-**Amaç:** T64a'dan kalanlar: atlama/iniş/düşme sesleri, oyuncu hasarı ve ölüm, ametist tınısı, su sıçraması, yağmur ve ortam (mağara, su altı) döngüleri, kapı/sandık gibi `LevelEvent` sesleri, eşya kullanım sesleri, `MusicManager` (menü/oyun müziği, bekleme, tohumlu seçim); T64a'nın tetiklerinin gerçek Java'ya (MovementOracle, `Level.playSound`) karşı karşılaştırılması.
+**Amaç:** T64a'nın hareket seslerini (adım, yüzme) gerçek Java'ya (`MovementOracle`, sessiz `SoundManager` kaydı) karşı karşılaştırmak; eksik hareket seslerini eklemek: iniş/düşme (`causeFallDamage`, blok `fallOn`), su sıçraması, kabarcık sütununa girme. Hasar, ortam, `LevelEvent` ve müzik [T64c](T64c-ses-tetikleri-son.md)'ye ayrıldı.
 **Bağımlılık:** T64. **Boy:** L.
 
 ## Oku
@@ -17,4 +17,6 @@ Mob sesleri (aile görevlerinde), altyazılar.
 `docs/client-block-sounds-conformance.md` sapma listesi.
 
 ## Devir notu
-(boş)
+- Yapıldı: gerçek `LocalPlayer` sahnesinin çaldığı sesler `local-player-ticks` satırlarına `sounds` olarak girdi (olay, kaynak, ses, perde, yer; bit bit). Rust: iniş (`fall_on`: saman, bal, toz karı, yatak, sivri damlataş; `cause_fall_damage`, blok düşme sesi), su sıçraması, `BubbleColumnAmbientSoundHandler`, varlığın kendi rastgelesi (`Entity.random`).
+- Oracle: rastgele sesler karşılaştırılmaz (ortam, bal kayması; yüzme/sıçrama perdesi `0`); binekteki oyuncunun sesleri alınmaz (düşüş yolcuya aktarımı yok). Kayıt: `docs/client-block-sounds-conformance.md`.
+- Açık: [T64c](T64c-ses-tetikleri-son.md).

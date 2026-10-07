@@ -4,7 +4,6 @@
 
 use voxel_core::binary::BlockPos;
 use voxel_core::math::Vec3;
-use voxel_core::random::RandomSource;
 
 use super::{ClientEntityPose, Level, LocalPlayer};
 
@@ -110,6 +109,138 @@ impl LocalPlayer {
         self.play_muffled_step(level, secondary);
     }
 
+    /// `LivingEntity.causeFallDamage`, for the sounds: a fall that would hurt makes the player's
+    /// small or big fall sound and the block's. Whether it would is the result.
+    fn cause_fall_damage(&mut self, level: &Level<'_>, distance: f64, modifier: f32) -> bool {
+        if self.abilities.may_fly {
+            return false;
+        }
+        // The default safe fall distance (3) and fall damage multiplier (1).
+        let damage = (distance + 1.0e-6 - 3.0) * f64::from(modifier) * 1.0;
+        let damage = damage.floor() as i32;
+        if damage <= 0 {
+            return false;
+        }
+        let sound = if damage > 4 {
+            "minecraft:entity.player.big_fall"
+        } else {
+            "minecraft:entity.player.small_fall"
+        };
+        self.play_player_sound(sound, 1.0, 1.0);
+        self.play_block_fall_sound(level);
+        true
+    }
+
+    /// `LivingEntity.playBlockFallSound`.
+    fn play_block_fall_sound(&mut self, level: &Level<'_>) {
+        let pos = BlockPos::new(
+            self.position.x.floor() as i32,
+            (self.position.y - f64::from(0.2_f32)).floor() as i32,
+            self.position.z.floor() as i32,
+        );
+        if let Some(sound_type) = Self::sound_type_of(level, pos) {
+            self.play_player_sound(
+                sound_type.fall_sound(),
+                sound_type.volume * 0.5,
+                sound_type.pitch * 0.75,
+            );
+        }
+    }
+
+    /// `Block.fallOn` of the block landed on, for the sounds it makes (the slime block's fall
+    /// damage is none, farmland and turtle eggs break only on the server).
+    pub(super) fn fall_on(&mut self, level: &Level<'_>, pos: BlockPos, distance: f64) {
+        use voxel_data::block::classes::BlockClass;
+        let id = level.state_id(pos).map_or(0, i64::from);
+        let state = crate::block::state_or_air(id);
+        let block = state.block();
+        let is = |class: BlockClass| block.class.lineage().any(|own| own == class);
+        if is(BlockClass::HayBlock) {
+            self.cause_fall_damage(level, distance, 0.2);
+        } else if is(BlockClass::SlimeBlock) {
+            // `causeFallDamage(distance, 0)` hurts nothing, so it makes no sound.
+        } else if is(BlockClass::HoneyBlock) {
+            self.play_player_sound("minecraft:block.honey_block.slide", 1.0, 1.0);
+            if self.cause_fall_damage(level, distance, 0.2)
+                && let Some(sound_type) = Self::sound_type_of(level, pos)
+            {
+                self.play_player_sound(
+                    sound_type.fall_sound(),
+                    sound_type.volume * 0.5,
+                    sound_type.pitch * 0.75,
+                );
+            }
+        } else if is(BlockClass::PowderSnowBlock) {
+            if distance >= 4.0 {
+                let sound = if distance < 7.0 {
+                    "minecraft:entity.player.small_fall"
+                } else {
+                    "minecraft:entity.player.big_fall"
+                };
+                self.play_player_sound(sound, 1.0, 1.0);
+            }
+        } else if is(BlockClass::PointedDripstoneBlock) && Self::is_dripstone_tip_up(state) {
+            self.cause_fall_damage(level, distance + 2.5, 2.0);
+        } else if is(BlockClass::BedBlock) {
+            self.cause_fall_damage(level, distance * 0.5, 1.0);
+        } else {
+            self.cause_fall_damage(level, distance, 1.0);
+        }
+    }
+
+    /// Whether a pointed dripstone is an upward tip.
+    fn is_dripstone_tip_up(state: &crate::block::StateInfo) -> bool {
+        Self::property_of(state, "vertical_direction") == Some("up")
+            && Self::property_of(state, "thickness") == Some("tip")
+    }
+
+    /// A block state's property value by name; `None` when the block has no such property.
+    fn property_of(state: &crate::block::StateInfo, name: &str) -> Option<&'static str> {
+        let block = state.block();
+        let property = block.properties.iter().find(|own| own.name == name)?;
+        block.value(u32::from(state.offset), property)
+    }
+
+    /// `BubbleColumnAmbientSoundHandler.tick`: the sound of getting into a bubble column (the
+    /// first state of one under the player's feet, the box shrunk a little at the top).
+    pub(super) fn tick_ambient_sounds(&mut self, level: &Level<'_>) {
+        let area = self
+            .bounding_box
+            .inflate(0.0, -f64::from(0.4_f32), 0.0)
+            .deflate(1.0e-6);
+        let mut found = None;
+        'search: for z in (area.min_z.floor() as i32)..=(area.max_z.floor() as i32) {
+            for y in (area.min_y.floor() as i32)..=(area.max_y.floor() as i32) {
+                for x in (area.min_x.floor() as i32)..=(area.max_x.floor() as i32) {
+                    let id = level.state_id(BlockPos::new(x, y, z)).map_or(0, i64::from);
+                    let state = crate::block::state_or_air(id);
+                    if state.block().name == "minecraft:bubble_column" {
+                        found = Some(state);
+                        break 'search;
+                    }
+                }
+            }
+        }
+        if let Some(state) = found {
+            if !self.was_in_bubble_column && !self.ambient_first_tick && !self.is_spectator() {
+                let drag_down = Self::property_of(state, "drag") == Some("true");
+                self.play_player_sound(
+                    if drag_down {
+                        "minecraft:block.bubble_column.whirlpool_inside"
+                    } else {
+                        "minecraft:block.bubble_column.upwards_inside"
+                    },
+                    1.0,
+                    1.0,
+                );
+            }
+            self.was_in_bubble_column = true;
+        } else {
+            self.was_in_bubble_column = false;
+        }
+        self.ambient_first_tick = false;
+    }
+
     /// `Entity.waterSwimSound`.
     fn water_swim_sound(&mut self) {
         let delta = self.delta;
@@ -118,9 +249,31 @@ impl LocalPlayer {
             as f32
             * 0.35;
         let speed = speed.min(1.0);
-        let mut random = RandomSource::create(i64::from(self.tick_count));
-        let pitch = 1.0 + (random.next_float() - random.next_float()) * 0.4;
+        let pitch = self.random_pitch();
         self.play_player_sound("minecraft:entity.player.swim", speed, pitch);
+    }
+
+    /// `1.0F + (random.nextFloat() - random.nextFloat()) * 0.4F`.
+    fn random_pitch(&mut self) -> f32 {
+        let first = self.random.next_float();
+        1.0 + (first - self.random.next_float()) * 0.4
+    }
+
+    /// `Entity.doWaterSplashEffect`, for the sound: a splash that is louder for a faster fall.
+    pub(super) fn water_splash_sound(&mut self) {
+        let delta = self.delta;
+        let slow = f64::from(0.2_f32);
+        let speed = (delta.x * delta.x * slow + delta.y * delta.y + delta.z * delta.z * slow).sqrt()
+            as f32
+            * 0.2;
+        let speed = speed.min(1.0);
+        let event = if speed < 0.25 {
+            "minecraft:entity.player.splash"
+        } else {
+            "minecraft:entity.player.splash.high_speed"
+        };
+        let pitch = self.random_pitch();
+        self.play_player_sound(event, speed, pitch);
     }
 
     /// `Entity.getPrimaryStepSoundBlockPos`: the block above, if it is one a step is heard through.
