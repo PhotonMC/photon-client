@@ -181,6 +181,24 @@ class MovementParticleOracle extends MovementMenuOracle {
                 net.minecraft.core.particles.ParticleTypes.CLOUD, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
             case "sneeze" -> new net.minecraft.client.particle.PlayerCloudParticle.SneezeProvider(spriteSet).createParticle(
                 net.minecraft.core.particles.ParticleTypes.SNEEZE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "bubble" -> new net.minecraft.client.particle.BubbleParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.BUBBLE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "bubble_column_up" -> new net.minecraft.client.particle.BubbleColumnUpParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.BUBBLE_COLUMN_UP, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "bubble_pop" -> new net.minecraft.client.particle.BubblePopParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.BUBBLE_POP, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "rain" -> new net.minecraft.client.particle.WaterDropParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.RAIN, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "splash" -> new net.minecraft.client.particle.SplashParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.SPLASH, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "fishing" -> new net.minecraft.client.particle.WakeParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.FISHING, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "current_down" -> new net.minecraft.client.particle.WaterCurrentDownParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.CURRENT_DOWN, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "squid_ink" -> new net.minecraft.client.particle.SquidInkParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.SQUID_INK, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "glow_squid_ink" -> new net.minecraft.client.particle.SquidInkParticle.GlowInkProvider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.GLOW_SQUID_INK, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
             default -> throw new IllegalArgumentException("Unknown particle " + kind);
         };
     }

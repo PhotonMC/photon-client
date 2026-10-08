@@ -15,6 +15,7 @@ mod rising;
 mod smoke;
 mod sprites;
 mod terrain;
+mod water;
 
 pub use engine::{AddView, LevelParticles, ParticleEngine, ParticleStatus, Spawn};
 pub use particle::{Particle, ParticleAtlas};

@@ -20,3 +20,8 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 
 ## Devir notu
 (boş)
+Yapılan: `particles/water.rs` (kabarcık, kabarcık sütunu, patlama, yağmur, sıçrama, olta izi, aşağı
+akıntı, mürekkep ve parlayan mürekkep; `Kind::Water` alt dalları), sağlayıcı kayıtları.
+Oracle: `particle-ticks`'e 20 satır (havuz, zemin, basamak), hepsi bit eşit.
+Sapma: mürekkep yarı saydam ama kesik çiziliyor; yalnız kaynak su sahnede.
+Açık: `DripParticle` ailesi → T73b.

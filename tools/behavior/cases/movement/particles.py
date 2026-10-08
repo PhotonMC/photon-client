@@ -12,6 +12,9 @@ CEILING = [{"x": x, "y": 68, "z": z, "block": "minecraft:stone"}
 WALL = [{"x": 2, "y": y, "z": z, "block": "minecraft:stone"}
         for y in range(63, 70) for z in range(-8, 9)]
 SLAB = [{"x": 0, "y": 66, "z": 0, "block": "minecraft:stone_slab"}]
+POOL = [{"x": x, "y": y, "z": z, "block": "minecraft:water"}
+        for x in range(-3, 4) for y in range(60, 67) for z in range(-3, 4)]
+POOL_FLOOR = [{"x": x, "y": 59, "z": z, "block": "minecraft:stone"} for x in range(-3, 4) for z in range(-3, 4)]
 SOLID = [{"x": x, "y": y, "z": z, "block": "minecraft:stone"}
          for x in range(-3, 4) for y in range(60, 68) for z in range(-3, 4)]
 
@@ -83,6 +86,31 @@ def particle_tick_cases():
         row("cloud", "cloud", [], (0.5, 70.0, 0.5), (0.01, 0.05, 0.0), 12345, 40),
         row("cloud-inside-stone", "cloud", SOLID, (0.5, 64.0, 0.5), still, 77, 30),
         row("sneeze", "sneeze", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.05), 12345, 30),
+        # Bubbles rise in water and go out of it; the column's rise faster and live longer.
+        row("bubble-in-water", "bubble", POOL + POOL_FLOOR, (0.5, 63.0, 0.5), (0.0, 0.1, 0.0), 12345, 30),
+        row("bubble-to-the-surface", "bubble", POOL, (0.5, 66.8, 0.5), (0.0, 0.3, 0.0), 77, 20),
+        row("bubble-in-air", "bubble", [], (0.5, 70.0, 0.5), still, 5, 5),
+        row("bubble-column-up", "bubble_column_up", POOL + POOL_FLOOR, (0.5, 60.2, 0.5), (0.0, 0.0, 0.0), 12345, 60),
+        row("bubble-column-up-sideways", "bubble_column_up", POOL, (2.5, 63.0, 0.5), (0.4, 0.1, 0.0), 99, 40),
+        row("bubble-pop", "bubble_pop", [], (0.5, 70.0, 0.5), (0.01, 0.02, 0.0), 12345, 8),
+        # Rain: a speck thrown up that falls and goes on landing, in a fluid or inside a block's shape.
+        row("rain-onto-a-floor", "rain", floor(), (0.5, 64.5, 0.5), still, 12345, 30),
+        row("rain-into-water", "rain", POOL, (0.5, 67.2, 0.5), still, 77, 30),
+        row("rain-onto-a-slab", "rain", SLAB, (0.3, 67.0, 0.3), still, 8, 30),
+        row("rain-other-seed", "rain", floor(), (0.5, 64.5, 0.5), still, -4242, 30),
+        # A splash falls slower, and a push only sideways throws it so.
+        row("splash", "splash", floor(), (0.5, 64.5, 0.5), still, 12345, 30),
+        row("splash-sideways", "splash", floor(), (0.5, 64.5, 0.5), (0.1, 0.0, -0.05), 12345, 30),
+        row("splash-pushed-up", "splash", floor(), (0.5, 64.5, 0.5), (0.1, 0.2, 0.0), 12345, 30),
+        # A fishing bobber's wake grows and turns through four pictures.
+        row("fishing-wake", "fishing", POOL, (0.5, 67.0, 0.5), (0.02, 0.0, 0.01), 12345, 30, sprites=4),
+        # A downward current spirals through the water, and goes on the floor or out of it.
+        row("current-down", "current_down", POOL + POOL_FLOOR, (0.5, 65.0, 0.5), still, 12345, 100),
+        row("current-down-out-of-water", "current_down", POOL, (0.5, 60.1, 0.5), still, 7, 30),
+        # Squid ink fades in its second half and sinks in the air; the glow squid's is teal.
+        row("squid-ink-in-air", "squid_ink", [], (0.5, 70.0, 0.5), (0.05, 0.0, 0.0), 12345, 30),
+        row("squid-ink-in-water", "squid_ink", POOL, (0.5, 63.0, 0.5), (0.0, 0.05, 0.05), 99, 30),
+        row("glow-squid-ink", "glow_squid_ink", POOL, (0.5, 63.0, 0.5), (0.05, 0.0, 0.0), 12345, 30),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}

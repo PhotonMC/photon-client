@@ -169,6 +169,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T70c — Partikül dörtgenleri ve çizimi — client-parity ve server-conformance](records/client-particle-quads-parity-conformance.md)
 - [T72 — Yükselen duman/ateş ve kül parçacıkları — client-parity](records/client-particle-rising-parity-conformance.md)
 - [T71 — Blok parçacıkları: `TerrainParticle`, kırılma ve çatlama — client-parity](records/client-particle-terrain-parity-conformance.md)
+- [T73 — Su ve kabarcık parçacıkları — client-parity](records/client-particle-water-parity-conformance.md)
 - [T26b — Orta tık seçimi (`PickItemFrom*`) ve bakılan varlık önerisi — client-parity](records/client-pick-item-suggestion-parity-conformance.md)
 - [P10.b — LocalPlayer applyInput — client-parity birleşik kayıt](records/client-player-apply-input-conformance.md)
 - [P10.f — LocalPlayer movement speed attribute binding — client-parity](records/client-player-attribute-speed-conformance.md)

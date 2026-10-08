@@ -32,6 +32,8 @@ pub(super) enum Kind {
     CampfireSmoke,
     /// `PlayerCloudParticle`: grows in like smoke and settles to a player beneath it.
     PlayerCloud,
+    /// The bubbles, drops and ink of water, each with its own tick.
+    Water(super::water::Water),
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -229,6 +231,10 @@ impl Particle {
                 self.campfire_tick(world);
                 return None;
             }
+            Kind::Water(water) => {
+                self.water_tick(world, water);
+                return None;
+            }
             Kind::AshSmoke { decays: true } => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -246,7 +252,7 @@ impl Particle {
     }
 
     /// `Particle.tick`.
-    fn base_tick(&mut self, world: &ClientWorld) {
+    pub(super) fn base_tick(&mut self, world: &ClientWorld) {
         self.xo = self.x;
         self.yo = self.y;
         self.zo = self.z;
@@ -338,6 +344,8 @@ impl Particle {
             }
             // `LightCoordsUtil.withBlock(light, 15)`.
             Kind::Lava | Kind::Soul { glowing: true } => (light & 0xFF_0000) | (15 << 4),
+            // `SimpleAnimatedParticle.getLightCoords`: full bright.
+            Kind::Water(super::water::Water::Ink) => 15_728_880,
             _ => light,
         }
     }
@@ -353,7 +361,10 @@ impl Particle {
     pub fn translucent(&self) -> bool {
         matches!(
             self.kind,
-            Kind::Soul { .. } | Kind::CampfireSmoke | Kind::PlayerCloud
+            Kind::Soul { .. }
+                | Kind::CampfireSmoke
+                | Kind::PlayerCloud
+                | Kind::Water(super::water::Water::Ink)
         )
     }
 

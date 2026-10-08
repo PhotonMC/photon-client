@@ -23,7 +23,7 @@ pub trait TerrainMaterials: std::fmt::Debug {
 }
 
 /// `BlockBehaviour.BlockStateBase.isAir`.
-fn is_air(name: &str) -> bool {
+pub(super) fn is_air(name: &str) -> bool {
     matches!(
         name,
         "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
@@ -35,7 +35,7 @@ fn spawns_terrain_particles(name: &str) -> bool {
     !matches!(name, "minecraft:barrier" | "minecraft:structure_void")
 }
 
-fn name_of(state: i32) -> &'static str {
+pub(super) fn name_of(state: i32) -> &'static str {
     crate::block::state_or_air(i64::from(state)).block().name
 }
 
