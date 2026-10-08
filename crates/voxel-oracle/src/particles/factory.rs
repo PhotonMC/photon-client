@@ -117,6 +117,19 @@ pub(super) fn particle_of(
         )),
         "totem_of_undying" => Ok(Particle::totem(random, motion, sprites)),
         "end_rod" => Ok(Particle::end_rod(random, motion, sprites)),
+        name @ ("cherry_leaves" | "pale_oak_leaves" | "tinted_leaves") => {
+            Particle::falling_leaves_provider(
+                name,
+                random,
+                at,
+                sprites,
+                (
+                    &mut engine_random,
+                    voxel_world::particles::ParticleData::Color(color),
+                ),
+            )
+            .ok_or_else(|| format!("unknown particle {name}"))
+        }
         name @ ("glow" | "electric_spark" | "scrape" | "wax_on" | "wax_off") => Ok(Particle::glow(
             name,
             random,

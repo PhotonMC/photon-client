@@ -65,4 +65,35 @@ class MovementFireOracle extends MovementPickupOracle {
         entry.add("blocks", blocks);
         return entry;
     }
+
+    /**
+     * Every leaves block: the chance it lets a leaf fall each pick, and the leaf it lets fall (the
+     * tinted one takes the block's tint; another is its own type, with its colour if it has one).
+     */
+    static JsonObject leafParticles(JsonObject row) throws Exception {
+        var blocks = new com.google.gson.JsonArray();
+        for (var block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+            if (!(block instanceof net.minecraft.world.level.block.LeavesBlock)) {
+                continue;
+            }
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+            entry.addProperty("chance", Oracle.bits((float) getField(block, "leafParticleChance")));
+            if (block instanceof net.minecraft.world.level.block.UntintedParticleLeavesBlock) {
+                var options = (net.minecraft.core.particles.ParticleOptions) getField(block, "leafParticle");
+                entry.addProperty("particle",
+                    net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getKey(options.getType()).toString());
+                if (options instanceof net.minecraft.core.particles.ColorParticleOption colour) {
+                    entry.addProperty("color", (int) getField(colour, "color"));
+                }
+            } else {
+                entry.addProperty("particle", "tinted");
+            }
+            blocks.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("blocks", blocks);
+        return entry;
+    }
 }

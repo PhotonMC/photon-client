@@ -17,6 +17,7 @@ mod falling_dust;
 mod flame;
 mod group;
 mod hit;
+mod leaves;
 mod level_events;
 mod light;
 mod look;

@@ -71,6 +71,23 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             .collect();
         return Ok(json!({"rows": [{"label": "all", "blocks": rows}]}));
     }
+    if string(request, "operation")? == "leaf_particles" {
+        let blocks: Vec<Value> = voxel_data::leaves::all()
+            .iter()
+            .map(|(name, chance, particle, color)| {
+                let mut entry = json!({
+                    "name": name,
+                    "chance": format!("{:08x}", chance.to_bits()),
+                    "particle": particle,
+                });
+                if let Some(color) = color {
+                    entry["color"] = json!(color);
+                }
+                entry
+            })
+            .collect();
+        return Ok(json!({"rows": [{"label": "all", "blocks": blocks}]}));
+    }
     if string(request, "operation")? == "item_pickup" {
         return item_pickup_result(request);
     }

@@ -1,4 +1,4 @@
-# T70e, T70f, T70g — Blokların rastgele görünüm tiki — [client-parity]
+# T70e–T70h — Blokların rastgele görünüm tiki — [client-parity]
 
 Bu kayıt `ClientLevel.animateTick` döngüsünü ve ilk blokları kapsar: meşale ailesi, kızıltaş
 meşaleleri, lav ve su. Kanıt sınıfı `client-parity`'dir. `movement/particle-engine`'de gerçek
@@ -44,6 +44,12 @@ Rust'a bit bit eşitlenir.
   çalar. Uç çubuğu 1/5 ile boyunca parıltı bırakır (`EndRodParticle`: yerçekimi 0.0125,
   sürtünme 0.91, bloklardan geçer, ikinci yarıda `0xF2DEC9`'a solar).
 
+- T70h: yaprak bloğu kendi olasılığıyla (`leafParticleChance`, oracle'dan yakalanan tablo:
+  `python3 tools/generate/leaves.py <capture>/outputs.jsonl`) altı tam üst yüzlü değilse yaprak
+  düşürür. Renkli yaprak bloğun dünyadaki rengini, öbürleri kendi türünü ve rengini alır.
+  `FallingLeavesParticle` 300 tik yaşar; dönüşü ±30°, ivmesi ±5° ile başlar. Rüzgârla ya akar
+  (`pow(yaş, 1.25)`) ya döner (`cos/sin`). Yerde ya da duvar hızını sıfırlayınca biter.
+
 ## Kapsam ve dal kararı
 
 Satırlar: 31×31 meşale düzlemi (dokuz tür/yön karışık); lav ve su düzlemleri; ocak düzlemi
@@ -53,4 +59,5 @@ Sıvı altı damlaları `animate-drips` satırındadır (T73b).
 ## Sapmalar (açık)
 
 - Biyomun ortam parçacıkları ve yaratıcıdaki işaretçi parçacığı yok.
-- Yapraklar ve öteki blokların `animateTick`'i T70h'de.
+- `animate-leaves` özeti JVM `Math.sin/cos/pow` intrinsic'lerinin 1 ulp farkıyla tutmuyor (Q04
+  sınıfı); yaprakların yağmur damlası yok. Öteki blokların `animateTick`'i T70i'de.

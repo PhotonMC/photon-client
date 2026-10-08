@@ -38,6 +38,7 @@ public final class MovementOracle extends MovementFireOracle {
                 case "item_pickup" -> rows.add(itemPickup(element.getAsJsonObject()));
                 case "fire_flammability" -> rows.add(fireFlammability(element.getAsJsonObject()));
                 case "block_map_colors" -> rows.add(blockMapColors(element.getAsJsonObject()));
+                case "leaf_particles" -> rows.add(leafParticles(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }

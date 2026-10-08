@@ -57,6 +57,11 @@ impl ParticleEngine {
         let full = crate::block::state_or_air(i64::from(state)).block().name;
         let name = full.strip_prefix("minecraft:").unwrap_or(full);
         let lit = crate::block::rules::property(state, "lit") == Some("true");
+        if voxel_data::leaves::of(full).is_some() {
+            let materials = self.terrain_materials();
+            self.leaves_animate_tick((state, full), pos, random, (context, materials.as_deref()));
+            return;
+        }
         if voxel_data::map::dust_color(full).is_some() {
             // `SandBlock` plays the desert's sounds after.
             let sand = matches!(name, "sand" | "red_sand");

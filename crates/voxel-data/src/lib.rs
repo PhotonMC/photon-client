@@ -20,6 +20,7 @@ pub mod fire;
 mod generated;
 pub mod item;
 pub mod leash;
+pub mod leaves;
 pub mod map;
 pub mod particle_type;
 pub mod sound_event;

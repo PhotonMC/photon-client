@@ -294,6 +294,11 @@ impl ParticleEngine {
         self.pickups.iter()
     }
 
+    /// What the flakes of blocks are made with, if anything.
+    pub(super) fn terrain_materials(&self) -> Option<std::sync::Arc<dyn super::TerrainMaterials>> {
+        self.resources.terrain().cloned()
+    }
+
     /// How many emitters are alive.
     pub fn emitter_count(&self) -> usize {
         self.emitters.len()

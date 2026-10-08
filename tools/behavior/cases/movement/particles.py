@@ -197,6 +197,12 @@ def particle_tick_cases():
             engine_seed=70),
         row("dripping-dripstone-lava", "dripping_dripstone_lava", floor(), (0.5, 67.0, 0.5), still, 12345, 44),
         row("falling-dripstone-water", "falling_dripstone_water", floor(), (0.5, 67.0, 0.5), still, 77, 30),
+        # Leaves fall: a cherry petal drifts away on the wind, a pale oak leaf and a tinted one swirl;
+        # each is gone on the ground or when a wall stops it.
+        row("cherry-leaves", "cherry_leaves", floor(), (0.5, 70.0, 0.5), still, 12345, 80, engine_seed=71),
+        row("pale-oak-leaves", "pale_oak_leaves", floor(), (0.5, 70.0, 0.5), still, 77, 80, engine_seed=72),
+        dict(row("tinted-leaves", "tinted_leaves", WALL, (1.5, 67.0, 0.5), still, 12345, 120, engine_seed=73),
+             color=-10380959),
         row("end-rod", "end_rod", floor(), (0.5, 66.5, 0.5), (0.003, -0.002, 0.001), 12345, 70),
         row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
             engine_seed=65),
@@ -215,6 +221,8 @@ def particle_cases():
     yield {"case_id": "movement/fire-flammability", "family": "movement", "operation": "fire_flammability",
            "rows": [{"label": "all"}]}
     yield {"case_id": "movement/block-map-colors", "family": "movement", "operation": "block_map_colors",
+           "rows": [{"label": "all"}]}
+    yield {"case_id": "movement/leaf-particles", "family": "movement", "operation": "leaf_particles",
            "rows": [{"label": "all"}]}
 
 
@@ -434,6 +442,15 @@ def particle_engine_cases():
                        "properties": {"facing": ["up", "down", "north", "south", "west", "east"][(x * 5 + z) % 6]}}
                       for x in range(-14, 15, 2) for z in range(-14, 15, 2)],
                    ticks=4, seeds=1500, describe=14),
+        engine_row("animate-leaves", [animate_tick(tick, (0, 70, 0), 667, 90 + tick) for tick in range(16)],
+                   blocks=[{"x": x, "y": 70, "z": z, "block": "minecraft:" + ["spruce_leaves", "birch_leaves",
+                            "cherry_leaves", "pale_oak_leaves", "azalea_leaves", "flowering_azalea_leaves"][(x + 2 * z) % 6],
+                            "properties": {"distance": "1", "persistent": "true", "waterlogged": "false"}}
+                           for x in range(-15, 16) for z in range(-15, 16)]
+                   + [{"x": x, "y": 69, "z": z, "block": "minecraft:stone"} for x in range(-15, 16) for z in range(-15, 16)
+                      if (x * z) % 4 == 0]
+                   + plane(60, "minecraft:stone"),
+                   ticks=60, seeds=400, describe=12),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

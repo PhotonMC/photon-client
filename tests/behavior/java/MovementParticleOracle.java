@@ -162,7 +162,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
                 "composter", "dolphin", "crit", "damage_indicator", "enchanted_hit", "sweep_attack", "poof",
                 "explosion", "sonic_boom", "heart", "angry_villager", "note", "gust", "small_gust", "sculk_charge",
-                "sculk_charge_pop", "end_rod",
+                "sculk_charge_pop", "end_rod", "cherry_leaves", "pale_oak_leaves", "tinted_leaves",
                 "dripping_lava", "falling_lava", "landing_lava", "dripping_water", "falling_water",
                 "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
                 "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",
@@ -398,6 +398,8 @@ class MovementParticleOracle extends MovementMenuOracle {
                 name.equals("effect") ? net.minecraft.core.particles.ParticleTypes.EFFECT
                     : net.minecraft.core.particles.ParticleTypes.INSTANT_EFFECT, color, floatBits(from, "power"));
             case "sculk_charge" -> new net.minecraft.core.particles.SculkChargeParticleOptions(floatBits(from, "roll"));
+            case "tinted_leaves" -> net.minecraft.core.particles.ColorParticleOption.create(
+                net.minecraft.core.particles.ParticleTypes.TINTED_LEAVES, color);
             case "entity_effect" -> net.minecraft.core.particles.ColorParticleOption.create(
                 net.minecraft.core.particles.ParticleTypes.ENTITY_EFFECT, color);
             default -> simpleType(name);

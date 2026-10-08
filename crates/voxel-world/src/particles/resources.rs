@@ -61,6 +61,7 @@ enum Provider {
     Drip,
     FallingDust,
     EndRod,
+    FallingLeaves,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -114,6 +115,7 @@ fn provider_of(name: &str) -> Option<Provider> {
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
         "end_rod" => Provider::EndRod,
+        "cherry_leaves" | "pale_oak_leaves" | "tinted_leaves" => Provider::FallingLeaves,
         name if name.starts_with("dripping_")
             || name.starts_with("landing_")
             || matches!(
@@ -225,7 +227,7 @@ impl ParticleResources {
         }
         if matches!(
             provider,
-            Provider::FallingDust | Provider::Drip | Provider::Mark(_)
+            Provider::FallingDust | Provider::Drip | Provider::Mark(_) | Provider::FallingLeaves
         ) {
             return self.create_own(
                 provider,
@@ -321,6 +323,11 @@ impl ParticleResources {
                 (state, sprites),
                 (world, materials),
             );
+        }
+        if provider == Provider::FallingLeaves {
+            let sprites = self.sprite_sets.get(name)?;
+            let options = (engine_random, data);
+            return Particle::falling_leaves_provider(name, random(), at, sprites, options);
         }
         if provider == Provider::Drip {
             let sprites = self.sprite_sets.get(name)?;
