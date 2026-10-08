@@ -126,9 +126,16 @@ pub(super) fn inventory_to_menu(index: usize) -> usize {
     }
 }
 
-/// `HashedStack` as its codec writes it. A component patch is written as
-/// none, since the component hashes are not ported.
-pub(super) fn write_hashed_stack(out: &mut Vec<u8>, stack: Option<&Stack>) {
+/// `HashedStack` as its codec writes it: the added components with their
+/// hashes, then the removed ones, in the patch's order (the reference's
+/// identity map and set have none). An added component whose hash is not
+/// ported is left out, which the server reads as a changed stack.
+pub(super) fn write_hashed_stack(
+    out: &mut Vec<u8>,
+    stack: Option<&Stack>,
+    enchantments: &[String],
+) {
+    use photon_world::item_components::{hash::component_hash, read_patch};
     let Some(stack) = stack else {
         out.push(0);
         return;
@@ -136,8 +143,25 @@ pub(super) fn write_hashed_stack(out: &mut Vec<u8>, stack: Option<&Stack>) {
     out.push(1);
     photon_core::wire::write_varint(stack.item_registry_id(), out);
     photon_core::wire::write_varint(stack.item_count(), out);
-    photon_core::wire::write_varint(0, out);
-    photon_core::wire::write_varint(0, out);
+    let patch =
+        read_patch(&mut stack.patch_bytes()).unwrap_or(photon_world::item_components::Patch {
+            added: Vec::new(),
+            removed: Vec::new(),
+        });
+    let added: Vec<(i32, i32)> = patch
+        .added
+        .iter()
+        .filter_map(|(id, value)| Some((*id, component_hash(*id, value, enchantments)?)))
+        .collect();
+    photon_core::wire::write_varint(added.len() as i32, out);
+    for (id, hash) in added {
+        photon_core::wire::write_varint(id, out);
+        out.extend_from_slice(&hash.to_be_bytes());
+    }
+    photon_core::wire::write_varint(patch.removed.len() as i32, out);
+    for id in patch.removed {
+        photon_core::wire::write_varint(id, out);
+    }
 }
 
 /// The order a fastutil `Int2ObjectOpenHashMap` built with its defaults

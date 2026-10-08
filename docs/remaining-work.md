@@ -46,7 +46,7 @@ tik dalları) ile canlı sunucuya karşı `server-conformance` kayıtlarıdır;
 [görev panosunun](tasks/README.md) ilgili grubundadır.
 
 - [x] **M1 Blok eylemleri**, **M2 Eşya çizimi**, **M3 Envanter**: pano öncesi.
-- [ ] **M3.d Sunucunun açtığı kaplar** (L): kalan örs/taş çarkı tahmini (T51), bileşen hash'i ve bundle (T52), binek envanteri (T58), kap ipuçları (T59).
+- [ ] **M3.d Sunucunun açtığı kaplar** (L): kalan örs/taş çarkı tahmini (T51), bundle, hasarlı eşya, zırh kilidi (T52b), binek envanteri (T58), kap ipuçları (T59).
 - [ ] **M4 Entity'ler** (XL): içerik bitti; kalan uzaklık/bölüm ayıklaması (T47) ve P24 kapsam denetimi.
 - [ ] **M5 Metin ve chat** (L): kalan unifont/bidi/IME, sohbet kalanları (§5), imzalı sohbet (M9 ile).
 - [ ] **M6 Ekranlar** (L): kalan ana menü, sunucu listesi, yükleme, kitap/tabela, ilerlemeler, kalan ayarlar; planı PLAN-M6.
@@ -81,8 +81,7 @@ sunucu listesini bekler.
 - **M** Tarif kitabı (`RecipeBookAdd/Remove/Settings`, `PlaceGhostRecipe`,
   `PlaceRecipe`), tarif tablosu için oracle.
 - **S** Kalan envanter davranışı: bundle tıklama tahmini ve ipucu
-  (`SelectBundleItem`), bileşen hash'li `HashedStack` (bileşenli eşyada
-  sunucu düzeltmesi yerine tahmin), zırh kilidi büyüsü, hasarlı eşya
+  (`SelectBundleItem`), kalan bileşenlerin hash'i, zırh kilidi büyüsü, hasarlı eşya
   (`damage` bileşeni takasta), sürükleme yuva sırası.
 - **S** Eşya süsleri: dayanıklılık çubuğu, bekleme örtüsü (`Cooldown`), büyü
   parıltısı, kapsayıcı içerik ipucu (shulker/bundle satırları), harita
@@ -97,8 +96,8 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 - Kap menüsünde off hand bir yuva değil: off hand ile değiştirme (`SWAP` 40)
   tahmin edilmez, sunucunun düzeltmesi gelir; `Inventory.add` off hand'i de
   saymaz.
-- Bileşenli eşyanın bileşen hash'leri yok: tıklama paketinde bileşeni olan yığın
-  bileşensiz hash'lenir (sunucu düzeltir).
+- Bileşen hash'i yalnız sık bileşenler için var (kayıt: `generic-container-conformance.md`);
+  kalanlar pakette yazılmaz (sunucu düzeltir).
 - Hasarlı eşya, büyü kilidi (zırh), bundle tıklama geçersiz kılmaları tahmin
   edilmez.
 - Tarif kitabı çekirdeği var; kaplama, vurgu/tost, `SeenRecipe` ve dar ekran

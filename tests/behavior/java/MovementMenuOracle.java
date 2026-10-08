@@ -8,8 +8,9 @@ class MovementMenuOracle extends MovementPlayerOracle {
      * sends them: `MultiPlayerGameMode.handleContainerInput` runs the menu's
      * click as the client predicts it and sends the click packet. After
      * every click the packets sent, as their codecs write them, every slot
-     * and the carried stack are reported. Stacks carry no components, so
-     * their hashes are never asked for.
+     * and the carried stack are reported. A stack may carry a component
+     * patch as the wire carries it; the click packet hashes it as
+     * `ClientPacketListener.decoratedHashOpsGenerator` does.
      */
     /** A menu and the game around it: the scene, the player and the menu, slots and data set. */
     record OpenMenu(Scene scene, net.minecraft.client.player.LocalPlayer player,
@@ -20,8 +21,8 @@ class MovementMenuOracle extends MovementPlayerOracle {
         var listener = scene.listener();
         var minecraft = scene.minecraft();
         var level = scene.level();
-        setField(listener, "decoratedHashOpsGenerator",
-            (net.minecraft.network.HashedPatchMap.HashGenerator) component -> 0);
+        // The client's own hasher, over the vanilla registries.
+        setField(listener, "decoratedHashOpsGenerator", hashGenerator());
         var player = new net.minecraft.client.player.LocalPlayer(
             minecraft, level, listener, null, null,
             net.minecraft.world.entity.player.Input.EMPTY, false, null);
@@ -158,6 +159,40 @@ class MovementMenuOracle extends MovementPlayerOracle {
         }
         setField(menu, "stateId", row.get("state_id").getAsInt());
         return new OpenMenu(scene, player, menu, containerId);
+    }
+
+    /** `ClientPacketListener.decoratedHashOpsGenerator` over the vanilla registries. */
+    static net.minecraft.network.HashedPatchMap.HashGenerator hashGenerator() {
+        var ops = Oracle.vanillaRegistries().createSerializationContext(
+            net.minecraft.util.HashOps.CRC32C_INSTANCE);
+        return component -> component.encodeValue(ops).getOrThrow().asInt();
+    }
+
+    /**
+     * The hash the client gives each component a stack's patch adds, and the
+     * components it removes, by name.
+     */
+    static JsonObject componentHashes(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var split = stack(row).getComponentsPatch().split();
+        var hasher = hashGenerator();
+        var added = new java.util.TreeMap<String, Integer>();
+        for (var component : split.added()) {
+            added.put(net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE
+                .getKey(component.type()).toString(), hasher.apply(component));
+        }
+        var hashes = new JsonObject();
+        added.forEach(hashes::addProperty);
+        entry.add("added", hashes);
+        var removed = new java.util.TreeSet<String>();
+        for (var type : split.removed()) {
+            removed.add(net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type).toString());
+        }
+        var names = new JsonArray();
+        removed.forEach(names::add);
+        entry.add("removed", names);
+        return entry;
     }
 
     static JsonObject containerClicks(JsonObject row) throws Exception {

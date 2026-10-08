@@ -3,6 +3,76 @@
 from cases.movement.player.common import *
 from cases.movement.player.shared import *
 
+import struct
+
+
+def varint(value):
+    value &= 0xFFFFFFFF
+    out = bytearray()
+    while value & ~0x7F:
+        out.append((value & 0x7F) | 0x80)
+        value >>= 7
+    out.append(value)
+    return out.hex()
+
+
+def nbt(value):
+    """A network tag (its type, then its payload) of a Python value: str, a
+    (type, value) pair for numbers and arrays, a list or a dict."""
+    if isinstance(value, str):
+        encoded = value.encode("utf-8")
+        return "08" + len(encoded).to_bytes(2, "big").hex() + encoded.hex()
+    if isinstance(value, dict):
+        payload = ""
+        for key, inner in value.items():
+            tag = nbt(inner)
+            encoded = key.encode("utf-8")
+            payload += tag[:2] + len(encoded).to_bytes(2, "big").hex() + encoded.hex() + tag[2:]
+        return "0a" + payload + "00"
+    if isinstance(value, list):
+        element = nbt(value[0])[:2] if value else "00"
+        if any(nbt(item)[:2] != element for item in value):
+            # A list of mixed types: each element wrapped in a compound under "".
+            value = [item if isinstance(item, dict) else {"": item} for item in value]
+            element = "0a"
+        return "09" + element + len(value).to_bytes(4, "big").hex() + "".join(nbt(item)[2:] for item in value)
+    kind, number = value
+    sizes = {"b": ("01", 1), "s": ("02", 2), "i": ("03", 4), "l": ("04", 8)}
+    if kind in sizes:
+        tag, size = sizes[kind]
+        return tag + number.to_bytes(size, "big", signed=True).hex()
+    if kind == "f":
+        return "05" + struct.pack(">f", number).hex()
+    if kind == "d":
+        return "06" + struct.pack(">d", number).hex()
+    arrays = {"B": ("07", 1), "I": ("0b", 4), "L": ("0c", 8)}
+    tag, size = arrays[kind]
+    return tag + len(number).to_bytes(4, "big").hex() + "".join(
+        item.to_bytes(size, "big", signed=True).hex() for item in number)
+
+
+# Data component type ids, and the vanilla enchantments' network ids.
+CUSTOM_DATA, MAX_STACK_SIZE, MAX_DAMAGE, DAMAGE, UNBREAKABLE = 0, 1, 2, 3, 4
+CUSTOM_NAME, ITEM_NAME, LORE, RARITY, ENCHANTMENTS = 6, 9, 11, 12, 13
+REPAIR_COST, GLINT, STORED_ENCHANTMENTS, DYED_COLOR = 19, 21, 42, 44
+EFFICIENCY, MENDING, PROTECTION, SHARPNESS, UNBREAKING = 8, 23, 28, 33, 40
+
+
+def patch(added=(), removed=()):
+    """`DataComponentPatch.STREAM_CODEC`: (type id, value hex) pairs, then removed type ids."""
+    return (varint(len(added)) + varint(len(removed))
+            + "".join(varint(kind) + value for kind, value in added)
+            + "".join(varint(kind) for kind in removed))
+
+
+def enchantments(levels):
+    return varint(len(levels)) + "".join(varint(kind) + varint(level) for kind, level in levels)
+
+
+def with_patch(stack, hex_patch):
+    stack["patch"] = hex_patch
+    return stack
+
 
 def cases():
     P, Q, SW, CL, TH, QC, PA = "PICKUP", "QUICK_MOVE", "SWAP", "CLONE", "THROW", "QUICK_CRAFT", "PICKUP_ALL"
@@ -370,9 +440,64 @@ def cases():
                [cl(0, 2, SW), cl(4, 3, SW), cl(2, 5, SW), cl(3, 6, SW)], menu="brewing_stand"),
     ]
 
+    named = patch([(CUSTOM_NAME, nbt("Excalibur"))])
+    click_rows += [
+        clicks("a named sword is hashed with its name",
+               [with_patch(st(20, "diamond_sword", 1), named)], [cl(20, 0, P), cl(21, 0, P)]),
+        clicks("named stacks of one name merge",
+               [with_patch(st(10, "stone", 5), patch([(CUSTOM_NAME, nbt("Rock"))]))], [cl(10, 0, P)],
+               carried=("stone", 3)),
+        clicks("an enchanted pickaxe swaps with a damaged sword",
+               [with_patch(st(20, "iron_sword", 1), patch([(DAMAGE, varint(37))]))], [cl(20, 0, P)],
+               carried=("iron_pickaxe", 1)),
+        clicks("a stack with a removed component",
+               [with_patch(st(36, "diamond_sword", 1), patch(removed=[DAMAGE]))], [cl(36, 0, P), cl(9, 0, P)]),
+    ]
+    click_rows[-3]["carried"]["patch"] = patch([(CUSTOM_NAME, nbt("Rock"))])
+    click_rows[-2]["carried"]["patch"] = patch([(ENCHANTMENTS, enchantments([(EFFICIENCY, 3), (UNBREAKING, 2)]))])
+
     yield {
         "case_id": "movement/container-clicks",
         "family": "movement",
         "operation": "container_clicks",
         "rows": click_rows,
+    }
+
+    def hashed(label, item, hex_patch):
+        return {"label": label, "item": f"minecraft:{item}", "count": 1, "patch": hex_patch}
+
+    yield {
+        "case_id": "movement/component-hashes",
+        "family": "movement",
+        "operation": "component_hashes",
+        "rows": [
+            hashed("damage and repair cost", "iron_sword", patch([(DAMAGE, varint(12)), (REPAIR_COST, varint(3))])),
+            hashed("max stack size and max damage", "stick", patch([(MAX_STACK_SIZE, varint(16)),
+                                                                    (MAX_DAMAGE, varint(250))])),
+            hashed("unbreakable", "iron_pickaxe", patch([(UNBREAKABLE, "")])),
+            hashed("plain custom name", "stone", patch([(CUSTOM_NAME, nbt("Hello, Dünya"))])),
+            hashed("styled item name", "stone", patch([(ITEM_NAME, nbt(
+                {"text": "Bold", "bold": ("b", 1), "italic": ("b", 0), "color": "red"}))])),
+            hashed("name with siblings", "stone", patch([(CUSTOM_NAME, nbt(
+                {"text": "", "extra": ["a", {"text": "b", "underlined": ("b", 1)}]}))])),
+            hashed("translated name", "stone", patch([(CUSTOM_NAME, nbt(
+                {"translate": "item.minecraft.stone", "with": ["x"]}))])),
+            hashed("lore lines", "paper", patch([(LORE, varint(2) + nbt("first")
+                                                   + nbt({"text": "second", "italic": ("b", 0)}))])),
+            hashed("rarity", "stick", patch([(RARITY, varint(3))])),
+            hashed("enchantments", "diamond_sword", patch([(ENCHANTMENTS, enchantments(
+                [(SHARPNESS, 5), (UNBREAKING, 3), (MENDING, 1)]))])),
+            hashed("no enchantments on a book", "book", patch([(STORED_ENCHANTMENTS, enchantments([]))])),
+            hashed("stored enchantments", "enchanted_book", patch([(STORED_ENCHANTMENTS, enchantments(
+                [(PROTECTION, 4)]))])),
+            hashed("glint override", "stick", patch([(GLINT, "00")])),
+            hashed("dyed colour", "leather_helmet", patch([(DYED_COLOR, (0xA06540).to_bytes(4, "big").hex())])),
+            hashed("custom data", "stick", patch([(CUSTOM_DATA, nbt({
+                "flag": ("b", 1), "short": ("s", -2), "int": ("i", 70000), "long": ("l", -5),
+                "float": ("f", 0.5), "double": ("d", -1.25), "text": "ş", "bytes": ("B", [1, -1]),
+                "ints": ("I", [3, 4]), "longs": ("L", [5]), "list": [("i", 1), ("i", 2)],
+                "nested": {"empty": []}}))])),
+            hashed("added and removed together", "diamond_sword", patch(
+                [(CUSTOM_NAME, nbt("Mixed")), (DAMAGE, varint(1))], removed=[MAX_STACK_SIZE])),
+        ],
     }

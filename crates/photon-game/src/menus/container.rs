@@ -13,8 +13,9 @@
 //! writes back what the shared object would have become. Not ported: the
 //! bundle's click overrides (a click with a bundle carried or clicked is
 //! sent without a prediction), damaged items (a damaged stack counts as
-//! undamaged), enchantments that lock armour, and component hashes (a
-//! stack with a component patch is hashed as if it had none).
+//! undamaged) and enchantments that lock armour. Component hashes are
+//! ported for the components [`hash`](photon_world::item_components::hash)
+//! names.
 
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
@@ -46,6 +47,9 @@ pub struct ContainerMenu {
     pub options: Vec<i32>,
     /// The player's experience level, which the anvil asks for.
     pub xp_level: i32,
+    /// The enchantment registry's entries by network id, which the click
+    /// packet's component hashes name.
+    pub enchantments: std::sync::Arc<Vec<String>>,
     /// Whether the last click was made with infinite materials (creative).
     pub(super) infinite_materials: bool,
     /// The item in the stonecutter's input the last time its list was made.
@@ -83,6 +87,7 @@ impl Default for ContainerMenu {
             banner_layers: 0,
             options: Vec::new(),
             xp_level: 0,
+            enchantments: std::sync::Arc::default(),
             infinite_materials: false,
             last_input: None,
             data: Vec::new(),

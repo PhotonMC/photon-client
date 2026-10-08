@@ -11,7 +11,20 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         let count = described["count"]
             .as_i64()
             .ok_or("count must be a number")? as i32;
-        Ok(ClientItemStackState::new(count, id))
+        let stack = ClientItemStackState::new(count, id);
+        let Some(hex_patch) = described["patch"].as_str() else {
+            return Ok(stack);
+        };
+        let bytes = hex_bytes(hex_patch)?;
+        let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
+            .map_err(|_| format!("malformed patch {hex_patch}"))?;
+        Ok(ClientItemStackState::from_wire(
+            count,
+            id,
+            patch.added.iter().map(|(kind, _)| *kind).collect(),
+            patch.removed,
+        )
+        .with_patch_bytes(bytes))
     };
     let describe = |stack: Option<&ClientItemStackState>| -> Value {
         match stack {
@@ -22,6 +35,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             }),
         }
     };
+    let enchantments = std::sync::Arc::new(vanilla_enchantments());
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -30,6 +44,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             None => ContainerMenu::default(),
             Some(name) => menu_named(name, row)?,
         };
+        menu.enchantments = enchantments.clone();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.slots[index] = Some(stack(slot)?);
@@ -83,6 +98,48 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             clicks.push(described);
         }
         out.push(json!({"label": label, "outcome": "clicked", "clicks": clicks}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// The vanilla enchantments by network id, as the data pack names them.
+fn vanilla_enchantments() -> Vec<String> {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    photon_game::registries::Registries::vanilla(&data_root)
+        .enchantments
+        .into_iter()
+        .map(|entry| entry.name)
+        .collect()
+}
+
+/// The hash the click packet gives each component a stack's patch adds,
+/// and the components it removes, by name.
+pub(super) fn component_hashes_result(request: &Value) -> Result<Value, String> {
+    use photon_data::item::component_types::NAMES;
+    use photon_game::item_components::{hash::component_hash, read_patch};
+    let enchantments = vanilla_enchantments();
+    let name = |kind: i32| NAMES[kind as usize].to_owned();
+    let rows = request["rows"].as_array().ok_or("rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let label = row["label"].as_str().ok_or("label must be a string")?;
+        let bytes = hex_bytes(row["patch"].as_str().ok_or("patch must be a string")?)?;
+        let patch =
+            read_patch(&mut bytes.as_slice()).map_err(|_| format!("{label}: malformed patch"))?;
+        let added: serde_json::Map<String, Value> = patch
+            .added
+            .iter()
+            .map(|(kind, value)| {
+                (
+                    name(*kind),
+                    json!(component_hash(*kind, value, &enchantments)),
+                )
+            })
+            .collect();
+        let mut removed: Vec<String> = patch.removed.iter().map(|&kind| name(kind)).collect();
+        removed.sort();
+        out.push(json!({"label": label, "added": added, "removed": removed}));
     }
     Ok(json!({"rows": out}))
 }

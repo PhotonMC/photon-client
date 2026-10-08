@@ -71,8 +71,8 @@ Denetimle düzeltilenler: örs ad kutusu boş slotta yazı almaz ve özgün ada 
 loom'da seçili düğmede ipucu yok, taş kesici kaydırması girdi sayısı değişince
 da sıfırlanır, orta tıkla `CLONE` (yaratıcı), kırılmaz eşya grindstone'a girmez.
 
-Bilinen sapmalar: bundle/hasarlı eşya/zırh kilidi tahmin edilmez; bileşen
-hash'i yok; harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
+Bilinen sapmalar: bundle/hasarlı eşya/zırh kilidi tahmin edilmez (T52b);
+harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
 çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
 tüketimi tahmin edilmez.
 
@@ -125,7 +125,7 @@ birim testli.
 
 ## Açık
 
-Bileşenli eşyada bileşen hash'leri, kap içeriği ipucu, kalan menü
+Kap içeriği ipucu, kalan menü
 türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
 
 ## Simya standı
@@ -148,3 +148,20 @@ türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
 
 `MenuKind::Merchant` (menü türü 19): iki ödeme yuvası, sonuç yuvası, oyuncunun 36 yuvası. Teklifler `ClientboundMerchantOffersPacket`'ten (`MerchantOffer`, `ItemCost` ve bileşen koşulu: `photon_game::merchant`; paket çözümü `parse_merchant_offers_packet`), seviye ve deneyim `Trader`'da. Sonuç yuvasını istemci yapar (`MerchantContainer.updateSellItem`: seçilen teklif ipucuyla, stokta olmayan teklif sonuç vermez), sonucu almak ödemeyi düşürür (`MerchantResultSlot.onTake`, talep ve özel fiyatla artan/azalan ücret), `quickMoveStack`, çift tıklamada hiçbir yuvadan toplanmaz, `tryMoveItems` seçilen teklifin ödemelerini envanterden getirir (`ServerboundSelectTradePacket`, yerel menüye de yazılır). Oracle: `container-clicks` 7 satır, `container_screen` 9 satır (liste, kaydırıcı, deneyim çubuğu, fiyat üstü çizili, stok dışı) Java ile birebir; düğmeler bir kare sonra görünür (Java'daki gibi). Sapma: ticaret sesi (`getNotifyTradeSound`) ve köylünün `notifyTrade` etkileri yok; ipucu gecikmesiz; fare kaydırıcı imleci yok; tarif/deneyim sunucudan. Canlıda bakılmadı.
 
+
+## Bileşen hash'leri (`HashedStack`, `client-parity`)
+
+Tıklama paketi bir yığının eklediği her bileşeni, istemcinin
+`decoratedHashOpsGenerator`ı gibi kalıcı codec'iyle `HashOps`a (CRC32C)
+kodlayıp hash'ler; kaldırılanlar adıyla gider
+(`photon-world/src/item_components/hash.rs`). Taşınan bileşenler: `custom_data`,
+`max_stack_size`, `max_damage`, `damage`, `repair_cost`, `unbreakable`,
+`custom_name`, `item_name`, `lore`, `rarity`, `enchantments`,
+`stored_enchantments`, `enchantment_glint_override`, `dyed_color`. Metin
+bileşenleri ağdaki etiketten hash'lenir; `Style`/`NbtContents`'in boolean
+alanları bayt değil boolean sayılır. Kalan bileşenler pakette yazılmaz
+(sunucu yuvayı düzeltir). Java'nın kimlik haritası birden çok bileşeni rastgele
+sırada yazar; Rust yamanın sırasını kullanır (sunucu sırayı okumaz), bu yüzden
+paket baytı karşılaştırması tek bileşenli yığınlarla, çok bileşenli hash'ler
+`movement/component-hashes` ile (bileşen adına göre) yapılır. Java bir yamayı
+eşyanın varsayılanına göre sadeleştirir; ağ zaten sadeleşmiş yama taşır.

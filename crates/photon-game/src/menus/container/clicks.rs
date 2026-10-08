@@ -66,9 +66,13 @@ impl ContainerMenu {
         photon_core::wire::write_varint(order.len() as i32, &mut body);
         for key in order {
             body.extend_from_slice(&(key as i16).to_be_bytes());
-            write_hashed_stack(&mut body, self.slots[key as usize].as_ref());
+            write_hashed_stack(
+                &mut body,
+                self.slots[key as usize].as_ref(),
+                &self.enchantments,
+            );
         }
-        write_hashed_stack(&mut body, self.carried.as_ref());
+        write_hashed_stack(&mut body, self.carried.as_ref(), &self.enchantments);
         (self.swings, body)
     }
 

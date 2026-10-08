@@ -82,6 +82,11 @@ impl PlaySession {
         (tags.members(&tag).collect(), layers)
     }
 
+    /// The enchantment registry's entries, which a click's component hashes name.
+    fn enchantment_names(&self) -> std::sync::Arc<Vec<String>> {
+        std::sync::Arc::new(self.registry_names("minecraft:enchantment").to_vec())
+    }
+
     /// `AbstractContainerScreen.slotClicked` into the open menu: the player's
     /// own, or the container the server opened. The click as the client
     /// predicts it, the arm swings its drops cause, then the click packet.
@@ -118,6 +123,7 @@ impl PlaySession {
                 return Ok(());
             };
             self.container_menu.load(slots, carried, state_id);
+            self.container_menu.enchantments = self.enchantment_names();
             let clicked = self.container_menu.handle_click(slot, button, kind, player);
             let menu = &self.container_menu;
             self.trace
@@ -283,6 +289,7 @@ impl PlaySession {
             }
         }
         // What a furnace menu reads besides its slots.
+        let enchantments = self.enchantment_names();
         if let Some(menu) = self.open_menu.as_mut() {
             menu.accepted = menu
                 .kind
@@ -309,6 +316,7 @@ impl PlaySession {
                 menu.banner_layers = layers;
             }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
+            menu.enchantments = enchantments;
             menu.xp_level = self.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
                 // The merchant's offers; the result is the client's own to make.

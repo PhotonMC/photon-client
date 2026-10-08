@@ -329,6 +329,17 @@ class MovementSupport {
         var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
             net.minecraft.resources.Identifier.parse(described.get("item").getAsString()));
         var stack = new net.minecraft.world.item.ItemStack(item, described.get("count").getAsInt());
+        if (described.has("patch")) {
+            // The component patch as the wire carries it.
+            var patch = described.get("patch").getAsString();
+            var bytes = new byte[patch.length() / 2];
+            for (int index = 0; index < bytes.length; index++) {
+                bytes[index] = (byte) Integer.parseInt(patch.substring(index * 2, index * 2 + 2), 16);
+            }
+            var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), Oracle.vanillaRegistries());
+            stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        }
         if (described.has("book_pages")) {
             // A written book of these pages (plain text).
             var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<net.minecraft.network.chat.Component>>();

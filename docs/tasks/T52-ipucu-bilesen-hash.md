@@ -19,4 +19,10 @@ Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 `docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: `HashOps` (CRC32C) ve 14 sık bileşenin hash'i (`photon-world/src/item_components/hash.rs`),
+tıklama paketinde eklenen/kaldırılan bileşenler (`stacks.rs` `write_hashed_stack`), büyü adları
+oyunda kayıt senkronundan (`containers.rs`). Oracle: `movement/component-hashes` (16 satır) ve
+`movement/container-clicks`'e 4 bileşenli satır; Java tarafında gerçek hasher.
+Sapma: çok bileşenli yığında bileşen sırası Java'da kimlik hash'ine bağlı (rastgele), Rust yama sırası.
+Açık: kalan bileşen türlerinin hash'i yazılmıyor; bundle, hasarlı eşya, zırh kilidi → T52b.
+Kapı: yalnız bilinen Q04 `particle-engine` farkı kırmızı.
