@@ -258,7 +258,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T92](T92-istatistikler.md) İstatistikler (`AwardStats`, `StatsScreen`) — M · bağımlı: T85
 - [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3), F1 ve F2 — L
 - [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü (d6b5f303)
-- [x] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94 · bitti
+- [x] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94 · bitti (01d7e83b)
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
 - [ ] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M
