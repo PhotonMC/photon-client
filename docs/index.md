@@ -171,6 +171,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T75 — Portal, çekim ve asılı parçacıklar — client-parity](records/client-particle-attract-parity-conformance.md)
 - [T74 — Toz, büyü, totem ve parıltı parçacıkları — client-parity](records/client-particle-colour-parity-conformance.md)
 - [T70 — Partikül çekirdeği: `Particle`, duman ve alev — client-parity](records/client-particle-core-parity-conformance.md)
+- [T73b — Damla parçacıkları — client-parity](records/client-particle-drip-parity-conformance.md)
 - [T70b — Partikül motoru ve `LevelParticles` — client-parity ve server-conformance](records/client-particle-engine-parity-conformance.md)
 - [T76 — Vuruş, patlama ve ifade parçacıkları — client-parity](records/client-particle-hit-parity-conformance.md)
 - [T70c — Partikül dörtgenleri ve çizimi — client-parity ve server-conformance](records/client-particle-quads-parity-conformance.md)

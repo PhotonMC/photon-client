@@ -292,9 +292,9 @@ impl Particles {
             status: ParticleStatus::All,
         };
         let mut uniquifier = self.uniquifier;
-        self.engine.tick(world, &view, &mut self.level_random, || {
+        sounds.extend(self.engine.tick(world, &view, &mut self.level_random, || {
             RandomSource::create(unique_seed(&mut uniquifier))
-        });
+        }));
         self.uniquifier = uniquifier;
         self.most_alive = self.most_alive.max(self.engine.particle_count());
         sounds

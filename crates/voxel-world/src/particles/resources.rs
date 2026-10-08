@@ -58,6 +58,7 @@ enum Provider {
     Crumbling,
     DustPillar,
     Mark(super::hit::Mark),
+    Drip,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -109,6 +110,22 @@ fn provider_of(name: &str) -> Option<Provider> {
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
+        name if name.starts_with("dripping_")
+            || name.starts_with("landing_")
+            || matches!(
+                name,
+                "falling_lava"
+                    | "falling_water"
+                    | "falling_honey"
+                    | "falling_nectar"
+                    | "falling_spore_blossom"
+                    | "falling_obsidian_tear"
+                    | "falling_dripstone_water"
+                    | "falling_dripstone_lava"
+            ) =>
+        {
+            Provider::Drip
+        }
         _ => Provider::Mark(super::hit::Mark::of(name)?),
     })
 }
@@ -201,6 +218,10 @@ impl ParticleResources {
                 random,
                 engine_random,
             );
+        }
+        if provider == Provider::Drip {
+            let sprites = self.sprite_sets.get(name)?;
+            return Particle::drip_provider(name, random(), at, sprites, engine_random);
         }
         if let Provider::Mark(mark) = provider {
             let sprites = if mark.is_emitter() {

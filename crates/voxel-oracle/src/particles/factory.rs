@@ -190,6 +190,13 @@ pub(super) fn particle_of(
             sprites,
             &mut engine_random,
         )),
+        name if name.starts_with("dripping_")
+            || name.starts_with("landing_")
+            || (name.starts_with("falling_") && name != "falling_dust") =>
+        {
+            Particle::drip_provider(name, random, at, sprites, &mut engine_random)
+                .ok_or_else(|| format!("unknown particle {name}"))
+        }
         name => Particle::hit_provider(
             name,
             world,

@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use voxel_core::random::RandomSource;
 
 use super::super::ClientWorld;
-use super::engine::Spawn;
+use super::engine::Emitted;
 use super::particle::Particle;
 
 /// `ParticleGroup.MAX_PARTICLES`.
@@ -31,11 +31,14 @@ impl<T> Default for ParticleGroup<T> {
 impl ParticleGroup {
     /// `ParticleGroup.tickParticles`: each particle ticks, and the ones that died are dropped;
     /// what they asked the level for, in order, and how many limited ones died.
-    pub(super) fn tick(&mut self, world: &ClientWorld) -> (Vec<Spawn>, i32) {
+    pub(super) fn tick(&mut self, world: &ClientWorld) -> (Vec<Emitted>, i32) {
         let mut spawns = Vec::new();
         let mut limited_gone = 0;
         self.particles.retain_mut(|particle| {
-            spawns.append(&mut particle.tick(world));
+            spawns.extend(particle.tick(world).into_iter().map(Emitted::Particle));
+            if let Some(sound) = particle.take_sound() {
+                spawns.push(Emitted::Sound(sound));
+            }
             let alive = particle.is_alive();
             if !alive && particle.is_limited() {
                 limited_gone += 1;

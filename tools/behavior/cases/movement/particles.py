@@ -177,6 +177,26 @@ def particle_tick_cases():
         row("small-gust", "small_gust", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 77, 17),
         dict(row("sculk-charge", "sculk_charge", [], (0.5, 70.0, 0.5), (0.01, 0.02, 0.0), 12345, 22,
                  engine_seed=64), roll=float_bits(0.7)),
+        # Drops: one hangs (a cooling one reddening) and lets the falling one go when its time is up; one
+        # falling lands on the floor (some with a sound, not compared here) or vanishes into water; one landed
+        # lies there; honey, nectar, spore blossom, tears (glowing) and dripstone drops at their own pace.
+        row("dripping-water", "dripping_water", floor(), (0.5, 66.5, 0.5), still, 12345, 44, engine_seed=66),
+        row("dripping-lava", "dripping_lava", floor(), (0.5, 66.5, 0.5), still, 77, 44),
+        row("falling-water", "falling_water", floor(), (0.5, 67.5, 0.5), still, 12345, 30),
+        row("falling-water-into-pool", "falling_water", POOL, (0.5, 68.0, 0.5), still, 12345, 30),
+        row("falling-lava", "falling_lava", floor(), (0.5, 67.5, 0.5), (0.01, 0.0, 0.0), 77, 30),
+        row("landing-lava", "landing_lava", floor(), (0.5, 66.0, 0.5), still, 12345, 30),
+        row("dripping-honey", "dripping_honey", floor(), (0.5, 67.0, 0.5), still, 12345, 12, engine_seed=67),
+        row("falling-honey", "falling_honey", floor(), (0.5, 67.0, 0.5), still, 77, 40),
+        row("landing-honey", "landing_honey", floor(), (0.5, 66.0, 0.5), still, 12345, 20, engine_seed=68),
+        row("falling-nectar", "falling_nectar", floor(), (0.5, 67.0, 0.5), still, 12345, 30, engine_seed=69),
+        row("falling-spore-blossom", "falling_spore_blossom", floor(), (0.5, 67.0, 0.5), still, 77, 40),
+        row("dripping-obsidian-tear", "dripping_obsidian_tear", floor(), (0.5, 67.0, 0.5), still, 12345, 12),
+        row("falling-obsidian-tear", "falling_obsidian_tear", floor(), (0.5, 67.0, 0.5), still, 77, 40),
+        row("landing-obsidian-tear", "landing_obsidian_tear", floor(), (0.5, 66.0, 0.5), still, 12345, 20,
+            engine_seed=70),
+        row("dripping-dripstone-lava", "dripping_dripstone_lava", floor(), (0.5, 67.0, 0.5), still, 12345, 44),
+        row("falling-dripstone-water", "falling_dripstone_water", floor(), (0.5, 67.0, 0.5), still, 77, 30),
         row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
             engine_seed=65),
     ]
@@ -340,6 +360,18 @@ def particle_engine_cases():
                    blocks=plane(60, "minecraft:lava") + plane(56, "minecraft:water")
                    + plane(52, "minecraft:water", {"level": "3"}) + plane(48, "minecraft:water", {"level": "8"}),
                    ticks=4, seeds=300, describe=12),
+        # Drops go through their stages in the engine: a hanging drop lets a falling one go, which lands
+        # (a splash, a landed drop, a dripstone's or honey's sound); a fluid with a block and air beneath it
+        # drips through.
+        engine_row("drip-stages", [add(0, "dripping_water", (3.5, 66.5, 3.5)), add(0, "dripping_lava", (-2.5, 66.5, 1.5)),
+                                   add(1, "falling_honey", (1.5, 67.5, -2.5)),
+                                   add(1, "falling_dripstone_lava", (0.5, 67.0, 0.5)),
+                                   add(2, "falling_dripstone_water", (-1.5, 68.0, -1.5))],
+                   blocks=plane(65, "minecraft:stone", size=6), ticks=60, seeds=20, describe=8),
+        engine_row("animate-drips", [animate_tick(0, (0, 55, 0), 400, 81)],
+                   blocks=plane(56, "minecraft:water") + plane(55, "minecraft:stone")
+                   + plane(60, "minecraft:lava") + plane(59, "minecraft:glass"),
+                   ticks=30, seeds=200, describe=10),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

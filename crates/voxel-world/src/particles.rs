@@ -8,12 +8,14 @@
 mod animate;
 mod attract;
 mod colour;
+mod drip;
 mod engine;
 mod flame;
 mod group;
 mod hit;
 mod level_events;
 mod light;
+mod look;
 mod particle;
 mod pickup;
 mod resources;
@@ -23,7 +25,9 @@ mod sprites;
 mod terrain;
 mod water;
 
-pub use engine::{AddView, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn};
+pub use engine::{
+    AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn,
+};
 pub use level_events::LevelEventContext;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};

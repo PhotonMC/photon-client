@@ -162,7 +162,12 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
                 "composter", "dolphin", "crit", "damage_indicator", "enchanted_hit", "sweep_attack", "poof",
                 "explosion", "sonic_boom", "heart", "angry_villager", "note", "gust", "small_gust", "sculk_charge",
-                "sculk_charge_pop" -> true;
+                "sculk_charge_pop",
+                "dripping_lava", "falling_lava", "landing_lava", "dripping_water", "falling_water",
+                "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
+                "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",
+                "landing_obsidian_tear", "dripping_dripstone_water", "falling_dripstone_water",
+                "dripping_dripstone_lava", "falling_dripstone_lava" -> true;
             default -> false;
         };
         if (registered) {
@@ -287,6 +292,16 @@ class MovementParticleOracle extends MovementMenuOracle {
             return makeParticle(row, sprites, level, at,
                 net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
         });
+        // What the particle asks the level for (a drop's next stage) is made far from a camera out of
+        // reach, so that nothing is made.
+        var camera = new net.minecraft.client.Camera();
+        setField(camera, "position", new net.minecraft.world.phys.Vec3(1.0E6, 1.0E6, 1.0E6));
+        var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(renderer, "mainCamera", camera);
+        var minecraft = scene.minecraft();
+        setField(minecraft, "gameRenderer", renderer);
+        setField(minecraft, "particleEngine",
+            new net.minecraft.client.particle.ParticleEngine(level, new net.minecraft.client.particle.ParticleResources()));
         var partials = row.getAsJsonArray("partials");
         var states = new JsonArray();
         states.add(describeParticle(particle, sprites, partials));
@@ -498,10 +513,10 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            engine.tick();
             var sounds = new JsonArray();
             SilentSoundManager.PLAYED.forEach(sounds::add);
             counted.add("sounds", sounds);
-            engine.tick();
             counted.addProperty("particles", groupParticles(engine).size());
             counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());
             ticks.add(counted);

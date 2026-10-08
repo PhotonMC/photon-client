@@ -252,7 +252,7 @@ impl ParticleEngine {
         let impermeable = world
             .block_state_registry
             .tags()
-            .contains(usize::from(info.block), "impermeable");
+            .contains(usize::from(info.block), "minecraft:impermeable");
         if impermeable {
             return;
         }

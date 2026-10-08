@@ -71,6 +71,13 @@ pub struct Spawn {
     pub push: (f64, f64, f64),
 }
 
+/// What a particle's tick asks the level for, in order: a particle, or a sound.
+#[derive(Debug, Clone)]
+pub enum Emitted {
+    Particle(Spawn),
+    Sound(crate::local_player::LocalSound),
+}
+
 /// `ClientboundLevelParticlesPacket`, of a type that is only its id or a block state.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LevelParticles {
@@ -210,14 +217,24 @@ impl ParticleEngine {
         view: &AddView,
         level_random: &mut RandomSource,
         mut particle_random: impl FnMut() -> RandomSource,
-    ) {
+    ) -> Vec<crate::local_player::LocalSound> {
         // The reference ticks its groups in no fixed order; the emitters' particles go through
         // the level after the quads have moved.
-        let (mut spawns, limited_gone) = self.group.tick(world);
+        let (mut emitted, limited_gone) = self.group.tick(world);
         self.spore_blossoms -= limited_gone;
-        spawns.append(&mut self.emitters.tick(world).0);
-        for spawn in spawns {
-            self.add_particle(world, &spawn, view, level_random, &mut particle_random);
+        emitted.append(&mut self.emitters.tick(world).0);
+        let mut sounds = Vec::new();
+        for request in emitted {
+            match request {
+                Emitted::Particle(spawn) => {
+                    self.add_particle(world, &spawn, view, level_random, &mut particle_random);
+                }
+                Emitted::Sound(sound) => {
+                    // `playLocalSound`'s seed.
+                    level_random.next_long();
+                    sounds.push(sound);
+                }
+            }
         }
         while let Some(particle) = self.to_add.pop_front() {
             let limited = particle.is_limited();
@@ -230,6 +247,7 @@ impl ParticleEngine {
                 self.spore_blossoms -= 1;
             }
         }
+        sounds
     }
 
     /// `ParticleEngine.clearParticles`.

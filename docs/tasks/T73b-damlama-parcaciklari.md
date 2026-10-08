@@ -19,3 +19,7 @@ Rust: `crates/voxel-world/src/particles/water.rs` kalıbı, motorun tik içi ekl
 `docs/records/client-particle-water-parity-conformance.md` ya da yeni kayıt.
 
 ## Devir notu
+Yapılan: `particles/drip.rs` (17 tür, asılı/düşen/inen aşamaları, soğuma rengi, iniş sesleri);
+parçacık tiki ses isteyebiliyor (`Emitted`, motor tohum çeker); `look.rs` çizim sorgularını ayırdı.
+Oracle: 16 tek satır, `drip-stages` ve `animate-drips` bit eşit. Geçirimsiz etiketi düzeltildi.
+Açık: sarkıt ucu damlası (T70f/T78b).
