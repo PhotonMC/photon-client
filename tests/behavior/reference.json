@@ -586,6 +586,7 @@
         "GuiRecorder.java",
         "GuiScreenOracle.java",
         "GuiSettingsOracle.java",
+        "GuiSignOracle.java",
         "GuiTitleOracle.java",
         "MovementAnimalEvents.java",
         "MovementAnimalExtras.java",

@@ -14,8 +14,12 @@ use crate::overlays::{FrameView, packed_light};
 /// How far from the camera, in chunks, sign text is drawn (as the other block entities).
 const RADIUS_CHUNKS: i32 = 8;
 
+/// The sign being written on: its block, whether its front, and its lines as they stand.
+pub type SignEditing<'a> = Option<((i32, i32, i32), bool, &'a [String; 4])>;
+
 /// The triangles of the text of every sign near the camera; `first_person` whether the camera
-/// is the player's eyes.
+/// is the player's eyes, `editing` the sign being written on, its face and its lines as they
+/// stand (`AbstractSignEditScreen.setMessage` sets them on the block entity as they are typed).
 pub fn sign_texts(
     session: &PlaySession,
     (lang, font, atlas): (
@@ -24,7 +28,7 @@ pub fn sign_texts(
         &photon_render::gui::GuiAtlas,
     ),
     view: FrameView,
-    first_person: bool,
+    (first_person, editing): (bool, SignEditing<'_>),
 ) -> Vec<Vertex> {
     let world = session.world();
     let player = session.player();
@@ -50,7 +54,16 @@ pub fn sign_texts(
             (at.x - centre.x).powi(2) + (at.y - centre.y).powi(2) + (at.z - centre.z).powi(2)
                 < OUTLINE_DISTANCE_SQR
         });
-        let (front, back) = photon_game::sign::sign_texts(sign.tag);
+        let (mut front, mut back) = photon_game::sign::sign_texts(sign.tag);
+        if let Some((_, is_front, lines)) = editing.filter(|(at, ..)| *at == (x, y, z)) {
+            let face = if is_front { &mut front } else { &mut back };
+            // A line typed over turns plain; the others keep their style.
+            for (message, line) in face.messages.iter_mut().zip(lines) {
+                if lang.plain(message) != *line {
+                    *message = photon_game::text::Component::literal(line);
+                }
+            }
+        }
         // The player's own text is not filtered: `isTextFilteringEnabled` is an online account's.
         let lines = |text: &photon_game::sign::SignText| {
             text.messages(false)

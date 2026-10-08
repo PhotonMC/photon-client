@@ -36,6 +36,7 @@ mod incoming;
 mod lifecycle;
 mod movement;
 mod recipes;
+mod signs;
 mod state;
 
 pub(super) const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
@@ -145,6 +146,9 @@ pub struct PlaySession {
     pub(super) container_menu: photon_game::menus::container::ContainerMenu,
     /// The menu of the container the server opened, likewise.
     pub(super) open_menu: Option<photon_game::menus::container::ContainerMenu>,
+    /// The sign the server last asked the player to write on, and whether its front, until the
+    /// client opens its screen.
+    pub(super) sign_editor: Option<((i32, i32, i32), bool)>,
     /// What the server last said of the merchant whose menu is open, by container.
     pub(super) merchant: Option<(i32, photon_game::menus::merchant::MerchantState)>,
     /// Chat the server sent that the client has not shown yet, and the

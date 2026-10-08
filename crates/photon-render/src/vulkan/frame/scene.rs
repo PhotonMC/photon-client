@@ -376,6 +376,7 @@ impl VulkanBackend {
             let (pipeline, set, vertices) = match blend {
                 crate::gui::GuiBlend::Translucent => (&scene.gui_pipeline, set, buffer),
                 crate::gui::GuiBlend::Invert => (&scene.gui_invert_pipeline, set, buffer),
+                crate::gui::GuiBlend::Highlight => (&scene.gui_highlight_pipeline, set, buffer),
                 crate::gui::GuiBlend::Items | crate::gui::GuiBlend::Entity => {
                     let Some(items) = self.gui_item_buffer.as_ref() else {
                         continue;

@@ -338,6 +338,8 @@ impl Play {
             .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls
+            .open_sign_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         let hud = self.session.drain_hud();
         if !hud.is_empty() {
             self.gui.receive_hud(hud);
@@ -473,6 +475,7 @@ impl Play {
         if let Some(confirm) = self.controls.confirm.as_mut() {
             confirm.tick();
         }
+        self.controls.sign_tick(session, &mut self.surface)?;
         self.gui.tick_chat(&mut self.controls.chat_log);
         self.sky
             .tick(session, self.controls.options.hide_lightning_flashes);

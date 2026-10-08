@@ -377,4 +377,39 @@ impl GuiFrame {
             _ => self.batches.push((blend, first, 6)),
         }
     }
+
+    /// `GuiGraphics.fill` through a pipeline's blend: the rectangle's quad moved into a run of
+    /// its own blend.
+    pub fn fill_blend(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        rect: (i32, i32, i32, i32),
+        colour: u32,
+    ) {
+        self.fill(atlas, rect, colour);
+        let first = self.vertices.len() as u32 - 6;
+        if let Some((last, start, count)) = self.batches.last_mut() {
+            if *count == 6 && *start == first {
+                *last = blend;
+            } else {
+                *count -= 6;
+                self.batches.push((blend, first, 6));
+            }
+        }
+        // Neighbours of one blend are one run.
+        if let [.., (a, _, count), (b, _, added)] = self.batches.as_mut_slice()
+            && *a == *b
+        {
+            *count += *added;
+            self.batches.pop();
+        }
+    }
+
+    /// `GuiGraphics.textHighlight` over inverted text: what is behind inverted, then the
+    /// selection's blue added.
+    pub fn text_highlight(&mut self, atlas: &GuiAtlas, rect: (i32, i32, i32, i32)) {
+        self.fill_blend(atlas, GuiBlend::Invert, rect, 0xFFFF_FFFF);
+        self.fill_blend(atlas, GuiBlend::Highlight, rect, 0xFF00_00FF);
+    }
 }

@@ -204,6 +204,8 @@ pub struct SkullBlockView {
 /// What a sign block is, for drawing its text.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SignView<'a> {
+    /// The block's name (`minecraft:oak_wall_sign`), which names its wood.
+    pub block: &'static str,
     /// A hanging sign's text is drawn by `HangingSignRenderer`, another's by `StandingSignRenderer`.
     pub hanging: bool,
     /// The facing of a sign on a wall, none for one standing or hanging from a ceiling.

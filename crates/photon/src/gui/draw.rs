@@ -163,6 +163,12 @@ impl Gui {
         } else if let Some(death) = controls.death.as_mut() {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             death.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if let Some(sign) = controls.sign_edit.as_mut() {
+            if sign.screen.size() != gui_size {
+                sign.screen.resize(gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            sign.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
         }
         if let Some(disconnected) = controls.disconnected.as_mut() {
             if disconnected.size() != gui_size {

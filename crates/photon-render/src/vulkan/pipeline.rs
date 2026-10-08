@@ -38,7 +38,10 @@ impl VulkanBackend {
         let glint = kind == PipelineKind::Glint;
         let text = matches!(kind, PipelineKind::Text | PipelineKind::TextTranslucent) || shadow;
         let text_see_through = kind == PipelineKind::TextSeeThrough;
-        let gui = matches!(kind, PipelineKind::Gui | PipelineKind::GuiInvert);
+        let gui = matches!(
+            kind,
+            PipelineKind::Gui | PipelineKind::GuiInvert | PipelineKind::GuiHighlight
+        );
         let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
@@ -379,6 +382,17 @@ impl VulkanBackend {
                     .color_blend_op(vk::BlendOp::ADD)
                     .src_alpha_blend_factor(vk::BlendFactor::ONE)
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if kind == PipelineKind::GuiHighlight {
+                // `BlendFunction.ADDITIVE`.
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::ONE)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
             } else if kind == PipelineKind::SkyOverlay || rays || world_border {

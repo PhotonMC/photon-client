@@ -98,6 +98,7 @@ impl PlaySession {
             PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => self.on_block_changed_ack(payload)?,
             PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => self.on_block_destruction(payload)?,
             PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => self.on_open_screen(payload)?,
+            PLAY_CLIENTBOUND_OPEN_SIGN_EDITOR_PACKET_ID => self.on_open_sign_editor(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID => self.on_container_close(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
                 self.on_container_set_content(payload)?

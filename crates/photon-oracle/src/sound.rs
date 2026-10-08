@@ -266,7 +266,7 @@ pub(super) fn sound_engine_result(request: &Value) -> Result<Value, String> {
                 ),
                 "stop_named" => engine.stop_matching(
                     step["event"].as_str(),
-                    step["source"].as_str().map(&source_named).transpose()?,
+                    step["source"].as_str().map(source_named).transpose()?,
                 ),
                 "tick" => engine.tick(step["paused"].as_bool().ok_or("paused")?),
                 "finish" => {

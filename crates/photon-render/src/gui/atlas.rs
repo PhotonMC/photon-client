@@ -65,10 +65,8 @@ const WHOLE_TEXTURES: [&str; 37] = [
     "textures/misc/unknown_server",
 ];
 
-/// The names of the banner pattern textures (`creeper`), without `banner`
-/// the base and `banner_base` that are no patterns.
-fn banner_texture_names(assets_root: &Path) -> Vec<String> {
-    let folder = assets_root.join("minecraft/textures/entity/banner");
+/// The names of the PNG textures in a folder (`creeper` of the banner patterns), sorted.
+fn png_names(folder: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(folder)
         .into_iter()
         .flatten()
@@ -107,6 +105,27 @@ fn sprite_names(root: &Path) -> Vec<String> {
     }
     names.sort();
     names
+}
+
+/// Every PNG of a folder, stitched under `minecraft:<prefix>/<name>`.
+fn register_folder(
+    stitcher: &mut Stitcher,
+    images: &mut BTreeMap<String, DecodedImage>,
+    folder: &Path,
+    prefix: &str,
+) -> Option<()> {
+    for name in png_names(folder) {
+        let path = folder.join(format!("{name}.png"));
+        let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+        let key = format!("minecraft:{prefix}/{name}");
+        stitcher.register_sprite(SpriteEntry {
+            width: image.width as i32,
+            height: image.height as i32,
+            name: Identifier::parse(&key).ok()?,
+        });
+        images.insert(key, image);
+    }
+    Some(())
 }
 
 /// How many server icons the atlas holds at once.
@@ -201,18 +220,15 @@ impl GuiAtlas {
             });
             images.insert(key, image);
         }
-        // The banner patterns' textures, which the loom's buttons show a
-        // piece of.
-        for name in banner_texture_names(assets_root) {
-            let path = assets_root.join(format!("minecraft/textures/entity/banner/{name}.png"));
-            let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
-            let key = format!("minecraft:banner/{name}");
-            stitcher.register_sprite(SpriteEntry {
-                width: image.width as i32,
-                height: image.height as i32,
-                name: Identifier::parse(&key).ok()?,
-            });
-            images.insert(key, image);
+        // The boards the sign editing screens show, one per wood, and the
+        // banner patterns' textures, which the loom's buttons show a piece of.
+        let textures = assets_root.join("minecraft/textures");
+        for (folder, prefix) in [
+            ("gui/signs", "texture/signs"),
+            ("gui/hanging_signs", "texture/hanging_signs"),
+            ("entity/banner", "banner"),
+        ] {
+            register_folder(&mut stitcher, &mut images, &textures.join(folder), prefix)?;
         }
         register_favicon_slots(&mut stitcher, &mut images)?;
         // One white texel, which fills are drawn with.

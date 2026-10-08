@@ -210,6 +210,7 @@ impl PlaySession {
             game_mode_state: photon_game::game_mode::GameMode::default(),
             container_menu: photon_game::menus::container::ContainerMenu::default(),
             open_menu: None,
+            sign_editor: None,
             merchant: None,
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),

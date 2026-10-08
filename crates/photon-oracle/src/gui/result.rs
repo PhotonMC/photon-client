@@ -90,6 +90,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "tab_list" => tab_list_case(&mut ctx, row)?,
             "container_screen" => container_screen_case(&mut ctx, row)?,
             "sign_texts" => sign_texts_case(&mut ctx, row)?,
+            "sign_edit_screen" => sign_edit_screen_case(&mut ctx, row)?,
             _ => return Err("unknown gui operation".into()),
         });
     }

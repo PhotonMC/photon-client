@@ -101,6 +101,8 @@ pub struct Controls {
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
+    /// The sign the player is writing on, while its screen is up.
+    pub sign_edit: Option<SignEdit>,
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
     /// screen, which this takes the place of while it is open.
     pub confirm: Option<ConfirmScreen>,
@@ -287,6 +289,9 @@ mod scripted;
 
 mod settings;
 
+mod sign;
+pub use sign::SignEdit;
+
 impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
@@ -317,6 +322,7 @@ impl Controls {
             last_press: None,
             mouse_screen: None,
             death: None,
+            sign_edit: None,
             confirm: None,
             link_confirm: None,
             disconnected: None,

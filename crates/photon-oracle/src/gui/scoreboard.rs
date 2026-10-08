@@ -1,9 +1,35 @@
 use super::*;
 
 /// A single-precision number as the reference writes it: its shortest
-/// decimal, which is the value the oracle reads back as a double.
+/// decimal, which is the value the oracle reads back as a double. Of two
+/// shortest decimals as near to the value, `Float.toString` takes the one
+/// whose last digit is even, where Rust's takes the larger.
 pub(super) fn num(value: f32) -> f64 {
-    value.to_string().parse().unwrap_or(f64::from(value))
+    let shortest = value.to_string();
+    let parsed: f64 = shortest.parse().unwrap_or(f64::from(value));
+    if !shortest.contains('.') {
+        return parsed;
+    }
+    let digits = shortest.len() - shortest.find('.').unwrap_or(0) - 1;
+    let unit = 10f64.powi(-(digits as i32));
+    let exact = f64::from(value);
+    let last_odd = shortest
+        .bytes()
+        .last()
+        .is_some_and(|digit| (digit - b'0') % 2 == 1);
+    // The other decimal of the tie: as near, one unit the other side, still this float.
+    let other = if parsed > exact {
+        parsed - unit
+    } else {
+        parsed + unit
+    };
+    let other: f64 = format!("{other:.digits$}").parse().unwrap_or(parsed);
+    let tie = ((other - exact).abs() - (parsed - exact).abs()).abs() < unit * 1e-6;
+    if last_odd && tie && other as f32 == value {
+        other
+    } else {
+        parsed
+    }
 }
 
 /// The recorded drawing calls as the reference's oracle writes them.

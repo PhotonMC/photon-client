@@ -6,6 +6,7 @@ pub mod edit_box;
 pub mod navigation;
 pub mod scroll_area;
 pub mod slider;
+pub mod text_field;
 
 use photon_game::text::Run;
 

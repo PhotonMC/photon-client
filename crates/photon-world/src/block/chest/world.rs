@@ -135,6 +135,7 @@ impl ClientWorld {
         let name = crate::block::state_or_air(i64::from(state)).block().name;
         let property = |key| crate::local_player::property(Some(state), key);
         Some(SignView {
+            block: name,
             hanging: is_hanging_sign_state(state),
             wall: name
                 .contains("_wall_")

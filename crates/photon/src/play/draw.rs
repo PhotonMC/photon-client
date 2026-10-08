@@ -288,7 +288,13 @@ impl Play {
             &self.session,
             (self.gui.lang(), font, atlas),
             view,
-            first_person,
+            (
+                first_person,
+                self.controls
+                    .sign_edit
+                    .as_ref()
+                    .map(|edit| (edit.pos, edit.front, edit.screen.messages())),
+            ),
         ));
         // The leads are a flat colour lit by the lightmap, as the world text is.
         leashes::leashes(&self.session, view, &mut normal);
