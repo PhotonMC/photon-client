@@ -500,3 +500,8 @@ def gui_sound_options_cases():
     ]
     yield {"case_id": "gui/sound-options-screen", "family": "gui", "operation": "sound_options_screen",
            "rows": rows}
+
+
+def gui_key_mappings_cases():
+    """The key mappings, their categories and the keys' names, as a fresh `Options` has them."""
+    yield {"case_id": "gui/key-mappings", "family": "gui", "operation": "key_mappings"}

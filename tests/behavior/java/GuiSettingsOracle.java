@@ -406,4 +406,44 @@ class GuiSettingsOracle extends GuiScreenOracle {
         @Override
         public void setupFor(com.mojang.blaze3d.platform.Lighting.Entry entry) {}
     }
+
+    /**
+     * The key mappings of a fresh `Options`, in `keyMappings` order (name, category, default key,
+     * order), the categories in their sort order, and every key `InputConstants` names.
+     */
+    static JsonObject keyMappings(JsonObject request) throws Exception {
+        var options = screen(320, 240, 0, 0).minecraft().options;
+        var mappings = new com.google.gson.JsonArray();
+        for (var mapping : options.keyMappings) {
+            var entry = new JsonObject();
+            entry.addProperty("name", mapping.getName());
+            entry.addProperty("category", mapping.getCategory().id().toString());
+            entry.addProperty("key", mapping.getDefaultKey().getName());
+            entry.addProperty("order", (int) get(mapping, "order"));
+            mappings.add(entry);
+        }
+        var categories = new com.google.gson.JsonArray();
+        var order = Class.forName("net.minecraft.client.KeyMapping$Category").getDeclaredField("SORT_ORDER");
+        order.setAccessible(true);
+        for (var category : (java.util.List<?>) order.get(null)) {
+            categories.add(((net.minecraft.client.KeyMapping.Category) category).id().toString());
+        }
+        var keys = new com.google.gson.JsonArray();
+        for (var type : com.mojang.blaze3d.platform.InputConstants.Type.values()) {
+            @SuppressWarnings("unchecked")
+            var map = (java.util.Map<Integer, com.mojang.blaze3d.platform.InputConstants.Key>) get(type, "map");
+            map.keySet().stream().sorted().forEach(code -> {
+                var key = new JsonObject();
+                key.addProperty("type", type.name());
+                key.addProperty("code", code);
+                key.addProperty("name", map.get(code).getName());
+                keys.add(key);
+            });
+        }
+        var result = new JsonObject();
+        result.add("mappings", mappings);
+        result.add("categories", categories);
+        result.add("keys", keys);
+        return result;
+    }
 }

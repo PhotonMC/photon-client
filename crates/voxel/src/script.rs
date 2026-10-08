@@ -59,15 +59,16 @@ impl HeldKeys {
         )
     }
 
-    pub fn set(&mut self, key: glfw::Key, down: bool) {
-        match key {
-            glfw::Key::W => self.forward = down,
-            glfw::Key::S => self.backward = down,
-            glfw::Key::A => self.left = down,
-            glfw::Key::D => self.right = down,
-            glfw::Key::Space => self.jump = down,
-            glfw::Key::LeftShift => self.sneak = down,
-            glfw::Key::LeftControl => self.sprint = down,
+    /// A moving mapping (`key.forward`, ...) held down or let go.
+    pub fn set_mapping(&mut self, mapping: &str, down: bool) {
+        match mapping {
+            "key.forward" => self.forward = down,
+            "key.back" => self.backward = down,
+            "key.left" => self.left = down,
+            "key.right" => self.right = down,
+            "key.jump" => self.jump = down,
+            "key.sneak" => self.sneak = down,
+            "key.sprint" => self.sprint = down,
             _ => {}
         }
     }

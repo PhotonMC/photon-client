@@ -155,6 +155,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](records/client-insects-parity-conformance.md)
 - [T40g, T40g2 — Eşya çerçevesi ve haritası — client-parity](records/client-item-frame-parity-conformance.md)
 - [T77 — Eşya toplama animasyonu ve `TakeItemEntity` — client-parity](records/client-item-pickup-parity-conformance.md)
+- [T94 — Tuş eşlemeleri ve `key_` satırları — client-parity](records/client-key-mappings-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](records/client-keyframe-animation-parity-conformance.md)
 - [T40f — Bağ düğümü — client-parity](records/client-leash-knot-parity-conformance.md)
 - [T78 — Seviye olaylarının sesleri ve dumanları — client-parity](records/client-level-event-parity-conformance.md)

@@ -29,3 +29,7 @@ Erişilebilirlik ve kalan ayar ekranları (T95).
 `docs/gui-oracle.md`.
 
 ## Devir notu
+Yapılan: eşleme tablosu oracle'dan (`gui/key-mappings`, `tools/generate/key_mappings.py`),
+`voxel_data::keys`; `Options` `key_` satırlarını okur/yazar (`options/bindings.rs`); kontroller
+(`controls/events.rs`) tuş ve fare olaylarını eşlemelerden çözer.
+Bölündü: ekran → T94b.

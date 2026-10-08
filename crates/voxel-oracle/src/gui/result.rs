@@ -34,6 +34,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
     let font = Font::load(&root).ok_or("font")?;
     let alt = Font::load_alt(&root).ok_or("alt font")?;
     let (atlas, _) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
+    if request["operation"] == "key_mappings" {
+        return Ok(key_mappings());
+    }
     if request["operation"] == "command_parse" {
         return crate::command_parse_result(request, &root);
     }
@@ -85,4 +88,27 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
         });
     }
     Ok(json!({"rows": out}))
+}
+
+/// `key_mappings`: the key mappings, their categories and the named keys, as the data crate has them.
+fn key_mappings() -> Value {
+    let mappings: Vec<Value> = voxel_data::keys::mappings()
+        .map(|mapping| {
+            json!({
+                "name": mapping.name,
+                "category": mapping.category,
+                "key": mapping.default_key,
+                "order": mapping.order,
+            })
+        })
+        .collect();
+    let keys: Vec<Value> = voxel_data::keys::named_keys()
+        .iter()
+        .map(|(kind, code, name)| json!({"type": kind, "code": code, "name": name}))
+        .collect();
+    json!({
+        "mappings": mappings,
+        "categories": voxel_data::keys::categories(),
+        "keys": keys,
+    })
 }

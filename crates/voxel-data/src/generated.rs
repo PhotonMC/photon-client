@@ -14,6 +14,7 @@ pub mod entity_types;
 pub mod entity_variants;
 pub mod fire;
 pub mod item;
+pub mod key_mappings;
 pub mod leaves;
 pub mod map_colors;
 pub mod map_data;

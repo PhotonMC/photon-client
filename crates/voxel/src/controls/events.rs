@@ -10,36 +10,25 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        use glfw::{Action, Key, MouseButton, WindowEvent};
+        use glfw::{Action, Key, WindowEvent};
         let spectating = session.player().is_some_and(|player| player.spectating());
         match event {
-            WindowEvent::Key(Key::E, _, Action::Press, _) if self.captured && !spectating => {
-                open_inventory(
-                    surface,
-                    &mut self.screen,
-                    session.game_mode() == voxel_world::ClientPlayerGameMode::Creative,
-                    self.creative_tab,
-                    assets,
-                );
-                self.captured = false;
-                self.release_keys();
-            }
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                 self.open_pause(surface, assets);
             }
-            WindowEvent::Key(Key::Tab, _, action, _) => {
-                self.tab_held = action != Action::Release && self.captured;
+            WindowEvent::Key(key, _, action, _) => {
+                let input = voxel_data::keys::InputKey::Keysym(key as i32);
+                self.mapped_input(input, action, (session, surface, assets), spectating);
             }
-            WindowEvent::Key(Key::T, _, Action::Press, _) if self.captured => {
-                self.open_chat(ChatMethod::Message, true, surface, assets);
+            WindowEvent::MouseButton(_, Action::Press, _) if !self.captured => {
+                self.captured = true;
+                self.last_cursor = None;
+                surface.set_cursor_captured(true);
             }
-            WindowEvent::Key(Key::Slash, _, Action::Press, _) if self.captured => {
-                self.open_chat(ChatMethod::Command, true, surface, assets);
+            WindowEvent::MouseButton(button, action, _) => {
+                let input = voxel_data::keys::InputKey::Mouse(button as i32);
+                self.mapped_input(input, action, (session, surface, assets), spectating);
             }
-            WindowEvent::Key(Key::F5, _, Action::Press, _) => {
-                self.camera_type = self.camera_type.next();
-            }
-            WindowEvent::Key(Key::F11, _, Action::Press, _) => surface.toggle_fullscreen(),
             WindowEvent::Scroll(x, y) if self.captured => {
                 if !spectating
                     && let Some(slot) = self.scroll_wheel.select(
@@ -50,39 +39,6 @@ impl Controls {
                 {
                     session.select_slot(slot);
                 }
-            }
-            WindowEvent::Key(key, _, Action::Press, _)
-                if self.captured && hotbar_key(key).is_some() =>
-            {
-                if !spectating && let Some(slot) = hotbar_key(key) {
-                    session.select_slot(slot);
-                }
-            }
-            WindowEvent::Key(key, _, action, _) if self.captured => {
-                self.keys.set(key, action != Action::Release);
-            }
-            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) if self.captured => {
-                self.attack_key.press();
-            }
-            WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
-                self.attack_key.release();
-            }
-            WindowEvent::MouseButton(MouseButton::Button2, Action::Press, _) if self.captured => {
-                self.use_key.press();
-            }
-            WindowEvent::MouseButton(MouseButton::Button2, Action::Release, _) => {
-                self.use_key.release();
-            }
-            WindowEvent::MouseButton(MouseButton::Button3, Action::Press, _) if self.captured => {
-                self.pick_key.press();
-            }
-            WindowEvent::MouseButton(MouseButton::Button3, Action::Release, _) => {
-                self.pick_key.release();
-            }
-            WindowEvent::MouseButton(_, Action::Press, _) if !self.captured => {
-                self.captured = true;
-                self.last_cursor = None;
-                surface.set_cursor_captured(true);
             }
             WindowEvent::CursorPos(x, y) => {
                 if self.captured
@@ -96,6 +52,66 @@ impl Controls {
             _ => {}
         }
         Ok(())
+    }
+
+    /// A key or mouse button, by the mappings it is bound to (`KeyMapping.set` and `click`): the
+    /// keys held for moving, the attack, use and pick keys, and the keys that open things.
+    fn mapped_input(
+        &mut self,
+        input: voxel_data::keys::InputKey,
+        action: glfw::Action,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+        spectating: bool,
+    ) {
+        let down = action != glfw::Action::Release;
+        let press = action == glfw::Action::Press;
+        let names: Vec<&'static str> = self.options.mappings_of(input).collect();
+        for name in names {
+            let held = |key: &mut AttackKey, captured: bool| {
+                if press && captured {
+                    key.press();
+                } else if !down {
+                    key.release();
+                }
+            };
+            match name {
+                "key.attack" => held(&mut self.attack_key, self.captured),
+                "key.use" => held(&mut self.use_key, self.captured),
+                "key.pickItem" => held(&mut self.pick_key, self.captured),
+                "key.inventory" if press && self.captured && !spectating => {
+                    let creative =
+                        session.game_mode() == voxel_world::ClientPlayerGameMode::Creative;
+                    open_inventory(
+                        surface,
+                        &mut self.screen,
+                        creative,
+                        self.creative_tab,
+                        assets,
+                    );
+                    self.captured = false;
+                    self.release_keys();
+                }
+                "key.chat" if press && self.captured => {
+                    self.open_chat(ChatMethod::Message, true, surface, assets);
+                }
+                "key.command" if press && self.captured => {
+                    self.open_chat(ChatMethod::Command, true, surface, assets);
+                }
+                "key.togglePerspective" if press => self.camera_type = self.camera_type.next(),
+                "key.fullscreen" if press => surface.toggle_fullscreen(),
+                "key.playerlist" => self.tab_held = down && self.captured,
+                hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
+                    let slot = hotbar["key.hotbar.".len()..]
+                        .parse::<i32>()
+                        .map(|slot| slot - 1);
+                    if let (false, Ok(slot)) = (spectating, slot) {
+                        session.select_slot(slot);
+                    }
+                }
+                moving if self.captured || !down => self.keys.set_mapping(moving, down),
+                _ => {}
+            }
+        }
     }
 
     /// Let go of every key, as the mouse is freed.

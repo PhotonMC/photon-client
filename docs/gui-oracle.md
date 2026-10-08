@@ -42,6 +42,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `sidebar` | `Hud.extractScoreboardSidebar/displayScoreboardSidebar` | sıralama, gizli sahipler, 15 satır, sayı biçimleri, takım giydirme, takım rengine özel kenar çubuğu |
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
 | `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen`, `CartographyTableScreen`, `SmithingScreen`, `BrewingStandScreen`, `BeaconScreen`, `CrafterScreen`, `LecternScreen`, `MerchantScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları, smithing'in boş yuvalarında şablona göre dönen simgeler (`CyclingSlotBackground`, bir tık sonra) |
+| `key_mappings` | yeni bir `Options`'ın `keyMappings`'i, `KeyMapping.Category.SORT_ORDER`, `InputConstants.Type` ad tabloları | eşleme adı, kategori, varsayılan tuş, `order`; adı olan her tuş (üretilmiş tablo, `tools/generate/key_mappings.py`) |
 
 Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `tools/behavior/cases/gui/` altında senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
 

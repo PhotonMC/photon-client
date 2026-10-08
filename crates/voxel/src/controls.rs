@@ -269,25 +269,6 @@ pub(super) fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
     }
 }
 
-/// The number key for a hotbar slot, 1 to 9.
-pub(super) fn hotbar_key(key: glfw::Key) -> Option<i32> {
-    use glfw::Key;
-    [
-        Key::Num1,
-        Key::Num2,
-        Key::Num3,
-        Key::Num4,
-        Key::Num5,
-        Key::Num6,
-        Key::Num7,
-        Key::Num8,
-        Key::Num9,
-    ]
-    .iter()
-    .position(|candidate| *candidate == key)
-    .map(|slot| slot as i32)
-}
-
 mod chat;
 
 mod confirm;

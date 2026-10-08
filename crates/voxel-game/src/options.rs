@@ -62,6 +62,8 @@ pub struct Options {
     pub directional_audio: bool,
     pub music_frequency: MusicFrequency,
     pub music_toast: MusicToast,
+    /// The key each mapping is bound to, in `keyMappings` order.
+    pub(super) key_bindings: Vec<voxel_data::keys::InputKey>,
     /// The file's lines as last read, so what is not known is kept.
     pub(super) lines: Vec<(String, String)>,
 }
@@ -99,11 +101,13 @@ impl Default for Options {
             directional_audio: false,
             music_frequency: MusicFrequency::Default,
             music_toast: MusicToast::Never,
+            key_bindings: bindings::default_bindings(),
             lines: Vec::new(),
         }
     }
 }
 
+mod bindings;
 mod enums;
 pub use enums::*;
 mod file;

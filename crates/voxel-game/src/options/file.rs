@@ -27,6 +27,7 @@ impl Options {
                 options.read(key, &value);
             }
         }
+        options.read_key_bindings();
         options
     }
 
@@ -214,7 +215,10 @@ impl Options {
                 continue;
             }
             let known = KEYS.iter().find(|(known, _)| known == name);
-            let value = known.map_or_else(|| value.clone(), |(_, key)| self.write(*key));
+            let value = known.map_or_else(
+                || self.key_binding_line(name).unwrap_or_else(|| value.clone()),
+                |(_, key)| self.write(*key),
+            );
             text.push_str(&format!("{name}:{value}\n"));
             written.push(name.as_str());
         }
@@ -222,6 +226,9 @@ impl Options {
             if !written.contains(&name) {
                 text.push_str(&format!("{name}:{}\n", self.write(key)));
             }
+        }
+        for (name, value) in self.missing_key_lines() {
+            text.push_str(&format!("{name}:{value}\n"));
         }
         if let Some(directory) = path.parent() {
             std::fs::create_dir_all(directory)?;
@@ -250,6 +257,37 @@ mod tests {
         let path = directory.join(format!("{number}.txt"));
         std::fs::write(&path, text).unwrap();
         Options::load(&path)
+    }
+
+    #[test]
+    fn a_key_line_rebinds_its_mapping_and_every_mapping_is_written() {
+        use voxel_data::keys::InputKey;
+        let options = loaded(
+            "key_key.jump:key.keyboard.j\nkey_key.attack:key.mouse.4\nkey_key.drop:nonsense\n",
+        );
+        assert_eq!(options.key_binding("key.jump"), Some(InputKey::Keysym(74)));
+        assert_eq!(options.key_binding("key.attack"), Some(InputKey::Mouse(3)));
+        // A name that does not read leaves the default.
+        assert_eq!(options.key_binding("key.drop"), Some(InputKey::Keysym(81)));
+        assert_eq!(
+            options.key_binding("key.forward"),
+            Some(InputKey::Keysym(87))
+        );
+        assert_eq!(
+            options
+                .mappings_of(InputKey::Keysym(74))
+                .collect::<Vec<_>>(),
+            ["key.jump"]
+        );
+        assert_eq!(
+            options.key_binding_line("key_key.jump").as_deref(),
+            Some("key.keyboard.j")
+        );
+        assert!(
+            options
+                .missing_key_lines()
+                .contains(&("key_key.forward".to_owned(), "key.keyboard.w".to_owned()))
+        );
     }
 
     #[test]

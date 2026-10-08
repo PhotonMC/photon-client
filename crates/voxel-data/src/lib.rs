@@ -19,6 +19,7 @@ pub mod entity_type;
 pub mod fire;
 mod generated;
 pub mod item;
+pub mod keys;
 pub mod leash;
 pub mod leaves;
 pub mod map;
