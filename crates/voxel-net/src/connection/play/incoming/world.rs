@@ -61,6 +61,8 @@ impl PlaySession {
     ) -> Result<(), ConnectionError> {
         let radius = parse_set_chunk_cache_radius_packet(payload)?;
         self.trace.world.update_chunk_cache_radius(radius);
+        // `Options.setServerRenderDistance`.
+        self.view_distance = radius;
         Ok(())
     }
 

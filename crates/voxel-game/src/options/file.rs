@@ -90,14 +90,15 @@ impl Options {
                 }
             }
             Key::EnableVsync => self.enable_vsync = boolean().unwrap_or(self.enable_vsync),
+            // `Codec.intRange(10, 260)`.
             Key::MaxFps => {
-                // `Codec.intRange(10, 260)`.
-                if let Json::Number(number) = json {
-                    let limit = int_value(number);
-                    if (10..=UNLIMITED_FRAMERATE_CUTOFF).contains(&limit) {
-                        self.framerate_limit = limit;
-                    }
-                }
+                self.framerate_limit =
+                    int_in(&json, 10..=UNLIMITED_FRAMERATE_CUTOFF).unwrap_or(self.framerate_limit);
+            }
+            // `IntRange(2, 32)`: a value outside it leaves the default.
+            Key::RenderDistance => {
+                self.render_distance = int_in(&json, RENDER_DISTANCE_MIN..=RENDER_DISTANCE_MAX)
+                    .unwrap_or(self.render_distance);
             }
             Key::InactivityFpsLimit => {
                 if let Json::Text(name) = &json
@@ -171,6 +172,7 @@ impl Options {
         match key {
             Key::EnableVsync => self.enable_vsync.to_string(),
             Key::MaxFps => self.framerate_limit.to_string(),
+            Key::RenderDistance => self.render_distance.to_string(),
             Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
             Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
             Key::GuiScale => self.gui_scale.to_string(),
@@ -225,6 +227,14 @@ impl Options {
             std::fs::create_dir_all(directory)?;
         }
         std::fs::write(path, text)
+    }
+}
+
+/// A whole number of the file within `range` (`Codec.intRange`); none for one outside it.
+fn int_in(json: &Json<'_>, range: std::ops::RangeInclusive<i32>) -> Option<i32> {
+    match json {
+        Json::Number(number) => Some(int_value(number)).filter(|value| range.contains(value)),
+        _ => None,
     }
 }
 

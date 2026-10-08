@@ -11,6 +11,7 @@ pub(super) enum Key {
     Fov,
     GuiScale,
     MaxFps,
+    RenderDistance,
     InactivityFpsLimit,
     InvertXMouse,
     InvertYMouse,
@@ -37,11 +38,12 @@ pub(super) enum Key {
     SoundCategory(SoundSource),
 }
 
-pub(super) const KEYS: [(&str, Key); 38] = [
+pub(super) const KEYS: [(&str, Key); 39] = [
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
     ("maxFps", Key::MaxFps),
+    ("renderDistance", Key::RenderDistance),
     ("inactivityFpsLimit", Key::InactivityFpsLimit),
     ("invertXMouse", Key::InvertXMouse),
     ("invertYMouse", Key::InvertYMouse),

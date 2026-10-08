@@ -14,6 +14,7 @@ pub(crate) fn open_play_connection(
     username: &str,
     timeout: Duration,
     select_known_packs: bool,
+    information: &crate::configuration::ClientInformation,
     trace: &mut PlayConnectionTrace,
 ) -> Result<(TcpStream, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
@@ -70,7 +71,7 @@ pub(crate) fn open_play_connection(
                     |_payload| Ok(()),
                     compression_threshold,
                 )?;
-                send_configuration_start(&mut stream, compression_threshold)?;
+                send_configuration_start(&mut stream, information, compression_threshold)?;
                 break;
             }
             0 => return Err(ConnectionError::ServerDisconnected),

@@ -111,6 +111,9 @@ pub struct Controls {
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
     /// disconnected screen).
     pub leave: bool,
+    /// The options were saved since the session last looked (`Options.save` then
+    /// `broadcastOptions`).
+    pub options_saved: bool,
     /// The values of `options.txt` the client reads.
     pub options: Options,
     pub(super) chat_history: Vec<String>,
@@ -202,6 +205,23 @@ pub(super) const COMMAND_HISTORY_LIMIT: usize = 50;
 pub(crate) fn game_directory() -> std::path::PathBuf {
     std::env::var_os("VOXEL_GAME_DIR")
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
+}
+
+/// `Options.buildPlayerInformation`: what the server is told of the client. The skin's parts are
+/// all shown, the main hand is the right one, and nothing is filtered, as the default options have
+/// them.
+pub(crate) fn client_information(options: &Options) -> voxel_net::configuration::ClientInformation {
+    voxel_net::configuration::ClientInformation::new(
+        options.language_code.encode_utf16().collect(),
+        options.render_distance,
+        options.chat_visibility,
+        true,
+        127,
+        voxel_net::configuration::MainHand::Right,
+        false,
+        true,
+        voxel_net::configuration::ParticleStatus::All,
+    )
 }
 
 /// `Options.optionsFile`.
@@ -318,6 +338,7 @@ impl Controls {
             link_confirm: None,
             disconnected: None,
             leave: false,
+            options_saved: false,
             options,
             chat_history: command_history.clone(),
             chat_drafts: ChatDrafts::default(),

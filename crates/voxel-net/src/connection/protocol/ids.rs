@@ -162,6 +162,8 @@ pub(crate) const PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID: i32 = 14;
 
 pub(crate) const PLAY_CLIENTBOUND_COMMAND_SUGGESTIONS_PACKET_ID: i32 = 15;
 
+/// `ServerboundClientInformationPacket` in the play protocol.
+pub(crate) const PLAY_SERVERBOUND_CLIENT_INFORMATION_PACKET_ID: i32 = 14;
 pub(crate) const PLAY_SERVERBOUND_COMMAND_SUGGESTION_PACKET_ID: i32 = 15;
 
 pub(crate) const PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID: i32 = 69;

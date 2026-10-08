@@ -64,6 +64,7 @@ impl Controls {
         self.options.framerate_limit = shown.framerate_limit;
         self.options.enable_vsync = shown.vsync;
         self.options.inactivity_fps_limit = shown.inactivity_fps_limit;
+        self.options.render_distance = shown.render_distance;
         if done {
             self.close_video();
         }
@@ -141,7 +142,7 @@ impl Controls {
     /// the options are saved.
     pub(super) fn close_options(&mut self) {
         self.options_screen = None;
-        let _ = self.options.save(&options_path());
+        self.save_options();
     }
 
     /// What an input to the options screen asks for: a new field of view
@@ -188,6 +189,7 @@ impl Controls {
             framerate_limit: options.framerate_limit,
             vsync: options.enable_vsync,
             inactivity_fps_limit: options.inactivity_fps_limit,
+            render_distance: options.render_distance,
         }
     }
 
@@ -195,7 +197,13 @@ impl Controls {
     /// and the options are saved.
     pub(super) fn close_video(&mut self) {
         self.video_screen = None;
+        self.save_options();
+    }
+
+    /// `Options.save`, after which the session tells the server what changed.
+    pub(super) fn save_options(&mut self) {
         let _ = self.options.save(&options_path());
+        self.options_saved = true;
     }
 
     pub(super) fn gui_size(surface: &WindowSurface) -> (i32, i32) {
@@ -298,7 +306,7 @@ impl Controls {
                 self.options.language_code.clone_from(&code);
                 self.language_request = Some(code);
             }
-            let _ = self.options.save(&options_path());
+            self.save_options();
         }
     }
 }

@@ -42,7 +42,7 @@ impl VideoSettingsScreen {
                     constant_tip("options.graphics.preset.tooltip"),
                 ),
             );
-            list.add_small(lang, quality_options());
+            list.add_small(lang, quality_options(values.render_distance));
             list.add_header(font, lang, "options.video.preferences.header");
             list.add_small(lang, preference_options(values.attack_indicator));
         });
@@ -126,6 +126,10 @@ impl VideoSettingsScreen {
                 .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
                 .and_then(|button| InactivityFpsLimit::from_caption_key(button.value()))
                 .unwrap_or(fallback.inactivity_fps_limit),
+            render_distance: list
+                .find(RENDER_DISTANCE)
+                .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
+                .map_or(fallback.render_distance, |slider| *slider.value()),
         }
     }
 

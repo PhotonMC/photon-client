@@ -1,7 +1,7 @@
 //! The video settings screen (`VideoSettingsScreen`): the display, quality
-//! and preference options in a scrolling list. Only the GUI scale and the
-//! attack indicator do anything; the others hold a value on their widget and
-//! nothing follows.
+//! and preference options in a scrolling list. The GUI scale, the frame limits,
+//! vsync, the attack indicator and the render distance do something; the others
+//! hold a value on their widget and nothing follows.
 
 use voxel_game::options::values::{IntRange, MappedIntRange, SliderableEnum};
 use voxel_game::options::{AttackIndicator, FRAMERATE_LIMIT_DEFAULT, InactivityFpsLimit};
@@ -32,6 +32,7 @@ const ATTACK_INDICATOR: u8 = 5;
 const FRAMERATE_LIMIT: u8 = 6;
 const VSYNC: u8 = 7;
 const INACTIVITY_FPS_LIMIT: u8 = 8;
+const RENDER_DISTANCE: u8 = CUSTOMISING | 3;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -106,6 +107,8 @@ pub struct VideoValues {
     pub framerate_limit: i32,
     pub vsync: bool,
     pub inactivity_fps_limit: InactivityFpsLimit,
+    /// `renderDistance`, in chunks.
+    pub render_distance: i32,
 }
 
 impl Default for VideoValues {
@@ -115,6 +118,7 @@ impl Default for VideoValues {
             framerate_limit: FRAMERATE_LIMIT_DEFAULT,
             vsync: true,
             inactivity_fps_limit: InactivityFpsLimit::Afk,
+            render_distance: 12,
         }
     }
 }
@@ -268,7 +272,7 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
 }
 
 /// `qualityOptions`, the first nine.
-fn quality_options_first() -> Vec<(u8, Build)> {
+fn quality_options_first(render_distance: i32) -> Vec<(u8, Build)> {
     vec![
         (
             CUSTOMISING,
@@ -280,12 +284,12 @@ fn quality_options_first() -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            RENDER_DISTANCE,
             slider(
                 "options.renderDistance",
                 IntRange::with_apply_value_immediately(2, 32, false),
                 chunks,
-                12,
+                render_distance,
             ),
         ),
         (
@@ -421,8 +425,8 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
 }
 
 /// `qualityOptions`.
-fn quality_options() -> Vec<(u8, Build)> {
-    let mut options = quality_options_first();
+fn quality_options(render_distance: i32) -> Vec<(u8, Build)> {
+    let mut options = quality_options_first(render_distance);
     options.extend(quality_options_rest());
     options
 }

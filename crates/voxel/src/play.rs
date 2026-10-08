@@ -392,7 +392,14 @@ fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
     let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
     let auto_jump = env::var("VOXEL_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
-    let mut session = PlaySession::connect(server, &username, Duration::from_secs(30), auto_jump)?;
+    let information = crate::controls::client_information(&crate::controls::load_options());
+    let mut session = PlaySession::connect(
+        server,
+        &username,
+        Duration::from_secs(30),
+        auto_jump,
+        information,
+    )?;
     status.0.store(true, std::sync::atomic::Ordering::Relaxed);
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();

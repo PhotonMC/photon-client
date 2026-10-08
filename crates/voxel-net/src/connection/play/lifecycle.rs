@@ -110,15 +110,17 @@ impl PlaySession {
     }
 
     /// Log in, configure, and start reading play packets in the background.
+    /// The server is told the client's `information` (`ServerboundClientInformationPacket`).
     pub fn connect(
         address: SocketAddr,
         username: &str,
         timeout: Duration,
         auto_jump: bool,
+        information: crate::configuration::ClientInformation,
     ) -> Result<Self, ConnectionError> {
         let mut trace = PlayConnectionTrace::default();
         let (stream, compression_threshold) =
-            open_play_connection(address, username, timeout, true, &mut trace)?;
+            open_play_connection(address, username, timeout, true, &information, &mut trace)?;
         stream.set_read_timeout(None)?;
         let mut reader = stream.try_clone()?;
         let (sender, incoming) = mpsc::channel();
@@ -131,13 +133,32 @@ impl PlaySession {
                 }
             }
         });
-        Ok(Self::assemble(
+        let mut session = Self::assemble(
             stream,
             compression_threshold,
             incoming,
             trace,
             (username, auto_jump),
-        ))
+        );
+        session.client_information = information;
+        Ok(session)
+    }
+
+    /// `ClientPacketListener.broadcastClientInformation`: the client's information, sent again
+    /// only when it is not what the server was last told.
+    pub fn send_client_information(
+        &mut self,
+        information: crate::configuration::ClientInformation,
+    ) -> Result<(), ConnectionError> {
+        if information == self.client_information {
+            return Ok(());
+        }
+        self.client_information = information.clone();
+        self.send(PLAY_SERVERBOUND_CLIENT_INFORMATION_PACKET_ID, |output| {
+            crate::configuration::ServerboundClientInformationPacket::new(information)
+                .encode(output)
+                .map_err(|_| ConnectionError::Codec("client information"))
+        })
     }
 
     /// A session over a connection already made, with nothing yet known.
@@ -162,6 +183,7 @@ impl PlaySession {
             warned: None,
             teleports: 0,
             view_distance: 0,
+            client_information: crate::configuration::ClientInformation::default(),
             dimension_type_id: 0,
             hashed_seed: 0,
             game_time: 0,

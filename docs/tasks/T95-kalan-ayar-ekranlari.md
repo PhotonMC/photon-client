@@ -3,8 +3,8 @@
 **Amaç:** `AccessibilityOptionsScreen`, `SkinCustomizationScreen` (model parçaları: `ClientInformation`
 maskesi, ana el), `OnlineOptionsScreen`, `FontOptionsScreen`, `WorldOptionsScreen`/zorluk düğmesi;
 ayarların oyuna bağlanması (ör. skin parçaları sunucuya, ana el, hareket bulanıklığı vb.).
-Video ayarlarının etkisiz değerleri (görüş mesafesi → `ClientInformation` ve çizim sınırı,
-bulanıklık, parlaklık) de burada bağlanır.
+Video ayarlarının etkisiz değerleri (bulanıklık, parlaklık) de burada bağlanır; görüş mesafesi
+T95a'da bağlandı.
 **Bağımlılık:** — . **Boy:** L.
 
 ## Oku

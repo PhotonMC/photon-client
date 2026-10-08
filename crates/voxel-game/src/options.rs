@@ -11,6 +11,10 @@ use std::path::Path;
 use crate::options::values::{ClampingLazyMaxIntRange, IntRange, UnitDouble};
 use crate::sounds::SoundSource;
 
+/// `renderDistance`'s range: `IntRange(2, 32)` on a 64-bit machine with a gigabyte to spare.
+pub const RENDER_DISTANCE_MIN: i32 = 2;
+pub const RENDER_DISTANCE_MAX: i32 = 32;
+
 /// What the client holds of `Options`, set to the reference's defaults.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Options {
@@ -33,6 +37,8 @@ pub struct Options {
     pub sensitivity: f64,
     /// `mouseWheelSensitivity`, 0.01 to 10.
     pub mouse_wheel_sensitivity: f64,
+    /// `renderDistance`, in chunks.
+    pub render_distance: i32,
     /// `lang`.
     pub language_code: String,
     /// `lastServer` (`lastMpIp`): the address the direct connection last had.
@@ -73,6 +79,7 @@ impl Default for Options {
             invert_mouse_y: false,
             sensitivity: 0.5,
             mouse_wheel_sensitivity: log_mouse(0),
+            render_distance: 12,
             language_code: "en_us".to_owned(),
             last_server: String::new(),
             chat_visibility: ChatVisibility::Full,

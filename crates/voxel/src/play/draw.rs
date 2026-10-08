@@ -36,7 +36,14 @@ impl Play {
         let fov = self.camera.fov(option_fov, partial as f32, eye_in_water);
         // The camera's far plane: four times the render distance, or the
         // cloud range if that is farther.
-        let render_distance = self.session.view_distance().clamp(2, 12);
+        // `Options.getEffectiveRenderDistance`: the option, no more than the server's.
+        let option = self.controls.options.render_distance;
+        let server = self.session.view_distance();
+        let render_distance = if server > 0 {
+            option.min(server)
+        } else {
+            option
+        };
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         // The view bob option's default is on.
         let (walked, bob) = player.view_bob(partial as f32);

@@ -4,9 +4,7 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 
-use crate::configuration::{
-    ChatVisibility, ClientInformation, MainHand, ParticleStatus, ServerboundClientInformationPacket,
-};
+use crate::configuration::{ClientInformation, ServerboundClientInformationPacket};
 use crate::frame::{FrameError, MAX_VARINT21_BYTES};
 use crate::handshake::{ClientIntent, ClientIntentionPacket};
 use crate::protocol::ConnectionProtocol;
@@ -101,6 +99,7 @@ pub fn query_status_and_ping(
 
 pub(crate) fn send_configuration_start(
     stream: &mut TcpStream,
+    information: &ClientInformation,
     compression_threshold: Option<usize>,
 ) -> Result<(), ConnectionError> {
     send_packet(
@@ -123,23 +122,12 @@ pub(crate) fn send_configuration_start(
         compression_threshold,
     )?;
 
-    let information = ClientInformation::new(
-        "en_us".encode_utf16().collect(),
-        12,
-        ChatVisibility::Full,
-        true,
-        127,
-        MainHand::Right,
-        false,
-        true,
-        ParticleStatus::All,
-    );
     send_packet(
         stream,
         ConnectionProtocol::Configuration,
         CONFIG_CLIENT_INFORMATION_PACKET_ID,
         |output| {
-            ServerboundClientInformationPacket::new(information)
+            ServerboundClientInformationPacket::new(information.clone())
                 .encode(output)
                 .map_err(|_| ConnectionError::Codec("client information"))
         },

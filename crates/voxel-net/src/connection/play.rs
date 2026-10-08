@@ -104,6 +104,8 @@ pub struct PlaySession {
     pub(super) warned: Option<String>,
     pub(super) teleports: u32,
     pub(super) view_distance: i32,
+    /// What the server was last told of the client (`remoteClientInformation`).
+    pub(super) client_information: crate::configuration::ClientInformation,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
     pub(super) game_time: i64,

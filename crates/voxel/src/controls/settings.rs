@@ -64,7 +64,7 @@ impl Controls {
     /// and the options are saved.
     pub(super) fn close_chat_options(&mut self) {
         self.chat_options_screen = None;
-        let _ = self.options.save(&options_path());
+        self.save_options();
     }
 
     /// The chat options the screen shows are the options: the chat wraps
@@ -252,7 +252,7 @@ impl Controls {
         if self.mouse_screen.take().is_none() {
             self.controls_screen = None;
         }
-        let _ = self.options.save(&options_path());
+        self.save_options();
     }
 
     /// `SoundOptionsScreen`, over the options screen.
@@ -270,7 +270,7 @@ impl Controls {
     /// options are saved.
     pub(super) fn close_sound_options(&mut self) {
         self.sound_screen = None;
-        let _ = self.options.save(&options_path());
+        self.save_options();
     }
 
     /// The sound options the screen shows are the options.

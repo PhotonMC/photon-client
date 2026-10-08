@@ -218,6 +218,10 @@ impl Play {
                     &self.screen_assets,
                 )?;
             }
+            if std::mem::take(&mut self.controls.options_saved) {
+                let information = crate::controls::client_information(&self.controls.options);
+                self.session.send_client_information(information)?;
+            }
             // `LanguageSelectScreen.onDone`: the texts are read again, and the
             // screens that are open are made again in them.
             if let Some(code) = self.controls.take_language_request() {
@@ -233,24 +237,7 @@ impl Play {
             let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
             self.accumulated += now - self.last_frame;
             self.last_frame = now;
-            profile::timed(Span::Drain, || self.session.drain())?;
-            self.controls.receive_suggestions(&mut self.session);
-            self.controls
-                .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);
-            self.controls
-                .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
-            let hud = self.session.drain_hud();
-            if !hud.is_empty() {
-                self.gui.receive_hud(hud);
-            }
-            let chat = self.session.drain_chat();
-            if !chat.is_empty() {
-                self.gui.receive_chat(
-                    chat,
-                    &mut self.controls.chat_log,
-                    self.controls.chat.is_some(),
-                );
-            }
+            self.receive_session()?;
             self.controls.container_tick(
                 &mut self.session,
                 &mut self.surface,
@@ -292,7 +279,7 @@ impl Play {
             self.limiter.wait(limit);
         }
         println!(
-            "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={} particle_packets={} most_particles={}",
+            "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={} particle_packets={} most_particles={} chunks={}",
             self.frames,
             self.ticks,
             self.session.entity_count(),
@@ -302,7 +289,8 @@ impl Play {
                 .as_ref()
                 .map_or(0, SoundSystem::local_sound_count),
             self.particles.report().0,
-            self.particles.report().1
+            self.particles.report().1,
+            self.session.world().loaded_chunk_count()
         );
         self.into_client()
     }
@@ -333,6 +321,30 @@ impl Play {
             },
             exit,
         ))
+    }
+
+    /// What the server sent since the last frame: suggestions, a disconnection, a death, the HUD's
+    /// packets and chat.
+    fn receive_session(&mut self) -> Result<()> {
+        profile::timed(Span::Drain, || self.session.drain())?;
+        self.controls.receive_suggestions(&mut self.session);
+        self.controls
+            .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);
+        self.controls
+            .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
+        let hud = self.session.drain_hud();
+        if !hud.is_empty() {
+            self.gui.receive_hud(hud);
+        }
+        let chat = self.session.drain_chat();
+        if !chat.is_empty() {
+            self.gui.receive_chat(
+                chat,
+                &mut self.controls.chat_log,
+                self.controls.chat.is_some(),
+            );
+        }
+        Ok(())
     }
 
     /// A resized or fullscreen window gets a swapchain of its new size.

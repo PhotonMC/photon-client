@@ -33,6 +33,7 @@ pub(super) fn connect_and_probe_with_mode(
         username,
         timeout,
         probe.select_known_packs,
+        &crate::configuration::ClientInformation::default(),
         &mut trace,
     )?;
 

@@ -75,6 +75,25 @@ pub struct ClientInformation {
     pub particle_status: ParticleStatus,
 }
 
+impl Default for ClientInformation {
+    /// What `Options.buildPlayerInformation` gives with the default options: English, twelve
+    /// chunks, full chat in colour, every model part, the right hand, no filtering, listed, all
+    /// particles.
+    fn default() -> Self {
+        Self::new(
+            "en_us".encode_utf16().collect(),
+            12,
+            ChatVisibility::Full,
+            true,
+            127,
+            MainHand::Right,
+            false,
+            true,
+            ParticleStatus::All,
+        )
+    }
+}
+
 impl ClientInformation {
     #[expect(
         clippy::too_many_arguments,

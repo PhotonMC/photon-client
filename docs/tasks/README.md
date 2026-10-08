@@ -31,7 +31,7 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %76 bitti** (ağırlıklı) · 214/269 madde işaretli, **55 madde kaldı** (tahmini 98 M-görev eşdeğeri iş).
+**Toplam: %76 bitti** (ağırlıklı) · 215/270 madde işaretli, **55 madde kaldı** (tahmini 98 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `████████████░░░░░░░░` | 58 | 7/11 |
 | M4 Entity'ler | `████████████████████` | 98 | 129/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `████████████░░░░░░░░` | 61 | 21/33 |
+| M6 Ekranlar ve ayarlar | `████████████░░░░░░░░` | 62 | 22/34 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
 | M8 Partikül, efekt ve blok entity | `███████████░░░░░░░░░` | 53 | 13/25 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
@@ -246,7 +246,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T85b](T85b-panorama.md) Başlık ekranının panoraması ve menü bulanıklığı — M · bağımlı: T85
 - [x] [T86](T86-sunucu-listesi.md) Sunucu listesi ve `servers.dat` — L · bağımlı: T85 · bitti (3563fe38)
 - [x] [T86c](T86c-sunucu-ekle-duzenle.md) Sunucu ekleme, düzenleme, silme ve doğrudan bağlanma — M · bağımlı: T86 · bitti (adee2f1a)
-- [x] [T86b](T86b-sunucu-durumu.md) Sunucu durum sorgusu: MOTD, ping, oyuncu sayısı — M · bağımlı: T86 · bitti
+- [x] [T86b](T86b-sunucu-durumu.md) Sunucu durum sorgusu: MOTD, ping, oyuncu sayısı — M · bağımlı: T86 · bitti (3c8c8a46)
 - [ ] [T86d](T86d-sunucu-simgesi.md) Sunucu simgesi (favicon) çizimi ve kaydı — M · bağımlı: T86b
 - [x] [T87](T87-baglanma-yukleme.md) Bağlanma ve dünya yükleme ekranları — M · bağımlı: T85 · bitti (e4b946ec)
 - [ ] [T88](T88-kitap-duzenleme.md) Kitap açma ve düzenleme (`OpenBook`, `EditBook`) — M · bağımlı: T56
@@ -257,6 +257,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T92](T92-istatistikler.md) İstatistikler (`AwardStats`, `StatsScreen`) — M · bağımlı: T85
 - [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3), F1 ve F2 — L
 - [ ] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M
+- [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
 - [ ] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M
 
