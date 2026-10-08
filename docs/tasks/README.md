@@ -212,7 +212,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T46](T46-mob-oznitelikleri.md) Mob öznitelikleri (`UpdateAttributes`): can üstü, ölçek — S · bağımlı: T34c · bitti (99446dc2)
 - [ ] **K-M4** P24 kapsam denetimi: her entity türünün çizilip çizilmediğinin otomatik listesi, eksikler — M×2
 - [x] [T47](T47-entity-uzaklik-ayiklamasi.md) Entity uzaklık ve bölüm görünürlüğü ayıklaması — S · bağımlı: T24 · bitti (380838be)
-- [x] [T47b](T47b-asili-kutu-mermi-tiki.md) Asılı entity kutusu ve kalan mermilerin istemci tiki — M · bağımlı: T47 · bitti
+- [x] [T47b](T47b-asili-kutu-mermi-tiki.md) Asılı entity kutusu ve kalan mermilerin istemci tiki — M · bağımlı: T47 · bitti (de6c1cd5)
 
 ### M5 Metin ve sohbet
 
