@@ -87,6 +87,29 @@ impl BlockRenderer {
         out
     }
 
+    /// The particle textures of an item's model layers on the ground (`pickParticleMaterial`'s
+    /// choices), in layer order; a layer with none is left out.
+    pub fn item_particle_sprites(&self, item: i32) -> Vec<String> {
+        let Some(Some(def)) = usize::try_from(item)
+            .ok()
+            .and_then(|index| self.items.get(index))
+        else {
+            return Vec::new();
+        };
+        let mut layers = Vec::new();
+        crate::item_model::layers_for(
+            &def.model,
+            crate::model::DisplayContext::Ground,
+            &mut layers,
+        );
+        layers
+            .iter()
+            .filter_map(|layer| self.models.get(&layer.model.as_string()))
+            .filter_map(|model| model.textures.material("particle"))
+            .map(|material| material.sprite.as_string())
+            .collect()
+    }
+
     /// A client item's swap properties: whether a new stack lowers the
     /// hand, and how far. Items without a definition take the defaults.
     pub fn item_swap(&self, item: i32) -> (bool, f32) {

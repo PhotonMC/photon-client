@@ -117,6 +117,26 @@ pub(super) fn particle_of(
         )),
         "totem_of_undying" => Ok(Particle::totem(random, motion, sprites)),
         "end_rod" => Ok(Particle::end_rod(random, motion, sprites)),
+        "item_crumb" => Ok(Particle::breaking_item(
+            random,
+            motion,
+            (sprites, 0),
+            (true, true),
+        )),
+        "item_crumb_still" => Ok(Particle::breaking_item(
+            random,
+            motion,
+            (sprites, 0),
+            (true, false),
+        )),
+        "sulfur_cube_goo" => Particle::breaking_item_provider(
+            "sulfur_cube_goo",
+            random,
+            motion,
+            (voxel_world::particles::ParticleData::Plain, sprites),
+            (None, &mut engine_random),
+        )
+        .ok_or_else(|| "no goo".to_owned()),
         name @ ("cherry_leaves" | "pale_oak_leaves" | "tinted_leaves") => {
             Particle::falling_leaves_provider(
                 name,

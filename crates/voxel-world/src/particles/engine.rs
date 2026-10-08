@@ -47,6 +47,8 @@ pub enum ParticleData {
     DustTransition { from: u32, to: u32, scale: f32 },
     /// `SculkChargeParticleOptions`: how far the quad is turned.
     Roll(f32),
+    /// `ItemParticleOption`: the item, by its registry id (its components are not read).
+    Item(i32),
 }
 
 impl ParticleData {

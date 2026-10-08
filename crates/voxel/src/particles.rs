@@ -71,6 +71,10 @@ impl TerrainMaterials for BlockMaterials {
             .to_owned()
     }
 
+    fn item_particle_textures(&self, item: i32) -> Vec<String> {
+        self.renderer.item_particle_sprites(item)
+    }
+
     fn tint(&self, world: &ClientWorld, state: i32, pos: BlockPos) -> Option<i32> {
         // `BiomeColors.getAverage...Color`: the biome colours blended around the block.
         let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);
@@ -347,7 +351,7 @@ impl Particles {
                     let Some(rect) = self.rects.get(&texture_path(particle.sprite_name())) else {
                         continue;
                     };
-                    (*rect, None)
+                    (*rect, particle.sprite_window())
                 }
                 ParticleAtlas::Blocks => {
                     let Some(rect) = self

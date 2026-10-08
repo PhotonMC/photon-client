@@ -20,6 +20,12 @@ pub trait TerrainMaterials: std::fmt::Debug {
 
     /// `BlockTintSource.colorAsTerrainParticle` of the state's first tint source, if it has one.
     fn tint(&self, world: &ClientWorld, state: i32, pos: BlockPos) -> Option<i32>;
+
+    /// The particle textures of an item's model layers as it lies on the ground
+    /// (`ItemStackRenderState` layers' `particleMaterial`), in layer order.
+    fn item_particle_textures(&self, _item: i32) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// `BlockBehaviour.BlockStateBase.isAir`.

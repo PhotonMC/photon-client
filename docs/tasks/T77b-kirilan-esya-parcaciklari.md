@@ -20,3 +20,7 @@ Java: `client/particle/BreakingItemParticle.java`, `core/particles/ItemParticleO
 `docs/records/client-item-pickup-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `particles/breaking_item.rs` (beş sağlayıcı), `ParticleData::Item` ve ağ okuyucu, eşya modeli
+katmanlarının parçacık dokusu (`item_particle_sprites`), parçacık atlasında pencereli çizim.
+Oracle: `item-crumb`, `item-crumb-still`, `sulfur-cube-goo` bit eşit.
+Sapma: modelden resim seçimi sınanmıyor, bileşen yaması modeli etkilemiyor.

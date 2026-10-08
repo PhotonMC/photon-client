@@ -96,7 +96,7 @@ impl Particle {
     /// not the whole: `getU0` and the rest ask the sprite for a place within it.
     pub fn sprite_window(&self) -> Option<[f32; 4]> {
         match self.kind {
-            Kind::Terrain { uo, vo } => {
+            Kind::Terrain { uo, vo } | Kind::Goo { uo, vo } => {
                 Some([(uo + 1.0) / 4.0, uo / 4.0, vo / 4.0, (vo + 1.0) / 4.0])
             }
             _ => None,

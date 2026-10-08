@@ -62,6 +62,7 @@ enum Provider {
     FallingDust,
     EndRod,
     FallingLeaves,
+    BreakingItem,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -115,6 +116,9 @@ fn provider_of(name: &str) -> Option<Provider> {
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
         "end_rod" => Provider::EndRod,
+        "item" | "item_slime" | "item_cobweb" | "item_snowball" | "sulfur_cube_goo" => {
+            Provider::BreakingItem
+        }
         "cherry_leaves" | "pale_oak_leaves" | "tinted_leaves" => Provider::FallingLeaves,
         name if name.starts_with("dripping_")
             || name.starts_with("landing_")
@@ -227,7 +231,11 @@ impl ParticleResources {
         }
         if matches!(
             provider,
-            Provider::FallingDust | Provider::Drip | Provider::Mark(_) | Provider::FallingLeaves
+            Provider::FallingDust
+                | Provider::Drip
+                | Provider::Mark(_)
+                | Provider::FallingLeaves
+                | Provider::BreakingItem
         ) {
             return self.create_own(
                 provider,
@@ -322,6 +330,25 @@ impl ParticleResources {
                 at,
                 (state, sprites),
                 (world, materials),
+            );
+        }
+        if provider == Provider::BreakingItem {
+            // Only the goo has pictures of its own; the items' come from their models.
+            let none = Arc::new(SpriteSet::new(Vec::new()));
+            let sprites = match self.sprite_sets.get(name) {
+                Some(sprites) => sprites,
+                None if name != "sulfur_cube_goo" => &none,
+                None => return None,
+            };
+            let materials = self.terrain.as_deref();
+            let random = random();
+            let options = (data, sprites);
+            return Particle::breaking_item_provider(
+                name,
+                random,
+                (at, push),
+                options,
+                (materials, engine_random),
             );
         }
         if provider == Provider::FallingLeaves {

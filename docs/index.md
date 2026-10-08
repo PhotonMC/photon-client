@@ -171,6 +171,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T32f — Panda — client-parity](records/client-panda-parity-conformance.md)
 - [T36c — Papağan — client-parity](records/client-parrot-parity-conformance.md)
 - [T75 — Portal, çekim ve asılı parçacıklar — client-parity](records/client-particle-attract-parity-conformance.md)
+- [T77b — Kırılan eşya parçacıkları — client-parity](records/client-particle-breaking-item-parity-conformance.md)
 - [T74 — Toz, büyü, totem ve parıltı parçacıkları — client-parity](records/client-particle-colour-parity-conformance.md)
 - [T70 — Partikül çekirdeği: `Particle`, duman ve alev — client-parity](records/client-particle-core-parity-conformance.md)
 - [T73b — Damla parçacıkları — client-parity](records/client-particle-drip-parity-conformance.md)

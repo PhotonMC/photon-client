@@ -129,9 +129,15 @@ class MovementParticleOracle extends MovementMenuOracle {
             var constructor = type.getDeclaredConstructor();
             constructor.setAccessible(true);
             set = constructor.newInstance();
+            // Opaque pictures of the particle atlas (`Layer.bySprite` asks some particles).
+            var contents = unsafe.allocateInstance(net.minecraft.client.renderer.texture.SpriteContents.class);
+            setField(contents, "transparency", com.mojang.blaze3d.platform.Transparency.NONE);
             for (int i = 0; i < count; i++) {
-                sprites.add((net.minecraft.client.renderer.texture.TextureAtlasSprite)
-                    unsafe.allocateInstance(net.minecraft.client.renderer.texture.TextureAtlasSprite.class));
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
+                    unsafe.allocateInstance(net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                setField(sprite, "contents", contents);
+                setField(sprite, "atlasLocation", net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES);
+                sprites.add(sprite);
             }
             var rebind = type.getDeclaredMethod("rebind", java.util.List.class);
             rebind.setAccessible(true);
@@ -154,6 +160,24 @@ class MovementParticleOracle extends MovementMenuOracle {
         double[] at, net.minecraft.util.RandomSource engineRandom) throws Exception {
         String kind = row.get("particle").getAsString();
         var spriteSet = (net.minecraft.client.particle.SpriteSet) sprites.set;
+        // An item's crumb, of the first picture (the item model's pick is not made here).
+        if (kind.equals("item_crumb") || kind.equals("item_crumb_still")) {
+            var crumb = net.minecraft.client.particle.BreakingItemParticle.class;
+            var sprite = sprites.sprites.get(0);
+            // A picture of the item atlas.
+            setField(sprite, "atlasLocation", net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_ITEMS);
+            if (kind.equals("item_crumb")) {
+                var constructor = crumb.getDeclaredConstructor(net.minecraft.client.multiplayer.ClientLevel.class,
+                    double.class, double.class, double.class, double.class, double.class, double.class,
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                constructor.setAccessible(true);
+                return constructor.newInstance(level, at[0], at[1], at[2], at[3], at[4], at[5], sprite);
+            }
+            var constructor = crumb.getDeclaredConstructor(net.minecraft.client.multiplayer.ClientLevel.class,
+                double.class, double.class, double.class, net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(level, at[0], at[1], at[2], sprite);
+        }
         // The coloured ones through the engine's own providers, their options built from the row.
         var registered = switch (kind) {
             case "dust", "dust_color_transition", "effect", "entity_effect", "infested", "witch",
@@ -162,7 +186,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
                 "composter", "dolphin", "crit", "damage_indicator", "enchanted_hit", "sweep_attack", "poof",
                 "explosion", "sonic_boom", "heart", "angry_villager", "note", "gust", "small_gust", "sculk_charge",
-                "sculk_charge_pop", "end_rod", "cherry_leaves", "pale_oak_leaves", "tinted_leaves",
+                "sculk_charge_pop", "end_rod", "sulfur_cube_goo", "cherry_leaves", "pale_oak_leaves", "tinted_leaves",
                 "dripping_lava", "falling_lava", "landing_lava", "dripping_water", "falling_water",
                 "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
                 "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",

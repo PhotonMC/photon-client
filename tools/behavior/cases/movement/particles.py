@@ -203,6 +203,11 @@ def particle_tick_cases():
         row("pale-oak-leaves", "pale_oak_leaves", floor(), (0.5, 70.0, 0.5), still, 77, 80, engine_seed=72),
         dict(row("tinted-leaves", "tinted_leaves", WALL, (1.5, 67.0, 0.5), still, 12345, 120, engine_seed=73),
              color=-10380959),
+        # Crumbs of an item fall, a quarter of its picture each: one pushed (a tenth of its own spread
+        # kept), one not; the sulfur cube's goo of its own picture.
+        row("item-crumb", "item_crumb", floor(), (0.5, 67.0, 0.5), (0.05, 0.2, -0.03), 12345, 30),
+        row("item-crumb-still", "item_crumb_still", floor(), (0.5, 67.0, 0.5), (0.05, 0.2, -0.03), 77, 30),
+        row("sulfur-cube-goo", "sulfur_cube_goo", floor(), (0.5, 67.0, 0.5), still, 12345, 30),
         row("end-rod", "end_rod", floor(), (0.5, 66.5, 0.5), (0.003, -0.002, 0.001), 12345, 70),
         row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
             engine_seed=65),

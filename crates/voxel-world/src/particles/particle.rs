@@ -67,6 +67,9 @@ pub(super) enum Kind {
     Drip(super::drip::Drip),
     /// A `NoRenderParticle`: never drawn, leaves others about it.
     Emitter(super::hit::Emitter),
+    /// `BreakingItemParticle` of a picture of the particles' own (the sulfur cube's goo): a quarter
+    /// of it, at a place drawn at random.
+    Goo { uo: f32, vo: f32 },
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },

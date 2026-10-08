@@ -10,6 +10,7 @@ mod animate_blocks;
 mod animate_falling;
 mod animate_misc;
 mod attract;
+mod breaking_item;
 mod colour;
 mod drip;
 mod engine;

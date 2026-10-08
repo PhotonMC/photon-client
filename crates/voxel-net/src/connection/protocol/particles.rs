@@ -70,6 +70,14 @@ pub(crate) fn read_particle_options(
                 to: color(input)?,
                 scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
             },
+            // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
+            "item" => {
+                let item = read_varint(input, NAME)?;
+                read_varint(input, NAME)?;
+                voxel_game::item_components::read_patch(input)
+                    .map_err(|_| ConnectionError::Codec(NAME))?;
+                ParticleData::Item(item)
+            }
             _ => return Ok(None),
         }
     };
