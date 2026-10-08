@@ -6,6 +6,11 @@ impl GameMode {
         std::mem::take(&mut self.items_used)
     }
 
+    /// The hand whose book and quill's screen is to open, once.
+    pub fn take_opened_book(&mut self) -> Option<u8> {
+        self.opened_book.take()
+    }
+
     /// `Minecraft.startUseItem`: each hand in turn tries the aimed block,
     /// then its item on its own, until one does something.
     pub(super) fn start_use_item(
@@ -292,6 +297,11 @@ impl GameMode {
         let sequence = ctx.world.start_predicting();
         let (y_rot, x_rot) = ctx.player.rotation();
         let result = match ctx.held(hand) {
+            // `WritableBookItem.use`: its screen opens (`LocalPlayer.openItemGui`).
+            Some((item, _)) if crate::item::id_of("minecraft:writable_book") == Some(item) => {
+                self.opened_book = Some(hand);
+                UseResult::Success { swing: true }
+            }
             Some((item, _)) => {
                 let row = rules::item(item);
                 if rules::item_use_owner(item) == ItemClass::Item

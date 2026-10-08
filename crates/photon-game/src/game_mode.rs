@@ -35,6 +35,8 @@ pub struct GameMode {
     /// Hands whose stack was used since the caller last asked:
     /// `ItemInHandRenderer.itemUsed`.
     pub(super) items_used: Vec<u8>,
+    /// The hand whose book and quill was used, whose screen is to open (`openItemGui`).
+    pub(super) opened_book: Option<u8>,
 }
 
 impl Default for GameMode {
@@ -49,6 +51,7 @@ impl Default for GameMode {
             miss_time: 0,
             right_click_delay: 0,
             items_used: Vec::new(),
+            opened_book: None,
         }
     }
 }

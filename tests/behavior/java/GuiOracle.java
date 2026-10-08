@@ -29,6 +29,7 @@ public final class GuiOracle extends GuiSignOracle {
                 case "name_tags" -> nameTags(request);
                 case "sign_texts" -> signTexts(request);
                 case "sign_edit_screen" -> signEditScreen(request);
+                case "book_edit_screen" -> bookEditScreen(request);
                 case "hud_hotbar" -> hudHotbar(request);
                 case "hud_status" -> hudStatus(request);
                 case "confirm_screen" -> confirmScreen(request);

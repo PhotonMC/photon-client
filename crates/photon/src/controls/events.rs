@@ -237,6 +237,9 @@ impl Controls {
         if self.sign_edit.is_some() && for_screen {
             return self.sign_event(event, session, surface, assets);
         }
+        if self.book_edit.is_some() && for_screen {
+            return self.book_event(event, session, surface, assets);
+        }
         if self.language_screen.is_some() && for_screen {
             self.language_event(event, surface, assets);
             return Ok(());

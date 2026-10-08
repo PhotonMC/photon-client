@@ -24,7 +24,7 @@ const TEXT_LINES: usize = 128 / 9;
 const PAGE_BUTTON: (i32, i32) = (23, 13);
 
 /// `PAGE_TEXT_STYLE`: black, with no shadow.
-fn page_style() -> Style {
+pub(crate) fn page_style() -> Style {
     Style {
         colour: Some(0),
         shadow: Some(0),

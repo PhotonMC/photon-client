@@ -30,3 +30,7 @@ IME (K-M5a).
 `docs/gui-oracle.md`.
 
 ## Devir notu
+- Yapıldı: `MultilineTextField` ve `StringSplitter.splitLines` (`widgets/multiline.rs`), `MultiLineEditBox` kaydırma ve kaydırma çubuğuyla (`widgets/text_area.rs`), `BookEditScreen` (`screen/book_edit.rs`: sayfa kutusu, sayfa düğmeleri, Page Up/Down, Tab odağı, Sign/Done). Kitap-tüy kullanılınca ekran açılır (`openItemGui`, kol sallanır), Done `EditBook` (24) gönderir, Escape kaydetmez. G: `gui/book-edit-screen` (53 satır) yeşil.
+- Sapma: ok tuşlarıyla odak gezintisi (düğme odaktayken) yok; çift tıklama oyunda algılanmıyor (alan destekliyor); `updateLocalCopy` yok (sunucunun yuva güncellemesi bekleniyor); sayfa çevirme sesi yok.
+- Bölündü: imzalama ekranı ve `OpenBook` → T88b. Sign düğmesi şimdilik bir şey yapmaz.
+- Açık: canlıda denenmedi; `§` biçim kodlu sayfaların genişliği yalnız kodu atlayarak hesaplanır.

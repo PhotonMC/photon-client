@@ -1,7 +1,7 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-/** The sign editing screens, over a sign block entity the game itself holds. */
+/** The sign and book editing screens, over a sign block entity or a book the game itself holds. */
 class GuiSignOracle extends GuiTitleOracle {
     /**
      * The game's own `SignEditScreen` or `HangingSignEditScreen` for a sign of a wood, standing,
@@ -105,6 +105,102 @@ class GuiSignOracle extends GuiTitleOracle {
                 messages.add(sign.getText(front).getMessage(i, false).getString());
             }
             out.add("messages", messages);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The game's own `BookEditScreen` for a book and quill of pages, after text, keys and clicks,
+     * drawn at a time after it opened: its drawing, its pages and the page it is on.
+     */
+    static JsonObject bookEditScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            menu(screen);
+            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clockField.setAccessible(true);
+            var clockBefore = clockField.get(null);
+            long[] now = {0};
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+            var owner = (net.minecraft.world.entity.player.Player)
+                unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+            var profileField = net.minecraft.world.entity.player.Player.class.getDeclaredField("gameProfile");
+            profileField.setAccessible(true);
+            profileField.set(owner, new com.mojang.authlib.GameProfile(new java.util.UUID(0, 1), "Steve"));
+            var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<String>>();
+            row.getAsJsonArray("pages").forEach(page ->
+                pages.add(net.minecraft.server.network.Filterable.passThrough(page.getAsString())));
+            var book = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK);
+            var edit = new net.minecraft.client.gui.screens.inventory.BookEditScreen(owner, book,
+                net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.item.component.WritableBookContent(pages));
+            edit.init(width, height);
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                switch (step.get("do").getAsString()) {
+                    case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
+                        edit.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
+                    case "key" -> {
+                        String name = step.get("key").getAsString();
+                        int modifiers = 0;
+                        if (name.startsWith("ctrl+")) {
+                            modifiers = 2;
+                            name = name.substring("ctrl+".length());
+                        }
+                        if (name.startsWith("shift+")) {
+                            modifiers |= 1;
+                            name = name.substring("shift+".length());
+                        }
+                        int code = switch (name) {
+                            case "tab" -> 258;
+                            case "backspace" -> 259;
+                            case "delete" -> 261;
+                            case "enter" -> 257;
+                            case "space" -> 32;
+                            case "left" -> 263;
+                            case "right" -> 262;
+                            case "up" -> 265;
+                            case "down" -> 264;
+                            case "home" -> 268;
+                            case "end" -> 269;
+                            case "pageup" -> 266;
+                            case "pagedown" -> 267;
+                            case "a" -> 65;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
+                            : net.minecraft.client.InputType.KEYBOARD_ARROW);
+                        edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                    }
+                    case "click" -> edit.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") ? 1 : 0)), false);
+                    default -> throw new IllegalArgumentException(step.toString());
+                }
+            }
+            now[0] = row.get("ms").getAsLong();
+            edit.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            edit.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            clockField.set(null, clockBefore);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            var written = new JsonArray();
+            ((java.util.List<?>) get(edit, "pages")).forEach(page -> written.add((String) page));
+            out.add("pages", written);
+            out.addProperty("page", (Integer) get(edit, "currentPage"));
             rows.add(out);
         }
         var result = new JsonObject();

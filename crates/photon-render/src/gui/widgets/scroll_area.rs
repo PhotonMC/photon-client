@@ -125,6 +125,18 @@ impl Place {
             self.width,
             2,
         );
+        self.draw_scrollbar(frame, atlas, bar_x, scroll, content_height);
+    }
+
+    /// `extractScrollbar` of a list that can scroll: the bar's track and the bar, at `bar_x`.
+    pub fn draw_scrollbar(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        bar_x: i32,
+        scroll: f64,
+        content_height: i32,
+    ) {
         if self.max_scroll(content_height) > 0 {
             frame.nine_slice(
                 atlas,

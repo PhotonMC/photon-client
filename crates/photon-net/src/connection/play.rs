@@ -29,6 +29,7 @@ use super::probe::{
 use super::protocol::*;
 use super::session::{read_packet, send_packet};
 
+mod books;
 mod chat;
 mod chunks;
 mod containers;

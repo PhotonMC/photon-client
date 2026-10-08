@@ -15,6 +15,7 @@ pub mod sign_edit;
 pub mod title;
 
 pub mod book;
+pub mod book_edit;
 pub mod container;
 pub mod creative;
 pub mod generic;
