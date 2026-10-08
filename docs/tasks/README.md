@@ -319,7 +319,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T83](T83-hasar-ve-etki-orturleri.md) Hasarda kameranın eğilmesi (`bobHurt`) — M · bitti (4641bad8)
 - [ ] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri ve etki sisleri — M · bağımlı: T83
 - [x] [T84](T84-dunya-siniri.md) Dünya sınırı: paketler ve çarpışma — M · bitti (33f8b5f5)
-- [x] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84 · bitti
+- [x] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84 · bitti (dcb06eff)
 
 ### M9 Sunucu uyumluluğu
 
