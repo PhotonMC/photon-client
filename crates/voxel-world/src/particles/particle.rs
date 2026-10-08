@@ -39,6 +39,9 @@ pub(super) enum Kind {
     Spell { original_alpha: f32 },
     /// `TotemParticle` on `SimpleAnimatedParticle`: falls, fades in its second half, full bright.
     Totem,
+    /// `EndRodParticle` on `SimpleAnimatedParticle`: goes through blocks, fades in its second half
+    /// toward a pale colour, full bright.
+    EndRod,
     /// `GlowParticle`: glows as it ages.
     Glow,
     /// The particles drawn to a place, each with its own tick.
@@ -309,6 +312,16 @@ impl Particle {
                 self.alpha += 0.05 * (original_alpha - self.alpha);
             }
             Kind::Totem => self.animated_fade(),
+            Kind::EndRod => {
+                self.animated_fade();
+                if self.age > self.lifetime / 2 {
+                    // `setFadeColor(15916745)`, closed on by a fifth each tick.
+                    let [r, g, b] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
+                    self.r_col += (r - self.r_col) * 0.2;
+                    self.g_col += (g - self.g_col) * 0.2;
+                    self.b_col += (b - self.b_col) * 0.2;
+                }
+            }
             Kind::PlayerCloud if !self.removed => self.settle_to_player(world),
             Kind::Lava if !self.removed => return self.lava_smoke().into_iter().collect(),
             _ => {}
@@ -344,7 +357,7 @@ impl Particle {
 
     /// `Particle.move`, or `FlameParticle.move`, which does not collide.
     pub(super) fn move_by(&mut self, world: &ClientWorld, xa: f64, ya: f64, za: f64) {
-        if matches!(self.kind, Kind::Flame | Kind::Attract(_)) {
+        if matches!(self.kind, Kind::Flame | Kind::Attract(_) | Kind::EndRod) {
             self.bounding_box_move(xa, ya, za);
             return;
         }

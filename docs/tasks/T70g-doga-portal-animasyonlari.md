@@ -24,3 +24,6 @@ world/level/block/`), `world/attribute/EnvironmentAttributes.java`. Rust:
 `docs/records/client-block-animate-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `particles/animate_misc.rs` (nether portalı, spor çiçeği, miselyum, ağlayan obsidyen, yeniden
+doğma çapası, uç çubuğu) ve `EndRodParticle`. Oracle: `animate-misc` ve `end-rod` bit eşit.
+Bölündü: yapraklar ve kalan bloklar → T70h.

@@ -55,7 +55,9 @@ impl Particle {
                 add_smooth_block_emission(light, brightness)
             }
             // `SimpleAnimatedParticle.getLightCoords`: full bright.
-            Kind::Water(super::water::Water::Ink) | Kind::Totem | Kind::Burst => 15_728_880,
+            Kind::Water(super::water::Water::Ink) | Kind::Totem | Kind::Burst | Kind::EndRod => {
+                15_728_880
+            }
             _ => light,
         }
     }
@@ -77,6 +79,7 @@ impl Particle {
                 | Kind::Water(super::water::Water::Ink)
                 | Kind::Spell { .. }
                 | Kind::Totem
+                | Kind::EndRod
                 | Kind::SculkCharge
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }

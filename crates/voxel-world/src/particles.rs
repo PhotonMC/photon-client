@@ -8,6 +8,7 @@
 mod animate;
 mod animate_blocks;
 mod animate_falling;
+mod animate_misc;
 mod attract;
 mod colour;
 mod drip;

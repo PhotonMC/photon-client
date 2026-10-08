@@ -116,6 +116,7 @@ pub(super) fn particle_of(
             (&mut spell_random, &mut engine_random),
         )),
         "totem_of_undying" => Ok(Particle::totem(random, motion, sprites)),
+        "end_rod" => Ok(Particle::end_rod(random, motion, sprites)),
         name @ ("glow" | "electric_spark" | "scrape" | "wax_on" | "wax_off") => Ok(Particle::glow(
             name,
             random,

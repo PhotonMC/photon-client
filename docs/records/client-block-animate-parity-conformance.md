@@ -1,4 +1,4 @@
-# T70e, T70f — Blokların rastgele görünüm tiki — [client-parity]
+# T70e, T70f, T70g — Blokların rastgele görünüm tiki — [client-parity]
 
 Bu kayıt `ClientLevel.animateTick` döngüsünü ve ilk blokları kapsar: meşale ailesi, kızıltaş
 meşaleleri, lav ve su. Kanıt sınıfı `client-parity`'dir. `movement/particle-engine`'de gerçek
@@ -36,6 +36,14 @@ Rust'a bit bit eşitlenir.
 - Fırın, izabe fırını ve tütsülük 0.1 ile ses çıkarır. Önlerinden duman çıkar (fırında alev
   de); tütsülükte duman üstten çıkar. Simya standı her seçilişte duman bırakır.
 
+- T70g: nether portalı 1/100 ile `portal.ambient` çalar. Dört portal zerresinin hızı
+  `(r−0.5)*0.5`'tir; eksenine göre yanlarından `±0.25` ve `r*2F*flip` ile çıkar. Spor çiçeği bir
+  spor düşürür, altındaki ±10 bloklukta dolu olmayan 14 yere hava zerresi koyar. Miselyum 1/10
+  ile puf çıkarır. Ağlayan obsidyen 1/5 ile rastgele bir yönde (üst hariç) komşusu örtmüyorsa
+  gözyaşı damlatır. Yeniden doğma çapası doluyken ters portal zerresi bırakır, 1/100 ile ses
+  çalar. Uç çubuğu 1/5 ile boyunca parıltı bırakır (`EndRodParticle`: yerçekimi 0.0125,
+  sürtünme 0.91, bloklardan geçer, ikinci yarıda `0xF2DEC9`'a solar).
+
 ## Kapsam ve dal kararı
 
 Satırlar: 31×31 meşale düzlemi (dokuz tür/yön karışık); lav ve su düzlemleri; ocak düzlemi
@@ -45,4 +53,4 @@ Sıvı altı damlaları `animate-drips` satırındadır (T73b).
 ## Sapmalar (açık)
 
 - Biyomun ortam parçacıkları ve yaratıcıdaki işaretçi parçacığı yok.
-- Öteki blokların `animateTick`'i T70g'de.
+- Yapraklar ve öteki blokların `animateTick`'i T70h'de.

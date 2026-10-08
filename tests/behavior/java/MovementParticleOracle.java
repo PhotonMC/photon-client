@@ -162,7 +162,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
                 "composter", "dolphin", "crit", "damage_indicator", "enchanted_hit", "sweep_attack", "poof",
                 "explosion", "sonic_boom", "heart", "angry_villager", "note", "gust", "small_gust", "sculk_charge",
-                "sculk_charge_pop",
+                "sculk_charge_pop", "end_rod",
                 "dripping_lava", "falling_lava", "landing_lava", "dripping_water", "falling_water",
                 "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
                 "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",

@@ -197,6 +197,7 @@ def particle_tick_cases():
             engine_seed=70),
         row("dripping-dripstone-lava", "dripping_dripstone_lava", floor(), (0.5, 67.0, 0.5), still, 12345, 44),
         row("falling-dripstone-water", "falling_dripstone_water", floor(), (0.5, 67.0, 0.5), still, 77, 30),
+        row("end-rod", "end_rod", floor(), (0.5, 66.5, 0.5), (0.003, -0.002, 0.001), 12345, 70),
         row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
             engine_seed=65),
     ]
@@ -414,6 +415,25 @@ def particle_engine_cases():
                                         for name in ("stone", "grass_block", "spruce_leaves", "barrier", "water",
                                                      "air", "blue_concrete_powder", "damaged_anvil")],
                    blocks=plane(63, "minecraft:stone", size=4), ticks=50, seeds=10, describe=8),
+        # A nether portal hums and draws specks out of its faces (a wall along x, one along z); spore blossoms
+        # drop spores and fill the air below them; mycelium puffs; crying obsidian weeps out of uncovered
+        # faces; a charged respawn anchor sheds reverse portal specks; end rods glint along their length.
+        engine_row("animate-misc", [animate_tick(0, (0, 64, 0), 400, 88), animate_tick(1, (2, 62, -3), 400, 89)],
+                   blocks=[{"x": x, "y": y, "z": 0, "block": "minecraft:nether_portal", "properties": {"axis": "x"}}
+                           for x in range(-12, 13) for y in range(64, 72)]
+                   + [{"x": 0, "y": y, "z": z, "block": "minecraft:nether_portal", "properties": {"axis": "z"}}
+                      for z in range(2, 14) for y in range(64, 72)]
+                   + [{"x": x, "y": 76, "z": z, "block": "minecraft:spore_blossom", "properties": {}}
+                      for x in range(-14, 15, 4) for z in range(-14, 15, 4)]
+                   + [{"x": x, "y": 58, "z": z, "block": "minecraft:" + ["mycelium", "crying_obsidian", "stone"][(x + 2 * z) % 3],
+                       "properties": {"snowy": "false"} if (x + 2 * z) % 3 == 0 else {}}
+                      for x in range(-15, 16) for z in range(-15, 16)]
+                   + [{"x": x, "y": 60, "z": z, "block": "minecraft:respawn_anchor", "properties": {"charges": str((x + z) % 5)}}
+                      for x in range(-15, 16, 2) for z in range(-15, 16, 3)]
+                   + [{"x": x, "y": 62, "z": z, "block": "minecraft:end_rod",
+                       "properties": {"facing": ["up", "down", "north", "south", "west", "east"][(x * 5 + z) % 6]}}
+                      for x in range(-14, 15, 2) for z in range(-14, 15, 2)],
+                   ticks=4, seeds=1500, describe=14),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

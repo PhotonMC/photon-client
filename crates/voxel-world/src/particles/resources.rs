@@ -60,6 +60,7 @@ enum Provider {
     Mark(super::hit::Mark),
     Drip,
     FallingDust,
+    EndRod,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -112,6 +113,7 @@ fn provider_of(name: &str) -> Option<Provider> {
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
+        "end_rod" => Provider::EndRod,
         name if name.starts_with("dripping_")
             || name.starts_with("landing_")
             || matches!(
@@ -279,6 +281,7 @@ impl ParticleResources {
                 Particle::witch(random, motion, sprites, (spell_random, engine_random))
             }
             Provider::Totem => Particle::totem(random, motion, sprites),
+            Provider::EndRod => Particle::end_rod(random, motion, sprites),
             Provider::Glow => Particle::glow(name, random, motion, sprites, engine_random),
             Provider::Portal
             | Provider::ReversePortal

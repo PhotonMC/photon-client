@@ -88,7 +88,11 @@ impl ParticleEngine {
                 let wicks = CANDLE_WICKS[count.clamp(1, 4) - 1];
                 self.candle_wicks(pos, wicks, random, (context, sounds));
             }
-            _ => self.torch_animate_tick(state, name, pos, random, context),
+            _ => {
+                if !self.misc_animate_tick((state, name), pos, random, (context, sounds)) {
+                    self.torch_animate_tick(state, name, pos, random, context);
+                }
+            }
         }
     }
 

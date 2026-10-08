@@ -207,6 +207,22 @@ impl Particle {
         particle
     }
 
+    /// `EndRodParticle.Provider`: a glint that drifts as pushed, falling slowly.
+    pub fn end_rod(
+        random: RandomSource,
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
+        sprites: &Arc<SpriteSet>,
+    ) -> Self {
+        let mut particle = Self::at(random, at, (sprites, sprites.first()), Kind::EndRod).quad();
+        particle.friction = 0.91;
+        particle.gravity = 0.0125;
+        (particle.xd, particle.yd, particle.zd) = push;
+        particle.quad_size *= 0.75;
+        particle.lifetime = 60 + particle.random.next_int_bound(12).unwrap_or(0);
+        particle.set_sprite_from_age();
+        particle
+    }
+
     /// `GlowParticle(..)`: glows as it ages, without physics.
     fn glow_of(
         random: RandomSource,
