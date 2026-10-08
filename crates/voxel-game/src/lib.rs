@@ -11,6 +11,7 @@ pub mod menus;
 pub mod options;
 pub mod registries;
 pub mod scoreboard;
+pub mod server_status;
 pub mod servers;
 pub mod sounds;
 pub mod splash;

@@ -2,6 +2,7 @@
 
 pub mod aabb;
 pub mod axis_cycle;
+pub mod base64;
 pub mod binary;
 pub mod direction;
 pub mod identifier;

@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
+use voxel_game::server_status::{Pinged, ServerStatus};
 use voxel_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
 use voxel_game::text::Component;
 use voxel_net::connection::PlaySession;
@@ -71,6 +72,10 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut scripted_join = env::var_os("VOXEL_SCRIPT").is_some();
     loop {
         let mut menu = Menu::open(&mut client)?;
+        // `VOXEL_MENU_SCREEN=servers`: open on the server list, for a capture of it.
+        if env::var("VOXEL_MENU_SCREEN").as_deref() == Ok("servers") {
+            menu.screen = menu.server_list(gui_size(&client));
+        }
         if std::mem::take(&mut scripted_join) {
             menu.connect(server, gui_size(&client));
         }
@@ -98,6 +103,8 @@ struct Menu {
     mouse: (i32, i32),
     /// When and where the last primary press was, for a double click.
     last_click: Option<(Instant, (i32, i32))>,
+    /// The answers of the open list's pings, by the address asked.
+    pings: Option<std::sync::mpsc::Receiver<(String, Pinged)>>,
 }
 
 impl Menu {
@@ -145,6 +152,7 @@ impl Menu {
             screen,
             mouse: (0, 0),
             last_click: None,
+            pings: None,
         })
     }
 
@@ -164,6 +172,7 @@ impl Menu {
     /// `JoinMultiplayerScreen`, the saved servers read again.
     fn server_list(&mut self, size: (i32, i32)) -> Screen {
         self.servers = ServerList::load(&self.game_directory);
+        self.pings = Some(ping_all(&self.servers));
         let names = self
             .servers
             .servers
@@ -188,6 +197,7 @@ impl Menu {
             }
             play::fit_swapchain(client)?;
             let size = gui_size(client);
+            self.receive_pings();
             if let Screen::Connecting(_, task) = &self.screen
                 && let Some(result) = task.finished()
             {
@@ -346,6 +356,27 @@ impl Menu {
             }
         };
         self.servers_action(action, size)
+    }
+
+    /// The pings that have answered, shown on the list's entries of their addresses.
+    fn receive_pings(&mut self) {
+        let Some(pings) = &self.pings else {
+            return;
+        };
+        let Screen::Servers(screen) = &mut self.screen else {
+            return;
+        };
+        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+        while let Ok((ip, pinged)) = pings.try_recv() {
+            if let Some(index) = self
+                .servers
+                .servers
+                .iter()
+                .position(|server| server.ip == ip)
+            {
+                screen.set_pinged(index, &pinged, font, lang);
+            }
+        }
     }
 
     /// `deleteCallback`: Yes removes the server and saves; either answer shows the list again.
@@ -526,6 +557,41 @@ fn title_event(
         }
         _ => None,
     }
+}
+
+/// `ServerSelectionList.OnlineServerEntry`'s pings, each on a thread of its own: what each saved
+/// server answers, by its address.
+fn ping_all(servers: &ServerList) -> std::sync::mpsc::Receiver<(String, Pinged)> {
+    let (send, receive) = std::sync::mpsc::channel();
+    for server in &servers.servers {
+        let (ip, send) = (server.ip.clone(), send.clone());
+        let _ = std::thread::Builder::new()
+            .name("Server Pinger".to_owned())
+            .spawn(move || {
+                let pinged = ping(&ip);
+                let _ = send.send((ip, pinged));
+            });
+    }
+    receive
+}
+
+/// `ServerStatusPinger.pingServer`: an unknown name, a server that does not answer or answers in a
+/// way that does not read is unreachable.
+fn ping(ip: &str) -> Pinged {
+    let Some(address) = address_with_port(ip)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addresses| addresses.next())
+    else {
+        return Pinged::unreachable(true);
+    };
+    voxel_net::connection::query_status_and_ping(address, Duration::from_secs(30))
+        .ok()
+        .and_then(|trace| {
+            let status = ServerStatus::parse(&trace.status_response)?;
+            Some(Pinged::answered(&status, trace.round_trip_ms))
+        })
+        .unwrap_or_else(|| Pinged::unreachable(false))
 }
 
 /// An event for the failed join's screen: whether its button was pressed.

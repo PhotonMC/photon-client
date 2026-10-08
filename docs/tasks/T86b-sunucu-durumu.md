@@ -30,3 +30,13 @@ LAN, eski (1.6 öncesi) ping.
 `docs/gui-oracle.md`; yeni `server-conformance` kaydı.
 
 ## Devir notu
+Yapılan: `ServerStatus` JSON çözümü ve `handleStatusResponse` karşılığı (`voxel-game/src/
+server_status.rs`: açıklama, oyuncular ve örnek, sürüm, favicon baytları; `Pinged`), base64 çözücü
+(`voxel-core`), durum sorgusunun ping süresi (`round_trip_ms`); liste açılınca her sunucu kendi
+iş parçacığında sorgulanır, satır MOTD (2 satır), oyuncu sayısı ya da kırmızı sürüm, ping çubukları,
+ulaşılamaz/çözülemez metni ve çubuk/oyuncu ipuçlarını çizer. GUI atlasına `server_list` sprite'ları
+eklendi (T86'da çubuklar ve oklar görünmüyordu). Oracle: `server-list-pings` 14 satır (Java yanıtı
+`ServerStatus.CODEC` ile çözer). `VOXEL_MENU_SCREEN=servers` menüyü listeyle açar (yakalama için).
+Sapma: el sıkışma ana bilgisayar adı yerine IP gönderir; açıklama `ComponentUtils.resolve` ile
+temizlenmiyor; eski (1.6 öncesi) ping yok; Java'nın 5 iş parçacıklı havuzu yerine sunucu başına bir.
+Açık: favicon çizimi ve kaydı → T86d.

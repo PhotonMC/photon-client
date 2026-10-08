@@ -72,6 +72,19 @@ pub(super) fn join_multiplayer_screen_case(
         (int("width"), int("height")),
         names,
     );
+    for (index, ping) in row["pings"].as_array().into_iter().flatten().enumerate() {
+        use voxel_game::server_status::{Pinged, ServerStatus};
+        let pinged = if ping.is_null() {
+            continue;
+        } else if ping["unreachable"].as_bool() == Some(true) {
+            Pinged::unreachable(ping["unknown_host"].as_bool() == Some(true))
+        } else {
+            let status = ServerStatus::parse(ping["json"].as_str().unwrap_or_default())
+                .ok_or("a status answer")?;
+            Pinged::answered(&status, ping["ping"].as_i64().unwrap_or(0))
+        };
+        screen.set_pinged(index, &pinged, font, &lang);
+    }
     for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         let x = step["x"].as_f64().unwrap_or(0.0);
         let y = step["y"].as_f64().unwrap_or(0.0);

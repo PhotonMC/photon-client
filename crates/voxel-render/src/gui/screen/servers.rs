@@ -2,6 +2,7 @@
 //! still being asked about (`ServerData.State.PINGING`), the local network's header below them,
 //! and the buttons under the list.
 
+use voxel_game::server_status::{PingState, Pinged};
 use voxel_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;
@@ -61,8 +62,9 @@ enum Selected {
 pub struct JoinMultiplayerScreen {
     buttons: ButtonSet<Button>,
     title: Widget,
-    /// The saved servers' names, in the list's order.
+    /// The saved servers' names, in the list's order, and what their pings found.
     names: Vec<String>,
+    pings: Vec<Option<PingView>>,
     selected: Option<Selected>,
     /// Whether the list has the focus (a click on it gives it), which whitens the selection.
     list_focused: bool,
@@ -106,6 +108,7 @@ impl JoinMultiplayerScreen {
         let mut screen = Self {
             buttons,
             title,
+            pings: vec![None; names.len()],
             names,
             selected: None,
             list_focused: false,
@@ -302,22 +305,49 @@ impl JoinMultiplayerScreen {
             ICON,
             ICON,
         );
-        let mut bars = (frame.millis / 100 + index as u64 * 2) & 7;
-        if bars > 4 {
-            bars = 8 - bars;
-        }
         let status_x = x + ROW_WIDTH - 4 - 10 - 5;
-        frame.sprite(
-            atlas,
-            &format!("server_list/pinging_{}", bars + 1),
-            status_x,
-            y,
-            10,
-            8,
-        );
+        let ping = self.pings[index].as_ref();
+        let sprite = match ping {
+            Some(view) => view.icon.to_owned(),
+            None => {
+                let mut bars = (frame.millis / 100 + index as u64 * 2) & 7;
+                if bars > 4 {
+                    bars = 8 - bars;
+                }
+                format!("server_list/pinging_{}", bars + 1)
+            }
+        };
+        if let Some(view) = ping {
+            for (line, text) in (0..).zip(&view.motd) {
+                frame.styled_text(
+                    atlas,
+                    font,
+                    text,
+                    x + ICON + 3,
+                    y + 12 + 9 * line,
+                    GREY,
+                    true,
+                );
+            }
+        }
+        frame.sprite(atlas, &sprite, status_x, y, 10, 8);
+        let status = ping.map_or(&[][..], |view| view.status.as_slice());
+        let status_width = font.width_of_runs(status);
+        let text_x = status_x - status_width - 5;
+        frame.styled_text(atlas, font, status, text_x, y + 1, GREY, true);
         let mut tooltip = None;
         if mouse.0 >= status_x && mouse.0 <= status_x + 10 && mouse.1 >= y && mouse.1 <= y + 8 {
-            tooltip = Some(vec![self.pinging.clone()]);
+            tooltip = Some(vec![ping.map_or_else(
+                || self.pinging.clone(),
+                |view| view.icon_tooltip.clone(),
+            )]);
+        } else if let Some(players) = ping.and_then(|view| view.players.as_ref())
+            && mouse.0 >= text_x
+            && mouse.0 <= text_x + status_width
+            && mouse.1 >= y
+            && mouse.1 <= y - 1 + 9
+        {
+            tooltip = Some(players.clone());
         }
         if hovered {
             frame.fill(atlas, (x, y, x + ICON, y + ICON), 0xA090_9090);
@@ -419,6 +449,7 @@ impl JoinMultiplayerScreen {
         let selected = match action {
             Some(ServersAction::Swap(from, to)) => {
                 self.names.swap(from, to);
+                self.pings.swap(from, to);
                 to
             }
             _ => index,
@@ -460,6 +491,69 @@ impl JoinMultiplayerScreen {
         if self.place.contains(mouse) {
             let max = f64::from(self.place.max_scroll(self.content_height()));
             self.scroll = (self.scroll - notches * f64::from(ENTRY_HEIGHT / 2)).clamp(0.0, max);
+        }
+    }
+}
+
+/// A pinged server as its entry draws it (`OnlineServerEntry.refreshStatus` and its texts).
+#[derive(Debug, Clone)]
+struct PingView {
+    /// The description's first two lines, as wide as the entry leaves.
+    motd: Vec<Vec<Run>>,
+    /// The player count, or the version in red for an incompatible server.
+    status: Vec<Run>,
+    icon: &'static str,
+    icon_tooltip: Vec<Run>,
+    /// The sampled players, for a server that answered.
+    players: Option<Vec<Vec<Run>>>,
+}
+
+impl JoinMultiplayerScreen {
+    /// What a ping of the saved server at `index` found.
+    pub fn set_pinged(&mut self, index: usize, pinged: &Pinged, font: &Font, lang: &Lang) {
+        let runs = |component: &Component| lang.runs(component, &Style::default());
+        let mut motd = crate::gui::chat::split(&runs(&pinged.motd), ROW_WIDTH - 4 - ICON - 2, font);
+        motd.truncate(2);
+        let players = Some(pinged.player_list.iter().map(runs).collect());
+        let (icon, icon_tooltip, players) = match pinged.state {
+            PingState::Incompatible => (
+                "server_list/incompatible",
+                runs(&Component::translatable("multiplayer.status.incompatible")),
+                players,
+            ),
+            PingState::Unreachable => (
+                "server_list/unreachable",
+                runs(&Component::translatable("multiplayer.status.no_connection")),
+                None,
+            ),
+            PingState::Successful => (
+                match pinged.ping {
+                    ..150 => "server_list/ping_5",
+                    150..300 => "server_list/ping_4",
+                    300..600 => "server_list/ping_3",
+                    600..1000 => "server_list/ping_2",
+                    _ => "server_list/ping_1",
+                },
+                runs(&Component::translatable_with(
+                    "multiplayer.status.ping",
+                    vec![Component::literal(pinged.ping.to_string())],
+                )),
+                players,
+            ),
+        };
+        let status = if pinged.state == PingState::Incompatible {
+            runs(&pinged.version.clone().with_colour("red"))
+        } else {
+            runs(&pinged.status)
+        };
+        if let Some(slot) = self.pings.get_mut(index) {
+            *slot = Some(PingView {
+                motd,
+                status,
+                icon,
+                icon_tooltip,
+                players,
+            });
         }
     }
 }

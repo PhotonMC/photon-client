@@ -10,8 +10,9 @@ use voxel_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 9] = [
+const SPRITE_FOLDERS: [&str; 10] = [
     "boss_bar",
+    "server_list",
     "pause_menu",
     "friends",
     "hud",

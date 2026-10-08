@@ -58,6 +58,7 @@ pub fn query_status_and_ping(
         .map_err(|_| ConnectionError::Codec("status response UTF-16"))?;
 
     let ping = crate::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
+    let ping_start = std::time::Instant::now();
     send_packet(
         &mut stream,
         ConnectionProtocol::Status,
@@ -94,6 +95,7 @@ pub fn query_status_and_ping(
         packets,
         status_response,
         pong_time: pong.time,
+        round_trip_ms: ping_start.elapsed().as_millis() as i64,
     })
 }
 

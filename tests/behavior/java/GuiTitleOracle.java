@@ -110,6 +110,54 @@ class GuiTitleOracle extends GuiSettingsOracle {
     }
 
     /**
+     * A server's data after its ping, as `ServerStatusPinger` leaves it: the answer read by the
+     * game's own `ServerStatus.CODEC`, its fields set as `handleStatusResponse` sets them, the pong's
+     * time; or the red reason of a ping that failed.
+     */
+    static void pinged(net.minecraft.client.multiplayer.ServerData server, JsonObject ping) throws Exception {
+        if (ping.has("unreachable")) {
+            var field = net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.class.getDeclaredField(
+                ping.get("unknown_host").getAsBoolean() ? "CANT_RESOLVE_TEXT" : "CANT_CONNECT_TEXT");
+            field.setAccessible(true);
+            server.setState(net.minecraft.client.multiplayer.ServerData.State.UNREACHABLE);
+            server.motd = (net.minecraft.network.chat.Component) field.get(null);
+            server.status = net.minecraft.network.chat.CommonComponents.EMPTY;
+            return;
+        }
+        var status = net.minecraft.network.protocol.status.ServerStatus.CODEC.parse(
+            com.mojang.serialization.JsonOps.INSTANCE,
+            com.google.gson.JsonParser.parseString(ping.get("json").getAsString())).getOrThrow();
+        server.motd = status.description();
+        status.version().ifPresentOrElse(version -> {
+            server.version = net.minecraft.network.chat.Component.literal(version.name());
+            server.protocol = version.protocol();
+        }, () -> {
+            server.version = net.minecraft.network.chat.Component.translatable("multiplayer.status.old");
+            server.protocol = 0;
+        });
+        status.players().ifPresentOrElse(players -> {
+            server.status = net.minecraft.client.multiplayer.ServerStatusPinger.formatPlayerCount(players.online(), players.max());
+            server.players = players;
+            var names = new java.util.ArrayList<net.minecraft.network.chat.Component>();
+            for (var profile : players.sample()) {
+                names.add(profile.equals(net.minecraft.server.MinecraftServer.ANONYMOUS_PLAYER_PROFILE)
+                    ? net.minecraft.network.chat.Component.translatable("multiplayer.status.anonymous_player")
+                    : net.minecraft.network.chat.Component.literal(profile.name()));
+            }
+            if (!players.sample().isEmpty() && players.sample().size() < players.online()) {
+                names.add(net.minecraft.network.chat.Component.translatable("multiplayer.status.and_more",
+                    players.online() - players.sample().size()));
+            }
+            server.playerList = names;
+        }, () -> server.status = net.minecraft.network.chat.Component.translatable("multiplayer.status.unknown")
+            .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        server.ping = ping.get("ping").getAsLong();
+        server.setState(server.protocol == net.minecraft.SharedConstants.getCurrentVersion().protocolVersion()
+            ? net.minecraft.client.multiplayer.ServerData.State.SUCCESSFUL
+            : net.minecraft.client.multiplayer.ServerData.State.INCOMPATIBLE);
+    }
+
+    /**
      * The game's own server list over a `servers.dat` of the row's names, each server still being
      * asked about (as the list makes it before its ping is sent), after clicks and scrolls.
      */
@@ -142,11 +190,23 @@ class GuiTitleOracle extends GuiSettingsOracle {
             // The title screen behind starts the panorama turning again.
             panorama.holdSpin();
             list.init(width, height);
+            var pings = row.has("pings") ? row.getAsJsonArray("pings") : new JsonArray();
+            var entriesField = net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen.class
+                .getDeclaredField("serverSelectionList");
+            entriesField.setAccessible(true);
+            var selection = (net.minecraft.client.gui.screens.multiplayer.ServerSelectionList) entriesField.get(list);
             for (int i = 0; i < list.getServers().size(); i++) {
                 var server = list.getServers().get(i);
                 server.setState(net.minecraft.client.multiplayer.ServerData.State.PINGING);
                 server.motd = net.minecraft.network.chat.CommonComponents.EMPTY;
                 server.status = net.minecraft.network.chat.CommonComponents.EMPTY;
+                if (i < pings.size() && !pings.get(i).isJsonNull()) {
+                    pinged(server, pings.get(i).getAsJsonObject());
+                    var refresh = net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.OnlineServerEntry.class
+                        .getDeclaredMethod("refreshStatus");
+                    refresh.setAccessible(true);
+                    refresh.invoke(selection.children().get(i));
+                }
             }
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();

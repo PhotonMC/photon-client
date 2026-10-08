@@ -94,4 +94,6 @@ pub struct StatusConnectionTrace {
     pub packets: Vec<PacketObservation>,
     pub status_response: String,
     pub pong_time: i64,
+    /// From the ping request sent to its pong read, in milliseconds (`ServerData.ping`).
+    pub round_trip_ms: i64,
 }

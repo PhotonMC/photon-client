@@ -119,3 +119,47 @@ def gui_connect_screen_cases():
             row("loading", screen="loading"), row("loading-small", screen="loading", width=320),
             row("loading-tall", screen="loading", height=480)]
     yield {"case_id": "gui/connect-screen", "family": "gui", "operation": "connect_screen", "rows": rows}
+
+
+def gui_server_list_ping_cases():
+    """The server list after its pings: the answer's description in up to two lines, the player
+    count or the red version of an incompatible server, the bars of the ping's time, a server the
+    answer leaves fields out of, servers that could not be reached, and the tooltips of the bars
+    and of the player count."""
+    def answer(description, online=2, max_=20, sample=(), version="26.2", protocol=776, players=True):
+        status = {"description": description, "version": {"name": version, "protocol": protocol}}
+        if players:
+            status["players"] = {"max": max_, "online": online,
+                                 "sample": [{"name": name, "id": "00000000-0000-0000-0000-00000000000%d" % i}
+                                            for i, name in enumerate(sample, 1)]}
+        return status
+
+    def ping(status, ms=40):
+        import json
+        return {"json": json.dumps(status), "ping": ms}
+
+    def row(label, pings, mouse=(0, 0)):
+        return {"label": label, "servers": ["Alpha", "Beta Server", "Gamma"][:len(pings)],
+                "pings": pings, "width": 427, "height": 240, "mouse": list(mouse), "steps": [], "ms": 0}
+
+    ok = ping(answer("A Minecraft Server", sample=["Alex", "Steve"]))
+    rows = [
+        row("answered", [ok]),
+        row("ping-times", [ping(answer("a"), 149), ping(answer("b"), 299), ping(answer("c"), 1000)]),
+        row("ping-mid", [ping(answer("a"), 450), ping(answer("b"), 999)]),
+        row("styled-motd", [ping(answer({"text": "Red ", "color": "red", "extra": [{"text": "bold", "bold": True}]}))]),
+        row("two-line-motd", [ping(answer("A rather long description that goes on and on past the width of one line, "
+                                          "and then a third line that is not shown at all, no matter how long"))]),
+        row("incompatible", [ping(answer("old", version="1.8.9", protocol=47))]),
+        row("no-players", [ping(answer("quiet", players=False))]),
+        row("no-version", [ping({"description": "x", "players": {"max": 1, "online": 0}})]),
+        row("unreachable", [{"unreachable": True, "unknown_host": False},
+                            {"unreachable": True, "unknown_host": True}]),
+        row("mixed", [ok, None, {"unreachable": True, "unknown_host": False}]),
+        row("tip-ping", [ok], mouse=(352, 40)),
+        row("tip-players", [ping(answer("x", online=5, sample=["Alex", "Steve"]))], mouse=(320, 40)),
+        row("tip-incompatible", [ping(answer("old", version="1.8.9", protocol=47))], mouse=(352, 40)),
+        row("tip-unreachable", [{"unreachable": True, "unknown_host": False}], mouse=(352, 40)),
+    ]
+    yield {"case_id": "gui/server-list-pings", "family": "gui", "operation": "join_multiplayer_screen",
+           "rows": rows}
