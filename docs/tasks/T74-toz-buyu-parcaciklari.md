@@ -20,3 +20,9 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 
 ## Devir notu
 (boş)
+Yapılan: `ParticleData` (motor, ağ çözümü: renk, büyü, toz, toz geçişi), `particles/colour.rs`
+(toz, toz geçişi, büyü ailesi, totem, parıltı ailesi), yarı saydam ve parlak dallar, çizimde geçiş
+rengi (`colour_at`). Oracle: 18 tek parçacık + 1 motor satırı, bit eşit; Java'da `SpellParticle.RANDOM`
+yeniden tohumlanır (alan nesnesi değiştirilmez, JIT sabit sayabilir).
+Sapma: dürbün kuralı yok; yarı saydam katman kesik çiziliyor.
+Açık: düşen toz ve havai fişekler → T74b.

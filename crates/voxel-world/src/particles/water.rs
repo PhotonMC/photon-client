@@ -258,9 +258,9 @@ impl Particle {
             }
             Water::Ink => {
                 self.base_tick(world);
-                self.ink_fade();
+                self.animated_fade();
                 if !self.removed {
-                    self.ink_fade();
+                    self.animated_fade();
                     let [x, y, z] = containing((self.x, self.y, self.z));
                     let state = world.block_state_at(x, y, z).unwrap_or(0);
                     if super::terrain::is_air(super::terrain::name_of(state)) {
@@ -385,7 +385,7 @@ impl Particle {
     }
 
     /// `SimpleAnimatedParticle.tick`'s picture and fade: in its second half it grows clearer.
-    fn ink_fade(&mut self) {
+    pub(super) fn animated_fade(&mut self) {
         self.set_sprite_from_age();
         if self.age > self.lifetime / 2 {
             self.alpha =

@@ -39,6 +39,14 @@ enum Provider {
     CurrentDown,
     SquidInk,
     GlowSquidInk,
+    Dust,
+    DustTransition,
+    Spell,
+    InstantSpell,
+    MobEffect,
+    Witch,
+    Totem,
+    Glow,
     Terrain,
     Crumbling,
     DustPillar,
@@ -71,6 +79,14 @@ fn provider_of(name: &str) -> Option<Provider> {
         "current_down" => Provider::CurrentDown,
         "squid_ink" => Provider::SquidInk,
         "glow_squid_ink" => Provider::GlowSquidInk,
+        "dust" => Provider::Dust,
+        "dust_color_transition" => Provider::DustTransition,
+        "infested" | "raid_omen" | "trial_omen" => Provider::Spell,
+        "effect" | "instant_effect" => Provider::InstantSpell,
+        "entity_effect" => Provider::MobEffect,
+        "witch" => Provider::Witch,
+        "totem_of_undying" => Provider::Totem,
+        "glow" | "electric_spark" | "scrape" | "wax_on" | "wax_off" => Provider::Glow,
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
@@ -79,15 +95,33 @@ fn provider_of(name: &str) -> Option<Provider> {
 }
 
 /// The providers, each with the sprite set its `particles/*.json` lists.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ParticleResources {
     sprite_sets: HashMap<&'static str, Arc<SpriteSet>>,
     terrain: Option<Arc<dyn TerrainMaterials>>,
+    /// `SpellParticle.RANDOM`: the class's own random source, which pushes its particles aside.
+    spell_random: RandomSource,
+}
+
+impl Default for ParticleResources {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ParticleResources {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            sprite_sets: HashMap::new(),
+            terrain: None,
+            spell_random: RandomSource::create(0),
+        }
+    }
+
+    /// The spell particles' own random source, seeded (`RandomSource.create()` seeds it from the
+    /// clock).
+    pub fn set_spell_random(&mut self, random: RandomSource) {
+        self.spell_random = random;
     }
 
     /// The textures every bound type lists, each once, in the order they are listed.
@@ -128,9 +162,9 @@ impl ParticleResources {
     /// `ParticleProvider.createParticle` of the type with this id: nothing where the type has no
     /// provider here, no sprite set was bound, or the provider makes none.
     pub(super) fn create(
-        &self,
+        &mut self,
         world: &ClientWorld,
-        (type_id, block_state): (i32, Option<i32>),
+        (type_id, data): (i32, super::engine::ParticleData),
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
         engine_random: &mut RandomSource,
@@ -142,7 +176,7 @@ impl ParticleResources {
             Provider::Terrain | Provider::Crumbling | Provider::DustPillar
         ) {
             let materials = self.terrain.as_deref()?;
-            let state = block_state?;
+            let state = data.block_state()?;
             if !super::terrain::makes_terrain_particles(state) {
                 return None;
             }
@@ -157,7 +191,9 @@ impl ParticleResources {
             };
         }
         let sprites = self.sprite_sets.get(name)?;
+        let spell_random = &mut self.spell_random;
         let random = random();
+        let motion = (at, push);
         Some(match provider {
             Provider::Smoke => Particle::smoke(random, at, push, sprites, 1.0),
             Provider::LargeSmoke => Particle::smoke(random, at, push, sprites, 2.5),
@@ -188,6 +224,36 @@ impl ParticleResources {
             Provider::CurrentDown => Particle::current_down(random, at, sprites, engine_random),
             Provider::SquidInk => Particle::squid_ink(random, (at, push), sprites, false),
             Provider::GlowSquidInk => Particle::squid_ink(random, (at, push), sprites, true),
+            Provider::Dust => {
+                let super::engine::ParticleData::Dust { color, scale } = data else {
+                    return None;
+                };
+                Particle::dust(random, motion, sprites, (color, scale))
+            }
+            Provider::DustTransition => {
+                let super::engine::ParticleData::DustTransition { from, to, scale } = data else {
+                    return None;
+                };
+                Particle::dust_transition(random, motion, sprites, (from, to, scale))
+            }
+            Provider::Spell => Particle::spell(random, motion, sprites, spell_random),
+            Provider::InstantSpell => {
+                let super::engine::ParticleData::Spell { color, power } = data else {
+                    return None;
+                };
+                Particle::instant_spell(random, motion, sprites, spell_random, (color, power))
+            }
+            Provider::MobEffect => {
+                let super::engine::ParticleData::Color(color) = data else {
+                    return None;
+                };
+                Particle::mob_effect(random, motion, sprites, spell_random, color)
+            }
+            Provider::Witch => {
+                Particle::witch(random, motion, sprites, (spell_random, engine_random))
+            }
+            Provider::Totem => Particle::totem(random, motion, sprites),
+            Provider::Glow => Particle::glow(name, random, motion, sprites, engine_random),
             _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
     }

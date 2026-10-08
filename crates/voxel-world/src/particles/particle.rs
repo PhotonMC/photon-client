@@ -34,6 +34,14 @@ pub(super) enum Kind {
     PlayerCloud,
     /// The bubbles, drops and ink of water, each with its own tick.
     Water(super::water::Water),
+    /// `DustParticleBase`: grows in like smoke; a transition's colours to go between.
+    Dust { transition: Option<[[f32; 3]; 2]> },
+    /// `SpellParticle`: its opacity eases back to the one it was given.
+    Spell { original_alpha: f32 },
+    /// `TotemParticle` on `SimpleAnimatedParticle`: falls, fades in its second half, full bright.
+    Totem,
+    /// `GlowParticle`: glows as it ages.
+    Glow,
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -243,7 +251,15 @@ impl Particle {
         }
         self.base_tick(world);
         match self.kind {
-            Kind::AshSmoke { .. } | Kind::Soul { .. } => self.set_sprite_from_age(),
+            Kind::AshSmoke { .. } | Kind::Soul { .. } | Kind::Dust { .. } | Kind::Glow => {
+                self.set_sprite_from_age();
+            }
+            Kind::Spell { original_alpha } => {
+                self.set_sprite_from_age();
+                // `Mth.lerp(0.05F, alpha, originalAlpha)`.
+                self.alpha += 0.05 * (original_alpha - self.alpha);
+            }
+            Kind::Totem => self.animated_fade(),
             Kind::PlayerCloud if !self.removed => self.settle_to_player(world),
             Kind::Lava if !self.removed => return self.lava_smoke(),
             _ => {}
@@ -326,7 +342,7 @@ impl Particle {
     pub fn quad_size_at(&self, partial: f32) -> f32 {
         let s = (self.age as f32 + partial) / self.lifetime as f32;
         match self.kind {
-            Kind::AshSmoke { .. } | Kind::PlayerCloud => {
+            Kind::AshSmoke { .. } | Kind::PlayerCloud | Kind::Dust { .. } => {
                 self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0)
             }
             Kind::Flame => self.quad_size * (1.0 - s * s * 0.5),
@@ -339,13 +355,13 @@ impl Particle {
     pub fn light_coords_at(&self, world: &ClientWorld, partial: f32) -> i32 {
         let light = particle_light(world, self.x, self.y, self.z);
         match self.kind {
-            Kind::Flame => {
+            Kind::Flame | Kind::Glow => {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
             // `LightCoordsUtil.withBlock(light, 15)`.
             Kind::Lava | Kind::Soul { glowing: true } => (light & 0xFF_0000) | (15 << 4),
             // `SimpleAnimatedParticle.getLightCoords`: full bright.
-            Kind::Water(super::water::Water::Ink) => 15_728_880,
+            Kind::Water(super::water::Water::Ink) | Kind::Totem => 15_728_880,
             _ => light,
         }
     }
@@ -365,6 +381,8 @@ impl Particle {
                 | Kind::CampfireSmoke
                 | Kind::PlayerCloud
                 | Kind::Water(super::water::Water::Ink)
+                | Kind::Spell { .. }
+                | Kind::Totem
         )
     }
 
@@ -431,6 +449,19 @@ impl Particle {
     /// The tint and opacity: red, green, blue, alpha.
     pub fn colour(&self) -> [f32; 4] {
         [self.r_col, self.g_col, self.b_col, self.alpha]
+    }
+
+    /// The tint it is drawn in at a partial tick: a dust transition's colour between its two.
+    pub fn colour_at(&self, partial: f32) -> [f32; 4] {
+        match self.kind {
+            Kind::Dust {
+                transition: Some(colours),
+            } => {
+                let [r, g, b] = self.transition_colour(colours, partial);
+                [r, g, b, self.alpha]
+            }
+            _ => self.colour(),
+        }
     }
 
     /// Turns the quad about its own axis: the roll of the last tick and of this one.

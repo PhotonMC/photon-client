@@ -93,7 +93,7 @@ impl Particle {
         let odds = self.age as f32 / self.lifetime as f32;
         (self.random.next_float() > odds).then(|| Spawn {
             type_id: voxel_data::particle_type::id("smoke").unwrap_or(-1),
-            block_state: None,
+            data: super::engine::ParticleData::Plain,
             override_limiter: false,
             always_show: false,
             at: (self.x, self.y, self.z),

@@ -120,6 +120,7 @@ impl Particles {
             .map(|name| texture_path(name))
             .collect();
         let mut uniquifier = UNIQUIFIER_START;
+        resources.set_spell_random(RandomSource::create(unique_seed(&mut uniquifier)));
         Self {
             engine: ParticleEngine::new(
                 RandomSource::create(unique_seed(&mut uniquifier)),

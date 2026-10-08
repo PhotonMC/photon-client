@@ -1,8 +1,7 @@
 use super::*;
 
-/// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type that
-/// carries options other than a block state after its id (those are not read yet; the packet
-/// ends with them).
+/// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type whose
+/// options are not read yet (the packet ends with them).
 pub fn read_level_particles_packet(
     input: &mut &[u8],
 ) -> Result<Option<voxel_world::particles::LevelParticles>, ConnectionError> {
@@ -25,17 +24,39 @@ pub fn read_level_particles_packet(
     if voxel_data::particle_type::name(type_id).is_none() {
         return Err(ConnectionError::Codec("unknown particle type id"));
     }
-    let block_state = if voxel_data::particle_type::carries_block_state(type_id) {
-        Some(read_varint(input, NAME)?)
+    use voxel_world::particles::ParticleData;
+    let name = voxel_data::particle_type::name(type_id).unwrap_or_default();
+    let color = |input: &mut &[u8]| read_i32(input, NAME).map(|value| value as u32);
+    let data = if voxel_data::particle_type::carries_block_state(type_id) {
+        ParticleData::Block(read_varint(input, NAME)?)
     } else if voxel_data::particle_type::is_simple(type_id) {
-        None
+        ParticleData::Plain
     } else {
-        *input = &[];
-        return Ok(None);
+        match name {
+            "entity_effect" | "tinted_leaves" | "flash" => ParticleData::Color(color(input)?),
+            "effect" | "instant_effect" => ParticleData::Spell {
+                color: color(input)?,
+                power: read_f32(input, NAME)?,
+            },
+            // `ScalableParticleOptionsBase`: the size is held between 0.01 and 4.
+            "dust" => ParticleData::Dust {
+                color: color(input)?,
+                scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
+            },
+            "dust_color_transition" => ParticleData::DustTransition {
+                from: color(input)?,
+                to: color(input)?,
+                scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
+            },
+            _ => {
+                *input = &[];
+                return Ok(None);
+            }
+        }
     };
     Ok(Some(voxel_world::particles::LevelParticles {
         type_id,
-        block_state,
+        data,
         override_limiter,
         always_show,
         at,

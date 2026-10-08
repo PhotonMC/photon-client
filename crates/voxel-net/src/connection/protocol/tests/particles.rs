@@ -37,7 +37,10 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
     let mut input = bytes.as_slice();
     let packet = read_level_particles_packet(&mut input).unwrap().unwrap();
     assert!(input.is_empty());
-    assert_eq!((packet.type_id, packet.block_state), (block, Some(1234)));
+    assert_eq!(
+        (packet.type_id, packet.data.block_state()),
+        (block, Some(1234))
+    );
 }
 
 #[test]

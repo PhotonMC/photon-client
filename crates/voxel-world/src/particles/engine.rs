@@ -29,12 +29,40 @@ pub struct AddView {
     pub status: ParticleStatus,
 }
 
+/// What a particle type carries after its id (`ParticleOptions`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum ParticleData {
+    /// `SimpleParticleType`: nothing.
+    #[default]
+    Plain,
+    /// `BlockParticleOption`: a block state.
+    Block(i32),
+    /// `ColorParticleOption`: an ARGB colour.
+    Color(u32),
+    /// `SpellParticleOption`: a colour and how fast it goes.
+    Spell { color: u32, power: f32 },
+    /// `DustParticleOptions`: an RGB colour and a size (held between 0.01 and 4).
+    Dust { color: u32, scale: f32 },
+    /// `DustColorTransitionOptions`: from one colour to another, and a size.
+    DustTransition { from: u32, to: u32, scale: f32 },
+}
+
+impl ParticleData {
+    /// The block state of a type that carries one.
+    pub fn block_state(self) -> Option<i32> {
+        match self {
+            Self::Block(state) => Some(state),
+            _ => None,
+        }
+    }
+}
+
 /// One particle asked for: `Level.addParticle`.
 #[derive(Debug, Clone, Copy)]
 pub struct Spawn {
     pub type_id: i32,
-    /// The block state of a type that carries one (`BlockParticleOption`).
-    pub block_state: Option<i32>,
+    /// What the type carries.
+    pub data: ParticleData,
     pub override_limiter: bool,
     pub always_show: bool,
     pub at: (f64, f64, f64),
@@ -45,8 +73,8 @@ pub struct Spawn {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LevelParticles {
     pub type_id: i32,
-    /// The block state of a type that carries one.
-    pub block_state: Option<i32>,
+    /// What the type carries.
+    pub data: ParticleData,
     pub override_limiter: bool,
     pub always_show: bool,
     pub at: (f64, f64, f64),
@@ -85,17 +113,14 @@ impl ParticleEngine {
     pub fn create_particle(
         &mut self,
         world: &ClientWorld,
-        (type_id, block_state): (i32, Option<i32>),
+        (type_id, data): (i32, ParticleData),
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
     ) -> bool {
-        match self.resources.create(
-            world,
-            (type_id, block_state),
-            (at, push),
-            random,
-            &mut self.random,
-        ) {
+        match self
+            .resources
+            .create(world, (type_id, data), (at, push), random, &mut self.random)
+        {
             Some(particle) => {
                 self.add(particle);
                 true
@@ -229,7 +254,7 @@ impl ParticleEngine {
         if override_limiter || (near && level != ParticleStatus::Minimal) {
             self.create_particle(
                 world,
-                (spawn.type_id, spawn.block_state),
+                (spawn.type_id, spawn.data),
                 (spawn.at, spawn.push),
                 &mut particle_random,
             );
@@ -248,7 +273,7 @@ impl ParticleEngine {
     ) {
         let spawn = |at: (f64, f64, f64), push: (f64, f64, f64)| Spawn {
             type_id: packet.type_id,
-            block_state: packet.block_state,
+            data: packet.data,
             override_limiter: packet.override_limiter,
             always_show: packet.always_show,
             at,

@@ -148,10 +148,33 @@ class MovementParticleOracle extends MovementMenuOracle {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static net.minecraft.client.particle.Particle makeParticle(
-        String kind, SpriteSetProbe sprites, net.minecraft.client.multiplayer.ClientLevel level,
-        double[] at, net.minecraft.util.RandomSource engineRandom) {
+        JsonObject row, SpriteSetProbe sprites, net.minecraft.client.multiplayer.ClientLevel level,
+        double[] at, net.minecraft.util.RandomSource engineRandom) throws Exception {
+        String kind = row.get("particle").getAsString();
         var spriteSet = (net.minecraft.client.particle.SpriteSet) sprites.set;
+        // The coloured ones through the engine's own providers, their options built from the row.
+        var registered = switch (kind) {
+            case "dust", "dust_color_transition", "effect", "entity_effect", "infested", "witch",
+                "totem_of_undying", "glow", "electric_spark", "scrape", "wax_on", "wax_off" -> true;
+            default -> false;
+        };
+        if (registered) {
+            var resources = new net.minecraft.client.particle.ParticleResources();
+            var providers = (java.util.Map) getField(resources, "providers");
+            var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
+            var rebind = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet")
+                .getDeclaredMethod("rebind", java.util.List.class);
+            rebind.setAccessible(true);
+            for (var set : sets.values()) {
+                rebind.invoke(set, sprites.sprites);
+            }
+            var options = optionsOf(kind, row);
+            var provider = (net.minecraft.client.particle.ParticleProvider) providers.get(
+                net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getId(options.getType()));
+            return provider.createParticle(options, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+        }
         return switch (kind) {
             case "smoke" -> new net.minecraft.client.particle.SmokeParticle.Provider(spriteSet).createParticle(
                 net.minecraft.core.particles.ParticleTypes.SMOKE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
@@ -252,9 +275,11 @@ class MovementParticleOracle extends MovementMenuOracle {
         var at = new double[] {Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
             Oracle.f64(row, "xa"), Oracle.f64(row, "ya"), Oracle.f64(row, "za")};
         // Made again with each try, so that every try draws what the first would have.
-        var particle = seededParticle(row.get("seed").getAsLong(),
-            () -> makeParticle(row.get("particle").getAsString(), sprites, level, at,
-                net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong())));
+        var particle = seededParticle(row.get("seed").getAsLong(), () -> {
+            seedSpellRandom(row.has("spell_seed") ? row.get("spell_seed").getAsLong() : 0L);
+            return makeParticle(row, sprites, level, at,
+                net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
+        });
         var partials = row.getAsJsonArray("partials");
         var states = new JsonArray();
         states.add(describeParticle(particle, sprites, partials));
@@ -290,8 +315,11 @@ class MovementParticleOracle extends MovementMenuOracle {
                 engineSeedField.setAccessible(true);
                 var engineSeed = (java.util.concurrent.atomic.AtomicLong) engineSeedField.get(getField(this, "random"));
                 long engineSeedBefore = engineSeed.get();
+                var spell = spellSeed();
+                long spellSeedBefore = spell.get();
                 var particle = seededParticle(seeds.isEmpty() ? 0L : seeds.peekFirst(), () -> {
                     engineSeed.set(engineSeedBefore);
+                    spell.set(spellSeedBefore);
                     var made = super.createParticle(options, x, y, z, xa, ya, za);
                     if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())) {
                         queue.remove(made);
@@ -306,6 +334,47 @@ class MovementParticleOracle extends MovementMenuOracle {
                 throw new IllegalStateException(error);
             }
         }
+    }
+
+    /** `SpellParticle.RANDOM`, the class's own random source, seeded for a row. */
+    static void seedSpellRandom(long seed) throws Exception {
+        // The class sets the field as it is first used: set it after that.
+        Class.forName("net.minecraft.client.particle.SpellParticle", true,
+            net.minecraft.client.particle.SpellParticle.class.getClassLoader());
+        var field = net.minecraft.client.particle.SpellParticle.class.getDeclaredField("RANDOM");
+        field.setAccessible(true);
+        // The same object reseeded: compiled code may hold the field's first value.
+        ((net.minecraft.util.RandomSource) field.get(null)).setSeed(seed);
+    }
+
+    /** The seed field of `SpellParticle.RANDOM`, to give back what a try that missed drew. */
+    static java.util.concurrent.atomic.AtomicLong spellSeed() throws Exception {
+        var field = net.minecraft.client.particle.SpellParticle.class.getDeclaredField("RANDOM");
+        field.setAccessible(true);
+        var random = field.get(null);
+        var seedField = random.getClass().getDeclaredField("seed");
+        seedField.setAccessible(true);
+        return (java.util.concurrent.atomic.AtomicLong) seedField.get(random);
+    }
+
+    private static float floatBits(JsonObject object, String key) {
+        return object.has(key) ? Float.intBitsToFloat(Integer.parseUnsignedInt(object.get(key).getAsString(), 16)) : 0.0F;
+    }
+
+    /** The options of a particle a row or event names: a colour, a power, a size as it carries them. */
+    static net.minecraft.core.particles.ParticleOptions optionsOf(String name, JsonObject from) {
+        int color = from.has("color") ? (int) from.get("color").getAsLong() : 0;
+        return switch (name) {
+            case "dust" -> new net.minecraft.core.particles.DustParticleOptions(color, floatBits(from, "scale"));
+            case "dust_color_transition" -> new net.minecraft.core.particles.DustColorTransitionOptions(
+                color, (int) from.get("to_color").getAsLong(), floatBits(from, "scale"));
+            case "effect", "instant_effect" -> net.minecraft.core.particles.SpellParticleOption.create(
+                name.equals("effect") ? net.minecraft.core.particles.ParticleTypes.EFFECT
+                    : net.minecraft.core.particles.ParticleTypes.INSTANT_EFFECT, color, floatBits(from, "power"));
+            case "entity_effect" -> net.minecraft.core.particles.ColorParticleOption.create(
+                net.minecraft.core.particles.ParticleTypes.ENTITY_EFFECT, color);
+            default -> simpleType(name);
+        };
     }
 
     private static net.minecraft.core.particles.ParticleOptions simpleType(String name) {
@@ -358,6 +427,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         for (var set : sets.values()) {
             rebind.invoke(set, sprites.sprites);
         }
+        seedSpellRandom(row.has("spell_seed") ? row.get("spell_seed").getAsLong() : 0L);
         var engine = new SeededEngine(level, resources);
         setField(engine, "random", net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
         long base = row.get("particle_seed_base").getAsLong();
@@ -377,7 +447,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 if (event.get("tick").getAsInt() != tick) {
                     continue;
                 }
-                var options = simpleType(event.get("particle").getAsString());
+                var options = optionsOf(event.get("particle").getAsString(), event);
                 switch (event.get("type").getAsString()) {
                     case "add" -> level.addParticle(options, event.get("override").getAsBoolean(),
                         event.get("always_show").getAsBoolean(), Oracle.f64(event, "x"), Oracle.f64(event, "y"),
@@ -516,7 +586,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         var at = new double[] {Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
             Oracle.f64(row, "xa"), Oracle.f64(row, "ya"), Oracle.f64(row, "za")};
         var particle = seededParticle(row.get("seed").getAsLong(),
-            () -> makeParticle(row.get("particle").getAsString(), sprites, level, at,
+            () -> makeParticle(row, sprites, level, at,
                 net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong())));
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
             particle.tick();

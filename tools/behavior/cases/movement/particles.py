@@ -111,6 +111,33 @@ def particle_tick_cases():
         row("squid-ink-in-air", "squid_ink", [], (0.5, 70.0, 0.5), (0.05, 0.0, 0.0), 12345, 30),
         row("squid-ink-in-water", "squid_ink", POOL, (0.5, 63.0, 0.5), (0.0, 0.05, 0.05), 99, 30),
         row("glow-squid-ink", "glow_squid_ink", POOL, (0.5, 63.0, 0.5), (0.05, 0.0, 0.0), 12345, 30),
+        # Dust: a colour darkened a little at random, a size and a life by the scale (held to 0.01–4);
+        # a transition draws between its two colours.
+        dict(row("dust-red", "dust", [], (0.5, 70.0, 0.5), still, 12345, 30), color=0xFF0000,
+             scale=float_bits(1.0)),
+        dict(row("dust-big-blue", "dust", floor(), (0.5, 64.2, 0.5), (0.0, -0.2, 0.0), 77, 40), color=0x3366FF,
+             scale=float_bits(3.5)),
+        dict(row("dust-too-small", "dust", [], (0.5, 70.0, 0.5), still, 5, 10), color=0x00FF00,
+             scale=float_bits(0.001)),
+        dict(row("dust-transition", "dust_color_transition", [], (0.5, 70.0, 0.5), still, 12345, 30),
+             color=0xFF8800, to_color=0x0088FF, scale=float_bits(1.5)),
+        # Spells: a sideways push from the class's own random, then rising; the instant effect's colour
+        # and power, the mob effect's colour and opacity (eased back each tick), the witch's purple.
+        dict(row("spell-infested", "infested", [], (0.5, 70.0, 0.5), still, 12345, 30), spell_seed=31),
+        dict(row("spell-instant", "effect", [], (0.5, 70.0, 0.5), (0.0, 0.1, 0.0), 12345, 30), spell_seed=32,
+             color=0xFFAA22, power=float_bits(1.5)),
+        dict(row("spell-mob-effect", "entity_effect", [], (0.5, 70.0, 0.5), (0.2, 0.1, 0.0), 12345, 30),
+             spell_seed=33, color=0x8044AAFF),
+        dict(row("spell-witch", "witch", [], (0.5, 70.0, 0.5), still, 12345, 30, engine_seed=34), spell_seed=35),
+        # Totem: green or yellow, falling fast and fading out; glows of every kind.
+        row("totem", "totem_of_undying", [], (0.5, 70.0, 0.5), (0.1, 0.5, -0.1), 12345, 75),
+        row("totem-other-seed", "totem_of_undying", [], (0.5, 70.0, 0.5), (0.0, 0.6, 0.0), 2, 20),
+        row("glow", "glow", [], (0.5, 70.0, 0.5), (0.0, 0.05, 0.0), 12345, 30, engine_seed=41),
+        row("glow-pushed", "glow", [], (0.5, 70.0, 0.5), (0.1, 0.05, 0.0), 12345, 30, engine_seed=42),
+        row("electric-spark", "electric_spark", [], (0.5, 70.0, 0.5), (0.4, 0.4, 0.0), 12345, 6, engine_seed=43),
+        row("scrape", "scrape", [], (0.5, 70.0, 0.5), (1.0, 2.0, 0.0), 12345, 45, engine_seed=44),
+        row("wax-on", "wax_on", [], (0.5, 70.0, 0.5), (1.0, 2.0, 3.0), 12345, 45, engine_seed=45),
+        row("wax-off", "wax_off", [], (0.5, 70.0, 0.5), (1.0, 2.0, 3.0), 12345, 45, engine_seed=46),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}
@@ -183,6 +210,16 @@ def particle_engine_cases():
                    ticks=40, seeds=120, describe=6),
         engine_row("lava-decreased", [add(0, "lava", near)], status="DECREASED", ticks=30, seeds=60),
         engine_row("lava-far", [add(0, "lava", far, override=True)], ticks=20, seeds=40),
+        dict(engine_row("coloured", [
+            dict(add(0, "dust", near), color=0xFF0000, scale=float_bits(1.0)),
+            dict(add(0, "dust_color_transition", near), color=0xFF0000, to_color=0x0000FF, scale=float_bits(2.0)),
+            dict(add(0, "effect", near), color=0x11FF22, power=float_bits(0.5)),
+            dict(add(0, "instant_effect", near), color=0xFFFFFF, power=float_bits(1.0)),
+            dict(add(1, "entity_effect", near), color=0x40FF00FF),
+            add(1, "witch", near), add(1, "infested", near), add(1, "raid_omen", near),
+            add(2, "totem_of_undying", near), add(2, "glow", near), add(2, "electric_spark", near),
+            add(2, "scrape", near), add(2, "wax_on", near), add(2, "wax_off", near)],
+                   ticks=10, seeds=14, describe=14), spell_seed=77),
         engine_row("rising-and-ash", [add(0, name, near, (0.0, 0.05, 0.0)) for name in (
             "large_smoke", "white_smoke", "ash", "white_ash", "dust_plume", "soul", "sculk_soul",
             "campfire_cosy_smoke", "campfire_signal_smoke", "cloud", "sneeze")],

@@ -90,6 +90,6 @@ pub fn extract(
         &rotation,
         (at, particle.quad_size_at(partial)),
         uvs,
-        (color_from_float(particle.colour()), light),
+        (color_from_float(particle.colour_at(partial)), light),
     )
 }

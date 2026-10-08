@@ -2,6 +2,8 @@
 
 use super::*;
 use std::sync::Arc;
+mod factory;
+use factory::*;
 use voxel_world::particles::{
     AddView, LevelParticles, Particle, ParticleEngine, ParticleResources, ParticleStatus, Spawn,
     SpriteSet, TerrainMaterials,
@@ -79,96 +81,6 @@ fn describe(particle: &Particle, world: &ClientWorld, partials: &[f32]) -> Value
         "sprite": particle.sprite(),
         "drawn": drawn,
     })
-}
-
-/// The particle a row asks for, made by its type's provider with the row's seeds.
-fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Particle, String> {
-    let at = (
-        parsed64(row, "x")?,
-        parsed64(row, "y")?,
-        parsed64(row, "z")?,
-    );
-    let push = (
-        parsed64(row, "xa")?,
-        parsed64(row, "ya")?,
-        parsed64(row, "za")?,
-    );
-    let random = RandomSource::create(row["seed"].as_i64().ok_or("seed must be an integer")?);
-    let mut engine_random = RandomSource::create(
-        row["engine_seed"]
-            .as_i64()
-            .ok_or("engine_seed must be an integer")?,
-    );
-    match string(row, "particle")? {
-        "smoke" => Ok(Particle::smoke(random, at, push, sprites, 1.0)),
-        "large_smoke" => Ok(Particle::smoke(random, at, push, sprites, 2.5)),
-        "white_smoke" => Ok(Particle::white_smoke(random, at, push, sprites)),
-        "ash" => Ok(Particle::ash(random, at, sprites)),
-        "white_ash" => Ok(Particle::white_ash(random, at, sprites, &mut engine_random)),
-        "dust_plume" => Ok(Particle::dust_plume(random, at, push, sprites)),
-        "soul" => Ok(Particle::soul(random, at, push, sprites, false)),
-        "sculk_soul" => Ok(Particle::soul(random, at, push, sprites, true)),
-        "campfire_cosy_smoke" => Ok(Particle::campfire_smoke(
-            random,
-            at,
-            push,
-            (sprites, false),
-            &mut engine_random,
-        )),
-        "campfire_signal_smoke" => Ok(Particle::campfire_smoke(
-            random,
-            at,
-            push,
-            (sprites, true),
-            &mut engine_random,
-        )),
-        "cloud" => Ok(Particle::player_cloud(random, at, push, sprites, false)),
-        "sneeze" => Ok(Particle::player_cloud(random, at, push, sprites, true)),
-        "bubble" => Ok(Particle::bubble(
-            random,
-            (at, push),
-            sprites,
-            &mut engine_random,
-        )),
-        "bubble_column_up" => Ok(Particle::bubble_column_up(
-            random,
-            (at, push),
-            sprites,
-            &mut engine_random,
-        )),
-        "bubble_pop" => Ok(Particle::bubble_pop(random, (at, push), sprites)),
-        "rain" => Ok(Particle::rain(random, at, sprites, &mut engine_random)),
-        "splash" => Ok(Particle::splash(
-            random,
-            (at, push),
-            sprites,
-            &mut engine_random,
-        )),
-        "fishing" => Ok(Particle::wake(random, (at, push), sprites)),
-        "current_down" => Ok(Particle::current_down(
-            random,
-            at,
-            sprites,
-            &mut engine_random,
-        )),
-        "squid_ink" => Ok(Particle::squid_ink(random, (at, push), sprites, false)),
-        "glow_squid_ink" => Ok(Particle::squid_ink(random, (at, push), sprites, true)),
-        "flame" => Ok(Particle::flame(
-            random,
-            at,
-            push,
-            sprites,
-            &mut engine_random,
-        )),
-        "small_flame" => Ok(Particle::small_flame(
-            random,
-            at,
-            push,
-            sprites,
-            &mut engine_random,
-        )),
-        other => Err(format!("unknown particle {other}")),
-    }
 }
 
 /// An array of numbers given as the bits of an `f32` each.
@@ -307,6 +219,9 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 .as_i64()
                 .ok_or_else(|| format!("{key} must be an integer"))
         };
+        resources.set_spell_random(RandomSource::create(
+            row["spell_seed"].as_i64().unwrap_or(0),
+        ));
         let mut engine =
             ParticleEngine::new(RandomSource::create(seed_of("engine_seed")?), resources);
         let mut level_random = RandomSource::create(seed_of("level_seed")?);
@@ -343,6 +258,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                     parsed64(event, "y")?,
                     parsed64(event, "z")?,
                 );
+                let data = event_data(event, name);
                 let override_limiter = event["override"]
                     .as_bool()
                     .ok_or("override must be a bool")?;
@@ -354,7 +270,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                         &world,
                         &Spawn {
                             type_id,
-                            block_state: None,
+                            data,
                             override_limiter,
                             always_show,
                             at,
@@ -378,7 +294,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                             &world,
                             &LevelParticles {
                                 type_id,
-                                block_state: None,
+                                data,
                                 override_limiter,
                                 always_show,
                                 at,
