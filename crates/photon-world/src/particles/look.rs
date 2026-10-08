@@ -26,6 +26,10 @@ impl Particle {
             Kind::Attract(super::attract::Attract::Portal { reverse: true, .. }) => {
                 self.quad_size * (1.0 - (self.age as f32 + partial) / (self.lifetime as f32 * 1.5))
             }
+            Kind::Shriek { .. } => {
+                let s = (self.age as f32 + partial) / self.lifetime as f32 * 0.75;
+                self.quad_size * clamp_f32(s, 0.0, 1.0)
+            }
             _ => self.quad_size,
         }
     }
@@ -43,6 +47,7 @@ impl Particle {
             | Kind::SculkCharge
             | Kind::Drip(super::drip::Drip { glowing: true, .. })
             | Kind::Vibration(_)
+            | Kind::Shriek { .. }
             | Kind::Attract(
                 super::attract::Attract::FlyTowards { glowing: true, .. }
                 | super::attract::Attract::FlyStraight { .. },

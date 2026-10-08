@@ -45,8 +45,8 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
 
 #[test]
 fn a_type_with_options_is_skipped_with_what_follows_its_id() {
-    let shriek = photon_data::particle_type::id("shriek").unwrap();
-    let bytes = payload(shriek, &[1, 2, 3, 4, 5]);
+    let dragon_breath = photon_data::particle_type::id("dragon_breath").unwrap();
+    let bytes = payload(dragon_breath, &[1, 2, 3, 4, 5]);
     let mut input = bytes.as_slice();
     assert_eq!(read_level_particles_packet(&mut input).unwrap(), None);
     assert!(input.is_empty());

@@ -133,6 +133,21 @@ pub(super) fn particle_of(
                 world,
             ))
         }
+        "shriek" => {
+            let data = photon_world::particles::ParticleData::Shriek {
+                delay: i32_field(row, "delay")?,
+            };
+            Particle::hit_provider(
+                "shriek",
+                world,
+                random,
+                motion,
+                sprites,
+                &mut engine_random,
+                data,
+            )
+            .ok_or_else(|| "no shriek".to_owned())
+        }
         "trail" => {
             let target = (
                 parsed64(row, "target_x")?,

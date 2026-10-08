@@ -225,6 +225,11 @@ def particle_tick_cases():
                  engine_seed=52),
              target_x=float_bits(-3.0, "f64"), target_y=float_bits(69.0, "f64"),
              target_z=float_bits(0.5, "f64"), color=0x33CCFF, duration=6),
+        # A shriek sits frozen while its delay counts down, then rises and ages normally
+        # (its own lifetime of 30 regardless of the row's tick count).
+        dict(row("shriek-with-a-delay", "shriek", [], (0.5, 70.0, 0.5), still, 12345, 10), delay=5),
+        dict(row("shriek-no-delay", "shriek", [], (0.5, 70.0, 0.5), still, 77, 8, engine_seed=53),
+             delay=0),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}

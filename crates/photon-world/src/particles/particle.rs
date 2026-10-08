@@ -50,6 +50,8 @@ pub(super) enum Kind {
     Vibration(super::vibration::Vibration),
     /// `TrailParticle`: chases a fixed target.
     Trail { target: [f64; 3] },
+    /// `ShriekParticle`: does nothing while its delay counts down, then ages normally.
+    Shriek { delay: i32 },
     /// `SuspendedParticle`: hangs in the air, the plain tick.
     Suspended,
     /// `CritParticle`: grows in, its green and blue fading each tick.
@@ -291,6 +293,10 @@ impl Particle {
             }
             Kind::Trail { target } => {
                 self.trail_tick(target);
+                return Vec::new();
+            }
+            Kind::Shriek { delay } if delay > 0 => {
+                self.kind = Kind::Shriek { delay: delay - 1 };
                 return Vec::new();
             }
             Kind::Burst => {

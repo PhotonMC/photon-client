@@ -35,6 +35,7 @@ pub(super) enum Mark {
     ExplosionEmitter,
     GustEmitterLarge,
     GustEmitterSmall,
+    Shriek,
 }
 
 impl Mark {
@@ -58,6 +59,7 @@ impl Mark {
             "explosion_emitter" => Self::ExplosionEmitter,
             "gust_emitter_large" => Self::GustEmitterLarge,
             "gust_emitter_small" => Self::GustEmitterSmall,
+            "shriek" => Self::Shriek,
             _ => return None,
         })
     }
@@ -176,7 +178,37 @@ impl Particle {
             Mark::ExplosionEmitter | Mark::GustEmitterLarge | Mark::GustEmitterSmall => {
                 Self::emitter(mark, random, at, sprites)
             }
+            Mark::Shriek => return Self::shriek(random, at, sprites, provider_random, data),
         })
+    }
+
+    /// `ShriekParticle.Provider`: a flat, delayed quad that rises slowly once its delay passes.
+    fn shriek(
+        random: RandomSource,
+        at: (f64, f64, f64),
+        sprites: &Arc<SpriteSet>,
+        provider_random: &mut RandomSource,
+        data: ParticleData,
+    ) -> Option<Self> {
+        let ParticleData::Shriek { delay } = data else {
+            return None;
+        };
+        let sprite = sprites.from_random(provider_random);
+        let mut particle = Self::thrown(
+            random,
+            at,
+            (0.0, 0.0, 0.0),
+            (sprites, sprite),
+            Kind::Shriek { delay },
+        )
+        .quad();
+        particle.quad_size = 0.85;
+        particle.lifetime = 30;
+        particle.gravity = 0.0;
+        particle.xd = 0.0;
+        particle.yd = 0.1;
+        particle.zd = 0.0;
+        Some(particle)
     }
 
     /// `SculkChargeParticle.Provider` (with its roll) and `SculkChargePopParticle.Provider`.

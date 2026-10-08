@@ -1,4 +1,4 @@
-# T76 — Vuruş, patlama ve ifade parçacıkları — [client-parity]
+# T76/T76c — Vuruş, patlama, ifade ve çığlık parçacıkları — [client-parity]
 
 Bu kayıt vuruş, patlama ve ifade parçacıklarını kapsar: `CritParticle` (`crit`, `damage_indicator`,
 `enchanted_hit`), `AttackSweepParticle`, `ExplodeParticle` (`poof`), `HugeExplosionParticle`,
@@ -27,14 +27,22 @@ karşılaştırılır.
 - Yayıcılar `NO_RENDER` grubundadır (kendi 16384'lük kapasitesi). Patlama yayıcısı 8 tik boyunca
   her tik 4 blok içinde 6 patlama bırakır. Rüzgâr yayıcısı `age % (delay+1) == 0` tiklerinde 3
   rüzgâr bırakır. İtişin x'i `age/lifetime`'dır.
+- `ShriekParticle`: gecikmesi sıfırın üstündeyken hiçbir şey yapmaz (yaş artmaz, taşınmaz, fizik
+  yok — yalnız gecikme azalır); sıfıra inince normal tike düşer (yerçekimi 0, sabit yukarı hız
+  0,1, ömür 30, boy 0,85). `getQuadSize`/`getLightCoords` örtmeleri (boy `*clamp((yaş+p)/ömür*0,75,
+  0,1)`, blok ışığı sabit 15) render tarafında.
 
 ## Kapsam ve dal kararı
 
-`particle-ticks`'e 14 satır, `particle-engine`'e yayıcı satırı. Java gruplarını kimlik hash
-sırasıyla tikler; oracle her grubu ayrı sayar (`particles`, `emitters`). Rust önce dörtgenleri,
-sonra yayıcıları tikler.
+`particle-ticks`'e 14+2 satır (çığlık gecikmeli/gecikmesiz), `particle-engine`'e yayıcı satırı.
+Java gruplarını kimlik hash sırasıyla tikler; oracle her grubu ayrı sayar (`particles`,
+`emitters`). Rust önce dörtgenleri, sonra yayıcıları tikler.
 
 ## Sapmalar (açık)
 
-- `ShriekParticle`, `ElderGuardianParticle` ve `Explode` paketi T76b'de.
+- `ElderGuardianParticle` ve `Explode` paketi ayrı: paket T76b'de, `ElderGuardianParticle`
+  [T76c2](../tasks/T76c2-elder-gardiyan.md)'de (kameraya bağlı model çizimi, ayrı render grubu
+  gerektiriyor — bu kayıt yalnız dünya-tarafı quad parçacıklarını kapsıyor).
+- Çığlığın çizimi (iki döndürülmüş dörtgen, render'da hesaplanan alfa) bağlanmadı; dünya tarafı
+  tiki (gecikme, yaş, ömür, ışık, boy) kanıtlı.
 - Sculk yükünün yarı saydamlığı kesik çiziliyor (T75 ile aynı).

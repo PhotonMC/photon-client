@@ -60,6 +60,8 @@ pub enum ParticleData {
         color: u32,
         duration: i32,
     },
+    /// `ShriekParticleOption`: how many ticks before it starts ageing.
+    Shriek { delay: i32 },
 }
 
 /// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity

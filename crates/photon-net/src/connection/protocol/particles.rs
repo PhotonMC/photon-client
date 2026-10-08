@@ -88,6 +88,9 @@ pub(crate) fn read_particle_options(
                     arrival_in_ticks: read_varint(input, NAME)?,
                 }
             }
+            "shriek" => ParticleData::Shriek {
+                delay: read_varint(input, NAME)?,
+            },
             "trail" => ParticleData::Trail {
                 target: (
                     read_f64(input, NAME)?,
