@@ -30,7 +30,54 @@ pub(super) fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Parti
             .map_or(0.0, f32::from_bits)
     };
     let motion = (at, push);
+    let mut level_random = RandomSource::create(row["level_seed"].as_i64().unwrap_or(0));
     match string(row, "particle")? {
+        "portal" => Ok(Particle::portal(
+            random,
+            motion,
+            sprites,
+            &mut engine_random,
+            false,
+        )),
+        "reverse_portal" => Ok(Particle::portal(
+            random,
+            motion,
+            sprites,
+            &mut engine_random,
+            true,
+        )),
+        "enchant" | "nautilus" => Ok(Particle::fly_towards_provider(
+            random,
+            motion,
+            sprites,
+            &mut engine_random,
+            false,
+        )),
+        "vault_connection" => Ok(Particle::fly_towards_provider(
+            random,
+            motion,
+            sprites,
+            &mut engine_random,
+            true,
+        )),
+        "ominous_spawning" => Ok(Particle::ominous_spawning(
+            random,
+            motion,
+            sprites,
+            (&mut engine_random, &mut level_random),
+        )),
+        name @ ("underwater" | "crimson_spore" | "warped_spore" | "spore_blossom_air") => Ok(
+            Particle::suspended(name, random, at, sprites, &mut engine_random),
+        ),
+        name @ ("mycelium" | "happy_villager" | "egg_crack" | "composter" | "dolphin") => {
+            Ok(Particle::suspended_town(
+                name,
+                random,
+                motion,
+                sprites,
+                (&mut engine_random, &mut level_random),
+            ))
+        }
         "dust" => Ok(Particle::dust(
             random,
             motion,

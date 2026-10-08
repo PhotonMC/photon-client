@@ -22,14 +22,19 @@ pub(super) struct ParticleGroup {
 
 impl ParticleGroup {
     /// `ParticleGroup.tickParticles`: each particle ticks, and the ones that died are dropped;
-    /// what they asked the level for, in order.
-    pub(super) fn tick(&mut self, world: &ClientWorld) -> Vec<Spawn> {
+    /// what they asked the level for, in order, and how many limited ones died.
+    pub(super) fn tick(&mut self, world: &ClientWorld) -> (Vec<Spawn>, i32) {
         let mut spawns = Vec::new();
+        let mut limited_gone = 0;
         self.particles.retain_mut(|particle| {
             spawns.extend(particle.tick(world));
-            particle.is_alive()
+            let alive = particle.is_alive();
+            if !alive && particle.is_limited() {
+                limited_gone += 1;
+            }
+            alive
         });
-        spawns
+        (spawns, limited_gone)
     }
 
     /// `ParticleGroup.add`: whether the particle got in. Past the reservoir's start the chance

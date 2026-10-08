@@ -20,3 +20,8 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 
 ## Devir notu
 (boş)
+Yapılan: `particles/attract.rs` (portal, ters portal, büyü masası/nautilus/kasa bağlantısı, ominous,
+asılı ve kasaba parçacıkları), motor sağlayıcılara seviye rastgelesini verir ve spor çiçeği sınırını
+tutar. Oracle: 16 tek parçacık satırı bit eşit.
+Sapma: crimson spore satırı yok (Q04); spor sınırı sınanmadı.
+Açık: titreşim ve iz → T75b.

@@ -5,6 +5,7 @@
 //! reference's `Particle` makes its random source when it is built, seeded from the clock. Here
 //! the source is handed in.
 
+mod attract;
 mod colour;
 mod engine;
 mod flame;

@@ -42,6 +42,10 @@ pub(super) enum Kind {
     Totem,
     /// `GlowParticle`: glows as it ages.
     Glow,
+    /// The particles drawn to a place, each with its own tick.
+    Attract(super::attract::Attract),
+    /// `SuspendedParticle`: hangs in the air, the plain tick.
+    Suspended,
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -93,6 +97,8 @@ pub struct Particle {
     pub(super) sprites: Arc<SpriteSet>,
     pub(super) sprite: usize,
     pub(super) kind: Kind,
+    /// `getParticleLimit`: the spore blossom's air is counted against a limit.
+    pub(super) limited: bool,
 }
 
 impl Particle {
@@ -137,6 +143,7 @@ impl Particle {
             sprites: Arc::clone(sprites),
             sprite,
             kind,
+            limited: false,
         };
         particle.set_size(0.2, 0.2);
         particle.set_pos(x, y, z);
@@ -243,6 +250,10 @@ impl Particle {
                 self.water_tick(world, water);
                 return None;
             }
+            Kind::Attract(attract) => {
+                self.attract_tick(attract);
+                return None;
+            }
             Kind::AshSmoke { decays: true } => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -295,9 +306,8 @@ impl Particle {
 
     /// `Particle.move`, or `FlameParticle.move`, which does not collide.
     pub(super) fn move_by(&mut self, world: &ClientWorld, xa: f64, ya: f64, za: f64) {
-        if matches!(self.kind, Kind::Flame) {
-            self.bounding_box = self.bounding_box.move_by(xa, ya, za);
-            self.set_location_from_bounding_box();
+        if matches!(self.kind, Kind::Flame | Kind::Attract(_)) {
+            self.bounding_box_move(xa, ya, za);
             return;
         }
         if self.stopped_by_collision {
@@ -338,6 +348,13 @@ impl Particle {
         }
     }
 
+    /// `FlameParticle.move` and the others that go through blocks: the box moves, the position
+    /// follows it.
+    pub(super) fn bounding_box_move(&mut self, xa: f64, ya: f64, za: f64) {
+        self.bounding_box = self.bounding_box.move_by(xa, ya, za);
+        self.set_location_from_bounding_box();
+    }
+
     /// The size of the quad at a partial tick: `getQuadSize`.
     pub fn quad_size_at(&self, partial: f32) -> f32 {
         let s = (self.age as f32 + partial) / self.lifetime as f32;
@@ -347,6 +364,13 @@ impl Particle {
             }
             Kind::Flame => self.quad_size * (1.0 - s * s * 0.5),
             Kind::Lava => self.quad_size * (1.0 - s * s),
+            Kind::Attract(super::attract::Attract::Portal { reverse: false, .. }) => {
+                let s = 1.0 - s;
+                self.quad_size * (1.0 - s * s)
+            }
+            Kind::Attract(super::attract::Attract::Portal { reverse: true, .. }) => {
+                self.quad_size * (1.0 - (self.age as f32 + partial) / (self.lifetime as f32 * 1.5))
+            }
             _ => self.quad_size,
         }
     }
@@ -359,7 +383,20 @@ impl Particle {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
             // `LightCoordsUtil.withBlock(light, 15)`.
-            Kind::Lava | Kind::Soul { glowing: true } => (light & 0xFF_0000) | (15 << 4),
+            Kind::Lava
+            | Kind::Soul { glowing: true }
+            | Kind::Attract(
+                super::attract::Attract::FlyTowards { glowing: true, .. }
+                | super::attract::Attract::FlyStraight { .. },
+            ) => (light & 0xFF_0000) | (15 << 4),
+            Kind::Attract(
+                super::attract::Attract::Portal { .. } | super::attract::Attract::FlyTowards { .. },
+            ) => {
+                let mut brightness = self.age as f32 / self.lifetime as f32;
+                brightness *= brightness;
+                brightness *= brightness;
+                add_smooth_block_emission(light, brightness)
+            }
             // `SimpleAnimatedParticle.getLightCoords`: full bright.
             Kind::Water(super::water::Water::Ink) | Kind::Totem => 15_728_880,
             _ => light,
@@ -383,7 +420,7 @@ impl Particle {
                 | Kind::Water(super::water::Water::Ink)
                 | Kind::Spell { .. }
                 | Kind::Totem
-        )
+        ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }
 
     /// The atlas the picture is in.
@@ -403,6 +440,11 @@ impl Particle {
             }
             _ => None,
         }
+    }
+
+    /// Whether it counts against the spore blossom's limit.
+    pub fn is_limited(&self) -> bool {
+        self.limited
     }
 
     pub fn is_alive(&self) -> bool {
@@ -460,6 +502,12 @@ impl Particle {
                 let [r, g, b] = self.transition_colour(colours, partial);
                 [r, g, b, self.alpha]
             }
+            Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) => [
+                self.r_col,
+                self.g_col,
+                self.b_col,
+                self.lifetime_alpha(alpha, partial),
+            ],
             _ => self.colour(),
         }
     }

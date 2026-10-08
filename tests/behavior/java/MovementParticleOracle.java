@@ -157,7 +157,10 @@ class MovementParticleOracle extends MovementMenuOracle {
         // The coloured ones through the engine's own providers, their options built from the row.
         var registered = switch (kind) {
             case "dust", "dust_color_transition", "effect", "entity_effect", "infested", "witch",
-                "totem_of_undying", "glow", "electric_spark", "scrape", "wax_on", "wax_off" -> true;
+                "totem_of_undying", "glow", "electric_spark", "scrape", "wax_on", "wax_off", "portal",
+                "reverse_portal", "enchant", "nautilus", "vault_connection", "ominous_spawning", "underwater",
+                "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
+                "composter", "dolphin" -> true;
             default -> false;
         };
         if (registered) {
@@ -277,6 +280,8 @@ class MovementParticleOracle extends MovementMenuOracle {
         // Made again with each try, so that every try draws what the first would have.
         var particle = seededParticle(row.get("seed").getAsLong(), () -> {
             seedSpellRandom(row.has("spell_seed") ? row.get("spell_seed").getAsLong() : 0L);
+            // What a provider draws from the level's random (a composter's life, an ominous spawn's size).
+            level.getRandom().setSeed(row.has("level_seed") ? row.get("level_seed").getAsLong() : 0L);
             return makeParticle(row, sprites, level, at,
                 net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
         });

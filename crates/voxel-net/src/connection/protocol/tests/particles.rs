@@ -45,8 +45,8 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
 
 #[test]
 fn a_type_with_options_is_skipped_with_what_follows_its_id() {
-    let dust = voxel_data::particle_type::id("dust").unwrap();
-    let bytes = payload(dust, &[1, 2, 3, 4, 5]);
+    let vibration = voxel_data::particle_type::id("vibration").unwrap();
+    let bytes = payload(vibration, &[1, 2, 3, 4, 5]);
     let mut input = bytes.as_slice();
     assert_eq!(read_level_particles_packet(&mut input).unwrap(), None);
     assert!(input.is_empty());

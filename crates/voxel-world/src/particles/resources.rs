@@ -47,6 +47,13 @@ enum Provider {
     Witch,
     Totem,
     Glow,
+    Portal,
+    ReversePortal,
+    FlyTowards,
+    VaultConnection,
+    OminousSpawning,
+    Suspended,
+    SuspendedTown,
     Terrain,
     Crumbling,
     DustPillar,
@@ -87,6 +94,17 @@ fn provider_of(name: &str) -> Option<Provider> {
         "witch" => Provider::Witch,
         "totem_of_undying" => Provider::Totem,
         "glow" | "electric_spark" | "scrape" | "wax_on" | "wax_off" => Provider::Glow,
+        "portal" => Provider::Portal,
+        "reverse_portal" => Provider::ReversePortal,
+        "enchant" | "nautilus" => Provider::FlyTowards,
+        "vault_connection" => Provider::VaultConnection,
+        "ominous_spawning" => Provider::OminousSpawning,
+        "underwater" | "crimson_spore" | "warped_spore" | "spore_blossom_air" => {
+            Provider::Suspended
+        }
+        "mycelium" | "happy_villager" | "egg_crack" | "composter" | "dolphin" => {
+            Provider::SuspendedTown
+        }
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
@@ -167,7 +185,7 @@ impl ParticleResources {
         (type_id, data): (i32, super::engine::ParticleData),
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
-        engine_random: &mut RandomSource,
+        (engine_random, level_random): (&mut RandomSource, &mut RandomSource),
     ) -> Option<Particle> {
         let name = particle_type::name(type_id)?;
         let provider = provider_of(name)?;
@@ -175,20 +193,13 @@ impl ParticleResources {
             provider,
             Provider::Terrain | Provider::Crumbling | Provider::DustPillar
         ) {
-            let materials = self.terrain.as_deref()?;
-            let state = data.block_state()?;
-            if !super::terrain::makes_terrain_particles(state) {
-                return None;
-            }
-            let env = (world, materials);
-            let random = random();
-            return match provider {
-                Provider::Terrain => Particle::terrain_provider(random, (at, push), state, env),
-                Provider::Crumbling => {
-                    Particle::crumbling_provider(random, (at, push), state, env, engine_random)
-                }
-                _ => Particle::dust_pillar_provider(random, (at, push), state, env, engine_random),
-            };
+            return self.create_terrain(
+                world,
+                (provider, &data),
+                (at, push),
+                random,
+                engine_random,
+            );
         }
         let sprites = self.sprite_sets.get(name)?;
         let spell_random = &mut self.spell_random;
@@ -254,7 +265,72 @@ impl ParticleResources {
             }
             Provider::Totem => Particle::totem(random, motion, sprites),
             Provider::Glow => Particle::glow(name, random, motion, sprites, engine_random),
+            Provider::Portal
+            | Provider::ReversePortal
+            | Provider::FlyTowards
+            | Provider::VaultConnection
+            | Provider::OminousSpawning
+            | Provider::Suspended
+            | Provider::SuspendedTown => attract(
+                (provider, name),
+                random,
+                motion,
+                sprites,
+                (engine_random, level_random),
+            ),
             _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
+    }
+
+    /// The providers of flakes of blocks: nothing without the materials or for a block that
+    /// makes none.
+    fn create_terrain(
+        &self,
+        world: &ClientWorld,
+        (provider, data): (Provider, &super::engine::ParticleData),
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
+        random: impl FnOnce() -> RandomSource,
+        engine_random: &mut RandomSource,
+    ) -> Option<Particle> {
+        let materials = self.terrain.as_deref()?;
+        let state = data.block_state()?;
+        if !super::terrain::makes_terrain_particles(state) {
+            return None;
+        }
+        let env = (world, materials);
+        let random = random();
+        match provider {
+            Provider::Terrain => Particle::terrain_provider(random, (at, push), state, env),
+            Provider::Crumbling => {
+                Particle::crumbling_provider(random, (at, push), state, env, engine_random)
+            }
+            _ => Particle::dust_pillar_provider(random, (at, push), state, env, engine_random),
+        }
+    }
+}
+
+/// The providers of the particles drawn to a place or hung in the air (`attract.rs`).
+fn attract(
+    (provider, name): (Provider, &str),
+    random: RandomSource,
+    motion: ((f64, f64, f64), (f64, f64, f64)),
+    sprites: &Arc<SpriteSet>,
+    (engine_random, level_random): (&mut RandomSource, &mut RandomSource),
+) -> Particle {
+    match provider {
+        Provider::Portal => Particle::portal(random, motion, sprites, engine_random, false),
+        Provider::ReversePortal => Particle::portal(random, motion, sprites, engine_random, true),
+        Provider::FlyTowards => {
+            Particle::fly_towards_provider(random, motion, sprites, engine_random, false)
+        }
+        Provider::VaultConnection => {
+            Particle::fly_towards_provider(random, motion, sprites, engine_random, true)
+        }
+        Provider::OminousSpawning => {
+            Particle::ominous_spawning(random, motion, sprites, (engine_random, level_random))
+        }
+        Provider::Suspended => Particle::suspended(name, random, motion.0, sprites, engine_random),
+        // `Provider::SuspendedTown`.
+        _ => Particle::suspended_town(name, random, motion, sprites, (engine_random, level_random)),
     }
 }

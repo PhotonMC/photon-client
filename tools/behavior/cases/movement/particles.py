@@ -138,6 +138,27 @@ def particle_tick_cases():
         row("scrape", "scrape", [], (0.5, 70.0, 0.5), (1.0, 2.0, 0.0), 12345, 45, engine_seed=44),
         row("wax-on", "wax_on", [], (0.5, 70.0, 0.5), (1.0, 2.0, 3.0), 12345, 45, engine_seed=45),
         row("wax-off", "wax_off", [], (0.5, 70.0, 0.5), (1.0, 2.0, 3.0), 12345, 45, engine_seed=46),
+        # Portals spiral in from where they were pushed to, the reverse ones drift out faster; the
+        # enchanting table's runes and the nautilus' fall back to where they started, the vault's glow
+        # and fade in; the ominous spawn goes straight, blue to white.
+        row("portal", "portal", [], (0.5, 70.0, 0.5), (0.8, -0.4, 0.3), 12345, 55),
+        row("reverse-portal", "reverse_portal", [], (0.5, 70.0, 0.5), (0.05, 0.02, -0.03), 12345, 65),
+        row("enchant", "enchant", [], (0.5, 70.0, 0.5), (1.5, 1.0, -0.5), 12345, 45),
+        row("nautilus", "nautilus", [], (0.5, 70.0, 0.5), (-0.5, 0.5, 0.5), 77, 45),
+        row("vault-connection", "vault_connection", [], (0.5, 70.0, 0.5), (2.0, 0.0, 1.0), 12345, 45),
+        dict(row("ominous-spawning", "ominous_spawning", [], (0.5, 70.0, 0.5), (1.0, 2.0, 0.5), 12345, 35),
+             level_seed=51),
+        # Hanging specks: underwater, warped spores, the spore blossom's air (slow to fall, long-lived);
+        # town specks drift through blocks: mycelium, a happy villager, a cracked egg, a composter (its life
+        # from the level's random) and a dolphin's (faint at random, half the life).
+        row("underwater", "underwater", POOL, (0.5, 63.0, 0.5), still, 12345, 40),
+        row("warped-spore", "warped_spore", [], (0.5, 70.0, 0.5), still, 12345, 40, engine_seed=52),
+        row("spore-blossom-air", "spore_blossom_air", floor(), (0.5, 66.0, 0.5), still, 12345, 60, engine_seed=53),
+        row("mycelium", "mycelium", SOLID, (0.5, 64.0, 0.5), (0.2, 0.3, -0.1), 12345, 40),
+        row("happy-villager", "happy_villager", [], (0.5, 70.0, 0.5), (0.1, 0.1, 0.1), 12345, 40),
+        row("egg-crack", "egg_crack", [], (0.5, 70.0, 0.5), (0.0, 0.5, 0.0), 77, 30),
+        dict(row("composter", "composter", [], (0.5, 70.0, 0.5), (0.0, 0.2, 0.0), 12345, 10), level_seed=54),
+        row("dolphin", "dolphin", POOL, (0.5, 63.0, 0.5), (0.3, 0.0, 0.3), 12345, 30, engine_seed=55),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}

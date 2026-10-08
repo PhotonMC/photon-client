@@ -89,7 +89,13 @@ pub struct ParticleEngine {
     to_add: VecDeque<Particle>,
     random: RandomSource,
     resources: ParticleResources,
+    /// `trackedParticleCounts` of `ParticleLimit.SPORE_BLOSSOM`: the spore blossom's particles
+    /// alive or waiting.
+    spore_blossoms: i32,
 }
+
+/// `ParticleLimit.SPORE_BLOSSOM`.
+const SPORE_BLOSSOM_LIMIT: i32 = 1000;
 
 impl ParticleEngine {
     /// An engine whose own random source (the one it picks a flame's picture and lets
@@ -100,6 +106,7 @@ impl ParticleEngine {
             to_add: VecDeque::new(),
             random,
             resources,
+            spore_blossoms: 0,
         }
     }
 
@@ -115,12 +122,15 @@ impl ParticleEngine {
         world: &ClientWorld,
         (type_id, data): (i32, ParticleData),
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
-        random: impl FnOnce() -> RandomSource,
+        (random, level_random): (impl FnOnce() -> RandomSource, &mut RandomSource),
     ) -> bool {
-        match self
-            .resources
-            .create(world, (type_id, data), (at, push), random, &mut self.random)
-        {
+        match self.resources.create(
+            world,
+            (type_id, data),
+            (at, push),
+            random,
+            (&mut self.random, level_random),
+        ) {
             Some(particle) => {
                 self.add(particle);
                 true
@@ -169,8 +179,15 @@ impl ParticleEngine {
         }
     }
 
-    /// `ParticleEngine.add`: it joins the group at the end of the next tick.
+    /// `ParticleEngine.add`: it joins the group at the end of the next tick, unless its limit
+    /// (the spore blossom's) is reached.
     pub fn add(&mut self, particle: Particle) {
+        if particle.is_limited() {
+            if self.spore_blossoms >= SPORE_BLOSSOM_LIMIT {
+                return;
+            }
+            self.spore_blossoms += 1;
+        }
         self.to_add.push_back(particle);
     }
 
@@ -184,11 +201,16 @@ impl ParticleEngine {
         level_random: &mut RandomSource,
         mut particle_random: impl FnMut() -> RandomSource,
     ) {
-        for spawn in self.group.tick(world) {
+        let (spawns, limited_gone) = self.group.tick(world);
+        self.spore_blossoms -= limited_gone;
+        for spawn in spawns {
             self.add_particle(world, &spawn, view, level_random, &mut particle_random);
         }
         while let Some(particle) = self.to_add.pop_front() {
-            self.group.add(particle, &mut self.random);
+            let limited = particle.is_limited();
+            if !self.group.add(particle, &mut self.random) && limited {
+                self.spore_blossoms -= 1;
+            }
         }
     }
 
@@ -196,6 +218,7 @@ impl ParticleEngine {
     pub fn clear(&mut self) {
         self.group.clear();
         self.to_add.clear();
+        self.spore_blossoms = 0;
     }
 
     /// The particles in the group, in the order they tick.
@@ -256,7 +279,7 @@ impl ParticleEngine {
                 world,
                 (spawn.type_id, spawn.data),
                 (spawn.at, spawn.push),
-                &mut particle_random,
+                (&mut particle_random, level_random),
             );
         }
     }
