@@ -46,7 +46,8 @@ use photon_render::gui::widgets::slider::SliderKey;
 use photon_render::window::WindowSurface;
 
 use crate::screens::{
-    OpenScreen, ScreenAssets, WindowClipboard, close_inventory, open_inventory, run_actions,
+    OpenScreen, ScreenAssets, WindowClipboard, close_inventory, creative_tags, open_inventory,
+    run_actions,
 };
 
 use crate::script::HeldKeys;

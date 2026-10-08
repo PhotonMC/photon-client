@@ -62,6 +62,68 @@ pub fn query_matches(lines: &[String], ids: &[(String, String)], text: &str) -> 
     }
 }
 
+/// `creativeTagSearch`, an `IdSearchTree` over each search tab stack's item
+/// tags: the places a lowercased query finds, in the tab's order. A query
+/// with a colon finds what has a tag whose namespace holds the one part and
+/// a tag, not necessarily the same, whose path holds the other; anything else
+/// is part of a tag's path. A stack without tags is never found.
+pub fn tag_search(tags: &ItemTags, text: &str) -> Vec<u16> {
+    let mut of_item: std::collections::HashMap<i32, Vec<(&str, &str)>> =
+        std::collections::HashMap::new();
+    for (tag, items) in tags.iter() {
+        let id = tag.split_once(':').unwrap_or(("minecraft", tag));
+        for &item in items {
+            of_item.entry(item).or_default().push(id);
+        }
+    }
+    let query = text
+        .split_once(':')
+        .map(|(namespace, path)| (namespace.trim(), path.trim()));
+    search_tab()
+        .items
+        .iter()
+        .enumerate()
+        .filter(|(_, entry)| {
+            let Some(ids) = photon_data::item::registry::index(entry.item)
+                .and_then(|item| of_item.get(&(item as i32)))
+            else {
+                return false;
+            };
+            match query {
+                None => ids.iter().any(|(_, path)| path.contains(text)),
+                Some((namespace, path)) => {
+                    ids.iter()
+                        .any(|(id_namespace, _)| id_namespace.contains(namespace))
+                        && ids.iter().any(|(_, id_path)| id_path.contains(path))
+                }
+            }
+        })
+        .map(|(at, _)| at as u16)
+        .collect()
+}
+
+/// `updateVisibleTags`: the item tags a tag search names, read from the text
+/// as typed (not lowercased), whose tooltips list them. A colon splits a
+/// namespace from a path, both trimmed; anything else is part of the path.
+pub fn visible_tags(tags: &ItemTags, text: &str) -> Vec<String> {
+    let query = text
+        .split_once(':')
+        .map(|(namespace, path)| (namespace.trim(), path.trim()));
+    tags.iter()
+        .map(|(tag, _)| tag)
+        .filter(|tag| {
+            let (namespace, path) = tag.split_once(':').unwrap_or(("minecraft", tag));
+            match query {
+                None => path.contains(text),
+                Some((wanted_namespace, wanted_path)) => {
+                    namespace.contains(wanted_namespace) && path.contains(wanted_path)
+                }
+            }
+        })
+        .map(str::to_owned)
+        .collect()
+}
+
 /// The search trees of a session: built from the language the first time a
 /// search asks, which takes a few milliseconds.
 pub struct SearchTrees {

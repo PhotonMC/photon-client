@@ -453,6 +453,7 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                     .collect();
                 out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
             }
+            "creative_tag_search" => out.push(creative_tag_search(label, row)?),
             "face_occlusion" => out.push(face_occlusion(label)?),
             "collision_shapes" => out.push(shape_table(label, false)),
             "outline_shapes" => out.push(shape_table(label, true)),

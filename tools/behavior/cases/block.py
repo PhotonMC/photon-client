@@ -124,6 +124,28 @@ def block_cases():
         "operation": "creative_tabs",
         "rows": [{"label": "registry"}],
     }
+    # The search box's text: path text, a namespace and a path (trimmed),
+    # nothing after '#', upper case (the tree lowercases, the tooltip tags do
+    # not), an untrimmed path, and nothing found.
+    yield {
+        "case_id": "block/creative-tag-search",
+        "family": "block",
+        "operation": "creative_tag_search",
+        "rows": [
+            {"label": label, "text": text}
+            for label, text in (
+                ("path", "#logs"),
+                ("namespace-path", "#minecraft:logs"),
+                ("trimmed", "# mine : wool "),
+                ("namespace-only", "#minecraft:"),
+                ("empty", "#"),
+                ("upper", "#Logs"),
+                ("untrimmed", "#wool "),
+                ("nested-path", "#enchantable/sw"),
+                ("none", "#qqq"),
+            )
+        ],
+    }
     yield {
         "case_id": "block/behaviours",
         "family": "block",

@@ -57,6 +57,17 @@ satırları (biçimsiz, kırpılmış, küçük harf) içinde alt dize; `ad:yol`
 parçalı sorgu isim alanı ve yol üzerinden kimliğe ya da satırlara bakar;
 sonuçlar arama sekmesinin sırasında.
 
+`#` ile başlayan arama (T59d, `client-parity`) `creativeTagSearch`'tür:
+sunucunun gönderdiği eşya etiketleri üzerinde `IdSearchTree`; sorgu küçük
+harfe çevrilir, iki noktalı sorguda isim alanı ve yol ayrı etiketlerden
+gelebilir, etiketsiz eşya hiç bulunmaz. `updateVisibleTags` yazıyı
+küçültmeden okur (`#Logs` eşya bulur ama etiket adı vermez); adı geçen
+etiketler arama sekmesindeki eşyanın ipucunda adın ardına koyu mor `#ad`
+satırı olarak eklenir. Referans bu etiketleri karma kümede tutar, birden
+çok satırın sırası onun kimlik hash'ine bağlıdır; Rust sıralı kümeyi
+tersten yazar. Oracle: `block/creative-tag-search` (dokuz kutu yazısı;
+bulunan yerler ve sıralı etiket adları), vanilla veri paketi etiketleriyle.
+
 ## Canlı sonuç
 
 Vanilla 26.2 sunucusunda yaratıcı ekranda: `Arrow of Swiftness / Speed II
@@ -65,8 +76,8 @@ yazınca elmas eşyalar listelendi.
 
 ## Açıklar
 
-- `#etiket` araması sonuç vermez: istemci eşyaların etiketlerini
-  tutmuyor. Arama sekmesinin etiket satırları da yok.
+- `#etiket` aramasının ipucu satırları oracle'da çizilmedi (yalnız
+  etiket kümesi karşılaştırılır).
 - Simya şablonu, harita, kap, kitap ve arı satırları, gelişmiş (F3+H) satırlar
   ve macera modu yüklemleri yok.
 - Aramada kutuya fareyle tıklama, çift tıklamayla kelime seçme ve IME yok;

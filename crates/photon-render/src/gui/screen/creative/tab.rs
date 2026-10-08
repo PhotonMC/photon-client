@@ -1,8 +1,15 @@
 use super::*;
 
 impl CreativeScreen {
-    /// A screen opened on a GUI of this size, on the tab last used.
-    pub fn new(width: i32, height: i32, tab: usize, assets: CreativeAssets) -> Self {
+    /// A screen opened on a GUI of this size, on the tab last used, with the
+    /// item tags the server last sent (`updateCreativeTags`).
+    pub fn new(
+        width: i32,
+        height: i32,
+        tab: usize,
+        assets: CreativeAssets,
+        tags: Arc<ItemTags>,
+    ) -> Self {
         Self {
             layout: ContainerLayout::new(width, height, IMAGE),
             menu: CreativeMenu::new(tab, assets.trees.registries().clone()),
@@ -16,6 +23,8 @@ impl CreativeScreen {
             ignore_text_input: false,
             focused_at: std::time::Instant::now(),
             assets,
+            tags,
+            visible_tags: Vec::new(),
         }
     }
 
@@ -109,19 +118,20 @@ impl CreativeScreen {
     }
 
     /// `refreshSearchResults`: everything for an empty box, otherwise what
-    /// the search trees find. A tag search (`#`) finds nothing: the client
-    /// does not hold the items' tags.
+    /// the search trees find: the tag tree for a search that starts with `#`,
+    /// which also names the tags the tooltips list.
     pub(super) fn refresh_search_results(&mut self) {
+        self.visible_tags.clear();
         let text = self.search.value();
         if text.is_empty() {
             self.menu.select_tab(self.menu.tab());
             return;
         }
-        let query = text.to_lowercase();
-        let found = if query.starts_with('#') {
-            Vec::new()
+        let found = if let Some(term) = text.strip_prefix('#') {
+            self.visible_tags = visible_tags(&self.tags, term);
+            tag_search(&self.tags, &term.to_lowercase())
         } else {
-            self.assets.trees.index().search(&query)
+            self.assets.trees.index().search(&text.to_lowercase())
         };
         self.menu.show_items(&found);
     }
@@ -277,6 +287,21 @@ impl CreativeScreen {
         {
             let mut lines = (draw.tooltip)(&stack, creative_slot);
             let kind = CREATIVE_TABS[selected].kind;
+            // Each tag the search names that the stack is in goes after its
+            // name; the reference walks a hash set, so their order is its own.
+            if !lines.is_empty() && kind == TabKind::Search && creative_slot {
+                for tag in &self.visible_tags {
+                    if self.tags.contains(stack.item_registry_id(), tag) {
+                        lines.insert(
+                            1,
+                            vec![Run {
+                                text: format!("#{tag}"),
+                                style: Style::coloured("dark_purple"),
+                            }],
+                        );
+                    }
+                }
+            }
             // `getTooltipFromContainerItem`: the tabs a stack is in follow its
             // name, except for a stack in a single category's own window.
             if !lines.is_empty() && !(kind == TabKind::Category && creative_slot) {

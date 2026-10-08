@@ -7,6 +7,7 @@ use photon_render::gui::screen::inventory::InventoryScreen;
 use photon_render::gui::screen::recipe_book::RecipeAssets;
 use photon_render::gui::screen::{Screen, ScreenAction};
 use photon_render::window::WindowSurface;
+use photon_world::block::tags::ItemTags;
 
 /// The open container screen: the survival inventory or the creative one.
 pub type OpenScreen = Option<Box<dyn Screen>>;
@@ -116,15 +117,22 @@ impl ScreenAssets {
         ))
     }
 
-    /// The creative screen on a tab, or the survival one, on a GUI of this
-    /// size.
-    pub fn screen(&self, creative: bool, width: i32, height: i32, tab: usize) -> Box<dyn Screen> {
-        if creative {
+    /// The creative screen on a tab, searching these item tags, or the
+    /// survival one, on a GUI of this size.
+    pub fn screen(
+        &self,
+        creative: Option<std::sync::Arc<ItemTags>>,
+        width: i32,
+        height: i32,
+        tab: usize,
+    ) -> Box<dyn Screen> {
+        if let Some(tags) = creative {
             Box::new(CreativeScreen::new(
                 width,
                 height,
                 tab,
                 self.creative.clone(),
+                tags,
             ))
         } else {
             Box::new(InventoryScreen::new(
@@ -150,13 +158,20 @@ impl photon_render::gui::widgets::edit_box::Clipboard for WindowClipboard<'_> {
     }
 }
 
+/// The item tags a creative screen searches, when the player is in creative
+/// mode; `None` opens the survival inventory.
+pub fn creative_tags(session: &PlaySession) -> Option<std::sync::Arc<ItemTags>> {
+    (session.game_mode() == photon_world::ClientPlayerGameMode::Creative)
+        .then(|| session.world().block_state_registry().item_tags().clone())
+}
+
 /// `Minecraft.handleKeybinds` for the inventory key: the survival or the
 /// creative inventory screen opens and the mouse is let go, at the window's
 /// centre. The creative screen opens on the tab it was left on.
 pub fn open_inventory(
     surface: &mut WindowSurface,
     screen: &mut OpenScreen,
-    creative: bool,
+    creative: Option<std::sync::Arc<ItemTags>>,
     creative_tab: usize,
     assets: &ScreenAssets,
 ) {

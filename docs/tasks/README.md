@@ -31,12 +31,12 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %79 bitti** (ağırlıklı) · 247/294 madde işaretli, **47 madde kaldı** (tahmini 91 M-görev eşdeğeri iş).
+**Toplam: %79 bitti** (ağırlıklı) · 248/294 madde işaretli, **46 madde kaldı** (tahmini 90 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
 | Temel (pano öncesi) | `████████████████████` | 100 | 7/7 |
-| M3.d Sunucunun açtığı kaplar | `██████████████░░░░░░` | 68 | 11/16 |
+| M3.d Sunucunun açtığı kaplar | `██████████████░░░░░░` | 71 | 12/16 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 74 | 28/36 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51b, T58, T59b, T59c, T59d, T85b, T90, T91, T92, T93, T95, T96, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51b, T58, T59b, T59c, T85b, T90, T91, T92, T93, T95, T96, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -83,7 +83,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (b3d5a46e)
 - [ ] [T59b](T59b-bundle-ipucu.md) Bundle ipucu ve seçili eşya (`SelectBundleItem`) — M · bağımlı: T59
 - [ ] [T59c](T59c-esya-ipucu-satirlari.md) Kap, harita, iksir ve kitap ipucu satırları; F3+H — M · bağımlı: T59
-- [ ] [T59d](T59d-etiket-aramasi.md) Yaratıcı aramada `#etiket` — S · bağımlı: T59
+- [x] [T59d](T59d-etiket-aramasi.md) Yaratıcı aramada `#etiket` — S · bağımlı: T59 · bitti
 
 ### M4 Entity'ler
 

@@ -7,14 +7,14 @@
 //! sent as a `SetCreativeModeSlot` packet for each slot it changed, and a
 //! stack thrown away as one for slot -1.
 //!
-//! Not ported: the search box (the search tab lists everything and takes no
-//! text), the hotbar tab's saved hotbars (they are all empty, so it shows
-//! the placeholders), tooltips, and armour locked by enchantments.
+//! Not ported: the hotbar tab's saved hotbars (they are all empty, so it
+//! shows the placeholders), and armour locked by enchantments.
 
 use crate::menus::container::{ClickType, ContainerMenu, Player, max_stack_size, settle};
 use crate::registries::Registries;
 use photon_data::item::creative_tabs::{CREATIVE_TABS, CreativeStack, DEFAULT_TAB, TabKind};
 use photon_world::ClientItemStackState as Stack;
+use photon_world::block::tags::ItemTags;
 
 impl CreativeMenu {
     /// A menu on a tab.

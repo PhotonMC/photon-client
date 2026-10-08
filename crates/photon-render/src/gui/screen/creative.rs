@@ -15,10 +15,12 @@ use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
 use photon_data::item::creative_tabs::{CREATIVE_TABS, TabKind};
 use photon_game::menus::container::{ClickType, ContainerMenu, max_stack_size};
 use photon_game::menus::creative::{
-    Click, CreativeMenu, SearchTrees, Target, shown_tabs, tab_contains, table_stack,
+    Click, CreativeMenu, SearchTrees, Target, shown_tabs, tab_contains, table_stack, tag_search,
+    visible_tags,
 };
 use photon_game::text::{Run, Style};
 use photon_world::ClientItemStackState as Stack;
+use photon_world::block::tags::ItemTags;
 
 const IMAGE: (i32, i32) = (195, 136);
 /// The window's slots, then the hotbar's, in the picker's layout.
@@ -54,6 +56,10 @@ pub struct CreativeScreen {
     /// When the box took the focus, which its cursor blinks from.
     focused_at: std::time::Instant,
     assets: CreativeAssets,
+    /// The item tags the tag search reads.
+    tags: Arc<ItemTags>,
+    /// `visibleTags`: the tags the last tag search named.
+    visible_tags: Vec<String>,
 }
 
 /// What the mouse handling reads from the picker and the player's menu.
@@ -458,7 +464,7 @@ mod tests {
             font: Arc::new(Font::default()),
             titles: Arc::from(Vec::new()),
         };
-        CreativeScreen::new(427, 240, tab, assets)
+        CreativeScreen::new(427, 240, tab, assets, Arc::default())
     }
 
     fn centre(screen: &CreativeScreen, slot: usize) -> (f64, f64) {

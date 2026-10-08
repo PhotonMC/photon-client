@@ -77,4 +77,9 @@ impl ItemTags {
     pub fn contains(&self, item: i32, tag: &str) -> bool {
         self.0.get(tag).is_some_and(|items| items.contains(&item))
     }
+
+    /// Each tag and its items, by tag id.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &BTreeSet<i32>)> {
+        self.0.iter().map(|(tag, items)| (tag.as_str(), items))
+    }
 }

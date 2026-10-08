@@ -392,3 +392,19 @@ pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags,
     photon_world::block::tags::ItemTags::from_registries(&packet.registries)
         .ok_or_else(|| "no item tags".to_owned())
 }
+
+/// The creative search tab's tag search for what the box holds, over the
+/// data pack's item tags: the places found and the tags named, sorted.
+pub(super) fn creative_tag_search(label: &str, row: &Value) -> Result<Value, String> {
+    let tags = vanilla_item_tags()?;
+    let text = string(row, "text")?;
+    let term = text.strip_prefix('#').ok_or("a tag search starts with #")?;
+    let mut visible = photon_game::menus::creative::visible_tags(&tags, term);
+    visible.sort();
+    Ok(json!({
+        "label": label,
+        "outcome": "searched",
+        "found": photon_game::menus::creative::tag_search(&tags, &term.to_lowercase()),
+        "visible_tags": visible,
+    }))
+}

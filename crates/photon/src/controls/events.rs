@@ -79,12 +79,10 @@ impl Controls {
                 "key.use" => held(&mut self.use_key, self.captured),
                 "key.pickItem" => held(&mut self.pick_key, self.captured),
                 "key.inventory" if press && self.captured && !spectating => {
-                    let creative =
-                        session.game_mode() == photon_world::ClientPlayerGameMode::Creative;
                     open_inventory(
                         surface,
                         &mut self.screen,
-                        creative,
+                        creative_tags(session),
                         self.creative_tab,
                         assets,
                     );
@@ -175,9 +173,9 @@ impl Controls {
         let Some(open) = self.screen.as_mut().filter(|open| open.is_container()) else {
             return Ok(());
         };
-        let creative = session.game_mode() == photon_world::ClientPlayerGameMode::Creative;
+        let creative = creative_tags(session);
         let open_tab = open.as_creative_mut().map(|open| open.tab());
-        if open_tab.is_some() != creative {
+        if open_tab.is_some() != creative.is_some() {
             self.creative_tab = open_tab.unwrap_or(self.creative_tab);
             self.screen = Some(assets.screen(creative, width, height, self.creative_tab));
         }

@@ -300,6 +300,60 @@ class BlockItemOracle extends BlockPropertyOracle {
         return entry;
     }
 
+    /**
+     * The creative search tab's tag search for what the box holds: the game's
+     * own tag tree over the search tab's stacks (by place), and the tags the
+     * screen's private updateVisibleTags names, sorted (the screen keeps them
+     * in a hash set). A text without the leading '#' is not a tag search.
+     */
+    static JsonObject creativeTagSearch(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "searched");
+        var registries = Oracle.vanillaRegistries();
+        net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
+            net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS, false, registries);
+        var items = java.util.List.copyOf(net.minecraft.world.item.CreativeModeTabs.searchTab().getDisplayItems());
+        var tree = new net.minecraft.client.searchtree.IdSearchTree<net.minecraft.world.item.ItemStack>(
+            stack -> stack.tags().map(net.minecraft.tags.TagKey::location), items);
+        var term = row.get("text").getAsString().substring(1);
+        var places = new java.util.IdentityHashMap<net.minecraft.world.item.ItemStack, Integer>();
+        for (int at = 0; at < items.size(); at++) {
+            places.put(items.get(at), at);
+        }
+        var found = new JsonArray();
+        for (var stack : tree.search(term.toLowerCase(java.util.Locale.ROOT))) {
+            found.add(places.get(stack));
+        }
+        entry.add("found", found);
+        entry.add("visible_tags", visibleTags(term));
+        return entry;
+    }
+
+    /** CreativeModeInventoryScreen.updateVisibleTags on a screen with nothing else set. */
+    private static JsonArray visibleTags(String term) {
+        try {
+            var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+            var screenClass = net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.class;
+            var screen = unsafe.allocateInstance(screenClass);
+            var visibleField = screenClass.getDeclaredField("visibleTags");
+            var visible = new java.util.HashSet<net.minecraft.tags.TagKey<net.minecraft.world.item.Item>>();
+            unsafe.putObject(screen, unsafe.objectFieldOffset(visibleField), visible);
+            var update = screenClass.getDeclaredMethod("updateVisibleTags", String.class);
+            update.setAccessible(true);
+            update.invoke(screen, term);
+            var names = new java.util.TreeSet<String>();
+            visible.forEach(tag -> names.add(tag.location().toString()));
+            var tags = new JsonArray();
+            names.forEach(tags::add);
+            return tags;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
     static JsonObject creativeStack(net.minecraft.world.item.ItemStack stack,
             net.minecraft.core.RegistryAccess registries) {
         var described = new JsonObject();

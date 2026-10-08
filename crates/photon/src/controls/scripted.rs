@@ -55,7 +55,7 @@ impl Controls {
                 open_inventory(
                     surface,
                     &mut self.screen,
-                    session.game_mode() == photon_world::ClientPlayerGameMode::Creative,
+                    creative_tags(session),
                     self.creative_tab,
                     assets,
                 );
