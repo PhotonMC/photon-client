@@ -80,7 +80,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T56](T56-lectern-kitap.md) Kürsü menüsü ve kitap görünümü — M · bitti (8519cd70)
 - [x] [T57](T57-crafter.md) Crafter menüsü ve ekranı — M · bitti (3b303cb3)
 - [ ] [T58](T58-binek-envanteri.md) At, eşek, katır ve nautilus envanteri — L · bağımlı: T50
-- [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (HASH)
+- [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (b3d5a46e)
 - [ ] [T59b](T59b-bundle-ipucu.md) Bundle ipucu ve seçili eşya (`SelectBundleItem`) — M · bağımlı: T59
 - [ ] [T59c](T59c-esya-ipucu-satirlari.md) Kap, harita, iksir ve kitap ipucu satırları; F3+H — M · bağımlı: T59
 - [ ] [T59d](T59d-etiket-aramasi.md) Yaratıcı aramada `#etiket` — S · bağımlı: T59
