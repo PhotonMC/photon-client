@@ -44,6 +44,7 @@ impl PlaySession {
                 self.on_entity_position_sync(payload)?
             }
             PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => self.on_teleport_entity(payload)?,
+            PLAY_CLIENTBOUND_TAKE_ITEM_ENTITY_PACKET_ID => self.on_take_item_entity(payload)?,
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => self.on_move_entity_pos(payload)?,
             PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
                 self.on_move_entity_pos_rot(payload)?

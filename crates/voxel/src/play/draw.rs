@@ -154,8 +154,9 @@ impl Play {
         let with_textures = (tints.0, tints.1, &self.entity_textures);
         let items = &mut self.item_vertices;
         items.clear();
+        let pickups: Vec<_> = self.particles.pickups().collect();
         world_items(
-            &self.session,
+            (&self.session, &pickups),
             &mut self.item_layers,
             with_textures,
             view,
@@ -313,8 +314,9 @@ impl Play {
         self.backend
             .set_draw(voxel_render::vulkan::DrawKind::BlockParticles, &flakes)?;
         let mut orbs = Vec::new();
+        let pickups: Vec<_> = self.particles.pickups().collect();
         overlays::experience_orbs(
-            &self.session,
+            (&self.session, &pickups),
             &self.entity_textures,
             &camera,
             view,

@@ -13,6 +13,7 @@ mod group;
 mod hit;
 mod light;
 mod particle;
+mod pickup;
 mod resources;
 mod rising;
 mod smoke;
@@ -22,6 +23,7 @@ mod water;
 
 pub use engine::{AddView, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn};
 pub use particle::{Particle, ParticleAtlas};
+pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;
 pub use sprites::SpriteSet;
 pub use terrain::TerrainMaterials;

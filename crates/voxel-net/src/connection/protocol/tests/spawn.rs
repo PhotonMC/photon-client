@@ -119,3 +119,17 @@ fn an_entity_link_names_the_leashed_entity_and_its_holder() {
     );
     assert!(super::super::parse_set_entity_link_packet(&packet[..6]).is_err());
 }
+
+#[test]
+fn take_item_entity_parser_reads_three_varints() {
+    let mut payload = Vec::new();
+    for value in [41, 7, 3] {
+        voxel_core::wire::write_varint(value, &mut payload);
+    }
+    assert_eq!(
+        parse_take_item_entity_packet(&payload).expect("take item"),
+        (41, 7, 3)
+    );
+    payload.push(0);
+    assert!(parse_take_item_entity_packet(&payload).is_err());
+}

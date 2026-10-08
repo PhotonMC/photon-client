@@ -13,7 +13,7 @@ import com.google.gson.JsonObject;
  * connection that records what it is asked to send rather than sending it,
  * and a sound manager that plays nothing.
  */
-public final class MovementOracle extends MovementParticleOracle {
+public final class MovementOracle extends MovementPickupOracle {
     public static JsonObject run(JsonObject request) throws Exception {
         bootstrap();
         String operation = request.get("operation").getAsString();
@@ -35,6 +35,7 @@ public final class MovementOracle extends MovementParticleOracle {
                 case "particle_engine" -> rows.add(particleEngine(element.getAsJsonObject()));
                 case "particle_terrain" -> rows.add(particleTerrain(element.getAsJsonObject()));
                 case "particle_quads" -> rows.add(particleQuads(element.getAsJsonObject()));
+                case "item_pickup" -> rows.add(itemPickup(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException(
                     "Unknown movement operation: " + operation);
             }

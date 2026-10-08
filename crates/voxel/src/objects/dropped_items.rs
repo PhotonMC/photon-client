@@ -11,6 +11,7 @@ use voxel_render::objects::item::{
     item_entity_poses, item_entity_vertices, model_extent, rendered_amount, seed_for_stack,
 };
 use voxel_render::scene::Vertex;
+use voxel_world::particles::{ItemPickup, PickedUp};
 
 use crate::equipment::item_layers::ItemLayerCache;
 use crate::objects::displays;
@@ -23,6 +24,7 @@ use crate::overlays::{FrameView, packed_light};
 /// copies' offsets as an undamaged one.
 pub fn dropped_items(
     session: &PlaySession,
+    pickups: &[&ItemPickup],
     layers: &mut ItemLayerCache,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     view: FrameView,
@@ -46,25 +48,71 @@ pub fn dropped_items(
         if stack.item_count() <= 0 {
             continue;
         }
-        let item_layers = layers.get(stack, renderer, tints);
-        let (x, y, z) = snapshot.position;
-        let mut start = Pose::default();
-        start.translate(
-            (x - f64::from(view.origin[0])) as f32,
-            (y - f64::from(view.origin[1])) as f32,
-            (z - f64::from(view.origin[2])) as f32,
-        );
-        let poses = item_entity_poses(
-            start,
+        let item = (
+            stack,
             entity.tick_count() as f32 + partial,
             entity.bob_offset(),
-            rendered_amount(stack.item_count()),
-            seed_for_stack(stack.item_registry_id(), 0),
-            model_extent(item_layers),
         );
-        let light = packed_light(world, Vec3::new(x, y + 0.2125, z));
-        vertices.extend(item_entity_vertices(item_layers, &poses, light));
+        let light = packed_light(
+            world,
+            Vec3::new(
+                snapshot.position.0,
+                snapshot.position.1 + 0.2125,
+                snapshot.position.2,
+            ),
+        );
+        draw_item(
+            item,
+            snapshot.position,
+            light,
+            (layers, renderer, tints),
+            view,
+            vertices,
+        );
     }
+    // `ItemPickupParticleGroup`: the items flying to whoever took them, as they were when taken,
+    // lit where they were.
+    for pickup in pickups {
+        if let PickedUp::Item {
+            stack,
+            age_in_ticks,
+            bob_offset,
+        } = &pickup.picked
+        {
+            let (x, y, z) = pickup.from;
+            let light = packed_light(world, Vec3::new(x, y + 0.2125, z));
+            let at = pickup.position_at(partial);
+            let item = (stack, *age_in_ticks, *bob_offset);
+            draw_item(item, at, light, (layers, renderer, tints), view, vertices);
+        }
+    }
+}
+
+/// `ItemEntityRenderer.submit`: a stack's copies, bobbing and spinning at a place.
+fn draw_item(
+    (stack, age_in_ticks, bob_offset): (&voxel_world::ClientItemStackState, f32, f32),
+    (x, y, z): (f64, f64, f64),
+    light: i32,
+    (layers, renderer, tints): (&mut ItemLayerCache, &BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let item_layers = layers.get(stack, renderer, tints);
+    let mut start = Pose::default();
+    start.translate(
+        (x - f64::from(view.origin[0])) as f32,
+        (y - f64::from(view.origin[1])) as f32,
+        (z - f64::from(view.origin[2])) as f32,
+    );
+    let poses = item_entity_poses(
+        start,
+        age_in_ticks,
+        bob_offset,
+        rendered_amount(stack.item_count()),
+        seed_for_stack(stack.item_registry_id(), 0),
+        model_extent(item_layers),
+    );
+    vertices.extend(item_entity_vertices(item_layers, &poses, light));
 }
 
 /// The layers of the items in the world, by the display context they are drawn in.
@@ -99,13 +147,20 @@ impl WorldItemLayers {
 /// The triangles of every item in the world as the ground shows it: those lying about and those
 /// thrown or shot through the air, and those in item frames, and the displays'.
 pub fn world_items(
-    session: &PlaySession,
+    (session, pickups): (&PlaySession, &[&ItemPickup]),
     layers: &mut WorldItemLayers,
     (renderer, tints, textures): (&BlockRenderer, &BiomeTints, &EntityTextures),
     view: FrameView,
     items: &mut Vec<Vertex>,
 ) {
-    dropped_items(session, &mut layers.ground, (renderer, tints), view, items);
+    dropped_items(
+        session,
+        pickups,
+        &mut layers.ground,
+        (renderer, tints),
+        view,
+        items,
+    );
     thrown_items::thrown_items(session, &mut layers.ground, (renderer, tints), view, items);
     item_frames::item_frames(
         session,

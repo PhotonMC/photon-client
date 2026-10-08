@@ -20,6 +20,11 @@ impl PlaySession {
         std::mem::take(&mut self.level_particles)
     }
 
+    /// The entities taken since the last call, each flying to whoever took it.
+    pub fn take_item_pickups(&mut self) -> Vec<voxel_world::particles::ItemPickup> {
+        std::mem::take(&mut self.item_pickups)
+    }
+
     /// The blocks that broke since the last call (level event 2001), each with the state it had.
     pub fn take_block_breaks(&mut self) -> Vec<((i32, i32, i32), i32)> {
         self.trace.world.take_block_breaks()

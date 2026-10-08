@@ -90,6 +90,9 @@ pub struct ParticleEngine {
     group: ParticleGroup,
     /// The `NO_RENDER` group: the emitters, never drawn.
     emitters: ParticleGroup,
+    /// The `ITEM_PICKUP` group, and the ones waiting to join it.
+    pickups: ParticleGroup<super::ItemPickup>,
+    pickups_to_add: VecDeque<super::ItemPickup>,
     to_add: VecDeque<Particle>,
     random: RandomSource,
     resources: ParticleResources,
@@ -108,6 +111,8 @@ impl ParticleEngine {
         Self {
             group: ParticleGroup::default(),
             emitters: ParticleGroup::default(),
+            pickups: ParticleGroup::default(),
+            pickups_to_add: VecDeque::new(),
             to_add: VecDeque::new(),
             random,
             resources,
@@ -231,6 +236,8 @@ impl ParticleEngine {
     pub fn clear(&mut self) {
         self.group.clear();
         self.emitters.clear();
+        self.pickups.clear();
+        self.pickups_to_add.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
     }
@@ -242,6 +249,31 @@ impl ParticleEngine {
 
     pub fn particle_count(&self) -> usize {
         self.group.len()
+    }
+
+    /// `ParticleEngine.add` of an `ItemPickupParticle`: it joins its group at the end of the
+    /// next tick.
+    pub fn add_pickup(&mut self, pickup: super::ItemPickup) {
+        self.pickups_to_add.push_back(pickup);
+    }
+
+    /// The `ITEM_PICKUP` group's part of `ParticleEngine.tick`: each follows where its taker is
+    /// now (`target`, by who took it; one gone is followed where it was last), then the ones
+    /// added meanwhile join.
+    pub fn tick_pickups(&mut self, target: impl Fn(Option<i32>) -> Option<(f64, f64, f64)>) {
+        self.pickups.retain_mut(|pickup| {
+            let at = target(pickup.target).unwrap_or_else(|| pickup.target_at());
+            pickup.tick(at);
+            pickup.is_alive()
+        });
+        while let Some(pickup) = self.pickups_to_add.pop_front() {
+            self.pickups.add(pickup, &mut self.random);
+        }
+    }
+
+    /// The entities flying to whoever took them.
+    pub fn pickups(&self) -> impl Iterator<Item = &super::ItemPickup> {
+        self.pickups.iter()
     }
 
     /// How many emitters are alive.

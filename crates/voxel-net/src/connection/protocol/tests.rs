@@ -67,8 +67,8 @@ use super::{
     parse_set_border_lerp_size_packet, parse_set_chunk_cache_center_packet,
     parse_set_chunk_cache_radius_packet, parse_set_entity_motion_packet, parse_set_health_packet,
     parse_set_passengers_packet, parse_set_player_inventory_packet, parse_system_chat_packet,
-    parse_update_attributes_packet, parse_update_mob_effect_packet, resolve_player_position,
-    support_block_position,
+    parse_take_item_entity_packet, parse_update_attributes_packet, parse_update_mob_effect_packet,
+    resolve_player_position, support_block_position,
 };
 
 fn write_component_fixture(codec: InventoryComponentCodec, output: &mut Vec<u8>) {

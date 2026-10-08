@@ -226,8 +226,27 @@ impl Particles {
         self.camera = camera;
     }
 
-    /// One client tick: `ParticleEngine.tick`.
-    pub(crate) fn tick(&mut self, world: &ClientWorld) {
+    /// The entities taken, to fly to their takers.
+    pub(crate) fn add_pickups(&mut self, pickups: Vec<voxel_world::particles::ItemPickup>) {
+        for pickup in pickups {
+            self.engine.add_pickup(pickup);
+        }
+    }
+
+    /// The entities flying to whoever took them.
+    pub(crate) fn pickups(&self) -> impl Iterator<Item = &voxel_world::particles::ItemPickup> {
+        self.engine.pickups()
+    }
+
+    /// One client tick: `ParticleEngine.tick`; the pickups head for where their takers are
+    /// (`local`, the local player's place to head for, when there is one).
+    pub(crate) fn tick(&mut self, world: &ClientWorld, local: Option<(f64, f64, f64)>) {
+        self.engine.tick_pickups(|target| match target {
+            None => local,
+            Some(id) => world.entities().at(id).map(|entity| {
+                voxel_world::particles::pickup_target(entity.position(), entity.eye_height())
+            }),
+        });
         // The particles option is not kept yet: all of them, as `receive` is given.
         let view = AddView {
             camera: self.camera,

@@ -196,6 +196,12 @@ impl PlaySession {
             swings: 0,
             sounds: Vec::new(),
             level_particles: Vec::new(),
+            item_pickups: Vec::new(),
+            listener_random: voxel_core::random::RandomSource::create(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| elapsed.as_nanos() as i64),
+            ),
             aimed_entity: None,
             hardcore: false,
             health_received: false,

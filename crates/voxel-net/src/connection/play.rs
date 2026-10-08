@@ -125,6 +125,10 @@ pub struct PlaySession {
     pub(super) sounds: Vec<voxel_game::sounds::SoundCommand>,
     /// The particle packets since the last [`Self::take_level_particles`].
     pub(super) level_particles: Vec<voxel_world::particles::LevelParticles>,
+    /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
+    pub(super) item_pickups: Vec<voxel_world::particles::ItemPickup>,
+    /// `ClientPacketListener.random`: the pitch of a pickup's sound.
+    pub(super) listener_random: voxel_core::random::RandomSource,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
     pub(super) aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.

@@ -1,4 +1,5 @@
 use super::*;
+use voxel_world::particles::pickup_target;
 
 impl PlaySession {
     // The entity packets change the world's entities; one that does
@@ -68,6 +69,43 @@ impl PlaySession {
                 }
             }
             entities::remove(&mut self.trace.world, &packet);
+        }
+        Ok(())
+    }
+
+    /// `handleTakeItemEntity`: the taken entity flies to its taker (a living entity here, or else
+    /// the local player), its sound plays, and what is left of it stays or goes.
+    pub(super) fn on_take_item_entity(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let Some((item_id, player_id, amount)) =
+            parsed(parse_take_item_entity_packet(payload), "take_item_entity")
+        else {
+            return Ok(());
+        };
+        let world = &self.trace.world;
+        let taker = world
+            .entities()
+            .at(player_id)
+            .filter(|entity| Some(player_id) != self.player_id && entity.is_living_entity())
+            .map(|entity| (player_id, entity.position(), entity.eye_height()));
+        let target_at = match taker {
+            Some((_, position, eye_height)) => Some(pickup_target(position, eye_height)),
+            None => self.player.as_ref().map(|player| {
+                let at = player.position();
+                pickup_target((at.x, at.y, at.z), player.eye_height())
+            }),
+        };
+        if let Some(target_at) = target_at
+            && let Some(taken) =
+                self.trace
+                    .world
+                    .take_item_entity(item_id, amount, &mut self.listener_random)
+        {
+            self.item_pickups
+                .push(voxel_world::particles::ItemPickup::new(
+                    taken,
+                    taker.map(|(id, ..)| id),
+                    target_at,
+                ));
         }
         Ok(())
     }

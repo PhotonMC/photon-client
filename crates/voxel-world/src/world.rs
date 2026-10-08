@@ -10,6 +10,7 @@ pub use entities::Entities;
 mod lighting;
 mod local_player;
 mod minecarts;
+mod pickup;
 mod recipes;
 mod sounds;
 mod weather;

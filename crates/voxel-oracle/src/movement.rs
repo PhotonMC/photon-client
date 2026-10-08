@@ -40,6 +40,9 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "particle_engine" {
         return particle_engine_result(request);
     }
+    if string(request, "operation")? == "item_pickup" {
+        return item_pickup_result(request);
+    }
     if string(request, "operation")? == "particle_ticks" {
         return particle_ticks_result(request);
     }

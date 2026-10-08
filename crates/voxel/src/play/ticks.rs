@@ -252,6 +252,8 @@ impl Play {
             }
             // The particles option is not kept yet: all of them.
             let level_particles = self.session.take_level_particles();
+            let pickups = self.session.take_item_pickups();
+            self.particles.add_pickups(pickups);
             let broke = self.session.take_block_breaks();
             self.particles.blocks_broke(self.session.world(), broke);
             self.particles.receive(
@@ -441,7 +443,11 @@ impl Play {
         self.animated_atlas.tick();
         let breaking = session.take_breaking_effects();
         self.particles.breaking(session.world(), breaking);
-        self.particles.tick(session.world());
+        let local = session.player().map(|player| {
+            let at = player.position();
+            voxel_world::particles::pickup_target((at.x, at.y, at.z), player.eye_height())
+        });
+        self.particles.tick(session.world(), local);
         if let Some(player) = session.player() {
             self.camera.tick(player);
         }

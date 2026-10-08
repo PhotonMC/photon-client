@@ -154,6 +154,20 @@ pub(crate) fn parse_remove_entities_packet(
     })
 }
 
+/// `ClientboundTakeItemEntityPacket`: the entity taken, who took it, and how many.
+pub(crate) fn parse_take_item_entity_packet(
+    input: &[u8],
+) -> Result<(i32, i32, i32), ConnectionError> {
+    let mut input = input;
+    let item_id = read_varint(&mut input, "take item entity id")?;
+    let player_id = read_varint(&mut input, "take item player id")?;
+    let amount = read_varint(&mut input, "take item amount")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("take item entity trailing payload"));
+    }
+    Ok((item_id, player_id, amount))
+}
+
 pub(crate) fn parse_set_passengers_packet(
     input: &[u8],
 ) -> Result<EntityPassengersObservation, ConnectionError> {

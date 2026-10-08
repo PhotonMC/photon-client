@@ -4,6 +4,8 @@ use super::*;
 use std::sync::Arc;
 mod factory;
 use factory::*;
+mod pickup;
+pub(super) use pickup::item_pickup_result;
 use voxel_world::particles::{
     AddView, LevelParticles, Particle, ParticleEngine, ParticleResources, ParticleStatus, Spawn,
     SpriteSet, TerrainMaterials,

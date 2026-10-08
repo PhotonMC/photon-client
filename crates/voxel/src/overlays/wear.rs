@@ -208,7 +208,7 @@ pub fn name_tags(
 /// `ExperienceOrbRenderer` for the orbs the server added: a quad each, turned
 /// to the camera, with the icon its value picks.
 pub fn experience_orbs(
-    session: &PlaySession,
+    (session, pickups): (&PlaySession, &[&voxel_world::particles::ItemPickup]),
     textures: &voxel_render::entity::textures::EntityTextures,
     camera: &TagCamera,
     view: FrameView,
@@ -224,6 +224,24 @@ pub fn experience_orbs(
     let partial = view.partial as f32;
     let orientation =
         voxel_render::entity::name_tag::camera_orientation(camera.rotation.0, camera.rotation.1);
+    let orb =
+        |(x, y, z): (f64, f64, f64), (value, age_in_ticks): (i32, f32), lit_at: (f64, f64, f64)| {
+            // `getBlockLightLevel`: seven brighter than the block it is in.
+            let light = packed_light(world, Vec3::new(lit_at.0, lit_at.1 + 0.425, lit_at.2));
+            let block = ((light >> 4 & 15) + 7).min(15);
+            let light = (light & !(15 << 4)) | block << 4;
+            let corners = voxel_render::objects::xp_orb::corners(
+                voxel_render::objects::xp_orb::icon(value),
+                age_in_ticks,
+                [
+                    (x - camera.position.x) as f32,
+                    (y - camera.position.y) as f32,
+                    (z - camera.position.z) as f32,
+                ],
+                &orientation,
+            );
+            voxel_render::objects::xp_orb::vertices(&corners, rect, camera.relative, light)
+        };
     for entity in world
         .entities()
         .all()
@@ -232,27 +250,22 @@ pub fn experience_orbs(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let (x, y, z) = snapshot.position;
-        // `getBlockLightLevel`: seven brighter than the block it is in.
-        let light = packed_light(world, Vec3::new(x, y + 0.425, z));
-        let block = ((light >> 4 & 15) + 7).min(15);
-        let light = (light & !(15 << 4)) | block << 4;
-        let corners = voxel_render::objects::xp_orb::corners(
-            voxel_render::objects::xp_orb::icon(entity.orb_value().unwrap_or(0)),
+        let state = (
+            entity.orb_value().unwrap_or(0),
             entity.tick_count() as f32 + partial,
-            [
-                (x - camera.position.x) as f32,
-                (y - camera.position.y) as f32,
-                (z - camera.position.z) as f32,
-            ],
-            &orientation,
         );
-        vertices.extend(voxel_render::objects::xp_orb::vertices(
-            &corners,
-            rect,
-            camera.relative,
-            light,
-        ));
+        vertices.extend(orb(snapshot.position, state, snapshot.position));
+    }
+    // The orbs flying to whoever took them, as they were when taken, lit where they were.
+    for pickup in pickups {
+        if let voxel_world::particles::PickedUp::Orb {
+            value,
+            age_in_ticks,
+        } = pickup.picked
+        {
+            let at = pickup.position_at(partial);
+            vertices.extend(orb(at, (value, age_in_ticks), pickup.from));
+        }
     }
 }
 

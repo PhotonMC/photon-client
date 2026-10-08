@@ -19,4 +19,8 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: `TakeItemEntity` (paket 124, ses, yığın küçültme, kaldırma), `particles/pickup.rs`
+(`ItemPickupParticle`, motorda `ITEM_PICKUP` grubu), eşya ve kürelerin hedefe uçarak çizimi.
+Oracle: `movement/item-pickup` üç satır bit eşit; paket okuyucu birim testli.
+Sapma: uçan varlığın gölgesi yok, ok/trident uçarken çizilmiyor, ışık çizim anında okunuyor.
+Açık: `BreakingItemParticle` ve `ItemParticleOption` → T77b.

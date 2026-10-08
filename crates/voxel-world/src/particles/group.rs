@@ -15,9 +15,17 @@ const RESERVOIR_START: usize = 12_288;
 /// `ParticleGroup.RESERVOIR_SIZE`.
 const RESERVOIR_SIZE: f32 = 4096.0;
 
-#[derive(Debug, Clone, Default)]
-pub(super) struct ParticleGroup {
-    particles: VecDeque<Particle>,
+#[derive(Debug, Clone)]
+pub(super) struct ParticleGroup<T = Particle> {
+    particles: VecDeque<T>,
+}
+
+impl<T> Default for ParticleGroup<T> {
+    fn default() -> Self {
+        Self {
+            particles: VecDeque::new(),
+        }
+    }
 }
 
 impl ParticleGroup {
@@ -36,10 +44,17 @@ impl ParticleGroup {
         });
         (spawns, limited_gone)
     }
+}
+
+impl<T> ParticleGroup<T> {
+    /// Each one ticks, and the ones that are done are dropped.
+    pub(super) fn retain_mut(&mut self, keep: impl FnMut(&mut T) -> bool) {
+        self.particles.retain_mut(keep);
+    }
 
     /// `ParticleGroup.add`: whether the particle got in. Past the reservoir's start the chance
     /// is the free part of it, squared.
-    pub(super) fn add(&mut self, particle: Particle, random: &mut RandomSource) -> bool {
+    pub(super) fn add(&mut self, particle: T, random: &mut RandomSource) -> bool {
         let size = self.particles.len();
         if size >= MAX_PARTICLES {
             return false;
@@ -54,7 +69,7 @@ impl ParticleGroup {
         true
     }
 
-    pub(super) fn iter(&self) -> impl Iterator<Item = &Particle> {
+    pub(super) fn iter(&self) -> impl Iterator<Item = &T> {
         self.particles.iter()
     }
 

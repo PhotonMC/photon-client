@@ -190,6 +190,7 @@ def particle_cases():
     yield from particle_engine_cases()
     yield from particle_quad_cases()
     yield from particle_terrain_cases()
+    yield from item_pickup_cases()
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
@@ -387,3 +388,30 @@ def particle_terrain_cases():
     ]
     yield {"case_id": "movement/particle-terrain", "family": "movement", "operation": "particle_terrain",
            "rows": rows}
+
+
+def pickup_row(label, item, targets, camera=(0.0, 65.0, 0.0)):
+    return {
+        "label": label, "blocks": [], "chunk_radius": 1,
+        "x": float_bits(item[0], "f64"), "y": float_bits(item[1], "f64"), "z": float_bits(item[2], "f64"),
+        "camera_x": float_bits(camera[0], "f64"), "camera_y": float_bits(camera[1], "f64"),
+        "camera_z": float_bits(camera[2], "f64"),
+        "targets": [{"x": float_bits(x, "f64"), "y": float_bits(y, "f64"), "z": float_bits(z, "f64"),
+                     "eye": float_bits(eye)} for (x, y, z, eye) in targets],
+        "partials": PARTIALS + [float_bits(0.3), float_bits(0.875)],
+    }
+
+
+def item_pickup_cases():
+    """An entity taken flies to its taker over three ticks (the square of the time), following where
+    the taker is: one standing, one walking off, one crouching and turning back; ticked past its end."""
+    standing = [(0.5, 64.0, 0.5, 1.62)] * 5
+    walking = [(2.3 + 0.21 * tick, 64.0, -1.7 + 0.13 * tick, 1.62) for tick in range(5)]
+    crouching = [(-3.1, 63.5, 2.9, 1.62), (-3.0, 63.5, 2.8, 1.27), (-3.2, 63.25, 2.7, 1.27),
+                 (-3.3, 63.0, 2.75, 1.27), (-3.3, 63.0, 2.75, 1.62)]
+    rows = [
+        pickup_row("standing", (1.25, 64.0, 0.75), standing),
+        pickup_row("walking-off", (3.0, 64.5, -2.0), walking, camera=(1.5, 65.62, -1.0)),
+        pickup_row("crouching", (-1.6, 63.0, 1.9), crouching, camera=(-3.2, 64.8, 2.8)),
+    ]
+    yield {"case_id": "movement/item-pickup", "family": "movement", "operation": "item_pickup", "rows": rows}

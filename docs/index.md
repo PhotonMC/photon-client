@@ -153,6 +153,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T34b — Illager ve cadı — client-parity](records/client-illager-witch-parity-conformance.md)
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](records/client-insects-parity-conformance.md)
 - [T40g, T40g2 — Eşya çerçevesi ve haritası — client-parity](records/client-item-frame-parity-conformance.md)
+- [T77 — Eşya toplama animasyonu ve `TakeItemEntity` — client-parity](records/client-item-pickup-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](records/client-keyframe-animation-parity-conformance.md)
 - [T40f — Bağ düğümü — client-parity](records/client-leash-knot-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](records/client-light-engine-conformance.md)
