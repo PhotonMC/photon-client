@@ -34,6 +34,9 @@ impl VulkanBackend {
             terrain_push[28..31].copy_from_slice(&self.sort_origin);
             terrain_push[32..].copy_from_slice(&self.fog);
             for pass in PASSES {
+                if self.gui_only && !matches!(pass, Pass::Gui) {
+                    continue;
+                }
                 match pass {
                     Pass::Sky => self.record_sky(scene),
                     Pass::Terrain => self.record_terrain(scene, &terrain_push, now),

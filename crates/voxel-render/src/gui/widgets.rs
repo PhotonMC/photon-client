@@ -1,5 +1,6 @@
 //! Buttons and labels (`Button`, `AbstractButton`, `SpriteIconButton`,
 //! `StringWidget`): how each is drawn, hovered, focused and pressed.
+pub mod button_set;
 pub mod cycle;
 pub mod edit_box;
 pub mod navigation;
@@ -21,6 +22,9 @@ pub enum Kind {
     Icon { sprite: String, size: (i32, i32) },
     /// `StringWidget`: text, not drawn over a button.
     Text { text: Vec<Run> },
+    /// `PlainTextButton`: text that is pressed like a button (underlined when asked about, which
+    /// this text drawing does not show).
+    PlainText { text: Vec<Run> },
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +90,9 @@ impl Widget {
             Kind::Text { text } => {
                 let y = rect.y + (rect.height - 9) / 2;
                 frame.styled_text(atlas, font, text, rect.x, y, 0xFFFF_FFFF, true);
+            }
+            Kind::PlainText { text } => {
+                frame.styled_text(atlas, font, text, rect.x, rect.y, 0xFFFF_FFFF, true);
             }
         }
     }

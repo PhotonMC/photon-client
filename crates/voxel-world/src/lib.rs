@@ -218,19 +218,23 @@ fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
     }
 }
 
+/// A firework's data: whether a crossbow shot it, and the entity it flies with.
+fn apply_firework_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    if let Some(angled) = metadata_boolean_value(metadata, FIREWORK_SHOT_AT_ANGLE_DATA_ID) {
+        entity.shot_at_angle = angled;
+    }
+    if let Some(target) =
+        metadata_optional_unsigned_int_value(metadata, FIREWORK_ATTACHED_TO_TARGET_DATA_ID)
+    {
+        entity.attached_to_entity = target.is_some();
+    }
+}
+
 /// What the data of a sniffer, an armadillo, an arrow, a minecart, an end crystal, a wither, a
 /// creaking and an ender dragon says of it (each when it holds that kind's fields).
 fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
-    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
-        && let Some(angled) = metadata_boolean_value(metadata, FIREWORK_SHOT_AT_ANGLE_DATA_ID)
-    {
-        entity.shot_at_angle = angled;
-    }
-    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
-        && let Some(target) =
-            metadata_optional_unsigned_int_value(metadata, FIREWORK_ATTACHED_TO_TARGET_DATA_ID)
-    {
-        entity.attached_to_entity = target.is_some();
+    if voxel_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket") {
+        apply_firework_data(entity, metadata);
     }
     if let Some(mode) = sniffer_state_from_metadata(entity.type_id, metadata) {
         entity.set_sniffer_mode(mode);

@@ -108,6 +108,9 @@ pub struct Controls {
     pub link_confirm: Option<(ConfirmScreen, String)>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
+    /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
+    /// disconnected screen).
+    pub leave: bool,
     /// The values of `options.txt` the client reads.
     pub options: Options,
     pub(super) chat_history: Vec<String>,
@@ -208,7 +211,7 @@ pub(super) fn options_path() -> std::path::PathBuf {
 
 /// `Options.load`: `options.txt` of the game directory, written when it
 /// was not there.
-pub(super) fn load_options() -> Options {
+pub(crate) fn load_options() -> Options {
     let path = options_path();
     let options = Options::load(&path);
     if !path.exists() {
@@ -314,6 +317,7 @@ impl Controls {
             confirm: None,
             link_confirm: None,
             disconnected: None,
+            leave: false,
             options,
             chat_history: command_history.clone(),
             chat_drafts: ChatDrafts::default(),

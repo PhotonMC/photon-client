@@ -6,6 +6,7 @@ mod frame_limiter;
 mod gui;
 mod hud_input;
 mod logger;
+mod menu;
 mod mobs;
 mod objects;
 mod overlays;
@@ -34,6 +35,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if env::args().nth(1).as_deref() == Some("play") {
         return play::run_play(env::args().skip(2));
+    }
+    match env::args().nth(1).as_deref() {
+        None => return menu::run_menu(std::iter::empty()),
+        Some("menu") => return menu::run_menu(env::args().skip(2)),
+        _ => {}
     }
     let address: SocketAddr = args
         .next()

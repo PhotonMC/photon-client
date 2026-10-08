@@ -7,6 +7,7 @@ from cases.gui.commands import command_tree_hex, gui_command_parse_cases, gui_co
 from cases.gui.hud import _waypoint_bytes, gui_boss_bar_cases, gui_hud_hotbar_cases, gui_hud_status_cases, gui_locator_bar_cases, gui_name_tag_cases, gui_sidebar_cases, gui_tab_list_cases, gui_title_cases
 from cases.gui.language import gui_language_cases, gui_settings_key_cases, gui_settings_key_generators, gui_settings_key_press_cases, latin_language_codes
 from cases.gui.screens import gui_confirm_screen_cases, gui_container_screen_cases, gui_death_screen_cases, gui_disconnected_screen_cases, gui_pause_screen_cases, gui_widgets_cases, trader, trades
+from cases.gui.title import gui_title_screen_cases
 from cases.gui.settings import gui_chat_options_cases, gui_mouse_cases, gui_options_screen_cases, gui_sound_options_cases, gui_video_settings_cases
 
 
@@ -19,4 +20,4 @@ def gui_generators():
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),
         gui_mouse_cases(), gui_sound_options_cases(), gui_hud_hotbar_cases(), gui_hud_status_cases(), gui_language_cases(), gui_locator_bar_cases(),
-        gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases())
+        gui_settings_key_generators(), gui_chat_draft_cases(), gui_name_tag_cases(), gui_title_screen_cases())

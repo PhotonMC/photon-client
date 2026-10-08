@@ -104,6 +104,11 @@ impl VulkanBackend {
     }
 
     /// Drop every section mesh.
+    /// Draw only the GUI (a menu, no level), or everything again.
+    pub fn set_gui_only(&mut self, gui_only: bool) {
+        self.gui_only = gui_only;
+    }
+
     pub fn clear_sections(&mut self) -> Result<(), VulkanError> {
         // SAFETY: the fence wait leaves the GPU done with every section, and `take` empties each
         // list, so every range goes back to the arena once.

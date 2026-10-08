@@ -24,7 +24,7 @@ const SPRITE_FOLDERS: [&str; 9] = [
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 33] = [
+const WHOLE_TEXTURES: [&str; 36] = [
     "menu_background",
     "inworld_menu_background",
     "menu_list_background",
@@ -58,6 +58,9 @@ const WHOLE_TEXTURES: [&str; 33] = [
     "container/creative_inventory/tab_item_search",
     "container/creative_inventory/tab_inventory",
     "recipe_book",
+    "title/minecraft",
+    "title/edition",
+    "title/background/panorama_overlay",
 ];
 
 /// The names of the banner pattern textures (`creeper`), without `banner`

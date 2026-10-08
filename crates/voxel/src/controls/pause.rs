@@ -31,7 +31,7 @@ impl Controls {
     ) {
         match action {
             PauseAction::Resume => self.close_pause(surface),
-            PauseAction::Disconnect => surface.request_close(),
+            PauseAction::Disconnect => self.leave = true,
             PauseAction::Options => self.open_options(surface, assets),
             _ => {}
         }

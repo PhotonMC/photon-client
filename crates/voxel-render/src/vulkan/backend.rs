@@ -43,6 +43,8 @@ pub struct VulkanBackend {
     pub(super) depth: Option<Image>,
     /// Set when the surface no longer matches the swapchain.
     pub(super) out_of_date: bool,
+    /// Draw only the GUI: a menu with no level behind it.
+    pub(super) gui_only: bool,
     pub(super) scene: Option<SceneResources>,
     pub(super) sky_buffer: DynamicBuffer,
     pub(super) pending_sky: Option<PendingSky>,

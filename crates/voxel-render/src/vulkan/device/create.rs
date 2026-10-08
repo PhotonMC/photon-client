@@ -91,6 +91,7 @@ impl VulkanBackend {
                 readback: None,
                 depth: None,
                 out_of_date: false,
+                gui_only: false,
                 scene: None,
                 sky_buffer: DynamicBuffer::default(),
                 pending_sky: None,

@@ -140,10 +140,15 @@ trait JavaStringHash {
 
 impl JavaStringHash for str {
     fn java_string_hash(&self) -> i32 {
-        self.encode_utf16().fold(0_i32, |hash, unit| {
-            hash.wrapping_mul(31).wrapping_add(i32::from(unit))
-        })
+        java_string_hash(self)
     }
+}
+
+/// `String.hashCode`: over the UTF-16 units, times 31 and add, wrapping.
+pub fn java_string_hash(text: &str) -> i32 {
+    text.encode_utf16().fold(0_i32, |hash, unit| {
+        hash.wrapping_mul(31).wrapping_add(i32::from(unit))
+    })
 }
 
 fn is_valid_namespace(value: &str) -> bool {

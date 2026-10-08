@@ -66,6 +66,15 @@ VOXEL_ASSETS=.data/minecraft/assets/jar/assets \
 Sunucu klasörü yerel; `server.properties` çevrimdışı mod, hayatta kalma,
 barışçıl ve `server-port=25600` içeriyor.
 
+Argümansız `voxel` (ya da `voxel menu [adres [genişlik yükseklik]]`) başlık ekranını açar
+(`TitleScreen`, T85); Multiplayer sunucu listesi gelene dek verilen adrese (varsayılan
+`127.0.0.1:25565`) bağlanır, Disconnect ve bağlantı kopması ekranının düğmesi başlığa döner.
+Pencere, Vulkan arka ucu ve blok atlası menü ile oyunlar arasında bir kez kurulur. `voxel play`
+geliştirici kısayoludur: doğrudan bağlanır, ayrılınca kapanır. Betikli çalıştırma (`VOXEL_SCRIPT`)
+menüden ilk başlıkta kendiliğinden bağlanır; `VOXEL_CAPTURE_PPM` menüde onuncu kareyi kaydedip
+çıkar. Menüde Singleplayer, Realms, arkadaşlar, dil, erişilebilirlik, Options ve telif düğmeleri
+henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çiziliyor).
+
 ## Eşitlik olmayanlar
 
 - Kamera: göz yüksekliği ve görüş açısı çarpanı referanstaki gibi her tick

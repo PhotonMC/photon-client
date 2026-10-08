@@ -54,7 +54,7 @@ const TICK_LENGTH: Duration = Duration::from_millis(50);
 pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
     let server: SocketAddr = args
         .next()
-        .unwrap_or_else(|| "127.0.0.1:25565".to_owned())
+        .unwrap_or_else(|| DEFAULT_SERVER.to_owned())
         .parse()?;
     let width: i32 = args
         .next()
@@ -66,7 +66,77 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
-    Play::start(server, (width, height))?.run()
+    let client = Client::open((width, height))?;
+    Play::start(client, server)?.run()?;
+    Ok(())
+}
+
+/// Where the client joins until the server list chooses (`voxel play`'s default too).
+pub(crate) const DEFAULT_SERVER: &str = "127.0.0.1:25565";
+
+/// The window, its renderer and the block atlas: made once, kept between the menu and the games.
+pub(crate) struct Client {
+    // Fields drop in order: the swapchain goes before the window it presents to.
+    pub backend: VulkanBackend,
+    pub surface: WindowSurface,
+    /// The framebuffer size the backend was made for.
+    pub size: (u32, u32),
+    pub block_renderer: Arc<BlockRenderer>,
+    pub animated_atlas: AnimatedAtlas,
+}
+
+impl Client {
+    /// Open the window and bake the blocks from `VOXEL_ASSETS`.
+    pub(crate) fn open((width, height): (i32, i32)) -> Result<Self> {
+        let root =
+            env::var("VOXEL_ASSETS").map_err(|_| "VOXEL_ASSETS must name the asset folder")?;
+        let (surface, mut backend, size) = open_window(width, height)?;
+        let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
+        Ok(Self {
+            surface,
+            backend,
+            size,
+            block_renderer,
+            animated_atlas,
+        })
+    }
+}
+
+/// A resized or fullscreen window gets a swapchain of its new size; whether it did.
+fn resize_to_window(
+    surface: &WindowSurface,
+    backend: &mut VulkanBackend,
+    sized_for: &mut (u32, u32),
+) -> Result<bool> {
+    let size = surface.scale();
+    let wanted = (
+        size.framebuffer_width() as u32,
+        size.framebuffer_height() as u32,
+    );
+    if (backend.out_of_date() || wanted != *sized_for) && wanted.0 > 0 && wanted.1 > 0 {
+        *sized_for = wanted;
+        backend.resize(wanted.0, wanted.1)?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// The menu's swapchain fitted to its window.
+pub(crate) fn fit_swapchain(client: &mut Client) -> Result<()> {
+    resize_to_window(&client.surface, &mut client.backend, &mut client.size).map(drop)
+}
+
+/// How a game ended.
+pub(crate) enum Exit {
+    /// The window closed.
+    Quit,
+    /// The player left the server: back to the title screen.
+    Title,
+}
+
+/// Join `server` in `client`'s window and play until the player leaves or the window closes.
+pub(crate) fn play_in(client: Client, server: SocketAddr) -> Result<(Client, Exit)> {
+    Play::start(client, server)?.run()
 }
 
 /// What a drawn frame leaves the loop to do.

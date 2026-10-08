@@ -34,3 +34,10 @@ Panorama (T85b), sunucu listesi (T86), Realms, tek oyunculu.
 `docs/live-play-session.md` başlatma paragrafı, `docs/gui-oracle.md` satırı.
 
 ## Devir notu
+Yapılan: `TitleScreen` (`voxel-render/src/gui/screen/title.rs`, ortak `ButtonSet`), splash
+(`voxel-game/src/splash.rs`), `GuiFrame::transform_from`/`blit_texture_stretched`, menü döngüsü
+(`crates/voxel/src/menu.rs`), `Client` (pencere + arka uç + blok atlası) menü ile oyun arasında
+paylaşılır, arka uçta yalnız-GUI kipi; Disconnect başlığa döner. Oracle `title_screen` 29 satır.
+Sapma: splash günü UTC'den (Java yerel saat dilimi); panorama küpü yok (T85b).
+Açık: Singleplayer/Realms/arkadaşlar/dil/erişilebilirlik/Options/telif düğmeleri etkisiz
+(Options ve dil ekranları oyunda var, menüye bağlanmadı); bağlanırken pencere donar (T87).

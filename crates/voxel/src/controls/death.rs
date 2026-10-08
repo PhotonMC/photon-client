@@ -43,7 +43,7 @@ impl Controls {
     }
 
     /// An event for the disconnected screen: it takes no Escape, and its
-    /// button leaves, there being no server list to go back to.
+    /// button leaves for the title screen (there is no server list yet).
     pub(super) fn disconnected_event(
         &mut self,
         event: glfw::WindowEvent,
@@ -58,13 +58,13 @@ impl Controls {
             WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _)
                 if screen.pressed() =>
             {
-                surface.request_close();
+                self.leave = true;
             }
             WindowEvent::CursorPos(x, y) => self.move_gui_mouse((x, y), surface),
             WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _)
                 if screen.clicked((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32)) =>
             {
-                surface.request_close();
+                self.leave = true;
             }
             _ => {}
         }

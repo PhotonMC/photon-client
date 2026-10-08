@@ -13,6 +13,8 @@ mod settings;
 use settings::*;
 mod container;
 use container::*;
+mod title;
+use title::*;
 
 /// What the GUI scenarios share: the game's assets, the font and the atlas drawn from it, and
 /// the language source, read once because its index has thousands of files.
@@ -57,6 +59,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "titles" => titles_case(&mut ctx, row)?,
             "sidebar" => sidebar_case(&mut ctx, row)?,
             "pause_screen" => pause_screen_case(&mut ctx, row)?,
+            "title_screen" => title_screen_case(&mut ctx, row)?,
             "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
             "widgets" => widgets_case(&mut ctx, row)?,
             "options_screen" => options_screen_case(&mut ctx, row)?,

@@ -190,7 +190,9 @@ class GuiFonts {
 
             @Override
             public net.minecraft.client.gui.font.glyphs.EffectGlyph effect() {
-                return null;
+                // An underline or a strikethrough: a box, as a glyph's.
+                return (x0, y0, x1, y1, depth, color, shadowColor, shadowOffset) ->
+                    new GuiRecorder.Box(x0, y0, x1, y1, net.minecraft.network.chat.Style.EMPTY);
             }
         });
     }

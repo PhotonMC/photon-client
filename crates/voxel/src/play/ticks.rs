@@ -6,7 +6,14 @@ impl Play {
         clippy::too_many_lines,
         reason = "start-up builds each part of the session in turn"
     )]
-    pub(super) fn start(server: SocketAddr, (width, height): (i32, i32)) -> Result<Self> {
+    pub(super) fn start(client: Client, server: SocketAddr) -> Result<Self> {
+        let Client {
+            mut surface,
+            mut backend,
+            size,
+            block_renderer,
+            animated_atlas,
+        } = client;
         let root =
             env::var("VOXEL_ASSETS").map_err(|_| "VOXEL_ASSETS must name the asset folder")?;
         let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
@@ -19,7 +26,6 @@ impl Play {
         let mut particles = crate::particles::Particles::load(&root);
         let mut session = join(server, &username, auto_jump)?;
         let position = report_spawn(&session)?;
-        let (mut surface, mut backend, size) = open_window(width, height)?;
         // The vanilla data pack the server runs, which sits next to the
         // assets: the biomes' colours and the sky's data come from it.
         let data_root = env::var("VOXEL_DATA")
@@ -34,7 +40,6 @@ impl Play {
             )
             .ok_or("the biome colours could not be read")?,
         );
-        let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
         particles.set_terrain(Arc::clone(&block_renderer), Arc::clone(&biome_tints));
         let sky_sprites = sky_sprites(&block_renderer);
         let origin = [
@@ -198,9 +203,10 @@ impl Play {
         })
     }
 
-    /// Frames until the window closes or a script ends.
-    pub(super) fn run(mut self) -> Result<()> {
-        while !self.surface.should_close() {
+    /// Frames until the window closes, the player leaves the server or a script ends; the window
+    /// and what was loaded for it are handed back, with whether to quit.
+    pub(super) fn run(mut self) -> Result<(Client, Exit)> {
+        while !self.surface.should_close() && !self.controls.leave {
             let frame_start = Instant::now();
             // A frame that ended early (nothing to draw yet) leaves its parts behind.
             profile::take_parts();
@@ -301,20 +307,40 @@ impl Play {
             self.particles.report().0,
             self.particles.report().1
         );
-        Ok(())
+        self.into_client()
+    }
+
+    /// The window and what was loaded for it, back from an ended game, with whether to quit.
+    fn into_client(self) -> Result<(Client, Exit)> {
+        let exit = if self.surface.should_close() {
+            Exit::Quit
+        } else {
+            Exit::Title
+        };
+        let Self {
+            surface,
+            mut backend,
+            sized_for,
+            block_renderer,
+            animated_atlas,
+            ..
+        } = self;
+        backend.clear_sections()?;
+        Ok((
+            Client {
+                surface,
+                backend,
+                size: sized_for,
+                block_renderer,
+                animated_atlas,
+            },
+            exit,
+        ))
     }
 
     /// A resized or fullscreen window gets a swapchain of its new size.
     pub(super) fn fit_swapchain(&mut self) -> Result<()> {
-        let size = self.surface.scale();
-        let wanted = (
-            size.framebuffer_width() as u32,
-            size.framebuffer_height() as u32,
-        );
-        if (self.backend.out_of_date() || wanted != self.sized_for) && wanted.0 > 0 && wanted.1 > 0
-        {
-            self.sized_for = wanted;
-            self.backend.resize(wanted.0, wanted.1)?;
+        if resize_to_window(&self.surface, &mut self.backend, &mut self.sized_for)? {
             let (width, height) = self.backend.extent();
             self.aspect = width as f32 / height as f32;
         }

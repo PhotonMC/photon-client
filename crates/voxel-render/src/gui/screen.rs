@@ -8,6 +8,7 @@ pub mod confirm;
 pub mod death;
 pub mod disconnected;
 pub mod pause;
+pub mod title;
 
 pub mod book;
 pub mod container;

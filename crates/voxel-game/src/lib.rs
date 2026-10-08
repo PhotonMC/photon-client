@@ -12,6 +12,7 @@ pub mod options;
 pub mod registries;
 pub mod scoreboard;
 pub mod sounds;
+pub mod splash;
 pub mod text;
 pub mod tooltip;
 pub mod waypoint;

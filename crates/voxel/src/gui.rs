@@ -91,6 +91,7 @@ mod assets;
 mod chat;
 mod draw;
 mod hud;
+mod title;
 
 #[cfg(test)]
 mod tests {

@@ -107,6 +107,36 @@ impl GuiFrame {
         }
     }
 
+    /// A pose over everything drawn since `mark`, as the reference's `Matrix3x2f`
+    /// `[m00, m01, m10, m11, m20, m21]`: each position `p` becomes
+    /// `(m00 p.x + m10 p.y + m20, m01 p.x + m11 p.y + m21)`. A text call keeps `m00` as its scale,
+    /// as the reference's draw log does.
+    pub fn transform_from(&mut self, mark: FrameMark, m: [f32; 6]) {
+        let place = |x: f32, y: f32| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]);
+        if let Some(log) = &mut self.log {
+            let from = mark.log.min(log.len());
+            for op in &mut log[from..] {
+                match op {
+                    DrawOp::Text { x, y, scale, .. } => {
+                        (*x, *y) = place(*x, *y);
+                        *scale *= m[0];
+                    }
+                    DrawOp::Fill { rect, .. }
+                    | DrawOp::Sprite { rect, .. }
+                    | DrawOp::Texture { rect, .. } => {
+                        let (x0, y0) = place(rect.0, rect.1);
+                        let (x1, y1) = place(rect.2, rect.3);
+                        *rect = (x0, y0, x1, y1);
+                    }
+                }
+            }
+        }
+        for vertex in &mut self.vertices[mark.vertices..] {
+            let (x, y) = place(vertex.position[0], vertex.position[1]);
+            vertex.position = [x, y];
+        }
+    }
+
     /// A pose over the items drawn since item vertex `first`: each position
     /// `p` becomes `offset + scale * p`.
     pub fn scale_items_from(&mut self, first: usize, scale: f32, offset: (f32, f32)) {
@@ -357,6 +387,44 @@ impl GuiFrame {
             y,
             w,
             h,
+        );
+    }
+
+    /// `GuiGraphics.blit` of a region `(u, v, width, height)` of a whole texture stretched over
+    /// `(x, y, w, h)`.
+    pub fn blit_texture_stretched(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        texture_size: (i32, i32),
+        region: (i32, i32, i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        if let Some(log) = &mut self.log {
+            let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
+            log.push(DrawOp::Texture {
+                name: name.to_owned(),
+                rect: (
+                    rect.0 as f32,
+                    rect.1 as f32,
+                    (rect.0 + rect.2) as f32,
+                    (rect.1 + rect.3) as f32,
+                ),
+                uv: (
+                    region.0 as f32 / tw,
+                    (region.0 + region.2) as f32 / tw,
+                    region.1 as f32 / th,
+                    (region.1 + region.3) as f32 / th,
+                ),
+            });
+        }
+        self.blit_region(
+            atlas,
+            GuiBlend::Translucent,
+            &format!("texture/{name}"),
+            texture_size,
+            region,
+            rect,
         );
     }
 
