@@ -342,6 +342,8 @@ impl Play {
             .open_sign_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .open_book_editor(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls
+            .open_held_book(&mut self.session, &mut self.surface, &self.screen_assets);
         let hud = self.session.drain_hud();
         if !hud.is_empty() {
             self.gui.receive_hud(hud);

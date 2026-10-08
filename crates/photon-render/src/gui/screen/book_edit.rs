@@ -175,6 +175,13 @@ impl BookEditScreen {
         self.pages[self.current] = self.page.field.value();
     }
 
+    /// Shown again after the signing screen (`rebuildWidgets`): the page's box takes the page
+    /// and the focus again.
+    pub fn reopened(&mut self, font: &Font, lang: &Lang) {
+        self.update_page(font, lang);
+        self.set_focus(Some(Focus::Page), None);
+    }
+
     /// `pageBack`.
     fn page_back(&mut self, font: &Font, lang: &Lang) {
         if self.current > 0 {

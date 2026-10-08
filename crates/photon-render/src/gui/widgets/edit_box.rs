@@ -47,6 +47,8 @@ pub struct EditBox {
     colour: u32,
     /// `setSuggestion`: the grey text after the cursor.
     suggestion: Option<String>,
+    /// `setTextShadow`.
+    shadow: bool,
 }
 
 /// `Font.plainSubstrByWidth`: the longest head of the text that fits.
@@ -91,7 +93,14 @@ impl EditBox {
             width,
             colour: 0xFFE0_E0E0,
             suggestion: None,
+            shadow: true,
         }
+    }
+
+    /// `setTextShadow(false)`.
+    pub fn without_shadow(mut self) -> Self {
+        self.shadow = false;
+        self
     }
 
     /// `setTextColor`.
@@ -380,6 +389,14 @@ impl EditBox {
         focused_at: Option<std::time::Instant>,
         formatter: Option<&Formatter<'_>>,
     ) {
+        let shadow = self.shadow;
+        let plain = |frame: &mut GuiFrame, text: &str, x: i32, colour: u32| {
+            if shadow {
+                frame.text_with_shadow(atlas, font, text, x, text_y, colour);
+            } else {
+                frame.text(atlas, font, text, x, text_y, colour);
+            }
+        };
         // `applyFormat`: the parts, drawn one after another; their width.
         let draw_text =
             |frame: &mut GuiFrame, text: &str, offset: usize, x: i32, colour: u32| -> i32 {
@@ -396,24 +413,17 @@ impl EditBox {
                                         ..photon_game::text::Style::default()
                                     },
                                 }];
-                                frame.styled_text(atlas, font, &runs, at, text_y, colour, true);
+                                frame.styled_text(atlas, font, &runs, at, text_y, colour, shadow);
                                 at += font.width_of_runs(&runs);
                             } else {
-                                frame.text_with_shadow(
-                                    atlas,
-                                    font,
-                                    &part,
-                                    at,
-                                    text_y,
-                                    0xFF00_0000 | rgb,
-                                );
+                                plain(frame, &part, at, 0xFF00_0000 | rgb);
                                 at += font.width(&part);
                             }
                         }
                         at - x
                     }
                     None => {
-                        frame.text_with_shadow(atlas, font, text, x, text_y, colour);
+                        plain(frame, text, x, colour);
                         font.width(text)
                     }
                 }
@@ -447,12 +457,12 @@ impl EditBox {
         if !shown.insert
             && let Some(suggestion) = &self.suggestion
         {
-            frame.text_with_shadow(atlas, font, suggestion, cursor_x - 1, text_y, 0xFF80_8080);
+            plain(frame, suggestion, cursor_x - 1, 0xFF80_8080);
         }
         if shown.highlight as isize != shown.cursor {
             let before: String = chars[..shown.highlight].iter().collect();
             let highlight_x = text_x + font.width(&before);
-            frame.fill(
+            frame.text_highlight(
                 atlas,
                 (
                     cursor_x.min(right),
@@ -460,7 +470,6 @@ impl EditBox {
                     (highlight_x - 1).min(right),
                     text_y + 1 + 9,
                 ),
-                0x800000FF,
             );
         }
         if blink && cursor_on_screen {
@@ -471,7 +480,7 @@ impl EditBox {
                     colour,
                 );
             } else {
-                frame.text_with_shadow(atlas, font, "_", cursor_x, text_y, colour);
+                plain(frame, "_", cursor_x, colour);
             }
         }
     }

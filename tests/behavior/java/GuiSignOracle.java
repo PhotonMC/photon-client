@@ -133,62 +133,9 @@ class GuiSignOracle extends GuiTitleOracle {
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
-            var owner = (net.minecraft.world.entity.player.Player)
-                unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
-            var profileField = net.minecraft.world.entity.player.Player.class.getDeclaredField("gameProfile");
-            profileField.setAccessible(true);
-            profileField.set(owner, new com.mojang.authlib.GameProfile(new java.util.UUID(0, 1), "Steve"));
-            var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<String>>();
-            row.getAsJsonArray("pages").forEach(page ->
-                pages.add(net.minecraft.server.network.Filterable.passThrough(page.getAsString())));
-            var book = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK);
-            var edit = new net.minecraft.client.gui.screens.inventory.BookEditScreen(owner, book,
-                net.minecraft.world.InteractionHand.MAIN_HAND,
-                new net.minecraft.world.item.component.WritableBookContent(pages));
+            var edit = bookEdit(row);
             edit.init(width, height);
-            for (var stepElement : row.getAsJsonArray("steps")) {
-                var step = stepElement.getAsJsonObject();
-                switch (step.get("do").getAsString()) {
-                    case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
-                        edit.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
-                    case "key" -> {
-                        String name = step.get("key").getAsString();
-                        int modifiers = 0;
-                        if (name.startsWith("ctrl+")) {
-                            modifiers = 2;
-                            name = name.substring("ctrl+".length());
-                        }
-                        if (name.startsWith("shift+")) {
-                            modifiers |= 1;
-                            name = name.substring("shift+".length());
-                        }
-                        int code = switch (name) {
-                            case "tab" -> 258;
-                            case "backspace" -> 259;
-                            case "delete" -> 261;
-                            case "enter" -> 257;
-                            case "space" -> 32;
-                            case "left" -> 263;
-                            case "right" -> 262;
-                            case "up" -> 265;
-                            case "down" -> 264;
-                            case "home" -> 268;
-                            case "end" -> 269;
-                            case "pageup" -> 266;
-                            case "pagedown" -> 267;
-                            case "a" -> 65;
-                            default -> throw new IllegalArgumentException(name);
-                        };
-                        minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
-                            : net.minecraft.client.InputType.KEYBOARD_ARROW);
-                        edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
-                    }
-                    case "click" -> edit.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
-                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
-                        new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") ? 1 : 0)), false);
-                    default -> throw new IllegalArgumentException(step.toString());
-                }
-            }
+            steps(edit, row, minecraft);
             now[0] = row.get("ms").getAsLong();
             edit.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             edit.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
@@ -201,6 +148,156 @@ class GuiSignOracle extends GuiTitleOracle {
             ((java.util.List<?>) get(edit, "pages")).forEach(page -> written.add((String) page));
             out.add("pages", written);
             out.addProperty("page", (Integer) get(edit, "currentPage"));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A book and quill of a row's pages in the main hand of a player named Steve. */
+    static net.minecraft.client.gui.screens.inventory.BookEditScreen bookEdit(JsonObject row) throws Exception {
+        var owner = (net.minecraft.world.entity.player.Player)
+            unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+        var profileField = net.minecraft.world.entity.player.Player.class.getDeclaredField("gameProfile");
+        profileField.setAccessible(true);
+        profileField.set(owner, new com.mojang.authlib.GameProfile(new java.util.UUID(0, 1), "Steve"));
+        var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<String>>();
+        row.getAsJsonArray("pages").forEach(page ->
+            pages.add(net.minecraft.server.network.Filterable.passThrough(page.getAsString())));
+        var book = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK);
+        return new net.minecraft.client.gui.screens.inventory.BookEditScreen(owner, book,
+            net.minecraft.world.InteractionHand.MAIN_HAND,
+            new net.minecraft.world.item.component.WritableBookContent(pages));
+    }
+
+    /** A row's steps on a screen: text typed, keys with their modifiers, clicks. */
+    static void steps(net.minecraft.client.gui.screens.Screen edit, JsonObject row,
+            net.minecraft.client.Minecraft minecraft) {
+        for (var stepElement : row.getAsJsonArray("steps")) {
+            var step = stepElement.getAsJsonObject();
+            switch (step.get("do").getAsString()) {
+                case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
+                    edit.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
+                case "key" -> {
+                    String name = step.get("key").getAsString();
+                    int modifiers = 0;
+                    if (name.startsWith("ctrl+")) {
+                        modifiers = 2;
+                        name = name.substring("ctrl+".length());
+                    }
+                    if (name.startsWith("shift+")) {
+                        modifiers |= 1;
+                        name = name.substring("shift+".length());
+                    }
+                    int code = switch (name) {
+                        case "tab" -> 258;
+                        case "backspace" -> 259;
+                        case "delete" -> 261;
+                        case "enter" -> 257;
+                        case "space" -> 32;
+                        case "left" -> 263;
+                        case "right" -> 262;
+                        case "up" -> 265;
+                        case "down" -> 264;
+                        case "home" -> 268;
+                        case "end" -> 269;
+                        case "pageup" -> 266;
+                        case "pagedown" -> 267;
+                        case "a" -> 65;
+                        default -> throw new IllegalArgumentException(name);
+                    };
+                    minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
+                        : net.minecraft.client.InputType.KEYBOARD_ARROW);
+                    edit.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
+                }
+                case "click" -> edit.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                    step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                    new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") ? 1 : 0)), false);
+                default -> throw new IllegalArgumentException(step.toString());
+            }
+        }
+    }
+
+    /**
+     * The game's own `BookSignScreen` of a book and quill (the one its `BookEditScreen` holds), with
+     * a title kept from before and shown again or for the first time, after text, keys and clicks.
+     */
+    static JsonObject bookSignScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            menu(screen);
+            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clockField.setAccessible(true);
+            var clockBefore = clockField.get(null);
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
+            var sign = (net.minecraft.client.gui.screens.inventory.BookSignScreen) get(bookEdit(row), "signScreen");
+            set(sign, "titleValue", row.get("title").getAsString());
+            sign.init(width, height);
+            if (row.get("reopened").getAsBoolean()) {
+                sign.init(width, height);
+            }
+            steps(sign, row, minecraft);
+            sign.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            sign.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            clockField.set(null, clockBefore);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            out.addProperty("title", ((net.minecraft.client.gui.components.EditBox) get(sign, "titleBox")).getValue());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
+     * The game's own `BookViewScreen` over a written book in the hand (`handleOpenBook`): pages as
+     * component JSON, turned by clicks and Page Up/Down; its drawing and the page open.
+     */
+    static JsonObject bookView(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            menu(screen);
+            var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<net.minecraft.network.chat.Component>>();
+            for (var page : row.getAsJsonArray("pages")) {
+                pages.add(net.minecraft.server.network.Filterable.passThrough(
+                    net.minecraft.network.chat.ComponentSerialization.CODEC
+                        .parse(com.mojang.serialization.JsonOps.INSTANCE, page).getOrThrow()));
+            }
+            var book = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WRITTEN_BOOK);
+            book.set(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT,
+                new net.minecraft.world.item.component.WrittenBookContent(
+                    net.minecraft.server.network.Filterable.passThrough("Title"), "Steve", 0, pages, true));
+            var view = new net.minecraft.client.gui.screens.inventory.BookViewScreen(
+                net.minecraft.client.gui.screens.inventory.BookViewScreen.BookAccess.fromItem(book));
+            view.init(width, height);
+            steps(view, row, minecraft);
+            view.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            view.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            out.addProperty("page", (Integer) get(view, "currentPage"));
             rows.add(out);
         }
         var result = new JsonObject();

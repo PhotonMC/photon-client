@@ -1,17 +1,29 @@
 use super::*;
 
 impl PlaySession {
-    /// The hand whose book and quill was used and the book's pages, once: its screen is to open
-    /// (`LocalPlayer.openItemGui`).
-    pub fn take_opened_book(&mut self) -> Option<(u8, Vec<photon_game::text::Component>)> {
-        let hand = self.game_mode_state.take_opened_book()?;
+    /// `ClientboundOpenBookPacket`: the book in a hand is to be shown.
+    pub(super) fn on_open_book(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let mut input = payload;
+        let hand = read_varint(&mut input, "open book")?;
+        self.opened_book = Some(u8::from(hand != 0));
+        Ok(())
+    }
+
+    /// `handleOpenBook`, once: the pages of the book in the hand the server opened, if it holds
+    /// a written book or a book and quill (`BookAccess.fromItem`).
+    pub fn take_open_book(&mut self) -> Option<Vec<photon_game::text::Component>> {
+        let hand = self.opened_book.take()?;
+        self.hand_book_pages(hand)
+    }
+
+    /// The pages of the book in a hand.
+    fn hand_book_pages(&self, hand: u8) -> Option<Vec<photon_game::text::Component>> {
         let slot = if hand == 0 {
             36 + self.status.selected_slot
         } else {
             45
         };
-        let pages = self
-            .trace
+        self.trace
             .world
             .local_player()
             .and_then(|state| state.inventory_slot(slot as i16))
@@ -22,8 +34,13 @@ impl PlaySession {
                 )
                 .book_pages()
             })
-            .unwrap_or_default();
-        Some((hand, pages))
+    }
+
+    /// The hand whose book and quill was used and the book's pages, once: its screen is to open
+    /// (`LocalPlayer.openItemGui`).
+    pub fn take_opened_book(&mut self) -> Option<(u8, Vec<photon_game::text::Component>)> {
+        let hand = self.game_mode_state.take_opened_book()?;
+        Some((hand, self.hand_book_pages(hand).unwrap_or_default()))
     }
 
     /// `ServerboundEditBookPacket`: the book in a hand (its inventory slot: the selected one or

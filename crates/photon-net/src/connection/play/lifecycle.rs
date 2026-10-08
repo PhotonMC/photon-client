@@ -211,6 +211,7 @@ impl PlaySession {
             container_menu: photon_game::menus::container::ContainerMenu::default(),
             open_menu: None,
             sign_editor: None,
+            opened_book: None,
             merchant: None,
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),

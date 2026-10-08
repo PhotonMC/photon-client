@@ -32,3 +32,6 @@ IME (K-M5a).
 `docs/gui-oracle.md`.
 
 ## Devir notu
+- Yapıldı: `BookSignScreen` (`screen/book_sign.rs`; `EditBox`'a gölgesiz çizim, seçim vurgusu Java'nın `textHighlight`'ı oldu), Sign → imzalama, Cancel başlığı tutup sayfalara döner (`rebuildWidgets` odağı yeniden verir), Sign and Close `EditBook`'u başlıkla ve sayfaları olduğu gibi gönderir. `OpenBook` (58) → `BookScreen::held` (sayfa yerel, kapanınca paket yok; `Screen::is_container`). G: `gui/book-sign-screen` (24), `gui/book-view` (15) yeşil.
+- Sapma: eldeki kitapta `run_command`/`open_url` tıklamaları yok (kürsüde de yok); sayfa sesi yok.
+- Açık: canlıda denenmedi.

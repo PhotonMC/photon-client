@@ -66,3 +66,67 @@ def gui_book_edit_screen_cases():
     ]
     yield {"case_id": "gui/book-edit-screen", "family": "gui", "operation": "book_edit_screen",
            "rows": rows}
+
+
+def gui_book_sign_screen_cases():
+    """The signing screen: the title typed, centred and cut to fifteen characters, Sign and Close
+    awake only for a title that is not blank, the cursor and selections in the title, the focus
+    moved by Tab and clicks, a title kept from before on a screen shown again (`rebuildWidgets`)."""
+    def row(label, title="", reopened=False, width=427, height=240, mouse=(0, 0), steps=()):
+        return {"label": label, "pages": ["Some text"], "title": title, "reopened": reopened,
+                "width": width, "height": height, "mouse": list(mouse), "steps": list(steps)}
+
+    type_ = lambda text: {"do": "type", "text": text}
+    key = lambda name: {"do": "key", "key": name}
+    click = lambda x, y: {"do": "click", "x": x, "y": y}
+    rows = [
+        row("empty"), row("empty small", width=320), row("empty wide", width=640, height=360),
+        row("typed", steps=[type_("My Book")]),
+        row("blank", steps=[type_("   ")]),
+        row("too long", steps=[type_("A title that is far too long")]),
+        row("section sign refused", steps=[type_("a§b")]),
+        row("cursor inside", steps=[type_("My Book"), key("left"), key("left")]),
+        row("select all", steps=[type_("My Book"), key("ctrl+a")]),
+        row("select left", steps=[type_("My Book"), key("shift+left"), key("shift+left")]),
+        row("erased", steps=[type_("My Book"), key("backspace"), key("ctrl+backspace")]),
+        row("kept", "Kept title"), row("reopened", "Kept title", True),
+        row("reopened typed ignored", "Kept", True, steps=[type_("zz")]),
+        row("reopened clicked", "Kept", True, steps=[click(213, 52), type_("!")]),
+        row("clicked inside", "Kept title", steps=[click(205, 52)]),
+        row("tab inactive", steps=[key("tab")]),
+        row("tab active", steps=[type_("Book"), key("tab")]),
+        row("tab twice", steps=[type_("Book"), key("tab"), key("tab")]),
+        row("tab round", steps=[type_("Book"), key("tab"), key("tab"), key("tab")]),
+        row("shift tab", steps=[type_("Book"), key("shift+tab")]),
+        row("hover finalize", "Book", mouse=(150, 205)), row("hover finalize inactive", mouse=(150, 205)),
+        row("hover cancel", mouse=(260, 205)),
+    ]
+    yield {"case_id": "gui/book-sign-screen", "family": "gui", "operation": "book_sign_screen",
+           "rows": rows}
+
+
+def gui_book_view_cases():
+    """A written book the server opens in the hand: its page and number, the page buttons where
+    there is a page to turn to, pages turned by clicks and by Page Up/Down, styled and long pages."""
+    def row(label, pages, width=427, height=240, mouse=(0, 0), steps=()):
+        return {"label": label, "pages": pages, "width": width, "height": height,
+                "mouse": list(mouse), "steps": list(steps)}
+
+    key = lambda name: {"do": "key", "key": name}
+    click = lambda x, y: {"do": "click", "x": x, "y": y}
+    three = ["First page", {"text": "Second", "color": "red"}, ["", {"text": "Third ", "bold": True}, "page"]]
+    long_page = ["The quick brown fox jumps over the lazy dog. " * 8]
+    rows = [
+        row("one page", ["Only page"]), row("three pages", three),
+        row("small", three, width=320), row("wide", three, width=640, height=360),
+        row("forward clicked", three, steps=[click(240, 164)]),
+        row("forward twice", three, steps=[click(240, 164), click(240, 164)]),
+        row("forward past last", three, steps=[click(240, 164)] * 4),
+        row("forward back", three, steps=[click(240, 164), click(240, 164), click(167, 164)]),
+        row("page down", three, steps=[key("pagedown")]),
+        row("page down up", three, steps=[key("pagedown"), key("pagedown"), key("pageup")]),
+        row("page up first", three, steps=[key("pageup")]),
+        row("hover forward", three, mouse=(240, 164)), row("hover done", three, mouse=(213, 205)),
+        row("long page", long_page), row("empty book", [""]),
+    ]
+    yield {"case_id": "gui/book-view", "family": "gui", "operation": "book_view", "rows": rows}

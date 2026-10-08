@@ -1,6 +1,7 @@
 //! The book screen (`BookViewScreen`, and the lectern's `LecternScreen` over it): the open page,
-//! its number, the page buttons and the buttons under the book. The pages are those of the book
-//! in the menu's one slot, the page the menu's data says.
+//! its number, the page buttons and the buttons under the book. On a lectern the pages are those
+//! of the book in the menu's one slot, the page the menu's data says; a book the server opens in
+//! the player's hand keeps its pages and its page itself.
 
 use std::sync::Arc;
 
@@ -49,6 +50,8 @@ pub struct BookScreen {
     may_build: bool,
     arena: Arena,
     buttons: Vec<(Widget, Press)>,
+    /// A book in the hand (`ClientboundOpenBookPacket`): its pages and the page open.
+    held: Option<(Vec<Component>, usize)>,
 }
 
 impl BookScreen {
@@ -60,9 +63,54 @@ impl BookScreen {
             may_build,
             arena: Arena::default(),
             buttons: Vec::new(),
+            held: None,
         };
         screen.init();
         screen
+    }
+
+    /// `BookViewScreen` over a book in the hand: its pages, the first open, Done alone.
+    pub fn held(
+        (width, height): (i32, i32),
+        lang: Arc<Lang>,
+        font: Arc<Font>,
+        pages: Vec<Component>,
+    ) -> Self {
+        let mut screen = Self::new(width, height, lang, font, false);
+        screen.held = Some((pages, 0));
+        screen
+    }
+
+    /// The page open of a book in the hand.
+    pub fn held_page(&self) -> Option<usize> {
+        self.held.as_ref().map(|(_, page)| *page)
+    }
+
+    /// The pages and the page open: the hand's book's, or the lectern menu's.
+    fn book(&self, menu: &ContainerMenu) -> (Vec<Component>, usize) {
+        match &self.held {
+            Some((pages, page)) => (pages.clone(), *page),
+            None => {
+                let pages = Self::pages(menu);
+                let page = Self::page(menu, pages.len());
+                (pages, page)
+            }
+        }
+    }
+
+    /// A page button or a text's change of page: the lectern asks the server (button 1 back, 2
+    /// forward, 100 and up a page), a book in the hand turns itself (`setPage`).
+    fn turn(&mut self, button: i32) -> Vec<ScreenAction> {
+        let Some((pages, page)) = &mut self.held else {
+            return vec![ScreenAction::Button(button)];
+        };
+        let last = pages.len().saturating_sub(1);
+        *page = match button {
+            1 => page.saturating_sub(1),
+            2 => (*page + 1).min(last),
+            target => usize::try_from(target - 100).unwrap_or(0).min(last),
+        };
+        Vec::new()
     }
 
     fn left(&self) -> i32 {
@@ -147,9 +195,12 @@ impl BookScreen {
 
     /// `BookViewScreen.handleClickEvent` for a change of page: the lectern asks for it unless it
     /// is the page open.
-    fn clicked_text(&self, mouse: (f64, f64), menu: &ContainerMenu) -> Option<Vec<ScreenAction>> {
-        let pages = Self::pages(menu);
-        let page = Self::page(menu, pages.len());
+    fn clicked_text(
+        &mut self,
+        mouse: (f64, f64),
+        menu: &ContainerMenu,
+    ) -> Option<Vec<ScreenAction>> {
+        let (pages, page) = self.book(menu);
         let (left, top) = (self.left(), Self::top());
         for (index, line) in self.lines(&pages, page).iter().take(TEXT_LINES).enumerate() {
             let origin = (left + 36, top + 30 + index as i32 * 9);
@@ -159,7 +210,7 @@ impl BookScreen {
                 return Some(if target == page {
                     Vec::new()
                 } else {
-                    vec![ScreenAction::Button(100 + target as i32)]
+                    self.turn(100 + target as i32)
                 });
             }
         }
@@ -193,11 +244,10 @@ impl Screen for BookScreen {
                 }];
             }
         }
-        let pages = Self::pages(menu);
-        let page = Self::page(menu, pages.len());
+        let (pages, page) = self.book(menu);
         for (forward, visible) in [(true, page + 1 < pages.len()), (false, page > 0)] {
             if visible && Self::over(mouse, self.page_button_origin(forward), PAGE_BUTTON) {
-                return vec![ScreenAction::Button(if forward { 2 } else { 1 })];
+                return self.turn(if forward { 2 } else { 1 });
             }
         }
         self.clicked_text(mouse, menu).unwrap_or_default()
@@ -226,10 +276,14 @@ impl Screen for BookScreen {
     ) -> KeyResult {
         match key {
             glfw::Key::Escape => KeyResult::Close,
-            glfw::Key::PageUp => KeyResult::Actions(vec![ScreenAction::Button(1)]),
-            glfw::Key::PageDown => KeyResult::Actions(vec![ScreenAction::Button(2)]),
+            glfw::Key::PageUp => KeyResult::Actions(self.turn(1)),
+            glfw::Key::PageDown => KeyResult::Actions(self.turn(2)),
             _ => KeyResult::Actions(Vec::new()),
         }
+    }
+
+    fn is_container(&self) -> bool {
+        self.held.is_none()
     }
 
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction {
@@ -256,8 +310,7 @@ impl Screen for BookScreen {
             let highlighted = widget.contains(&self.arena, point);
             widget.draw(draw.frame, draw.atlas, draw.font, &self.arena, highlighted);
         }
-        let pages = Self::pages(menu);
-        let page = Self::page(menu, pages.len());
+        let (pages, page) = self.book(menu);
         for (forward, visible) in [(true, page + 1 < pages.len()), (false, page > 0)] {
             if !visible {
                 continue;

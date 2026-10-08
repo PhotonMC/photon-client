@@ -150,6 +150,8 @@ pub struct PlaySession {
     /// The sign the server last asked the player to write on, and whether its front, until the
     /// client opens its screen.
     pub(super) sign_editor: Option<((i32, i32, i32), bool)>,
+    /// The hand whose book the server last opened, until the client shows it.
+    pub(super) opened_book: Option<u8>,
     /// What the server last said of the merchant whose menu is open, by container.
     pub(super) merchant: Option<(i32, photon_game::menus::merchant::MerchantState)>,
     /// Chat the server sent that the client has not shown yet, and the

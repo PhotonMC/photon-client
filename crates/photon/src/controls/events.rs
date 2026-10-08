@@ -172,7 +172,7 @@ impl Controls {
             (Some(_), Some(_)) => return Ok(()),
             (None, None) => {}
         }
-        let Some(open) = self.screen.as_mut() else {
+        let Some(open) = self.screen.as_mut().filter(|open| open.is_container()) else {
             return Ok(());
         };
         let creative = session.game_mode() == photon_world::ClientPlayerGameMode::Creative;

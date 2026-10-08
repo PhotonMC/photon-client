@@ -170,11 +170,18 @@ impl Gui {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             sign.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
         } else if let Some(book) = controls.book_edit.as_mut() {
-            if book.screen.size() != gui_size {
-                book.screen.resize(gui_size);
-            }
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            book.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
+            if let Some(sign) = book.sign.as_mut() {
+                if sign.size() != gui_size {
+                    sign.resize(gui_size);
+                }
+                sign.draw(&mut frame, &self.atlas, &self.font, mouse);
+            } else {
+                if book.screen.size() != gui_size {
+                    book.screen.resize(gui_size);
+                }
+                book.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
+            }
         }
         if let Some(disconnected) = controls.disconnected.as_mut() {
             if disconnected.size() != gui_size {

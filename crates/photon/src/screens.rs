@@ -179,10 +179,14 @@ pub fn close_inventory(
     if let Some(open) = screen.as_mut().and_then(|open| open.as_creative_mut()) {
         *creative_tab = open.tab();
     }
+    // A book in the hand closes with no word to the server.
+    let container = screen.as_ref().is_none_or(|open| open.is_container());
     *screen = None;
     // The ghost recipe belongs to the screen that showed it.
     session.clear_recipe_ghost();
-    session.close_inventory()?;
+    if container {
+        session.close_inventory()?;
+    }
     surface.set_cursor_captured(true);
     Ok(())
 }
@@ -208,9 +212,12 @@ pub fn run_actions(
                 session.set_crafter_slot_state(slot, enabled)?;
             }
             ScreenAction::Close => {
+                let container = screen.as_ref().is_none_or(|open| open.is_container());
                 *screen = None;
                 session.clear_recipe_ghost();
-                session.close_inventory()?;
+                if container {
+                    session.close_inventory()?;
+                }
             }
             ScreenAction::PlaceRecipe { recipe, shift } => session.place_recipe(recipe, shift)?,
             ScreenAction::RecipeBookSettings {

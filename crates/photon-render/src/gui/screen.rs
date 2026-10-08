@@ -16,6 +16,7 @@ pub mod title;
 
 pub mod book;
 pub mod book_edit;
+pub mod book_sign;
 pub mod container;
 pub mod creative;
 pub mod generic;
@@ -177,6 +178,12 @@ pub trait Screen {
 
     /// `extractRenderState`.
     fn build(&mut self, draw: &mut ScreenDraw<'_, '_>, menu: &ContainerMenu, mouse: (f64, f64));
+
+    /// Whether the screen is a container's, which closing tells the server of: not a book the
+    /// server opened in the player's hand.
+    fn is_container(&self) -> bool {
+        true
+    }
 
     /// The creative screen, for what only it has (its tab and menu).
     fn as_creative_mut(&mut self) -> Option<&mut creative::CreativeScreen> {

@@ -17,6 +17,8 @@ mod title;
 use title::*;
 mod signs;
 use signs::*;
+mod books;
+use books::*;
 
 /// What the GUI scenarios share: the game's assets, the font and the atlas drawn from it, and
 /// the language source, read once because its index has thousands of files.
@@ -92,6 +94,8 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "sign_texts" => sign_texts_case(&mut ctx, row)?,
             "sign_edit_screen" => sign_edit_screen_case(&mut ctx, row)?,
             "book_edit_screen" => book_edit_screen_case(&mut ctx, row)?,
+            "book_sign_screen" => book_sign_screen_case(&mut ctx, row)?,
+            "book_view" => book_view_case(&mut ctx, row)?,
             _ => return Err("unknown gui operation".into()),
         });
     }
