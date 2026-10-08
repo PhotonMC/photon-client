@@ -105,7 +105,7 @@ floor_of = lambda block: [{"x": x, "y": 63, "z": z, "block": block}
 
 
 # A living entity hurt and killed by the packets that do it, ticked on.
-def living(label, entity, ticks, events, player_x=None, extras=None):
+def living(label, entity, ticks, events, player_x=None, extras=None, data=None):
     row = {"label": label, "blocks": [], "chunk_radius": 0, "entity": f"minecraft:{entity}",
             "entity_id": 40, "x": float_bits(0.5, "f64"), "y": float_bits(64.0, "f64"),
             "z": float_bits(0.5, "f64"), "tick_count": ticks, "events": events}
@@ -113,6 +113,9 @@ def living(label, entity, ticks, events, player_x=None, extras=None):
         row["player_x"] = float_bits(player_x, "f64")
     if extras:
         row["extras"] = extras
+    # `ClientboundAddEntityPacket.getData()`: a hanging entity's 3D direction value.
+    if data is not None:
+        row["data"] = data
     return row
 
 

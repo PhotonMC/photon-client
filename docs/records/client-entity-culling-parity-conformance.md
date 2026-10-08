@@ -38,11 +38,28 @@ türden seçilir: ezmesi olan çiziciler kendi sınıflarıyla, öteki canlılar
 entity'ler `NoopRenderer` ile (taban davranış). Görüş konisinin kendisi (`Frustum`) ve bölüm
 solması bu kaydın dışında, kendi kayıtlarındadır.
 
+## T47b güncellemesi
+
+Eşya çerçevesi ve tablonun asılı kutusu (`HangingEntity.calculateBoundingBox`) `pick.rs`'e
+eklendi: `ClientboundAddEntityPacket.getData()`'nın 3B yön değeri (`entity.data`, zaten eşya
+çerçevesi çiziminde kullanılıyordu) ve konumun tabanı bloğa `0,46875` duvara çekilmiş merkezi,
+yöne göre eksen inceltmesi; çerçevenin haritalı olması (`DataComponents.MAP_ID` eşya yamasında
+var mı) 1×1'e, tablonun kayıt varyantının genişlik/yüksekliği kendi kutusuna büyütüyor (çift
+boyda blok ızgarasına ortalamak için sola/yukarı kaydırmayla). Oracle'ın `cull` ekstrası artık
+bir satırın isteğe bağlı `data` alanını (yön) gerçek `HangingEntity.setPos`/`setDirection`'a
+geçiriyor; `cull-item-frame` (batı) ve `cull-glow-item-frame` (kuzey) satırları eklendi.
+
+Mermi tiki: `ThrowableProjectile`'ın varsayılan yerçekimiyle (0,03) paylaşılan adımı artık
+yumurta, inci, püskürtme/sürekli iksir için de çalışıyor; `ThrownExperienceBottle`'ın kendi
+yerçekimi (0,07) ayrı. `AbstractArrow`'un adımı artık spectral ok ve trident için de çalışıyor
+(mızrağın sadakat dönüşü hariç — sahibin konumunu izleyen aktif ivme, ayrı ve sunucu ağırlıklı
+bir davranış, burada yok). `cull-trident` artık üç tik (önceden bir tikle sınırlıydı).
+
 ## Sapmalar (açık)
 
 - Uzak oyuncu (`RemotePlayer`) oracle'da kurulamadığı için satırı yok; kural kaynaktan.
 - Havai fişeğin bağlı olduğu entity verisi okunuyor ama oracle'da sınanmıyor (veri olayı yok).
-- Eşya çerçevesi ve tablonun asılı kutusu (`HangingEntity.calculateBoundingBox`) Rust'ta yok;
-  çerçeve satırları bu yüzden çıkarıldı (T47b). Trident, spectral ok ve öteki fırlatılanların
-  istemci tiki yok; trident satırı tek tikle sınırlı (T47b).
+- Tablonun kayıt dışı ("direkt") varyantı (ağda tam yazılan, kayıt kimliği olmayan) okunmuyor;
+  yalnızca kayıt kimliğiyle gelen varyantlar (çizimde de aynı sınır var). Trident'in sadakat
+  dönüşü (sahibine aktif ivme) istemci tikinde yok.
 - Gölge, ad etiketi ve tasma çizgisi geçişleri kapsam dışı (T47).

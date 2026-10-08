@@ -4,8 +4,9 @@ from cases.helpers import *
 from cases.movement.entities.common import *
 
 
-def cull(label, entity, events=(), ticks=3):
-    return living(f"cull-{label}", entity, ticks, list(events), extras=["cull"], player_x=30.5)
+def cull(label, entity, events=(), ticks=3, data=None):
+    return living(f"cull-{label}", entity, ticks, list(events), extras=["cull"], player_x=30.5,
+                  data=data)
 
 
 def rows():
@@ -20,8 +21,7 @@ def rows():
         cull("illusioner", "illusioner"),
         cull("sniffer", "sniffer"),
         cull("happy-ghast", "happy_ghast"),
-        # One tick: the client does not yet move a trident on its own (T47b).
-        cull("trident", "trident", ticks=1),
+        cull("trident", "trident"),
         cull("minecart", "minecart"),
         cull("chest-minecart", "chest_minecart"),
         cull("minecart-shows-a-block", "minecart",
@@ -41,6 +41,10 @@ def rows():
         cull("shulker-bullet", "shulker_bullet"),
         cull("armor-stand", "armor_stand"),
         cull("leash-knot", "leash_knot"),
+        # An item frame's and a painting's box hang off the block they are attached to, by
+        # their facing direction (`HangingEntity.calculateBoundingBox`); west and north here.
+        cull("item-frame", "item_frame", data=4),
+        cull("glow-item-frame", "glow_item_frame", data=2),
         cull("phantom", "phantom"),
         cull("firework", "firework_rocket"),
         cull("experience-orb", "experience_orb"),

@@ -1,12 +1,23 @@
 use super::*;
 
 impl ClientEntity {
+    /// `ThrowableProjectile.tick`'s client-side step, shared by every type that does not
+    /// override `getDefaultGravity` (snowball, egg, ender pearl, splash and lingering potion)
+    /// and, with its own gravity, `ThrownExperienceBottle` (0.07 in place of the base 0.03).
     pub(crate) fn tick_snowball(&mut self) {
+        self.tick_throwable_item(SNOWBALL_GRAVITY);
+    }
+
+    pub(crate) fn tick_experience_bottle(&mut self) {
+        self.tick_throwable_item(VANILLA_EXPERIENCE_BOTTLE_GRAVITY);
+    }
+
+    fn tick_throwable_item(&mut self, default_gravity: f64) {
         let air_drag = f64::from(0.99_f32);
         let gravity = if self.no_gravity {
             0.0
         } else {
-            SNOWBALL_GRAVITY
+            default_gravity
         };
         let current_motion = self.motion();
         let motion = (
@@ -283,8 +294,15 @@ pub(super) fn gravity_step(
 /// Map a pinned entity type id onto its ballistic tick, if it has one.
 pub(crate) fn vanilla_projectile_kind(type_id: i32) -> Option<VanillaProjectileKind> {
     match type_id {
-        VANILLA_SNOWBALL_ENTITY_TYPE_ID => Some(VanillaProjectileKind::Snowball),
-        VANILLA_ARROW_ENTITY_TYPE_ID => Some(VanillaProjectileKind::Arrow),
+        VANILLA_SNOWBALL_ENTITY_TYPE_ID
+        | VANILLA_EGG_ENTITY_TYPE_ID
+        | VANILLA_ENDER_PEARL_ENTITY_TYPE_ID
+        | VANILLA_SPLASH_POTION_ENTITY_TYPE_ID
+        | VANILLA_LINGERING_POTION_ENTITY_TYPE_ID => Some(VanillaProjectileKind::Snowball),
+        VANILLA_EXPERIENCE_BOTTLE_ENTITY_TYPE_ID => Some(VanillaProjectileKind::ExperienceBottle),
+        VANILLA_ARROW_ENTITY_TYPE_ID
+        | VANILLA_SPECTRAL_ARROW_ENTITY_TYPE_ID
+        | VANILLA_TRIDENT_ENTITY_TYPE_ID => Some(VanillaProjectileKind::Arrow),
         VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID => Some(VanillaProjectileKind::ExperienceOrb),
         VANILLA_PRIMED_TNT_ENTITY_TYPE_ID => Some(VanillaProjectileKind::PrimedTnt),
         VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID => Some(VanillaProjectileKind::FallingBlock),
@@ -299,6 +317,8 @@ pub(crate) fn vanilla_projectile_kind(type_id: i32) -> Option<VanillaProjectileK
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VanillaProjectileKind {
     Snowball,
+    /// `ThrownExperienceBottle`: the same step as `Snowball`, its own gravity.
+    ExperienceBottle,
     Arrow,
     ExperienceOrb,
     PrimedTnt,
@@ -315,9 +335,14 @@ impl VanillaProjectileKind {
         no_gravity: bool,
     ) -> (f64, f64, f64) {
         match self {
-            Self::Snowball => {
+            Self::Snowball | Self::ExperienceBottle => {
+                let default_gravity = if self == Self::ExperienceBottle {
+                    VANILLA_EXPERIENCE_BOTTLE_GRAVITY
+                } else {
+                    SNOWBALL_GRAVITY
+                };
                 let air_drag = f64::from(0.99_f32);
-                let gravity = if no_gravity { 0.0 } else { SNOWBALL_GRAVITY };
+                let gravity = if no_gravity { 0.0 } else { default_gravity };
                 (
                     position.0 + motion.0 * air_drag,
                     position.1 + (motion.1 - gravity) * air_drag,

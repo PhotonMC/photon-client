@@ -47,7 +47,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
             z: bits64(row, "z")?,
             movement: (0.0, 0.0, 0.0),
             rotation: (0.0, 0.0, 0.0),
-            data: 0,
+            data: row.get("data").and_then(Value::as_i64).unwrap_or(0) as i32,
         }) {
             return Err("entity was rejected".into());
         }

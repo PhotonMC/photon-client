@@ -19,6 +19,13 @@ pub const VANILLA_COW_ENTITY_TYPE_ID: i32 = 30;
 pub const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
 pub const VANILLA_ARROW_ENTITY_TYPE_ID: i32 = 6;
 pub const VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID: i32 = 49;
+pub const VANILLA_EGG_ENTITY_TYPE_ID: i32 = 39;
+pub const VANILLA_ENDER_PEARL_ENTITY_TYPE_ID: i32 = 44;
+pub const VANILLA_EXPERIENCE_BOTTLE_ENTITY_TYPE_ID: i32 = 48;
+pub const VANILLA_SPLASH_POTION_ENTITY_TYPE_ID: i32 = 105;
+pub const VANILLA_LINGERING_POTION_ENTITY_TYPE_ID: i32 = 106;
+pub const VANILLA_SPECTRAL_ARROW_ENTITY_TYPE_ID: i32 = 123;
+pub const VANILLA_TRIDENT_ENTITY_TYPE_ID: i32 = 136;
 pub(crate) const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
     2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
     43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
@@ -331,6 +338,8 @@ pub(crate) const ENTITY_RELATIVE_DELTA_Y_FLAG: i32 = 1 << 6;
 pub(crate) const ENTITY_RELATIVE_DELTA_Z_FLAG: i32 = 1 << 7;
 pub(crate) const ENTITY_RELATIVE_ROTATE_DELTA_FLAG: i32 = 1 << 8;
 pub(crate) const SNOWBALL_GRAVITY: f64 = 0.03;
+/// `ThrownExperienceBottle.getDefaultGravity`.
+pub(crate) const VANILLA_EXPERIENCE_BOTTLE_GRAVITY: f64 = 0.07;
 pub(crate) const LIVING_FLAG_USING_ITEM: u8 = 0;
 pub(crate) const LIVING_FLAG_OFF_HAND: u8 = 1;
 pub(crate) const LIVING_FLAG_SPIN_ATTACK: u8 = 2;

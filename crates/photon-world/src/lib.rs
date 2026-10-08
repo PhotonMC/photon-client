@@ -432,6 +432,7 @@ fn tick_projectile(entity: &mut ClientEntity, kind: VanillaProjectileKind, path_
         VanillaProjectileKind::ExperienceOrb => entity.tick_experience_orb(path_is_open),
         _ if !path_is_open => {}
         VanillaProjectileKind::Snowball => entity.tick_snowball(),
+        VanillaProjectileKind::ExperienceBottle => entity.tick_experience_bottle(),
         VanillaProjectileKind::Arrow => entity.tick_arrow(),
         VanillaProjectileKind::PrimedTnt => entity.tick_primed_tnt(),
         VanillaProjectileKind::FallingBlock => entity.tick_falling_block(),

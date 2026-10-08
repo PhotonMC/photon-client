@@ -48,6 +48,17 @@ class MovementLivingOracle extends MovementObjectExtras {
         int entityId = row.get("entity_id").getAsInt();
         entity.setId(entityId);
         entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), 0.0F, 0.0F);
+        // A hanging entity's box comes from the block it is attached to and the way it faces
+        // (`ClientboundAddEntityPacket.getData()`'s 3D direction value), set the way `setPos`
+        // (public, overridden) and `setDirection` (protected) build it from a spawn.
+        if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity hanging) {
+            hanging.setPos(entity.getX(), entity.getY(), entity.getZ());
+            int data = row.has("data") ? row.get("data").getAsInt() : 0;
+            var setDirection = net.minecraft.world.entity.decoration.HangingEntity.class
+                .getDeclaredMethod("setDirection", net.minecraft.core.Direction.class);
+            setDirection.setAccessible(true);
+            setDirection.invoke(hanging, net.minecraft.core.Direction.from3DDataValue(data));
+        }
         // The constructor turns the head at random; the add-entity packet sets it (here: facing south).
         if (living != null) {
             living.yBodyRot = 0.0F;

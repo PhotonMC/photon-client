@@ -9,7 +9,8 @@
 //! (`EnderDragonPart.isPickable`), each with the id after the dragon's.
 
 use photon_core::aabb::Aabb;
-use photon_core::math::Vec3;
+use photon_core::direction::{Axis, Direction};
+use photon_core::math::{Vec3, floor_f64};
 
 use crate::{ClientEntity, ClientEntityDimensions, ClientWorld};
 
@@ -102,6 +103,9 @@ impl ClientEntity {
         if self.is_shulker() {
             return self.shulker_bounding_box();
         }
+        if let Some(hanging) = self.hanging_bounding_box() {
+            return hanging;
+        }
         let (x, y, z) = self.position();
         if matches!(
             photon_data::entity_type::name(self.type_id),
@@ -121,6 +125,73 @@ impl ClientEntity {
             );
         }
         self.dimensions().make_bounding_box(Vec3::new(x, y, z))
+    }
+
+    /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
+    /// painting's box, centred `0.46875` off the wall it is attached to (`ClientboundAddEntityPacket.
+    /// getData()`'s 3D direction value, `this.data`) and sized by that direction's axis; a framed
+    /// map widens an item frame to 1×1, a painting's registry variant gives its own width/height
+    /// (shifted along the wall and up for an even size, so it still centres on the block grid).
+    /// Nothing for another type.
+    fn hanging_bounding_box(&self) -> Option<Aabb> {
+        let is_item_frame = self.is_item_frame();
+        let is_painting =
+            photon_data::entity_type::name(self.type_id) == Some("minecraft:painting");
+        if !is_item_frame && !is_painting {
+            return None;
+        }
+        let direction = Direction::from_3d_data_value(self.data);
+        let (x, y, z) = self.position();
+        let block = (floor_f64(x), floor_f64(y), floor_f64(z));
+        // `Vec3.atCenterOf(block).relative(direction, -0.46875)`.
+        const WALL_SHIFT: f64 = 0.46875;
+        let (step_x, step_y, step_z) = direction.step();
+        let wall_center = (
+            f64::from(block.0) + 0.5 + f64::from(step_x) * -WALL_SHIFT,
+            f64::from(block.1) + 0.5 + f64::from(step_y) * -WALL_SHIFT,
+            f64::from(block.2) + 0.5 + f64::from(step_z) * -WALL_SHIFT,
+        );
+        let (center, width, height) = if is_item_frame {
+            let has_framed_map = self.item_stack().is_some_and(|stack| {
+                let mut bytes = stack.patch_bytes();
+                crate::item_components::read_patch(&mut bytes).is_ok_and(|patch| {
+                    patch
+                        .added
+                        .iter()
+                        .any(|(id, _)| *id == photon_data::item::component_types::MAP_ID)
+                })
+            });
+            let size = if has_framed_map { 1.0 } else { 0.75 };
+            (wall_center, size, size)
+        } else {
+            let variant = self
+                .living
+                .variant
+                .and_then(|id| photon_data::entity_type::painting_variants().nth(id as usize))?;
+            let offset_for = |size: i32| if size % 2 == 0 { 0.5 } else { 0.0 };
+            let left = direction.counter_clockwise_y().unwrap_or(direction);
+            let (left_x, _, left_z) = left.step();
+            let horizontal = offset_for(variant.width);
+            let vertical = offset_for(variant.height);
+            let center = (
+                wall_center.0 + f64::from(left_x) * horizontal,
+                wall_center.1 + vertical,
+                wall_center.2 + f64::from(left_z) * horizontal,
+            );
+            (center, f64::from(variant.width), f64::from(variant.height))
+        };
+        let axis = direction.axis();
+        let x_size = if axis == Axis::X { 0.0625 } else { width };
+        let y_size = if axis == Axis::Y { 0.0625 } else { height };
+        let z_size = if axis == Axis::Z { 0.0625 } else { width };
+        Some(Aabb::new(
+            center.0 - x_size / 2.0,
+            center.1 - y_size / 2.0,
+            center.2 - z_size / 2.0,
+            center.0 + x_size / 2.0,
+            center.1 + y_size / 2.0,
+            center.2 + z_size / 2.0,
+        ))
     }
 
     /// `Entity.getPickRadius`: what the aim inflates the box by.
