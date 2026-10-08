@@ -313,7 +313,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T80](T80-tabela-bayrak-kafa.md) Tabela, bayrak, kafa ve çan blok entity çizimi — L · bağımlı: T79 · bölündü (4077713c)
 - [x] [T80b](T80b-kafa-blogu.md) Yerleştirilmiş kafa ve kafatası blokları — M · bağımlı: T80 · bitti (a911614e)
 - [x] [T80c](T80c-bayrak-blogu.md) Bayrak bloğu — M · bağımlı: T80 · bitti (090c9716)
-- [x] [T80d](T80d-tabela-blogu.md) Tabela bloğu (ayakta ve asılı) — L · bağımlı: T80 · bitti
+- [x] [T80d](T80d-tabela-blogu.md) Tabela bloğu (ayakta ve asılı) — L · bağımlı: T80 · bitti (2aa20c9f)
 - [ ] [T81](T81-isin-ve-portal-blok-entity.md) Işın, portal ve efektli blok entity'ler — M · bağımlı: T79
 - [ ] [T82](T82-spawner-vault-kafes.md) Spawner, vault ve deneme spawner'ı çizimi — M · bağımlı: T79, T24
 - [x] [T83](T83-hasar-ve-etki-orturleri.md) Hasarda kameranın eğilmesi (`bobHurt`) — M · bitti (4641bad8)
