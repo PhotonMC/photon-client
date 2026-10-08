@@ -304,7 +304,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T77](T77-esya-parcaciklari.md) Eşya parçacıkları ve eşya toplama animasyonu — M · bağımlı: T70b, T25 · bitti (ba01b9b3)
 - [x] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77 · bitti (7e60ee72)
 - [x] [T78](T78-seviye-olaylari.md) `LevelEvent` ve `BlockEvent` işleyicileri — L · bağımlı: T71b, T64b · bölündü (3898df28)
-- [x] [T78b](T78b-kalan-seviye-olaylari.md) Kalan seviye olayları (iksir, kemik tozu, 3000'ler, küresel, jukebox) — L · bağımlı: T78, T77b · bölündü
+- [x] [T78b](T78b-kalan-seviye-olaylari.md) Kalan seviye olayları (iksir, kemik tozu, 3000'ler, küresel, jukebox) — L · bağımlı: T78, T77b · bölündü (710bfd9a)
 - [ ] [T78e](T78e-son-seviye-olaylari.md) Son seviye olayları (kemik tozu, ejderha nefesi, 3000'ler, küresel, jukebox) — L · bağımlı: T78b
 - [x] [T78c](T78c-blok-olaylari.md) `BlockEvent` işleyicileri (nota bloğu, piston, çan) — M · bağımlı: T78 · bitti (cdbcfa0c)
 - [ ] [T78d](T78d-kalan-blok-olaylari.md) Kalan blok olayları (piston, saksı, spawner, geçit) — L · bağımlı: T78c
