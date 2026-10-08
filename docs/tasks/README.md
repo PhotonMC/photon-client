@@ -300,7 +300,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75 · bitti (4e863cc9)
 - [x] [T76](T76-vurus-patlama-parcaciklari.md) Vuruş, patlama ve ifade parçacıkları — M · bağımlı: T70b · bitti (76093776)
 - [x] [T76b](T76b-ciglik-gardiyan-patlama.md) Çığlık, elder gardiyan parçacığı ve `Explode` paketi — M · bağımlı: T76 · bölündü (d18ef7d8)
-- [x] [T76c](T76c-ciglik-gardiyan.md) Çığlık ve elder gardiyan parçacıkları — M · bağımlı: T76b · bölündü
+- [x] [T76c](T76c-ciglik-gardiyan.md) Çığlık ve elder gardiyan parçacıkları — M · bağımlı: T76b · bölündü (3f9f7ca3)
 - [ ] [T76c2](T76c2-elder-gardiyan.md) Elder gardiyan parçacığı (ekran çakması) — M · bağımlı: T76c, T34c
 - [x] [T77](T77-esya-parcaciklari.md) Eşya parçacıkları ve eşya toplama animasyonu — M · bağımlı: T70b, T25 · bitti (ba01b9b3)
 - [x] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77 · bitti (7e60ee72)
