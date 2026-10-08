@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `world/entity/monster/Shulker.java` (`setPos`, `getRenderPosition`, `makeBoundingBox`, `getProgressDeltaAabb`), `world/entity/InterpolationHandler.java`, `client/renderer/entity/ShulkerRenderer.java` (`getRenderOffset`, `shouldRender`).
-- Rust: `crates/voxel-world/src/entity.rs` (`tick_position_interpolation`: konum yazılarından sonra yakalama; `set_position`, `apply_entity`), `crates/voxel-world/src/pick.rs` (`dimensions`).
+- Rust: `crates/photon-world/src/entity.rs` (`tick_position_interpolation`: konum yazılarından sonra yakalama; `set_position`, `apply_entity`), `crates/photon-world/src/pick.rs` (`dimensions`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: `Shulker.setPos` yakalama (`snapTo`/`set_position`), açıklık sıfırlama, 6 tiklik kayma ve `getRenderPosition` çizim kayması, arayüzsüz (null) interpolasyon, açıklığa/yüze bağlı kutu (çarpışma ve hedefleme), biniş/iniş kancaları. Kayıt: `docs/records/client-shulker-parity-conformance.md`.

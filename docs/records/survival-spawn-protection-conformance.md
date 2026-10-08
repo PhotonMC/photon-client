@@ -37,7 +37,7 @@ Bu sözleşme korunan spawn alanındaki op olmayan survival oyuncuyu kapsar. Spa
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve `spawn-protection=16` ayarlarıyla çalıştırıldı. Kontrollü y=`100` dirt platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı. Ops listesinde `spawnadmin` bulundu; probe oyuncuları op değildi.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve `spawn-protection=16` ayarlarıyla çalıştırıldı. Kontrollü y=`100` dirt platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı. Ops listesinde `spawnadmin` bulundu; probe oyuncuları op değildi.
 
 ```text
 cargo run --offline --release --example survival_spawn_protection_probe -- 127.0.0.1:25566 RustSpawnP12

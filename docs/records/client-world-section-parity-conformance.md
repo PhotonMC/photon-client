@@ -75,7 +75,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-net/src/connection/protocol.rs` içindeki üretim section parser'ı
+`crates/photon-net/src/connection/protocol.rs` içindeki üretim section parser'ı
 `decode_chunk_section_data` üzerinden adapter'a açılır. Adapter aynı decoded
 section değerlerini `ClientWorld::replace_chunk` ile yazar; blok state,
 biome, section counter ve missing lookup sonuçlarını

@@ -37,7 +37,7 @@ Bu dilim survival kazma süresini, tick aralıklarını, `STOP_DESTROY_BLOCK` il
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn aramasının sabit bir blok üzerinde kalması için geçici dünyada y=`100` seviyesinde geniş taş platformu ve `(100,101,100)` world spawn'ı kullanıldı. JAR, dünya ve server çıktıları depoya alınmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn aramasının sabit bir blok üzerinde kalması için geçici dünyada y=`100` seviyesinde geniş taş platformu ve `(100,101,100)` world spawn'ı kullanıldı. JAR, dünya ve server çıktıları depoya alınmadı.
 
 ```text
 cargo run --offline --release --example survival_break_abort_probe -- 127.0.0.1:25566 RustSurv1

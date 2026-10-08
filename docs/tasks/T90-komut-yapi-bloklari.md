@@ -10,7 +10,7 @@
 - Java: `client/gui/screens/inventory/{AbstractCommandBlockEditScreen,CommandBlockEditScreen,
   MinecartCommandBlockEditScreen,StructureBlockEditScreen,JigsawBlockEditScreen,TestBlockEditScreen,
   TestInstanceBlockEditScreen}.java`; blok entity verisinin istemciye gelişi (`BlockEntityData`).
-- Rust: komut önerisi (`crates/voxel-render/src/gui/chat/` komut önerici), blok entity durumu.
+- Rust: komut önerisi (`crates/photon-render/src/gui/chat/` komut önerici), blok entity durumu.
 
 ## Yapılacaklar
 1. Komut bloğu ekranı (komut önerisiyle), mod/koşul/her zaman aktif düğmeleri, paket.

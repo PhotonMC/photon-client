@@ -36,7 +36,7 @@ Bu dilim tüm hardness/tool kombinasyonlarını, her tick'teki progress değerle
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn araması için geçici dünyada y=`100` seviyesinde geniş dirt platformu ve `(100,101,100)` world spawn'ı kullanıldı. JAR, dünya ve server çıktıları depoya alınmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn araması için geçici dünyada y=`100` seviyesinde geniş dirt platformu ve `(100,101,100)` world spawn'ı kullanıldı. JAR, dünya ve server çıktıları depoya alınmadı.
 
 ```text
 cargo run --offline --release --example survival_break_stop_probe -- 127.0.0.1:25566 RustStop1

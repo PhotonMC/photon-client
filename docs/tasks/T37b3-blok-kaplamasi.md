@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/block/BlockModelRenderState.java` (`submit`), `layers/{SulfurCubeInnerLayer,CarriedBlockLayer}.java`, `OverlayTexture.java`.
-- Rust: `crates/voxel/src/equipment/held_items.rs` (`Carried::Block`), `crates/voxel-render/src/{item_entity,vulkan}.rs` (`entity_block_vertices`, entity ve yer hatları).
+- Rust: `crates/photon/src/equipment/held_items.rs` (`Carried::Block`), `crates/photon-render/src/{item_entity,vulkan}.rs` (`entity_block_vertices`, entity ve yer hatları).
 
 ## Yapılacaklar
 Önce hangi katmanların gerçekten kaplama verdiğini Java'da doğrula; kaplamayı taşıyan hatta (entity shader'ı `in_shade`'i kaplama kodu olarak okur) blok köşelerini çiz ya da yer hattına kaplama ekle. Çözüm geçici olmasın; oracle'a kaplama kodunu ekle.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: bloğun kaplama kodu (`HeldItem::block(.., overlay)`): sulfur bloğu (fitil beyazı / hasar kırmızısı), kar golemi balkabağı ve mooshroom mantarı hasar kırmızısı; öteki katmanlar `NO_OVERLAY`. Held shader çifti ışığı tint'ten ayırdı (`HELD_VERTEX_SHADER`), kaplama ışıktan önce uygulanır; kod `shade + 2·kod` ile taşınır. Yer/blok hattı entity hattından önce çizilir.

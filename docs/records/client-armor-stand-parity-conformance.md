@@ -26,7 +26,7 @@ ile aynı kanıtlara dayanır. Canlı gözlem (kollu, küçük, zırhlı, kılı
 `ArmorStand.DATA_CLIENT_FLAGS` (15, bayt) ve altı `DATA_*_POSE` (16–21, `ROTATIONS`
 serileştiricisi 9) `entity/variant-fields` satırlarıyla her koşuda karşılaştırılır.
 Dönüşler her pakette yalnız değişenleri taşır: dünya durumu birleştirir
-(`voxel-world/armor_stand.rs`).
+(`photon-world/armor_stand.rs`).
 
 ## Kapsam
 

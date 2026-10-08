@@ -65,7 +65,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `local_player_travel_in_air`, Java'nın relative hareket,
+`crates/photon-world/src/input.rs` içindeki `local_player_travel_in_air`, Java'nın relative hareket,
 gravity/levitation, client fallback ve friction/air-drag sırasını uygular.
 `ClientWorld` local player motion state'inden delta'yı alıp sonucu tekrar
 sorgulanabilir motion state'ine yazar; behavior adapter aynı production

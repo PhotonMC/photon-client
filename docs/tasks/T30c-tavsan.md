@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/rabbit/{RabbitModel,AdultRabbitModel,BabyRabbitModel}.java`, `client/animation/definitions/{RabbitAnimation,BabyRabbitAnimation}.java`, `client/renderer/entity/RabbitRenderer.java`, `world/entity/animal/rabbit/Rabbit.java` (`getJumpCompletion`, `hopAnimationState`, `idleHeadTiltAnimationState`, `getVariant`, `DATA_TYPE_ID`).
-- Rust: T43b'nin oynatıcısı, `crates/voxel/src/mobs/animals/farm_animals.rs` (kalıp), `voxel-world/src/animal.rs`.
+- Rust: T43b'nin oynatıcısı, `crates/photon/src/mobs/animals/farm_animals.rs` (kalıp), `photon-world/src/animal.rs`.
 
 ## Yapılacaklar
 1. `RabbitModel.setupAnim`: baş bakışı (boşta baş eğme yokken), iki animasyonun uygulanması.
@@ -15,7 +15,7 @@
 `goat_model` kalıbı: gerçek model + `setupAnim`; animasyon durumları `living-entity-animations` kalıbıyla gerçek `Rabbit` tikinden.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon rabbit`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon rabbit`.
 
 ## Kapsam dışı
 Killer Bunny davranışı, binme, sesler.

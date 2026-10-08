@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/EquipmentLayerRenderer.java`, `client/renderer/rendertype/RenderTypes.java` (`armorEntityGlint`), `world/item/ItemStack.java` (`hasFoil`), `world/item/component/Equippable.java`.
-- Rust: `crates/voxel/src/equipment/armor.rs`, `voxel-render/src/vulkan.rs` (entity boru hattı), `voxel-game/src/item_values.rs`.
+- Rust: `crates/photon/src/equipment/armor.rs`, `photon-render/src/vulkan.rs` (entity boru hattı), `photon-game/src/item_values.rs`.
 
 ## Oracle
 `entity/equipment-layers` satırları (`hasFoil` kararı), parıltı dokusu matrisi için sayısal oracle.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-armor-parity-conformance.md`.

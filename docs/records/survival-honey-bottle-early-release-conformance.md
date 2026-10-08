@@ -37,7 +37,7 @@ Bu sözleşme honey bottle'ın erken bırakılmasını ve component-bearing stac
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` altında, `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştı. Her oyuncu oyuna girdikten sonra console üzerinden component-bearing honey bottle stack'i verildi; console başarı satırı görülmeden koşu geçerli sayılmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` altında, `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştı. Her oyuncu oyuna girdikten sonra console üzerinden component-bearing honey bottle stack'i verildi; console başarı satırı görülmeden koşu geçerli sayılmadı.
 
 ```text
 cargo run --offline --release --example survival_honey_bottle_early_release_probe -- 127.0.0.1:25566 RustHRelease1

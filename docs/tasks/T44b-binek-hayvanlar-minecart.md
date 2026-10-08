@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/entity/LivingEntity.java` (`travelRidden`), `world/entity/animal/horse/AbstractHorse.java`, `client/player/LocalPlayer.java` (`getJumpRidingScale`, `sendRidingJump`), `AbstractMinecart`.
-- Rust: `voxel-world/src/boat_ride.rs` (örnek), `voxel-world/src/local_player.rs`, `crates/voxel-net/src/connection/play.rs`.
+- Rust: `photon-world/src/boat_ride.rs` (örnek), `photon-world/src/local_player.rs`, `crates/photon-net/src/connection/play.rs`.
 
 ## Oracle
 `MovementOracle.localPlayerTicks` `ride` satırları (`movement/ride-boat` örneği), türe göre.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 At eğitimi, iksir etkileri, ses.

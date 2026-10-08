@@ -9,7 +9,7 @@ olaylar 1023/1028/1038 (kameradan iki blok ötede), 1032 portal yolculuğu, juke
 ## Oku
 Java: `client/renderer/LevelEventHandler.java` (440–700), `world/item/BoneMealItem.java`,
 `world/level/block/PointedDripstoneBlock.java`, `client/particle/DragonBreathParticle.java`.
-Rust: `crates/voxel-world/src/particles/level_events_more.rs`.
+Rust: `crates/photon-world/src/particles/level_events_more.rs`.
 
 ## Oracle
 `movement/particle-engine` `level_event` satırları.

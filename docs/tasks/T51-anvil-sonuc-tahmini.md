@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** L.
 
 ## Oku
-Java: `world/inventory/{AnvilMenu,GrindstoneMenu,ItemCombinerMenu}.java`, `world/item/enchantment/EnchantmentHelper.java`, `world/item/enchantment/Repairable.java`. Rust: `crates/voxel-game/src/menus/container/transform.rs`, `crates/voxel-game/src/item/values.rs`.
+Java: `world/inventory/{AnvilMenu,GrindstoneMenu,ItemCombinerMenu}.java`, `world/item/enchantment/EnchantmentHelper.java`, `world/item/enchantment/Repairable.java`. Rust: `crates/photon-game/src/menus/container/transform.rs`, `crates/photon-game/src/item/values.rs`.
 
 ## Oracle
 `movement/container-clicks` ailesine anvil/grindstone satırları: onarım malzemesi, iki aynı eşya, büyülü kitap, ad değişimi, maliyet ve `RenameItem` paketi; `container_screen` anvil maliyet etiketi. G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

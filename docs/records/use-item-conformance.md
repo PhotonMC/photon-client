@@ -35,7 +35,7 @@ Boş el sonucu item davranışını doğrulamaz. Dolu stack kullanımı, tüketi
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Probe, ilk chunk ve `player_loaded` sonrasında boş ana elle açık alana `use_item` gönderdi.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Probe, ilk chunk ve `player_loaded` sonrasında boş ana elle açık alana `use_item` gönderdi.
 
 ```text
 cargo run --offline --release --example use_item_probe -- 127.0.0.1:25566 RustUse5

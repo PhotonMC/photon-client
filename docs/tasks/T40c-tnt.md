@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/entity/TntRenderer.java`, `world/entity/item/PrimedTnt.java`.
-- Rust: `crates/voxel/src/objects/minecarts.rs` (aynı beyaz blok), `crates/voxel-render/src/objects/minecart.rs` (`tnt_swell_amount`, `tnt_is_lit`), `crates/voxel-world/src/entity.rs` (`tick_primed_tnt`).
+- Rust: `crates/photon/src/objects/minecarts.rs` (aynı beyaz blok), `crates/photon-render/src/objects/minecart.rs` (`tnt_swell_amount`, `tnt_is_lit`), `crates/photon-world/src/entity.rs` (`tick_primed_tnt`).
 
 ## Oracle
 Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Sesler, partiküller, dış çizgi.

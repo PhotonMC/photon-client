@@ -33,7 +33,7 @@ Bu dilim input snapshot'ı, tick başına hareket paket seçimi, yerçekimi, col
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative ve peaceful ayarlarıyla çalıştırıldı. JAR ve dünya depoya alınmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative ve peaceful ayarlarıyla çalıştırıldı. JAR ve dünya depoya alınmadı.
 
 ```text
 cargo run --offline --example connection_probe -- 127.0.0.1:25566 RustPosition1

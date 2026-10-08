@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `multiply_vec3
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::multiply_vec3` ve `Vec3::multiply_components`, Java overload yönlendirmesini ve x/y/z çarpım sırasını üretim API'sine taşır. `examples/behavior_adapter.rs` bu çağrıları JSONL adımlarına, `tests/behavior/java/MathOracle.java` ise doğrudan Java çağrılarına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::multiply_vec3` ve `Vec3::multiply_components`, Java overload yönlendirmesini ve x/y/z çarpım sırasını üretim API'sine taşır. `examples/behavior_adapter.rs` bu çağrıları JSONL adımlarına, `tests/behavior/java/MathOracle.java` ise doğrudan Java çağrılarına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.multiply(Vec3)` ve `Vec3.multiply(double, double, double)` overload'larının bileşen yönlendirmesini ve x/y/z çarpımlarını karşılar. Java oracle overload'ları doğrudan çağırır; Rust adaptörü aynı girdileri üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.multiply(Vec3)` ve `Vec3.multiply(double, double, double)` overload'larının bileşen yönlendirmesini ve x/y/z çarpımlarını karşılar. Java oracle overload'ları doğrudan çağırır; Rust adaptörü aynı girdileri üretim API'sine taşır.
 
 ## Doğrulama
 

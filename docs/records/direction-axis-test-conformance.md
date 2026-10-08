@@ -37,7 +37,7 @@ Axis choose overload'ları, plane, random seçim ve Direction yönlerinin diğer
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `Axis.test`, Java nullable Direction predicate'inin eksen eşleşmesini uygular. Rust adapter `direction_axis_test` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı enum predicate'ini doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `Axis.test`, Java nullable Direction predicate'inin eksen eşleşmesini uygular. Rust adapter `direction_axis_test` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı enum predicate'ini doğrudan çağırır.
 
 Senaryolar üç eksenin null girdisini ve altı yönle eşleşme/eşleşmeme sonuçlarını Java oracle çıktısıyla karşılaştırır.
 

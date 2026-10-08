@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/CrafterScreen.java`, `world/inventory/{CrafterMenu,CrafterSlot,NonInteractiveResultSlot}.java`, `network/protocol/game/ServerboundContainerSlotStateChangedPacket.java`. Rust: `crates/voxel-game/src/menus/container.rs`.
+Java: `client/gui/screens/inventory/CrafterScreen.java`, `world/inventory/{CrafterMenu,CrafterSlot,NonInteractiveResultSlot}.java`, `network/protocol/game/ServerboundContainerSlotStateChangedPacket.java`. Rust: `crates/photon-game/src/menus/container.rs`.
 
 ## Oracle
 `container-clicks` (kilitli yuvaya koyma, `SlotStateChanged` baytı); `container_screen` crafter (kilit simgeleri, tetiklenmiş ok). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

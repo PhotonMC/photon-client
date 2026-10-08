@@ -8,7 +8,7 @@ parçacığı ve ağırlıklı blok parçacığı listesi, ses).
 ## Oku
 Java: `client/particle/{ShriekParticle,ElderGuardianParticle,ElderGuardianParticleGroup}.java`,
 `network/protocol/game/ClientboundExplodePacket.java`, `ClientPacketListener.handleExplosion`.
-Rust: `crates/voxel-world/src/particles/hit.rs`.
+Rust: `crates/photon-world/src/particles/hit.rs`.
 
 ## Oracle
 `particle-ticks` satırları (çığlık), `particle-engine` için `Explode` olayı.

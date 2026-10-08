@@ -1,0 +1,17 @@
+[package]
+name = "photon-audio"
+description = "Sound decoding, mixing and output."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+log.workspace = true
+cpal = "0.18.2"
+lewton = "0.10.2"
+photon-game.workspace = true
+
+[lints]
+workspace = true

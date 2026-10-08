@@ -26,7 +26,7 @@ Bir clientbound chunk packet'i aşağıdaki alanları taşır:
 5. Dört ışık maskesi: sky, block, empty sky ve empty block için birer length-prefixed long array.
 6. Sky ve block update listeleri: Her biri VarInt kayıt sayısı ve her kayıt için en fazla 2048 byte'lık length-prefixed byte array.
 
-`crates/voxel-net/src/connection/protocol.rs` içindeki `parse_chunk_packet`, bu sıranın tamamını tüketir. Heightmap kayıtlarının type ID'si ve long sayısı, dört maskenin long sayısı, iki update listesindeki her byte array'in uzunluğu ve chunk alt alanlarının sınırları `ChunkPacketObservation` içinde gözlenebilir kılınır. Section buffer'ı `parse_section_data` ile byte sonuna kadar tüketir; her section'ın iki sayacını, block-state/biome bits-per-entry değerini, yerel palette giriş sayısını, palette global ID'lerini ve sabit storage long sayısını `ChunkSectionObservation` içinde kaydeder. Storage'ın ilk hücre değerleri ve distinct global ID sayısı da Java'nın düşük bitten başlayan hücre sırasıyla gözlenir. Block state için Java 1–4 bit girişleri 4 bit linear palette'e, 5–8 bit girişleri hashmap palette'e, daha geniş değerleri global palette'e yönlendirir; biome için linear eşik 3 bittir. Storage uzunluğu Java'nın `64 / bits` tam sayı bölümüyle hesaplanır. Payload sonunda byte kalırsa `chunk trailing payload` hatası verir; sınır, negatif count, kesik alan ve geçersiz block entity NBT de başarı sayılmaz.
+`crates/photon-net/src/connection/protocol.rs` içindeki `parse_chunk_packet`, bu sıranın tamamını tüketir. Heightmap kayıtlarının type ID'si ve long sayısı, dört maskenin long sayısı, iki update listesindeki her byte array'in uzunluğu ve chunk alt alanlarının sınırları `ChunkPacketObservation` içinde gözlenebilir kılınır. Section buffer'ı `parse_section_data` ile byte sonuna kadar tüketir; her section'ın iki sayacını, block-state/biome bits-per-entry değerini, yerel palette giriş sayısını, palette global ID'lerini ve sabit storage long sayısını `ChunkSectionObservation` içinde kaydeder. Storage'ın ilk hücre değerleri ve distinct global ID sayısı da Java'nın düşük bitten başlayan hücre sırasıyla gözlenir. Block state için Java 1–4 bit girişleri 4 bit linear palette'e, 5–8 bit girişleri hashmap palette'e, daha geniş değerleri global palette'e yönlendirir; biome için linear eşik 3 bittir. Storage uzunluğu Java'nın `64 / bits` tam sayı bölümüyle hesaplanır. Payload sonunda byte kalırsa `chunk trailing payload` hatası verir; sınır, negatif count, kesik alan ve geçersiz block entity NBT de başarı sayılmaz.
 
 ## Rust sınırı
 
@@ -44,7 +44,7 @@ Yerel unit testleri Java packet sırasını boş gövde, nullable block entity N
 
 ## Çalıştırma
 
-Sunucu geçici `/tmp/voxel-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative ve peaceful ayarlarıyla başlatıldı. JAR ve dünya depoya alınmadı.
+Sunucu geçici `/tmp/photon-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative ve peaceful ayarlarıyla başlatıldı. JAR ve dünya depoya alınmadı.
 
 ```text
 cargo run --offline --example connection_probe -- 127.0.0.1:25566 RustLight1

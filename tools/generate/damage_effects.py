@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/damage_effects.rs from a sound-family capture.
+"""Generate crates/photon-data/src/generated/damage_effects.rs from a sound-family capture.
 
     python3 tools/generate/damage_effects.py .data/captures/behavior/<id>/outputs.jsonl
 

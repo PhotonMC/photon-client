@@ -21,7 +21,7 @@ Bu dilim, Java Edition 26.2 `net.minecraft.util.Mth` sınıfının public scalar
 
 İstek `family: "math"`, `operation: "mth_constants"` ve küçük harfli `name` alanlarını taşır. Scalar sabitlerde sonuç `bits`; eksen sabitlerinde `value` altında `x`, `y`, `z` f32 bitleri bulunur.
 
-Rust karşılığı `crates/voxel-core/src/math.rs` içindeki `MTH_*` sabitleridir. Oracle sabitleri doğrudan Java alanlarından okur; adapter aynı değerleri üretim API'sinden taşır.
+Rust karşılığı `crates/photon-core/src/math.rs` içindeki `MTH_*` sabitleridir. Oracle sabitleri doğrudan Java alanlarından okur; adapter aynı değerleri üretim API'sinden taşır.
 
 ## Kapsam dışı
 

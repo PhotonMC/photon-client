@@ -36,7 +36,7 @@ Axis yön eşlemeleri, predicate'ler, plane, random seçim, coordinate choose ov
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `AxisDirection.get_step` ve `opposite`, Java enum step değerlerini, adlarını ve karşıtlık ilişkisini uygular. Rust adapter `direction_axis_direction_values` JSONL operation'ı ile bu alanları dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `AxisDirection.get_step` ve `opposite`, Java enum step değerlerini, adlarını ve karşıtlık ilişkisini uygular. Rust adapter `direction_axis_direction_values` JSONL operation'ı ile bu alanları dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
 
 Senaryolar POSITIVE ve NEGATIVE değerlerinin step, ad ve karşıt sonuçlarını Java oracle çıktısıyla karşılaştırır.
 

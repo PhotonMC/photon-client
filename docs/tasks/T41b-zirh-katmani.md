@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{HumanoidArmorLayer,EquipmentLayerRenderer}.java`, `client/renderer/entity/ArmorModelSet.java`, `client/resources/model/{EquipmentClientInfo,EquipmentAssetManager}.java`, `world/item/equipment/{Equippable,trim/ArmorTrim}.java`, `client/model/geom/LayerDefinitions.java` (zırh katmanı tanımları), `world/item/component/DyedItemColor.java`.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs`, `player_model.rs`, `crates/voxel/src/{mobs,overlays,held_items}.rs`, `crates/voxel-world/src/entity.rs` (`equipment`, T41).
+- Rust: `crates/photon-render/src/entity/mob_model.rs`, `player_model.rs`, `crates/photon/src/{mobs,overlays,held_items}.rs`, `crates/photon-world/src/entity.rs` (`equipment`, T41).
 
 ## Yapılacaklar
 1. Zırh modeli katmanları (`humanoid_armor_*#inner/outer`, bebek) T23 tablosunda var mı bak; yoksa oracle'dan tablo.
@@ -16,7 +16,7 @@
 `EntityOracle.java` `held_item_pose` kalıbı: gerçek katman modeli aynı `setupAnim` ile pozlanır, dörtgenler karşılaştırılır; katman tablosu ve doku yolları her koşuda karşılaştırılır.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: zırhlı zombi/iskelet/oyuncu yan yana.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: zırhlı zombi/iskelet/oyuncu yan yana.
 
 ## Kapsam dışı
 Kafa eşyası/pelerin/elytra (T41c), at zırhı (T31).
@@ -25,7 +25,7 @@ Kafa eşyası/pelerin/elytra (T41c), at zırhı (T31).
 `docs/index.md` satırı, yeni `docs/client-*-parity-conformance.md`.
 
 ## Devir notu
-- Yapıldı: `Equip.asset` (eşya tablosu, oracle'dan), `voxel-render/equipment.rs` (ekipman varlıkları: katmanlar, boyanabilirlik, `colour`), `voxel/armor.rs` (`Armor`: giyilen parçaların modeli giyenin pozuyla, dokusu ve boyasıyla; `Worn`), `MobModel::setup_humanoid`, `player_renderer::layer_vertices`; oyuncu (uzak ve yerel üçüncü şahıs), zombi/iskelet/piglin ailesi (bebek dahil) zırh giyer. Kayıt: `docs/records/client-armor-parity-conformance.md`.
+- Yapıldı: `Equip.asset` (eşya tablosu, oracle'dan), `photon-render/equipment.rs` (ekipman varlıkları: katmanlar, boyanabilirlik, `colour`), `photon/armor.rs` (`Armor`: giyilen parçaların modeli giyenin pozuyla, dokusu ve boyasıyla; `Worn`), `MobModel::setup_humanoid`, `player_renderer::layer_vertices`; oyuncu (uzak ve yerel üçüncü şahıs), zombi/iskelet/piglin ailesi (bebek dahil) zırh giyer. Kayıt: `docs/records/client-armor-parity-conformance.md`.
 - Oracle: `entity/equipment-layers` 39 satır (gerçek `EquipmentClientInfo.CODEC`, `getColorForLayer`); `block/item-declarations`'a `asset`.
 - Sapma: süs/parıltı yok (T41e), yamadaki `equippable` okunmuyor.
 - Açık: T41e (süs, parıltı, yama), T41c (kafa eşyası, pelerin, elytra).

@@ -9,8 +9,8 @@ L tuşu. Bildirim kutusu (toast) T91b'de.
 - Java: `client/multiplayer/ClientAdvancements.java`, `advancements/AdvancementTree.java`,
   `advancements/TreeNodePosition.java` (düzen algoritması), `client/gui/screens/advancements/*.java`,
   `network/protocol/game/ClientboundUpdateAdvancementsPacket.java`.
-- Rust: `crates/voxel-net/src/connection/play/incoming.rs` (yönlendirme), bileşen/eşya ikonları
-  (`crates/voxel-render/src/gui/items.rs`).
+- Rust: `crates/photon-net/src/connection/play/incoming.rs` (yönlendirme), bileşen/eşya ikonları
+  (`crates/photon-render/src/gui/items.rs`).
 
 ## Yapılacaklar
 1. Paket çözümü ve ağaç kopyası; `TreeNodePosition` düzeni.

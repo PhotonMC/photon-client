@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** L.
 
 ## Oku
-Java: `client/renderer/blockentity/{BlockEntityRenderDispatcher,BlockEntityRenderer,ChestRenderer,ShulkerBoxRenderer}.java`, `client/renderer/blockentity/state/{ChestRenderState,ShulkerBoxRenderState,BedRenderState}.java`, `client/renderer/special/{ChestSpecialRenderer,ShulkerBoxSpecialRenderer}.java`. Rust: `docs/records/client-world-block-entity-conformance.md` (veri), `crates/voxel-render/src/{mob_model,special_models,skull}.rs` (model katmanı tabloları).
+Java: `client/renderer/blockentity/{BlockEntityRenderDispatcher,BlockEntityRenderer,ChestRenderer,ShulkerBoxRenderer}.java`, `client/renderer/blockentity/state/{ChestRenderState,ShulkerBoxRenderState,BedRenderState}.java`, `client/renderer/special/{ChestSpecialRenderer,ShulkerBoxSpecialRenderer}.java`. Rust: `docs/records/client-world-block-entity-conformance.md` (veri), `crates/photon-render/src/{mob_model,special_models,skull}.rs` (model katmanı tabloları).
 
 ## Oracle
 Gerçek `ChestRenderer.submit` kaydı (köşe, UV, ışık) `block_entity_model` operation'ında. Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.

@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/WingsLayer.java`, `client/renderer/entity/HumanoidMobRenderer.java`.
-- Rust: `crates/voxel/src/{overlays,mobs}.rs`, `voxel-world/src/local_player.rs`.
+- Rust: `crates/photon/src/{overlays,mobs}.rs`, `photon-world/src/local_player.rs`.
 
 ## Oracle
 Model ve durum T41f'in oracle'ında; burada yalnız bağlama (canlı gözlem).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: elytralı zombi.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: elytralı zombi.
 
 ## Belgeler
 `docs/records/client-armor-parity-conformance.md`.

@@ -14,7 +14,7 @@
 4. Capture kimliği kaynak dosya hash'ini içeriyorsa (`run.py`) yeni capture alınır; Java çıktısı aynı olmalı (`run.py` capture "Existing capture differs" derse dur, nedenini bul).
 
 ## Kabul
-`python3 tools/voxel.py check --capture` → `CHECK OK` (928).
+`python3 tools/photon.py check --capture` → `CHECK OK` (928).
 
 ## Kapsam dışı
 Başka ailelerin üreticileri; case içeriğini değiştirmek.

@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3_equality"` ve f64 bit dizgeli `firs
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::equals_java` ve `Vec3::hash_code_java`, Java'nın canonical double karşılaştırmasını ve wrapping int hash aritmetiğini uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` aynı Java metodlarını çağırır.
+`crates/photon-core/src/math.rs` içindeki `Vec3::equals_java` ve `Vec3::hash_code_java`, Java'nın canonical double karşılaştırmasını ve wrapping int hash aritmetiğini uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` aynı Java metodlarını çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.equals(Object)` ve `Vec3.hashCode()` davranışlarını karşılar. Java oracle, karşılaştırmayı ve iki hash sonucunu doğrudan Java metodlarından alır.
+`crates/photon-core/src/math.rs`, Java `Vec3.equals(Object)` ve `Vec3.hashCode()` davranışlarını karşılar. Java oracle, karşılaştırmayı ve iki hash sonucunu doğrudan Java metodlarından alır.
 
 ## Doğrulama
 

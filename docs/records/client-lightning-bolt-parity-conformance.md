@@ -11,7 +11,7 @@ Bu kayıt `lightning_bolt` entity'sinin (`LightningBolt`, `LightningBoltRenderer
 ## Kapsam
 
 - `entity/lightning-bolt` 7 satır (sıfır, bir, sıradan, negatif, uç tohumlar, uzak konum): 4 genişlik × 14 parça × 4 dörtgen × 4 köşe.
-- Rust: `voxel-render::lightning::lightning_bolt`, `voxel-world::lightning` (tohum, parlama, silinme; birim testli), oyunda `lightning_bolts.rs` (ejderha ışınlarının eklemeli hattından).
+- Rust: `photon-render::lightning::lightning_bolt`, `photon-world::lightning` (tohum, parlama, silinme; birim testli), oyunda `lightning_bolts.rs` (ejderha ışınlarının eklemeli hattından).
 
 ## Sapmalar ve açık kalanlar
 

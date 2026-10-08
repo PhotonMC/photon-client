@@ -15,15 +15,15 @@ başlık çeviri anahtarı, simgesi ve eşyaları. Bir eşya, ağın kodladığ�
 (sayı, eşya numarası, bileşen yaması) ve yamadaki bileşenlerin numaralarıyla
 yazılır; 14 sekmede 1896 ayrı eşya var.
 
-`tools/generate/creative_tabs.py` capture'dan `crates/voxel-data/src/generated/item/creative_tabs.rs`
+`tools/generate/creative_tabs.py` capture'dan `crates/photon-data/src/generated/item/creative_tabs.rs`
 üretir (eşyalar bir kez, sekmeler indeksle). Tablo commit'lenir; adaptörün
 `creative_tabs` işlemi tabloyu aynı JSON'a çevirir ve her parity koşusunda
 referansla karşılaştırılır (`block` ailesi `parity_passed`).
 
 ## Ekran
 
-`crates/voxel-game/src/menus/creative.rs` `ItemPickerMenu`u ve ekranın `slotClicked`ini taşır,
-`crates/voxel-render/src/gui/screen/creative.rs` yerleşimi, fareyi ve çizimi:
+`crates/photon-game/src/menus/creative.rs` `ItemPickerMenu`u ve ekranın `slotClicked`ini taşır,
+`crates/photon-render/src/gui/screen/creative.rs` yerleşimi, fareyi ve çizimi:
 
 - Pencere 5×9 yuva; satır satır kayar (`scrollTo`, `getRowIndexForScroll`,
   `subtractInputFromScroll`); kaydırma çubuğu sürüklenir, tekerlek satır

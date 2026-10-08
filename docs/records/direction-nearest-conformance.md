@@ -37,7 +37,7 @@ Yeni capture kimliği, kaynak/girdi/ortam değişkenleriyle birlikte runner rapo
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `get_nearest`, Java `Direction.getNearest` üç bileşenli overload'unun strict eksen karşılaştırmasını, işaret yönünü ve nullable fallback davranışını uygular. Rust adapter `direction_nearest` JSONL operation'ı ile hem bileşen hem Vec3i forwarding senaryolarını karşılaştırır; Java oracle iki overload'u doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `get_nearest`, Java `Direction.getNearest` üç bileşenli overload'unun strict eksen karşılaştırmasını, işaret yönünü ve nullable fallback davranışını uygular. Rust adapter `direction_nearest` JSONL operation'ı ile hem bileşen hem Vec3i forwarding senaryolarını karşılaştırır; Java oracle iki overload'u doğrudan çağırır.
 
 Senaryolar baskın eksenleri, eşit büyüklükleri, null fallback'i ve i32 minimum değerindeki Java mutlak değer davranışını kapsar. Beklenen yön snapshot'ları Java oracle çıktısından alındı.
 

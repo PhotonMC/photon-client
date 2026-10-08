@@ -5,13 +5,13 @@
 
 ## Ne pinlendi
 
-- `items/*.json` eşya modeli ağacı (`crates/voxel-render/src/item_model.rs`): `model`,
+- `items/*.json` eşya modeli ağacı (`crates/photon-render/src/item_model.rs`): `model`,
   `composite`, `condition`, `select`, `range_dispatch`, `special`, `empty`.
   Varsayılan yığın için koşullar yanlış, `select` yalnız `display_context`
   ile seçer, `range_dispatch` değeri sıfır; `special` ve `empty` bir şey
   çizmez. Tint kaynakları: sabit, çimen iklimi, varsayılanlı olanların
   varsayılanı.
-- Model `display` alanı (`crates/voxel-render/src/model.rs`): dokuz bağlam,
+- Model `display` alanı (`crates/photon-render/src/model.rs`): dokuz bağlam,
   `ItemTransform` sınırları (öteleme on altıda bir ve ±5, ölçek ±4), sol
   elin sağ eli miras alması. `block/model` ailesindeki
   `display-right-hands` ve `display-clamped-and-left` vakaları.
@@ -29,7 +29,7 @@
 - Yuvaya çizim (`GuiItemAtlas.drawToSlot`): yuva merkezi, yuva boyu kadar
   blok ve ters y, ardından GUI bağlamındaki dönüşüm (yoksa yarım blok geri);
   derinlik testli, 0.1 altı alfa kesilen ayrı bir Vulkan hattı.
-- Eldeki eşya (`crates/voxel-game/src/item/in_hand.rs`, `held_item_vertices`):
+- Eldeki eşya (`crates/photon-game/src/item/in_hand.rs`, `held_item_vertices`):
   `ItemInHandRenderer.tick` sırası (tuşlardan sonra, oyuncu tick'inden
   önce), gösterilen yığının envanterden geri kalması, yığın değişince elin
   0.4'lük adımlarla inip onda birin altında yeni yığına geçmesi, yığınların
@@ -60,14 +60,14 @@ birim testiyle sabitlendi.
 - Eşya dokuları referansta ayrı `items` atlasındadır; burada blok atlasına
   eklendi. GUI'de en yakın texel ve sıfırıncı seviye okunduğu için görüntü
   farkı beklenmez, ama atlas yerleşimi referansla aynı değil.
-- Yığın bileşenlerinden yalnız renk kaynakları okunur (`crates/voxel-game/src/item/values.rs`):
+- Yığın bileşenlerinden yalnız renk kaynakları okunur (`crates/photon-game/src/item/values.rs`):
   `dye` (`dyed_color`), `potion` (`potion_contents`: özel renk ya da
   iksirin ve özel efektlerin renklerinin genlik ağırlıklı ortalaması; iksir
   ve efekt tablosu oracle'dan), `firework` (`firework_explosion` renkleri) ve
   `map_color`. Bileşene bağlı diğer özellikler (pusula, saat, dayanıklılık
   çubuğu, bekleme süresi örtüsü, zırh süsü) varsayılan yığın gibi çizilir.
   Eşyanın varsayılan bileşenleri referansın yamasından okunur. varsayılan yığın gibi çizilir. `special` modeller `ModelPart`
-geometrisiyle çizilir (`crates/voxel-render/src/entity/special_models.rs`, ölçüler ve dokular
+geometrisiyle çizilir (`crates/photon-render/src/entity/special_models.rs`, ölçüler ve dokular
 referansın `LayerDefinition`larından): sandıklar (kapak kapalı, çift
 sandık yok), shulker kutuları, bayraklar (yalnız taban deseni ve boya
 rengi; desen katmanları yok), kafalar (iskelet, wither iskeleti, zombi,

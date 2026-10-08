@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/animal/golem/CopperGolemModel.java` (`translateToHand`, `translateToHead`, `applyBlockOnAntennaTransform`), `client/renderer/entity/CopperGolemRenderer.java`, `client/renderer/entity/layers/{ItemInHandLayer,BlockDecorationLayer,CustomHeadLayer}.java`, `world/entity/animal/golem/CopperGolem.java` (`EQUIPMENT_SLOT_ANTENNA` = `SADDLE`).
-- Rust: `crates/voxel-render/src/{held_item,entity_block}.rs`, `crates/voxel/src/{held_items,golems,copper_golems}.rs`.
+- Rust: `crates/photon-render/src/{held_item,entity_block}.rs`, `crates/photon/src/{held_items,golems,copper_golems}.rs`.
 
 ## Yapılacaklar
 1. Üç katmanın pozları (oracle ile): elde eşya (iki durumda), antendeki blok durumu (`BlockItemStateProperties` uygulanmış varsayılan durum), kafa eşyası.
@@ -15,7 +15,7 @@
 `villager_held_layers` ve `entity_block_layers` kalıbı: gerçek katmanlar, yakalayıcı toplayıcı; golemin durumu `IDLE` ve öteki.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon copper_golem` ile eşyalı ve antende çiçek/blok taşıyan golem.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon copper_golem` ile eşyalı ve antende çiçek/blok taşıyan golem.
 
 ## Kapsam dışı
 Gölge, sesler, heykel dönüşümü.
@@ -24,6 +24,6 @@ Gölge, sesler, heykel dönüşümü.
 `docs/records/client-copper-golem-parity-conformance.md` içindeki sapma satırı güncellenir.
 
 ## Devir notu
-- Yapıldı: `copper_golem_{hand,head,antenna}_pose` (voxel-render), joml'a `Matrix4::{translation, rotate_around}`, `Matrix3::mul`, `Pose::mul_matrix`; `copper_golems.rs` elleri, kafa eşyasını ve antendeki bloğu (`BlockItem` + `block_state` bileşeni) `held` listesine toplar; `item_components::block_state_properties`. Kayıt: `docs/records/client-copper-golem-parity-conformance.md`.
+- Yapıldı: `copper_golem_{hand,head,antenna}_pose` (photon-render), joml'a `Matrix4::{translation, rotate_around}`, `Matrix3::mul`, `Pose::mul_matrix`; `copper_golems.rs` elleri, kafa eşyasını ve antendeki bloğu (`BlockItem` + `block_state` bileşeni) `held` listesine toplar; `item_components::block_state_properties`. Kayıt: `docs/records/client-copper-golem-parity-conformance.md`.
 - Oracle: `entity/copper-golem-layers` 27 satır (gerçek `ItemInHandLayer`, `CustomHeadLayer`, `BlockDecorationLayer`); anten matrisi `rotateAround` dâhil bit bit eşit.
 - Sapma: parlayan golemin blok dış hattı yok; canlı gözlem yapılmadı.

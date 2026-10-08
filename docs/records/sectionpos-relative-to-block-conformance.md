@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_relative_to_block"`, signed d
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::relative_to_block_x`, `relative_to_block_y`, `relative_to_block_z` ve `relative_to_block_pos`, SectionPos blok origin helper'larını ve short alanlarının unsigned bit yorumunu Java ile aynı sırada kullanır. `examples/behavior_adapter.rs` signed short girdisini u16 bit desenine çevirerek bu API'lere bağlar; `tests/behavior/java/MathOracle.java` Java erişimcilerini karşılaştırma oracle'ı olarak çağırır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::relative_to_block_x`, `relative_to_block_y`, `relative_to_block_z` ve `relative_to_block_pos`, SectionPos blok origin helper'larını ve short alanlarının unsigned bit yorumunu Java ile aynı sırada kullanır. `examples/behavior_adapter.rs` signed short girdisini u16 bit desenine çevirerek bu API'lere bağlar; `tests/behavior/java/MathOracle.java` Java erişimcilerini karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos içindeki short relative ofsetini Java `sectionRelativeX/Y/Z` ve `relativeToBlockX/Y/Z` yollarıyla aynı sonuçlara çevirir; `relativeToBlockPos` da aynı üç bileşeni BlockPos'a taşır.
+`crates/photon-core/src/binary.rs`, SectionPos içindeki short relative ofsetini Java `sectionRelativeX/Y/Z` ve `relativeToBlockX/Y/Z` yollarıyla aynı sonuçlara çevirir; `relativeToBlockPos` da aynı üç bileşeni BlockPos'a taşır.
 
 ## Doğrulama
 

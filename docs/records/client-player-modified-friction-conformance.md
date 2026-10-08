@@ -45,7 +45,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `local_player_modified_friction`, formülü Java'nın f32
+`crates/photon-world/src/input.rs` içindeki `local_player_modified_friction`, formülü Java'nın f32
 clamp semantiğiyle uygular. `ClientWorld::apply_local_player_modified_friction`
 sonucu local player'ın sorgulanabilir `modified_friction` state'ine yazar;
 behavior adapter aynı production helper'ını çağırır.

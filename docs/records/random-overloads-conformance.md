@@ -49,7 +49,7 @@ Bu sözleşme legacy kaynağın seçili default random yardımcılarıyla sını
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/random.rs`, Java `RandomSource` varsayılan integer aralıklarını, float/double triangle yardımcılarını ve `consumeCount` tüketim döngüsünü uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/photon-core/src/random.rs`, Java `RandomSource` varsayılan integer aralıklarını, float/double triangle yardımcılarını ve `consumeCount` tüketim döngüsünü uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

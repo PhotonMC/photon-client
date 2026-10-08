@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `network/HashedStack.java`, `network/HashedPatchMap.java`, `world/inventory/AbstractContainerMenu.java` (`doClick`), `world/item/BundleItem.java`, `world/item/component/BundleContents.java`. Rust: `crates/voxel-game/src/menus/container.rs`, `crates/voxel-net/src/connection/protocol.rs` (tıklama kodlayıcıları).
+Java: `network/HashedStack.java`, `network/HashedPatchMap.java`, `world/inventory/AbstractContainerMenu.java` (`doClick`), `world/item/BundleItem.java`, `world/item/component/BundleContents.java`. Rust: `crates/photon-game/src/menus/container.rs`, `crates/photon-net/src/connection/protocol.rs` (tıklama kodlayıcıları).
 
 ## Oracle
 `movement/container-clicks` satırları: bileşenli eşya (özel ad, büyü), bundle alma/koyma, `SelectBundleItem` baytı; paket baytı Java ile birebir. G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

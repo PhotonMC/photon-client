@@ -38,7 +38,7 @@ Plane shuffle, genel random yardımcı overload'ları, boş liste güvenli seçi
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki Direction, Axis ve Plane random seçicileri Java'nın `Util.getRandom` bounded-index yolunu uygular. Rust adapter `direction_random` JSONL operation'ı ile aynı `RandomSource` üzerinden dört seçimi ve takip eden çekişi dışarı verir; Java oracle seçicileri doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki Direction, Axis ve Plane random seçicileri Java'nın `Util.getRandom` bounded-index yolunu uygular. Rust adapter `direction_random` JSONL operation'ı ile aynı `RandomSource` üzerinden dört seçimi ve takip eden çekişi dışarı verir; Java oracle seçicileri doğrudan çağırır.
 
 Senaryolar signed seed sınırlarını, yatay/dikey Plane dizilerini, seçim sırasını ve takip eden random değerini Java oracle çıktısıyla karşılaştırır.
 

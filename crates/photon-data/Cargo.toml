@@ -1,0 +1,13 @@
+[package]
+name = "photon-data"
+description = "Tables generated from the reference and compared on every parity run."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+
+[lints]
+workspace = true

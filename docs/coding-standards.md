@@ -4,17 +4,17 @@ Bu belge Rust kodunun nasıl düzenleneceğini, adlandırılacağını ve hangi 
 
 ## Crate katmanları
 
-Workspace altı kütüphane crate'i ve uygulama crate'i `voxel`'den oluşur; hepsi `crates/` altındadır, kökte kaynak kodu yoktur. Bağımlılık yalnızca aşağıya doğru akar; bir crate kendinden sonraki bir crate'i bilemez, döngü kurulmaz.
+Workspace altı kütüphane crate'i ve uygulama crate'i `photon`'den oluşur; hepsi `crates/` altındadır, kökte kaynak kodu yoktur. Bağımlılık yalnızca aşağıya doğru akar; bir crate kendinden sonraki bir crate'i bilemez, döngü kurulmaz.
 
 | Crate | Sorumluluk |
 | --- | --- |
-| `voxel-core` | Java semantiğine uyan temel tipler ve codec'ler: matematik, AABB, şekiller, wire/binary/NBT/JSON/UTF-8 okuma-yazma, kimlikler, rastgelelik, zamanlayıcı. |
-| `voxel-data` | Oracle'dan üretilmiş tablolar (`src/generated/`, elle düzenlenmez) ve onların elle yazılmış tipleri ile arama fonksiyonları. Başka mantık taşımaz. |
-| `voxel-world` | İstemcinin dünya kopyası: chunk'lar, blok durumları, ışık, varlıklar, yerel oyuncu ve hareket. |
-| `voxel-game` | Oyun kuralları: eşyalar, bileşenler, envanter ve yaratıcı menüleri, tooltip, saldırı, seçenekler. |
-| `voxel-net` | Protokol, paketler, bağlantı ve oturum (`PlaySession`). |
-| `voxel-render` | Vulkan arka ucu, model/atlas/mesh, gökyüzü ve hava, arayüz (`gui`). |
-| `voxel` | `src/`: uygulama (`voxel` ikilisi); oyun döngüsü, pencere olayları, betikler. `examples/`: probe'lar ve davranış adaptörü. |
+| `photon-core` | Java semantiğine uyan temel tipler ve codec'ler: matematik, AABB, şekiller, wire/binary/NBT/JSON/UTF-8 okuma-yazma, kimlikler, rastgelelik, zamanlayıcı. |
+| `photon-data` | Oracle'dan üretilmiş tablolar (`src/generated/`, elle düzenlenmez) ve onların elle yazılmış tipleri ile arama fonksiyonları. Başka mantık taşımaz. |
+| `photon-world` | İstemcinin dünya kopyası: chunk'lar, blok durumları, ışık, varlıklar, yerel oyuncu ve hareket. |
+| `photon-game` | Oyun kuralları: eşyalar, bileşenler, envanter ve yaratıcı menüleri, tooltip, saldırı, seçenekler. |
+| `photon-net` | Protokol, paketler, bağlantı ve oturum (`PlaySession`). |
+| `photon-render` | Vulkan arka ucu, model/atlas/mesh, gökyüzü ve hava, arayüz (`gui`). |
+| `photon` | `src/`: uygulama (`photon` ikilisi); oyun döngüsü, pencere olayları, betikler. `examples/`: probe'lar ve davranış adaptörü. |
 
 Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka crate'e taşınırsa `pub(crate)` alanlar ya metoda ya da `pub`'a çevrilir; başka crate'in tipine inherent `impl` yazılamayacağı için yardımcı serbest fonksiyon olur.
 
@@ -22,14 +22,14 @@ Yeni kod, sorumluluğunun ait olduğu en alttaki crate'e konur. Bir tip başka c
 
 - Bir modül tek bir sorumluluk taşır ve adı o sorumluluktur (`sections`, `controls`, `atmosphere`). `utils` veya `helpers` gibi toplama modülleri açılmaz.
 - Modül belgesi (`//!`) modülün ne olduğunu bir iki cümleyle söyler; referansta karşılığı varsa Java sınıfının adını verir.
-- Arayüz kodu `voxel-render::gui` altındadır: çizim (`frame`, `atlas`, `font`, `items`), HUD (`hud`), widget'lar (`widgets`: `edit_box`, `slider`, `cycle`), sohbet (`chat`), ayar ekranları (`options`) ve diğer ekranlar (`screen`).
-- Birden fazla modülün paylaştığı bir yardımcı, en alttaki ortak crate'e ve oradaki doğru modüle konur. Yeni bir yardımcı yazmadan önce aynısının var olup olmadığına bakılır: sabit boyutlu okuma `voxel_core::wire::take`, JSON dosyası `voxel_core::json::read_object`, ARGB `voxel_render::tint`, Java `Math` kuralları `voxel-world` içinde `java_math`.
+- Arayüz kodu `photon-render::gui` altındadır: çizim (`frame`, `atlas`, `font`, `items`), HUD (`hud`), widget'lar (`widgets`: `edit_box`, `slider`, `cycle`), sohbet (`chat`), ayar ekranları (`options`) ve diğer ekranlar (`screen`).
+- Birden fazla modülün paylaştığı bir yardımcı, en alttaki ortak crate'e ve oradaki doğru modüle konur. Yeni bir yardımcı yazmadan önce aynısının var olup olmadığına bakılır: sabit boyutlu okuma `photon_core::wire::take`, JSON dosyası `photon_core::json::read_object`, ARGB `photon_render::tint`, Java `Math` kuralları `photon-world` içinde `java_math`.
 
 ## Dosya boyutu
 
 - **Bir kod dosyası 500–600 satırı geçmez** (Rust, Python, Java; boş satır ve yorum dahil). Sınıra yaklaşan dosya yeni özellikle birlikte sorumluluğuna göre bölünür; bölme sonradan değil, eklemeden önce yapılır.
 - Bölme sorumluluğa göredir, satır sayısına göre değil: `impl` blokları alt modüllere (`entity/state.rs`, `controls/events.rs`), testler konuya göre (`tests/entities.rs`), paket ayrıştırıcıları paket ailesine göre. Modül adı içeriği söyler (`part`, `misc` açılmaz).
-- Üretilmiş tablolar (`voxel-data/src/generated/`) ve oracle'ın ürettiği veri bu sınırın dışındadır; üretici kaldırılınca (D görevleri) o istisna da kalkar. Sınırı aşan mevcut dosyalar [A06](tasks/A06-dev-dosyalar.md) ve bağlı görevlerle küçültülür; yeni dosya veya mevcut dosyaya ekleme bu sınırı aşan bir dosya bırakmaz.
+- Üretilmiş tablolar (`photon-data/src/generated/`) ve oracle'ın ürettiği veri bu sınırın dışındadır; üretici kaldırılınca (D görevleri) o istisna da kalkar. Sınırı aşan mevcut dosyalar [A06](tasks/A06-dev-dosyalar.md) ve bağlı görevlerle küçültülür; yeni dosya veya mevcut dosyaya ekleme bu sınırı aşan bir dosya bırakmaz.
 
 ## Dosya adlandırma ve yerleşim
 
@@ -69,7 +69,7 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 ## Referans verisi
 
 - Java bir değeri başka veriden **hesaplıyorsa** biz de hesaplarız (state önbelleği, şekillerden çıkan değerler); tablo olarak tutmayız. Java onu kodda veya `data/` altında **tanımlıyorsa** tanımı tipli ve okunur bir kayıt olarak tutarız. Durum [yol haritasındadır](architecture-roadmap.md).
-- Tanımlar `crates/voxel-data/src/generated` altındadır ve `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
+- Tanımlar `crates/photon-data/src/generated` altındadır ve `tools/generate/` içindeki bir üretici tarafından yazılır; dosyanın başındaki belge üreticinin adını verir. Üretilen dosya elle düzenlenmez.
 - Biçim, referansın kodunu okur gibi olmalıdır: blok başına bir `Block::of(...)` zinciri, adı Java alanı olan özellik sabitleri, alan adlarıyla yazılmış kayıtlar. Tekrarları silmek için indeks listeleri, bit dizgeleri, koşu uzunluğu dizileri veya ham ağ baytları kullanılmaz; bir sürüm atlamasında diff gerçek değişikliği göstermelidir.
 - Tabloyu okuyan elle yazılmış kod (`definition`, `registry`, `shape`) üretilen dosyadan ayrı tutulur. Float'lar referans bitlerine birebir dönen en kısa ondalık yazımla yazılır (`tools/generate/common.py`).
 - Bütün tanımlar `python3 tools/generate/all.py <capture>` ile yeniden üretilir ve her parity koşusunda davranış adaptörü üzerinden baştan sona karşılaştırılır.
@@ -77,7 +77,7 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 ## Davranışı koruma
 
 - Sayısal kod referansın işlem sırasını ve tiplerini korur: `f32`/`f64` dönüşümleri aynı yerde yapılır, toplama sırası değiştirilmez; bit eşitliği gereken yerde karşılaştırma bitlerle yapılır.
-- Java'nın NaN ve `-0.0` kuralları Rust'ınkinden farklıdır. NaN veya işaretli sıfır gelebilen yerde `f64::min`/`max` yerine `java_math` ve `voxel_core::math` içindeki yardımcılar kullanılır.
+- Java'nın NaN ve `-0.0` kuralları Rust'ınkinden farklıdır. NaN veya işaretli sıfır gelebilen yerde `f64::min`/`max` yerine `java_math` ve `photon_core::math` içindeki yardımcılar kullanılır.
 - Tamsayı taşması her profilde denetlenir; kasıtlı sarma `wrapping_*` ile yazılır.
 - Yeniden düzenleme davranış değiştirmez. Bir düzenlemenin davranışı değiştirip değiştirmediği şüpheliyse değişiklik yapılmaz, fark kayda geçirilir.
 
@@ -85,7 +85,7 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 
 - Hata olabilecek işlem `Result` döner ve `?` ile yayılır. Katmanlar arası hata dönüşümü `From` ile yazılır (`wire::ReadError` → `binary::ReadError`); aynı eşleme fonksiyonu modül modül tekrar edilmez.
 - `expect` yalnızca daha önce denetlenmiş bir değişmez için ve bunu söyleyen bir mesajla kullanılır; `unwrap` üretim kodunda kullanılmaz.
-- Tanılama çıktısı `log` makrolarıyla yazılır (`error!`, `warn!`, `info!`, `debug!`); düzey `VOXEL_LOG` ile seçilir, varsayılan `info`. `println!` yalnız probe ve profil raporlarının `anahtar=değer` satırları içindir. Ayrıştırılamayıp yok sayılan paket `debug!` ile nedenini bırakır.
+- Tanılama çıktısı `log` makrolarıyla yazılır (`error!`, `warn!`, `info!`, `debug!`); düzey `PHOTON_LOG` ile seçilir, varsayılan `info`. `println!` yalnız probe ve profil raporlarının `anahtar=değer` satırları içindir. Ayrıştırılamayıp yok sayılan paket `debug!` ile nedenini bırakır.
 
 ## `unsafe`
 
@@ -94,14 +94,14 @@ Sınırı aşan kod önce bölünür: tek sorumluluklu yardımcı fonksiyon, dur
 
 ## Arayüz ekranları
 
-Bir kap ekranı `voxel_render::gui::screen::Screen` trait'ini uygular. Yerleşim, vurgu, arka plan ve tooltip `ContainerLayout`'tadır; fare ve sürükleme durumu `ContainerMouse`'tadır; çizim `ScreenDraw` bağlamıyla yapılır. Ekranın istediği tıklamalar `ScreenAction` olarak döner ve uygulama bunları oturuma iletir. Yeni bir ekran bu parçaları kullanır, kendi kopyalarını yazmaz.
+Bir kap ekranı `photon_render::gui::screen::Screen` trait'ini uygular. Yerleşim, vurgu, arka plan ve tooltip `ContainerLayout`'tadır; fare ve sürükleme durumu `ContainerMouse`'tadır; çizim `ScreenDraw` bağlamıyla yapılır. Ekranın istediği tıklamalar `ScreenAction` olarak döner ve uygulama bunları oturuma iletir. Yeni bir ekran bu parçaları kullanır, kendi kopyalarını yazmaz.
 
 ## Doğrulama
 
-Her değişiklik şu adımlardan geçer; uyarı sayısı sıfırdır. Hepsini tek komut çalıştırır: `python3 tools/voxel.py check` (oracle kaynağı değiştiyse `--capture`); yalnız hata ve tek özet satırı basar, sonda `CHECK OK`.
+Her değişiklik şu adımlardan geçer; uyarı sayısı sıfırdır. Hepsini tek komut çalıştırır: `python3 tools/photon.py check` (oracle kaynağı değiştiyse `--capture`); yalnız hata ve tek özet satırı basar, sonda `CHECK OK`.
 
 1. `cargo fmt --all`
 2. `cargo build --release --workspace --all-targets`
-3. `VOXEL_ASSETS=$PWD/.data/minecraft/assets/jar/assets cargo test --release --workspace --all-targets`
+3. `PHOTON_ASSETS=$PWD/.data/minecraft/assets/jar/assets cargo test --release --workspace --all-targets`
 4. `cargo clippy --release --workspace --all-targets`
 5. [Davranış runner'ı](behavior-runner.md) ile parity karşılaştırması.

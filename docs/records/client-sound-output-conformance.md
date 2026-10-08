@@ -10,10 +10,10 @@ Bu kayıt motorun kanallarını (T61b) ses aygıtına bağlayan katmanı kapsar:
 
 ## Yapılan
 
-- `voxel-audio::mixer`: kaynaklar (konum, perde, kazanç, döngü, doğrusal sönüm, göreli, durum) ve dinleyici → stereo; perde doğrusal aradeğerlemeyle yeniden örnekleme, sönüm yukarıdaki formül, **panlama OpenAL Soft'unki değil**: sese açıyla sabit güçte sol/sağ; çok kanallı (stereo) kaynak panlanmaz, yalnız sönümlenir.
-- `voxel-audio::output`: varsayılan çıkış aygıtı (`cpal`, `f32`), mikserin her geri çağrıda sol/sağı aygıtın ilk iki kanalına; aygıt yoksa `None` ve oyun sessiz sürer.
-- `voxel-audio::channel`: `Channel`/`ChannelSource` uygulaması (kaynak = mikser kaynağı, havuz sayımı `Library`'nin boyutlarıyla), dosyalar varlık dizininin nesnelerinden (`.ogg` T62 çözücüsüyle; akışlı kanallar `OggStream`/`LoopingOggStream` ile).
-- `voxel::sound`: `sounds.json` (varlık dizininden), motor, paket komutları (`Sound`, `SoundEntity` — entity'yi izleyen ses —, `StopSound`) ve her tikte `tick`; dinleyici her karede kameradan (`camera_vectors`). Ses seviyeleri `options.txt`'in `soundCategory_*` satırlarından (varsayılan 1).
+- `photon-audio::mixer`: kaynaklar (konum, perde, kazanç, döngü, doğrusal sönüm, göreli, durum) ve dinleyici → stereo; perde doğrusal aradeğerlemeyle yeniden örnekleme, sönüm yukarıdaki formül, **panlama OpenAL Soft'unki değil**: sese açıyla sabit güçte sol/sağ; çok kanallı (stereo) kaynak panlanmaz, yalnız sönümlenir.
+- `photon-audio::output`: varsayılan çıkış aygıtı (`cpal`, `f32`), mikserin her geri çağrıda sol/sağı aygıtın ilk iki kanalına; aygıt yoksa `None` ve oyun sessiz sürer.
+- `photon-audio::channel`: `Channel`/`ChannelSource` uygulaması (kaynak = mikser kaynağı, havuz sayımı `Library`'nin boyutlarıyla), dosyalar varlık dizininin nesnelerinden (`.ogg` T62 çözücüsüyle; akışlı kanallar `OggStream`/`LoopingOggStream` ile).
+- `photon::sound`: `sounds.json` (varlık dizininden), motor, paket komutları (`Sound`, `SoundEntity` — entity'yi izleyen ses —, `StopSound`) ve her tikte `tick`; dinleyici her karede kameradan (`camera_vectors`). Ses seviyeleri `options.txt`'in `soundCategory_*` satırlarından (varsayılan 1).
 - Canlı (`server-conformance`): `playsound` ve ortam sesleri çalındı, çökme yok (`sound=on`); sesin kulakla doğruluğu bu kayıtta doğrulanmadı.
 
 ## Sapmalar ve açık kalanlar

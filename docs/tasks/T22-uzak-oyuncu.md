@@ -4,7 +4,7 @@
 **Bağımlılık:** T21. **Boy:** L (sığmazsa ad etiketini ayır).
 
 ## Oku
-- Rust: `crates/voxel-render/src/entity/player_model.rs`, `player_renderer.rs` (birinci kişi/üçüncü şahıs yerel oyuncu çizimi — yeniden kullanılacak), `crates/voxel-render/src/vulkan.rs` (**bütün okuma**; `grep -n "player\|third_person\|draw_entity"`), `crates/voxel-render/src/scene.rs`, `crates/voxel/src/{view,play}.rs`, T21 snapshot sorgusu, `PlaySession` oyuncu listesi (`online_player_names`, `PlayerInfoUpdate` kayıtları: `grep -n "player_info\|tab_list" crates/voxel-net/src/connection/play.rs`).
+- Rust: `crates/photon-render/src/entity/player_model.rs`, `player_renderer.rs` (birinci kişi/üçüncü şahıs yerel oyuncu çizimi — yeniden kullanılacak), `crates/photon-render/src/vulkan.rs` (**bütün okuma**; `grep -n "player\|third_person\|draw_entity"`), `crates/photon-render/src/scene.rs`, `crates/photon/src/{view,play}.rs`, T21 snapshot sorgusu, `PlaySession` oyuncu listesi (`online_player_names`, `PlayerInfoUpdate` kayıtları: `grep -n "player_info\|tab_list" crates/photon-net/src/connection/play.rs`).
 - Java: `.data/minecraft/source/net/minecraft/client/renderer/entity/player/AvatarRenderer.java` (varsa; `find .data/minecraft/source/net/minecraft/client/renderer/entity -name "*Player*Renderer*.java" -o -name "AvatarRenderer.java"`), `.data/minecraft/source/net/minecraft/client/renderer/entity/LivingEntityRenderer.java` (323), `.data/minecraft/source/net/minecraft/world/entity/WalkAnimationState.java`, `.data/minecraft/source/net/minecraft/client/model/player/PlayerModel.java` (`setupAnim`), `.data/minecraft/source/net/minecraft/client/resources/DefaultPlayerSkin.java` (UUID → varsayılan deri), `.data/minecraft/source/net/minecraft/client/renderer/entity/EntityRenderer.java` (ad etiketi: `extractNameTag`).
 
 ## Yapılacaklar
@@ -17,7 +17,7 @@
 Model eklem dönüşümleri için mevcut `player_model` birim/oracle kaydı (`docs/records/player-model-conformance.md`). Yürüme animasyonu için küçük oracle: `WalkAnimationState` tik dizisi → `position(partial)`, `speed(partial)` (entity ailesine satır).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ikinci istemci (`VOXEL_USER=Tester`, başka süreç) yürürken görünür; ekran görüntüsünü bir kez oku.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ikinci istemci (`PHOTON_USER=Tester`, başka süreç) yürürken görünür; ekran görüntüsünü bir kez oku.
 
 ## Kapsam dışı
 Zırh/eşya/pelerin katmanları, ağdan deri, sahibinin kendi gölgesi.
@@ -26,7 +26,7 @@ Zırh/eşya/pelerin katmanları, ağdan deri, sahibinin kendi gölgesi.
 `docs/remaining-work.md` M4 madde 2–3.
 
 ## Devir notu
-- Yapıldı: `voxel-world/living.rs` (`WalkAnimation` = `WalkAnimationState`, yüzme geçişi, gövde dönüşü `tickHeadTurn`; yerel oyuncu ve uzak oyuncu aynı kodu kullanır), `ClientEntity` oyuncu pozu (`tick_player_pose`), `EntitySnapshot` genişledi (gövde yaw'ı, yürüme konumu/hızı, yüzme, poz), `walk_animation` oracle'ı gerçek `WalkAnimationState`'e karşı, varsayılan derilerin tek atlası (`skin_atlas`, `atlas_uv`: 18 deri 6×3 hücre), `overlays::remote_players`, yerel oyuncu/el/envanter aynı atlastan.
+- Yapıldı: `photon-world/living.rs` (`WalkAnimation` = `WalkAnimationState`, yüzme geçişi, gövde dönüşü `tickHeadTurn`; yerel oyuncu ve uzak oyuncu aynı kodu kullanır), `ClientEntity` oyuncu pozu (`tick_player_pose`), `EntitySnapshot` genişledi (gövde yaw'ı, yürüme konumu/hızı, yüzme, poz), `walk_animation` oracle'ı gerçek `WalkAnimationState`'e karşı, varsayılan derilerin tek atlası (`skin_atlas`, `atlas_uv`: 18 deri 6×3 hücre), `overlays::remote_players`, yerel oyuncu/el/envanter aynı atlastan.
 - Canlı: iki istemciyle (`Tester9` + `Fresh12`) uzak oyuncu Steve derisiyle platformda görünüyor (ekran görüntüsü okundu).
 - Sapma: ad etiketi yok (T22b); kol sallama (`Animate`) yok; suda eğilme için `in_water` hep false (yüzme pozu kuyruğa tek başına yetmez); profil derisi yok (varsayılan deri); kamera dışı/frustum ayıklama yok; ışık göz konumundan tek örnek.
 - Açık: T22b, `Animate` paketi, uzak oyuncu zırhı/eşyası.

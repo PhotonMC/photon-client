@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec2_equality"` ve f32 bit dizgeli `firs
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec2::equals_java` ve `Vec2::hash_code_java`, Java'nın f32 `==`, canonical NaN ve wrapping int hash aritmetiğini uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` aynı Java metodlarını çağırır.
+`crates/photon-core/src/math.rs` içindeki `Vec2::equals_java` ve `Vec2::hash_code_java`, Java'nın f32 `==`, canonical NaN ve wrapping int hash aritmetiğini uygular. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` aynı Java metodlarını çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec2.equals(Object)` ve `Vec2.hashCode()` metodlarını karşılayan `Vec2::equals_java` ve `Vec2::hash_code_java` metodlarını içerir. Java oracle doğrudan iki Java metodunu çağırır; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec2.equals(Object)` ve `Vec2.hashCode()` metodlarını karşılayan `Vec2::equals_java` ve `Vec2::hash_code_java` metodlarını içerir. Java oracle doğrudan iki Java metodunu çağırır; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

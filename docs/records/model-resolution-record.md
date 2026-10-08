@@ -38,9 +38,9 @@ gölge bu projenin kendi uydurmasıdır. Ayrıntılar
 ## Çalıştırma
 
 ```text
-VOXEL_ASSETS=/kullanıcının/asset/klasörü \
-VOXEL_MODEL=minecraft:block/oak_stairs \
-VOXEL_ROTATE_Y=90 \
+PHOTON_ASSETS=/kullanıcının/asset/klasörü \
+PHOTON_MODEL=minecraft:block/oak_stairs \
+PHOTON_ROTATE_Y=90 \
 cargo run -- window 854 480
 ```
 
@@ -67,7 +67,7 @@ dört ayrı dokuyu tek atlasa paketler; `lantern` döndürülmüş elementler ta
 - **Blockstate varyant seçimi yok.** Model adı ve döndürme doğrudan veriliyor;
   gerçek istemci `blockstates/` dosyasından blok durumuna göre varyant seçer.
   Seçilen varyantın döndürmesi [pinlendi](model-state-conformance.md) ve
-  uygulanıyor; `VOXEL_ROTATE_X` ve `VOXEL_ROTATE_Y` ile sürülebilir.
+  uygulanıyor; `PHOTON_ROTATE_X` ve `PHOTON_ROTATE_Y` ile sürülebilir.
 - **UV kilidi yok.**
 - **`display` dönüşümleri ayrıştırılmıyor.**
 - **Tint uygulanmıyor.** `tintindex` okunuyor ama renk çarpanı yok, bu yüzden

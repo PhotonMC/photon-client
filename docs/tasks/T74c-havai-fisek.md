@@ -8,7 +8,7 @@ parıltı; parlama), `ClientLevel.createFireworks` ve roketin `EntityEvent` 17's
 ## Oku
 Java: `client/particle/FireworkParticles.java`, `client/multiplayer/ClientLevel.java`
 (`createFireworks`), `world/entity/projectile/FireworkRocketEntity.java` (`handleEntityEvent`),
-`world/item/component/{Fireworks,FireworkExplosion}.java`. Rust: `crates/voxel-world/src/particles/hit.rs`.
+`world/item/component/{Fireworks,FireworkExplosion}.java`. Rust: `crates/photon-world/src/particles/hit.rs`.
 
 ## Oracle
 `particle-engine` satırları (başlatıcı bir patlama listesiyle).

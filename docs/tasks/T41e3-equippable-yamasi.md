@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/item/equipment/../component/Equippable.java` (`STREAM_CODEC`), `client/renderer/entity/layers/HumanoidArmorLayer.java` (`shouldRender`), `world/item/ItemStack.java`.
-- Rust: `crates/voxel/src/equipment/armor.rs` (`asset_for`), `crates/voxel-game/src/item/values.rs`, `crates/voxel-game/src/item/default_components.rs`.
+- Rust: `crates/photon/src/equipment/armor.rs` (`asset_for`), `crates/photon-game/src/item/values.rs`, `crates/photon-game/src/item/default_components.rs`.
 
 ## Oracle
 `equippable` yamalı yığınların gerçek `ItemStack.get(EQUIPPABLE)` ile çözülmüş yuva ve `asset_id`'si (yama telin biçiminde, Java gerçek codec'le çözer; `entity/item-foil` kalıbı).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: `item_values::equippable_of` (yama ekler/kaldırırsa yama, yoksa eşya tablosu; yuva ve varlık kimliği), `Armor::asset_for` onu kullanır. Kayıt: `docs/records/client-armor-parity-conformance.md`. Canlıda görüldü.

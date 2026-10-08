@@ -1,0 +1,22 @@
+[package]
+name = "photon"
+description = "The client application: window, session loop, screens and scripted runs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**", "/examples/**"]
+
+[dependencies]
+log.workspace = true
+photon-core.workspace = true
+photon-data.workspace = true
+photon-world.workspace = true
+photon-audio.workspace = true
+photon-game.workspace = true
+photon-net.workspace = true
+photon-render.workspace = true
+glfw.workspace = true
+
+[lints]
+workspace = true

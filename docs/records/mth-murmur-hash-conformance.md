@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `binarySearch`, `rayIntersectsAABB`, `atan2`, ters kare
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs` içindeki `mth_murmur_hash3_mixer`, Java `Mth.murmurHash3Mixer(int)` yolunu JSONL adapter'a bağlar. Unsigned sağa kaydırma/XOR adımları ve i32 wrapping çarpımları Java oracle'ın signed `value` sonucu ile karşılaştırılır.
+`crates/photon-core/src/math.rs` içindeki `mth_murmur_hash3_mixer`, Java `Mth.murmurHash3Mixer(int)` yolunu JSONL adapter'a bağlar. Unsigned sağa kaydırma/XOR adımları ve i32 wrapping çarpımları Java oracle'ın signed `value` sonucu ile karşılaştırılır.
 
 ## Doğrulama
 

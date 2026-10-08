@@ -4,13 +4,13 @@
 **Bağımlılık:** T70. **Boy:** M.
 
 ## Oku
-Java: `client/particle/{TerrainParticle,ParticleEngine}.java`, `core/particles/BlockParticleOption.java`, `client/renderer/LevelEventHandler.java` (2001), `client/multiplayer/MultiPlayerGameMode.java` (`continueDestroyBlock`). Rust: `crates/voxel-world/src/particles/`, `crates/voxel-game/src/game_mode.rs`.
+Java: `client/particle/{TerrainParticle,ParticleEngine}.java`, `core/particles/BlockParticleOption.java`, `client/renderer/LevelEventHandler.java` (2001), `client/multiplayer/MultiPlayerGameMode.java` (`continueDestroyBlock`). Rust: `crates/photon-world/src/particles/`, `crates/photon-game/src/game_mode.rs`.
 
 ## Oracle
 `particle_state` operation'ı: kutucuk konumları, hızları (rastgele sırasıyla), doku seçimi, ışık; `client-parity`. Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.

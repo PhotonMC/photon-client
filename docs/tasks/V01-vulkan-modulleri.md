@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §5
-- `crates/voxel-render/src/vulkan/` (V01 sonrası; öncesi tek dosya `vulkan.rs`)
+- `crates/photon-render/src/vulkan/` (V01 sonrası; öncesi tek dosya `vulkan.rs`)
 
 ## Yapılacaklar
 - `vk/{instance,device,swapchain,memory,pipeline,texture,frame,shaders}.rs`; `VulkanBackend` yalnız bileşim ve genel API.
@@ -13,7 +13,7 @@
 - `set_entities`/`set_shadows`/… gibi tekrar eden fonksiyonlar tek `set_draw(kind, vertices)` üzerinden (API değişikliği çağıranlarda mekanik).
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench sayıları V00 ile aynı aralıkta.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench sayıları V00 ile aynı aralıkta.
 
 ## Kapsam dışı
 Senkronizasyon değişikliği (V03).

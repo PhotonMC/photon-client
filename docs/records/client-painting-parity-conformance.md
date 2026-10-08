@@ -11,7 +11,7 @@ Bu kayıt `painting` entity'sinin (`Painting`, `PaintingRenderer`) çizimini kap
 ## Kapsam
 
 - `entity/painting-variants` 51 satır (kayıttan; `tools/generate/painting_variants.py` ile üretilir, sürüm değişince yenilenir); `entity/painting-geometry` 10 satır (1×1 dört yön, geniş, uzun, 2×2, 4×3, 3×4, uzak konum; sprite köşeleri kasten farklı).
-- Rust: `voxel-render::painting` (`painting_center`, `painting_pose`, `painting_vertices`), `voxel-data` çeşit tablosu, oyunda `paintings.rs`.
+- Rust: `photon-render::painting` (`painting_center`, `painting_pose`, `painting_vertices`), `photon-data` çeşit tablosu, oyunda `paintings.rs`.
 - Yan düzeltme: bağ düğümünün konumu da artık sunucunun yolladığı bloktan türetilir (`block + (0,5; 0,375; 0,5)`), önceki T40f kaydında ham paket konumu kullanılıyordu.
 
 ## Sapmalar ve açık kalanlar

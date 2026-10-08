@@ -46,7 +46,7 @@ Rust debug ve release adaptörleri math ailesinde 400/400, birleşik corpus'ta 2
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/aabb.rs`, Java `AABB.getXsize()`, `getYsize()`, `getZsize()` ve `getSize()` sorgularının çıkarma, toplama ve bölme sırasını uygular. `examples/behavior_adapter.rs` `sizes` adımını JSONL math senaryolarına bağlar.
+`crates/photon-core/src/aabb.rs`, Java `AABB.getXsize()`, `getYsize()`, `getZsize()` ve `getSize()` sorgularının çıkarma, toplama ve bölme sırasını uygular. `examples/behavior_adapter.rs` `sizes` adımını JSONL math senaryolarına bağlar.
 
 ## Doğrulama
 

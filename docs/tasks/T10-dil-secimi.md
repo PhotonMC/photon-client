@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/screens/options/LanguageSelectScreen.java` (185), `.data/minecraft/source/net/minecraft/client/resources/language/{LanguageManager,ClientLanguage,LanguageInfo}.java`, `.data/minecraft/source/net/minecraft/client/gui/components/AbstractSelectionList.java` (liste kalıbı T07'de), yazı tipi: `assets/minecraft/font/default.json` ve `include/*.json` (`grep -n "providers"`), `.data/minecraft/assets/jar/assets/minecraft/lang/` (tr_tr.json var mı bak), Java `Language` kullanımı.
-- Rust: `crates/voxel-game/src/text.rs` (`Lang::load`, çok dilli yükleme/`fallback en_us`), `crates/voxel-render/src/gui/font.rs` (hangi sağlayıcılar yüklü; accented/nonlatin?).
+- Rust: `crates/photon-game/src/text.rs` (`Lang::load`, çok dilli yükleme/`fallback en_us`), `crates/photon-render/src/gui/font.rs` (hangi sağlayıcılar yüklü; accented/nonlatin?).
 
 ## Yapılacaklar
 1. `Lang` dil seçimli yüklenir: seçili dil + `en_us` yedek (Java `ClientLanguage.loadFrom`); `LanguageInfo` listesi `pack.mcmeta` yerine `languages` kaydından (jar `assets/minecraft/lang/*` + `languages.json` varsa; yoksa Java'nın `LanguageManager.getLanguages` yolunu oku, yalnız mevcut dosyalarla).
@@ -17,7 +17,7 @@
 `language_screen` düzen operation'ı (gerçek `LanguageSelectScreen`, birkaç dille: en_us, tr_tr, de_de). Metin çözümü için ayrı `lang` küçük satırları (`Language.getOrDefault` ile 5–10 anahtar, iki dil): Rust `Lang` aynı sonucu vermeli.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 `unifont` yedeği, sağdan sola metin.
@@ -26,6 +26,6 @@
 `docs/gui-oracle.md`, `docs/remaining-work.md` (yazı tipi kalanı).
 
 ## Devir notu
-- `voxel-game/src/language.rs` (`LanguageSource`: jar `en_us` + indeks/`objects`, `languages()` = `pack.mcmeta`), `gui/language_select.rs` (arama `EditBox` + 18'lik seçim listesi), `gui/scroll_area.rs` (liste ortakları; `OptionsList` de bunu kullanıyor), `EditBox::click_at`. Canlı: `Controls.language_request` → `play.rs` `Gui::set_language` + `rebuild_menus`.
+- `photon-game/src/language.rs` (`LanguageSource`: jar `en_us` + indeks/`objects`, `languages()` = `pack.mcmeta`), `gui/language_select.rs` (arama `EditBox` + 18'lik seçim listesi), `gui/scroll_area.rs` (liste ortakları; `OptionsList` de bunu kullanıyor), `EditBox::click_at`. Canlı: `Controls.language_request` → `play.rs` `Gui::set_language` + `rebuild_menus`.
 - Oracle: `language_screen` 42 satır (`settingsScreen` Java yöntemi, `LanguageManager` pack listesiyle, `StubGame.onTextInputFocusChange`), `lang_text` 8 dil. Liste yalnız Latin adlı dillerle çünkü unifont yedeği ve RTL taşınmadı.
 - Açık: unifont (Türkçe ş/ğ/İ/ı çizilmez), RTL, Font ekranı, sohbet geçmişi yeniden çözümü (T10b), ok tuşu gezintisi (T11), çift tık süresi 250 ms sabit. Canlı denenmedi.

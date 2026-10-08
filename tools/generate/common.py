@@ -1,7 +1,7 @@
 """What every table generator shares.
 
 A generator reads one case from a behaviour capture (the reference's own
-answer), and writes a Rust file under `crates/voxel-data/src`. The parity run
+answer), and writes a Rust file under `crates/photon-data/src`. The parity run
 then compares the written table with the reference on every pass, so the
 table is never trusted blindly.
 
@@ -13,7 +13,7 @@ import struct
 import sys
 from fractions import Fraction
 
-DATA = "crates/voxel-data/src"
+DATA = "crates/photon-data/src"
 
 
 def load_rows(path, case_id):

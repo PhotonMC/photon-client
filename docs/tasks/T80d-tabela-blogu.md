@@ -4,13 +4,13 @@
 **Bağımlılık:** T80. **Boy:** L.
 
 ## Oku
-Java: `client/renderer/blockentity/{AbstractSignRenderer,StandingSignRenderer,HangingSignRenderer}.java`, `state/*SignRenderState.java`. Rust: `crates/voxel-render/src/gui/font.rs`, `crates/voxel/src/world/block_entities.rs`.
+Java: `client/renderer/blockentity/{AbstractSignRenderer,StandingSignRenderer,HangingSignRenderer}.java`, `state/*SignRenderState.java`. Rust: `crates/photon-render/src/gui/font.rs`, `crates/photon/src/world/block_entities.rs`.
 
 ## Oracle
 Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dörtgenler). Java kaynağı önce satır satır okunur.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Başka blok entity aileleri.

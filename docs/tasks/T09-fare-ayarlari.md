@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/screens/options/MouseSettingsScreen.java` (37), `.data/minecraft/source/net/minecraft/client/gui/screens/options/controls/ControlsScreen.java` (43; `Controls` düğmesi → sonra), `.data/minecraft/source/net/minecraft/client/Options.java` (`sensitivity`, `invertMouse`, `mouseWheelSensitivity`, `discreteMouseScroll`, `touchscreen`, `rawMouseInput`: `grep -n`), `.data/minecraft/source/net/minecraft/client/MouseHandler.java` (`turnPlayer`, kaydırma: `grep -n "sensitivity\|invert\|scroll"`).
-- Rust: `crates/voxel/src/controls.rs` (~880 duyarlılık ölçeği, `invert` yok; kaydırma `crates/voxel-game/src/input/scroll.rs`), `docs/mouse-*`/`smooth-double-conformance.md` zaten `SmoothDouble` parity'si.
+- Rust: `crates/photon/src/controls.rs` (~880 duyarlılık ölçeği, `invert` yok; kaydırma `crates/photon-game/src/input/scroll.rs`), `docs/mouse-*`/`smooth-double-conformance.md` zaten `SmoothDouble` parity'si.
 
 ## Yapılacaklar
 1. `MouseSettingsScreen` (Java satırları; `OptionsList`): duyarlılık kaydırıcısı ("SENSITIVITY: 100%", `options.sensitivity.min/max` özel metinleri), ters fare, kaydırma duyarlılığı, ayrık kaydırma; `rawMouseInput`/`touchscreen` etkisiz çizilir.
@@ -15,7 +15,7 @@
 `mouse_settings_screen` düzen operation'ı (kaydırıcı etiketleri sınır değerleriyle).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`; `crates/voxel/src/controls.rs` birim testi: sensitivity 1.0 ve invert ile delta işareti/ölçeği Java `MouseHandler.turnPlayer` formülüyle.
+`tools/photon.py check --capture` → `CHECK OK`; `crates/photon/src/controls.rs` birim testi: sensitivity 1.0 ve invert ile delta işareti/ölçeği Java `MouseHandler.turnPlayer` formülüyle.
 
 ## Kapsam dışı
 Tuş atamaları ekranı (`ControlsScreen` alt ekranları).

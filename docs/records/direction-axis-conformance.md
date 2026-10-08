@@ -37,7 +37,7 @@ Yönün yaklaşıksal seçimi, entity bakış yönleri, random seçim, codec'ler
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `from_axis_and_direction`, Java `Direction.fromAxisAndDirection` eksen ve işaret eşlemesini uygular. Rust adapter `direction_axis` JSONL operation'ı üzerinden yöntemi çağırır; Java oracle aynı enum metodunu doğrudan kullanır.
+`crates/photon-core/src/direction.rs` içindeki `from_axis_and_direction`, Java `Direction.fromAxisAndDirection` eksen ve işaret eşlemesini uygular. Rust adapter `direction_axis` JSONL operation'ı üzerinden yöntemi çağırır; Java oracle aynı enum metodunu doğrudan kullanır.
 
 Senaryolar X/Y/Z eksenlerinin pozitif ve negatif AxisDirection çiftlerini kapsar. Beklenen yön snapshot'ları Java oracle çıktısından alındı.
 

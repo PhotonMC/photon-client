@@ -13,7 +13,7 @@
 - Yarı saydam katmanın sıralaması korunur.
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench: yüksek görüş mesafesinde CPU kayıt süresi düşer.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench: yüksek görüş mesafesinde CPU kayıt süresi düşer.
 
 ## Kapsam dışı
 GPU tarafı ayıklama.

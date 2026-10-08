@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik metin pinned JAR'ın
 kullandığı Gson yapılandırmasına ve üretim kütüphanesindeki
-`voxel_client::json` modülüne verilir, kabul/ret kararı ile ayrıştırılan
+`photon::json` modülüne verilir, kabul/ret kararı ile ayrıştırılan
 belgenin kanonik hâli birebir karşılaştırılır.
 
 Render veri katmanının dördüncü dilimi. Model, blockstate ve pack dosyalarının

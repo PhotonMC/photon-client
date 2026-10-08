@@ -56,7 +56,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `local_player_travel_flying`, relative input dönüşümünü,
+`crates/photon-world/src/input.rs` içindeki `local_player_travel_flying`, relative input dönüşümünü,
 environment branch'lerini ve drag sırasını uygular. `ClientWorld` local player
 motion state'inden delta'yı alıp sonucu tekrar sorgulanabilir motion state'ine
 yazar; behavior adapter aynı production helper'ını çağırır.

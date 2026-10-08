@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** L.
 
 ## Oku
-Java: `client/particle/{Particle,ParticleEngine,ParticleGroup,QuadParticleGroup,NoRenderParticleGroup,SingleQuadParticle,SpriteSet,ParticleDescription,ParticleResources,SmokeParticle,RisingParticle,FlameParticle}.java`, `core/particles/ParticleTypes.java`, `network/protocol/game/ClientboundLevelParticlesPacket.java`. Rust: yeni `crates/voxel-world/src/particles/` (durum) ve `crates/voxel-render` (çizim); rastgele tüketim sırası `voxel_core::random::RandomSource`.
+Java: `client/particle/{Particle,ParticleEngine,ParticleGroup,QuadParticleGroup,NoRenderParticleGroup,SingleQuadParticle,SpriteSet,ParticleDescription,ParticleResources,SmokeParticle,RisingParticle,FlameParticle}.java`, `core/particles/ParticleTypes.java`, `network/protocol/game/ClientboundLevelParticlesPacket.java`. Rust: yeni `crates/photon-world/src/particles/` (durum) ve `crates/photon-render` (çizim); rastgele tüketim sırası `photon_core::random::RandomSource`.
 
 ## Oracle
 Gerçek `Particle` alt sınıfları sahte `ClientLevel` ile `n` tik: konum, hız, yaşam, boyut, alfa, sprite sırası bit bit (`client-parity`); çizim `particle_quads` operation'ı (köşe, UV, renk, ışık). Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.
@@ -19,6 +19,6 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-- **Yapılan:** `voxel-world/src/particles/` (`Particle` tabanı ve `SingleQuadParticle` alanları, `Kind::{AshSmoke, Flame}`, `SpriteSet`, ışık); `voxel-data/src/particle_type.rs` (125 tür, elle, her koşuda oracle'la karşılaştırılır); oracle `particle_types` ve `particle_ticks` (`MovementParticleOracle`); kayıt: `client-particle-core-parity-conformance.md`.
+- **Yapılan:** `photon-world/src/particles/` (`Particle` tabanı ve `SingleQuadParticle` alanları, `Kind::{AshSmoke, Flame}`, `SpriteSet`, ışık); `photon-data/src/particle_type.rs` (125 tür, elle, her koşuda oracle'la karşılaştırılır); oracle `particle_types` ve `particle_ticks` (`MovementParticleOracle`); kayıt: `client-particle-core-parity-conformance.md`.
 - **Oracle hilesi:** partikülün kendi rastgele kaynağı saat tohumlu; `seededParticle` sayacı kurup tohum tutana dek yeniden yapar (sonraki partikül görevleri aynı yardımcıyı kullanır). Yeniden denemelerde motor rastgele kaynağı da yeniden yapılmalı (aksi hâlde çekimler denemeye bağlı kayar).
 - **Bölündü:** motor/paket/geçit T70b, çizim T70c. Açık: bağlama duyarlı çarpışma şekli (iskele) taşınmadı.

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/screens/options/VideoSettingsScreen.java` (299), `.data/minecraft/source/net/minecraft/client/gui/screens/options/OptionsSubScreen.java`, `.data/minecraft/source/net/minecraft/client/gui/components/OptionsList.java` (226), `.data/minecraft/source/net/minecraft/client/gui/components/{AbstractSelectionList,AbstractScrollArea,ContainerObjectSelectionList}.java` (`grep -n "scrollbar\|SCROLLER\|renderScrollbar"`), `.data/minecraft/source/net/minecraft/client/Options.java` ilgili alanlar (T04'te yazıldı).
-- Rust: T05 widget'ları, T06 `options.rs`, `crates/voxel-render/src/gui/layout.rs`, `crates/voxel-render/src/window/scale.rs` (GUI ölçeği `0..=maxScale` ve Java `getMaxGuiScale`).
+- Rust: T05 widget'ları, T06 `options.rs`, `crates/photon-render/src/gui/layout.rs`, `crates/photon-render/src/window/scale.rs` (GUI ölçeği `0..=maxScale` ve Java `getMaxGuiScale`).
 
 ## Yapılacaklar
 1. `OptionsList` (kaydırma çubuğu sprite'ları `widget/scroller`, `scroller_background`; çark, tıklama sürükleme, Java ölçüleri).
@@ -16,7 +16,7 @@
 `video_settings_screen`: gerçek `VideoSettingsScreen` (alt kümesi `OptionInstance[]` ile kurulu); boyutlar, kaydırma konumu 0/orta/son, GUI ölçeği etiketleri.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (isteğe bağlı): GUI ölçeğini 3→2 yapınca HUD küçülür.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (isteğe bağlı): GUI ölçeğini 3→2 yapınca HUD küçülür.
 
 ## Kapsam dışı
 Grafik seçenekleri gerçek uygulaması (görüş mesafesi, bulanıklık, mipmap…).

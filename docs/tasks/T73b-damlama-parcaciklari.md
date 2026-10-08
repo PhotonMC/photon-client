@@ -7,7 +7,7 @@ hâlleri ve birinden ötekine geçiş (`ParticleOptions` ile yeni parçacık ist
 
 ## Oku
 Java: `client/particle/DripParticle.java` ve iç sınıfları, `ParticleResources` kayıtları.
-Rust: `crates/voxel-world/src/particles/water.rs` kalıbı, motorun tik içi ekleme yolu (T72 lav).
+Rust: `crates/photon-world/src/particles/water.rs` kalıbı, motorun tik içi ekleme yolu (T72 lav).
 
 ## Oracle
 `particle-ticks` ve motor satırları (`particle-engine`), gerçek sağlayıcılarla.

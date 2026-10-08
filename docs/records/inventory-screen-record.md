@@ -6,7 +6,7 @@
 
 ## Ne yapıldı
 
-`crates/voxel-render/src/gui/screen/inventory.rs`, hayatta kalma envanteri
+`crates/photon-render/src/gui/screen/inventory.rs`, hayatta kalma envanteri
 (`InventoryScreen`, tarif kitabı kapalı) ve `AbstractContainerScreen`'in
 girdisi:
 
@@ -36,7 +36,7 @@ girdisi:
 
 ## Canlı sonuç
 
-Vanilla 26.2 sunucusunda betikli (`VOXEL_SCRIPT` içinde `inventory` ve
+Vanilla 26.2 sunucusunda betikli (`PHOTON_SCRIPT` içinde `inventory` ve
 `click/YUVA/DÜĞME/TÜR`) tıklamalarla taş hotbar'dan envantere taşındı,
 miğfer shift ile zırh yuvasına geçti, toprak sağ tıkla ikiye bölündü.
 Sunucu düzeltme göndermedi ve yeni oturumda aynı dizilim geldi. Ekran

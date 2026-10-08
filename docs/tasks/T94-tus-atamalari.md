@@ -8,8 +8,8 @@ sabit).
 ## Oku
 - Java: `client/gui/screens/options/controls/KeyBindsScreen.java`, `KeyBindsList.java`,
   `client/KeyMapping.java` (kategoriler, sıralama, `same`), `client/Options.java` (`key_` alanları).
-- Rust: `crates/voxel-game/src/options/keys.rs`, `crates/voxel/src/controls.rs` (sabit tuşlar),
-  `crates/voxel-render/src/gui/options/list*`.
+- Rust: `crates/photon-game/src/options/keys.rs`, `crates/photon/src/controls.rs` (sabit tuşlar),
+  `crates/photon-render/src/gui/options/list*`.
 
 ## Yapılacaklar
 1. Tuş tablosu (Java'nın kayıt sırası, kategori), kontrollerin tablodan okunması.
@@ -30,6 +30,6 @@ Erişilebilirlik ve kalan ayar ekranları (T95).
 
 ## Devir notu
 Yapılan: eşleme tablosu oracle'dan (`gui/key-mappings`, `tools/generate/key_mappings.py`),
-`voxel_data::keys`; `Options` `key_` satırlarını okur/yazar (`options/bindings.rs`); kontroller
+`photon_data::keys`; `Options` `key_` satırlarını okur/yazar (`options/bindings.rs`); kontroller
 (`controls/events.rs`) tuş ve fare olaylarını eşlemelerden çözer.
 Bölündü: ekran → T94b.

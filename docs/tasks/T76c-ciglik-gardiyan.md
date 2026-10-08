@@ -6,7 +6,7 @@ ve `ElderGuardianParticle` (`ELDER_GUARDIANS` grubunda elder gardiyan modelinin 
 
 ## Oku
 Java: `client/particle/{ShriekParticle,ElderGuardianParticle,ElderGuardianParticleGroup}.java`,
-`core/particles/ShriekParticleOption.java`. Rust: `crates/voxel-world/src/particles/hit.rs`.
+`core/particles/ShriekParticleOption.java`. Rust: `crates/photon-world/src/particles/hit.rs`.
 
 ## Oracle
 `particle-ticks` satırları (çığlık); gardiyan için çizim durumu.

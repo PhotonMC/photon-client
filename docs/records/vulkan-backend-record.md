@@ -38,7 +38,7 @@ okur.
 
 ```text
 cargo run -- window 854 480
-VOXEL_CAPTURE_PPM=/yol/frame.ppm cargo run -- window 854 480 1
+PHOTON_CAPTURE_PPM=/yol/frame.ppm cargo run -- window 854 480 1
 ```
 
 Yerel koşuda gözlenen: `AMD Radeon RX 9060 XT (RADV GFX1200)`, discrete `true`,

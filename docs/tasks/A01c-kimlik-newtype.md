@@ -8,12 +8,12 @@
 - `grep -rn "entity_id\|type_id\|state_id" crates/*/src` (≈1700 kullanım, 250 dosya)
 
 ## Yapılacaklar
-- `EntityId(i32)`, `EntityTypeId(i32)`, `BlockStateId(u32)` `voxel-core`'da (`Debug`, `Copy`, `Ord`, `Hash`; `new`/`get`). `BlockStateId` için bugün üç tip karışık (`i32`, `u32`, `i64::from(state)`): birine indirilir.
-- Önce voxel-world içinde (`ClientEntity.id`, `type_id`, `passenger_ids`, `vehicle_id`, `HashMap<i32, ClientEntity>` anahtarları, `state_or_air`), sonra sınırlarda: paket ayrıştırıcıları ham değeri okur ve tipe sarar (`voxel-net`), `voxel-game`/`voxel-render` imzaları.
-- `entity_type::id("minecraft:fox")` gibi dize aramaları `EntityTypeId` sabitlerine (`voxel-data` kimlik tablosundan) iner; `VANILLA_*_ENTITY_TYPE_ID` sabitleri tek yerde.
+- `EntityId(i32)`, `EntityTypeId(i32)`, `BlockStateId(u32)` `photon-core`'da (`Debug`, `Copy`, `Ord`, `Hash`; `new`/`get`). `BlockStateId` için bugün üç tip karışık (`i32`, `u32`, `i64::from(state)`): birine indirilir.
+- Önce photon-world içinde (`ClientEntity.id`, `type_id`, `passenger_ids`, `vehicle_id`, `HashMap<i32, ClientEntity>` anahtarları, `state_or_air`), sonra sınırlarda: paket ayrıştırıcıları ham değeri okur ve tipe sarar (`photon-net`), `photon-game`/`photon-render` imzaları.
+- `entity_type::id("minecraft:fox")` gibi dize aramaları `EntityTypeId` sabitlerine (`photon-data` kimlik tablosundan) iner; `VANILLA_*_ENTITY_TYPE_ID` sabitleri tek yerde.
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; davranış değişmez (kimlikler ağdaki değerlerle aynı).
+`python3 tools/photon.py check` → `CHECK OK`; davranış değişmez (kimlikler ağdaki değerlerle aynı).
 
 ## Kapsam dışı
 Davranış değişikliği; `ClientEntity`'nin tür enum'una bölünmesi (A02, bitti).

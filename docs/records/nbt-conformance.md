@@ -52,7 +52,7 @@ Bu doğrulama seçili NBT corpus'u ile sınırlıdır. Kota, derinlik sınırı,
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/nbt.rs`, null/boş kökleri, ilkel ve string alanları, iç içe bileşikleri, listeleri ve byte/int/long dizilerini içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. Kota/derinlik ve SNBT bu dilime dahil değildir.
+`crates/photon-core/src/nbt.rs`, null/boş kökleri, ilkel ve string alanları, iç içe bileşikleri, listeleri ve byte/int/long dizilerini içerir. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. Kota/derinlik ve SNBT bu dilime dahil değildir.
 
 ## Referans ve davranış
 

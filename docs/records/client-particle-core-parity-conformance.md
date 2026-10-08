@@ -43,5 +43,5 @@ motor tohumuyla sprite seçimi, küçük alev. Aynı kodun yalnız sabiti deği�
   ışık motorunun kendisi `light` ailesinde kanıtlıdır.
 - Konuma bağlı çarpışma şekli (`PositionCollisionContext`) taşınmadı: iskele (`scaffolding`) gibi
   bağlama duyarlı bir blok partikülün kutusuna girerse partikül o tik yerinde kalır.
-- Tür kaydı elle yazılmıştır (`voxel-data/src/particle_type.rs`); sürüm değişince oracle'ın
+- Tür kaydı elle yazılmıştır (`photon-data/src/particle_type.rs`); sürüm değişince oracle'ın
   `particle_types` çıktısından yenilenir.

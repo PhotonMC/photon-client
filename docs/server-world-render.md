@@ -12,7 +12,7 @@ eksik olduğunu yazmak.
 üzerinde çalıştırıp ayakta tutuyor. Dünya orada üretilmiyor; fikstür kopyalanıp
 sunuluyor, yani sunulan dünya tam olarak `build`'in ürettiği.
 
-Sonda `VOXEL_SERVER` ile o sunucuya katılıyor, yığınları bekliyor ve
+Sonda `PHOTON_SERVER` ile o sunucuya katılıyor, yığınları bekliyor ve
 oyuncunun çevresindeki bir kutuyu çiziyor. Köprünün tamamı şu zincir:
 
 ```
@@ -76,8 +76,8 @@ Huş ormanı bir sahnede, 81x40x81 kutuda:
 ```
 python3 tools/render/scene.py build            # bir kez
 python3 tools/render/scene.py serve --port 25599
-VOXEL_SERVER=127.0.0.1:25599 \
-VOXEL_ASSETS=.data/minecraft/assets/jar/assets \
-VOXEL_REACH=40 VOXEL_HEIGHT=40 VOXEL_FLOOR=50 VOXEL_EYE=16 \
+PHOTON_SERVER=127.0.0.1:25599 \
+PHOTON_ASSETS=.data/minecraft/assets/jar/assets \
+PHOTON_REACH=40 PHOTON_HEIGHT=40 PHOTON_FLOOR=50 PHOTON_EYE=16 \
 cargo run --offline -- window 854 480 3
 ```

@@ -45,7 +45,7 @@ Bu dilimin math referans kimliği `5cb113d71b4ba206c07ea73382625520d811f4ecd4bef
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/aabb.rs`, Java `BoundingBox` int sınırlarını normalize edip `AABB.of(BoundingBox)` üreticisinin üst uçlardaki Java int `+1` işlemini uygular. `examples/behavior_adapter.rs` bu yolu JSONL math senaryolarına bağlar.
+`crates/photon-core/src/aabb.rs`, Java `BoundingBox` int sınırlarını normalize edip `AABB.of(BoundingBox)` üreticisinin üst uçlardaki Java int `+1` işlemini uygular. `examples/behavior_adapter.rs` bu yolu JSONL math senaryolarına bağlar.
 
 ## Referans ve davranış
 

@@ -7,8 +7,8 @@
 
 ## Oku
 Java: `client/particle/BreakingItemParticle.java`, `core/particles/ItemParticleOption.java`,
-`client/renderer/item/ItemStackRenderState.java`. Rust: `crates/voxel-world/src/particles/terrain.rs`
-(blok kırıntısı aynı dörtte birlik pencereyi kullanır), `crates/voxel/src/particles.rs`.
+`client/renderer/item/ItemStackRenderState.java`. Rust: `crates/photon-world/src/particles/terrain.rs`
+(blok kırıntısı aynı dörtte birlik pencereyi kullanır), `crates/photon/src/particles.rs`.
 
 ## Oracle
 `particle-ticks` satırları; malzeme seçimi için sabit katmanlı model.

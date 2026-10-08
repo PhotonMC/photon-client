@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/player/LocalPlayer.java`.
-- Rust: `crates/voxel-world/src/entity.rs` (tekne/yolcu dalları, `set_boat_input`), `crates/voxel-world/src/local_player.rs`, `crates/voxel-net/src/connection/play.rs` (`keys`/tik gönderimi), `docs/records/client-world-entity-boat-control-conformance.md` (tekne denetim kaydı).
+- Rust: `crates/photon-world/src/entity.rs` (tekne/yolcu dalları, `set_boat_input`), `crates/photon-world/src/local_player.rs`, `crates/photon-net/src/connection/play.rs` (`keys`/tik gönderimi), `docs/records/client-world-entity-boat-control-conformance.md` (tekne denetim kaydı).
 
 ## Yapılacaklar
 1. Tekne/yolcu dalları üstünde (`docs/records/client-world-entity-boat-control-conformance.md`): araç kontrolü `LocalPlayer.rideTick` dalı.
@@ -16,7 +16,7 @@
 `MovementOracle.java` `local_player_ticks` kalıbı: gerçek `LocalPlayer` bir araca bindirilir, girdi tikleri koşturulur ve gönderilen paketler bayt bayt karşılaştırılır (araç konumu/`PlayerInput` değişimi).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
 At eğitimi/iksir etkileri, ses.

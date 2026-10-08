@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ShulkerBulletRenderer,LlamaSpitRenderer,EvokerFangsRenderer}.java` ve modelleri.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs`.
+- Rust: `crates/photon-render/src/entity/mob_model.rs`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: üç model + pose'lar, `evoker_fangs.rs` (olay 4, sayaç), `bullets.rs`; kabuk için entity gölgelendiricisinde `shade ≥ 64` = harmanlı alfa. Kayıt: `docs/records/client-small-projectiles-parity-conformance.md`.

@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_to_string"` ve f64 bit dizgeli `fir
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::to_string_java`, Java bileşen biçimini ortak `java_double_to_string` yordamıyla üretir. Aynı yordam AABB ve VoxelShape metinlerinde de kullanılır; `examples/behavior_adapter.rs` sonucu taşır, `tests/behavior/java/MathOracle.java` Java `Vec3.toString()` metodunu çağırır.
+`crates/photon-core/src/math.rs` içindeki `Vec3::to_string_java`, Java bileşen biçimini ortak `java_double_to_string` yordamıyla üretir. Aynı yordam AABB ve VoxelShape metinlerinde de kullanılır; `examples/behavior_adapter.rs` sonucu taşır, `tests/behavior/java/MathOracle.java` Java `Vec3.toString()` metodunu çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.toString()` davranışını `Vec3::to_string_java` ile karşılar. Java oracle, sonucu doğrudan Java metodundan alır; double biçimlendirme yordamı AABB metin yolu ile paylaşılır.
+`crates/photon-core/src/math.rs`, Java `Vec3.toString()` davranışını `Vec3::to_string_java` ile karşılar. Java oracle, sonucu doğrudan Java metodundan alır; double biçimlendirme yordamı AABB metin yolu ile paylaşılır.
 
 ## Doğrulama
 

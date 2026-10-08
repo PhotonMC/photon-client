@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik PNG baytları pinned
 JAR'daki `NativeImage.read` yoluna ve üretim kütüphanesindeki
-`voxel_client::render::png` modülüne verilir, çözülen RGBA8 pikselleri birebir
+`photon::render::png` modülüne verilir, çözülen RGBA8 pikselleri birebir
 karşılaştırılır. GPU gerektirmez.
 
 Bu, render veri katmanının ikinci dilimidir; birincisi

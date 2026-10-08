@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `world/entity/LivingEntity.java` (`hurtTime`/`hurtDuration` 230–232, `tick` 466–475, `tickDeath` 571, `handleEntityEvent` 2065–2085: olay 2 vuruş, 3 ölüm; `animateHurt` ~1877, `handleDamageEvent` ~2054), `client/renderer/entity/LivingEntityRenderer.java` (`getOverlayCoords` 133, `setupRotations` 160–175 ölüm yatışı `getFlipDegrees`, `extractRenderState` 281/297), `client/renderer/texture/OverlayTexture.java`, `network/protocol/game/ClientboundHurtAnimationPacket.java`, `ClientboundDamageEventPacket.java`, `ClientboundEntityEventPacket.java`; istemci işleyicileri `ClientPacketListener.handleHurtAnimation/handleDamageEvent/handleEntityEvent`.
-- Rust: `crates/voxel-net/src/connection/entities.rs` (paket uygulama), `crates/voxel-world/src/living.rs` ve `entity.rs` (`tick_entities`, ölüm/sağlık durumu), `crates/voxel-render/src/entity/mob_model.rs`, `player_renderer.rs`, `crates/voxel/src/mobs.rs`, `overlays.rs` (çizim; overlay dokusu ve yatış matrisi), `vulkan.rs` entity shader'ı (overlay rengi).
+- Rust: `crates/photon-net/src/connection/entities.rs` (paket uygulama), `crates/photon-world/src/living.rs` ve `entity.rs` (`tick_entities`, ölüm/sağlık durumu), `crates/photon-render/src/entity/mob_model.rs`, `player_renderer.rs`, `crates/photon/src/mobs.rs`, `overlays.rs` (çizim; overlay dokusu ve yatış matrisi), `vulkan.rs` entity shader'ı (overlay rengi).
 
 ## Yapılacaklar
 1. Paketler: `EntityEvent` (2, 3 ve oyuncu dışı `setHealth(0)`), `HurtAnimation`, `DamageEvent`; `SetEntityData` sağlığı ile ölü-mü durumu. `hurtTime`/`deathTime` istemci tikinde Java gibi azalır/artar (`LivingEntity.tick`/`tickDeath`); ölüm 20 tikte biter.
@@ -16,7 +16,7 @@
 Tik ilerlemesi `client-parity` (paket → `hurtTime`/`deathTime` dizisi); yatış ve örtü rengi çizim oracle'ı. Oracle kurulamayan kısım varsa nedeni devir notuna.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): `summon pig`, sol tık: domuz kırmızı; `kill`/öldürücü vuruşta domuz yatar (ekran görüntüsü bir kez okunur).
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): `summon pig`, sol tık: domuz kırmızı; `kill`/öldürücü vuruşta domuz yatar (ekran görüntüsü bir kez okunur).
 
 ## Kapsam dışı
 Vuruş/ölüm parçacıkları (PLAN-M8), sesler (PLAN-M7), tepme hareketi (sunucu konumu zaten gönderir), oyuncu ölüm ekranı (var).

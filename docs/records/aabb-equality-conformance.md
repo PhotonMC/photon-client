@@ -35,7 +35,7 @@ Math ve birleşik altı aile referansı `8c4789d8c4953d1e6851df238f157e9ea125bc1
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/aabb.rs`, Java endpoint karşılaştırmasını `Aabb::equals_java`, Java hash hesabını `Aabb::hash_code_java` ile uygular. `examples/behavior_adapter.rs`, `equals` ve `hash_code` adımlarını bu API'lere taşır.
+`crates/photon-core/src/aabb.rs`, Java endpoint karşılaştırmasını `Aabb::equals_java`, Java hash hesabını `Aabb::hash_code_java` ile uygular. `examples/behavior_adapter.rs`, `equals` ve `hash_code` adımlarını bu API'lere taşır.
 
 ## Doğrulama
 

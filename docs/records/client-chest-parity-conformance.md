@@ -1,6 +1,6 @@
 # T79, T80 — Sandık, shulker kutusu, çan, kafa, bayrak ve tabela blok entity çizimi — [client-parity]
 
-Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
+Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `photon_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
 ## Java kaynak incelemesi
 
@@ -8,9 +8,9 @@ Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::ches
 
 ## Yapılan
 
-- `voxel_render::chest` (tür, malzeme, doku adı, `eased_open`, `model_transformation`, `chest_pose`), `mob_model::setup_chest`, JOML özellik bayrakları ve `mulTranslationAffine`.
-- `voxel_world::chest`: istemci sandık bloğu durumundan sandığı kendisi kurar (`ChestBlock`, `EnderChestBlock` sınıfları), çift sandık eşini bulur, kapak denetleyicisi `BlockEvent` ile süren tikle ilerler; `ClientboundBlockEventPacket` ayrıştırılır.
-- `voxel::chests`: görünür parçalardaki sandıkları, yakın ışığı ve dokuları çizime verir.
+- `photon_render::chest` (tür, malzeme, doku adı, `eased_open`, `model_transformation`, `chest_pose`), `mob_model::setup_chest`, JOML özellik bayrakları ve `mulTranslationAffine`.
+- `photon_world::chest`: istemci sandık bloğu durumundan sandığı kendisi kurar (`ChestBlock`, `EnderChestBlock` sınıfları), çift sandık eşini bulur, kapak denetleyicisi `BlockEvent` ile süren tikle ilerler; `ClientboundBlockEventPacket` ayrıştırılır.
+- `photon::chests`: görünür parçalardaki sandıkları, yakın ışığı ve dokuları çizime verir.
 
 ## Sapmalar ve açık kalanlar
 
@@ -20,7 +20,7 @@ Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::ches
 
 ## Shulker kutusu (T79b)
 
-Gerçek `ShulkerBoxRenderer.submit` ile Rust `voxel_render::shulker_box` aynı girdide karşılaştırılır (`entity/shulker-box-pose`, 34 satır: altı yön × üç ilerleme, on altı renk): matris, ilerleme, ışık, doku ve kapağı o ilerlemeye kurulmuş modelin dörtgenleri.
+Gerçek `ShulkerBoxRenderer.submit` ile Rust `photon_render::shulker_box` aynı girdide karşılaştırılır (`entity/shulker-box-pose`, 34 satır: altı yön × üç ilerleme, on altı renk): matris, ilerleme, ışık, doku ve kapağı o ilerlemeye kurulmuş modelin dörtgenleri.
 
 - `ShulkerBoxRenderer`: kutu "yukarı"dan yönüne `Direction.getRotation` ile döner, blokdan bir tık küçüktür (`0,9995`); kapak `24 − ilerleme·8` yüksekliğe çıkar ve `270°·ilerleme` döner. Doku rengin kendisi, boyasız kutuda `entity/shulker/shulker`.
 - Kapak `ShulkerBoxBlockEntity`'dir: `BlockEvent` 1 ve veri 1 açar, 0 kapatır; tikte onda bir ilerler. Yön özelliği yoksa kutu yukarı bakar.
@@ -37,7 +37,7 @@ Gerçek `BellRenderer.submit` ile Rust `MobModel::setup_bell` aynı girdide kar�
 
 ## Kafa ve kafatası blokları (T80b)
 
-Gerçek `SkullBlockRenderer.submit` ile Rust `voxel_render::skull::{wall_transformation, ground_transformation, block_pose}` ve `MobModel::setup_skull` aynı girdide karşılaştırılır (`entity/skull-block-pose`, 148 satır: yedi tür × on altı dönüş ve dört duvar, piglin ve ejderha için dört animasyon zamanı): matris, ışık, doku ve animasyona kurulmuş modelin dörtgenleri.
+Gerçek `SkullBlockRenderer.submit` ile Rust `photon_render::skull::{wall_transformation, ground_transformation, block_pose}` ve `MobModel::setup_skull` aynı girdide karşılaştırılır (`entity/skull-block-pose`, 148 satır: yedi tür × on altı dönüş ve dört duvar, piglin ve ejderha için dört animasyon zamanı): matris, ışık, doku ve animasyona kurulmuş modelin dörtgenleri.
 
 - Ayakta duran kafa on altı dilimden birine döner (`RotationSegment`, 22,5° adım, 180° üstü eksiye sarılır), duvardaki kafa duvardan çeyrek blok içeride ve duvardan uzağa bakar; ikisi de `(-1, -1, 1)` ölçeklidir. Doku türün kendisidir, oyuncu kafası varsayılan görünümü giyer.
 - `SkullBlockEntity.animation`: yalnız `powered` ejderha ve piglin kafaları sayaç artırır; güç gidince sayaç kalır, kare kesri eklenmez.
@@ -45,7 +45,7 @@ Gerçek `SkullBlockRenderer.submit` ile Rust `voxel_render::skull::{wall_transfo
 
 ## Bayrak (T80c)
 
-Gerçek `BannerRenderer.submit` ile Rust `voxel_render::banner` aynı girdide karşılaştırılır (`entity/banner-pose`, 28 satır: on altı dönüş, dört duvar, farklı renk, desen sayısı ve bayrak evresi; en çok on altı katman ve ötesi): çizilen her model çağrısı sırasıyla (direk ve çubuk, bayrak, düz katman, her desen) matris, sıra, ışık, doku, boya rengi ve modelin dörtgenleriyle.
+Gerçek `BannerRenderer.submit` ile Rust `photon_render::banner` aynı girdide karşılaştırılır (`entity/banner-pose`, 28 satır: on altı dönüş, dört duvar, farklı renk, desen sayısı ve bayrak evresi; en çok on altı katman ve ötesi): çizilen her model çağrısı sırasıyla (direk ve çubuk, bayrak, düz katman, her desen) matris, sıra, ışık, doku, boya rengi ve modelin dörtgenleriyle.
 
 - Pozu duvar ya da dilim verir (`translation(0,5; 0; 0,5)`, `Y` dönüşü, `(2/3, −2/3, −2/3)` ölçek). Bayrak `(−0,0125 + 0,01·cos(2π·evre))·π` kadar eğilir; evre bloğun yeri ve oyun zamanıyla yüz tike yayılır.
 - Katmanlar: düz katman (`entity/banner/base`) bayrağın rengiyle, sonra `patterns` listesinin ilk on altısı kendi `entity/banner/<ad>` maskesi ve boyasıyla, birbirinin üstüne harmanlanarak. Renk bloğun adından, desenler blok entity verisinden gelir.
@@ -54,9 +54,9 @@ Gerçek `BannerRenderer.submit` ile Rust `voxel_render::banner` aynı girdide ka
 
 ## Tabela (T80d)
 
-26.2'de tabelanın tahtası ve direği blok modelidir (`oak_sign_rot_*`, `*_hanging_sign_*`); `StandingSignRenderer` ve `HangingSignRenderer` yalnız iki yüzün metnini `submitText` ile verir. Gerçek renderer'lar ile Rust `voxel_render::block_entity::sign` GUI ailesinde aynı girdide karşılaştırılır (`gui/sign-texts`, 94 satır; gerçek font gerektiği için GUI ailesinde): her satırın poz matrisi, `x`/`y`, tek renkli run'lara bölünmüş metni, ışık, renk, arka plan, kontur rengi, gölge ve çizim kipi.
+26.2'de tabelanın tahtası ve direği blok modelidir (`oak_sign_rot_*`, `*_hanging_sign_*`); `StandingSignRenderer` ve `HangingSignRenderer` yalnız iki yüzün metnini `submitText` ile verir. Gerçek renderer'lar ile Rust `photon_render::block_entity::sign` GUI ailesinde aynı girdide karşılaştırılır (`gui/sign-texts`, 94 satır; gerçek font gerektiği için GUI ailesinde): her satırın poz matrisi, `x`/`y`, tek renkli run'lara bölünmüş metni, ışık, renk, arka plan, kontur rengi, gölge ve çizim kipi.
 
 - Dönüşüm: ayakta tabela `(0,5; 0,5; 0,5)`, `Y` dönüşü, duvardaysa `(0; −0,3125; −0,4375)`, arka yüzde 180°, `(0; 1/3; 0,0467)` ve `1/96` ölçek; asılı tabela `(0,5; 0,9375; 0,5)`, dönüş, `−0,3125`, arka yüz, `(0; −0,32; 0,073)` ve `0,0140625` ölçek. Satır genişliği 90/60, yüksekliği 10/9; satır, genişliğe bölünen ilk parçasıdır ve `−genişlik/2` (tam sayı bölmesi) konumundan çizilir.
 - Renk: parlamayan metin boyanın `0,4` katı, kendi ışığıyla; parlayan metin boyanın kendi rengi, tam parlaklıkta, siyahsa ya da kamera varlığı 16 blok içindeyse (veya birinci şahısta dürbünle bakılıyorsa) koyu renkte sekiz yönlü konturla; parlayan siyahın koyu rengi `#F0EBCC`.
-- İstemci durumu: tabela blokları blok entity çizim listesine girdi; `front_text`/`back_text` (`messages`, `filtered_messages`, `color`, `has_glowing_text`) blok entity verisinden `voxel_game::sign` ile okunur, hatalı yüz boş yüz olur.
+- İstemci durumu: tabela blokları blok entity çizim listesine girdi; `front_text`/`back_text` (`messages`, `filtered_messages`, `color`, `has_glowing_text`) blok entity verisinden `photon_game::sign` ile okunur, hatalı yüz boş yüz olur.
 - Sapma: filtrelenmiş satırlar oracle'da sınanır, oyunda hep yazılmış satırlar çizilir (`isTextFilteringEnabled` çevrimiçi hesabın bayrağıdır). `POLYGON_OFFSET` kipi yok: metin ad etiketi boru hattında, tahtadan 0,005 önde çizilir. Glif dörtgenleri (kontur dahil) metin display'in yoluyla kurulur ve ayrıca oracle'la sınanmadı; balmumu ve tabela düzenleme T89'dadır.

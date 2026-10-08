@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/sounds/{SoundEngine,ChannelAccess,SoundEngineExecutor}.java`, `com/mojang/blaze3d/audio/{Channel,Library}.java`, `client/resources/sounds/{SoundInstance,AbstractSoundInstance,SimpleSoundInstance,EntityBoundSoundInstance}.java`, `client/Options.java` (`getFinalSoundSourceVolume`).
-- Rust: `crates/voxel-game/src/sounds.rs` (kayıt defteri, paket tipleri).
+- Rust: `crates/photon-game/src/sounds.rs` (kayıt defteri, paket tipleri).
 
 ## Oracle
 Gerçek `SoundEngine`; **`Channel` ve `SoundBufferLibrary` test içinde gölgelenir** (`tests/behavior/java/org/lwjgl/system/MemoryUtil.java` örneği gibi, `tests/behavior/java/com/mojang/blaze3d/audio/Channel.java`: aynı genel yöntemler, çağrıları kaydeder; OpenAL yok). `SoundEngine`/`Library`/`Options` Unsafe ile kurulur. Satırlar: çağrı dizisi (konum, perde, ses, sönüm, döngü, oynat/durdur).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Gerçek çıkış (T63), çözme (T62), oyun tetikleri (T64).
@@ -20,5 +20,5 @@ Gerçek çıkış (T63), çözme (T62), oyun tetikleri (T64).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `voxel-game::sound_engine` (play/stop/tick/duraklatma/kazanç; `Channel` arayüzü), Java'da gerçek `SoundEngine`'in sahte kanallarla koşturulduğu oracle (`sound/engine`, sahteler `tests/behavior/java/com/mojang/blaze3d/audio/`). Kayıt: `docs/records/client-sound-engine-parity-conformance.md`.
+- Yapıldı: `photon-game::sound_engine` (play/stop/tick/duraklatma/kazanç; `Channel` arayüzü), Java'da gerçek `SoundEngine`'in sahte kanallarla koşturulduğu oracle (`sound/engine`, sahteler `tests/behavior/java/com/mojang/blaze3d/audio/`). Kayıt: `docs/records/client-sound-engine-parity-conformance.md`.
 - Sapma: havuz sayımı sahtede yazıldı; `SoundEventListener` ve `EntityBoundSoundInstance` yok. Sıradaki: T63 (cpal çıkışı) bu arayüzü bağlar.

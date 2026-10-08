@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/leaves.rs from a movement-family capture.
+"""Generate crates/photon-data/src/generated/leaves.rs from a movement-family capture.
 
     python3 tools/generate/leaves.py .data/captures/behavior/<id>/outputs.jsonl
 

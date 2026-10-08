@@ -4,13 +4,13 @@
 **Bağımlılık:** T71. **Boy:** M.
 
 ## Oku
-Java: `client/color/block/{BlockTintSources,BlockColors}.java`, `client/multiplayer/MultiPlayerGameMode.java` (`continueDestroyBlock`), `client/renderer/block/BlockStateModelSet.java` (`getParticleMaterial`). Rust: `crates/voxel-world/src/particles/terrain.rs`, `crates/voxel-render/src/block/biome_tint.rs`, `crates/voxel-data/src/generated/block/tints.rs`, `crates/voxel/src/particles.rs`, `crates/voxel-game/src/game_mode.rs`.
+Java: `client/color/block/{BlockTintSources,BlockColors}.java`, `client/multiplayer/MultiPlayerGameMode.java` (`continueDestroyBlock`), `client/renderer/block/BlockStateModelSet.java` (`getParticleMaterial`). Rust: `crates/photon-world/src/particles/terrain.rs`, `crates/photon-render/src/block/biome_tint.rs`, `crates/photon-data/src/generated/block/tints.rs`, `crates/photon/src/particles.rs`, `crates/photon-game/src/game_mode.rs`.
 
 ## Oracle
 Gerçek `BlockColors` ile biyoma bağlı tintler için oracle (renk haritaları yüklenmiş sahne) ya da kayıtta açık sapma; çizim `particle_quads`ın blok atlasındaki dörtgeni (`client-parity`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`; bir blok kırılınca kırıntılar ve kırarken yüzden çatlak kırıntısı canlıda görülür (`shot`, bir kez).
+`tools/photon.py check --capture` → `CHECK OK`; bir blok kırılınca kırıntılar ve kırarken yüzden çatlak kırıntısı canlıda görülür (`shot`, bir kez).
 
 ## Kapsam dışı
 `block_marker`, `falling_dust`; başka partikül aileleri.

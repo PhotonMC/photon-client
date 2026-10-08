@@ -71,12 +71,12 @@ capture üzerinde **2944/2944** eşleşti; fark `null` kaldı.
 Çalıştırılan dilim kontrolleri:
 
 ```text
-python3 tools/behavior/run.py capture --family math --jdk-home /tmp/voxel-jdk-wrapper
+python3 tools/behavior/run.py capture --family math --jdk-home /tmp/photon-jdk-wrapper
 cargo test --locked --offline step_up_selection_uses_first_strictly_longer_candidate
 cargo build --locked --offline --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/debug/examples/behavior_adapter
 cargo build --locked --offline --release --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/release/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/release/examples/behavior_adapter
 ```
 
 ## Açık kapsam

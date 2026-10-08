@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/EquipmentLayerRenderer.java` (`TrimSpriteKey`, glint), `world/item/equipment/trim/ArmorTrim.java`, `client/renderer/rendertype/RenderTypes.java` (`armorEntityGlint`, `armorTrimsSheet`), `client/renderer/texture/` süs atlası (`atlases/armor_trims.json`).
-- Rust: `crates/voxel/src/equipment/armor.rs`, `voxel-render/src/equipment.rs`, `voxel-game/src/item_values.rs` (bileşen okuma), `voxel-render/src/vulkan.rs` (entity boru hattı).
+- Rust: `crates/photon/src/equipment/armor.rs`, `photon-render/src/equipment.rs`, `photon-game/src/item_values.rs` (bileşen okuma), `photon-render/src/vulkan.rs` (entity boru hattı).
 
 ## Yapılacaklar
 1. Süs: `TRIM` bileşenini oku, süs atlasını (varlık dokuları arasına) kur, her giyilen parça için süs katmanını çiz.
@@ -16,7 +16,7 @@
 `entity/equipment-layers` kalıbı: süs sprite kimliği ve atlas düzeni gerçek sınıflardan.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Kafa eşyası/pelerin (T41c).
@@ -25,6 +25,6 @@ Kafa eşyası/pelerin (T41c).
 `docs/records/client-armor-parity-conformance.md` sapma listesi.
 
 ## Devir notu
-- Yalnız süs yapıldı: `voxel-render::trim` (veri paketi desen/malzeme, `PalettedPermutations` eşlemesi, sprite adı), `Armor::{trim_images, set_trim_registries, trim_texture}`, süs atlası entity dokusuna eklenir, süs katmanı zırhın üstüne.
+- Yalnız süs yapıldı: `photon-render::trim` (veri paketi desen/malzeme, `PalettedPermutations` eşlemesi, sprite adı), `Armor::{trim_images, set_trim_registries, trim_texture}`, süs atlası entity dokusuna eklenir, süs katmanı zırhın üstüne.
 - Oracle: `image/trim-sprite-id` (gerçek `ArmorTrim`, 246 satır) ve `image/palette-permutation` (gerçek eşleme); canlıda görüldü. Dekal deseni derinlik eşitliği olmadan çizilir.
 - Parıltı ve `equippable` yaması → [T41e2](T41e2-zirh-parilti-equippable.md).

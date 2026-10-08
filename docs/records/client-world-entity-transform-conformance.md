@@ -76,7 +76,7 @@ Sonuç: `86 passed; 0 failed`.
 
 **Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
 
-Sunucu `/tmp/voxel-vanilla-26.2-world` altında `127.0.0.1:25568`, seed `776`,
+Sunucu `/tmp/photon-vanilla-26.2-world` altında `127.0.0.1:25568`, seed `776`,
 creative/peaceful, view/simulation distance `5` ve boş sunucuda 60 saniye
 pause ayarıyla çalıştırıldı. JAR ve dünya depoya alınmadı.
 

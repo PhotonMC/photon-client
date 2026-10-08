@@ -13,7 +13,7 @@ Bu kayıt oyunun ses tanımlarını (`sounds.json`) ve bir olaydan ağırlıkla 
 
 `sound/registry` 21 satır: küçük dosyalar (düz adlar, ağırlıklar, alanlar, olay girdileri ve iç içe olaylar, olmayan olay, olmayan dosyalar, boş olay, `replace`, ad alanlı adlar, ondalık ağırlık, büyük ses) ve her bir hata türü (sıfır ses, negatif perde, sıfır ağırlık, geçersiz tür, adsız, nesne olmayan, dizi olmayan, sayı alt yazı, sayı boole); bir **gerçek** satır: oyunun gerçek `sounds.json`'u (1968 olay) ve gerçek dosya listesiyle, tüm kayıt dökümü ve altı olaydan 40'ar seçim.
 
-Rust: `voxel-game::sounds` (`SoundRegistry`, `Sound`, `SampledFloat`).
+Rust: `photon-game::sounds` (`SoundRegistry`, `Sound`, `SampledFloat`).
 
 ## Sapmalar ve açık kalanlar
 

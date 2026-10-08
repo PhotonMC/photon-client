@@ -31,12 +31,12 @@ Girdiler `family: "math"` ve `operation: "vec3_distance_to"` kullanır. `first` 
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::distance_to`, fark değişkenlerini doğrudan kaynak sırasıyla hesaplar ve toplamı `sqrt` ile sonlandırır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java overload çağrısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::distance_to`, fark değişkenlerini doğrudan kaynak sırasıyla hesaplar ve toplamı `sqrt` ile sonlandırır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java overload çağrısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.distanceTo(Vec3)` metodunun hedef-minus-mevcut fark sırasını, x/y/z karelerinin kaynak sırasındaki toplamını ve son `sqrt` çağrısını karşılar. Java oracle doğrudan `distanceTo` çağırır; Rust adaptörü sonucu f64 bitleriyle JSONL'e taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.distanceTo(Vec3)` metodunun hedef-minus-mevcut fark sırasını, x/y/z karelerinin kaynak sırasındaki toplamını ve son `sqrt` çağrısını karşılar. Java oracle doğrudan `distanceTo` çağırır; Rust adaptörü sonucu f64 bitleriyle JSONL'e taşır.
 
 ## Doğrulama
 

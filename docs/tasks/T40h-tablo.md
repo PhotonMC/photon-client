@@ -10,7 +10,7 @@
 Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Sesler, partiküller, dış çizgi.

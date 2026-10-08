@@ -8,7 +8,7 @@ var) ve kitap-tüy düzenleme (`BookEditScreen`, `BookSignScreen`, `ServerboundE
 - Java: `client/gui/screens/inventory/BookEditScreen.java`, `BookSignScreen.java`, `BookViewScreen.java`,
   `client/gui/components/MultiLineEditBox.java`, `ClientPacketListener.handleOpenBook`,
   `network/protocol/game/ServerboundEditBookPacket.java`.
-- Rust: `crates/voxel-render/src/gui/screen/book.rs`, `crates/voxel-net/src/connection/play/incoming.rs`
+- Rust: `crates/photon-render/src/gui/screen/book.rs`, `crates/photon-net/src/connection/play/incoming.rs`
   (paket yönlendirme; `grep -n` ile çapa), eşyayı kullanma yolu (`use_item`).
 
 ## Yapılacaklar

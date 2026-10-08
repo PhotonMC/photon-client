@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3_to_vector3f"` ve f64 bit dizgeli `f
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::to_vector3f`, üç bileşeni ayrı ayrı `f32`'ye daraltıp `Vec3f` değeri üretir. `examples/behavior_adapter.rs` sonucu f32 ham bitleriyle taşır; `tests/behavior/java/MathOracle.java` aynı `Vec3.toVector3f()` çağrısını oracle çıktısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::to_vector3f`, üç bileşeni ayrı ayrı `f32`'ye daraltıp `Vec3f` değeri üretir. `examples/behavior_adapter.rs` sonucu f32 ham bitleriyle taşır; `tests/behavior/java/MathOracle.java` aynı `Vec3.toVector3f()` çağrısını oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.toVector3f()` metodunu karşılar. Rust `Vec3f` değeri üç bileşeni Java'nın bağımsız f64 → f32 daraltmalarıyla üretir; Java oracle doğrudan `Vec3.toVector3f()` çağrısını kullanır.
+`crates/photon-core/src/math.rs`, Java `Vec3.toVector3f()` metodunu karşılar. Rust `Vec3f` değeri üç bileşeni Java'nın bağımsız f64 → f32 daraltmalarıyla üretir; Java oracle doğrudan `Vec3.toVector3f()` çağrısını kullanır.
 
 ## Doğrulama
 

@@ -13,7 +13,7 @@ karanlık kalıyordu.
 
 ## Ne pinlendi
 
-`crates/voxel-world/src/light.rs`, referansın ışık paketinin birebir portu:
+`crates/photon-world/src/light.rs`, referansın ışık paketinin birebir portu:
 
 - `DataLayer` ve katman paylaşımı: sunucudan kuyruğa alınan katman, bölüm
   depolanınca aynı nesne olarak güncel haritaya girer; yayılım o nesneyi
@@ -39,10 +39,10 @@ karanlık kalıyordu.
 
 Işığın okuduğu iki yeni alan referanstan tabloya eklendi ve her koşuda
 karşılaştırılıyor: durum başına `useShapeForLightOcclusion` ile
-`canOcclude` (`block/light-properties`, `crates/voxel-data/src/block/light.rs`),
+`canOcclude` (`block/light-properties`, `crates/photon-data/src/block/light.rs`),
 iki yüz şeklinin birleşiminin bütün yüzü örtüp örtmediği
 (`Shapes.faceShapeOccludes`; `block/face-occlusion` içindeki `covers`,
-`crates/voxel-data/src/block/face_occlusion.rs`).
+`crates/photon-data/src/block/face_occlusion.rs`).
 
 ## Senaryolar
 

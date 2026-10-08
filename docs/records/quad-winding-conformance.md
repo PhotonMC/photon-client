@@ -5,7 +5,7 @@
 Kanıt sınıfı `client-parity`'dir: aynı özgün dört köşe pinned JAR'daki
 `GeometryUtils.normal`, `FaceBakery.findClosestDirection` ve
 `FaceBakery.recalculateWinding` yoluna ve üretim kütüphanesindeki
-`voxel_client::render::geometry` modülüne verilir; normal, seçilen yön, yeniden
+`photon::render::geometry` modülüne verilir; normal, seçilen yön, yeniden
 sıralanmış köşeler ve taşınan yük sırası karşılaştırılır.
 
 Bu, quad pişirmesinin son adımıdır: element döndürüldükten sonra yüzün hangi

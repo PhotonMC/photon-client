@@ -37,7 +37,7 @@ Bu dilim delayed state'in tek hedefte tamamlanmasını doğrular. Erken abort, b
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü platform kısa süreliğine y=`100` dirt olacak şekilde ayarlanıp world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü platform kısa süreliğine y=`100` dirt olacak şekilde ayarlanıp world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı.
 
 ```text
 cargo run --offline --release --example survival_delayed_destroy_probe -- 127.0.0.1:25566 RustDelayed1

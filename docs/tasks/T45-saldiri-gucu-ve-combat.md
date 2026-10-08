@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/gui/Hud.java`.
-- Rust: `crates/voxel-game/src/input/attack.rs` (saldırı gücü/bekleme), `crates/voxel-render/src/gui/hud.rs` (HUD), `crates/voxel-net/src/connection/play.rs` (paket işleme).
+- Rust: `crates/photon-game/src/input/attack.rs` (saldırı gücü/bekleme), `crates/photon-render/src/gui/hud.rs` (HUD), `crates/photon-net/src/connection/play.rs` (paket işleme).
 
 ## Yapılacaklar
 1. Saldırı göstergesi oracle'ı (`gui` ailesi: `AttackIndicator` çizimi, gerçek `Hud`).
@@ -16,7 +16,7 @@
 `GuiOracle.java` (`gui` ailesi, `docs/tasks/README.md` "GUI oracle tarifi (G)"): gerçek `Hud`/`Gui` ile `AttackIndicator` çizimi; paketler için gerçek `ClientPacketListener` işleyicileri.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
 Hasar yönü göstergesi, ses.

@@ -10,7 +10,7 @@ parçacıkları), 2003 ender gözü, 2004 spawner, 2006 ejderha nefesi, 2011–2
 ## Oku
 Java: `client/renderer/LevelEventHandler.java` (330–700), `world/item/BoneMealItem.java`,
 `world/level/block/{ComposterBlock,PointedDripstoneBlock}.java`, `util/ParticleUtils.java`.
-Rust: `crates/voxel-world/src/particles/level_events.rs`.
+Rust: `crates/photon-world/src/particles/level_events.rs`.
 
 ## Oracle
 `movement/particle-engine` `level_event` olayları (T78 satırları örnek).

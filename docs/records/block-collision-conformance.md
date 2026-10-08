@@ -49,7 +49,7 @@ yol alıyor.
 çarpışma senaryolarının hepsi yeni tabloyla da geçti.
 
 Şekil tabloları artık yok: çarpışma ve çizgi şekilleri blok sınıflarının
-kodundan hesaplanıyor (`crates/voxel-world/src/block/shape_rules/`) ve
+kodundan hesaplanıyor (`crates/photon-world/src/block/shape_rules/`) ve
 oracle vakaları bu hesaplanan şekilleri karşılaştırıyor. Konuma göre kayan
 yalnızca çiçek, bambu, sarkıt ve mangrov filizi (referansta da
 `shape.move(getOffset(pos))` yapan sınıflar); çimen gibi blokların şekli

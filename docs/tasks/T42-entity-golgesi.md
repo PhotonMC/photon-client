@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/EntityRenderDispatcher.java`, `client/renderer/entity/EntityRenderer.java`.
-- Rust: `crates/voxel/src/mobs.rs`, `overlays.rs` (çizim listeleri), `crates/voxel-render/src/vulkan.rs` (`TextTranslucent` boru hattı, T25b), `crates/voxel-render/src/objects/xp_orb.rs` (yarı saydam dörtgen kalıbı), `crates/voxel-world/src/collision.rs` (zemin taraması için blok kutuları).
+- Rust: `crates/photon/src/mobs.rs`, `overlays.rs` (çizim listeleri), `crates/photon-render/src/vulkan.rs` (`TextTranslucent` boru hattı, T25b), `crates/photon-render/src/objects/xp_orb.rs` (yarı saydam dörtgen kalıbı), `crates/photon-world/src/collision.rs` (zemin taraması için blok kutuları).
 
 ## Yapılacaklar
 1. `EntityRenderDispatcher.extractShadowPieces` kuralları: yarıçap tablosu (tür başına `shadowRadius`, bebek ölçeği), zemin taraması (en çok kaç blok aşağı), kutu kesişimi ve alfa.
@@ -16,7 +16,7 @@
 `EntityOracle.java`'da `experienceOrb`/`itemEntityPose` kalıbı: gerçek `EntityRenderDispatcher` gölge çıkarımı gerçek `ClientLevel` sahnesiyle (`MovementOracle.buildScene`) koşturulur; her `ShadowPiece` (konum, boyut, alfa, uv) bit bit karşılaştırılır.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
 Blok gölgesi/ışık haritası (var), bulut gölgesi.
@@ -28,7 +28,7 @@ Blok gölgesi/ışık haritası (var), bulut gölgesi.
 Bağımsız ve her çizilen mobu görsel olarak iyileştirir; erken yapılabilir. Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı: `voxel-world/shadow.rs` (`extractShadow`: parça seçimi, ışık, alfa), `voxel-render/shadow.rs` (dörtgen köşeleri ve doku sınırına kırpma), `PipelineKind::Shadow` (ışıksız, yarı saydam, derinliğe yazmayan), `overlays::entity_shadows` (domuz/inek/oyuncu/eşya/küre yarıçapları, üçüncü şahıs yerel oyuncu). Kayıt: `docs/records/client-entity-shadow-parity-conformance.md`.
+- Yapıldı: `photon-world/shadow.rs` (`extractShadow`: parça seçimi, ışık, alfa), `photon-render/shadow.rs` (dörtgen köşeleri ve doku sınırına kırpma), `PipelineKind::Shadow` (ışıksız, yarı saydam, derinliğe yazmayan), `overlays::entity_shadows` (domuz/inek/oyuncu/eşya/küre yarıçapları, üçüncü şahıs yerel oyuncu). Kayıt: `docs/records/client-entity-shadow-parity-conformance.md`.
 - Oracle: `movement/entity-shadows` 51 satır (gerçek ClientLevel + gerçek ışık motoru + gerçek `extractShadow`/`prepare`). Canlı: inek, domuz ve eşya altında gölge görüldü.
 - Sapma: `getSkyDarken` yok (gece gölgeleri koyu kalır); yalnız çizilen türlerin yarıçapı; yerel oyuncu gölgesi oracle'sız.
 - Açık: `gameplay/sky_light_level` ortam özniteliği (gece/yağmur) ayrı iş; tür başına `getShadowRadius` geçersiz kılmaları aile görevlerinde.

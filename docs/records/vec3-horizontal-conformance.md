@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `horizontal` k
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::horizontal`, Java'nın x/z kopyası ve pozitif sıfır y bileşeni davranışını üretim API'sine taşır. `examples/behavior_adapter.rs` çağrıyı JSONL adımına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::horizontal`, Java'nın x/z kopyası ve pozitif sıfır y bileşeni davranışını üretim API'sine taşır. `examples/behavior_adapter.rs` çağrıyı JSONL adımına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.horizontal()` metodunun x/z bileşenlerini koruyup y bileşenini pozitif sıfıra çeviren davranışını karşılar. Java oracle doğrudan çağrıyı yapar; Rust adaptörü aynı girdiyi `Vec3::horizontal` API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.horizontal()` metodunun x/z bileşenlerini koruyup y bileşenini pozitif sıfıra çeviren davranışını karşılar. Java oracle doğrudan çağrıyı yapar; Rust adaptörü aynı girdiyi `Vec3::horizontal` API'sine taşır.
 
 ## Doğrulama
 

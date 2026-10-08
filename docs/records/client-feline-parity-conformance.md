@@ -47,7 +47,7 @@ ve karışımları); `living-entity-animations`'a altı kedi satırı (yabani, e
 
 - Uyuyan oyuncu araması (`isLyingOnTopOfSleepingPlayer`) Java ile karşılaştırılmıyor: sahnede uyuyan
   bir oyuncu kurulamıyor (başsız yerel oyuncu yok, uzak oyuncu için profil gerekir). Dal
-  `voxel-world` birim testindedir (yakın uyuyan, uzak uyuyan, yatmayan kedi).
+  `photon-world` birim testindedir (yakın uyuyan, uzak uyuyan, yatmayan kedi).
 - Ocelotun güven (`DATA_TRUSTING`) verisi çizimi etkilemez; okunmaz.
 - Kedi/ocelot sesleri (mırıltı, yalvarma) ve rastgele çekimleri yok.
 - Çeşit seçimi, `CatSoundVariant` ve kedi hediyesi (sunucu) kapsam dışı.

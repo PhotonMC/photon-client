@@ -19,7 +19,7 @@ kablodaki çözümü Rust birim testleriyle sınanır; canlı sunucu gözlemi yo
 - `handleParticleEvent`: sayı 0 ise hızlar `maxSpeed * dist` (float çarpımı), değilse her partikül
   için dinleyicinin rastgele kaynağından altı gauss (üç sapma, üç hız).
 - `nextGaussian` `Math.log` kullanır; platformun libm'i ile fdlibm'in sonucu seyrek olarak son
-  basamakta ayrışır. `voxel_core::math::strict_log` fdlibm'in `log`unu taşır (JVM'in `StrictMath.log`u,
+  basamakta ayrışır. `photon_core::math::strict_log` fdlibm'in `log`unu taşır (JVM'in `StrictMath.log`u,
   400 bin Java sonucuyla bit bit denendi) ve gauss kaynağı onu kullanır.
 
 ## Kapsam ve dal kararı

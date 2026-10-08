@@ -42,7 +42,7 @@ Math debug/release raporları `compare-00tgiqc4` ve `compare-aylr4ozm`; birleşi
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/shape.rs`, Java 26.2 `Shapes.or(first, tail...)` overload'ını `Shapes::or_many` ile soldan sağa binary OR birleşimi olarak uygular. `tests/behavior/java/MathOracle.java` Java varargs çağrısını, `examples/behavior_adapter.rs` ise aynı ilk+tail girdisini Rust API'sine bağlar. Davranış sınırları [varargs sözleşmesinde](#sözleşme) kayıtlıdır.
+`crates/photon-core/src/shape.rs`, Java 26.2 `Shapes.or(first, tail...)` overload'ını `Shapes::or_many` ile soldan sağa binary OR birleşimi olarak uygular. `tests/behavior/java/MathOracle.java` Java varargs çağrısını, `examples/behavior_adapter.rs` ise aynı ilk+tail girdisini Rust API'sine bağlar. Davranış sınırları [varargs sözleşmesinde](#sözleşme) kayıtlıdır.
 
 ## Doğrulama
 

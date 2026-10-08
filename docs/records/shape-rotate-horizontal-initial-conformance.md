@@ -45,7 +45,7 @@ Math debug/release raporları compare-00tgiqc4 ve compare-aylr4ozm; birleşik de
 
 ## Client-parity doğrulaması
 
-crates/voxel-core/src/shape.rs, Java 26.2 Shapes.rotateHorizontal(north, initial) yolunun Rust ShapeRotation alt kümesini Java compose sırasıyla uygular; examples/behavior_adapter.rs altı JSONL senaryosunu bu metoda bağlar.
+crates/photon-core/src/shape.rs, Java 26.2 Shapes.rotateHorizontal(north, initial) yolunun Rust ShapeRotation alt kümesini Java compose sırasıyla uygular; examples/behavior_adapter.rs altı JSONL senaryosunu bu metoda bağlar.
 
 ## Doğrulama
 

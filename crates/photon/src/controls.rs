@@ -1,0 +1,359 @@
+//! The player's hands on the client: the keys and the mouse, a script's
+//! steps, and the inventory screen they may be typing into.
+
+use std::time::{Duration, Instant};
+
+use photon_game::input::attack::AttackKey;
+
+use photon_game::input::hotbar::ScrollWheel;
+
+use photon_game::options::Options;
+
+use photon_net::connection::PlaySession;
+
+use photon_render::gui::chat::ChatSettings;
+
+use photon_render::gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
+
+use photon_render::gui::options::chat::ChatOptionsScreen;
+
+use photon_render::gui::options::language::LanguageSelectScreen;
+
+use photon_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+
+use photon_render::gui::options::sound::SoundOptionsScreen;
+
+use photon_render::gui::options::video::{VideoSettingsScreen, VideoValues};
+
+use photon_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
+
+use photon_render::gui::screen::confirm::ConfirmAction as LinkAction;
+
+use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+
+use photon_render::gui::screen::death::{DeathAction, DeathScreen};
+
+use photon_render::gui::screen::disconnected::DisconnectedScreen;
+
+use photon_render::gui::screen::pause::{PauseAction, PauseScreen};
+
+use photon_render::gui::screen::{KeyMods, KeyResult};
+
+use photon_render::gui::widgets::slider::SliderKey;
+
+use photon_render::window::WindowSurface;
+
+use crate::screens::{
+    OpenScreen, ScreenAssets, WindowClipboard, close_inventory, open_inventory, run_actions,
+};
+
+use crate::script::HeldKeys;
+
+use crate::view::CameraType;
+
+pub(super) type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+/// What the player is holding and pointing at between events.
+pub struct Controls {
+    pub keys: HeldKeys,
+    /// Attack clicks waiting for the next tick, and `Minecraft.missTime`:
+    /// ticks a missed attack keeps the next one waiting.
+    pub attack_key: AttackKey,
+    /// The use key keeps its clicks and held state the same way.
+    pub use_key: AttackKey,
+    /// The pick item key (the middle button) and whether a control key is
+    /// down (`Minecraft.hasControlDown`), which asks for the item's data too.
+    pub pick_key: AttackKey,
+    pub ctrl_down: bool,
+    pub(super) scroll_wheel: ScrollWheel,
+    /// F5 cycles first person, third person from behind and from the front.
+    pub camera_type: CameraType,
+    /// Whether the mouse is grabbed to look around.
+    pub captured: bool,
+    pub(super) last_cursor: Option<(f64, f64)>,
+    /// The open inventory screen, if any.
+    pub screen: OpenScreen,
+    /// The id of the container the server opened, while its screen is up.
+    pub(super) server_container: Option<i32>,
+    /// The creative screen's tab, kept for the next time it opens.
+    pub creative_tab: usize,
+    /// The chat box, while it is open, what was sent through it and the
+    /// lines of chat the player has been told.
+    pub chat: Option<ChatScreen>,
+    /// The pause menu, while it is open.
+    pub pause: Option<PauseScreen>,
+    /// The options screen, opened from the pause menu, which waits under it.
+    pub options_screen: Option<OptionsScreen>,
+    /// The video settings, opened from the options screen, which waits under
+    /// it.
+    pub video_screen: Option<VideoSettingsScreen>,
+    /// The chat settings, opened the same way.
+    pub chat_options_screen: Option<ChatOptionsScreen>,
+    pub sound_screen: Option<SoundOptionsScreen>,
+    /// The controls screen, and the mouse settings over it.
+    pub controls_screen: Option<ControlsScreen>,
+    /// The language screen, and the language it chose, for the game to load.
+    pub language_screen: Option<LanguageSelectScreen>,
+    pub(super) language_request: Option<String>,
+    /// When and where the primary button last went down.
+    pub(super) last_press: Option<(Instant, (i32, i32))>,
+    pub mouse_screen: Option<MouseSettingsScreen>,
+    /// The death screen, from the server's word of a death until the player
+    /// has health again.
+    pub death: Option<DeathScreen>,
+    /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
+    /// screen, which this takes the place of while it is open.
+    pub confirm: Option<ConfirmScreen>,
+    /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
+    pub link_confirm: Option<(ConfirmScreen, String)>,
+    /// The screen a lost connection leaves, which nothing replaces.
+    pub disconnected: Option<DisconnectedScreen>,
+    /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
+    /// disconnected screen).
+    pub leave: bool,
+    /// The options were saved since the session last looked (`Options.save` then
+    /// `broadcastOptions`).
+    pub options_saved: bool,
+    /// The values of `options.txt` the client reads.
+    pub options: Options,
+    pub(super) chat_history: Vec<String>,
+    /// `ChatComponent.latestDraft`.
+    pub(super) chat_drafts: ChatDrafts,
+    /// `CommandHistory`: the commands sent, kept in a file.
+    pub(super) command_history: Vec<String>,
+    /// `Minecraft.hasControlDown`: a control key is down (the command key on
+    /// macOS).
+    pub control_held: bool,
+    /// Whether a shift key is down, which wheel events carry no mark of.
+    pub(super) shift_held: bool,
+    pub chat_log: ChatLog,
+    /// Whether the tab list key is held.
+    pub tab_held: bool,
+    /// The mouse in GUI units.
+    pub gui_mouse: (f64, f64),
+    /// The button a drag is held with (`MouseHandler.activeButton`).
+    pub(super) active_button: Option<i32>,
+}
+
+/// `Util.getPlatform().openUri`: the system's own opener.
+pub(super) fn open_uri(uri: &str) {
+    let (program, arguments): (&str, &[&str]) = if cfg!(target_os = "macos") {
+        ("open", &[])
+    } else if cfg!(target_os = "windows") {
+        ("cmd", &["/c", "start", ""])
+    } else {
+        ("xdg-open", &[])
+    };
+    let _ = std::process::Command::new(program)
+        .args(arguments)
+        .arg(uri)
+        .spawn();
+}
+
+/// `MouseHandler.turnPlayer` for a mouse that moved `(dx, dy)`: scaled by
+/// the sensitivity cubed (`* 0.6F + 0.2F` widens floats), either axis
+/// reversed by its inversion option.
+pub(super) fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
+    let sensitivity = options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
+    let scaled = sensitivity * sensitivity * sensitivity * 8.0;
+    let (turn_x, turn_y) = (dx * scaled, dy * scaled);
+    (
+        if options.invert_mouse_x {
+            -turn_x
+        } else {
+            turn_x
+        },
+        if options.invert_mouse_y {
+            -turn_y
+        } else {
+            turn_y
+        },
+    )
+}
+
+/// A key a settings screen gives to its widgets: Tab and Shift+Tab, or an
+/// arrow, Enter or Space with whether Shift is held.
+pub(super) enum MenuKey {
+    Tab(bool),
+    Key(SliderKey, bool),
+}
+
+pub(super) fn menu_key(event: &glfw::WindowEvent) -> Option<MenuKey> {
+    use glfw::{Action, Key, Modifiers, WindowEvent};
+    let WindowEvent::Key(key, _, action, modifiers) = event else {
+        return None;
+    };
+    let shift = modifiers.contains(Modifiers::Shift);
+    let held = matches!(action, Action::Press | Action::Repeat);
+    match key {
+        Key::Tab if held => Some(MenuKey::Tab(!shift)),
+        Key::Left if held => Some(MenuKey::Key(SliderKey::Left, shift)),
+        Key::Right if held => Some(MenuKey::Key(SliderKey::Right, shift)),
+        Key::Up if held => Some(MenuKey::Key(SliderKey::Up, shift)),
+        Key::Down if held => Some(MenuKey::Key(SliderKey::Down, shift)),
+        Key::Enter | Key::KpEnter | Key::Space if *action == Action::Press => {
+            Some(MenuKey::Key(SliderKey::Select, shift))
+        }
+        _ => None,
+    }
+}
+
+/// `CommandHistory.MAX_PERSISTED_COMMAND_HISTORY`.
+pub(super) const COMMAND_HISTORY_LIMIT: usize = 50;
+
+/// Where the game keeps its files (`gameDirectory`).
+pub(crate) fn game_directory() -> std::path::PathBuf {
+    std::env::var_os("PHOTON_GAME_DIR")
+        .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
+}
+
+/// `Options.buildPlayerInformation`: what the server is told of the client. The skin's parts are
+/// all shown, the main hand is the right one, and nothing is filtered, as the default options have
+/// them.
+pub(crate) fn client_information(
+    options: &Options,
+) -> photon_net::configuration::ClientInformation {
+    photon_net::configuration::ClientInformation::new(
+        options.language_code.encode_utf16().collect(),
+        options.render_distance,
+        options.chat_visibility,
+        true,
+        127,
+        photon_net::configuration::MainHand::Right,
+        false,
+        true,
+        photon_net::configuration::ParticleStatus::All,
+    )
+}
+
+/// `Options.optionsFile`.
+pub(crate) fn options_path() -> std::path::PathBuf {
+    game_directory().join("options.txt")
+}
+
+/// `Options.load`: `options.txt` of the game directory, written when it
+/// was not there.
+pub(crate) fn load_options() -> Options {
+    let path = options_path();
+    let options = Options::load(&path);
+    if !path.exists() {
+        let _ = options.save(&path);
+    }
+    options
+}
+
+/// `CommandHistory`'s constructor: the lines of `command_history.txt`.
+pub(super) fn read_command_history() -> Vec<String> {
+    std::fs::read_to_string(game_directory().join("command_history.txt"))
+        .map(|text| text.lines().map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
+/// `CommandHistory.save`.
+pub(super) fn write_command_history(commands: &[String]) {
+    let directory = game_directory();
+    let _ = std::fs::create_dir_all(&directory);
+    let mut text = commands.join("\n");
+    text.push('\n');
+    let _ = std::fs::write(directory.join("command_history.txt"), text);
+}
+
+/// A scripted key: a click on this tick, and whether it is held.
+pub(super) fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
+    if click {
+        key.press();
+    }
+    if !hold {
+        key.release();
+    } else if !key.is_down() {
+        key.press();
+        key.take_clicks();
+    }
+}
+
+mod chat;
+
+mod confirm;
+
+mod death;
+
+mod events;
+
+mod options;
+
+mod pause;
+
+mod scripted;
+
+mod settings;
+
+impl Controls {
+    pub fn new(camera_type: CameraType, captured: bool) -> Self {
+        let command_history = read_command_history();
+        let options = load_options();
+        let chat_settings = ChatSettings::from(&options);
+        Self {
+            keys: HeldKeys::default(),
+            attack_key: AttackKey::default(),
+            use_key: AttackKey::default(),
+            pick_key: AttackKey::default(),
+            ctrl_down: false,
+            scroll_wheel: ScrollWheel::default(),
+            camera_type,
+            captured,
+            last_cursor: None,
+            screen: None,
+            server_container: None,
+            creative_tab: photon_game::menus::creative::default_tab(),
+            chat: None,
+            pause: None,
+            options_screen: None,
+            video_screen: None,
+            chat_options_screen: None,
+            sound_screen: None,
+            controls_screen: None,
+            language_screen: None,
+            language_request: None,
+            last_press: None,
+            mouse_screen: None,
+            death: None,
+            confirm: None,
+            link_confirm: None,
+            disconnected: None,
+            leave: false,
+            options_saved: false,
+            options,
+            chat_history: command_history.clone(),
+            chat_drafts: ChatDrafts::default(),
+            command_history,
+            shift_held: false,
+            control_held: false,
+            chat_log: ChatLog::with_settings(chat_settings),
+            tab_held: false,
+            gui_mouse: (0.0, 0.0),
+            active_button: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_camera_turns_by_the_sensitivity_cubed_and_the_inversions() {
+        let mut options = Options::default();
+        // At the least, (0.2)^3 * 8; at the most, (0.8)^3 * 8, in single
+        // precision where the reference widens a float.
+        options.sensitivity = 0.0;
+        let low = f64::from(0.2_f32).powi(3) * 8.0;
+        assert_eq!(turn_by(&options, (10.0, -5.0)), (10.0 * low, -5.0 * low));
+        options.sensitivity = 1.0;
+        let high = (f64::from(0.6_f32) + f64::from(0.2_f32)).powi(3) * 8.0;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (high, high));
+        options.invert_mouse_x = true;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, high));
+        options.invert_mouse_y = true;
+        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, -high));
+    }
+}

@@ -2,7 +2,7 @@
 
     python3 tools/generate/items.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes two files under crates/voxel-data/src/generated/item/:
+Writes two files under crates/photon-data/src/generated/item/:
 
 - `classes.rs`: every item class with the class it extends and the tracked
   methods it declares itself, so a rule is looked up the way the reference

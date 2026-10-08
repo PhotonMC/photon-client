@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/animation/KeyframeAnimation.java`, `client/animation/AnimationDefinition.java`, `client/model/AnimationUtils.java`.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs` (model bölümlerinin pozu), `crates/voxel-net/src/connection/play.rs` (paket işleme; `PLAY_CLIENTBOUND_*` kimlikleri `protocol.rs`'te), `crates/voxel-world/src/living.rs` (istemci tik durumları), `crates/voxel-data/src/entity_model.rs`.
+- Rust: `crates/photon-render/src/entity/mob_model.rs` (model bölümlerinin pozu), `crates/photon-net/src/connection/play.rs` (paket işleme; `PLAY_CLIENTBOUND_*` kimlikleri `protocol.rs`'te), `crates/photon-world/src/living.rs` (istemci tik durumları), `crates/photon-data/src/entity_model.rs`.
 
 ## Yapılacaklar
 1. Animasyon tanımları tablo olarak oracle'dan (`AnimationDefinition` statik alanları → üretilmiş Rust tablosu, her parity koşusunda karşılaştırılır).
@@ -16,7 +16,7 @@
 `EntityOracle.java`: (1) `AnimationDefinition` statik alanları tabloya (`tools/generate/`), (2) `KeyframeAnimation.apply` gerçek model bölümü üzerinde zaman satırları, (3) `AnimationState` başlat/durdur/zaman satırı; `living_entity_ticks` kalıbıyla `EntityEvent`/`Animate` paketleri gerçek `ClientPacketListener` işleyicilerine.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
 Tüm mob animasyon tanımları (ilgili aile görevlerinde kullanılır).

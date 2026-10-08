@@ -37,7 +37,7 @@ Direction seçimi, entity bakış sıralaması, random yön, codec'ler ve hareke
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `is_facing_angle`, Java `Direction.isFacingAngle(float)` derece/radyan f32 dönüşümünü, Mth sinüs/kosinüs lookup yolunu, yön normalinin X/Z ürünlerini ve strict pozitiflik kararını uygular. Rust adapter `direction_is_facing_angle` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı Direction yöntemini doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `is_facing_angle`, Java `Direction.isFacingAngle(float)` derece/radyan f32 dönüşümünü, Mth sinüs/kosinüs lookup yolunu, yön normalinin X/Z ürünlerini ve strict pozitiflik kararını uygular. Rust adapter `direction_is_facing_angle` JSONL operation'ı ile boolean sonucu dışarı verir; Java oracle aynı Direction yöntemini doğrudan çağırır.
 
 Senaryolar yatay ve dikey yönleri, cardinal/diagonal/negatif açıları, signed zero, subnormal, sonsuzluk, NaN ve f32 sınırlarını kapsar. Beklenen boolean sonuçlar Java oracle çıktısından alınır.
 

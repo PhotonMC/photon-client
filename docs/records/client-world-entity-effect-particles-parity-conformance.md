@@ -98,7 +98,7 @@ capture üzerinde **2987/2987** eşleşti; fark `null` kaldı.
 ```text
 cargo build --locked --offline --example behavior_adapter
 python3 tools/behavior/run.py compare --family math \
-  --adapter /home/batuhan/git/voxel-client/target/debug/examples/behavior_adapter
+  --adapter /home/batuhan/git/photon/target/debug/examples/behavior_adapter
 case_count=2987
 difference=null
 status=parity_passed
@@ -111,7 +111,7 @@ capture üzerinde **2987/2987** eşleşti; fark `null` kaldı.
 ```text
 cargo build --locked --offline --release --example behavior_adapter
 python3 tools/behavior/run.py compare --family math \
-  --adapter /home/batuhan/git/voxel-client/target/release/examples/behavior_adapter
+  --adapter /home/batuhan/git/photon/target/release/examples/behavior_adapter
 case_count=2987
 difference=null
 status=parity_passed

@@ -13,7 +13,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/Opti
 - `validateValue`, koşul false iken varsayılan listede, true iken alternatif listede `contains` araması yapar ve bulunan değeri geri verir.
 - Koşul çağrılarının sırası gözlenebilir; selected liste ve validation çağrıları ayrı koşul okumalarıdır.
 
-Rust karşılığı `crates/voxel-game/src/options/values.rs` içindeki `AltEnum<T, Condition>` tipidir. Koşul generic closure olarak tutulur; listeler sahiplenilmiş kopyalar olarak dışarı verilir.
+Rust karşılığı `crates/photon-game/src/options/values.rs` içindeki `AltEnum<T, Condition>` tipidir. Koşul generic closure olarak tutulur; listeler sahiplenilmiş kopyalar olarak dışarı verilir.
 
 ## JSONL sınırı
 
@@ -22,7 +22,7 @@ Rust karşılığı `crates/voxel-game/src/options/values.rs` içindeki `AltEnum
 
 ## Client-parity doğrulaması
 
-`crates/voxel-game/src/options/values.rs`, Java Edition 26.2 / protokol 776 / Java 25 `OptionInstance.AltEnum` value list ve koşullu validation davranışını uygular. Java oracle gerçek `OptionInstance.AltEnum<String>` ve `CycleButton.ValueListSupplier` yollarını çalıştırır; beklenen sonuç Rust adaptöründen türetilmez.
+`crates/photon-game/src/options/values.rs`, Java Edition 26.2 / protokol 776 / Java 25 `OptionInstance.AltEnum` value list ve koşullu validation davranışını uygular. Java oracle gerçek `OptionInstance.AltEnum<String>` ve `CycleButton.ValueListSupplier` yollarını çalıştırır; beklenen sonuç Rust adaptöründen türetilmez.
 
 Koşul değişimleri, duplicate değerler, boş alternatif liste ve listedeki/liste dışındaki probe değerleri sentetik senaryolarla karşılaştırılır. Özel `ValueSetter`, Codec, CycleButton'ın gerçek GUI olayları ve seçenek dosyası bu doğrulamanın kapsamı dışındadır.
 

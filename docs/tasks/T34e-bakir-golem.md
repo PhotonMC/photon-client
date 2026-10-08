@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/model/animal/golem/CopperGolemModel.java`, `client/renderer/entity/CopperGolemRenderer.java` ve katmanları, `world/entity/animal/golem/CopperGolem.java`.
-- Rust: `crates/voxel/src/mobs/humanoids/golems.rs` (kalıp), `voxel-render/src/mob_model.rs`.
+- Rust: `crates/photon/src/mobs/humanoids/golems.rs` (kalıp), `photon-render/src/mob_model.rs`.
 
 ## Oracle
 `ironGolemModel` kalıbı: gerçek model + `setupAnim`; animasyon durumları T43b'nin oynatıcısıyla.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Sesler, düğme/heykel dönüşümü.

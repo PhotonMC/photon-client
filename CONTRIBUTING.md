@@ -23,9 +23,9 @@ cargo test --workspace --lib --bins --tests
 These need no game files and are what CI runs. The full gate additionally compares Rust against the Java reference and needs the local reference data:
 
 ```sh
-python3 tools/voxel.py setup        # once: fetch the pinned game into .data/
-python3 tools/voxel.py check        # prints CHECK OK or CHECK FAILED
-python3 tools/voxel.py parity --family gui
+python3 tools/photon.py setup        # once: fetch the pinned game into .data/
+python3 tools/photon.py check        # prints CHECK OK or CHECK FAILED
+python3 tools/photon.py parity --family gui
 ```
 
 See the [local setup guide](docs/en/local-setup.md), [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md). If you changed the oracle sources or the case generators in `tools/behavior/`, run `check --capture`.

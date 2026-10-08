@@ -5,7 +5,7 @@ Bu kayıt, bir partikülün çizim için yazdığı dörtgenin (`SingleQuadParti
 `client-parity`: gerçek partikül tik tik ilerletilir, gerçek `Camera` (konum, `setRotation`) için
 `extract` çağrılır ve katmanın yazdığı dört köşe (konum, doku koordinatı, `ARGB` renk, paketli ışık)
 bit bit karşılaştırılır. `server-conformance`: canlı sunucunun `/particle` komutuyla gönderdiği
-alev, küçük alev ve duman istemcide çizilir (`tools/voxel.py shot`, yalnız görsel gözlem; sunucu
+alev, küçük alev ve duman istemcide çizilir (`tools/photon.py shot`, yalnız görsel gözlem; sunucu
 paketini kabul etmesi eşitlik kanıtı değildir).
 
 ## Java kaynak incelemesi

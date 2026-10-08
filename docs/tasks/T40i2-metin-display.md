@@ -5,12 +5,12 @@
 
 ## Oku
 - Java: `client/renderer/entity/DisplayRenderer.java` (`TextDisplayRenderer`), `world/entity/Display.java` (`TextDisplay`), `client/gui/Font.java` (`split`, `width`).
-- Rust: `crates/voxel-world/src/objects/display.rs`, `crates/voxel/src/objects/displays.rs`, `crates/voxel-render/src/entity/name_tag.rs` (yazı çizimi).
+- Rust: `crates/photon-world/src/objects/display.rs`, `crates/photon/src/objects/displays.rs`, `crates/photon-render/src/entity/name_tag.rs` (yazı çizimi).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon text_display`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon text_display`.
 
 ## Devir notu
-- Yapıldı: metin verisi, render durumu ve opaklık/arka plan aradeğerlemesi (`voxel-world/display.rs`; gerçek `TextDisplay` varlığı), `submitInner` yerleşimi (`voxel-render::display::{text_submit, text_vertices}`; gerçek `TextDisplayRenderer.submit`), `Matrix4::rotate_y`, oyunda `displays::display_texts`. Canlıda görüldü. Kayıt: `docs/records/client-display-parity-conformance.md`.
+- Yapıldı: metin verisi, render durumu ve opaklık/arka plan aradeğerlemesi (`photon-world/display.rs`; gerçek `TextDisplay` varlığı), `submitInner` yerleşimi (`photon-render::display::{text_submit, text_vertices}`; gerçek `TextDisplayRenderer.submit`), `Matrix4::rotate_y`, oyunda `displays::display_texts`. Canlıda görüldü. Kayıt: `docs/records/client-display-parity-conformance.md`.
 - Oracle: `entity/text-display-submit`; `entity` ailesine `icu4j` eklendi (gerçek `Font` sınıfı için).
 - Sapma/açık: satır bölme oracle'sız, arka plan opaklığı seçeneği sabit, satır önbelleği yok, `POLYGON_OFFSET` derinlik kayması yok.

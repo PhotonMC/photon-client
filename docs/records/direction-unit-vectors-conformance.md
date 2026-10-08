@@ -36,7 +36,7 @@ Direction `step()` integer helper'ı, Vec3 relative kullanımı, matrix rotation
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `Direction::unit_vec3` ve `unit_vec3f`, Java Direction normalinin f64 ve f32 görünümlerini sunar; adapter integer görünümü de aynı normal ile birlikte dışarı verir. Java oracle `getUnitVec3i`, `getUnitVec3` ve `getUnitVec3f` yollarını doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `Direction::unit_vec3` ve `unit_vec3f`, Java Direction normalinin f64 ve f32 görünümlerini sunar; adapter integer görünümü de aynı normal ile birlikte dışarı verir. Java oracle `getUnitVec3i`, `getUnitVec3` ve `getUnitVec3f` yollarını doğrudan çağırır.
 
 Altı yönün üç normal vektör görünümü Java oracle çıktısıyla karşılaştırılır.
 

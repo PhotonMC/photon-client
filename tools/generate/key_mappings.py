@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/key_mappings.rs from a gui-family capture.
+"""Generate crates/photon-data/src/generated/key_mappings.rs from a gui-family capture.
 
     python3 tools/generate/key_mappings.py .data/captures/behavior/<id>/outputs.jsonl
 

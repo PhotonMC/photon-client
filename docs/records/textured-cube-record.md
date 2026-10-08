@@ -44,12 +44,12 @@ başka türlü yapılıyor:
 ## Çalıştırma
 
 ```text
-VOXEL_TEXTURE=/yol/oak_planks.png cargo run -- window 854 480
+PHOTON_TEXTURE=/yol/oak_planks.png cargo run -- window 854 480
 ```
 
 Asset yolu kullanıcıdan gelir; kurulum hiçbir orijinal doku içermez. Değişken
 verilmezse probe kendi ürettiği damalı dokuyu kullanır ve hangisini seçtiğini
-bildirir. `VOXEL_CAPTURE_PPM` verildiğinde sunulan kare geri okunup yazılır.
+bildirir. `PHOTON_CAPTURE_PPM` verildiğinde sunulan kare geri okunup yazılır.
 
 Yerel koşuda gözlenen: 24 köşe, 36 indeks, `16x16` doku, `854x480` kare.
 Gerçek bir blok dokusuyla çizilen küpte on beş benzersiz renk sayıldı — dokunun

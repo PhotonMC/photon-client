@@ -12,7 +12,7 @@ Bu kayıt `shulker_bullet`, `llama_spit` ve `evoker_fangs` çizimini kapsar. Kan
 ## Kapsam
 
 - `entity/shulker-bullet-model` 4, `entity/llama-spit-model` 1, `entity/evoker-fangs-model` 10 satır (ısırmanın ucları, 0,9 eşiği); `entity/small-projectile-pose` 20 satır (yaşlar, yönler, ısırma öncesi/sonrası).
-- Rust: `MobModel::{setup_shulker_bullet, setup_llama_spit, setup_evoker_fangs}`, `projectile::{shulker_bullet_poses, llama_spit_pose, evoker_fangs_pose}`, `voxel-world::evoker_fangs` (olay ve sayaç; birim testli), oyunda `crates/voxel/src/objects/bullets.rs`.
+- Rust: `MobModel::{setup_shulker_bullet, setup_llama_spit, setup_evoker_fangs}`, `projectile::{shulker_bullet_poses, llama_spit_pose, evoker_fangs_pose}`, `photon-world::evoker_fangs` (olay ve sayaç; birim testli), oyunda `crates/photon/src/objects/bullets.rs`.
 - Kabuk, entity gölgelendiricisine eklenen yeni bir kodla çizilir: `shade ≥ 64` dünya ışığıyla harmanlanan, alfası `shade − 64` olan köşedir.
 
 ## Sapmalar ve açık kalanlar

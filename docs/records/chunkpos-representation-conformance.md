@@ -29,12 +29,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_representation"`, `x`, `z`, `ha
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::to_string_java`, `hash_code_java` ve `hash` Java'nın temsil biçimini ve wrapping hash aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
+`crates/photon-core/src/binary.rs` içindeki `ChunkPos::to_string_java`, `hash_code_java` ve `hash` Java'nın temsil biçimini ve wrapping hash aritmetiğini korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `ChunkPos.toString()`, `hashCode()` ve static `hash` davranışlarını aynı metin ve i32 wrapping aritmetiğiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik signed koordinat girdilerini üretim API'sine taşır.
+`crates/photon-core/src/binary.rs`, Java `ChunkPos.toString()`, `hashCode()` ve static `hash` davranışlarını aynı metin ve i32 wrapping aritmetiğiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik signed koordinat girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

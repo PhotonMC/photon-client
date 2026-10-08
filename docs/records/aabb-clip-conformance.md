@@ -46,7 +46,7 @@ Bu doğrulama tek kutulu `AABB.clip(Vec3, Vec3)` yoluyla sınırlıdır. Koordin
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/aabb.rs`, Java `AABB.clip(Vec3, Vec3)` yolunun eksen sırasını, eşiklerini, epsilon'lı yüz kontrollerini ve ilk geçerli segment ölçeğini uygular. Koordinat endpoint'li statik overload [ayrı dilimde](aabb-clip-coordinates-conformance.md) uygulanır. `examples/behavior_adapter.rs` sonucu f64 bitleriyle JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/photon-core/src/aabb.rs`, Java `AABB.clip(Vec3, Vec3)` yolunun eksen sırasını, eşiklerini, epsilon'lı yüz kontrollerini ve ilk geçerli segment ölçeğini uygular. Koordinat endpoint'li statik overload [ayrı dilimde](aabb-clip-coordinates-conformance.md) uygulanır. `examples/behavior_adapter.rs` sonucu f64 bitleriyle JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

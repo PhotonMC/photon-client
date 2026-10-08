@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/ScreenEffectRenderer.java`, `client/renderer/fog/*`, `client/renderer/GameRenderer.java` (`spinningEffectTime`, `renderLevel`), `client/renderer/LightmapRenderStateExtractor.java`.
-- Rust: `crates/voxel-render/src/{camera,sky,atmosphere}.rs`, `crates/voxel/src/world/atmosphere.rs`.
+- Rust: `crates/photon-render/src/{camera,sky,atmosphere}.rs`, `crates/photon/src/world/atmosphere.rs`.
 
 ## Oracle
 Gerçek `ScreenEffectRenderer`/`fog` sayısal çıktısı ve `gui` ailesinde örtü satırları.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-camera-hurt-parity-conformance.md`, `docs/remaining-work.md` §8.

@@ -19,7 +19,7 @@ Kapsam dışı kalanlar: `rotateIfNecessary`, `approach`, `approachDegrees`, di�
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs` içindeki `mth_wrap_degrees_90_f32`, `mth_degrees_difference_f32` ve `mth_degrees_difference_abs_f32`, Java `Mth.wrapDegrees90`, `Mth.degreesDifference` ve `Mth.degreesDifferenceAbs` yollarını JSONL adapter'a bağlar. F32 remainder, sınır karşılaştırmaları, derece farkı sarmalama, signed zero ve özel değer sonuçları Java oracle'ın raw f32 bitleriyle karşılaştırılır.
+`crates/photon-core/src/math.rs` içindeki `mth_wrap_degrees_90_f32`, `mth_degrees_difference_f32` ve `mth_degrees_difference_abs_f32`, Java `Mth.wrapDegrees90`, `Mth.degreesDifference` ve `Mth.degreesDifferenceAbs` yollarını JSONL adapter'a bağlar. F32 remainder, sınır karşılaştırmaları, derece farkı sarmalama, signed zero ve özel değer sonuçları Java oracle'ın raw f32 bitleriyle karşılaştırılır.
 
 ## Doğrulama
 

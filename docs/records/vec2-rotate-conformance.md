@@ -23,12 +23,12 @@ Her girdi `family: "math"`, `operation: "vec2_rotate"`, f32 bit dizgeli `first` 
 
 ## Rust karşılığı
 
-Rust karşılığı `crates/voxel-core/src/math.rs` içindeki `Vec2::rotate` yordamında Java `Mth` lookup yardımcılarını ve f32 işlem sırasını korur. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` doğrudan Java `Vec2.rotate()` çağrısını yapar.
+Rust karşılığı `crates/photon-core/src/math.rs` içindeki `Vec2::rotate` yordamında Java `Mth` lookup yardımcılarını ve f32 işlem sırasını korur. `examples/behavior_adapter.rs` sonucu taşır; `tests/behavior/java/MathOracle.java` doğrudan Java `Vec2.rotate()` çağrısını yapar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec2.rotate(double)` davranışını f64 açı, Java `Mth` lookup sinüs/kosinüs değerleri ve f32 vektör işlemleriyle karşılar. Java oracle, `Vec2.rotate()` yöntemini doğrudan çağırır; beklenen sonuç Rust çıktısından türetilmez.
+`crates/photon-core/src/math.rs`, Java `Vec2.rotate(double)` davranışını f64 açı, Java `Mth` lookup sinüs/kosinüs değerleri ve f32 vektör işlemleriyle karşılar. Java oracle, `Vec2.rotate()` yöntemini doğrudan çağırır; beklenen sonuç Rust çıktısından türetilmez.
 
 ## Doğrulama
 

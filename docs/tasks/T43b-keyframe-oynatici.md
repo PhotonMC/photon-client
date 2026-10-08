@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/animation/KeyframeAnimation.java`, `client/animation/AnimationDefinition.java`, `client/animation/definitions/` (kullanılacak aileninki), `world/entity/AnimationState.java`, `client/model/AnimationUtils.java`.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs` (parçaların pozu, `child_mut`), `crates/voxel-world/src/mobs/animal.rs` (durum kalıbı), `crates/voxel/src/mobs.rs`.
+- Rust: `crates/photon-render/src/entity/mob_model.rs` (parçaların pozu, `child_mut`), `crates/photon-world/src/mobs/animal.rs` (durum kalıbı), `crates/photon/src/mobs.rs`.
 
 ## Yapılacaklar
 1. `AnimationDefinition` tablosu (kullanılan aile için) oracle'dan, her koşuda karşılaştırılır; `KeyframeAnimation.apply` Rust'ta (doğrusal ve Catmull-Rom).
@@ -15,7 +15,7 @@
 `EntityOracle.java`: gerçek model parçası üzerinde `KeyframeAnimation.apply` zaman satırları; gerçek `AnimationState` başlat/durdur satırları; durum geçişleri `movement/living-entity-animations` kalıbıyla paketten.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Tüm mob animasyon tanımları (aile görevlerinde).
@@ -24,7 +24,7 @@ Tüm mob animasyon tanımları (aile görevlerinde).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: gerçek `definitions` tablosu (74, `animations.py`, `voxel_data::animation`), `keyframe::apply` (`KeyframeAnimation.apply`, kaynaştırmasız lerp), `AnimationState` (`voxel-world`), `MobModel::animate`. İlk tüketici tavşan (T30c). Kayıt: `docs/records/client-keyframe-animation-parity-conformance.md`.
+- Yapıldı: gerçek `definitions` tablosu (74, `animations.py`, `photon_data::animation`), `keyframe::apply` (`KeyframeAnimation.apply`, kaynaştırmasız lerp), `AnimationState` (`photon-world`), `MobModel::animate`. İlk tüketici tavşan (T30c). Kayıt: `docs/records/client-keyframe-animation-parity-conformance.md`.
 - Oracle: `animation-definitions` 74, `keyframe-animation` 52, `animation-states` 4 satır.
 - Sapma: yok.
 - Açık: diğer tüketiciler (deve, aksolotl, kurbağa, warden, bakır golem…) kendi aile görevlerinde.

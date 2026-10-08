@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/map_data.rs from an entity-family capture.
+"""Generate crates/photon-data/src/generated/map_data.rs from an entity-family capture.
 
     python3 tools/generate/map_data.py .data/captures/behavior/<id>/outputs.jsonl
 

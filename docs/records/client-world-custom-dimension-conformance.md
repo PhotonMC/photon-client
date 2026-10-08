@@ -61,7 +61,7 @@ creative test modu, `view-distance=5`, `simulation-distance=5`,
 
 **Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
 
-Senaryoda yalnızca bu test için `/tmp/voxel-vanilla-26.2-world/world/datapacks`
+Senaryoda yalnızca bu test için `/tmp/photon-vanilla-26.2-world/world/datapacks`
 altında tutulan sentetik `p08_custom_dimension` datapack'i kullanıldı. Pack
 format `107.1`'dir. `p08:test` dimension type'ı `has_skylight=true`,
 `coordinate_scale=1.0`, `min_y=-32`, `height=192`, `logical_height=192` ve

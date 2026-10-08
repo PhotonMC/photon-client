@@ -75,12 +75,12 @@ aynı capture üzerinde **2945/2945** eşleşti; fark `null` kaldı.
 Çalıştırılan dilim kontrolleri:
 
 ```text
-python3 tools/behavior/run.py capture --family math --jdk-home /tmp/voxel-jdk-wrapper
+python3 tools/behavior/run.py capture --family math --jdk-home /tmp/photon-jdk-wrapper
 cargo test --locked --offline zero_y_remote_movement_retains_vertical_state
 cargo build --locked --offline --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/debug/examples/behavior_adapter
 cargo build --locked --offline --release --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/release/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/release/examples/behavior_adapter
 ```
 
 Depo kontrolleri de geçti:
@@ -92,7 +92,7 @@ cargo check --locked --offline --all-targets
 cargo clippy --locked --offline --all-targets -- -D warnings
 cargo build --locked --offline --examples
 python3 tools/behavior/test_runner.py
-python3 tools/behavior/run.py verify --family math --jdk-home /tmp/voxel-jdk-wrapper
+python3 tools/behavior/run.py verify --family math --jdk-home /tmp/photon-jdk-wrapper
 git diff --check
 ```
 

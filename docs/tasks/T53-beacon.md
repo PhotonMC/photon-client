@@ -4,13 +4,13 @@
 **Bağımlılık:** T50. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/BeaconScreen.java`, `world/inventory/BeaconMenu.java`, `network/protocol/game/ServerboundSetBeaconPacket.java`, `world/level/block/entity/BeaconBlockEntity.java` (yalnız efekt listesi). Rust: `crates/voxel-game/src/menus/container.rs` (`MenuKind`, `from_menu_type`), `crates/voxel-render/src/gui/screen/container.rs`.
+Java: `client/gui/screens/inventory/BeaconScreen.java`, `world/inventory/BeaconMenu.java`, `network/protocol/game/ServerboundSetBeaconPacket.java`, `world/level/block/entity/BeaconBlockEntity.java` (yalnız efekt listesi). Rust: `crates/photon-game/src/menus/container.rs` (`MenuKind`, `from_menu_type`), `crates/photon-render/src/gui/screen/container.rs`.
 
 ## Oracle
 Menü: `movement/container-clicks` (ödeme yuvası kuralı, hızlı taşıma); ekran: `container_screen` beacon (seviye 0–4, seçili efekt, devre dışı düğmeler). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

@@ -7,7 +7,7 @@ istemci kopyası ve `StatsScreen` (genel, eşyalar, moblar sekmeleri; sıralama,
 ## Oku
 - Java: `client/gui/screens/achievement/StatsScreen.java`, `stats/StatsCounter.java`, `stats/StatType.java`,
   `network/protocol/game/ClientboundAwardStatsPacket.java`, `PauseScreen` (Statistics düğmesi).
-- Rust: `crates/voxel-render/src/gui/screen/pause.rs` (düğme), liste widget'ı.
+- Rust: `crates/photon-render/src/gui/screen/pause.rs` (düğme), liste widget'ı.
 
 ## Yapılacaklar
 1. Paket ve sayaçlar; istek ve "Downloading statistics" ekranı.

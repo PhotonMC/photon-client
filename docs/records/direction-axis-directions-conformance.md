@@ -37,7 +37,7 @@ Eksen predicate'leri, plane, random seçim, coordinate choose overload'ları ve 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `Axis.get_positive`, `get_negative` ve `get_directions`, Java eksen/yön eşlemelerini ve pozitif/negatif dizi sırasını uygular. Rust adapter `direction_axis_directions` JSONL operation'ı ile yön snapshot'larını dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `Axis.get_positive`, `get_negative` ve `get_directions`, Java eksen/yön eşlemelerini ve pozitif/negatif dizi sırasını uygular. Rust adapter `direction_axis_directions` JSONL operation'ı ile yön snapshot'larını dışarı verir; Java oracle aynı enum yöntemlerini doğrudan çağırır.
 
 Senaryolar X, Y ve Z eksenlerinin tekil pozitif/negatif yönlerini ve birleşik dizi sırasını Java oracle çıktısıyla karşılaştırır.
 

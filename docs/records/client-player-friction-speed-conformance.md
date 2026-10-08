@@ -51,7 +51,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `local_player_friction_influenced_speed`, zemin
+`crates/photon-world/src/input.rs` içindeki `local_player_friction_influenced_speed`, zemin
 friction hesabını ve `Player.getFlyingSpeed` hava dallarını f32 bitleriyle
 uygular. `ClientWorld::apply_local_player_friction_influenced_speed`, sonucu
 local player'ın sorgulanabilir `friction_influenced_speed` state'ine yazar;

@@ -2,7 +2,7 @@
 
     python3 tools/generate/blocks.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes three files under crates/voxel-data/src/generated/block/:
+Writes three files under crates/photon-data/src/generated/block/:
 
 - `properties.rs`: every state property, named after the field that holds it
   in the reference (`BlockStateProperties.HORIZONTAL_FACING`).

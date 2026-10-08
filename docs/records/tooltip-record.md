@@ -6,7 +6,7 @@ metin ve ekran canlı gözlem
 
 ## Metin bileşeni ve dil
 
-`crates/voxel-game/src/text.rs` bileşeni (`Component`: düz metin ya da çeviri anahtarı ve
+`crates/photon-game/src/text.rs` bileşeni (`Component`: düz metin ya da çeviri anahtarı ve
 argümanlar, stil, kardeşler) hem veri JSON'undan hem ağın etiketinden
 (NBT) okur; `Lang` `assets/minecraft/lang/en_us.json`dan anahtarları biçim
 metnine çevirir (`%s`, `%d`, `%n$s`, `%%`) ve bileşeni stilli parçalara
@@ -22,7 +22,7 @@ harfler bir birim kaydırılıp iki kez çizilir (ilerleme +1), eğik harfler
 
 ## Eşya ipucu
 
-`crates/voxel-game/src/tooltip.rs` `ItemStack.getTooltipLines`ı yığının bileşen değerleriyle
+`crates/photon-game/src/tooltip.rs` `ItemStack.getTooltipLines`ı yığının bileşen değerleriyle
 ve eşyanın varsayılanlarıyla kurar: ad (özel ad, kitap başlığı, iksir, ok,
 kalkan, oyuncu kafası, pusula; nadirlik rengi, özel ad eğik), tablo, disk
 parçası, keçi borusu, havai fişek ve yıldız, iksir ve kötü alâmet şişesi
@@ -42,13 +42,13 @@ Bileşen değerlerini oracle tabloları besler (`block/tooltip-registries`,
 tablolar, enstrümanlar, plaklar, bayrak desenleri, süs malzemeleri ve
 desenleri, öznitelikler (anahtar, artış/azalış rengi), mob efektleri
 (renk, açıklama anahtarı, kategori rengi, öznitelik değiştiricileri) ve
-iksirler; hepsi kayıt numarasıyla (`crates/voxel-data/src/item/tooltip.rs`,
-`crates/voxel-data/src/generated/item/potions.rs`, `tools/generate/`) ve adaptörle her koşuda
+iksirler; hepsi kayıt numarasıyla (`crates/photon-data/src/item/tooltip.rs`,
+`crates/photon-data/src/generated/item/potions.rs`, `tools/generate/`) ve adaptörle her koşuda
 referanstan karşılaştırılır.
 
 ## Yaratıcı arama
 
-Arama sekmesinin kutusu `EditBox`ın (`crates/voxel-render/src/gui/widgets/edit_box.rs`) taşıdır: yazı,
+Arama sekmesinin kutusu `EditBox`ın (`crates/photon-render/src/gui/widgets/edit_box.rs`) taşıdır: yazı,
 imleç, seçim, imleci görünür tutan kayma, Backspace/Delete/oklar/Home/End
 (Ctrl ile kelime), hepsini seç/kopyala/yapıştır/kes (pencere panosuyla),
 elli karakter. `T` arama sekmesini açar ve o tuşun harfi yazılmaz. Arama

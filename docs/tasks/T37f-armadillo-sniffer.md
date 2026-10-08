@@ -5,12 +5,12 @@
 
 ## Oku
 - Java: `world/entity/animal/armadillo/Armadillo.java`, `world/entity/animal/sniffer/Sniffer.java`, `client/model/animal/{armadillo,sniffer}/*.java`, `client/renderer/entity/{ArmadilloRenderer,SnifferRenderer}.java`.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs`, `crates/voxel-world/src/animation_state.rs`.
+- Rust: `crates/photon-render/src/entity/mob_model.rs`, `crates/photon-world/src/animation_state.rs`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı yalnız armadillo: `setup_armadillo` (yetişkin ve yavru, `skip_draw`), `voxel-world/armadillo.rs` (durum, süre, olay 64, animasyon durumları, bakış tutma), `armadillos.rs` çizici. Kayıt: `docs/records/client-armadillo-parity-conformance.md`.
+- Yapıldı yalnız armadillo: `setup_armadillo` (yetişkin ve yavru, `skip_draw`), `photon-world/armadillo.rs` (durum, süre, olay 64, animasyon durumları, bakış tutma), `armadillos.rs` çizici. Kayıt: `docs/records/client-armadillo-parity-conformance.md`.
 - Sniffer ve yavrusu (koklama, kazma, yürüme, ayağa kalkma; `SNIFFER_STATE` verisi) [T37f2](T37f2-sniffer.md)'ye ayrıldı; bu görev `bölündü`.
 - Sapma: ses, parçacık, davranış yok; canlı gözlem yapılmadı.

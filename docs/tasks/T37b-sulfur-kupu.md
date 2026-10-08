@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `world/entity/monster/cubemob/SulfurCube.java`, `client/model/monster/slime/{SulfurCubeModel,SmallSulfurCubeModel}.java`, `client/renderer/entity/{SulfurCubeRenderer,TntRenderer,layers/SulfurCubeInnerLayer}.java`.
-- Rust: `crates/voxel/src/mobs/monsters/cube_mobs.rs`, `crates/voxel-world/src/mobs/cube_mob.rs`, `crates/voxel-render/src/entity/mob_model.rs` (`CubeMobScale`).
+- Rust: `crates/photon/src/mobs/monsters/cube_mobs.rs`, `crates/photon-world/src/mobs/cube_mob.rs`, `crates/photon-render/src/entity/mob_model.rs` (`CubeMobScale`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: fitil durumu (`MAX_FUSE` 18, tik, sıfırda kalır), `SulfurCubeScale` ve `tnt_swell_amount`/`tnt_is_lit` (T40b TNT'si de kullanır), iç gövde (fitil yanıksa beyaz) ve kabuk ayrı sıralı translucent, küçük model bebek bayrağıyla. Kayıt: `docs/records/client-sulfur-cube-parity-conformance.md`.

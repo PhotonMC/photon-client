@@ -44,7 +44,7 @@ Math debug/release raporları `compare-00tgiqc4` ve `compare-aylr4ozm`; birleşi
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/shape.rs`, Java 26.2 `VoxelShape.singleEncompassing()` yolunu `VoxelShape::single_encompassing` ile uygular. `tests/behavior/java/MathOracle.java` Java yöntem çağrısını, `examples/behavior_adapter.rs` ise aynı OR kurulumu ve snapshot sınırını Rust API'sine bağlar. Davranış sınırları [referans sözleşmesinde](#sözleşme) kayıtlıdır.
+`crates/photon-core/src/shape.rs`, Java 26.2 `VoxelShape.singleEncompassing()` yolunu `VoxelShape::single_encompassing` ile uygular. `tests/behavior/java/MathOracle.java` Java yöntem çağrısını, `examples/behavior_adapter.rs` ise aynı OR kurulumu ve snapshot sınırını Rust API'sine bağlar. Davranış sınırları [referans sözleşmesinde](#sözleşme) kayıtlıdır.
 
 ## Doğrulama
 

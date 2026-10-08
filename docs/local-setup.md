@@ -1,6 +1,6 @@
 # Yerel kurulum ve çalıştırma
 
-`tools/voxel.py` Linux, macOS ve Windows'ta aynı biçimde çalışan geliştirici
+`tools/photon.py` Linux, macOS ve Windows'ta aynı biçimde çalışan geliştirici
 aracıdır. Yalnız Python standart kütüphanesini kullanır. Windows'ta
 `python3` yerine `python` yazılabilir. İndirdiği her şey depo dışındaki
 `.data/` klasörüne gider. Bu klasör Git'e girmez; dağıtılan istemci de
@@ -21,11 +21,11 @@ aracıdır. Yalnız Python standart kütüphanesini kullanır. Windows'ta
 ## Komutlar
 
 ```sh
-python3 tools/voxel.py setup
-python3 tools/voxel.py server --accept-eula --background
-python3 tools/voxel.py play --user Walker
-python3 tools/voxel.py rcon "time set noon" "weather clear"
-python3 tools/voxel.py server --stop
+python3 tools/photon.py setup
+python3 tools/photon.py server --accept-eula --background
+python3 tools/photon.py play --user Walker
+python3 tools/photon.py rcon "time set noon" "weather clear"
+python3 tools/photon.py server --stop
 ```
 
 - **`setup`:** Mojang'ın resmi dağıtımından sabitlenmiş 26.2 sürümünü
@@ -54,8 +54,8 @@ python3 tools/voxel.py server --stop
     yazıyor ve oyun portu ile RCON açılana dek bekliyor.
   - `--stop` sunucuyu RCON ile durduruyor.
 - **`play`:** `cargo build --release` yapıp (`--no-build` atlar) istemciyi
-  `VOXEL_ASSETS` ayarlı başlatıyor. Seçenekler: `--user`, `--size`,
-  `--fullscreen`, `--camera back|front`, `--profile`. Diğer `VOXEL_*`
+  `PHOTON_ASSETS` ayarlı başlatıyor. Seçenekler: `--user`, `--size`,
+  `--fullscreen`, `--camera back|front`, `--profile`. Diğer `PHOTON_*`
   değişkenleri ortamdan olduğu gibi geçiyor.
 - **`rcon`:** Komutları sırayla gönderip yanıtları yazıyor.
 - **`bench`:** Çalışan test sunucusuna sabit bir betikle (yerinde durup dört

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{CrossedArmsItemLayer,WitchItemLayer,CustomHeadLayer}.java`, `client/renderer/entity/state/HoldingEntityRenderState.java`, `VillagerRenderer.CUSTOM_HEAD_TRANSFORMS`.
-- Rust: `crates/voxel-render/src/entity/held_item.rs`, `crates/voxel/src/{held_items,villagers}.rs`.
+- Rust: `crates/photon-render/src/entity/held_item.rs`, `crates/photon/src/{held_items,villagers}.rs`.
 
 ## Yapılacaklar
 1. Üç katmanın pozları (oracle ile) ve `Place::Ground` önbelleği.
@@ -15,7 +15,7 @@
 `villager_held_layers`: gerçek katmanlar, yakalayıcı toplayıcı.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon` ile eşyalı köylü, cadı, tüccar.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon` ile eşyalı köylü, cadı, tüccar.
 
 ## Kapsam dışı
 Kullanım pozları (T41d).

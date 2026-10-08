@@ -10,7 +10,7 @@ Bu kayıt iki şeyi ayrı sınıflarla tutar. **Tablo** (`client-parity`): her b
 
 ## Yapılan
 
-- `block_sounds` tablosu (`tools/generate/block_sounds.py`, `voxel-data::block_sound`; 127 tür, 1196 blok, 8 durum istisnası) ve oracle'ı (`sound/block-sounds`).
+- `block_sounds` tablosu (`tools/generate/block_sounds.py`, `photon-data::block_sound`; 127 tür, 1196 blok, 8 durum istisnası) ve oracle'ı (`sound/block-sounds`).
 - `LocalPlayer`: `moveDist`/`nextStep`, adım ve yüzme sesleri (`take_sounds`); dünya: `push_sound`/`take_sounds`, `play_hit_sound`, `play_place_sound`, `apply_level_event(2001)`; `ClientboundLevelEventPacket` çözümü (yalnız 2001 işlenir); oyun modu vuruş/kırma/koyma tetikleri; uygulama sesleri motora verir.
 
 ## Sapmalar ve açık kalanlar

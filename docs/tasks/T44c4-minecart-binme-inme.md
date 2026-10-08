@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/entity/vehicle/minecart/AbstractMinecart.java`, `Entity.java` (`startRiding`, `removeVehicle`, `getDismountLocationForPassenger`).
-- Rust: `voxel-world/src/{vehicle_ride,mount_ride,local_player}.rs`.
+- Rust: `photon-world/src/{vehicle_ride,mount_ride,local_player}.rs`.
 
 ## Oracle
 `movement/ride-camel` örneğiyle `ride` satırları; `kind` olarak minecart.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-mount-ride-parity-conformance.md`.

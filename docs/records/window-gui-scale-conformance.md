@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik girdi hem pinned
 JAR'daki `com.mojang.blaze3d.platform.Window` sınıfına hem de üretim
-kütüphanesindeki `voxel_client::window` modülüne verilir ve çıktılar birebir
+kütüphanesindeki `photon::window` modülüne verilir ve çıktılar birebir
 karşılaştırılır. Canlı sunucu bu kayda karışmaz.
 
 Bu, render bölümünün ilk dilimidir ve GPU gerektirmez. GUI ve HUD'daki her

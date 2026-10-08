@@ -68,7 +68,7 @@ Sonraki adım bu sabit referansa karşı UTF-8 Rust davranış dilimidir. Beklen
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/utf8.rs`, `Utf8String` okuma/yazma davranışını kapsar. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. `src/main.rs` hâlâ boştur. UUID, konum, bitset ve diğer P03 biçimleri bu dilime dahil değildir.
+`crates/photon-core/src/utf8.rs`, `Utf8String` okuma/yazma davranışını kapsar. `examples/behavior_adapter.rs` üretim kütüphanesini mevcut JSONL senaryolarına bağlar; beklenen değer üretmez. `src/main.rs` hâlâ boştur. UUID, konum, bitset ve diğer P03 biçimleri bu dilime dahil değildir.
 
 ## Referans ve davranış
 

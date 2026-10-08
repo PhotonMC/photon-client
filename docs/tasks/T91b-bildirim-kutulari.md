@@ -7,7 +7,7 @@
 ## Oku
 - Java: `client/gui/components/toasts/*.java`, `ClientAdvancements.update` (toast tetikleri),
   `ClientRecipeBook` (tarif toastı).
-- Rust: `crates/voxel-render/src/gui/hud.rs` (katman sırası), ses tetikleri (`crates/voxel/src/sound.rs`).
+- Rust: `crates/photon-render/src/gui/hud.rs` (katman sırası), ses tetikleri (`crates/photon/src/sound.rs`).
 
 ## Yapılacaklar
 1. Yönetici: görünür yuva sayısı, kuyruk, zaman çizelgesi.

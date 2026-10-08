@@ -5,7 +5,7 @@
 
 ## Ne pinlendi
 
-`crates/voxel-game/src/menus/container.rs`, oyuncunun kendi envanter menüsü (`ContainerMenu`)
+`crates/photon-game/src/menus/container.rs`, oyuncunun kendi envanter menüsü (`ContainerMenu`)
 için `AbstractContainerMenu.doClick` ve
 `MultiPlayerGameMode.handleContainerInput`:
 
@@ -33,7 +33,7 @@ için `AbstractContainerMenu.doClick` ve
 Tıklamanın okuduğu eşya verisi referanstan tabloya eklendi ve her koşuda
 karşılaştırılıyor: yığın sınırı, dayanıklılık, `equippable` yuvası ve
 oyuncunun giyip giyemediği, üretim artığı, tıklamayı değiştiren sınıf
-(`block/item-stacking`, `crates/voxel-data/src/item/stacking.rs`,
+(`block/item-stacking`, `crates/photon-data/src/item/stacking.rs`,
 `tools/generate/item_stacking.py`).
 
 ## Senaryolar

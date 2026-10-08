@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik kutu ve yön, pinned
 JAR'daki `FaceBakery.defaultFaceUV` ile `FaceInfo` köşe tablosuna ve üretim
-kütüphanesindeki `voxel_client::render::geometry` modülüne verilir; dört köşe
+kütüphanesindeki `photon::render::geometry` modülüne verilir; dört köşe
 konumu ve varsayılan UV dikdörtgeni float bit düzeyinde karşılaştırılır.
 
 ## Java kaynak incelemesi

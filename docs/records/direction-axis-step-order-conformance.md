@@ -37,7 +37,7 @@ Direction seçimi, entity bakış sıralaması, random yön, codec'ler ve hareke
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `axis_step_order`, Java `Direction.axisStepOrder(Vec3)` strict X/Z mutlak büyüklük karşılaştırmasını ve iki sabit eksen sırasını uygular. Rust adapter `direction_axis_step_order` JSONL operation'ı ile eksen listesini dışarı verir; Java oracle doğrudan Vec3 overload'unu çağırır.
+`crates/photon-core/src/direction.rs` içindeki `axis_step_order`, Java `Direction.axisStepOrder(Vec3)` strict X/Z mutlak büyüklük karşılaştırmasını ve iki sabit eksen sırasını uygular. Rust adapter `direction_axis_step_order` JSONL operation'ı ile eksen listesini dışarı verir; Java oracle doğrudan Vec3 overload'unu çağırır.
 
 Senaryolar işaretli büyüklükleri, eşitliği, sıfır/subnormal değerleri, sonsuzlukları ve NaN karşılaştırmalarını kapsar. Beklenen eksen dizileri Java oracle çıktısından alındı.
 

@@ -12,7 +12,7 @@ blok, paratoner; yaratıcıda işaretçi (`BLOCK_MARKER`) ve biyomun ortam parç
 ## Oku
 Java: ilgili blok sınıflarının `animateTick` yöntemleri (`grep -ln "public void animateTick"
 world/level/block/`), `world/attribute/EnvironmentAttributes.java`. Rust:
-`crates/voxel-world/src/particles/animate_blocks.rs`.
+`crates/photon-world/src/particles/animate_blocks.rs`.
 
 ## Oracle
 `movement/particle-engine` `animate_tick` satırları (blok düzlemleri).

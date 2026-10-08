@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/sounds/{JOrbisAudioStream,AudioStream,FloatSampleSource,FiniteAudioStream,LoopingAudioStream,ChunkedSampleByteBuf}.java`, `com/mojang/blaze3d/audio/SoundBuffer.java`.
-- Rust: kök `Cargo.toml` (`[workspace.dependencies]`), `crates/voxel-game` ya da yeni `voxel-audio` crate'i (katman kuralı: `docs/coding-standards.md`).
+- Rust: kök `Cargo.toml` (`[workspace.dependencies]`), `crates/photon-game` ya da yeni `photon-audio` crate'i (katman kuralı: `docs/coding-standards.md`).
 
 ## Yapılacaklar
 1. `lewton` ile çözücü; kanal sayısı, örnekleme hızı, toplam örnek; float→16 bit dönüşümü JOrbis'inkiyle (yuvarlama/kırpma) aynı.
@@ -16,7 +16,7 @@
 Gerçek `JOrbisAudioStream` ile birkaç gerçek ses nesnesi (kısa, uzun, mono, stereo); satırlar PCM bayt sağlaması (SHA-256) ve ilk/son örnekler.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Çalma (T63), ses dosyalarını Git'e koymak (nesneler `.data/`da kalır).
@@ -25,5 +25,5 @@ Gerçek `JOrbisAudioStream` ile birkaç gerçek ses nesnesi (kısa, uzun, mono, 
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: yeni `voxel-audio` crate'i (`lewton` 0.10.2), `OggStream`/`LoopingOggStream`/`decode_ogg`, `sound/decode` oracle'ı (gerçek `JOrbisAudioStream`; örnekler yerelde `reference-pcm/`). Kayıt: `docs/records/client-ogg-decoding-parity-conformance.md`.
+- Yapıldı: yeni `photon-audio` crate'i (`lewton` 0.10.2), `OggStream`/`LoopingOggStream`/`decode_ogg`, `sound/decode` oracle'ı (gerçek `JOrbisAudioStream`; örnekler yerelde `reference-pcm/`). Kayıt: `docs/records/client-ogg-decoding-parity-conformance.md`.
 - Sapma: bit eşitliği yok, her örnek ±1 içinde (%0,045 farklı); JOrbis portu kararı gerekçe doğarsa ayrı görev.

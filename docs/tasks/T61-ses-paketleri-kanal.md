@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/sounds/{SoundEngine,ChannelAccess,SoundEngineExecutor,SoundEventListener}.java`, `network/protocol/game/{ClientboundSoundPacket,ClientboundSoundEntityPacket,ClientboundStopSoundPacket}.java`, `client/resources/sounds/SoundInstance.java`.
-- Rust: `crates/voxel-net/src/connection/play.rs` (paket işleyici kalıbı), `crates/voxel-world/src/` (entity konumu).
+- Rust: `crates/photon-net/src/connection/play.rs` (paket işleyici kalıbı), `crates/photon-world/src/` (entity konumu).
 
 ## Yapılacaklar
 1. Üç paketi ayrıştır ve oyun durumuna yaz (olay, kaynak, konum, ses, perde, tohum).
@@ -15,7 +15,7 @@
 Gerçek `SoundEngine`, kanalı yakalayan sahte `Channel` (`Library` yerine); satırlar çağrı dizisi (konum, perde, ses, mesafe, durdur).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Gerçek çıkış (T63), çözme (T62), oyun tetikleri (T64).

@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/fire.rs from a movement-family capture.
+"""Generate crates/photon-data/src/generated/fire.rs from a movement-family capture.
 
     python3 tools/generate/fire.py .data/captures/behavior/<id>/outputs.jsonl
 

@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §6
-- D01 envanteri, `crates/voxel-data/src/{generated/animations.rs,animation.rs}`
+- D01 envanteri, `crates/photon-data/src/{generated/animations.rs,animation.rs}`
 
 ## Yapılacaklar
 - Tek seferlik dönüşüm betikle yapılabilir; çıktı elle bakılan kaynaktır (başlıkta "generated" yazmaz).
@@ -13,7 +13,7 @@
 - Parity karşılaştırması aynen doğrular; üretici betiğin bu tabloya ait kısmı silinir.
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
 
 ## Kapsam dışı
 Animasyon oynatıcı değişikliği.

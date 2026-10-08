@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `lerp`, `clampedLerp`, `map`/`clampedMap`, vektör over
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.inverseLerp(float, float, float)` ve `Mth.inverseLerp(double, double, double)` overload'larını pay/payda çıkarma ve bölme sırasıyla taşır. `examples/behavior_adapter.rs` sonucu ilgili hassasiyetin raw IEEE-754 bitleri olarak dışarı verir.
+`crates/photon-core/src/math.rs`, Java `Mth.inverseLerp(float, float, float)` ve `Mth.inverseLerp(double, double, double)` overload'larını pay/payda çıkarma ve bölme sırasıyla taşır. `examples/behavior_adapter.rs` sonucu ilgili hassasiyetin raw IEEE-754 bitleri olarak dışarı verir.
 
 ## Doğrulama
 

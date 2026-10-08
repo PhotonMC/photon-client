@@ -46,7 +46,7 @@ endişeli, çekinik gen); `entity/variant-fields`'a altı satır.
 ## Sapmalar (açık)
 
 - Başsız istemci parçacık ekleyemez: hapşırığın bitişi (`afterSneeze` parçacığı) ve yemenin beşinci
-  tikinden sonrası (yeme parçacıkları ve sesi) Java oracle'da koşulamaz. Bu kısımlar `voxel-world`
+  tikinden sonrası (yeme parçacıkları ve sesi) Java oracle'da koşulamaz. Bu kısımlar `photon-world`
   birim testlerindedir (bitiş, takla süresi, yemenin başlayıp bitmesi). Parçacıkların harcadığı rastgele
   sayılar (yemede beş tikte bir 39 çekim) Java koduna göre kaynağın yerinde tutulması için çekilir ama
   karşılaştırılamaz.

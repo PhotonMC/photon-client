@@ -23,7 +23,7 @@ Poz her seferinde ağdaki başlangıç konumlarından kuruluyor:
 Boş eller, binek yok, elytra yok.
 
 Parçalar referansın matematik kütüphanesinin sırasıyla ve yuvarlamasıyla
-dönüştürülüyor (`crates/voxel-render/src/joml.rs`): çarpma-toplamalar tek tek yuvarlanıyor,
+dönüştürülüyor (`crates/photon-render/src/joml.rs`): çarpma-toplamalar tek tek yuvarlanıyor,
 matrisin özellik bayrakları hangi yolun seçildiğini belirliyor.
 
 ## Senaryolar
@@ -45,7 +45,7 @@ karşılaştırılıyor.
 ## Dünyada çizim ve üçüncü şahıs kamerası
 
 F5 birinci şahıs, arkadan ve önden üçüncü şahıs arasında geçiyor
-(`VOXEL_CAMERA=back|front` o kipte başlatıyor).
+(`PHOTON_CAMERA=back|front` o kipte başlatıyor).
 
 - **Önden görünüm:** Yön 180° dönüyor, bakış eğimi ters çevriliyor.
 - **Geri çekilme:** Kamera gözden bakışın tersine 4 blok çekiliyor. Göz
@@ -98,7 +98,7 @@ Elin kendi projeksiyonu var (görüş 70°, suda daralıyor; yakın 0,05, uzak
 100) ve derinlik temizlenip en son çiziliyor. `xBob/yBob` movement
 ailesinde her tick bit bit eşleşiyor.
 
-**Vuruş** (`crates/voxel-game/src/input/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
+**Vuruş** (`crates/photon-game/src/input/attack.rs`) referansın tik döngüsündeki sırayı izliyor:
 
 1. Sol tuşa her basış bir tık sayılıyor; tuşun basılı hâli ayrıca tutuluyor.
 2. Her tik oyuncu hareket etmeden önce tıklar harcanıyor. Iska beklemesi
@@ -117,7 +117,7 @@ Bu yüzden tıklayıp bırakmak her tik bir vuruş yapıyor (aynı tikteki
 ikinci tık boşa gidiyor), basılı tutmak ise on tik bekliyor.
 
 Çizgi şekilleri blok sınıflarının kodundan hesaplanıyor
-(`crates/voxel-world/src/block/shape_rules/`); block ailesi her koşuda
+(`crates/photon-world/src/block/shape_rules/`); block ailesi her koşuda
 hesaplanan şekilleri referansla karşılaştırıyor. Rastgele kaydırmalı bloklarda
 (çiçekler, bambu, sarkıt) şekil konumdaki kaydırmayla taşınıyor; oracle bunun
 her konumda referansın şeklini verdiğini doğruluyor. Çimenin şekli kaymıyor,

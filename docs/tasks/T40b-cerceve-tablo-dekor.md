@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ItemFrameRenderer,PaintingRenderer,LeashKnotRenderer,EndCrystalRenderer,TntRenderer,FallingBlockRenderer,LightningBoltRenderer,DisplayRenderer}.java`, `world/entity/decoration/{ItemFrame,Painting,HangingEntity}.java`, `client/renderer/state/` ilgili durumlar.
-- Rust: `crates/voxel/src/mobs/humanoids/armor_stands.rs` (yeni entity çizim kalıbı), `crates/voxel-world/src/objects/armor_stand.rs` (veri birleştirme kalıbı), `voxel-render/src/item_entity.rs` (eşya çizimi).
+- Rust: `crates/photon/src/mobs/humanoids/armor_stands.rs` (yeni entity çizim kalıbı), `crates/photon-world/src/objects/armor_stand.rs` (veri birleştirme kalıbı), `photon-render/src/item_entity.rs` (eşya çizimi).
 
 ## Yapılacaklar
 1. Çerçeve: yön verisi (`Direction`), içerik eşyası ve dönüşü; çerçeve bloğu modeli (blok modeli çizimi).
@@ -16,7 +16,7 @@
 `armor_stand_model` kalıbı: gerçek model sınıfı/yöntemi + gerçek durum; veri indeksleri `variant-fields`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Blok entity çizicileri (PLAN-M8).

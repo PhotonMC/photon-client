@@ -37,7 +37,7 @@ Y yönünden Direction seçimi, entity bakış yönleri, random seçim, codec'le
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `to_y_rot`, Java `Direction.toYRot()` data2d maskesi ve 90 derecelik f32 dönüşümünü uygular. Rust adapter `direction_to_y_rot` JSONL operation'ı üzerinden sonucu raw bitlerle dışarı verir; Java oracle doğrudan enum metodunu çağırır.
+`crates/photon-core/src/direction.rs` içindeki `to_y_rot`, Java `Direction.toYRot()` data2d maskesi ve 90 derecelik f32 dönüşümünü uygular. Rust adapter `direction_to_y_rot` JSONL operation'ı üzerinden sonucu raw bitlerle dışarı verir; Java oracle doğrudan enum metodunu çağırır.
 
 Altı yön adı test edildi. Beklenen f32 bitleri Java oracle çıktısından alındı.
 

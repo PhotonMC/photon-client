@@ -113,7 +113,7 @@ Mojang vanilla 26.2 dedicated server JAR'ı
 `823e2250d24b3ddac457a60c92a6a941943fcd6a` SHA-1'iyle doğrulandı. Sunucu,
 offline, seed `776`, creative, peaceful, view/simulation distance `5` ve
 `127.0.0.1:25571` ayarlarıyla geçici
-`/tmp/voxel-vanilla-26.2-test-run-0915-attribute` dizininde çalıştırıldı. Bu
+`/tmp/photon-vanilla-26.2-test-run-0915-attribute` dizininde çalıştırıldı. Bu
 koşuda `connection_probe` yerine uzun yaşayan metadata drain yolu, login
 sonrası sunucu konsolu komutlarını alabilmek için kullanıldı; JAR, dünya ve
 loglar depoya alınmadı.

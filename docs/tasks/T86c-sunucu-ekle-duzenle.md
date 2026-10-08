@@ -10,8 +10,8 @@ kutuları, kaynak paketi döngü düğmesi, Done'ın adres geçerliyken uyanmas�
 ## Oku
 - Java: `client/gui/screens/ManageServerScreen.java`, `client/gui/screens/DirectJoinServerScreen.java`,
   `JoinMultiplayerScreen` (geri çağrılar), `client/multiplayer/resolver/ServerAddress.java` (`isValidAddress`).
-- Rust: `crates/voxel-render/src/gui/screen/servers.rs`, `crates/voxel-game/src/servers.rs`,
-  `crates/voxel-render/src/gui/widgets/edit_box.rs`, `crates/voxel/src/menu.rs` (`servers_action`).
+- Rust: `crates/photon-render/src/gui/screen/servers.rs`, `crates/photon-game/src/servers.rs`,
+  `crates/photon-render/src/gui/widgets/edit_box.rs`, `crates/photon/src/menu.rs` (`servers_action`).
 
 ## Yapılacaklar
 1. İki ekran (G tarifi) ve menüye bağlanmaları; silme onayı.
@@ -30,7 +30,7 @@ Durum sorgusu (T86b), LAN.
 `docs/gui-oracle.md` satırları.
 
 ## Devir notu
-Yapılan: `ServerFormScreen` (`voxel-render/src/gui/screen/server_form.rs`: Add/Edit/Direct;
+Yapılan: `ServerFormScreen` (`photon-render/src/gui/screen/server_form.rs`: Add/Edit/Direct;
 kutular, ipucu, kaynak paketi döngüsü, Done'ın `isValidAddress` ile uyanması, Tab, tıklama),
 `is_valid_address` (Guava `HostAndPort` kuralları), `options.txt` `lastServer`; menüde ekle/düzenle/
 sil (onay) ve doğrudan bağlan (gizli sunucu olarak kaydedilir). Oracle `server_form` 21 satır.

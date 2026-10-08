@@ -8,7 +8,7 @@
 - Java: `client/renderer/PanoramaRenderer.java`, `client/renderer/CubeMap.java`,
   `client/gui/screens/Screen.java` (`extractPanorama`, `extractBlurredBackground`),
   `client/renderer/GameRenderer.java` (bulanıklık geçişi).
-- Rust: `crates/voxel-render/src/vulkan/` (geçiş tablosu), T85'in başlık ekranı.
+- Rust: `crates/photon-render/src/vulkan/` (geçiş tablosu), T85'in başlık ekranı.
 
 ## Yapılacaklar
 1. Altı dokunun yüklenmesi (`textures/gui/title/background/panorama_*.png`), küp çizimi, dönüş hızı.

@@ -9,8 +9,8 @@ boşaltma), çakışma işareti (kırmızı `[ ]`), satır başına sıfırla, "
 ## Oku
 - Java: `client/gui/screens/options/controls/{KeyBindsScreen,KeyBindsList}.java`, `client/KeyMapping.java`
   (`compareTo`, `same`, `getTranslatedKeyMessage`).
-- Rust: `crates/voxel-game/src/options/bindings.rs`, `crates/voxel-render/src/gui/options/list*`,
-  `crates/voxel/src/controls/options.rs`.
+- Rust: `crates/photon-game/src/options/bindings.rs`, `crates/photon-render/src/gui/options/list*`,
+  `crates/photon/src/controls/options.rs`.
 
 ## Oracle
 G: `key_binds_screen` (seçili satır, çakışma, bekleme hâli).

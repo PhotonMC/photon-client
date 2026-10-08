@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `Mth.absMax`, positiveModulo, clamp/lerp yardımcılar�
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.equal(float, float)` ve `equal(double, double)` yollarını `Math.abs(second - first) < 1.0E-5F` sırasıyla uygular. `examples/behavior_adapter.rs` sonucu boolean olarak JSONL sözleşmesine bağlar.
+`crates/photon-core/src/math.rs`, Java `Mth.equal(float, float)` ve `equal(double, double)` yollarını `Math.abs(second - first) < 1.0E-5F` sırasıyla uygular. `examples/behavior_adapter.rs` sonucu boolean olarak JSONL sözleşmesine bağlar.
 
 ## Doğrulama
 

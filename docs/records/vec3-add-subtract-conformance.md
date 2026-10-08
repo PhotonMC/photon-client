@@ -33,12 +33,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `add_vec3`, `a
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::add_components`, `add_scalar`, `add_vec3`, `subtract_components`, `subtract_scalar` ve `subtract_vec3` Java overload'larını üretim API'sine taşır. `subtract` yolları Java unary negation'ın NaN işaretini release optimizasyonlarından bağımsız koruyan bit düzeyinde yardımcıyı kullanır. `examples/behavior_adapter.rs` bu çağrıları JSONL adımlarına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::add_components`, `add_scalar`, `add_vec3`, `subtract_components`, `subtract_scalar` ve `subtract_vec3` Java overload'larını üretim API'sine taşır. `subtract` yolları Java unary negation'ın NaN işaretini release optimizasyonlarından bağımsız koruyan bit düzeyinde yardımcıyı kullanır. `examples/behavior_adapter.rs` bu çağrıları JSONL adımlarına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.add` ve `Vec3.subtract` overload'larını karşılayan altı Rust metodu içerir. Java oracle overload'ları doğrudan çağırır; Rust adaptörü aynı girdileri üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.add` ve `Vec3.subtract` overload'larını karşılayan altı Rust metodu içerir. Java oracle overload'ları doğrudan çağırır; Rust adaptörü aynı girdileri üretim API'sine taşır.
 
 ## Doğrulama
 

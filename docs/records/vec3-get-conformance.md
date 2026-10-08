@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_get"`, `first` Vec3 nesnesi ve `axi
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::get`, `Axis` eşleşmesiyle x/y/z bileşenini doğrudan döndürür. `examples/behavior_adapter.rs` ekseni mevcut `Axis::from_name` yoluyla çözer ve sonucu bit string olarak taşır; `tests/behavior/java/MathOracle.java` aynı `Vec3.get` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::get`, `Axis` eşleşmesiyle x/y/z bileşenini doğrudan döndürür. `examples/behavior_adapter.rs` ekseni mevcut `Axis::from_name` yoluyla çözer ve sonucu bit string olarak taşır; `tests/behavior/java/MathOracle.java` aynı `Vec3.get` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.get(Direction.Axis)` metodunu karşılar. Rust adaptörü seçilen eksenin bileşen bitlerini döndürür; Java oracle doğrudan `Vec3.get` çağrısını kullanır.
+`crates/photon-core/src/math.rs`, Java `Vec3.get(Direction.Axis)` metodunu karşılar. Rust adaptörü seçilen eksenin bileşen bitlerini döndürür; Java oracle doğrudan `Vec3.get` çağrısını kullanır.
 
 ## Doğrulama
 

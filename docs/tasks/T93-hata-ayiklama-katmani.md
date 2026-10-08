@@ -10,8 +10,8 @@ F2 ekran görüntüsü (`Screenshot`: `screenshots/` dosya adı kuralı ve sohbe
 - Java: `client/gui/components/DebugScreenOverlay.java`, `client/gui/components/debug/*.java`
   (`DebugScreenEntries`, `DebugEntry*`), `client/gui/screens/debug/DebugOptionsScreen.java`,
   `client/KeyboardHandler.java` (F3 kombinasyonları, F1, F2), `client/Screenshot.java`.
-- Rust: `crates/voxel/src/controls/events.rs` (F5 örneği), `crates/voxel-render/src/gui/hud.rs`,
-  `crates/voxel/src/profile.rs` (FPS/kare süresi).
+- Rust: `crates/photon/src/controls/events.rs` (F5 örneği), `crates/photon-render/src/gui/hud.rs`,
+  `crates/photon/src/profile.rs` (FPS/kare süresi).
 
 ## Yapılacaklar
 1. Girdi tablosu: Java'daki girdilerden istemcinin hesaplayabildikleri (konum, bakış, blok, biyom,

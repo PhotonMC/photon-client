@@ -6,7 +6,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 
 - `tests/behavior/java/GuiOracle.java`: sahte `Minecraft` (Unsafe ile), `Options`, `Hud`, `ChatListener`, `TextureManager` ve sprite/atlas kalıpları kurulur. `GuiGraphicsExtractor` gerçek sınıftır; `GuiRenderState` üzerinden her `fill`, sprite (`BlitRenderState`) ve metin (`GuiTextRenderState`) pozu uygulanmış olarak okunur.
 - Yazı tipi: Java'nın kendi `font/default.json` sağlayıcıları (bitmap ve space) jar'dan okunur; glif çizilmez, yalnız ilerleme (advance) kullanılır. Yerleşim bu yüzden Java'nın yerleşimidir.
-- Rust tarafı: `GuiFrame.log` (çizim günlüğü) `DrawOp` kayıtlarını tutar; `voxel-oracle` aynı senaryoyu Rust ekranıyla çalıştırıp aynı JSON'u üretir.
+- Rust tarafı: `GuiFrame.log` (çizim günlüğü) `DrawOp` kayıtlarını tutar; `photon-oracle` aynı senaryoyu Rust ekranıyla çalıştırıp aynı JSON'u üretir.
 - Karşılaştırma: Java'nın katman sırası (çakışanı üste koyma) GPU içindir; bu yüzden iki taraf da fill → sprite → metin ve sonra yukarıdan aşağı/soldan sağa sıralanır.
 
 ## Kapsam

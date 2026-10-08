@@ -11,7 +11,7 @@ Bu kayıt `tnt` entity'sinin (`PrimedTnt`, `TntRenderer`) çizimini ve istemci d
 ## Kapsam
 
 - `entity/primed-tnt-pose` 17 satır (fitilin uzun, şişmenin başı ve sonu, her yanıp sönmenin iki yanı, bitmiş ve negatif değerleri, uzak konum); pose ve bindirme kodu karşılaştırılır.
-- Rust: `voxel-render::minecart::primed_tnt_pose`, `voxel-world::primed_tnt` (veri ve sayaç), oyunda `minecarts::remote_primed_tnt` (blok durumu, T34d'nin entity üstü blok çizimiyle).
+- Rust: `photon-render::minecart::primed_tnt_pose`, `photon-world::primed_tnt` (veri ve sayaç), oyunda `minecarts::remote_primed_tnt` (blok durumu, T34d'nin entity üstü blok çizimiyle).
 
 ## Sapmalar ve açık kalanlar
 

@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `world/entity/animal/squid/{Squid,GlowSquid}.java`, `client/model/animal/squid/*.java`, `client/renderer/entity/{Squid,GlowSquid}Renderer.java`, `LivingEntity.aiStep`, `Entity.updateFluidInteraction`.
-- Rust: `crates/voxel-world/src/{squid,fluid,entity}.rs`, `crates/voxel/src/mobs/aquatic/squids.rs`.
+- Rust: `crates/photon-world/src/{squid,fluid,entity}.rs`, `crates/photon/src/mobs/aquatic/squids.rs`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: `SquidState` (tik), mob suda olma durumu (`mob_in_water`, `tracks_water`: yalnız kalamar), `LivingEntity.aiStep`'in hareket azalması ve eşiği (bütün mob'lar), `GlowSquid` karanlık tikleri, `setup_squid`, `SquidTurns` (çizim dönüşü), `squids.rs`. Kayıt: `docs/records/client-squid-parity-conformance.md`.

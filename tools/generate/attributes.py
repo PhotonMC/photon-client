@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/item/attributes.rs from a block-family capture.
+"""Generate crates/photon-data/src/generated/item/attributes.rs from a block-family capture.
 
     python3 tools/generate/attributes.py .data/captures/behavior/<id>/outputs.jsonl
 

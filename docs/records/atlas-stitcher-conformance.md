@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik girdi pinned JAR'daki
 `net.minecraft.client.renderer.texture.Stitcher` sınıfına ve üretim
-kütüphanesindeki `voxel_client::render::atlas` modülüne verilir, çıktılar
+kütüphanesindeki `photon::render::atlas` modülüne verilir, çıktılar
 birebir karşılaştırılır. GPU, asset veya pencere gerektirmez.
 
 Bu, render bölümünün ilk **veri** dilimidir. Bitmiş istemcideki her sprite UV'si

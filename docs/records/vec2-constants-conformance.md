@@ -34,12 +34,12 @@ Girdiler `family: "math"`, `operation: "vec2_constant"` ve `name` alanını kull
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec2` associated constant’ları Java değerlerini taşır. `MIN`, Java’nın pozitif subnormal sınırını `f32::from_bits(1)` ile kurar. `examples/behavior_adapter.rs` sabiti doğrudan Rust API’sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı doğrudan Java sabitine bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec2` associated constant’ları Java değerlerini taşır. `MIN`, Java’nın pozitif subnormal sınırını `f32::from_bits(1)` ile kurar. `examples/behavior_adapter.rs` sabiti doğrudan Rust API’sinden sorgular; `tests/behavior/java/MathOracle.java` aynı adı doğrudan Java sabitine bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec2.ZERO`, `ONE`, `UNIT_X`, `NEG_UNIT_X`, `UNIT_Y`, `NEG_UNIT_Y`, `MAX` ve `MIN` sabitlerini associated constant olarak sunar. Java oracle sabitleri doğrudan okur; Rust adaptörü aynı değerleri üretim API’sinden taşır.
+`crates/photon-core/src/math.rs`, Java `Vec2.ZERO`, `ONE`, `UNIT_X`, `NEG_UNIT_X`, `UNIT_Y`, `NEG_UNIT_Y`, `MAX` ve `MIN` sabitlerini associated constant olarak sunar. Java oracle sabitleri doğrudan okur; Rust adaptörü aynı değerleri üretim API’sinden taşır.
 
 ## Doğrulama
 

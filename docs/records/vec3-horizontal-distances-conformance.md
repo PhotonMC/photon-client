@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_horizontal_distances"` ve `first` V
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::horizontal_distance` ve `Vec3::horizontal_distance_squared`, Java'nın x/z işlem sırasını ve karekök adımını taşır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise iki beklenen değeri doğrudan Java çağrılarına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::horizontal_distance` ve `Vec3::horizontal_distance_squared`, Java'nın x/z işlem sırasını ve karekök adımını taşır. `examples/behavior_adapter.rs` JSONL operasyonunu, `tests/behavior/java/MathOracle.java` ise iki beklenen değeri doğrudan Java çağrılarına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.horizontalDistance()` ve `Vec3.horizontalDistanceSqr()` metodlarının yalnızca x/z karelerini, kaynak işlem sırasını ve karekök adımını karşılar. Java oracle iki metodu doğrudan çağırır; Rust adaptörü aynı girdideki iki Rust API sonucunu taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.horizontalDistance()` ve `Vec3.horizontalDistanceSqr()` metodlarının yalnızca x/z karelerini, kaynak işlem sırasını ve karekök adımını karşılar. Java oracle iki metodu doğrudan çağırır; Rust adaptörü aynı girdideki iki Rust API sonucunu taşır.
 
 ## Doğrulama
 

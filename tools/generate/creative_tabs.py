@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/item/creative_tabs.rs from a block-family capture.
+"""Generate crates/photon-data/src/generated/item/creative_tabs.rs from a block-family capture.
 
     python3 tools/generate/creative_tabs.py .data/captures/behavior/<id>/outputs.jsonl
 

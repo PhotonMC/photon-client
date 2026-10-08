@@ -2,7 +2,7 @@
 
     python3 tools/generate/potions.py .data/captures/behavior/<id>/outputs.jsonl
 
-Writes `crates/voxel-data/src/generated/item/mob_effects.rs` and `potions.rs`: every mob
+Writes `crates/photon-data/src/generated/item/mob_effects.rs` and `potions.rs`: every mob
 effect and potion in registry order, as `MobEffects` and `Potions` declare
 them. A reference to an effect or an attribute is by name; an effect's
 description key and tooltip colour are checked against what the reference

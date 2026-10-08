@@ -34,12 +34,12 @@ Girdiler `family: "math"`, `operation: "vec3_coordinates"`, decimal string olara
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3` statik yardımcıları `BlockPos` bileşenlerini f64'e çevirerek Java'daki üretim yollarını korur. `examples/behavior_adapter.rs` sonucu Vec3 f64 ham bitleriyle taşır; `tests/behavior/java/MathOracle.java` aynı Java yardımcılarını çağırır.
+`crates/photon-core/src/math.rs` içindeki `Vec3` statik yardımcıları `BlockPos` bileşenlerini f64'e çevirerek Java'daki üretim yollarını korur. `examples/behavior_adapter.rs` sonucu Vec3 f64 ham bitleriyle taşır; `tests/behavior/java/MathOracle.java` aynı Java yardımcılarını çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3` sınıfının BlockPos tabanlı koordinat yardımcılarını karşılar. Java oracle, `atLowerCornerOf`, `atLowerCornerWithOffset`, `atCenterOf`, `atBottomCenterOf` ve `upFromBottomCenterOf` çağrılarını doğrudan çalıştırır.
+`crates/photon-core/src/math.rs`, Java `Vec3` sınıfının BlockPos tabanlı koordinat yardımcılarını karşılar. Java oracle, `atLowerCornerOf`, `atLowerCornerWithOffset`, `atCenterOf`, `atBottomCenterOf` ve `upFromBottomCenterOf` çağrılarını doğrudan çalıştırır.
 
 ## Doğrulama
 

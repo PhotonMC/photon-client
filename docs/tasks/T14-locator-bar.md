@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/network/protocol/game/ClientboundTrackedWaypointPacket.java`, `.data/minecraft/source/net/minecraft/world/waypoints/{TrackedWaypoint,TrackedWaypointManager,Waypoint,WaypointStyleAssets}.java`, `.data/minecraft/source/net/minecraft/client/gui/contextualbar/{LocatorBar,ContextualBar}.java`, `.data/minecraft/source/net/minecraft/client/waypoints/ClientWaypointManager.java`, `.data/minecraft/source/net/minecraft/client/gui/Hud.java` (`extractContextualBarAndLevel`/`nextContextualInfoState`: `grep -n "LocatorBar\|contextual"`), waypoint sprite'ları `assets/minecraft/textures/gui/sprites/hud/locator_bar_*` ve `waypoint_styles/*` (`atlas.rs` klasör listesi).
-- Rust: `crates/voxel-render/src/gui/hud.rs` (deneyim çubuğu çizimi), `crates/voxel-net/src/connection/play.rs` (paket dağıtımı) + `protocol.rs` ayrıştırıcı kalıbı (`parse_player_info_update`), paket kimliği = `network/protocol/game/GameProtocols.java` clientbound play kaydındaki 0 tabanlı sıra (sayarken mevcut sabitle doğrula: `ADD_ENTITY` = 1, `BOSS_EVENT` = 9); kimliği bir bayt testiyle sabitle.
+- Rust: `crates/photon-render/src/gui/hud.rs` (deneyim çubuğu çizimi), `crates/photon-net/src/connection/play.rs` (paket dağıtımı) + `protocol.rs` ayrıştırıcı kalıbı (`parse_player_info_update`), paket kimliği = `network/protocol/game/GameProtocols.java` clientbound play kaydındaki 0 tabanlı sıra (sayarken mevcut sabitle doğrula: `ADD_ENTITY` = 1, `BOSS_EVENT` = 9); kimliği bir bayt testiyle sabitle.
 
 ## Yapılacaklar
 1. Paket ayrıştırma (`Operation`: TRACK/UNTRACK/UPDATE; waypoint türleri: `Vec3i`, `Chunk`, `Azimuth`, `Empty`; ikon/stil, renk) + `ClientWaypointManager` durumu (`PlaySession` içinde).
@@ -16,7 +16,7 @@
 `locator_bar`: gerçek `LocatorBar.extractBackground/extractRenderState` (sahte `TrackedWaypoint`'ler; kamera yaw/pozisyonu satırda). Satırlar: önde/arkada/yanda, yukarı/aşağı ok, mesafe sprite'ı, 0/çok waypoint. Paket için `wire` ailesine bayt satırı (Java `ClientboundTrackedWaypointPacket.STREAM_CODEC` ile).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Harita waypoint'leri, entity kaynaklı waypoint'ler (T20+ sonrası).
@@ -25,7 +25,7 @@ Harita waypoint'leri, entity kaynaklı waypoint'ler (T20+ sonrası).
 `docs/gui-oracle.md`; `docs/remaining-work.md` "TrackedWaypoint" satırı.
 
 ## Devir notu
-- Yapıldı: `voxel-game/waypoint.rs` (durum), `parse_waypoint_packet` (kimlik 138), `voxel-render/gui/locator.rs` (stil, kamera/izdüşüm, noktalar, ok), HUD'da bağlamsal çubuk seçimi (`experienceDisplayStartTick`, 5 sn deneyim önceliği), `locator_bar` oracle'ı (gerçek paket baytları, gerçek `LocatorBar`).
+- Yapıldı: `photon-game/waypoint.rs` (durum), `parse_waypoint_packet` (kimlik 138), `photon-render/gui/locator.rs` (stil, kamera/izdüşüm, noktalar, ok), HUD'da bağlamsal çubuk seçimi (`experienceDisplayStartTick`, 5 sn deneyim önceliği), `locator_bar` oracle'ı (gerçek paket baytları, gerçek `LocatorBar`).
 - Sapma: entity yok, bu yüzden UUID'li `Vec3i` waypoint'in entity gözü konumu yerine blok merkezi kullanılır (Java'da yalnız entity ≤3 blok yakındaysa fark eder). Bilinmeyen stil çizilmez (Java eksik doku çizer). Eşit mesafeli waypoint'lerin sırası Java'da hash haritasına bağlı; burada `hashCode` ile sabit.
 - Oracle `isZZeroToOne = true` ile (Vulkan) kurulur.
 - Açık: harita/entity kaynaklı waypoint'ler (T20+), araç zıplama çubuğu önceliği.

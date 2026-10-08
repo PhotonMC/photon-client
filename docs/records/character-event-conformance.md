@@ -13,7 +13,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/inpu
 - `codepointAsString`, geçerli BMP codepoint'lerini tek UTF-16 code unit olarak, supplementary codepoint'lerini surrogate pair olarak taşır. Java'nın geçerli saydığı surrogate codepoint'leri de tek code unit olarak korunur; geçersiz aralık exception yoludur.
 - `isAllowedChatCharacter`, codepoint'in en az 32 olmasını, DEL (127) ve section sign (167) olmamasını ister. Bu kontrol Unicode kategori veya grapheme çözümlemesi yapmaz.
 
-Rust karşılığı `crates/voxel-game/src/input/event.rs` içindeki `CharacterEvent` tipidir. Java string'in UTF-16 içeriği `codepoint_as_utf16` ile `Vec<u16>` olarak sunulur; Java'nın geçersiz codepoint exception'ı `InvalidCodePoint` sonucu ile temsil edilir.
+Rust karşılığı `crates/photon-game/src/input/event.rs` içindeki `CharacterEvent` tipidir. Java string'in UTF-16 içeriği `codepoint_as_utf16` ile `Vec<u16>` olarak sunulur; Java'nın geçersiz codepoint exception'ı `InvalidCodePoint` sonucu ile temsil edilir.
 
 ## JSONL sınırı
 
@@ -22,7 +22,7 @@ Rust karşılığı `crates/voxel-game/src/input/event.rs` içindeki `CharacterE
 
 ## Client-parity doğrulaması
 
-`crates/voxel-game/src/input/event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `CharacterEvent` codepoint dönüşümünü ve chat karakteri filtresini uygular. Java oracle gerçek `CharacterEvent` metodlarını çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
+`crates/photon-game/src/input/event.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre `CharacterEvent` codepoint dönüşümünü ve chat karakteri filtresini uygular. Java oracle gerçek `CharacterEvent` metodlarını çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
 
 Tam corpus referansı `cee0b0cfe4a88ad295837f974a16309b02fdc6bc8a591837f26ddd183fc553e0` olarak kaydedildi. Debug adapter karşılaştırması `compare-qg2y8ke2`, release adapter karşılaştırması `compare-4k16jioa` raporunda fark üretmedi.
 

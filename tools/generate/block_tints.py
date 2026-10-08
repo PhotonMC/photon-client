@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/block/tints.rs from a block-family capture.
+"""Generate crates/photon-data/src/generated/block/tints.rs from a block-family capture.
 
     python3 tools/generate/block_tints.py .data/captures/behavior/<id>/outputs.jsonl
 

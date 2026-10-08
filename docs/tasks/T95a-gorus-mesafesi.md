@@ -10,8 +10,8 @@ kaydedilince `broadcastOptions`, yalnız değiştiyse), çizim sınırı `getEff
 - Java: `client/Options.java` (`renderDistance`, `buildPlayerInformation`, `broadcastOptions`,
   `getEffectiveRenderDistance`), `ClientPacketListener.broadcastClientInformation`,
   `handleSetChunkCacheRadius`.
-- Rust: `crates/voxel-render/src/gui/options/video.rs`, `crates/voxel-net/src/connection/session.rs`,
-  `crates/voxel/src/play/draw.rs`.
+- Rust: `crates/photon-render/src/gui/options/video.rs`, `crates/photon-net/src/connection/session.rs`,
+  `crates/photon/src/play/draw.rs`.
 
 ## Kabul
 `CHECK OK`; aynı sunucuda 6 ve 16 chunk ile gelen chunk sayısı farklı.

@@ -11,9 +11,9 @@ T95a'da bağlandı.
 - Java: `client/gui/screens/options/{AccessibilityOptionsScreen,SkinCustomizationScreen,
   OnlineOptionsScreen,FontOptionsScreen,WorldOptionsScreen,OptionsSubScreen}.java`,
   `client/Options.java` (`broadcastOptions`, `getEffectiveRenderDistance`).
-- Rust: `crates/voxel-render/src/gui/options/video.rs` (kaydırıcı var, bağlı değil),
-  `crates/voxel-net/src/connection/session.rs` (`ClientInformation` sabitleri),
-  `crates/voxel/src/play/draw.rs` (`render_distance` sınırı).
+- Rust: `crates/photon-render/src/gui/options/video.rs` (kaydırıcı var, bağlı değil),
+  `crates/photon-net/src/connection/session.rs` (`ClientInformation` sabitleri),
+  `crates/photon/src/play/draw.rs` (`render_distance` sınırı).
 
 ## Yapılacaklar
 1. Ekranlar (G tarifi, ekran başına operation).

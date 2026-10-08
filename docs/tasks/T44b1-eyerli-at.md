@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/entity/LivingEntity.java` (`aiStep`, `travel*`), `world/entity/animal/equine/AbstractHorse.java`, `client/player/LocalPlayer.java` (`aiStep` atlama dalı), `world/entity/EntityAttachments.java`.
-- Rust: `voxel-world/src/{mount_ride,vehicle_ride,horse}.rs`, `local_player.rs` (`tick_riding`), `connection/play.rs` (`tick`).
+- Rust: `photon-world/src/{mount_ride,vehicle_ride,horse}.rs`, `local_player.rs` (`tick_riding`), `connection/play.rs` (`tick`).
 
 ## Oracle
 `movement/ride-horse` (`MovementOracle.localPlayerTicks`, `ride.type` at, eyer ve evcil yapılır); `movement/entity-pick-table` koltuk noktaları.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: eyerli at `summon` + `ride`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: eyerli at `summon` + `ride`.
 
 ## Belgeler
 `docs/records/client-mount-ride-parity-conformance.md`, `docs/index.md`.

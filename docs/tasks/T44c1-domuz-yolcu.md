@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/entity/animal/pig/Pig.java`, `LocalPlayer.tick`.
-- Rust: `voxel-world/src/{mount_ride,vehicle_ride}.rs`.
+- Rust: `photon-world/src/{mount_ride,vehicle_ride}.rs`.
 
 ## Oracle
 `movement/ride-pig`, `movement/ride-horse` (eyersiz at).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-mount-ride-parity-conformance.md`.

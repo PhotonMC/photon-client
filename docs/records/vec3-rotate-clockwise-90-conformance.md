@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_rotate_clockwise_90"` ve on altı h
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::rotate_clockwise_90`, Java'nın `-z`, `y`, `x` sırasını ve unary negation işaret bitini korur. `examples/behavior_adapter.rs` snapshot döndürür; `tests/behavior/java/MathOracle.java` aynı `rotateClockwise90` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::rotate_clockwise_90`, Java'nın `-z`, `y`, `x` sırasını ve unary negation işaret bitini korur. `examples/behavior_adapter.rs` snapshot döndürür; `tests/behavior/java/MathOracle.java` aynı `rotateClockwise90` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.rotateClockwise90()` metodunu karşılar. Rust adaptörü sonucu `(-z, y, x)` bileşenleriyle üretir; Java oracle doğrudan `Vec3.rotateClockwise90` çağrısını kullanır.
+`crates/photon-core/src/math.rs`, Java `Vec3.rotateClockwise90()` metodunu karşılar. Rust adaptörü sonucu `(-z, y, x)` bileşenleriyle üretir; Java oracle doğrudan `Vec3.rotateClockwise90` çağrısını kullanır.
 
 ## Doğrulama
 

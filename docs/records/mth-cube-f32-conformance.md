@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `square` overload'ları, `square(double)`, `square(int)
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.cube(float)` yordamının soldan birleşimli iki f32 çarpımını taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgesi olarak dışarı verir.
+`crates/photon-core/src/math.rs`, Java `Mth.cube(float)` yordamının soldan birleşimli iki f32 çarpımını taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgesi olarak dışarı verir.
 
 ## Doğrulama
 

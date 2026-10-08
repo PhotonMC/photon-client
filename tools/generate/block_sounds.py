@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/block_sounds.rs from a sound-family capture.
+"""Generate crates/photon-data/src/generated/block_sounds.rs from a sound-family capture.
 
     python3 tools/generate/block_sounds.py .data/captures/behavior/<id>/outputs.jsonl
 

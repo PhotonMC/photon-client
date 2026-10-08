@@ -7,7 +7,7 @@ renk solması, iz ve parıltı; `ClientLevel.createFireworks`).
 
 ## Oku
 Java: `client/particle/{FallingDustParticle,FireworkParticles}.java`, `world/level/block/FallingBlock.java`
-ve alt sınıflarının `getDustColor`'ı, `MapColor`. Rust: `crates/voxel-world/src/particles/colour.rs`.
+ve alt sınıflarının `getDustColor`'ı, `MapColor`. Rust: `crates/photon-world/src/particles/colour.rs`.
 
 ## Oracle
 `particle-ticks`/`particle-engine` satırları, gerçek sağlayıcılarla.

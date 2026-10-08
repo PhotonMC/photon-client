@@ -9,10 +9,10 @@
 
 ## Yapılacaklar
 - Kalan `*_bits` alanları (`ClientPlayerState` hız/giriş/sağlık, `border`, `animal`, `horse`, `living`, `dimension`, öznitelikler) `JavaF32`/`JavaF64`/`DVec3`.
-- `EntityId(i32)`, `BlockStateId`, `EntityTypeId` newtype'ları, önce voxel-world içinde, sonra sınır tiplerinde; entity türü dizeyle aranmaz (kimlik tablosundan sabit).
+- `EntityId(i32)`, `BlockStateId`, `EntityTypeId` newtype'ları, önce photon-world içinde, sonra sınır tiplerinde; entity türü dizeyle aranmaz (kimlik tablosundan sabit).
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; davranış değişmez.
+`python3 tools/photon.py check` → `CHECK OK`; davranış değişmez.
 
 ## Kapsam dışı
 Davranış değişikliği; `ClientEntity`'nin tür enum'una bölünmesi (A02).

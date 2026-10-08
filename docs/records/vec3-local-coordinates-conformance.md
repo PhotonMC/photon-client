@@ -33,12 +33,12 @@ Girdiler `family: "math"`, `operation: "vec3_local_coordinates"` ve `kind` alan�
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::apply_local_coordinates_to_rotation` aynı f32 trigonometrik ara yolu ve f64 toplama sırasını taşır. `Vec3::add_local_coordinates`, `rotation()` sonucunu bu yardımcıya verir. `examples/behavior_adapter.rs` statik ve instance yollarını doğrudan bu API'lerden sorgular; `tests/behavior/java/MathOracle.java` aynı yolları Java sınıfına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::apply_local_coordinates_to_rotation` aynı f32 trigonometrik ara yolu ve f64 toplama sırasını taşır. `Vec3::add_local_coordinates`, `rotation()` sonucunu bu yardımcıya verir. `examples/behavior_adapter.rs` statik ve instance yollarını doğrudan bu API'lerden sorgular; `tests/behavior/java/MathOracle.java` aynı yolları Java sınıfına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.applyLocalCoordinatesToRotation` ve `addLocalCoordinates` yardımcılarını aynı f32 trigonometrik taban ve f64 bileşen toplama sırasıyla sunar. Java oracle doğrudan Java metodlarını çağırır; Rust adaptörü aynı sonuçları üretim API'sinden taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.applyLocalCoordinatesToRotation` ve `addLocalCoordinates` yardımcılarını aynı f32 trigonometrik taban ve f64 bileşen toplama sırasıyla sunar. Java oracle doğrudan Java metodlarını çağırır; Rust adaptörü aynı sonuçları üretim API'sinden taşır.
 
 ## Doğrulama
 

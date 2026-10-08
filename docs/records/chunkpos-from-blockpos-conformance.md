@@ -29,12 +29,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_from_blockpos"` ve signed decim
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::containing` ve `ChunkPos::pack_block_pos`, mevcut arithmetic section dönüşümü ve ChunkPos packing yollarını birleştirir. `examples/behavior_adapter.rs` JSONL bağını sağlar; `tests/behavior/java/MathOracle.java` Java `ChunkPos.containing` ve `ChunkPos.pack(BlockPos)` çağrılarını doğrudan gözlemler.
+`crates/photon-core/src/binary.rs` içindeki `ChunkPos::containing` ve `ChunkPos::pack_block_pos`, mevcut arithmetic section dönüşümü ve ChunkPos packing yollarını birleştirir. `examples/behavior_adapter.rs` JSONL bağını sağlar; `tests/behavior/java/MathOracle.java` Java `ChunkPos.containing` ve `ChunkPos.pack(BlockPos)` çağrılarını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `ChunkPos.containing(BlockPos)` ve `ChunkPos.pack(BlockPos)` davranışlarını x/z arithmetic shift'i, y'nin dışarıda bırakılması ve packed 32 bit alan yerleşimiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik signed BlockPos girdilerini üretim API'sine taşır.
+`crates/photon-core/src/binary.rs`, Java `ChunkPos.containing(BlockPos)` ve `ChunkPos.pack(BlockPos)` davranışlarını x/z arithmetic shift'i, y'nin dışarıda bırakılması ve packed 32 bit alan yerleşimiyle karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik signed BlockPos girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

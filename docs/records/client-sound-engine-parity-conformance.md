@@ -11,7 +11,7 @@ Bu kayıt ses motorunun kayıt tutmasını kapsar: hangi ses hangi kanalda çal�
 ## Kapsam
 
 `sound/engine` 9 senaryo: her parametre türüyle çalma (sönümsüz, göreli, döngülü, akışlı, olay girdili, aşırı ses ve perde), reddedilenler (bilinmeyen/boş/kasıtlı boş olay, çalınamaz, sıfır ses, sessiz başlama, müzik, ana kaynak, negatif ses), kaydırıcılar ve kazançlar, havuzun tükenmesi, örnek/ad/kaynak ile durdurma ve `stopAll`, 20 tikin sonunda unutulma, gecikme ve elle döngü, tikli sesler (kuyruğa alınan, gecikmeli), duraklatma ve devam.
-- Rust: `voxel-game::sound_engine` (`SoundEngine`, `SoundInstance`, `Channel`/`ChannelSource` arayüzleri, `SoundVolumes`); `SoundInstance::at` bir `SoundPacket`'ten `SimpleSoundInstance`'ı kurar.
+- Rust: `photon-game::sound_engine` (`SoundEngine`, `SoundInstance`, `Channel`/`ChannelSource` arayüzleri, `SoundVolumes`); `SoundInstance::at` bir `SoundPacket`'ten `SimpleSoundInstance`'ı kurar.
 - Oracle: `Channel`, `Library`, `SoundBuffer`, `Listener`, `ListenerTransform`, `DeviceList`, `DeviceTracker` test içinde yazılan sahtelerdir (`tests/behavior/java/com/mojang/blaze3d/audio/`; imzalı paket aynı pakette karışamadığından hepsi gölgelenir); kanal havuzu sayımı sahtede yazılmıştır (gerçeğiyle aynı sayma). Referans kanalları kimlik özeti sırasıyla gezdiğinden çağrılar kanal kanal gruplanıp kanal sırasına konur.
 
 ## Sapmalar ve açık kalanlar

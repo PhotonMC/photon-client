@@ -5,7 +5,7 @@
 
 ## Oku
 - [V05 devir notu](V05-indexed-kompakt-vertex.md)
-- `crates/voxel-render/src/vulkan/{sections,memory,frame}.rs`, `world_mesh.rs` (indeks üretimi)
+- `crates/photon-render/src/vulkan/{sections,memory,frame}.rs`, `world_mesh.rs` (indeks üretimi)
 
 ## Yapılacaklar
 - `upload_section`: köşeleri opaque quad'lar önce, yarı saydamlar sonra olacak şekilde yeniden sırala (çizim sırası indeks sırasıyla belirlendiğinden görüntü değişmez); opaque indeksler `4k + {0,1,2,0,2,3}` olur.
@@ -13,7 +13,7 @@
 - Kalıp varsayımı yükleme sırasında doğrulanır; uymayan mesh için eski yol (kendi indeksleri) tutulur.
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; `bench` `section_memory.index_bytes` düşer, GPU sahne süresi aynı aralıkta; bir `shot` karesi doğru; `--validation` 0 hata.
+`python3 tools/photon.py check` → `CHECK OK`; `bench` `section_memory.index_bytes` düşer, GPU sahne süresi aynı aralıkta; bir `shot` karesi doğru; `--validation` 0 hata.
 
 ## Kapsam dışı
 Köşe nicemleme (kayıplı), indirect çizim.

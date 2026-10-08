@@ -15,7 +15,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `client/Togg
 - `shouldRestoreStateOnScreenClosed`, `shouldRestore` true, key türü keysym ve kayıtlı geçici bırakma durumu birlikte sağlanırsa bir kez true döner; çağrı bu kaydı temizler. `restoreToggleStatesOnScreenClosed` bu sonucu alan mapping'i yeniden basılı duruma getirir.
 - `resetToggleKeys` bütün toggle mapping'lerini kapatır. Toggle sınıfının `needsToggle` false olması, mapping'in toggle ailesine ait olmasını değiştirmez.
 
-Rust karşılığı `crates/voxel-game/src/input/key_mapping.rs` içindeki toggle davranışıdır. `KeyMappingRegistry::register_toggle`, `release_all`, `restore_toggle_states_on_screen_closed` ve `reset_toggle_keys` statik Java yollarının registry karşılıklarıdır.
+Rust karşılığı `crates/photon-game/src/input/key_mapping.rs` içindeki toggle davranışıdır. `KeyMappingRegistry::register_toggle`, `release_all`, `restore_toggle_states_on_screen_closed` ve `reset_toggle_keys` statik Java yollarının registry karşılıklarıdır.
 
 ## JSONL sınırı
 
@@ -24,7 +24,7 @@ Rust karşılığı `crates/voxel-game/src/input/key_mapping.rs` içindeki toggl
 
 ## Client-parity doğrulaması
 
-`crates/voxel-game/src/input/key_mapping.rs`, Java Edition 26.2 / protokol 776 / Java 25 `ToggleKeyMapping` davranışını temel `KeyMapping` tablosuyla birlikte uygular. Oracle, gerçek toggle alt sınıfı üzerinde tekrar basma, direct-set, `releaseAll`, ekran kapanışında geri yükleme ve reset yollarını çalıştırır; beklenen sonuç Rust çıktısından türetilmez.
+`crates/photon-game/src/input/key_mapping.rs`, Java Edition 26.2 / protokol 776 / Java 25 `ToggleKeyMapping` davranışını temel `KeyMapping` tablosuyla birlikte uygular. Oracle, gerçek toggle alt sınıfı üzerinde tekrar basma, direct-set, `releaseAll`, ekran kapanışında geri yükleme ve reset yollarını çalıştırır; beklenen sonuç Rust çıktısından türetilmez.
 
 Math referansı `aadf293a10f1b023a7658ef9bd32adbc3eb682124febea5ffc45cec36825aca8`; tam corpus referansı `35a15ff319bf9648f521faf427804b03cdbf8490a89ab9d6bebcf102169e9837` olarak kaydedildi. Debug karşılaştırması `compare-nfctje7g`, release karşılaştırması `compare-zaxnxs7j`, Java tekrar doğrulaması `verify-badjzt7s` raporlarında fark üretmedi.
 

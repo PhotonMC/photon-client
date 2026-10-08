@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `square(float)`, `square(double)`, `square(long)`, `cub
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.square(int)` yordamının tek i32 çarpımını Java'nın 32 bit sarmasıyla taşır. `examples/behavior_adapter.rs` sonucu signed decimal i32 string olarak dışarı verir.
+`crates/photon-core/src/math.rs`, Java `Mth.square(int)` yordamının tek i32 çarpımını Java'nın 32 bit sarmasıyla taşır. `examples/behavior_adapter.rs` sonucu signed decimal i32 string olarak dışarı verir.
 
 ## Doğrulama
 

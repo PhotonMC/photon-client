@@ -47,7 +47,7 @@ Bu sözleşme yalnızca legacy `nextGaussian` ve seçili çağrı sıralarını 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/random.rs`, Java `LegacyRandomSource.nextGaussian` yolunun polar örnekleme ve eş sonuç önbelleğini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/photon-core/src/random.rs`, Java `LegacyRandomSource.nextGaussian` yolunun polar örnekleme ve eş sonuç önbelleğini uygular. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 
@@ -75,6 +75,6 @@ Bu kanıt legacy `nextGaussian` için seçili 6 yeni senaryoyla sınırlıdır. 
 
 ## Sonraki değişiklik (T70b)
 
-`log` artık platformun libm'inden değil, fdlibm'in `log`undan taşınmış `voxel_core::math::strict_log`tan gelir:
+`log` artık platformun libm'inden değil, fdlibm'in `log`undan taşınmış `photon_core::math::strict_log`tan gelir:
 arm64 JVM'de `Math.log` fdlibm ile aynı bitleri verirken Apple libm'in `ln`i seyrek olarak bir basamak ayrışıyordu
 (partikül motoru satırında yakalandı). `strict_log`, JVM'in `StrictMath.log`una karşı 400 bin girdiyle bit bit denendi.

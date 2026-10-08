@@ -11,7 +11,7 @@ Bu kayıt sunucunun üç ses paketinin (`ClientboundSoundPacket`, `ClientboundSo
 ## Kapsam
 
 - `sound/events` 1968 satır (kayıt defteri numara sırasıyla, her koşuda baştan sona); `sound/packets` 20 satır: kayıtlı ilk ve sonraki olay, her kaynak, tam gönderilen olay (menzilli ve menzilsiz), büyük koordinatlar (float bölümünün kaybı), geçersiz kaynak ve numara, kesik ve artan bayt, `NaN` ses, entity paketi ve durdurma bayrak birleşimleri.
-- Rust: `voxel-data::sound_event` (tablo, `tools/generate/sound_events.py`), `voxel-game::sounds` (`SoundSource`, paket tipleri, `SoundCommand`), `voxel-net` (`read_sound_packet`, `read_sound_entity_packet`, `read_stop_sound_packet`; oturum `take_sounds`).
+- Rust: `photon-data::sound_event` (tablo, `tools/generate/sound_events.py`), `photon-game::sounds` (`SoundSource`, paket tipleri, `SoundCommand`), `photon-net` (`read_sound_packet`, `read_sound_entity_packet`, `read_stop_sound_packet`; oturum `take_sounds`).
 - Canlı (`server-conformance`): `playsound` ve `stopsound` komutları ve ortam sesleri istemcide hatasız çözüldü (`sounds=4`).
 
 ## Sapmalar ve açık kalanlar

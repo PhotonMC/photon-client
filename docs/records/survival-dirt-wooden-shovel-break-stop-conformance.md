@@ -40,7 +40,7 @@ Bu dilim yalnızca wooden shovel ile dirt kırmayı ve tek blok dayanıklılık 
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü y=`100` dirt platformu ve `(100,101,100)` world spawn'ı kullanılarak iki bağımsız oturum açıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden `item replace entity <player> hotbar.0 with minecraft:wooden_shovel` uygulandı; geçerli koşular yalnızca bu komutun başarıyla loglandığı oturumlar oldu.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü y=`100` dirt platformu ve `(100,101,100)` world spawn'ı kullanılarak iki bağımsız oturum açıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden `item replace entity <player> hotbar.0 with minecraft:wooden_shovel` uygulandı; geçerli koşular yalnızca bu komutun başarıyla loglandığı oturumlar oldu.
 
 ```text
 cargo run --offline --release --example survival_dirt_wooden_shovel_break_stop_probe -- 127.0.0.1:25566 RustDirtShovel3

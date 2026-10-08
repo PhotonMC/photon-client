@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/entity_picks.rs from a movement-family capture.
+"""Generate crates/photon-data/src/generated/entity_picks.rs from a movement-family capture.
 
     python3 tools/generate/entity_picks.py .data/captures/behavior/<id>/outputs.jsonl
 

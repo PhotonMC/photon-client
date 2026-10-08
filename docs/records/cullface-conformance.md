@@ -56,7 +56,7 @@ Koşu: `python3 tools/behavior/run.py capture` ardından
 `build_mesh` artık bir örtülme yordamı alıyor ve `cullface` taşıyan bir yüzü,
 döndürülmüş yönündeki komşu kapatıyorsa atıyor.
 
-Sonda `VOXEL_GRID=N` ile bloğu bir küp ızgara hâlinde tekrarlıyor — yüz
+Sonda `PHOTON_GRID=N` ile bloğu bir küp ızgara hâlinde tekrarlıyor — yüz
 gizlemenin iş yaptığı en küçük sahne. Sayılar tam çıkıyor:
 
 | Izgara | Küp | Çizilen yüz | Beklenen dış yüz |

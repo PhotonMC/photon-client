@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/entity/FallingBlockRenderer.java`, `client/renderer/feature/MovingBlockFeatureRenderer.java`, `client/renderer/block/MovingBlockRenderState.java`, `world/entity/item/FallingBlockEntity.java`.
-- Rust: `crates/voxel-render/src/block/world_mesh.rs` (blok mesh'i), `crates/voxel/src/overlays.rs` (`cracks`, blok quad'ları).
+- Rust: `crates/photon-render/src/block/world_mesh.rs` (blok mesh'i), `crates/photon/src/overlays.rs` (`cracks`, blok quad'ları).
 
 ## Oracle
 Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Sesler, partiküller, dış çizgi.

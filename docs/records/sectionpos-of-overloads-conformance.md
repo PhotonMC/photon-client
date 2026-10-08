@@ -29,12 +29,12 @@ Bu dilim `of(EntityAccess)` ve `bottomOf(ChunkAccess)` overload'larını içerme
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::from_block_pos`, `from_chunk_pos` ve `from_position`, Java overload'larının mevcut int/double section dönüşüm yollarını taşır. Aynı türdeki `SectionPos::new` `of(int, int, int)` için, `SectionPos::unpack` ise `of(long)` için packed karşılıktır. `examples/behavior_adapter.rs` dört modu JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan çağırır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::from_block_pos`, `from_chunk_pos` ve `from_position`, Java overload'larının mevcut int/double section dönüşüm yollarını taşır. Aynı türdeki `SectionPos::new` `of(int, int, int)` için, `SectionPos::unpack` ise `of(long)` için packed karşılıktır. `examples/behavior_adapter.rs` dört modu JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını doğrudan çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos'u BlockPos, ChunkPos ve double Position girdilerinden üretme yollarını ve packed SectionPos açılımını Java ile aynı section koordinatlarına bağlar.
+`crates/photon-core/src/binary.rs`, SectionPos'u BlockPos, ChunkPos ve double Position girdilerinden üretme yollarını ve packed SectionPos açılımını Java ile aynı section koordinatlarına bağlar.
 
 ## Doğrulama
 

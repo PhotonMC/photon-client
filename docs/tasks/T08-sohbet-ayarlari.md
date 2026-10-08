@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/screens/options/ChatOptionsScreen.java` (42), `.data/minecraft/source/net/minecraft/client/gui/components/ChatComponent.java` (`getWidth`, `getScale`, `getHeight`, `extractRenderState` ölçek/opaklık kullanımları: `grep -n "options\.\|getScale\|getWidth\|opacity\|lineSpacing"`), `.data/minecraft/source/net/minecraft/client/Options.java` (`chatVisibility` etkisi `Hud`/`ClientPacketListener` filtre: `grep -rn "chatVisibility" .data/minecraft/source/net/minecraft/client/ | head`).
-- Rust: `crates/voxel-render/src/gui/chat.rs` (`WIDTH`, `LINES_*`, çizim), `crates/voxel-render/src/gui/chat.rs` testleri, T04 `Options`, T07 `OptionsList`.
+- Rust: `crates/photon-render/src/gui/chat.rs` (`WIDTH`, `LINES_*`, çizim), `crates/photon-render/src/gui/chat.rs` testleri, T04 `Options`, T07 `OptionsList`.
 - Oracle: `GuiOracle.java chat(...)` (~505) sahte `Options`'ı nasıl kuruyor (`grep -n "chatScale\|chatOpacity\|set(.*options" tests/behavior/java/GuiOracle.java`).
 
 ## Yapılacaklar
@@ -17,7 +17,7 @@
 Mevcut `chat` operation'ı ayar alanları alsın (`options` nesnesi satırda: `scale`, `opacity`, `width`, `height_focused`, `height_unfocused`, `line_spacing`, `background_opacity`); `gui_cases` içindeki sohbet satırlarına ayarlı varyantlar, **yeni capture**. Ayrıca `chat_options_screen` düzen operation'ı.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Konuşma anlatıcısı (narrator), sohbet bildirimleri.

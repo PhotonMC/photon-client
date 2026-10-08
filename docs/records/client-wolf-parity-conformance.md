@@ -40,7 +40,7 @@ yenilenir.
 `entity/wolf-model` 22 satır (yürüyüş, öfke, hasarlı evcil, oturma, ilgi, silkelenme); `living-entity-animations`'a
 yedi kurt satırı (yabani, evcil oturan, hasarlı evcil, öfkelenen, ilgilenen, silkelenen, iptal edilen);
 `entity/variant-fields`'a beş kurt satırı. Silkelenmenin 0,4'ten sonrası sıçrama parçacığı atar ve başsız
-istemci parçacık ekleyemez: tam döngü `voxel-world` birim testindedir.
+istemci parçacık ekleyemez: tam döngü `photon-world` birim testindedir.
 
 ## Sapmalar (açık)
 

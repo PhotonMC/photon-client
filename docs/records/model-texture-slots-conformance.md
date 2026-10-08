@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik model zinciri pinned
 JAR'daki `TextureSlots.Resolver`'a ve üretim kütüphanesindeki
-`voxel_client::render::model` modülüne verilir, çözülen slot→sprite eşlemesi
+`photon::render::model` modülüne verilir, çözülen slot→sprite eşlemesi
 birebir karşılaştırılır. GPU ve asset gerektirmez.
 
 Render veri katmanının üçüncü dilimi; öncekiler

@@ -51,7 +51,7 @@ türetilmez.
 
 `src/world.rs` içindeki `world_border_collision_shape`, Java statik extent
 hesabını ve `Shapes::join(Shapes::infinity(), inner, OnlyFirst)` yolunu uygular.
-`crates/voxel-core/src/shape.rs` sonsuz coordinate plane'leri join ederken hücre örnekleme için
+`crates/photon-core/src/shape.rs` sonsuz coordinate plane'leri join ederken hücre örnekleme için
 sonlu temsil noktaları seçer; bu, sınırsız Y ve yatay dış aralık hücrelerinin
 boş görünmesini engeller. Adapter aynı shape snapshot'ını döndürür.
 

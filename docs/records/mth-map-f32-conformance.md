@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `map(double)`, `clampedMap`, `lerp`, `inverseLerp` ve d
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.map(float)` yordamının `inverseLerp` ve clamp uygulanmayan `lerp` bileşimini aynı f32 işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgisi olarak dışarı verir.
+`crates/photon-core/src/math.rs`, Java `Mth.map(float)` yordamının `inverseLerp` ve clamp uygulanmayan `lerp` bileşimini aynı f32 işlem sırasıyla taşır. `examples/behavior_adapter.rs` sonucu raw f32 bit dizgisi olarak dışarı verir.
 
 ## Doğrulama
 

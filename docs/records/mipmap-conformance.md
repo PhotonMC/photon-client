@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik görüntü pinned JAR'daki
 `MipmapGenerator.generateMipLevels` yoluna ve üretim kütüphanesindeki
-`voxel_client::render::mipmap` modülüne verilir; her seviyenin boyutu ve bütün
+`photon::render::mipmap` modülüne verilir; her seviyenin boyutu ve bütün
 pikselleri karşılaştırılır. İki renk tablosu da ayrıca satır satır sınanır.
 
 ## Java kaynak incelemesi

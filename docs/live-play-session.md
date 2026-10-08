@@ -9,7 +9,7 @@ sürüldüğünde sunucunun gönderilen hareketleri kabul etmesi.
 
 ## Ne yapıldı
 
-`crates/voxel-net/src/connection/play.rs` kalıcı bir oyun oturumu: giriş ve konfigürasyon
+`crates/photon-net/src/connection/play.rs` kalıcı bir oyun oturumu: giriş ve konfigürasyon
 probe'larla ortak (`open_play_connection`), paketleri bir okuyucu iş parçacığı
 alıyor, çağıran kareler arasında boşaltıyor. Yığın, yığın unutma, blok ve
 bölüm blok güncellemeleri, yığın önbelleği merkezi/yarıçapı, yığın grubu
@@ -19,7 +19,7 @@ işleniyor. Seviye yüklenince (oyuncunun konumu ve altındaki yığın gelince)
 tick'i oyuncuyu çalıştırıp istediği paketleri, ardından tick sonu paketini
 gönderiyor.
 
-`voxel play <sunucu> [genişlik yükseklik]` bir pencere açıyor: WASD,
+`photon play <sunucu> [genişlik yükseklik]` bir pencere açıyor: WASD,
 boşluk, sol shift, sol ctrl ve fare. Kamera oyuncunun gözünde. Bütün blok
 modelleri ve tek atlas açılışta kuruluyor; dünya 16³'lük bölümler halinde
 mesh'leniyor. Gelen yığın ve ışık paketleri çevredeki 3×3 yığın sütununun,
@@ -33,14 +33,14 @@ atılıyor. Mesh'ler GPU belleğindeki büyük bloklardan parça olarak ayrılı
 ve bir hazırlık tamponundan kopyalanıyor, çünkü CPU'nun yazabildiği GPU
 belleği (Resizable BAR kapalıyken) 256 MB ile sınırlı. Aşıldığında köşe
 verisi her karede PCIe'den okunuyor ve kare 30 ms'ye çıkıyordu.
-`VOXEL_PROFILE=1` her iki saniyede kare süresini ortalama/p99/maks olarak,
+`PHOTON_PROFILE=1` her iki saniyede kare süresini ortalama/p99/maks olarak,
 kare içi parçalarla (`drain`, `light`, `graph`, `hand_out`, `show_built`,
-`overlays`) yazıyor; `VOXEL_LOG=debug` ile medyanın iki katını aşan kare
-dökülüyor. `python3 tools/voxel.py bench --route run` yeni bir kullanıcıyla
+`overlays`) yazıyor; `PHOTON_LOG=debug` ile medyanın iki katını aşan kare
+dökülüyor. `python3 tools/photon.py bench --route run` yeni bir kullanıcıyla
 spawn'dan koşarak chunk akışı altında ölçer. Oklüzyon grafının tam
 güncellemesi, Java'daki gibi ayrı iş parçacığında koşuyor; kare yalnız
 girdilerin kopyasını alıyor ve sonuç gelene dek öncekini kullanıyor.
-`VOXEL_CULLING=0` oklüzyon grafını ve frustum'u kapatıp görüş mesafesindeki bütün
+`PHOTON_CULLING=0` oklüzyon grafını ve frustum'u kapatıp görüş mesafesindeki bütün
 section'ları ve entity'leri derler ve çizer; görüntü farkı şüphesinde kıyaslamak içindir.
 Entity'ler Java'nın `isEntityVisible` kuralıyla atlanıyor: türün uzaklık sınırı,
 çizicinin ayıklama kutusu ve bölümün gösterilmiş olması
@@ -51,7 +51,7 @@ Yarı saydam yüzler bölüm merkezinin kameraya uzaklığına göre uzaktan yak
 ## Ölçülen sonuç
 
 Hayatta kalma modunda, üretilmiş normal arazide (tohum 776), betikli
-girdiyle (`VOXEL_SCRIPT`) yürüme, sprint, zıplama, göle girip çıkma ve eğilme
+girdiyle (`PHOTON_SCRIPT`) yürüme, sprint, zıplama, göle girip çıkma ve eğilme
 içeren 166 tick: sunucu girişteki bir yerleştirme dışında hiç teleport
 göndermedi ve günlüğünde "moved wrongly" ya da "moved too quickly" yok.
 
@@ -59,21 +59,21 @@ göndermedi ve günlüğünde "moved wrongly" ya da "moved too quickly" yok.
 
 ```
 cd .data/render/walk && java -jar ../../minecraft/runtime/server-26.2.jar nogui
-VOXEL_ASSETS=.data/minecraft/assets/jar/assets \
-  target/release/voxel play 127.0.0.1:25600
+PHOTON_ASSETS=.data/minecraft/assets/jar/assets \
+  target/release/photon play 127.0.0.1:25600
 ```
 
 Sunucu klasörü yerel; `server.properties` çevrimdışı mod, hayatta kalma,
 barışçıl ve `server-port=25600` içeriyor.
 
-Argümansız `voxel` (ya da `voxel menu [adres [genişlik yükseklik]]`) başlık ekranını açar
+Argümansız `photon` (ya da `photon menu [adres [genişlik yükseklik]]`) başlık ekranını açar
 (`TitleScreen`, T85); Multiplayer oyun klasörünün `servers.dat`'ını listeler (T86; ekle, düzenle, sil ve
 doğrudan bağlan T86c), Join ya da çift tık bağlanır; Disconnect ve bağlantı kopması ekranının düğmesi başlığa döner.
 Bağlanma ayrı iş parçacığında koşar; o sırada bağlanma ve yükleme ekranları çizilir (T87), hata
 "Failed to connect to the server" ekranını açar. Pencere, Vulkan arka ucu ve blok atlası menü ile
-oyunlar arasında bir kez kurulur. `voxel play`
-geliştirici kısayoludur: doğrudan bağlanır, ayrılınca kapanır. Betikli çalıştırma (`VOXEL_SCRIPT`)
-menüden ilk başlıkta verilen adrese (varsayılan `127.0.0.1:25565`) kendiliğinden bağlanır; `VOXEL_CAPTURE_PPM` menüde onuncu kareyi kaydedip
+oyunlar arasında bir kez kurulur. `photon play`
+geliştirici kısayoludur: doğrudan bağlanır, ayrılınca kapanır. Betikli çalıştırma (`PHOTON_SCRIPT`)
+menüden ilk başlıkta verilen adrese (varsayılan `127.0.0.1:25565`) kendiliğinden bağlanır; `PHOTON_CAPTURE_PPM` menüde onuncu kareyi kaydedip
 çıkar. Menüde Singleplayer, Realms, arkadaşlar, dil, erişilebilirlik, Options ve telif düğmeleri
 henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çiziliyor).
 
@@ -100,7 +100,7 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   Sağlık, yiyecek, deneyim ve seçili kısayol yuvası sunucudan izleniyor,
   seçili yuva değişince sunucuya bildiriliyor.
 - Pencere: F11 birincil monitörde geçerli video kipinde tam ekrana geçip
-  eski yere dönüyor (`VOXEL_FULLSCREEN=1` tam ekranda başlatıyor); boyut
+  eski yere dönüyor (`PHOTON_FULLSCREEN=1` tam ekranda başlatıyor); boyut
   değişince swapchain, derinlik hedefi ve okuma tamponu yeniden kuruluyor,
   viewport kare başına veriliyor.
 - Bölüm belirmesi: bir bölüm ilk göründüğünde referansın varsayılanı olan
@@ -108,12 +108,12 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   merkezine uzaklığın karesi 768'den küçükse ve daha önce boş gösterilen
   bölüm yeniden kurulunca hemen görünüyor; sonraki yeniden kurulumlar ilk
   zamanı koruyor. Betikli çalıştırma solmayı kapatıyor
-  (`VOXEL_CHUNK_FADE` saniyesi veriyor).
+  (`PHOTON_CHUNK_FADE` saniyesi veriyor).
 - Fare hassasiyeti varsayılan değerin ölçeği; yumuşatma ve ters eksen yok.
 - Çizim [dünya çizim kaydındaki](server-world-render.md) eksikleri taşıyor.
   Yüz gizleme referansın kararı: her durumun yüz örtme şekilleri, şekil
   örtüşme tablosu ve atlanan blok çiftleri referanstan yakalanıp
-  `crates/voxel-data/src/block/face_occlusion.rs` olarak üretiliyor
+  `crates/photon-data/src/block/face_occlusion.rs` olarak üretiliyor
   (`tools/generate/face_occlusion.py`); block ailesi tabloyu her koşuda
   karşılaştırıyor. Yapraklar örtmediği için içlerindeki kütükler görünüyor.
 - Su ve lav referansın sıvı çizicisinin mantığıyla çiziliyor: köşe
@@ -122,7 +122,7 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   sıvı yüzünü gizlemiyor sayılıyor, katılık çarpışma şekline göre
   yaklaşıklanıyor. Su rengi biyomdan, ışık sıvı çizicisinin kuralıyla.
   Referansın yarı saydam blokları ve yaprakları (`HalfTransparentBlock`,
-  `LeavesBlock`; `crates/voxel-data/src/block/fluid_overlay.rs`,
+  `LeavesBlock`; `crates/photon-data/src/block/fluid_overlay.rs`,
   `tools/generate/fluid_overlay.py`, block ailesinde karşılaştırılıyor)
   yanındaki su yüzleri `water_overlay` dokusuyla ve yalnız önden çiziliyor.
 - Animasyonlu dokular referansın sprite animasyonuyla oynuyor: kare
@@ -157,7 +157,7 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   beşte bir yaklaşıp sis başlangıç ve bitişini çekiyor. Yağmur ve kar
   çizgileri referansın hava efekti çizicisiyle: 10 blokluk yarıçapta her
   sütun, MOTION_BLOCKING yüksekliği (durum başına bit tablosu referanstan:
-  `crates/voxel-data/src/block/motion_blocking.rs`, `tools/generate/motion_blocking.py`,
+  `crates/photon-data/src/block/motion_blocking.rs`, `tools/generate/motion_blocking.py`,
   block ailesinde karşılaştırılıyor) ile kameranın ±10 bloğu arasında
   merkeze dönük bir dörtgen; yağış biyomun yağışı ve sıcaklığından (donmuş
   değiştiricinin gürültüleri, kar çizgisi üstünde sıcaklık gürültüsüyle
@@ -202,7 +202,7 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   bitki ve kapı alt yarının, yatak başın sütununun tohumu), her ağırlıklı
   listeden sırayla bir çekiliş (tek başına yazılmış varyant çekiliş
   yapmıyor), çok parçalı blokların bütün parçaları. Bitkilerin konuma bağlı
-  kaydırması referanstan tablo (`crates/voxel-data/src/block/offset.rs`,
+  kaydırması referanstan tablo (`crates/photon-data/src/block/offset.rs`,
   `tools/generate/block_offset.py`) ve formülle; block ailesinde
   karşılaştırılıyor.
 - Işık referansın model aydınlatıcısıyla hesaplanıyor: yumuşak ışıkta her
@@ -210,7 +210,7 @@ henüz bir şey açmaz; panoramanın küpü T85b'dedir (yalnız örtüsü çizil
   ağırlıklı), ışık yayan bloklar ve AO kapalı modeller düz ışıkla; renk AO
   grisi → yan gölge → ton sırasıyla 8 bit adımlarla. Durum özellikleri
   (ışık yayma, AO gölgesi, görüş engelleme, sönümleme, katı çizim, tam kutu)
-  referanstan tablo (`crates/voxel-data/src/block/light.rs`,
+  referanstan tablo (`crates/photon-data/src/block/light.rs`,
   `tools/generate/block_light.py`), block ailesinde karşılaştırılıyor. Işık
   seviyeleri sunucunun yığın ve ışık paketlerinden; lightmap referansın
   lightmap shader'ının hesabıyla, 8 bit nicemleme ve doğrusal örneklemeyle

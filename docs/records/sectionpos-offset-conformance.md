@@ -25,12 +25,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_offset"`, 16 haneli unsigned 
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::offset_packed`, `offset_packed_by` ve `offset`, daha önce doğrulanan Direction step, signed SectionPos unpack/pack ve i32 wrapping yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını karşılaştırma oracle'ı olarak çağırır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::offset_packed`, `offset_packed_by` ve `offset`, daha önce doğrulanan Direction step, signed SectionPos unpack/pack ve i32 wrapping yollarını kullanır. `examples/behavior_adapter.rs` sonuçları JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java overload'larını karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos packed düğümlerini Direction veya üç adımla kaydırır ve instance koordinatlarını Java ile aynı i32 toplama ve packed field-mask yollarıyla üretir.
+`crates/photon-core/src/binary.rs`, SectionPos packed düğümlerini Direction veya üç adımla kaydırır ve instance koordinatlarını Java ile aynı i32 toplama ve packed field-mask yollarıyla üretir.
 
 ## Doğrulama
 

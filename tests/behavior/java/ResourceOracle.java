@@ -49,7 +49,7 @@ public final class ResourceOracle {
         Path assets = null;
         try {
             ensureVersion();
-            assets = Files.createTempDirectory("voxel-resource-oracle-");
+            assets = Files.createTempDirectory("photon-resource-oracle-");
             if (request.get("operation").getAsString().equals("packs")) {
                 return packResult(request, assets);
             }

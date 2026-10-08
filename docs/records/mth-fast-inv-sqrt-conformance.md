@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `atan2`, JOML `invSqrt`, `fastInvCubeRoot` ve gerçek r
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs` içindeki `mth_fast_inv_sqrt_f64`, Java `Mth.fastInvSqrt(double)` yolunu JSONL adapter'a bağlar. Raw bit tahmini, signed long kaydırma/çıkarma ve Newton düzeltmesi Java oracle'ın raw f64 `bits` sonucu ile karşılaştırılır.
+`crates/photon-core/src/math.rs` içindeki `mth_fast_inv_sqrt_f64`, Java `Mth.fastInvSqrt(double)` yolunu JSONL adapter'a bağlar. Raw bit tahmini, signed long kaydırma/çıkarma ve Newton düzeltmesi Java oracle'ın raw f64 `bits` sonucu ile karşılaştırılır.
 
 ## Doğrulama
 

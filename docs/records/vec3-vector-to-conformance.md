@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `vector_to` ku
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::vector_to`, hedef bileşenlerinden mevcut bileşenleri doğrudan çıkarır. `examples/behavior_adapter.rs` bu metodu JSONL `vector_to` adımına bağlar; `tests/behavior/java/MathOracle.java` beklenen sonucu doğrudan Java `vectorTo` çağrısından alır.
+`crates/photon-core/src/math.rs` içindeki `Vec3::vector_to`, hedef bileşenlerinden mevcut bileşenleri doğrudan çıkarır. `examples/behavior_adapter.rs` bu metodu JSONL `vector_to` adımına bağlar; `tests/behavior/java/MathOracle.java` beklenen sonucu doğrudan Java `vectorTo` çağrısından alır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.vectorTo(Vec3)` metodunu karşılayan `Vec3::vector_to` metodunu içerir. Java oracle doğrudan `vectorTo` çağrısını yapar; Rust adaptörü aynı f64 bit girdisini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.vectorTo(Vec3)` metodunu karşılayan `Vec3::vector_to` metodunu içerir. Java oracle doğrudan `vectorTo` çağrısını yapar; Rust adaptörü aynı f64 bit girdisini üretim API'sine taşır.
 
 ## Doğrulama
 

@@ -12,7 +12,7 @@ Bu kayıt `item_frame` ve `glow_item_frame` entity'lerinin (`ItemFrame`, `ItemFr
 ## Kapsam
 
 - `entity/item-frame-pose` 18 satır (altı yön, sekiz dönüş, boş, görünmez, görünmez ve dikey, uzak konum; her satırda çerçeve ve eşya pozu). Eşya pozu, katmanın kendi `NO_TRANSFORM`'unun `(−0,5)` kaymasıyla karşılaştırılır (oracle'da katmanın başka dönüşümü yoktur).
-- Rust: `voxel-render::item_frame` (`item_frame_position`, `render_offset`, `item_frame_poses`), `BlockRenderer::item_frame_state`, `voxel-world` veri (dönüş, eşya), oyunda `item_frames.rs` (eşya `Fixed` bağlamında).
+- Rust: `photon-render::item_frame` (`item_frame_position`, `render_offset`, `item_frame_poses`), `BlockRenderer::item_frame_state`, `photon-world` veri (dönüş, eşya), oyunda `item_frames.rs` (eşya `Fixed` bağlamında).
 
 ## Çerçevedeki harita (T40g2)
 

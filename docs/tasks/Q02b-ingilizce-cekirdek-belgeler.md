@@ -13,7 +13,7 @@
 - Dizin üreticisi ve `check-doc-links.py` yeni düzene uyar.
 
 ## Kabul
-`python3 tools/voxel.py check` belge adımları yeşil; README ve CONTRIBUTING'deki "(Turkish)" notları kalkar.
+`python3 tools/photon.py check` belge adımları yeşil; README ve CONTRIBUTING'deki "(Turkish)" notları kalkar.
 
 ## Kapsam dışı
 Dilim kayıtlarının (`docs/records/`) ve görev dosyalarının çevirisi.

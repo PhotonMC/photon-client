@@ -11,7 +11,7 @@ blok, paratoner; yaratıcıda işaretçi (`BLOCK_MARKER`), biyomun ortam parçac
 ## Oku
 Java: ilgili blok sınıflarının `animateTick`'i, `client/particle/FallingLeavesParticle.java`,
 `world/level/block/{LeavesBlock,TintedParticleLeavesBlock,UntintedParticleLeavesBlock}.java`.
-Rust: `crates/voxel-world/src/particles/animate_misc.rs`.
+Rust: `crates/photon-world/src/particles/animate_misc.rs`.
 
 ## Oracle
 `movement/particle-engine` `animate_tick` satırları.

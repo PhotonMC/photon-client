@@ -27,12 +27,12 @@ Bu sözleşme callback side effect/laziness ve daha geniş streaming API davran�
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::around_and_at_coordinates`, `around_and_at_block_pos` ve `around_and_at_packed`, Java overload yönlendirmesini, i32 wrapping `block±1` hesaplarını ve sectionX/sectionY/sectionZ callback sırasını taşır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::around_and_at_coordinates`, `around_and_at_block_pos` ve `around_and_at_packed`, Java overload yönlendirmesini, i32 wrapping `block±1` hesaplarını ve sectionX/sectionY/sectionZ callback sırasını taşır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos `aroundAndAtBlockPos` üç overload’unu Java ile aynı section node listesine ve sectionX/sectionY/sectionZ callback sırasına bağlar.
+`crates/photon-core/src/binary.rs`, SectionPos `aroundAndAtBlockPos` üç overload’unu Java ile aynı section node listesine ve sectionX/sectionY/sectionZ callback sırasına bağlar.
 
 ## Doğrulama
 

@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §3.4, §4.5
-- `crates/voxel-world/src/lib.rs:120-4760`
+- `crates/photon-world/src/lib.rs:120-4760`
 
 ## Yapılacaklar
 - `Chunks`, `Lighting`, `Entities`, `Weather`, `Recipes`, `WorldBorder`, `BlockPredictions` alanları; fonksiyonlar sahibine taşınır.
@@ -13,7 +13,7 @@
 - Chunk/entity haritası için hash/slab değişikliği yalnız V00 ölçümüyle ve sıra bağımlılığı denetlenerek.
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
 
 ## Kapsam dışı
 Davranış değişikliği.

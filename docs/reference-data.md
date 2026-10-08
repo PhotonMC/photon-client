@@ -28,6 +28,6 @@ Kaynak kodu tek başına bütün görsel, ses ve zamanlama testlerini çalışt�
 
 ## Üretilen tablolar
 
-`crates/voxel-data/src/generated/` altındaki tablolar bir Java yakalamasından (`outputs.jsonl`) yazılır ve her parity koşusunda Rust adaptörü üzerinden baştan sona karşılaştırılır. Hepsini yenilemek için: `python3 tools/voxel.py check --capture` ile yeni yakalama alınır, sonra `python3 tools/generate/all.py <yakalama>` ve `cargo fmt --all`.
+`crates/photon-data/src/generated/` altındaki tablolar bir Java yakalamasından (`outputs.jsonl`) yazılır ve her parity koşusunda Rust adaptörü üzerinden baştan sona karşılaştırılır. Hepsini yenilemek için: `python3 tools/photon.py check --capture` ile yeni yakalama alınır, sonra `python3 tools/generate/all.py <yakalama>` ve `cargo fmt --all`.
 
 Entity model katmanları (`entity_models.rs`, `LayerDefinitions.createRoots`): `entity` ailesinin `entity/model-layers` satırı her katmanın doku boyutunu ve parça ağacını (poz, küpler, çocuklar) verir; `tools/generate/entity_models.py` bunu okunur bir `ModelLayer::of(...)` zinciri olarak yazar. Yalnız bu tabloyu yenilemek için aynı yakalamayla `python3 tools/generate/entity_models.py <yakalama>`.

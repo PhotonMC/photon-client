@@ -5,7 +5,7 @@
 
 ## Oku
 - [A05 devir notu](A05-clientworld-bolme.md) (`Entities` örneği ve gözlem)
-- `crates/voxel-world/src/world/{chunks,lighting,weather,dimension}.rs`
+- `crates/photon-world/src/world/{chunks,lighting,weather,dimension}.rs`
 
 ## Yapılacaklar
 - `Chunks { map, cache, light, light_tasks, light_dirty }` ve yalnız bu alanlara dokunan yöntemleri taşı (`world/chunks.rs`, `lighting.rs`: 17 tek-alanlı yöntem). Zemin/ışık için tüm dünyayı isteyen yöntemler `ClientWorld`'de kalır.
@@ -14,7 +14,7 @@
 - Çağıranlar betikle (A05 `Entities` örneği gibi) geçirilir.
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; davranış değişmez.
+`python3 tools/photon.py check` → `CHECK OK`; davranış değişmez.
 
 ## Kapsam dışı
 Harita yapısı (hash/slab) değişikliği; davranış değişikliği.

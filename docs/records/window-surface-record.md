@@ -25,7 +25,7 @@ Referans varsayılan pencere boyutu `854x480`'dir (`Main` argüman çözümleyic
 
 ## Bu dilimde kurulan
 
-`voxel_client::window::surface` GLFW'yi başlatır, Vulkan hint'ini ve gizli
+`photon::window::surface` GLFW'yi başlatır, Vulkan hint'ini ve gizli
 oluşturmayı uygular, boyutu kelepçeler, birincil monitöre referans formülüyle
 ortalar, framebuffer boyutunu okuyup [P05.d.1'de pinlenen](window-gui-scale-conformance.md)
 ölçek kurallarını uygular ve pencereyi gösterir. Framebuffer resize olayında

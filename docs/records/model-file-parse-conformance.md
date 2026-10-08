@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün model metni pinned JAR'daki
 `CuboidModel.fromStream` yoluna ve üretim kütüphanesindeki
-`voxel_client::render::model::parse_model` fonksiyonuna verilir; kabul/ret
+`photon::render::model::parse_model` fonksiyonuna verilir; kabul/ret
 kararı, parent, ambient occlusion, GUI ışığı, texture slotları ve her elementin
 kutusu, döndürme dönüşümü, gölge bayrağı, ışık yayımı ve yüzleri karşılaştırılır.
 

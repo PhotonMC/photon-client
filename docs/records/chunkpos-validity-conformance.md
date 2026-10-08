@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_validity"` ve signed decimal i3
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::is_valid` ve `is_valid_coordinates`, `crates/voxel-core/src/math.rs` içindeki `abs_max` ile sabitlenmiş Java 26.2 sınırını kullanır. `examples/behavior_adapter.rs` iki yolu JSONL'ye bağlar; `tests/behavior/java/MathOracle.java` Java instance/static çağrılarını doğrudan gözlemler.
+`crates/photon-core/src/binary.rs` içindeki `ChunkPos::is_valid` ve `is_valid_coordinates`, `crates/photon-core/src/math.rs` içindeki `abs_max` ile sabitlenmiş Java 26.2 sınırını kullanır. `examples/behavior_adapter.rs` iki yolu JSONL'ye bağlar; `tests/behavior/java/MathOracle.java` Java instance/static çağrılarını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `ChunkPos.isValid()` ve `isValid(int, int)` yollarını `Mth.absMax` ve `ChunkPyramid.MAX_CHUNK_COORDINATE_VALUE` sözleşmesiyle karşılar. Java oracle vanilla bootstrap gerektiren static sabiti kontrollü biçimde başlatır; Rust adaptörü aynı signed chunk girdilerini üretim API'sine taşır.
+`crates/photon-core/src/binary.rs`, Java `ChunkPos.isValid()` ve `isValid(int, int)` yollarını `Mth.absMax` ve `ChunkPyramid.MAX_CHUNK_COORDINATE_VALUE` sözleşmesiyle karşılar. Java oracle vanilla bootstrap gerektiren static sabiti kontrollü biçimde başlatır; Rust adaptörü aynı signed chunk girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

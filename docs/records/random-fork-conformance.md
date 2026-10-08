@@ -48,7 +48,7 @@ Bu sözleşme legacy `fork` ve positional factory'nin seçili yollarıyla sını
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/random.rs`, Java legacy random kaynağının `fork` ve `forkPositional` yollarını uygular. Positional factory koordinat, UTF-16 string hash'i ve doğrudan seed türevleri üretir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
+`crates/photon-core/src/random.rs`, Java legacy random kaynağının `fork` ve `forkPositional` yollarını uygular. Positional factory koordinat, UTF-16 string hash'i ve doğrudan seed türevleri üretir. `examples/behavior_adapter.rs` aynı üretim API'sini JSONL senaryolarına bağlar; beklenen değer üretmez.
 
 ## Referans ve davranış
 

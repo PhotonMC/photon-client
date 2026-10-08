@@ -14,8 +14,8 @@ spectral_arrow, egg, ender_pearl, splash/lingering_potion, experience_bottle.
   (`recalculateBoundingBox`, `calculateBoundingBox`, yönün eklenme paketindeki verisi),
   `world/entity/projectile/arrow/{AbstractArrow,ThrownTrident}.java` (`tick`),
   `world/entity/projectile/ThrowableProjectile.java` (`tick`, `getDefaultGravity` ezmeleri).
-- Rust: `crates/voxel-world/src/pick.rs` (`bounding_box`), `crates/voxel-world/src/lib.rs`
-  (`block_attached_position`), `crates/voxel-world/src/entity/projectile.rs`
+- Rust: `crates/photon-world/src/pick.rs` (`bounding_box`), `crates/photon-world/src/lib.rs`
+  (`block_attached_position`), `crates/photon-world/src/entity/projectile.rs`
   (`vanilla_projectile_kind`).
 
 ## Yapılacaklar
@@ -28,7 +28,7 @@ spectral_arrow, egg, ender_pearl, splash/lingering_potion, experience_bottle.
 eklenme yönü olayı.
 
 ## Kabul
-`python3 tools/voxel.py check --capture` → `CHECK OK`.
+`python3 tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Tablo çizimi (T40h), çerçeve çizimi (T40g).

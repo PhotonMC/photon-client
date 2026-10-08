@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/gui/Hud.java` (`extractPlayerHealth`, `extractHearts`, `extractFood`, `extractAirBubbles`, `HeartType`), `client/gui/contextualbar/{ContextualBar,ExperienceBar}.java`.
-- Rust: `crates/voxel-render/src/gui/hud.rs` (`player_health`, `contextual_bar`), `docs/records/hud-conformance.md`.
+- Rust: `crates/photon-render/src/gui/hud.rs` (`player_health`, `contextual_bar`), `docs/records/hud-conformance.md`.
 
 ## Yapılacaklar
 `GuiOracle.hudHotbar`'ın sahnesini ayır, `hud_status` işlemini ekle: gerçek `LocalPlayer`'a can, en yüksek can, emilim, zırh, yiyecek/doygunluk, hava, etkiler (yenilenme, zehir, solgunluk, açlık), donma, zorlu mod, dokunulmazlık ve deneyim ver; kare adımlarıyla (tik, milisaniye, can) yanıp sönmeyi sürdür. Rust: `Hud::status` kamusal.
@@ -14,7 +14,7 @@
 `GuiOracle.java` `hud_status`; `cases_gui.py` `gui_hud_status_cases`; `gui.rs` kolu; `gui-oracle.md` satırı.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Araç canı, atlama çubuğu, konum çubuğu (kendi oracle'ı var), efekt simgeleri, seçili eşya adı.

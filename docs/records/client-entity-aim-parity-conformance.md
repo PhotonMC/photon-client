@@ -42,7 +42,7 @@ yaptı) ayrıca `server-conformance` gözlemidir, eşitlik kanıtı sayılmaz.
 pozundaki ve (bebeği olan türlerde) bebek boyutu her entity türü için
 oracle'dan yakalanır (`movement/entity-pick-table`, `MovementOracle.entityPickTable`:
 her tür gerçek `EntityType.create` ile yapılır), `tools/generate/entity_picks.py`
-ile `voxel-data/src/generated/entity_picks.rs`'e yazılır ve **her parity
+ile `photon-data/src/generated/entity_picks.rs`'e yazılır ve **her parity
 koşusunda baştan sona karşılaştırılır**. Sürüm değişince yenilemek için yakalama
 sonrası `python3 tools/generate/entity_picks.py <capture>/outputs.jsonl`.
 Oyuncu entity yapmaz; kuralı (`isPickable` = izleyici değil) kodda.

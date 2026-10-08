@@ -30,7 +30,7 @@ iskelet) `server-conformance`.
 
 `Equippable.assetId` eşya tablosuna girdi (`Equip.asset`, `tools/generate/items.py`,
 oracle `block/item-declarations`). Ekipman varlıkları jar'dan çalışma anında okunur
-(`voxel-render/equipment.rs`), dokuları giyilebilir varlıkların hepsi için varlık
+(`photon-render/equipment.rs`), dokuları giyilebilir varlıkların hepsi için varlık
 başlangıcında entity dokusuna paketlenir.
 
 ## Kapsam
@@ -38,7 +38,7 @@ başlangıcında entity dokusuna paketlenir.
 `entity/equipment-layers` 39 satır (her ekipman varlığı × üç katman türü; boyasız ve
 boyalı renk). Aile içi zırh türleri veri satırıdır.
 
-Süs (T41e): `image/trim-sprite-id` 246 satır gerçek `ArmorTrim.layerAssetId`'e karşı (desen × malzeme × zırh varlığı: `iron_darker` gibi geçersiz kılmalar, düz ve pantolon katmanı) ve `image/palette-permutation` 3 satır gerçek `PalettedPermutations` eşlemesine karşı (sentetik resim ve palet: anahtar renk değişir, alfa çarpılır, diğer opak renkler kalır). Oyunda süs atlası açılışta üretilir (`Armor::trim_images`, `voxel-render::trim`), `trim` bileşeninin kayıt numaraları sunucunun adlarıyla çözülür, süs zırh katmanının üstüne boyasız çizilir (yavrularda yok). Canlı: süslü zombi görüldü. Süs kayıt verisi vanilla veri paketinden; sunucunun özel desenleri okunmaz.
+Süs (T41e): `image/trim-sprite-id` 246 satır gerçek `ArmorTrim.layerAssetId`'e karşı (desen × malzeme × zırh varlığı: `iron_darker` gibi geçersiz kılmalar, düz ve pantolon katmanı) ve `image/palette-permutation` 3 satır gerçek `PalettedPermutations` eşlemesine karşı (sentetik resim ve palet: anahtar renk değişir, alfa çarpılır, diğer opak renkler kalır). Oyunda süs atlası açılışta üretilir (`Armor::trim_images`, `photon-render::trim`), `trim` bileşeninin kayıt numaraları sunucunun adlarıyla çözülür, süs zırh katmanının üstüne boyasız çizilir (yavrularda yok). Canlı: süslü zombi görüldü. Süs kayıt verisi vanilla veri paketinden; sunucunun özel desenleri okunmaz.
 
 Elytra (T41f): `entity/elytra-model` 8 satır gerçek `ElytraModel.setupAnim`'e karşı (büyük ve yavru, dinlenme/çömelme/süzülme açıklıkları) ve `movement/elytra-state` 13 senaryo gerçek `ElytraAnimationState`'e karşı (gerçek uzaktaki oyuncu: durma, çömelme, düz süzülme, dik ve sığ dalış, yükselme, süzülmenin bitmesi, çömelerek süzülme; kanat açıklığı üç kısmi tikte bit bit). Oyunda `ClientEntity::elytra_rotations` her yaşayan varlığın tikinde (yerel oyuncunun kendi durumu da) ilerler, `Armor::wings` göğüsteki eşyanın ekipman varlığının `wings` katmanını `elytra#main` modelinde, arkaya 1/8 blok kaydırarak uzaktaki oyuncuda, yerel oyuncunun üçüncü şahıs modelinde ve insansı mobda çizer. Canlı: elytralı zombinin arkasında kanatlar görüldü.
 

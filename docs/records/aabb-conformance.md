@@ -45,7 +45,7 @@ Rust debug ve release adaptörleri math ailesinde 371/371, birleşik corpus'ta 2
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/aabb.rs`, Java `AABB.contract` çağrısında delta işaretine göre min veya max endpoint'inin içeri taşınmasını uygular. `examples/behavior_adapter.rs` contract adımını JSONL math senaryolarına bağlar. Inflate overload'ları ve intersect işlemi ayrı [inflate kanıtında](aabb-inflate-conformance.md) ve [intersect kanıtında](aabb-intersect-conformance.md) doğrulanır.
+`crates/photon-core/src/aabb.rs`, Java `AABB.contract` çağrısında delta işaretine göre min veya max endpoint'inin içeri taşınmasını uygular. `examples/behavior_adapter.rs` contract adımını JSONL math senaryolarına bağlar. Inflate overload'ları ve intersect işlemi ayrı [inflate kanıtında](aabb-inflate-conformance.md) ve [intersect kanıtında](aabb-intersect-conformance.md) doğrulanır.
 
 ## Doğrulama
 

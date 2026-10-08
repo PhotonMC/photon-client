@@ -1,0 +1,27 @@
+[package]
+name = "photon-render"
+description = "Window, Vulkan backend, world and item meshing, models and the GUI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/build.rs", "/src/**", "/shaders/**"]
+
+[dependencies]
+photon-core.workspace = true
+photon-data.workspace = true
+photon-world.workspace = true
+photon-game.workspace = true
+ash.workspace = true
+ash-window.workspace = true
+flate2.workspace = true
+glfw.workspace = true
+log.workspace = true
+raw-window-handle.workspace = true
+rayon.workspace = true
+
+[build-dependencies]
+shaderc.workspace = true
+
+[lints]
+workspace = true

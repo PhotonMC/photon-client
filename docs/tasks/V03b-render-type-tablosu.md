@@ -5,7 +5,7 @@
 
 ## Oku
 - [V03 devir notu](V03-kare-ucusta.md)
-- `crates/voxel-render/src/vulkan/{mod,draws,frame,scene}.rs`, `crates/voxel-render/src/render_types.rs`
+- `crates/photon-render/src/vulkan/{mod,draws,frame,scene}.rs`, `crates/photon-render/src/render_types.rs`
 
 ## Yapılacaklar
 - `RenderType { pipeline, layout, descriptor, blend }` tablosu (Java `RenderTypes` adlarıyla); kare `(RenderType, first, count)` listesiyle kaydedilir.
@@ -13,7 +13,7 @@
 - `record_scene` (≈550 satır) bu listeyi tek döngüde çizer; `record_dissolve`/`record_maps`/`record_flat_shapes` kalkar.
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; `bench --validation` 0 hata; bench sayıları V03 devir notundaki aralıkta; bir `shot` karesi doğru.
+`python3 tools/photon.py check` → `CHECK OK`; `bench --validation` 0 hata; bench sayıları V03 devir notundaki aralıkta; bir `shot` karesi doğru.
 
 ## Kapsam dışı
 Senkronizasyon ve present modu.

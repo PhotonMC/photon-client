@@ -5,7 +5,7 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §5 (5.8)
-- `crates/voxel-render/src/scene.rs:25`, `world_mesh.rs`, Java `DefaultVertexFormat`
+- `crates/photon-render/src/scene.rs:25`, `world_mesh.rs`, Java `DefaultVertexFormat`
 
 ## Yapılacaklar
 - Paylaşılan quad indeks tamponu; bütün quad çizimleri `cmd_draw_indexed`.
@@ -13,7 +13,7 @@
 - Shader'lar yeni formata uyarlanır.
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench: GPU bölüm pass süresi ve bellek kullanımı düşer.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit. Bench: GPU bölüm pass süresi ve bellek kullanımı düşer.
 
 ## Kapsam dışı
 Indirect çizim.

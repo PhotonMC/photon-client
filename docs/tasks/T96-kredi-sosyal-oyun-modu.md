@@ -8,7 +8,7 @@ PERFORM_RESPAWN), `SocialInteractionsScreen` (oyuncu listesi, gizleme; P key), `
 ## Oku
 - Java: `client/gui/screens/WinScreen.java`, `client/gui/screens/social/*.java`,
   `client/gui/screens/debug/GameModeSwitcherScreen.java`, `ClientPacketListener.handleGameEvent`.
-- Rust: `crates/voxel-net/src/connection/play/incoming.rs` (oyun olayları), tablist oyuncu bilgisi.
+- Rust: `crates/photon-net/src/connection/play/incoming.rs` (oyun olayları), tablist oyuncu bilgisi.
 
 ## Yapılacaklar
 1. Kredi: `texts/end.txt`, `texts/credits.json` biçimi, kaydırma hızı, bitince paket.

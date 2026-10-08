@@ -78,7 +78,7 @@ pakette diğer input/slot varyantları, doğru state-id ile client prediction ve
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
+Sunucu `/tmp/photon-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
 view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`,
 peaceful ve spawn protection `0` ayarlarıyla çalıştı.
 

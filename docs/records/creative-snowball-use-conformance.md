@@ -36,7 +36,7 @@ Bu dilim projectile'ın spawn packet'ini doğrular. Creative stack tüketiminin 
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=creative`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü taş platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=creative`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü taş platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı.
 
 ```text
 cargo run --offline --release --example creative_snowball_use_probe -- 127.0.0.1:25566 RustSnowball1

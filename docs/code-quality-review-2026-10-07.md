@@ -17,7 +17,7 @@ Kod davranış eşitliği açısından titiz (bit eşitliği, işlem sırası, k
 | Ölçü | Değer | Yorum |
 | --- | --- | --- |
 | Rust satırı (crates/) | ~221 bin | 28 bini üretilmiş tablo |
-| En büyük dosyalar | `behavior_adapter/main.rs` 27k, `voxel-world/src/tests.rs` 7k, `mob_model.rs` 5.5k, `vulkan.rs` 5.4k, `voxel-world/src/lib.rs` 5k, `protocol.rs` 4.9k | 1–2k üstü dosya gezinmeyi ve incelemeyi zorlaştırır |
+| En büyük dosyalar | `behavior_adapter/main.rs` 27k, `photon-world/src/tests.rs` 7k, `mob_model.rs` 5.5k, `vulkan.rs` 5.4k, `photon-world/src/lib.rs` 5k, `protocol.rs` 4.9k | 1–2k üstü dosya gezinmeyi ve incelemeyi zorlaştırır |
 | `pub trait` sayısı | 12 | 221k satır için çok az soyutlama |
 | `ClientEntity` alanı | ~110, 18'i `Option<Box<…State>>`, ~12'si `Option<…State>` | Kapalı tür hiyerarşisi düz yapıda |
 | `ClientWorld` `pub fn` | 184 (tek `impl`) | Tanrı nesnesi |
@@ -33,7 +33,7 @@ Kod davranış eşitliği açısından titiz (bit eşitliği, işlem sırası, k
 ## 3. Bulgular — modelleme ve tip güvenliği
 
 ### 3.1 `ClientEntity`: tür hiyerarşisi `Option` alanlarıyla
-`crates/voxel-world/src/entity.rs:661` her entity türünün durumunu aynı yapıda tutar (`rabbit`, `warden`, `panda`, `horse`, `minecart`… hepsi `Option`). Bir tavşanın `warden` alanı vardır; geçersiz durumlar temsil edilebilir, her tür eklemesi bu yapıya dokunur ve bellek düzeni şişer.
+`crates/photon-world/src/entity.rs:661` her entity türünün durumunu aynı yapıda tutar (`rabbit`, `warden`, `panda`, `horse`, `minecart`… hepsi `Option`). Bir tavşanın `warden` alanı vardır; geçersiz durumlar temsil edilebilir, her tür eklemesi bu yapıya dokunur ve bellek düzeni şişer.
 
 **Öneri — toplam tip (enum dispatch):** Java'nın kapalı sınıf hiyerarşisi Rust'ta en doğal hâliyle enum'dur.
 
@@ -59,8 +59,8 @@ Entity kimliği, tür kimliği, blok durumu, menü kimliği hep `i32`. `OpenCont
 **Öneri:** `EntityId(i32)`, `BlockStateId(u32)`, `EntityType` (enum veya `&'static EntityTypeDef`) newtype'ları; tuple yerine adlandırılmış yapı. Karıştırılan kimlikler derleme hatası olur, dize araması kalkar.
 
 ### 3.4 Tanrı nesneleri
-- `ClientWorld` (`voxel-world/src/lib.rs:120`): chunk'lar, ışık, entity'ler, haritalar, tarif kitabı, taş kesici tarifleri, dünya sınırı, hava, binek kontrolü, tekne kürek paketleri, blok tahminleri — 184 public fonksiyonla tek `impl`.
-- `PlaySession` (`voxel-net/src/connection/play.rs:71`): soket, oyuncu durumu, ses kuyruğu, HUD, ölüm ekranı, sohbet indeksi ve **test izleme nesnesi** (`trace`) aynı yapıda; dünya `self.trace.world` içinde yaşıyor (108 kullanım). `*Observation` yapıları (`protocol.rs:598+`) üretim modülünde.
+- `ClientWorld` (`photon-world/src/lib.rs:120`): chunk'lar, ışık, entity'ler, haritalar, tarif kitabı, taş kesici tarifleri, dünya sınırı, hava, binek kontrolü, tekne kürek paketleri, blok tahminleri — 184 public fonksiyonla tek `impl`.
+- `PlaySession` (`photon-net/src/connection/play.rs:71`): soket, oyuncu durumu, ses kuyruğu, HUD, ölüm ekranı, sohbet indeksi ve **test izleme nesnesi** (`trace`) aynı yapıda; dünya `self.trace.world` içinde yaşıyor (108 kullanım). `*Observation` yapıları (`protocol.rs:598+`) üretim modülünde.
 - `VulkanBackend` (`vulkan.rs:1285`): bkz. §5.
 
 **Öneri — bileşim:** `ClientWorld { chunks: Chunks, lighting: Lighting, entities: Entities, weather: Weather, recipes: Recipes, border: WorldBorder, … }`; her alt sistem kendi modülü ve `impl`'iyle. `PlaySession` → `Connection` (I/O) + `ClientState` (oyun) + test için ayrı `Recorder` (özellik bayrağı veya test crate'i).
@@ -68,13 +68,13 @@ Entity kimliği, tür kimliği, blok durumu, menü kimliği hep `i32`. `OpenCont
 ## 4. Bulgular — katmanlar ve akış
 
 ### 4.1 Çizim mantığı uygulama crate'inde, tür başına tarama
-`crates/voxel/src` 69 modül; `foxes.rs`, `pandas.rs`, `sheep.rs`… her biri `world.entities().filter(|e| e.type_id == fox)` ile **tüm entity'leri** tarar ve yeni `Vec<Vertex>` döner. `mobs.rs:600-660` bu fonksiyonları ardışık çağırır: kare başına O(tür sayısı × entity sayısı) tarama ve onlarca ayrı ayırma. Uygulama crate'i hem `voxel-net::PlaySession`'ı hem render modellerini bilir.
+`crates/photon/src` 69 modül; `foxes.rs`, `pandas.rs`, `sheep.rs`… her biri `world.entities().filter(|e| e.type_id == fox)` ile **tüm entity'leri** tarar ve yeni `Vec<Vertex>` döner. `mobs.rs:600-660` bu fonksiyonları ardışık çağırır: kare başına O(tür sayısı × entity sayısı) tarama ve onlarca ayrı ayırma. Uygulama crate'i hem `photon-net::PlaySession`'ı hem render modellerini bilir.
 
 **Öneri — extract → render state → submit:** Java'nın kendisi 1.21.2'den beri bu modeli kullanır (`EntityRenderer.extractRenderState` → `submit`); Bevy'nin "extract" fazı da aynı fikirdir.
 1. *Extract:* dünya tek geçişte gezilir, her entity için küçük, salt-okunur bir render durumu (`EntityRenderState` + türe özgü kısım) üretilir.
 2. *Dispatch:* tür → çizici tablosu (`EntityRenderDispatcher` karşılığı; `match` veya `static` dizi) tek döngüde çağrılır.
 3. *Submit:* çiziciler önceden ayrılmış, kare başına yeniden kullanılan `RenderType` kovalarına yazar (`Vec::clear`, yeniden ayırma yok).
-Çizim modülleri `voxel-render::entity::*` altına taşınır; uygulama yalnız döngü, pencere ve girdi tutar. Extract adımı ağdan bağımsız olduğu için ayrıca test edilebilir ve ileride paralelleştirilebilir.
+Çizim modülleri `photon-render::entity::*` altına taşınır; uygulama yalnız döngü, pencere ve girdi tutar. Extract adımı ağdan bağımsız olduğu için ayrıca test edilebilir ve ileride paralelleştirilebilir.
 
 ### 4.2 Paket işleme
 `play.rs:1563` `handle` 85 kollu bir `match packet_id`'dir; ayrıştırma, durum güncellemesi ve iz kaydı iç içedir; 18 kol ayrıştırma hatasını `if let Ok` ile iz bırakmadan atar.
@@ -100,7 +100,7 @@ Chunk'lar (`BTreeMap<(i32,i32), ClientChunk>`) ve entity'ler (`BTreeMap<i32, Cli
 
 ## 5. Bulgular — Vulkan ve FPS
 
-`crates/voxel-render/src/vulkan.rs` 5.4k satırlık tek dosya; instance, cihaz, swapchain, bellek, 20+ boru hattı, doku, kayıt ve yok etme birlikte.
+`crates/photon-render/src/vulkan.rs` 5.4k satırlık tek dosya; instance, cihaz, swapchain, bellek, 20+ boru hattı, doku, kayıt ve yok etme birlikte.
 
 | # | Bulgu | Kanıt | Etki |
 | --- | --- | --- | --- |
@@ -121,17 +121,17 @@ Chunk'lar (`BTreeMap<(i32,i32), ClientChunk>`) ve entity'ler (`BTreeMap<i32, Cli
 2. **Kare başına kaynak (2 kare uçuşta):** `FrameResources { cmd, fence, image_available, ring: RingBuffer }`; `set_*` fonksiyonları fence beklemez, o karenin kalıcı map'li halka tamponuna yazar. Tamponu GPU'nun kullandığı kareye dokunulmaz (Khronos "frames in flight").
 3. **Veri olarak çizim türleri:** `RenderType { pipeline, blend, depth_write, descriptor, buffer_slot }` tablosu (Java `RenderPipelines`/`RenderTypes` ile aynı adlar); kare, `(RenderType, first, count)` listesi olarak kaydedilir ve tek döngüyle çizilir. 20 alan çifti tek `DrawLists` yapısına iner.
 4. **Present modu ve kare sınırı:** Java'nın `enableVsync` ve `framerateLimit` seçeneklerine bağlı `MAILBOX`/`IMMEDIATE`/`FIFO` seçimi ve CPU tarafı kare sınırlayıcı.
-5. **Shader'lar dosyada:** `crates/voxel-render/shaders/*.{vert,frag}`, `build.rs` ile SPIR-V'ye derlenip `include_bytes!`; diskte `VkPipelineCache`.
+5. **Shader'lar dosyada:** `crates/photon-render/shaders/*.{vert,frag}`, `build.rs` ile SPIR-V'ye derlenip `include_bytes!`; diskte `VkPipelineCache`.
 6. **Geometri:** paylaşılan quad indeks tamponu (köşe sayısı 6→4), Java'nın vertex formatlarıyla hizalı kompakt köşe (konum + paketli renk/UV/ışık; Sodium bu yolla bellek ve bant genişliğini ~%40 azaltır).
 7. **Bölümler:** bölüm ofsetleri SSBO'da, `vkCmdDrawIndirect`/multi-draw ile katman başına tek çağrı (Sodium: dünya çiziminde CPU yükü ~%90 düşer).
 8. **Ölçüm önce:** GPU zaman damgası sorguları (pass başına), kare süresi p50/p99, sabit betikli sahne ile `bench` komutu; her optimizasyon öncesi/sonrası sayı ve `capture_frame` ile piksel eşitliği.
 
 ## 6. Bulgular — üretilmiş veri
 
-`crates/voxel-data/src/generated/` 28 dosya / 28k satır (`animations.rs` 8.1k, `entity_models.rs` 4.3k, `creative_tabs.rs` 4.3k, `blocks.rs` 2.4k, `sound_events.rs` 2k…) ve 1.5k satırlık Python üretici (`tools/generate/`). Tablolar tek dev `static` dizi; Java'da ise her veri bir sınıfa veya JSON dosyasına aittir (`WardenAnimation`, `PigModel.createBodyLayer`, `Blocks`, `SoundEvents`). Diff'ler okunur ama gezinme ve sahiplik zayıf; sürüm atlamasında üretici zinciri (Java oracle + Python + yeniden üretim) bakım yüküdür.
+`crates/photon-data/src/generated/` 28 dosya / 28k satır (`animations.rs` 8.1k, `entity_models.rs` 4.3k, `creative_tabs.rs` 4.3k, `blocks.rs` 2.4k, `sound_events.rs` 2k…) ve 1.5k satırlık Python üretici (`tools/generate/`). Tablolar tek dev `static` dizi; Java'da ise her veri bir sınıfa veya JSON dosyasına aittir (`WardenAnimation`, `PigModel.createBodyLayer`, `Blocks`, `SoundEvents`). Diff'ler okunur ama gezinme ve sahiplik zayıf; sürüm atlamasında üretici zinciri (Java oracle + Python + yeniden üretim) bakım yüküdür.
 
 **Öneri — üç sınıf:**
-- **(a) Java kodunda tanımlı** (bloklar, eşyalar, ses olayları, entity türleri, öznitelikler, model katmanları, animasyonlar): Java'nın dosya düzenini izleyen **elle yazılmış** Rust modülleri — `voxel-data/src/model/pig.rs::create_body_layer()`, `animation/warden.rs`, `block/blocks.rs` içinde Java'daki sırayla tanımlar. Okunur bir oluşturucu DSL'i (`Block::of(..).strength(..)`) zaten var; korunur.
+- **(a) Java kodunda tanımlı** (bloklar, eşyalar, ses olayları, entity türleri, öznitelikler, model katmanları, animasyonlar): Java'nın dosya düzenini izleyen **elle yazılmış** Rust modülleri — `photon-data/src/model/pig.rs::create_body_layer()`, `animation/warden.rs`, `block/blocks.rs` içinde Java'daki sırayla tanımlar. Okunur bir oluşturucu DSL'i (`Block::of(..).strength(..)`) zaten var; korunur.
 - **(b) JAR `data/` JSON'u veya sunucunun eşitlediği kayıtlar** (tablo/kurt varyantları, harita renkleri vb.): kaynak koda girmez; çalışma anında kullanıcının yerel oyun dosyasından veya `RegistryData` paketinden okunur (assetlerle aynı yol).
 - **(c) Java'nın hesapladığı:** hesaplanır.
 
@@ -148,7 +148,7 @@ Oracle karşılaştırması **doğrulama testi** olarak kalır (tabloyu üretmez
 - README Türkçe, "hazırlık deposu" diyor ve güncel değil; CONTRIBUTING/SECURITY yok. Public hedef kitle için İngilizce README (ne, neden, ekran görüntüsü, kurulum, durum), İngilizce kod yorumları zaten var.
 - 663 belge (5.3 MB) çoğunlukla dilim kayıtları; kökte kodu gölgeliyor. Öneri: `docs/` (mimari, katkı, test) ve `docs/records/` (dilim/parity kayıtları) ayrımı.
 - Commit başlıkları 200+ karakter; öneri: ≤72 karakter başlık + gövde (Conventional Commits zaten kullanılıyor).
-- Test harness'ı (`crates/voxel/examples/behavior_adapter`, 27k+ satır) uygulama crate'inin `examples/`'ında; ayrı bir `crates/voxel-oracle` (publish=false) crate'i daha anlaşılırdır. `voxel-world/src/tests.rs` (7k) konuya göre bölünmeli.
+- Test harness'ı (`crates/photon/examples/behavior_adapter`, 27k+ satır) uygulama crate'inin `examples/`'ında; ayrı bir `crates/photon-oracle` (publish=false) crate'i daha anlaşılırdır. `photon-world/src/tests.rs` (7k) konuya göre bölünmeli.
 
 ## 8. Proje kurallarıyla çelişen öneriler
 

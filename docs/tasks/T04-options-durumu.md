@@ -5,12 +5,12 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/Options.java` (2011 satır — **bütün okuma**; `grep -n "processOptions\|private final OptionInstance<.*> \(fov\|guiScale\|sensitivity\|chatOpacity\|chatScale\|chatWidth\|chatHeightFocused\|chatHeightUnfocused\|chatLineSpacing\|textBackgroundOpacity\|chatVisibility\|language\|invertMouse\|mouseWheelSensitivity\|renderDistance\|hideGui\)\|public void load\|public void save"` ile çapaları bul, her biri için ~40 satırlık pencere), `.data/minecraft/source/net/minecraft/client/OptionInstance.java` (`ValueSet`, `IntRange`, `UnitDouble`, `CaptionBasedToString`; `grep -n "class\|record\|enum"`).
-- Rust: `crates/voxel-game/src/options/values.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/records/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
-- Bağlanacak yerler: `crates/voxel-render/src/camera.rs` (FOV), `crates/voxel/src/controls.rs` (~880 duyarlılık), `crates/voxel-render/src/gui/chat.rs` (WIDTH 320, LINES_*, sabitler), `crates/voxel-render/src/window/scale.rs` (GUI ölçeği — zaten `gui_scale` parametreli mi bak).
+- Rust: `crates/photon-game/src/options/values.rs` (zaten `OptionValues`/`SliderableEnum`/`CycleableEnum`… Java'dan kopya; oracle `option_values` ailesi var, `docs/records/option-values-conformance.md`). Var olan tipler yeniden kullanılır.
+- Bağlanacak yerler: `crates/photon-render/src/camera.rs` (FOV), `crates/photon/src/controls.rs` (~880 duyarlılık), `crates/photon-render/src/gui/chat.rs` (WIDTH 320, LINES_*, sabitler), `crates/photon-render/src/window/scale.rs` (GUI ölçeği — zaten `gui_scale` parametreli mi bak).
 - Örnek dosya: `command_history.txt` yazımı `controls.rs`/`chat.rs`'de (oyun dizini çözümü; aynı konumu kullan).
 
 ## Yapılacaklar
-1. `voxel-game/src/options.rs`: `Options` yapısı; alanlar: `fov` (30–110 int, varsayılan 70), `gui_scale` (0=auto), `sensitivity` (0..1, 0.5), `invert_mouse`, `mouse_wheel_sensitivity`, `chat_visibility`, `chat_opacity`, `chat_scale`, `chat_width`, `chat_height_focused`, `chat_height_unfocused`, `chat_line_spacing`, `text_background_opacity`, `lang`. Hepsi Java varsayılanı ve aralığıyla (`OptionInstance` değerlerinden oku, tahmin etme).
+1. `photon-game/src/options.rs`: `Options` yapısı; alanlar: `fov` (30–110 int, varsayılan 70), `gui_scale` (0=auto), `sensitivity` (0..1, 0.5), `invert_mouse`, `mouse_wheel_sensitivity`, `chat_visibility`, `chat_opacity`, `chat_scale`, `chat_width`, `chat_height_focused`, `chat_height_unfocused`, `chat_line_spacing`, `text_background_opacity`, `lang`. Hepsi Java varsayılanı ve aralığıyla (`OptionInstance` değerlerinden oku, tahmin etme).
 2. `load(path)`/`save(path)`: Java biçimi `anahtar:değer` satırları (`processOptions` anahtar adları!), bilinmeyen anahtarlar korunur (yeniden yazımda kaybolmaz), bozuk değer varsayılana düşer. Java gibi yazım sırası.
 3. Bağla: FOV (`camera.rs`), duyarlılık (`controls.rs`), sohbet sabitleri (`chat.rs`; `ChatScreen`/`ChatComponent` oluşturulurken `Options`'tan okunur), GUI ölçeği (`scale.rs`; 0 = otomatik, sabitler Java `calculateScale` ile zaten var mı bak).
 4. Uygulama açılışında `options.txt` (oyun dizini) oku; yoksa yaz. Hiçbir ekran bunu henüz değiştirmez.
@@ -20,7 +20,7 @@
 Yeni ailesiz: `option_values` ailesine **gerekirse** `fov`/`chat_*` aralık satırı ekle (yalnız Java'da OptionInstance kurulup `values().validSlider()` okunabiliyorsa; headless'ta zor ise Java kaynağından satır numaralı birim test yeter, nedenini devir notuna yaz).
 
 ## Kabul
-`tools/voxel.py check` → `CHECK OK`; varsayılanlarla davranış değişmez (sohbet/oracle satırları aynı: `parity` sayısı sabit).
+`tools/photon.py check` → `CHECK OK`; varsayılanlarla davranış değişmez (sohbet/oracle satırları aynı: `parity` sayısı sabit).
 
 ## Kapsam dışı
 Ekranlar, ses/grafik/erişilebilirlik alanları, tuş atamaları.
@@ -29,7 +29,7 @@ Ekranlar, ses/grafik/erişilebilirlik alanları, tuş atamaları.
 `docs/remaining-work.md` M6 "Ayarlar" satırı; `docs/records/option-values-conformance.md` değişmez.
 
 ## Devir notu
-- `voxel-game/src/options.rs`: `Options` (15 alan, Java varsayılan/aralık/anahtar sırası), `load`/`save` (`version:4903` önde, okunan satırlar yerinde güncellenir, bilinmeyen anahtarlar korunur, eksik bilinen anahtarlar sona yazılır), `java_double` (Gson/`Double.toString` biçimi). Kodek davranışı DFU `JsonOps` baytkodundan doğrulandı (sayı≠bool); `ChatVisibility` buraya taşındı, `voxel-net` yeniden dışa aktarır.
+- `photon-game/src/options.rs`: `Options` (15 alan, Java varsayılan/aralık/anahtar sırası), `load`/`save` (`version:4903` önde, okunan satırlar yerinde güncellenir, bilinmeyen anahtarlar korunur, eksik bilinen anahtarlar sona yazılır), `java_double` (Gson/`Double.toString` biçimi). Kodek davranışı DFU `JsonOps` baytkodundan doğrulandı (sayı≠bool); `ChatVisibility` buraya taşındı, `photon-net` yeniden dışa aktarır.
 - Bağlandı: FOV (`Camera::fov(option_fov, ..)`, kesme `max`), GUI ölçeği (`WindowSurface::set_gui_scale_option`), duyarlılık (`0.6F`/`0.2F` genişletmesiyle), ters X/Y, tekerlek. `Controls.options` açılışta okunur, yoksa yazılır.
 - Sapma: sohbet sabitlerinin (`WIDTH`, `LINES_*`) `Options`'a bağlanması yapılmadı — T08 aynı işi oracle ile yapıyor; burada oracle'sız dokunmak parity riskiydi.
 - Oracle yok: headless'ta `OptionInstance` kurulumu gerekmedi; kodek davranışı birim testlerle (`options::tests`) ve DFU baytkoduyla kapatıldı. Sürümü eski dosyalar için Java'nın veri düzeltmesi (`dataFix`) uygulanmaz.

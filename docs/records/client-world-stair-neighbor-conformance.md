@@ -83,15 +83,15 @@ aynı capture üzerinde **2938/2938** eşleşti; fark `null` kaldı.
 Çalıştırılan kontroller:
 
 ```text
-python3 tools/behavior/run.py capture --family math --jdk-home /tmp/voxel-jdk-wrapper
-python3 tools/behavior/run.py verify --family math --jdk-home /tmp/voxel-jdk-wrapper
+python3 tools/behavior/run.py capture --family math --jdk-home /tmp/photon-jdk-wrapper
+python3 tools/behavior/run.py verify --family math --jdk-home /tmp/photon-jdk-wrapper
 cargo test --locked --offline client_world_updates_stair_shape_from_loaded_neighbors
 cargo check --locked --offline --all-targets
 cargo clippy --locked --offline --all-targets -- -D warnings
 cargo build --locked --offline --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/debug/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/debug/examples/behavior_adapter
 cargo build --locked --offline --release --example behavior_adapter
-python3 tools/behavior/run.py compare --family math --jdk-home /tmp/voxel-jdk-wrapper --adapter target/release/examples/behavior_adapter
+python3 tools/behavior/run.py compare --family math --jdk-home /tmp/photon-jdk-wrapper --adapter target/release/examples/behavior_adapter
 ```
 
 ## Vanilla server adjunct smoke

@@ -8,7 +8,7 @@ düzenleme, imleç; `ServerboundSignUpdatePacket`. Tabelanın dünyada çizimi T
 - Java: `client/gui/screens/inventory/AbstractSignEditScreen.java`, `SignEditScreen.java`,
   `HangingSignEditScreen.java`, `client/gui/font/TextFieldHelper.java`,
   `ClientPacketListener.handleOpenSignEditor`.
-- Rust: T80d tabela çizicisi, `crates/voxel-render/src/gui/screen/` kalıbı.
+- Rust: T80d tabela çizicisi, `crates/photon-render/src/gui/screen/` kalıbı.
 
 ## Yapılacaklar
 1. Paket → ekran (ön/arka yüz), satır düzenleme ve imleç yanıp sönmesi.

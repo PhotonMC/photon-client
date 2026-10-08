@@ -5,18 +5,18 @@
 
 ## Oku
 - Java: `client/model/monster/vex/VexModel.java`, `client/model/animal/allay/AllayModel.java` (`translateToHand`), `client/renderer/entity/layers/ItemInHandLayer.java`.
-- Rust: `crates/voxel/src/{monsters,held_items}.rs`, `crates/voxel-render/src/{mob_model,held_item}.rs` (`held_item` el pozu kalıbı: `dolphin_item_pose`, `held_item_pose` oracle'ları).
+- Rust: `crates/photon/src/{monsters,held_items}.rs`, `crates/photon-render/src/{mob_model,held_item}.rs` (`held_item` el pozu kalıbı: `dolphin_item_pose`, `held_item_pose` oracle'ları).
 
 ## Oracle
 `held_item_pose` / `dolphin_item_pose` kalıbı: gerçek `translateToHand` ile bir kimlik duruştan çıkan matris.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Sesler, parçacıklar.
 
 ## Devir notu
-- Yapıldı: `vex_hand_pose` ve `allay_hand_pose` (`voxel-render/held_item.rs`), `monsters.rs`'te vex ve allayın her eli için `HeldItem` (solak mobda ana el solda). Kayıt: `docs/records/client-flier-item-parity-conformance.md`.
+- Yapıldı: `vex_hand_pose` ve `allay_hand_pose` (`photon-render/held_item.rs`), `monsters.rs`'te vex ve allayın her eli için `HeldItem` (solak mobda ana el solda). Kayıt: `docs/records/client-flier-item-parity-conformance.md`.
 - Bulgu: oracle matrisi eşya modelinin köşeye çekilmesini (−0,5 her eksende) içerir; ilk karşılaştırma bu yüzden `0,5`'lik farkla düştü, adaptör `translate(−0,5…)` ekledi (panda ile aynı).
 - Sapma: kullanım ve mızrak duruşları yok. Canlı gözlem yapılmadı.

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/gui/screens/options/SoundOptionsScreen.java`, `client/Options.java` (ses değerleri), GUI tarifi (README "G").
-- Rust: `crates/voxel-render/src/gui/` (Options/Video ekranı kalıpları), `crates/voxel-game/src/options.rs`.
+- Rust: `crates/photon-render/src/gui/` (Options/Video ekranı kalıpları), `crates/photon-game/src/options.rs`.
 
 ## Yapılacaklar
 1. `Options`'a `soundSourceVolumes` ve ana ses; `options.txt` anahtarları.
@@ -15,7 +15,7 @@
 GUI oracle (`gui_sound_options_cases`) gerçek Java ekranına karşı.
 
 ## Kabul
-`tools/voxel.py parity --capture --family gui` yeşil; `check --capture` → `CHECK OK`.
+`tools/photon.py parity --capture --family gui` yeşil; `check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Aygıt seçimi, altyazı, ses önizlemesi (`SoundPreviewHandler`).

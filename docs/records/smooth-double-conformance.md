@@ -14,7 +14,7 @@ Java Edition 26.2 / protokol 776 / Java 25 referansı kullanılır. `util/Smooth
 - Delta işareti Java `Math.signum` ile alınır. İşaretli delta büyüklüğü önceki last amount'ın işaretli büyüklüğünü geçiyorsa delta yeni last amount'a çevrilir; sonra last amount güncellenir, remaining'e `delta * time` eklenir ve aynı çarpım döndürülür.
 - NaN, Infinity, signed zero, sıfır zaman ve reset değerleri bu işlem sırasının gözlenebilir sonuçlarıdır. `reset` target, remaining ve last amount alanlarını Java `0.0` değerine döndürür.
 
-Rust karşılığı `crates/voxel-core/src/smooth.rs` içindeki `SmoothDouble` tipidir. Java `Math.signum` sıfır/NaN ayrımı ayrı yardımcıyla korunur; MouseHandler entegrasyonu bu veri dilimine dahil değildir.
+Rust karşılığı `crates/photon-core/src/smooth.rs` içindeki `SmoothDouble` tipidir. Java `Math.signum` sıfır/NaN ayrımı ayrı yardımcıyla korunur; MouseHandler entegrasyonu bu veri dilimine dahil değildir.
 
 ## JSONL sınırı
 
@@ -23,7 +23,7 @@ Rust karşılığı `crates/voxel-core/src/smooth.rs` içindeki `SmoothDouble` t
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/smooth.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre SmoothDouble state güncellemesini ve reset yolunu uygular. Java oracle gerçek `SmoothDouble` nesnesini çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
+`crates/photon-core/src/smooth.rs`, Java Edition 26.2 / protokol 776 / Java 25 kaynak davranışına göre SmoothDouble state güncellemesini ve reset yolunu uygular. Java oracle gerçek `SmoothDouble` nesnesini çalıştırır; beklenen sonuç Rust adapter'ından türetilmez.
 
 Math referansı `9980b61aa32b75b8061f04bce2a77c3e588071340884f2137494422f307816dc`; tam corpus referansı `e4d6c2858e052ac5923e2dca299f54838246501a9713bf2cce46e8d74957bd05` olarak kaydedildi. Math debug/release karşılaştırmaları `compare-9h37zp9i` ve `compare-jhnf2bsk`; tam debug/release karşılaştırmaları `compare-ttcbx1il` ve `compare-tiuvlq5d` raporlarında fark üretmedi.
 

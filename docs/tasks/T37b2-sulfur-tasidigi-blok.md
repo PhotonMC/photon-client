@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/renderer/entity/{SulfurCubeRenderer,layers/SulfurCubeInnerLayer}.java`, `world/entity/monster/cubemob/SulfurCube.java` (`hasBodyItem`, `canUseSlot`), `world/item/component/BlockItemStateProperties.java`.
-- Rust: `crates/voxel/src/mobs/monsters/cube_mobs.rs`, `crates/voxel/src/` (T34d blok çizimi), `crates/voxel-world/src/entity.rs` (ekipman).
+- Rust: `crates/photon/src/mobs/monsters/cube_mobs.rs`, `crates/photon/src/` (T34d blok çizimi), `crates/photon-world/src/entity.rs` (ekipman).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: gövde (BODY) yuvasındaki eşyadan blok durumu (`block_item_state`, bakır golemden ortak yardımcıya taşındı), `SulfurCubeScale.holds_block` ile squish sıfırlama, `sulfur_cube_block_pose` ve iç gövdenin yerine blok. Kayıt: `docs/records/client-sulfur-cube-parity-conformance.md`.

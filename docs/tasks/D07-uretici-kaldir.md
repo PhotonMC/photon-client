@@ -5,15 +5,15 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §6, §8
-- `tools/generate/`, `crates/voxel-data/src/generated/`, `AGENTS.md`, `docs/coding-standards.md`
+- `tools/generate/`, `crates/photon-data/src/generated/`, `AGENTS.md`, `docs/coding-standards.md`
 
 ## Yapılacaklar
-- `tools/generate/` ve `generated/` silinir; `voxel-data` modül yolları elle modüllere işaret eder.
+- `tools/generate/` ve `generated/` silinir; `photon-data` modül yolları elle modüllere işaret eder.
 - `AGENTS.md` "tablo oracle'dan yakalanır, üretilmiş Rust dosyasına yazılır" maddesi ve kodlama standartlarındaki "Referans verisi" bölümü: elle yazılmış Java karşılığı + her parity koşusunda tam karşılaştırma; sürüm atlamasında Java diff'ine göre elle güncelleme.
 - Sürüm güncelleme rehberi (hangi Java dosyası hangi Rust modülü).
 
 ## Kabul
-Davranış değişmez: `python3 tools/voxel.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
+Davranış değişmez: `python3 tools/photon.py check` → `CHECK OK` (parity dahil); çizime dokunduysa `capture_frame` görüntüsü öncekiyle piksel eşit.
 
 ## Kapsam dışı
 –

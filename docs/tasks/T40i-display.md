@@ -10,7 +10,7 @@
 Gerçek renderer/model sınıfı ve durumu (örnek: `docs/records/client-arrow-parity-conformance.md`, `docs/records/client-minecart-parity-conformance.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Sesler, partiküller, dış çizgi.
@@ -19,5 +19,5 @@ Sesler, partiküller, dış çizgi.
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı: `Display` verisi, render durumu, `Transformation.slerp` aradeğerlemesi, ilerleme (`voxel-world/display.rs`; oracle'da gerçek `Display` varlığı + gerçek dinleyici), konum/dönüş aradeğerleme uzunluğu entity başına (`InterpolationHandler`), yerleşim (`voxel-render/display.rs`; gerçek `DisplayRenderer.submit`, normal matrisi dahil), `Pose::mul_matrix` genel, oyunda `displays.rs`. Canlıda doğrulandı. Kayıt: `docs/records/client-display-parity-conformance.md`.
+- Yapıldı: `Display` verisi, render durumu, `Transformation.slerp` aradeğerlemesi, ilerleme (`photon-world/display.rs`; oracle'da gerçek `Display` varlığı + gerçek dinleyici), konum/dönüş aradeğerleme uzunluğu entity başına (`InterpolationHandler`), yerleşim (`photon-render/display.rs`; gerçek `DisplayRenderer.submit`, normal matrisi dahil), `Pose::mul_matrix` genel, oyunda `displays.rs`. Canlıda doğrulandı. Kayıt: `docs/records/client-display-parity-conformance.md`.
 - Sapma/açık: metin display'i T40i2; gölge, ayıklama, parıltı, ışık geçersiz kılma ve görüş menzili oracle'ı T40i3; oyun içi çizim oracle'sız.

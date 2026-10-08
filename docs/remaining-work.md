@@ -29,7 +29,7 @@ blok entity çizicilerinin bir kısmı (sandık, shulker, kafa, bayrak), partik�
 motoru ve blok kırıntıları, ses çıkışı ile hareket/hasar sesleri, dünya
 sınırı çarpışması.
 
-Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/voxel-net/src/connection/play/incoming.rs`; 2026-10-08):
+Kapsam ölçüsü (canlı oturumun paket işleyicisi, `crates/photon-net/src/connection/play/incoming.rs`; 2026-10-08):
 
 | Yön | İşlenen | Toplam | Eksik olanlar |
 | --- | ---: | ---: | --- |
@@ -117,7 +117,7 @@ En büyük iş; altyapısı hazır değil. Dünya kopyasında entity durumu
 `RemoveEntities`, `MoveEntity*`, `TeleportEntity`, `EntityPositionSync`,
 `RotateHead`, `SetEntityMotion`, `SetEntityData`, `SetPassengers` paketlerini
 dünyaya uyguluyor (`connection/entities.rs`, T20; ayrıştırılamayan paket
-bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları; yaşayan entity'ler üç tikte yumuşak ilerler, mob gövdesi `BodyRotationControl` ile döner) ve çizim için `entity_snapshot` veriyor; uzaktaki oyuncular (varsayılan deriyle, ad etiketiyle) ile domuz ve inek (yetişkin/bebek, sunucunun söylediği çeşitle) yerdeki eşyalar (bob/spin, yığın kopyaları) ve deneyim küreleri çiziliyor; model katmanları `voxel-data` tablosunda (358), çizim `Part::baked` ve tek paketlenmiş entity dokusuyla.
+bağlantıyı kesmez). Entity'ler her istemci tikinde ilerliyor (`ClientWorld::tick_entities`, yalnız `client-parity` ile doğrulanmış tik kolları; yaşayan entity'ler üç tikte yumuşak ilerler, mob gövdesi `BodyRotationControl` ile döner) ve çizim için `entity_snapshot` veriyor; uzaktaki oyuncular (varsayılan deriyle, ad etiketiyle) ile domuz ve inek (yetişkin/bebek, sunucunun söylediği çeşitle) yerdeki eşyalar (bob/spin, yığın kopyaları) ve deneyim küreleri çiziliyor; model katmanları `photon-data` tablosunda (358), çizim `Part::baked` ve tek paketlenmiş entity dokusuyla.
 
 **Güncel durum (2026-10-03, ayrıntı panoda):** çizilenler: uzaktaki oyuncu, yerdeki eşya, XP küresi, zırh askısı, domuz/inek/tavuk/koyun, zombi/iskelet/piglin aileleri (zırh, kafa ve eldeki eşya dahil), örümcek/creeper/enderman, köylü, gezgin tüccar, zombi köylü, illagerlar, cadı, demir ve kar golemi; gölge ve hasar/ölüm geri bildirimi tamam. Açık ortak altyapı: emissive göz katmanı (T33c), varlık üstünde blok çizimi (T34d), kullanım pozları ve mobda kullanım tiki (T41d), mob öznitelikleri (T46), anahtar kare oynatıcı (T43b).
 
@@ -185,7 +185,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   `registry_backed` satırları). Seçici izni oyuncunun işlem düzeyinden gelir
   (varlık olayları 24–28, game master ve üstü seçici kullanır). Eksik:
   bakılan varlık UUID'si.
-- **Kısmen** Komut ağacı (`Commands` paketi, `voxel-game/commands`): düğüm
+- **Kısmen** Komut ağacı (`Commands` paketi, `photon-game/commands`): düğüm
   ağacı, Brigadier ayrıştırması (yönlendirme, aday sıralaması, istisnalar),
   renkli sözdizimi (`formatText`), kullanım ve hata satırları
   (`updateUsageInfo`, `getSmartUsage`); `command_parse` oracle'ı gerçek
@@ -258,7 +258,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   yapıldı, `boss_bar` oracle'lı. Eksik: seviye değişince çubukları silmek,
   koyulaştırma/sis/müzik bayrakları yalnız durum (ses ve sis yok).
 - **Scoreboard** (`SetObjective`, `SetScore`, `ResetScore`,
-  `SetDisplayObjective`, `SetPlayerTeam`; `voxel-game/scoreboard.rs`) yapıldı:
+  `SetDisplayObjective`, `SetPlayerTeam`; `photon-game/scoreboard.rs`) yapıldı:
   kenar çubuğu (takım rengine özel dahil), tablist puan sütunu ve kalpler,
   takım öneki/soneki/rengi ve takım sırası; `sidebar` ve genişletilmiş
   `tab_list` oracle'lı. Eksik: `below_name` (oyuncu adı altı puan, entity
@@ -285,7 +285,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
   otomatik yeniden doğuyor.
 - **L** Ayarlar: ses, video (görüş mesafesi, FOV, GUI ölçeği, bulanıklık),
   kontroller (tuş atamaları — `P05.a/b`), erişilebilirlik; ayarların
-  kaydı/yüklenmesi. **Kısmen:** `options.txt` okunur/yazılır (`voxel-game/src/
+  kaydı/yüklenmesi. **Kısmen:** `options.txt` okunur/yazılır (`photon-game/src/
   options.rs`: FOV, GUI ölçeği, fare, tekerlek, sohbet değerleri; bilinmeyen
   anahtarlar korunur); FOV, GUI ölçeği, duyarlılık, ters çevirme ve tekerlek
   oyuna bağlı; sohbet değerleri (genişlik, ölçek, opaklıklar, satır aralığı, yükseklikler) sohbet çizimine bağlı (`ChatSettings`).
@@ -395,7 +395,7 @@ Bitti: `Component`/dil (`en_us`), stilli yazı, `EditBox`, ipucu kutusu.
 - **S** Oracle harness: Java tekrarlarının determinizm denetimini yaygınlaştırma
   (bileşen sırası bu oturumda yakalandı: `DataComponentMap` kimlik hash'iyle
   dolaşıyor); macOS arm64'te `math` ailesinin çalıştırılması.
-- **S** Test envanteri: canlı sunucu betiklerinin (`VOXEL_SCRIPT`) bir
+- **S** Test envanteri: canlı sunucu betiklerinin (`PHOTON_SCRIPT`) bir
   senaryo dosyası biçimine ve sürekli çalıştırmaya alınması.
 
 ## 13. Sıradaki işler
@@ -406,15 +406,15 @@ Görevler [görev panosundadır](tasks/README.md) (T-görevleri ve PLAN görevle
 
 Hepsi sapmasız; oyun özelliklerinin arasında, ölçerek yapılır.
 
-- **M** Büyük dosyaları böl: `voxel-render/src/vulkan.rs` (~4,2k satır: aygıt
-  ve swapchain, arena ve staging, boru hatları, sahne çizimi), `voxel/examples/
-  behavior_adapter.rs` (~18k satır, aileye göre modüller), `voxel-world/src/
+- **M** Büyük dosyaları böl: `photon-render/src/vulkan.rs` (~4,2k satır: aygıt
+  ve swapchain, arena ve staging, boru hatları, sahne çizimi), `photon/examples/
+  behavior_adapter.rs` (~18k satır, aileye göre modüller), `photon-world/src/
   lib.rs` ve `tests.rs`. vulkan.rs bölünmesi §15'in ön koşulu.
 - **S** `u16` indeks: 65.535'ten az köşeli section'lar (~10 MB).
 - **M** Bellek: ayak izi 513 MB; kalan başlangıç tepesinden (atlas kurulumu,
   çözülen PNG'ler, `pending` durum listeleri). `footprint` ile önce/sonra.
-- **S** Canlı duman testi: `VOXEL_SCRIPT` senaryolarını dosya biçimine alıp
-  `tools/voxel.py` altında tekrarlanabilir koşu (katıla → envanter →
+- **S** Canlı duman testi: `PHOTON_SCRIPT` senaryolarını dosya biçimine alıp
+  `tools/photon.py` altında tekrarlanabilir koşu (katıla → envanter →
   yeniden boyutlandırma → ekran görüntüsü).
 - **S** Küçük temizlik: `expect` gerekçeleri, kullanılmayan üretici/fixture.
 - Yapılmayacak: D1 ışık kuyruğu sınırı; ışık yayılımını paralelleştirme.
@@ -425,7 +425,7 @@ Hepsi sapmasız; oyun özelliklerinin arasında, ölçerek yapılır.
 denetimi yok. Makinede Khronos doğrulama katmanı kurulu
 (`/usr/local/lib/libVkLayer_khronos_validation.dylib`).
 
-1. **S** `VOXEL_VULKAN_VALIDATION=1`: `create_instance`'a
+1. **S** `PHOTON_VULKAN_VALIDATION=1`: `create_instance`'a
    `VK_LAYER_KHRONOS_validation` ve `VK_EXT_debug_utils`, mesaj geri çağrısı
    stderr'e yazar; `=strict` ilk mesajda süreci sonlandırır; senkronizasyon
    doğrulaması `VK_EXT_validation_features` ile. Kapalıyken maliyet yok.

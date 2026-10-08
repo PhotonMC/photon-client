@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_spatial"` ve signed decimal i
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::origin`, `center` ve `chunk`, daha önce doğrulanan min blok ve BlockPos offset yollarını kullanarak Java instance sonuçlarını taşır. `examples/behavior_adapter.rs` bu üç sonucu JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java metotlarını karşılaştırma oracle'ı olarak çağırır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::origin`, `center` ve `chunk`, daha önce doğrulanan min blok ve BlockPos offset yollarını kullanarak Java instance sonuçlarını taşır. `examples/behavior_adapter.rs` bu üç sonucu JSONL'e bağlar; `tests/behavior/java/MathOracle.java` Java metotlarını karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos `origin()`, `center()` ve `chunk()` sonuçlarını Java ile aynı BlockPos ve ChunkPos değerlerine dönüştürür.
+`crates/photon-core/src/binary.rs`, SectionPos `origin()`, `center()` ve `chunk()` sonuçlarını Java ile aynı BlockPos ve ChunkPos değerlerine dönüştürür.
 
 ## Doğrulama
 

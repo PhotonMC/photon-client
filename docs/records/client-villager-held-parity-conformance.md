@@ -22,8 +22,8 @@ gerçek katman sınıfları gerçek poz yığınında, bir eşya durumu gönderd
 
 ## Rust
 
-`voxel-render/src/held_item.rs`: `crossed_arms_item_pose`, `witch_potion_pose` (kafa için
-mevcut `head_item_pose`). `voxel/src/held_items.rs`: `Place::Ground` (yere düşmüş eşya
+`photon-render/src/held_item.rs`: `crossed_arms_item_pose`, `witch_potion_pose` (kafa için
+mevcut `head_item_pose`). `photon/src/held_items.rs`: `Place::Ground` (yere düşmüş eşya
 bağlamlı önbellek) ve `HeldItem::stack`; `villagers.rs` eşyaları köylü, tüccar ve cadı için
 toplar.
 

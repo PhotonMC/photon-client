@@ -3,7 +3,7 @@
 Bu kayıt, entity verisindeki (`SetEntityData`) tüm serileştirici kimliklerinin
 Java ile aynı numaralanmasını, domuz ve ineğin çeşit alanının yerini ve çeşit
 verisini (doku, bebek dokusu, model ailesi) kapsar. Kanıt sınıfı `client-parity`'dir:
-her tablo Java'nın kendi kayıtlarından yakalanır, `voxel-data` altına üretilir ve
+her tablo Java'nın kendi kayıtlarından yakalanır, `photon-data` altına üretilir ve
 her parity koşusunda baştan sona karşılaştırılır. Canlı kabul (soğuk/sıcak domuz
 ve inek, bebekleri) `server-conformance` gözlemidir.
 

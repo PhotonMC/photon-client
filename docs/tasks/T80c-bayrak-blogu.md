@@ -4,13 +4,13 @@
 **Bağımlılık:** T80. **Boy:** M.
 
 ## Oku
-Java: `client/renderer/blockentity/BannerRenderer.java`, `state/BannerRenderState.java`, `client/renderer/special/BannerSpecialRenderer.java`. Rust: `crates/voxel/src/world/block_entities.rs`.
+Java: `client/renderer/blockentity/BannerRenderer.java`, `state/BannerRenderState.java`, `client/renderer/special/BannerSpecialRenderer.java`. Rust: `crates/photon/src/world/block_entities.rs`.
 
 ## Oracle
 Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dörtgenler). Java kaynağı önce satır satır okunur.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Başka blok entity aileleri.

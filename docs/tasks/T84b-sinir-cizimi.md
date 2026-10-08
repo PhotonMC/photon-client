@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/WorldBorderRenderer.java`, `client/renderer/rendertype/RenderTypes.java` (sınır boru hattı), `world/level/border/{WorldBorder,BorderStatus}.java`.
-- Rust: `crates/voxel-world/src/border.rs`, `crates/voxel-render/src/{vulkan,weather}.rs` (şeffaf boru hattı örneği), `crates/voxel/src/play.rs`.
+- Rust: `crates/photon-world/src/border.rs`, `crates/photon-render/src/{vulkan,weather}.rs` (şeffaf boru hattı örneği), `crates/photon/src/play.rs`.
 
 ## Oracle
 Gerçek `WorldBorderRenderer` köşe/UV/alfa kaydı (`border_quads` operation'ı).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`; canlıda sınıra bakılır (`tools/voxel.py shot`) bir kez.
+`tools/photon.py check --capture` → `CHECK OK`; canlıda sınıra bakılır (`tools/photon.py shot`) bir kez.
 
 ## Belgeler
 `docs/records/client-world-border-live-parity-conformance.md`.

@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `rotLerp`, `rotLerpRad`, `triangleWave`, diğer açı y
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Mth.sign(double)` yordamının sıfır, pozitif ve negatif dallarını; NaN için negatif sonucu koruyarak taşır. `examples/behavior_adapter.rs` sonucu signed decimal i32 string olarak dışarı verir.
+`crates/photon-core/src/math.rs`, Java `Mth.sign(double)` yordamının sıfır, pozitif ve negatif dallarını; NaN için negatif sonucu koruyarak taşır. `examples/behavior_adapter.rs` sonucu signed decimal i32 string olarak dışarı verir.
 
 ## Doğrulama
 

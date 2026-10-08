@@ -1,6 +1,6 @@
 # T85 — Uygulama durumu ve başlık ekranı
 
-**Amaç:** Uygulama bugün `voxel play <adres>` ile doğrudan bağlanıyor. Java'nın akışı: pencere açılır,
+**Amaç:** Uygulama bugün `photon play <adres>` ile doğrudan bağlanıyor. Java'nın akışı: pencere açılır,
 `TitleScreen`, oradan bağlanılır, bağlantı kopunca/çıkınca başlığa dönülür. Bu görev uygulamayı
 menü ↔ oyun durum makinesine çevirir ve `TitleScreen`'in düğme düzenini (logo, splash yazısı,
 sürüm/telif satırları) oracle'a eşitler. Panorama T85b'dedir; bu görevde arka plan düz karartmadır.
@@ -10,11 +10,11 @@ sürüm/telif satırları) oracle'a eşitler. Panorama T85b'dedir; bu görevde a
 - Java: `client/gui/screens/TitleScreen.java` (`init`, `createNormalMenuOptions`, `extractRenderState`),
   `client/gui/components/LogoRenderer.java`, `client/gui/components/SplashRenderer.java`,
   `client/resources/SplashManager.java`, `client/Minecraft.java` (`setScreen`, `disconnect`, başlığa dönüş).
-- Rust: `crates/voxel/src/main.rs` (`play` alt komutu), `crates/voxel/src/play.rs` (`run_play`),
-  `crates/voxel/src/gui.rs` (ekran yığını), `crates/voxel-render/src/gui/screen/pause.rs` (kalıp).
+- Rust: `crates/photon/src/main.rs` (`play` alt komutu), `crates/photon/src/play.rs` (`run_play`),
+  `crates/photon/src/gui.rs` (ekran yığını), `crates/photon-render/src/gui/screen/pause.rs` (kalıp).
 
 ## Yapılacaklar
-1. `voxel` argümansız açılınca başlık ekranı; `play <adres>` geliştirici kısayolu olarak kalır.
+1. `photon` argümansız açılınca başlık ekranı; `play <adres>` geliştirici kısayolu olarak kalır.
 2. Durum makinesi: başlık → (T86/T87 gelene dek) sabit adrese bağlan → oyun; `Disconnect`/çıkış → başlık.
 3. `TitleScreen` düzeni: Singleplayer (devre dışı, Java'daki gibi uyarı ipucu yok — kaynağa bak),
    Multiplayer, Realms (devre dışı), Options, Quit, dil ve erişilebilirlik simge düğmeleri.
@@ -25,7 +25,7 @@ sürüm/telif satırları) oracle'a eşitler. Panorama T85b'dedir; bu görevde a
 G: `GuiOracle` `titleScreen` — düğmeler, logo ve splash çizimi bit eşit.
 
 ## Kabul
-`python3 tools/voxel.py check --capture` → `CHECK OK`; `voxel` açılınca başlık görünür (`shot`).
+`python3 tools/photon.py check --capture` → `CHECK OK`; `photon` açılınca başlık görünür (`shot`).
 
 ## Kapsam dışı
 Panorama (T85b), sunucu listesi (T86), Realms, tek oyunculu.
@@ -34,9 +34,9 @@ Panorama (T85b), sunucu listesi (T86), Realms, tek oyunculu.
 `docs/live-play-session.md` başlatma paragrafı, `docs/gui-oracle.md` satırı.
 
 ## Devir notu
-Yapılan: `TitleScreen` (`voxel-render/src/gui/screen/title.rs`, ortak `ButtonSet`), splash
-(`voxel-game/src/splash.rs`), `GuiFrame::transform_from`/`blit_texture_stretched`, menü döngüsü
-(`crates/voxel/src/menu.rs`), `Client` (pencere + arka uç + blok atlası) menü ile oyun arasında
+Yapılan: `TitleScreen` (`photon-render/src/gui/screen/title.rs`, ortak `ButtonSet`), splash
+(`photon-game/src/splash.rs`), `GuiFrame::transform_from`/`blit_texture_stretched`, menü döngüsü
+(`crates/photon/src/menu.rs`), `Client` (pencere + arka uç + blok atlası) menü ile oyun arasında
 paylaşılır, arka uçta yalnız-GUI kipi; Disconnect başlığa döner. Oracle `title_screen` 29 satır.
 Sapma: splash günü UTC'den (Java yerel saat dilimi); panorama küpü yok (T85b).
 Açık: Singleplayer/Realms/arkadaşlar/dil/erişilebilirlik/Options/telif düğmeleri etkisiz

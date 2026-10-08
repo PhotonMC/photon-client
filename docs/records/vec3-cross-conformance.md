@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3"` ve `steps` içinde `cross` kullan
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::cross`, üç determinant bileşenini doğrudan kaynak operand sırasıyla hesaplar. `examples/behavior_adapter.rs` bu metodu JSONL `cross` adımına bağlar; `tests/behavior/java/MathOracle.java` beklenen sonucu doğrudan Java `cross` çağrısından alır.
+`crates/photon-core/src/math.rs` içindeki `Vec3::cross`, üç determinant bileşenini doğrudan kaynak operand sırasıyla hesaplar. `examples/behavior_adapter.rs` bu metodu JSONL `cross` adımına bağlar; `tests/behavior/java/MathOracle.java` beklenen sonucu doğrudan Java `cross` çağrısından alır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.cross(Vec3)` metodunu karşılayan `Vec3::cross` metodunu içerir. Java oracle doğrudan `cross` çağrısını yapar; Rust adaptörü aynı f64 bit girdisini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.cross(Vec3)` metodunu karşılayan `Vec3::cross` metodunu içerir. Java oracle doğrudan `cross` çağrısını yapar; Rust adaptörü aynı f64 bit girdisini üretim API'sine taşır.
 
 ## Doğrulama
 

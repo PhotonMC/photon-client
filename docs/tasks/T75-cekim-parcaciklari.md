@@ -10,7 +10,7 @@ Java: `client/particle/{PortalParticle,ReversePortalParticle,FlyTowardsPositionP
 `particle_state`; titreşim ve iz paketlerinin seçenek çözümü. Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.

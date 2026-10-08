@@ -10,12 +10,12 @@
 `axolotl_model` kalıbı (gerçek model); çeşit tablosu `entity/variants`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Sesler, parçacıklar, davranışlar; eyer ve gövde zırhı katmanları; gardiyan (T35h).
 
 ## Devir notu
-- Yapıldı: `setup_nautilus` (gövde ±10° bakış, her zaman çalışan yüzme, mercan gizleme), zombi nautilus çeşit tablosu (oracle'dan), çeşit verisi 21, `crates/voxel/src/mobs/aquatic/nautilus.rs`. Kayıt: `docs/records/client-nautilus-parity-conformance.md`.
+- Yapıldı: `setup_nautilus` (gövde ±10° bakış, her zaman çalışan yüzme, mercan gizleme), zombi nautilus çeşit tablosu (oracle'dan), çeşit verisi 21, `crates/photon/src/mobs/aquatic/nautilus.rs`. Kayıt: `docs/records/client-nautilus-parity-conformance.md`.
 - Bölündü: gardiyan ve elder gardiyan T35h'ye alındı (ışın çizimi ayrı iş).
 - Sapma: eyer ve gövde zırhı katmanları yok (zırh yalnız mercanları gizler); doku yolları oracle'sız. Canlı gözlem yapılmadı.

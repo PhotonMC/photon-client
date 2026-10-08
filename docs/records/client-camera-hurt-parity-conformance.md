@@ -1,6 +1,6 @@
 # T83 — Hasar sırasında kameranın eğilmesi — [client-parity]
 
-Gerçek `GameRenderer.bobHurt` (Java, `GameRenderer` ve `CameraRenderState` ile, yansımayla çağrılır) ile Rust `voxel_render::camera::apply_hurt` aynı girdide bit bit karşılaştırılır (`entity/camera-hurt`, 15 satır: akış bitmiş, akış boyunca altı nokta ve yön, daha zayıf ve sıfır eğim seçeneği, uzun akış, ölüm, ölürken akış).
+Gerçek `GameRenderer.bobHurt` (Java, `GameRenderer` ve `CameraRenderState` ile, yansımayla çağrılır) ile Rust `photon_render::camera::apply_hurt` aynı girdide bit bit karşılaştırılır (`entity/camera-hurt`, 15 satır: akış bitmiş, akış boyunca altı nokta ve yön, daha zayıf ve sıfır eğim seçeneği, uzun akış, ölüm, ölürken akış).
 
 ## Java kaynak incelemesi
 

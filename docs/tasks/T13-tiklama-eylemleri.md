@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/client/gui/screens/ChatScreen.java` (186–260: `mouseClicked`, `handleComponentClicked`, `insertionClickMode`), `.data/minecraft/source/net/minecraft/client/gui/screens/Screen.java` (`defaultHandleGameClickEvent`, `clickUrlAction`, `handleClickEvent` — `grep -n "ClickEvent\|CONFIRM\|openUrl"`), `.data/minecraft/source/net/minecraft/client/gui/screens/ConfirmLinkScreen.java` (128), `.data/minecraft/source/net/minecraft/network/chat/ClickEvent.java`.
-- Rust: `crates/voxel-render/src/gui/chat.rs` (`ChatScreen`, `click`), T12 `style_at`, T03 `ConfirmScreen`, `crates/voxel/src/controls.rs` (`chat` kolları; `send` yardımcıları).
+- Rust: `crates/photon-render/src/gui/chat.rs` (`ChatScreen`, `click`), T12 `style_at`, T03 `ConfirmScreen`, `crates/photon/src/controls.rs` (`chat` kolları; `send` yardımcıları).
 
 ## Yapılacaklar
 1. `ChatScreen::clicked(mouse, shift) -> Option<ChatClick>` (`Run(command)`, `Suggest(text)`, `Copy(text)`, `OpenUrl(url)`, `Insert(text)`); uygulama bunları işler: `run_command` Java gibi `ChatCommand` (başında `/`) olarak gönderir (imza gereken komutlarda Java'da onay: `SignableCommand`; imza yok → doğrudan `ChatCommand`), pano için GLFW pano (`glfw::Window::set_clipboard_string`; yoksa not).
@@ -16,7 +16,7 @@
 `confirm_link_screen` operation'ı (gerçek `ConfirmLinkScreen`, URL kısa/uzun, boyutlar, düğme üzerine gelme). Tıklama davranışı için Java kaynağından birim testleri (hangi eylem hangi çıktıyı verir).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (isteğe bağlı, `shot`): `tellraw @a {"text":"x","click_event":{"action":"run_command","command":"/say hi"}}` sonrası tıkla.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (isteğe bağlı, `shot`): `tellraw @a {"text":"x","click_event":{"action":"run_command","command":"/say hi"}}` sonrası tıkla.
 
 ## Kapsam dışı
 `ShowDialog`/`Custom` eylemleri (yok sayılır, günlük satırı), imzalı komut zinciri.

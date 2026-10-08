@@ -7,7 +7,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı `x` ve `y` çeyrek turları pinned
 JAR'daki `Quadrant.fromXYAngles` → `BlockModelRotation` yoluna ve üretim
-kütüphanesindeki `voxel_client::render::rotation::model_state_transform`
+kütüphanesindeki `photon::render::rotation::model_state_transform`
 fonksiyonuna verilir; dönüşüm matrisi ve altı yüzün dönüşümleri float bit
 düzeyinde karşılaştırılır.
 

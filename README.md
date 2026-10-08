@@ -1,8 +1,8 @@
-# voxel-client
+# Photon
 
 A from-scratch reimplementation of the **Minecraft: Java Edition client in Rust**, built to match the Java client's behavior exactly: mechanics, physics, movement, timing, camera, animation, textures, UI and sound.
 
-`voxel-client` is a working title. This project is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
+Photon is a working title. This project is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
 
 ## Why
 
@@ -37,9 +37,9 @@ Requirements:
 
 ```sh
 cargo build --workspace
-python3 tools/voxel.py setup                      # fetch the pinned game into .data/ from Mojang's servers
-python3 tools/voxel.py server --accept-eula --background
-python3 tools/voxel.py play --user Walker
+python3 tools/photon.py setup                      # fetch the pinned game into .data/ from Mojang's servers
+python3 tools/photon.py server --accept-eula --background
+python3 tools/photon.py play --user Walker
 ```
 
 `setup` downloads the game from Mojang's official distribution and checks every file against the published hash. You are responsible for accepting the Minecraft EULA. Details are in the [local setup guide](docs/en/local-setup.md).
@@ -48,8 +48,8 @@ python3 tools/voxel.py play --user Walker
 
 ```sh
 cargo test --workspace --lib --bins --tests   # unit tests, no game files needed
-python3 tools/voxel.py check                  # the full commit gate: fmt, build, test, clippy, parity, docs
-python3 tools/voxel.py parity --family gui    # Java-vs-Rust comparison for one family
+python3 tools/photon.py check                  # the full commit gate: fmt, build, test, clippy, parity, docs
+python3 tools/photon.py parity --family gui    # Java-vs-Rust comparison for one family
 ```
 
 The full gate and the parity runs need the local `.data/` reference. See [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md).

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `.data/minecraft/source/net/minecraft/world/entity/animal/pig/{Pig,PigVariant,PigVariants}.java`, `.../cow/{Cow,CowVariant,CowVariants}.java`, `net/minecraft/network/syncher/EntityDataSerializers.java` (serileştirici kimlikleri: kayıt sırası), `.../SynchedEntityData.java` (paket biçimi), `net/minecraft/client/renderer/entity/{PigRenderer,CowRenderer}.java`.
-- Rust: `crates/voxel-world/src/metadata.rs` (`skip_metadata_value`, `find_metadata_field` yalnız bilinen serileştiricileri atlar; yenileri ekle), `crates/voxel-net` registry sync (`registry_names("minecraft:pig_variant")`, kayıt verisi), `crates/voxel/src/mobs.rs` (`KINDS`).
+- Rust: `crates/photon-world/src/metadata.rs` (`skip_metadata_value`, `find_metadata_field` yalnız bilinen serileştiricileri atlar; yenileri ekle), `crates/photon-net` registry sync (`registry_names("minecraft:pig_variant")`, kayıt verisi), `crates/photon/src/mobs.rs` (`KINDS`).
 
 ## Yapılacaklar
 1. `EntityDataSerializers` tüm kimlik ve değer biçimleri (oracle tablosu: kimlik → ad), `skip_metadata_value` hepsini atlayabilsin; böylece bilinmeyen serileştirici sonraki alanları kaybettirmez.
@@ -16,7 +16,7 @@
 `entity` ailesine serileştirici kimlik tablosu ve çeşit alanı okuma satırları (Java `SynchedEntityData` ile kodlanmış paketten).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`; canlı: soğuk biyomda domuz soğuk dokuyla.
+`tools/photon.py check --capture` → `CHECK OK`; canlı: soğuk biyomda domuz soğuk dokuyla.
 
 ## Kapsam dışı
 Diğer mob'lar (PLAN-M4), eyer katmanı.
@@ -25,7 +25,7 @@ Diğer mob'lar (PLAN-M4), eyer katmanı.
 `docs/remaining-work.md` M4.
 
 ## Devir notu
-- Yapıldı: `skip_metadata_value` 43 serileştiricinin hepsini yürür (parçacık verisi, `RESOLVABLE_PROFILE`, gömülü resim hariç); `item_components` voxel-game'den voxel-world'e taşındı (voxel-game yeniden dışa aktarır; metadata içindeki eşya yığınını atlamak için); `ClientEntity.variant` (`LivingState`'te), `PIG/COW_VARIANT_DATA_ID` (19/18, oracle'la düzeltildi); `mobs.rs` çeşidi kayıt adından çözüp model katmanı ve doku seçer (`cold_pig`, `warm_cow`… ve bebekleri). Kayıt: `docs/records/client-entity-metadata-variants-parity-conformance.md`.
+- Yapıldı: `skip_metadata_value` 43 serileştiricinin hepsini yürür (parçacık verisi, `RESOLVABLE_PROFILE`, gömülü resim hariç); `item_components` photon-game'den photon-world'e taşındı (photon-game yeniden dışa aktarır; metadata içindeki eşya yığınını atlamak için); `ClientEntity.variant` (`LivingState`'te), `PIG/COW_VARIANT_DATA_ID` (19/18, oracle'la düzeltildi); `mobs.rs` çeşidi kayıt adından çözüp model katmanı ve doku seçer (`cold_pig`, `warm_cow`… ve bebekleri). Kayıt: `docs/records/client-entity-metadata-variants-parity-conformance.md`.
 - Oracle: `entity/data-serializers` (43 ad), `entity/variants` (6), `entity/variant-fields`; tablolar `tools/generate/entity_{serializers,variants}.py` ile. Canlı: soğuk/sıcak domuz ve inek, bebekler ayırt edilir çiziliyor.
 - Sapma: bayt biçimleri kodek kaynağından + birim testle (oracle bayt taşıyamaz); diğer çeşitli mob'lar PLAN-M4.
 - Açık: yok.

@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `world/level/border/WorldBorder.java`, `client/renderer/WorldBorderRenderer.java`, `network/protocol/game/ClientboundInitializeBorderPacket.java` ve `ClientboundSetBorder*`. Rust: `crates/voxel-world/src/lib.rs`, `crates/voxel-world/src/local_player.rs`.
+Java: `world/level/border/WorldBorder.java`, `client/renderer/WorldBorderRenderer.java`, `network/protocol/game/ClientboundInitializeBorderPacket.java` ve `ClientboundSetBorder*`. Rust: `crates/photon-world/src/lib.rs`, `crates/photon-world/src/local_player.rs`.
 
 ## Oracle
 `border_state` operation'ı: `lerp` durumu, çarpışma kutusu, çizim köşeleri. Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.

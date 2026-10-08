@@ -24,12 +24,12 @@ Bu sözleşme sonlu 16×16×16 section çıktısına odaklanır. Java stream tem
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::blocks_inside`, `min_block_*` ve `max_block_*` uçlarını Java i32 wrapping aritmetiğiyle hesaplayıp aynı x-fastest/y-next/z-next sırada 4096 `BlockPos` üretir. `examples/behavior_adapter.rs` sonucu JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream'ini karşılaştırma oracle'ı olarak tüketir.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::blocks_inside`, `min_block_*` ve `max_block_*` uçlarını Java i32 wrapping aritmetiğiyle hesaplayıp aynı x-fastest/y-next/z-next sırada 4096 `BlockPos` üretir. `examples/behavior_adapter.rs` sonucu JSONL operation'ına bağlar; `tests/behavior/java/MathOracle.java` Java stream'ini karşılaştırma oracle'ı olarak tüketir.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos `blocksInside()` akışını Java ile aynı 16×16×16 inclusive BlockPos küpüne ve x/y/z traversal sırasına bağlar.
+`crates/photon-core/src/binary.rs`, SectionPos `blocksInside()` akışını Java ile aynı 16×16×16 inclusive BlockPos küpüne ve x/y/z traversal sırasına bağlar.
 
 ## Doğrulama
 

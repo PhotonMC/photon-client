@@ -9,7 +9,7 @@ dışındaki kaplar (ender sandığı, varil yok), kapı; sandık kapağı zaten
 Java: `network/protocol/game/ClientboundBlockEventPacket.java`,
 `world/level/block/{NoteBlock,piston/PistonBaseBlock,BellBlock}.java`,
 `world/level/block/entity/{BellBlockEntity,ShulkerBoxBlockEntity,EnderChestBlockEntity}.java`
-(`triggerEvent`). Rust: `crates/voxel-net/src/connection/play/incoming/world.rs` (`on_block_event`).
+(`triggerEvent`). Rust: `crates/photon-net/src/connection/play/incoming/world.rs` (`on_block_event`).
 
 ## Oracle
 `movement/particle-engine`'e `block_event` olayı (nota sesi ve parçacığı); çan/shulker durumu

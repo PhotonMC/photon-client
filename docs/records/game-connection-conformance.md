@@ -20,7 +20,7 @@ Java kaynak incelemesinde `ServerLoginPacketListenerImpl`, `ClientHandshakePacke
 
 ## Rust davranış sınırı
 
-`crates/voxel-net/src/connection/session.rs` ve `crates/voxel-net/src/connection/protocol.rs` aşağıdaki akışı yürütür:
+`crates/photon-net/src/connection/session.rs` ve `crates/photon-net/src/connection/protocol.rs` aşağıdaki akışı yürütür:
 
 1. Protocol 776 login intention ve offline login hello gönderir.
 2. Login compression paketini okuyup zlib çerçevesini Java'nın eşik kuralıyla çözer; eşik altındaki paketleri `uncompressed length = 0` ile, eşik ve üstündekileri sıkıştırılmış olarak yazar.
@@ -83,7 +83,7 @@ Toplam paket sayısı, probe'un 250 ms drain penceresinde sunucunun paketleri g�
 
 ## Yakalanan istemci hatası
 
-İlk vanilla probe koşusu (`VanillaProbe1`) eski kodla `UnexpectedEof` ile kapandı; vanilla server oyuncuyu önce kabul etti, sonra geçersiz keep-alive yanıtı nedeniyle timeout kaydetti. Java 26.2 packet dispatch sırası yeniden kontrol edildiğinde `43` numarasının `initialize_border`, `44` numarasının gerçek play `keep_alive` olduğu görüldü. Rust dispatch sabiti `44` olarak düzeltildi ve aynı test iki kez tekrarlandı. Bu hata [protocol modülündeki sabit testi](../../crates/voxel-net/src/connection/protocol.rs) ile korunuyor.
+İlk vanilla probe koşusu (`VanillaProbe1`) eski kodla `UnexpectedEof` ile kapandı; vanilla server oyuncuyu önce kabul etti, sonra geçersiz keep-alive yanıtı nedeniyle timeout kaydetti. Java 26.2 packet dispatch sırası yeniden kontrol edildiğinde `43` numarasının `initialize_border`, `44` numarasının gerçek play `keep_alive` olduğu görüldü. Rust dispatch sabiti `44` olarak düzeltildi ve aynı test iki kez tekrarlandı. Bu hata [protocol modülündeki sabit testi](../../crates/photon-net/src/connection/protocol.rs) ile korunuyor.
 
 ## Java referans istemcisi
 

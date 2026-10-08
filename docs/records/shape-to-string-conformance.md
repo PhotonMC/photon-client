@@ -36,7 +36,7 @@ Girdiler `family: "math"`, `operation: "shape"`, `kind: "to_string"` ve `shape` 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/shape.rs`, Java `VoxelShape.toString()` davranışını `VoxelShape::to_string_java` ile uygular. `examples/behavior_adapter.rs`, `to_string` sorgusunu bu API'ye taşır.
+`crates/photon-core/src/shape.rs`, Java `VoxelShape.toString()` davranışını `VoxelShape::to_string_java` ile uygular. `examples/behavior_adapter.rs`, `to_string` sorgusunu bu API'ye taşır.
 
 ## Doğrulama
 

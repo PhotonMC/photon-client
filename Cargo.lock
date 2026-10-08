@@ -103,9 +103,9 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "cc"
-version = "1.4.6"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3eb0f42d6c360dc3f8a821f6bf2fdea7f72bfd36b3076eb0e6d1e9e0752fff4"
+checksum = "f74872d07caf508b30a21f6836e7d7016a2eaf7d9ff4f48deaa58cd8a0407630"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -113,9 +113,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "cmake"
@@ -252,9 +252,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8498c871161e1742aaa9d52551b2d6ebdd4c3d45a3be423e3728f33b955be550"
+checksum = "01a7799fd6b852db0e61728dde9a204c423b44d689dbd432522543614b490e78"
 dependencies = [
  "cfg-if",
 ]
@@ -302,9 +302,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
+checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
 name = "equivalent"
@@ -314,9 +314,9 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.12"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "flate2"
@@ -346,7 +346,7 @@ checksum = "ea5190182e6915eb873ddbc16e23b711b6eb1f9c00a0d0a3a91b5f6228475225"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -387,7 +387,7 @@ checksum = "61c38183b2df227d4b59fcabc647ccc65d04ed9a14420ea9c1520e5ed09b6a79"
 dependencies = [
  "bitflags 1.3.2",
  "glfw-sys",
- "objc2 0.5.2",
+ "objc2 0.5.3",
  "raw-window-handle",
  "winapi",
 ]
@@ -506,9 +506,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
 
 [[package]]
 name = "libloading"
@@ -654,9 +654,9 @@ checksum = "cdb91bdd390c7ce1a8607f35f3ca7151b65afc0ff5ff3b34fa350f7d7c7e4310"
 
 [[package]]
 name = "objc2"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46a785d4eeff09c14c487497c162e92766fbb3e4059a71840cecc03d9a50b804"
+checksum = "19d5490aaf8f1d7cf7688dfa9b0ce07900e168852c45cd2c03f534dfd27cfd0b"
 dependencies = [
  "objc-sys",
  "objc2-encode",
@@ -766,6 +766,102 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
+name = "photon"
+version = "0.1.0"
+dependencies = [
+ "glfw",
+ "log",
+ "photon-audio",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-net",
+ "photon-render",
+ "photon-world",
+]
+
+[[package]]
+name = "photon-audio"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "lewton",
+ "log",
+ "photon-game",
+]
+
+[[package]]
+name = "photon-core"
+version = "0.1.0"
+
+[[package]]
+name = "photon-data"
+version = "0.1.0"
+
+[[package]]
+name = "photon-game"
+version = "0.1.0"
+dependencies = [
+ "photon-core",
+ "photon-data",
+ "photon-world",
+]
+
+[[package]]
+name = "photon-net"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "log",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-world",
+]
+
+[[package]]
+name = "photon-oracle"
+version = "0.1.0"
+dependencies = [
+ "glfw",
+ "photon-audio",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-net",
+ "photon-render",
+ "photon-world",
+ "serde_json",
+]
+
+[[package]]
+name = "photon-render"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "ash-window",
+ "flate2",
+ "glfw",
+ "log",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-world",
+ "raw-window-handle",
+ "rayon",
+ "shaderc",
+]
+
+[[package]]
+name = "photon-world"
+version = "0.1.0"
+dependencies = [
+ "photon-core",
+ "photon-data",
+ "rayon",
+]
 
 [[package]]
 name = "pin-project-lite"
@@ -906,7 +1002,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -992,9 +1088,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.5"
+version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12df2e0110f65b775f769bb17ef989067a1d931b2eb822bd4346631eeada89f9"
+checksum = "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1038,7 +1134,7 @@ checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -1049,18 +1145,18 @@ checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
 
 [[package]]
 name = "toml_datetime"
-version = "1.1.1+spec-1.1.0"
+version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7"
+checksum = "2b86d767906c6c42421dcba507eb9d203e779497710a47782a224bb871653053"
 dependencies = [
  "serde_core",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.25.15+spec-1.1.0"
+version = "0.25.16+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1340ea94a5856333492c9064b02c778b191dd2c853778d9609debdcdfea3a614"
+checksum = "88f38f3af8bf71841c67a990f4e2b52143b2d0a1a994c72513ff4c14977fc722"
 dependencies = [
  "indexmap",
  "toml_datetime",
@@ -1070,114 +1166,18 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.1.3+spec-1.1.0"
+version = "1.1.4+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56"
+checksum = "bed810ee007d8e7f9cf20b4774e7198142fa27186e0f805871da7f3c39eaf333"
 dependencies = [
  "winnow",
 ]
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.24"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
-
-[[package]]
-name = "voxel"
-version = "0.1.0"
-dependencies = [
- "glfw",
- "log",
- "voxel-audio",
- "voxel-core",
- "voxel-data",
- "voxel-game",
- "voxel-net",
- "voxel-render",
- "voxel-world",
-]
-
-[[package]]
-name = "voxel-audio"
-version = "0.1.0"
-dependencies = [
- "cpal",
- "lewton",
- "log",
- "voxel-game",
-]
-
-[[package]]
-name = "voxel-core"
-version = "0.1.0"
-
-[[package]]
-name = "voxel-data"
-version = "0.1.0"
-
-[[package]]
-name = "voxel-game"
-version = "0.1.0"
-dependencies = [
- "voxel-core",
- "voxel-data",
- "voxel-world",
-]
-
-[[package]]
-name = "voxel-net"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "log",
- "voxel-core",
- "voxel-data",
- "voxel-game",
- "voxel-world",
-]
-
-[[package]]
-name = "voxel-oracle"
-version = "0.1.0"
-dependencies = [
- "glfw",
- "serde_json",
- "voxel-audio",
- "voxel-core",
- "voxel-data",
- "voxel-game",
- "voxel-net",
- "voxel-render",
- "voxel-world",
-]
-
-[[package]]
-name = "voxel-render"
-version = "0.1.0"
-dependencies = [
- "ash",
- "ash-window",
- "flate2",
- "glfw",
- "log",
- "raw-window-handle",
- "rayon",
- "shaderc",
- "voxel-core",
- "voxel-data",
- "voxel-game",
- "voxel-world",
-]
-
-[[package]]
-name = "voxel-world"
-version = "0.1.0"
-dependencies = [
- "rayon",
- "voxel-core",
- "voxel-data",
-]
+checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
 
 [[package]]
 name = "walkdir"
@@ -1221,7 +1221,7 @@ dependencies = [
  "bumpalo",
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
  "wasm-bindgen-shared",
 ]
 

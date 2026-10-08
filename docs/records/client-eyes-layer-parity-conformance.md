@@ -20,7 +20,7 @@ kendisi aynı poz ve aynı köşelerdir (`spider_model`, `enderman_model` kayıt
 
 ## Rust
 
-`voxel-render/src/render_types.rs` hattın ve katmanların olgularını (`EYES`, `EYES_ORDER`,
+`photon-render/src/render_types.rs` hattın ve katmanların olgularını (`EYES`, `EYES_ORDER`,
 `NO_OVERLAY`, `eyes_texture`) taşır; oyun dokuyu buradan alır. `mob_vertices_glow` modeli
 ışıksız ve örtüsüz, tint'i beyaz üretir; Vulkan'da gölge hattıyla aynı shader'lar ve durum
 (doku çarpı renk, ışık yok, kesme yok, harman, derinlik testli yazmasız) `glow` tamponuyla

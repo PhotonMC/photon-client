@@ -29,7 +29,7 @@ Genel quaternion işlemleri, matrix dönüşümleri, Direction matrix rotation v
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `Direction::get_rotation`, Java `Direction.getRotation()` için yön başına sabit JOML quaternion yolunu kullanır. JOML'nin yarım açı, `cosFromSin` işareti ve f32 saklama davranışı `crates/voxel-core/src/math.rs` içindeki yardımcılarla taşınır. Adapter sonucu x/y/z/w raw f32 bitleri olarak dışarı verir; Java oracle aynı enum metodunu doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `Direction::get_rotation`, Java `Direction.getRotation()` için yön başına sabit JOML quaternion yolunu kullanır. JOML'nin yarım açı, `cosFromSin` işareti ve f32 saklama davranışı `crates/photon-core/src/math.rs` içindeki yardımcılarla taşınır. Adapter sonucu x/y/z/w raw f32 bitleri olarak dışarı verir; Java oracle aynı enum metodunu doğrudan çağırır.
 
 Java math capture kimliği `e37b4611c76826a0b1e25c93a366285d488a856a012e4a9c65998d9e140f9697` olarak `.data/` altında tutulur. Capture iki ayrı JVM çalıştırmasında kararlı bulundu ve Rust debug adapter karşılaştırması fark üretmeden tamamlandı. Birleşik capture kimliği `ddbcf0f3b1df30103517064c4eb9c6bfef9a057d1b10a4f86f786830300869cc` ile debug ve release adapter karşılaştırmaları da fark üretmedi.
 

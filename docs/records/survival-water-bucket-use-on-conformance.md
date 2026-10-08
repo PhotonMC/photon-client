@@ -35,7 +35,7 @@ Bu dilim üst yüze su kaynağı koyan tek water bucket senaryosunu kapsar. Yana
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. World spawn `(100,101,100)` üzerindeki kontrollü dirt platformu kullanıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden water bucket slot hazırlığı uygulandı; üst hücrenin air olduğu ayrıca sağlandı. Console başarı mesajı görülmeden hiçbir koşul geçerli sayılmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. World spawn `(100,101,100)` üzerindeki kontrollü dirt platformu kullanıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden water bucket slot hazırlığı uygulandı; üst hücrenin air olduğu ayrıca sağlandı. Console başarı mesajı görülmeden hiçbir koşul geçerli sayılmadı.
 
 ```text
 cargo run --offline --release --example survival_water_bucket_use_on_probe -- 127.0.0.1:25566 RustWaterUse4

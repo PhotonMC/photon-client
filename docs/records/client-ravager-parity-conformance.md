@@ -30,6 +30,6 @@ bir ve iki kez sallanan).
 - Sersemleme ve ardından kükreme Java oracle'da koşulamaz: sersemlemenin bulutu başsız istemcide
   eklenemez ve çekimleri tikten tike aynı sonucu vermez (tohumlu bile, çekim sayısı koşuya göre
   değişiyor). Sayaçların geri sayımı, kükremenin sersemlemeden sonra 20 tike kurulması ve ölü ravagerin
-  durması `voxel-world` birim testindedir; çekimler (altıda bir bulut, kükremede 120 gauss) Java kaynağına
+  durması `photon-world` birim testindedir; çekimler (altıda bir bulut, kükremede 120 gauss) Java kaynağına
   göre yapılır ama karşılaştırılamaz.
 - Kükremenin çevreyi itmesi (`applyRoarKnockbackClient`, yerel oyuncuya fizik), parçacıklar ve sesler yok.

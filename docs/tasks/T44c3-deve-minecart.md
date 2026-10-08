@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `world/entity/animal/camel/Camel.java`, `world/entity/vehicle/minecart/AbstractMinecart.java`.
-- Rust: `voxel-world/src/{mount_ride,vehicle_ride,horse}.rs`.
+- Rust: `photon-world/src/{mount_ride,vehicle_ride,horse}.rs`.
 
 ## Oracle
 `movement/ride-horse` örneğiyle `ride` satırları.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-mount-ride-parity-conformance.md`.

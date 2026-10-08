@@ -10,7 +10,7 @@ damlası, kuru ghast, potent sulfur, fırçalanabilir blok, paratoner; yaratıc�
 
 ## Oku
 Java: ilgili blok sınıflarının `animateTick`'i, `world/level/block/LeavesBlock.java`.
-Rust: `crates/voxel-world/src/particles/animate_misc.rs`.
+Rust: `crates/photon-world/src/particles/animate_misc.rs`.
 
 ## Oracle
 `movement/particle-engine` `animate_tick` satırları.

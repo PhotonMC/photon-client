@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_with"`, `first` Vec3 nesnesi, `axis
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::with`, seçilen `Axis` için yalnızca ilgili bileşeni değiştirerek yeni Vec3 üretir. `examples/behavior_adapter.rs` ekseni `Axis::from_name` ile çözer ve f64 değerini ham bitlerden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.with` çağrısını doğrudan oracle çıktısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::with`, seçilen `Axis` için yalnızca ilgili bileşeni değiştirerek yeni Vec3 üretir. `examples/behavior_adapter.rs` ekseni `Axis::from_name` ile çözer ve f64 değerini ham bitlerden okur; `tests/behavior/java/MathOracle.java` aynı `Vec3.with` çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.with(Direction.Axis, double)` metodunu karşılar. Rust adaptörü seçilen bileşeni verilen f64 değere taşır ve diğer bileşen bitlerini korur; Java oracle doğrudan `Vec3.with` çağrısını kullanır.
+`crates/photon-core/src/math.rs`, Java `Vec3.with(Direction.Axis, double)` metodunu karşılar. Rust adaptörü seçilen bileşeni verilen f64 değere taşır ve diğer bileşen bitlerini korur; Java oracle doğrudan `Vec3.with` çağrısını kullanır.
 
 ## Doğrulama
 

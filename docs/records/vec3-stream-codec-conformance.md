@@ -31,12 +31,12 @@ Girdiler `family: "binary"`, `operation: "read" | "write"` ve `codec: "vec3"` ku
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `read_vec3` ve `write_vec3`, her bileşeni ayrı big-endian f64 okuma/yazma olarak uygular. `examples/behavior_adapter.rs` bu API'leri doğrudan senaryoya bağlar; `tests/behavior/java/BinaryOracle.java` Java stream codec'i doğrudan çağırır.
+`crates/photon-core/src/binary.rs` içindeki `read_vec3` ve `write_vec3`, her bileşeni ayrı big-endian f64 okuma/yazma olarak uygular. `examples/behavior_adapter.rs` bu API'leri doğrudan senaryoya bağlar; `tests/behavior/java/BinaryOracle.java` Java stream codec'i doğrudan çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `Vec3.STREAM_CODEC` için üç ardışık big-endian f64 okuma ve yazma yolunu sunar. Java oracle doğrudan `Vec3.STREAM_CODEC` çağırır; Rust adaptörü `read_vec3` ve `write_vec3` üretim API'lerini çağırır.
+`crates/photon-core/src/binary.rs`, Java `Vec3.STREAM_CODEC` için üç ardışık big-endian f64 okuma ve yazma yolunu sunar. Java oracle doğrudan `Vec3.STREAM_CODEC` çağırır; Rust adaptörü `read_vec3` ve `write_vec3` üretim API'lerini çağırır.
 
 ## Doğrulama
 

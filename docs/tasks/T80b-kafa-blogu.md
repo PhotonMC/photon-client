@@ -4,13 +4,13 @@
 **Bağımlılık:** T80. **Boy:** T79.
 
 ## Oku
-Java: `client/renderer/blockentity/SkullBlockRenderer.java`, `state/SkullBlockRenderState.java`. Rust: `crates/voxel-render/src/block_entity/skull.rs`, `crates/voxel/src/world/block_entities.rs`; `BlockEntityData` ile profil.
+Java: `client/renderer/blockentity/SkullBlockRenderer.java`, `state/SkullBlockRenderState.java`. Rust: `crates/photon-render/src/block_entity/skull.rs`, `crates/photon/src/world/block_entities.rs`; `BlockEntityData` ile profil.
 
 ## Oracle
 Gerçek renderer kaydı `entity/chest-pose` kalıbıyla (poz, ışık, doku, dörtgenler). Java kaynağı önce satır satır okunur.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Başka blok entity aileleri.

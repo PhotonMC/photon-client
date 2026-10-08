@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/renderer/entity/layers/{CustomHeadLayer,CapeLayer,WingsLayer,PlayerItemInHandLayer}.java`, `client/model/object/equipment/ElytraModel.java`, `client/renderer/entity/player/AvatarRenderer.java` (`extractCapeState`).
-- Rust: `crates/voxel/src/equipment/held_items.rs` (`Hands`, `HeldItem`), `voxel-render/src/held_item.rs`, `player_model.rs`.
+- Rust: `crates/photon/src/equipment/held_items.rs` (`Hands`, `HeldItem`), `photon-render/src/held_item.rs`, `player_model.rs`.
 
 ## Yapılacaklar
 1. Baş yuvası: `Head` görüntü bağlamı ile eşya/blok, kafa dönüşümü (`translateToHead`).
@@ -15,7 +15,7 @@
 `held_item_pose` kalıbı: gerçek katman, gerçek model; matris ve dörtgen karşılaştırma.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Pelerin dokusu indirme (PLAN-M9), zırh (T41b).

@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/{LecternScreen,BookViewScreen,PageButton}.java`, `world/inventory/LecternMenu.java`. Rust: `crates/voxel-render/src/gui/screen/container.rs`, `crates/voxel-render/src/gui/font.rs`.
+Java: `client/gui/screens/inventory/{LecternScreen,BookViewScreen,PageButton}.java`, `world/inventory/LecternMenu.java`. Rust: `crates/photon-render/src/gui/screen/container.rs`, `crates/photon-render/src/gui/font.rs`.
 
 ## Oracle
 `container_screen` lectern + `book_view` operation'ı (sayfa metni sarma, sayfa göstergesi, düğme durumları). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

@@ -10,7 +10,7 @@ Bu kayıt oyunun `.ogg` ses nesnelerinin 16 bit işaretli örneklere çözümün
 ## Kapsam
 
 - `sound/decode` 9 satır: gerçek dosyalar (tık, adım, domuz, mağara ambiyansı, köylü, çok kısa bebek tavuk adımı, 6 MB'lık müzik): kanal ve hız, örnek sayısı ve **her örnek, en çok bir bit farkla** (oracle örnekleri `.data/minecraft/reference-pcm/` altına yazar, izlenmez; adaptör aynı dosyalardan karşılaştırır).
-- Rust: `voxel-audio::decode` (`OggStream`, `LoopingOggStream`, `decode_ogg`); çözücü `lewton` 0.10.2 (MIT/Apache-2.0), 16 bit dönüşümü ve son sayfa kırpması referansınındır.
+- Rust: `photon-audio::decode` (`OggStream`, `LoopingOggStream`, `decode_ogg`); çözücü `lewton` 0.10.2 (MIT/Apache-2.0), 16 bit dönüşümü ve son sayfa kırpması referansınındır.
 
 ## Neden toleranslı
 

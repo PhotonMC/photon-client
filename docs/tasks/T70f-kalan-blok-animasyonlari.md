@@ -10,7 +10,7 @@ işaretçi parçacığı (`BLOCK_MARKER`) ve biyomun ortam parçacıkları (`AMB
 ## Oku
 Java: ilgili blok sınıflarının `animateTick` yöntemleri (`grep -ln "animateTick" world/level/block/`),
 `world/attribute/EnvironmentAttributes.java` (`AMBIENT_PARTICLES`). Rust:
-`crates/voxel-world/src/particles/animate.rs`.
+`crates/photon-world/src/particles/animate.rs`.
 
 ## Oracle
 `movement/particle-engine` `animate_tick` satırları (blok düzlemleri).
@@ -24,6 +24,6 @@ Java: ilgili blok sınıflarının `animateTick` yöntemleri (`grep -ln "animate
 ## Devir notu
 Yapılan: `particles/animate_blocks.rs` (meşaleler taşındı; ateş ve ruh ateşi, kamp ateşleri, mum ve
 mumlu pasta, fırın/izabe/tütsülük, simya standı). `FireBlock` yanıcılık tablosu oracle'dan yakalanıp
-`tools/generate/fire.py` ile `voxel-data/src/generated/fire.rs`'e yazıldı, her koşuda karşılaştırılır.
+`tools/generate/fire.py` ile `photon-data/src/generated/fire.rs`'e yazıldı, her koşuda karşılaştırılır.
 Oracle: `animate-hearths`, `animate-fire`, `fire-flammability` bit eşit.
 Bölündü: kalan bloklar, işaretçi ve ortam parçacıkları → T70g.

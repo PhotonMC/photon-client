@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/renderer/entity/EnderDragonRenderer.java` (`submitRays`), `RenderTypes.entityCutoutDissolve`/`dragonRays`, `shaders/core/entity.fsh` (`DISSOLVE`).
-- Rust: `crates/voxel/src/mobs/monsters/ender_dragons.rs`, `crates/voxel-render/src/vulkan.rs` (entity gölgelendiricisi).
+- Rust: `crates/photon/src/mobs/monsters/ender_dragons.rs`, `crates/photon-render/src/vulkan.rs` (entity gölgelendiricisi).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: çözünme (`PipelineKind::Dissolve`, `mob_vertices_dissolving`, maske atlasta itme sabitiyle) ve ışınlar (`dragon_rays.rs` + `Quaternion::rotate_xyz`, `PipelineKind::Rays`), `ender_dragons.rs`'te ölüm dalı. İtme sabiti aralığı 164'ten 176 bayta çıktı. Kayıt: `docs/records/client-ender-dragon-death-parity-conformance.md`.

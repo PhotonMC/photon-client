@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec2_add_vec2"` veya `operation: "vec2_a
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec2::add_vec2` ve `Vec2::add_scalar`, Java overload'larının bileşen işlem sırasını uygular. `examples/behavior_adapter.rs` iki operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değerleri doğrudan Java `add` çağrılarıyla bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec2::add_vec2` ve `Vec2::add_scalar`, Java overload'larının bileşen işlem sırasını uygular. `examples/behavior_adapter.rs` iki operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değerleri doğrudan Java `add` çağrılarıyla bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec2.add(Vec2)` ve `Vec2.add(float)` metodlarını karşılayan `Vec2::add_vec2` ve `Vec2::add_scalar` metodlarını içerir. Java oracle doğrudan `add` çağrılarını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec2.add(Vec2)` ve `Vec2.add(float)` metodlarını karşılayan `Vec2::add_vec2` ve `Vec2::add_scalar` metodlarını içerir. Java oracle doğrudan `add` çağrılarını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

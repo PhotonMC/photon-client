@@ -1,4 +1,4 @@
-"""Generate crates/voxel-data/src/generated/villager_registries.rs from an entity-family capture.
+"""Generate crates/photon-data/src/generated/villager_registries.rs from an entity-family capture.
 
     python3 tools/generate/villager_registries.py .data/captures/behavior/<id>/outputs.jsonl
 

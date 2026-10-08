@@ -30,12 +30,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_block_coordinates"`, `x`, `z` v
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::get_block_x`, `get_block_z`, `get_min_block_x`, `get_min_block_z`, `get_middle_block_x`, `get_middle_block_z`, `get_max_block_x` ve `get_max_block_z` Java'nın 4 bit sola kaydırma ve i32 wrapping add yolunu korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
+`crates/photon-core/src/binary.rs` içindeki `ChunkPos::get_block_x`, `get_block_z`, `get_min_block_x`, `get_min_block_z`, `get_middle_block_x`, `get_middle_block_z`, `get_max_block_x` ve `get_max_block_z` Java'nın 4 bit sola kaydırma ve i32 wrapping add yolunu korur. `examples/behavior_adapter.rs` bu API'yi JSONL senaryosuna bağlar; `tests/behavior/java/MathOracle.java` Java çıktısını doğrudan gözlemler.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `ChunkPos` blok koordinatı yardımcılarını aynı i32 kaydırma ve toplama kurallarıyla karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik x/z/offset girdilerini üretim API'sine taşır.
+`crates/photon-core/src/binary.rs`, Java `ChunkPos` blok koordinatı yardımcılarını aynı i32 kaydırma ve toplama kurallarıyla karşılar. Java oracle metotları doğrudan çağırır; Rust adaptörü aynı sentetik x/z/offset girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

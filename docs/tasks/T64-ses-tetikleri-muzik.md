@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/sounds/MusicManager.java`, `world/level/block/SoundType.java`, `client/player/LocalPlayer.java` (adım sesi), `world/entity/Entity.java` (`playStepSound`, `getSwimSound`), `client/multiplayer/ClientLevel.java` (`playSound`).
-- Rust: `crates/voxel-world/src/local_player.rs`, `crates/voxel/src/play.rs`.
+- Rust: `crates/photon-world/src/local_player.rs`, `crates/photon/src/play.rs`.
 
 ## Yapılacaklar
 1. `SoundType` tablosu (blok başına ses olayı, ses/perde) oracle'dan üretilir; adım ve kırma tetikleri.
@@ -15,7 +15,7 @@
 Gerçek `SoundType` tablosu ve adım/kırma tetikleyicisinin çağrıları; tohumlu müzik seçimi.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Mob ses olayları (aile görevlerinde), altyazılar.

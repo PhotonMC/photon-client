@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/monster/illager/IllagerModel.java`, `client/model/monster/witch/WitchModel.java`, `client/model/animal/golem/{IronGolemModel,SnowGolemModel,CopperGolemModel}.java`, `client/model/monster/enderman/EndermanModel.java`, `client/model/monster/zombie/ZombieVillagerModel.java`, `client/renderer/entity/{Illager,Witch,IronGolem,SnowGolem,Enderman,ZombieVillager}Renderer.java`.
-- Rust: `crates/voxel/src/mobs/humanoids/villagers.rs` (köylü kalıbı), `voxel-render/src/{mob_model,villager}.rs`, `voxel/src/mobs.rs` (`HUMANOIDS`, zombi kolları), `voxel-world/src/metadata.rs`.
+- Rust: `crates/photon/src/mobs/humanoids/villagers.rs` (köylü kalıbı), `photon-render/src/{mob_model,villager}.rs`, `photon/src/mobs.rs` (`HUMANOIDS`, zombi kolları), `photon-world/src/metadata.rs`.
 
 ## Yapılacaklar
 1. Illager kol pozları (`IllagerModel.ArmPose`) ve cadı; illagerlar tablo satırı.
@@ -16,7 +16,7 @@
 `EntityOracle.java` `villagerModel` kalıbı: gerçek model sınıfı + `setupAnim`, köşeler `posedQuads` ile.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı: `summon`.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı: `summon`.
 
 ## Kapsam dışı
 Ticaret ekranı, sesler, köylü kafa eşyası/çapraz kol eşyası (T41d ile).
@@ -25,7 +25,7 @@ Ticaret ekranı, sesler, köylü kafa eşyası/çapraz kol eşyası (T41d ile).
 `docs/index.md` satırı, yeni kayıt.
 
 ## Devir notu
-- Yapıldı (bölündü): dört illager (`setup_illager`, her kol pozu, `voxel/src/illagers.rs`: poz seçimi, eldeki eşya ve kafa katmanı) ve cadı (`setup_witch`, `villagers.rs`); `Raider.IS_CELEBRATING` 16, büyü baytı 17. Kayıt: `docs/records/client-illager-witch-parity-conformance.md`.
+- Yapıldı (bölündü): dört illager (`setup_illager`, her kol pozu, `photon/src/illagers.rs`: poz seçimi, eldeki eşya ve kafa katmanı) ve cadı (`setup_witch`, `villagers.rs`); `Raider.IS_CELEBRATING` 16, büyü baytı 17. Kayıt: `docs/records/client-illager-witch-parity-conformance.md`.
 - Oracle: `entity/illager-model` 21, `witch-model` 5 satır; `variant-fields` iki yeni satır.
 - Sapma: arbalet doldurma pozu (kullanım tiki yok), illusioner yansımaları, `WitchItemLayer` yok.
 - Açık: golemler, enderman, zombi köylü (T34c).

@@ -40,7 +40,7 @@ tohumlar), bu yüzden yer ve sayı karşılaştırılır; kırıntının içi sa
 
 ## Çizim ve oyuna bağlama (T71b) — [server-conformance]
 
-Bu bölüm istemci eşitliği kanıtı değil, canlı gözlemdir (`tools/voxel.py shot`): sunucunun `setblock ... destroy`
+Bu bölüm istemci eşitliği kanıtı değil, canlı gözlemdir (`tools/photon.py shot`): sunucunun `setblock ... destroy`
 komutuyla kırdığı taş ve meşe yaprağı, kırıntılarıyla görüldü (taş gri 0.6, yaprak biyom tintiyle yeşil).
 
 - `BlockRenderer::particle_sprite`: durumun modelinin `particle` dokusu; `variants` dosyasında durumun seçtiği

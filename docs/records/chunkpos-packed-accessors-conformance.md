@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "chunkpos_packed_accessors"` ve 16 haneli
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `ChunkPos::get_x` ve `ChunkPos::get_z`, packed değerin iki 32 bit alanını Java ile aynı signed yorumla döndürür. `examples/behavior_adapter.rs` ham packed hex girdisini bu API’ye bağlar; `tests/behavior/java/MathOracle.java` karşılaştırma oracle’ı olarak Java erişimcilerini çağırır.
+`crates/photon-core/src/binary.rs` içindeki `ChunkPos::get_x` ve `ChunkPos::get_z`, packed değerin iki 32 bit alanını Java ile aynı signed yorumla döndürür. `examples/behavior_adapter.rs` ham packed hex girdisini bu API’ye bağlar; `tests/behavior/java/MathOracle.java` karşılaştırma oracle’ı olarak Java erişimcilerini çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, packed ChunkPos long içindeki düşük ve yüksek 32 bit alanlarını Java `ChunkPos.getX(long)` ve `getZ(long)` ile aynı signed i32 sonuçlara çıkarır. Rust adapter ham packed hex girdisini bu API’ye bağlar.
+`crates/photon-core/src/binary.rs`, packed ChunkPos long içindeki düşük ve yüksek 32 bit alanlarını Java `ChunkPos.getX(long)` ve `getZ(long)` ile aynı signed i32 sonuçlara çıkarır. Rust adapter ham packed hex girdisini bu API’ye bağlar.
 
 ## Doğrulama
 

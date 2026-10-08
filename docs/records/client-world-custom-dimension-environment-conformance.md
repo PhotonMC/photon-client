@@ -84,7 +84,7 @@ skybox=end
 cardinal_light=nether
 ```
 
-Datapack `/tmp/voxel-vanilla-26.2-world/world/datapacks` altında kaldı;
+Datapack `/tmp/photon-vanilla-26.2-world/world/datapacks` altında kaldı;
 repository'ye eklenmedi ve orijinal asset taşımıyor. Her probe login olduktan
 sonra şu server console komutuyla respawn tetiklendi:
 

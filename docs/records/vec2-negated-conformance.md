@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec2_negated"` ve `first` Vec2 nesnesini
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec2::negated`, Java'nın iki unary f32 negation adımını uygular. `examples/behavior_adapter.rs` operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `negated` çağrısıyla bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec2::negated`, Java'nın iki unary f32 negation adımını uygular. `examples/behavior_adapter.rs` operasyonu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `negated` çağrısıyla bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec2.negated()` metodunu karşılayan `Vec2::negated` metodunu içerir. Java oracle doğrudan `negated` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec2.negated()` metodunu karşılayan `Vec2::negated` metodunu içerir. Java oracle doğrudan `negated` çağrısını yapar; Rust adaptörü aynı f32 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

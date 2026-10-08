@@ -31,12 +31,12 @@ Girdiler `family: "math"`, `operation: "vec3_dot"`, `first` ve `second` Vec3 nes
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::dot`, üç çarpımı ve toplamı doğrudan kaynak sırasıyla uygular. `examples/behavior_adapter.rs` `vec3_dot` operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `dot` çağrısını kullanarak bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::dot`, üç çarpımı ve toplamı doğrudan kaynak sırasıyla uygular. `examples/behavior_adapter.rs` `vec3_dot` operasyonunu, `tests/behavior/java/MathOracle.java` ise beklenen değeri doğrudan Java `dot` çağrısını kullanarak bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.dot(Vec3)` metodunu karşılayan `Vec3::dot` metodunu içerir. Java oracle doğrudan `dot` çağrısını yapar; Rust adaptörü aynı f64 bit girdilerini üretim API'sine taşır.
+`crates/photon-core/src/math.rs`, Java `Vec3.dot(Vec3)` metodunu karşılayan `Vec3::dot` metodunu içerir. Java oracle doğrudan `dot` çağrısını yapar; Rust adaptörü aynı f64 bit girdilerini üretim API'sine taşır.
 
 ## Doğrulama
 

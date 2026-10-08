@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/renderer/entity/{ThrownItemRenderer,FireworkEntityRenderer}.java`, `client/renderer/entity/state/ThrownItemRenderState.java`.
-- Rust: `crates/voxel-render/src/objects/item.rs` (eşya çizimi), `crates/voxel/src/objects/dropped_items.rs`.
+- Rust: `crates/photon-render/src/objects/item.rs` (eşya çizimi), `crates/photon/src/objects/dropped_items.rs`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: `ThrownItemRenderer` (scale·orientation) ve `FireworkEntityRenderer` yerleşimi (`thrown_item_pose`, `firework_pose`), `FrameView.rotation` (kamera yönü), thrown/firework verisindeki eşya yığınının alınması (veri 8), roketin `DATA_SHOT_AT_ANGLE`'ı, `thrown_items.rs` (yer bağlamlı eşya katmanları). Kayıt: `docs/records/client-thrown-item-parity-conformance.md`.

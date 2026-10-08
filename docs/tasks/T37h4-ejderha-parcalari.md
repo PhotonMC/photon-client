@@ -5,12 +5,12 @@
 
 ## Oku
 - Java: `world/entity/boss/enderdragon/{EnderDragon,EnderDragonPart}.java`, `world/entity/PartEntity.java`.
-- Rust: `crates/voxel-world/src/pick.rs` (seçilebilirlik), `crates/voxel-world/src/mobs/ender_dragon.rs`.
+- Rust: `crates/photon-world/src/pick.rs` (seçilebilirlik), `crates/photon-world/src/mobs/ender_dragon.rs`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
-- Yapıldı: `DragonPart` (sekiz parça, boyut, kimlik kuralı), `tick_parts` (`tickPart`), ölürken 0.1 yükseliş (ejderha ve parçalar), `entity_hit_result`'ta parçalar (`EntityHit` artık konum ve kutu taşır, `voxel-game/pick.rs` `entity_at`'a bağlı değil). Kayıt: `docs/records/client-ender-dragon-parts-parity-conformance.md`.
+- Yapıldı: `DragonPart` (sekiz parça, boyut, kimlik kuralı), `tick_parts` (`tickPart`), ölürken 0.1 yükseliş (ejderha ve parçalar), `entity_hit_result`'ta parçalar (`EntityHit` artık konum ve kutu taşır, `photon-game/pick.rs` `entity_at`'a bağlı değil). Kayıt: `docs/records/client-ender-dragon-parts-parity-conformance.md`.
 - Sapma: nişan oracle'sız (birim test); parça kimlik kuralı kaynaktan; aynı mesafede eşitlik sırası.
 - Açık: ejderhaya `Attack`/`Interact` paketlerinin sunucuyla canlı denemesi.

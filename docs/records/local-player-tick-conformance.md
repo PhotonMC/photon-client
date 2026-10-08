@@ -15,7 +15,7 @@ Oracle gerçek bir `LocalPlayer` kuruyor ([fixture kaydı](movement-fixture-reco
 yakalayan bir bağlantı. Her tick `ClientLevel.tickNonPassenger` ile sürülüyor,
 yani eski konumun kaydı ve tick sayacı da referansın sırasında.
 
-Rust tarafı `crates/voxel-world/src/local_player.rs`: seviyenin eski-konum adımı,
+Rust tarafı `crates/photon-world/src/local_player.rs`: seviyenin eski-konum adımı,
 `Player.tick`, sıvı etkileşimi güncellemesi ve yüzme bayrağı,
 `LocalPlayer.aiStep` (eğilme, sprint penceresi, yaratıcı çift zıplama,
 izleyici uçuşu, suda batma, uçarken dikey girdi), `LivingEntity.aiStep`
@@ -94,10 +94,10 @@ varlıklarla çarpışma ve itilme, dünya sınırı çarpışması.
 
 Blok başına sürtünme, hız ve zıplama çarpanı, sekme ve etiket/sınıf bayrakları
 ile durum başına sıvı ve boğma bilgisi referanstan yakalanıp
-`crates/voxel-data/src/block/movement.rs` olarak üretiliyor; block ailesi her koşuda
+`crates/photon-data/src/block/movement.rs` olarak üretiliyor; block ailesi her koşuda
 tabloyu baştan sona karşılaştırıyor. Sıvı akışının okuduğu durum özellikleri
 (tam sağlam yüzler, buz blokları hariç; `blocksMotion`) da aynı yolla
-`crates/voxel-data/src/block/fluid_flow.rs` (`tools/generate/fluid_flow.py`). Üretim:
+`crates/photon-data/src/block/fluid_flow.rs` (`tools/generate/fluid_flow.py`). Üretim:
 
 ```
 python3 tools/generate/block_movement.py .data/captures/behavior/<id>/outputs.jsonl

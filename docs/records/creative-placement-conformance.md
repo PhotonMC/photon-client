@@ -38,7 +38,7 @@ Bu dilim genel item component codec'ini, survival tüketimini, ray hit üretimin
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn aramasının suya veya mevcut yüzeye denk gelmemesi için geçici dünyada `32..168` x/z aralığında y=`100` taş platformu oluşturuldu ve world spawn `(100,101,100)` yapıldı. JAR, dünya ve server çıktıları depoya alınmadı.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `127.0.0.1:25566`, `online-mode=false`, seed `776`, view/simulation distance `5`, creative, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Spawn aramasının suya veya mevcut yüzeye denk gelmemesi için geçici dünyada `32..168` x/z aralığında y=`100` taş platformu oluşturuldu ve world spawn `(100,101,100)` yapıldı. JAR, dünya ve server çıktıları depoya alınmadı.
 
 ```text
 cargo run --offline --release --example creative_place_probe -- 127.0.0.1:25566 RustPlace6

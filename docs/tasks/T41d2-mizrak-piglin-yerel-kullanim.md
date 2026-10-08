@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/model/monster/piglin/PiglinModel.java`, `client/model/AnimationUtils.java`, `world/entity/monster/piglin/{Piglin,PiglinBrute,AbstractPiglin}.java`.
-- Rust: `voxel-render/src/mob_model.rs` (`setup_piglin`), `crates/voxel/src/mobs.rs`.
+- Rust: `photon-render/src/mob_model.rs` (`setup_piglin`), `crates/photon/src/mobs.rs`.
 
 ## Oracle
 `entity/piglin-model` satırları `arm_pose`, `main_arm`, `ticks_using_item`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-held-item-parity-conformance.md`.

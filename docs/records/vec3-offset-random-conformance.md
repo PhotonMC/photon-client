@@ -32,12 +32,12 @@ Girdiler `family: "math"`, `operation: "vec3_offset_random"`, `first`, decimal `
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/math.rs` içindeki `Vec3::offset_random` ve `Vec3::offset_random_xz`, random çekiş sırasını ve f32 ara hesabını taşır. `examples/behavior_adapter.rs` seed'i yeniden kurarak iki overload'u çağırır; `tests/behavior/java/MathOracle.java` aynı iki Java çağrısını doğrudan oracle çıktısına bağlar.
+`crates/photon-core/src/math.rs` içindeki `Vec3::offset_random` ve `Vec3::offset_random_xz`, random çekiş sırasını ve f32 ara hesabını taşır. `examples/behavior_adapter.rs` seed'i yeniden kurarak iki overload'u çağırır; `tests/behavior/java/MathOracle.java` aynı iki Java çağrısını doğrudan oracle çıktısına bağlar.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs`, Java `Vec3.offsetRandom(RandomSource, float)` ve `Vec3.offsetRandomXZ(RandomSource, float)` overload'larını karşılar. Rust adaptörü aynı seed ile iki Rust `RandomSource` örneği kurar; Java oracle iki overload'u doğrudan çağırır.
+`crates/photon-core/src/math.rs`, Java `Vec3.offsetRandom(RandomSource, float)` ve `Vec3.offsetRandomXZ(RandomSource, float)` overload'larını karşılar. Rust adaptörü aynı seed ile iki Rust `RandomSource` örneği kurar; Java oracle iki overload'u doğrudan çağırır.
 
 ## Doğrulama
 

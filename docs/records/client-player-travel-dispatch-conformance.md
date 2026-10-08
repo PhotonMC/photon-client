@@ -53,7 +53,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `local_player_travel_dispatch`, Java'nın fluid,
+`crates/photon-world/src/input.rs` içindeki `local_player_travel_dispatch`, Java'nın fluid,
 fall-flying ve hava branch sırasını uygular; seçilen branch'in mevcut
 no-collision hareket helper'ını çağırır. `ClientWorld` local player motion
 state'inden delta'yı alıp sonucu tekrar sorgulanabilir motion state'ine yazar.

@@ -38,7 +38,7 @@ Bu dilim yalnızca server tarafından hotbar'a yerleştirilen wooden pickaxe ile
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü y=`100` stone platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden `item replace entity <player> hotbar.0 with minecraft:wooden_pickaxe` uygulandı; geçerli koşular yalnızca bu komutun başarıyla loglandığı oturumlar oldu.
+Sunucu `/tmp/photon-vanilla-26.2-test` dizininde `online-mode=false`, seed `776`, view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`, peaceful ve spawn protection `0` ayarlarıyla çalıştırıldı. Kontrollü y=`100` stone platformu ve world spawn `(100,101,100)` korunarak iki bağımsız oturum açıldı. Her oyuncu oyuna girdikten sonra vanilla server console üzerinden `item replace entity <player> hotbar.0 with minecraft:wooden_pickaxe` uygulandı; geçerli koşular yalnızca bu komutun başarıyla loglandığı oturumlar oldu.
 
 ```text
 cargo run --offline --release --example survival_stone_wooden_pickaxe_break_stop_probe -- 127.0.0.1:25566 RustPickStop4

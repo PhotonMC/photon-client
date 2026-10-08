@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün UV dikdörtgeni ve derece değeri
 pinned JAR'daki `Quadrant.parseJson`, `CuboidFace.getU` ve `getV` yoluna ve
-üretim kütüphanesindeki `voxel_client::render::geometry` modülüne verilir; dört
+üretim kütüphanesindeki `photon::render::geometry` modülüne verilir; dört
 köşenin doku koordinatları float bit düzeyinde karşılaştırılır.
 
 ## Java kaynak incelemesi

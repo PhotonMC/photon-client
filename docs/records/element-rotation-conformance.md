@@ -4,7 +4,7 @@
 
 Kanıt sınıfı `client-parity`'dir: aynı özgün sentetik kutu, eksen, açı ve
 origin pinned JAR'daki `CuboidRotation` ile `FaceBakery.rotateVertexBy`'a ve
-üretim kütüphanesindeki `voxel_client::render::rotation` modülüne verilir;
+üretim kütüphanesindeki `photon::render::rotation` modülüne verilir;
 dönüşüm matrisinin on altı elemanı ve dört döndürülmüş köşe float bit düzeyinde
 karşılaştırılır.
 

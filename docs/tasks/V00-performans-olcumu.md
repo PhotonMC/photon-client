@@ -5,12 +5,12 @@
 
 ## Oku
 - [inceleme raporu](../code-quality-review-2026-10-07.md) §5 (5.6)
-- `crates/voxel/src/{play,script,profile}.rs`, `crates/voxel-render/src/vulkan.rs` (`render_frame`)
+- `crates/photon/src/{play,script,profile}.rs`, `crates/photon-render/src/vulkan.rs` (`render_frame`)
 
 ## Yapılacaklar
 - Kare süresi istatistiği: p50/p95/p99, ortalama FPS; CPU tarafında tik, mesh, extract, kayıt, submit süreleri.
 - GPU zaman damgası sorguları (`vkCmdWriteTimestamp`) pass başına: gökyüzü, bölümler, entity, şeffaf, GUI.
-- `python3 tools/voxel.py bench`: sabit betik, sabit görüş mesafesi, sabit konum; JSON rapor yerelde.
+- `python3 tools/photon.py bench`: sabit betik, sabit görüş mesafesi, sabit konum; JSON rapor yerelde.
 - Mevcut değerler (temel çizgi) bu görevin devir notuna yazılır; sonraki V görevleri karşılaştırır.
 
 ## Kabul
@@ -23,7 +23,7 @@ Herhangi bir optimizasyon.
 Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 
 ## Devir notu
-- Eklendi: `crates/voxel-render/src/frame_timing.rs` (CPU aralıkları, GPU pass süreleri), `vulkan.rs`'te `vkCmdWriteTimestamp` sorguları (8 pass, 9 damga) ve tek `wait_in_flight` (her `set_*` beklemesi artık ölçülüyor), `crates/voxel/src/bench.rs` (`VOXEL_BENCH`, JSON rapor), `python3 tools/voxel.py bench [adres] [--repeat N]`.
+- Eklendi: `crates/photon-render/src/frame_timing.rs` (CPU aralıkları, GPU pass süreleri), `vulkan.rs`'te `vkCmdWriteTimestamp` sorguları (8 pass, 9 damga) ve tek `wait_in_flight` (her `set_*` beklemesi artık ölçülüyor), `crates/photon/src/bench.rs` (`PHOTON_BENCH`, JSON rapor), `python3 tools/photon.py bench [adres] [--repeat N]`.
 - **Temel çizgi** (Apple M1, MoltenVK, 2560x1440 (1280x720 istenir, HiDPI ×2), görüş 12, 637 chunk, ~65 entity, 3 koşunun medyanı, warm-up 10 sn, ~1780 kare): kare p50/p95/p99 = 16.69/19.67/27.83 ms. CPU p50: tik 0.15, mesh 10.43, extract 0.07, backend 4.63 (kayıt 0.30, submit+present 4.25), fence beklemesi 7.92. GPU sahne p50/p95 = 7.49/10.21 ms.
 - Ardışık koşular arası p50 farkı: work_ms %0.0–0.1, fence_wait %0.9–1.4, mesh %0.8–1.7, GPU sahne %0.5–0.7 (<%5, kabul sağlandı).
 - **Okuma:** kare süresi ekranın 16.67 ms'sine kilitli (FIFO), bu yüzden kare p50 tek başına iyileşmeyi göstermez; V03 için `fence_wait`, V04 sonrası kare süresi, V05/V06 için GPU sahne ve `mesh`/`backend` karşılaştırılır. `mesh` aralığındaki ~8 ms'nin büyük kısmı `set_*` yüklemelerinin fence beklemesidir (rapor 5.1/5.2: CPU ile GPU sırayla çalışıyor); bekleme sayılınca asıl CPU işi ~2.5 ms.

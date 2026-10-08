@@ -9,7 +9,7 @@ end geçidi (soğuma ışını), potent sulfur patlaması.
 ## Oku
 Java: `world/level/block/piston/{PistonBaseBlock,PistonMovingBlockEntity}.java`,
 `world/level/block/entity/{DecoratedPotBlockEntity,SpawnerBlockEntity,TheEndGatewayBlockEntity}.java`,
-`world/level/block/PotentSulfurBlock.java`. Rust: `crates/voxel-world/src/world/sounds.rs`
+`world/level/block/PotentSulfurBlock.java`. Rust: `crates/photon-world/src/world/sounds.rs`
 (`apply_note_block_event`).
 
 ## Oracle

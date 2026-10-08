@@ -22,12 +22,12 @@ Girdiler `family: "math"`, `operation: "sectionpos_block_coordinates"` ve signed
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `SectionPos::min_block_x`, `min_block_y`, `min_block_z`, `max_block_x`, `max_block_y` ve `max_block_z`, ortak section-to-block dönüşümünü ve Java i32 wrapping `+15` davranışını taşır. `examples/behavior_adapter.rs` SectionPos girdisini bu API'lere bağlar; `tests/behavior/java/MathOracle.java` Java instance yardımcılarını karşılaştırma oracle'ı olarak çağırır.
+`crates/photon-core/src/binary.rs` içindeki `SectionPos::min_block_x`, `min_block_y`, `min_block_z`, `max_block_x`, `max_block_y` ve `max_block_z`, ortak section-to-block dönüşümünü ve Java i32 wrapping `+15` davranışını taşır. `examples/behavior_adapter.rs` SectionPos girdisini bu API'lere bağlar; `tests/behavior/java/MathOracle.java` Java instance yardımcılarını karşılaştırma oracle'ı olarak çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, SectionPos x/y/z section koordinatlarını Java `minBlockX/Y/Z` ve `maxBlockX/Y/Z` sonuçlarıyla aynı blok sınırlarına çevirir. Shift ve maksimum uçtaki `+15` i32 sarma davranışı korunur.
+`crates/photon-core/src/binary.rs`, SectionPos x/y/z section koordinatlarını Java `minBlockX/Y/Z` ve `maxBlockX/Y/Z` sonuçlarıyla aynı blok sınırlarına çevirir. Shift ve maksimum uçtaki `+15` i32 sarma davranışı korunur.
 
 ## Doğrulama
 

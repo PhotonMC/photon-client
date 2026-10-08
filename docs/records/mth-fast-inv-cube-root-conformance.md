@@ -17,7 +17,7 @@ Kapsam dışı kalanlar: `invSqrt`, `fastInvSqrt`, `atan2`, başka küpkök yakl
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/math.rs` içindeki `mth_fast_inv_cube_root_f32`, Java `Mth.fastInvCubeRoot(float)` yolunu JSONL adapter'a bağlar. NaN canonicalization, i32 bit tahmini ve iki f32 Newton düzeltmesi Java oracle'ın raw f32 `bits` sonucu ile karşılaştırılır.
+`crates/photon-core/src/math.rs` içindeki `mth_fast_inv_cube_root_f32`, Java `Mth.fastInvCubeRoot(float)` yolunu JSONL adapter'a bağlar. NaN canonicalization, i32 bit tahmini ve iki f32 Newton düzeltmesi Java oracle'ın raw f32 `bits` sonucu ile karşılaştırılır.
 
 ## Doğrulama
 

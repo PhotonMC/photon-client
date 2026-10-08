@@ -4,13 +4,13 @@
 **Bağımlılık:** T71, T64b. **Boy:** L.
 
 ## Oku
-Java: `client/renderer/LevelEventHandler.java`, `network/protocol/game/{ClientboundLevelEventPacket,ClientboundBlockEventPacket}.java`, `world/level/block/NoteBlock.java`, `world/level/block/entity/ChestBlockEntity.java` (`triggerEvent`). Rust: `crates/voxel-world/src/lib.rs` (`apply_level_event`), `crates/voxel-net/src/connection/play.rs`.
+Java: `client/renderer/LevelEventHandler.java`, `network/protocol/game/{ClientboundLevelEventPacket,ClientboundBlockEventPacket}.java`, `world/level/block/NoteBlock.java`, `world/level/block/entity/ChestBlockEntity.java` (`triggerEvent`). Rust: `crates/photon-world/src/lib.rs` (`apply_level_event`), `crates/photon-net/src/connection/play.rs`.
 
 ## Oracle
 `sound` ailesinin tetik oracle'ı (gerçek `LevelEventHandler` sahte `SoundManager`/`ParticleEngine` ile): olay numarası → ses/parçacık dizisi. Önce Java kaynağı satır satır okunur, oracle senaryosu yazılır, sonra Rust ([davranış testi belgesi](../behavior-testing.md)).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız görsel bir sonuç varsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka aileler (kendi görevlerinde); performans optimizasyonu.

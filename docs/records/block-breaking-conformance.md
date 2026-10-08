@@ -38,7 +38,7 @@ kararlarının okuduğu hiçbir şeyi değiştirmiyor. Varsayılan item
 bileşenleri, sunucunun kaynak yüklemesindeki gibi
 `DATA_COMPONENT_INITIALIZERS` ile bağlanıyor.
 
-Rust: `crates/voxel-game/src/game_mode.rs`, `crates/voxel-world/src/prediction.rs`, `src/item.rs`.
+Rust: `crates/photon-game/src/game_mode.rs`, `crates/photon-world/src/prediction.rs`, `src/item.rs`.
 Adaptör vanilla blok etiketlerini yerel jar'daki veri paketinden çözüp
 sunucunun göndereceği gibi dünyaya veriyor; istemci etiketleri sunucudan
 alıyor.
@@ -48,10 +48,10 @@ alıyor.
 İki tablo referanstan yakalanıp üretiliyor ve her parity koşusunda baştan
 sona karşılaştırılıyor:
 
-- `crates/voxel-data/src/block/destroy.rs` (`tools/generate/block_destroy.py`,
+- `crates/photon-data/src/block/destroy.rs` (`tools/generate/block_destroy.py`,
   `block/destroy-properties`): durum başına kırma süresi, doğru alet
   gereksinimi, hava olması, yerine kalan sıvı bloğu; game master blokları.
-- `crates/voxel-data/src/item/registry.rs` (`tools/generate/item_tools.py`, `block/item-tools`):
+- `crates/photon-data/src/item/registry.rs` (`tools/generate/item_tools.py`, `block/item-tools`):
   registry sırasıyla bütün itemler ve varsayılan `tool` bileşeni.
 
 ## Senaryolar
@@ -97,7 +97,7 @@ türetiliyor; aşamanın dokusu (`destroy_stage_N`) onda bir alfanın altında
 atılıyor, kaynak×hedef×2 karışımıyla, derinliğe yazmadan ve referansın
 çokgen kaydırmasıyla (eğim 1, sabit 10) kameraya çekilerek, arazi sisiyle.
 
-Ölçülen: vanilla 26.2 sunucusunda betikli koşu (`VOXEL_SCRIPT` içinde
+Ölçülen: vanilla 26.2 sunucusunda betikli koşu (`PHOTON_SCRIPT` içinde
 `attack` tıklama, `mine` basılı tutma) aşağı bakarak dokuz blok kazdı;
 sunucu kazılan sütunu hava olarak doğruladı, fazladan teleport ya da
 düzeltme göndermedi. Betik bitince saldırı tuşu son adımın bıraktığı gibi

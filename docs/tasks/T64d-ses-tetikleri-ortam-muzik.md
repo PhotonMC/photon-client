@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/sounds/MusicManager.java`, `client/renderer/LevelEventHandler.java`, `world/entity/LivingEntity.java` (`playHurtSound`), `client/resources/sounds/{Underwater,BiomeAmbient}*Handler.java`.
-- Rust: `crates/voxel-world/src/local_player/sounds.rs`, `crates/voxel/src/sound.rs`, `docs/records/client-block-sounds-conformance.md`.
+- Rust: `crates/photon-world/src/local_player/sounds.rs`, `crates/photon/src/sound.rs`, `docs/records/client-block-sounds-conformance.md`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Mob sesleri (aile görevlerinde), altyazılar.

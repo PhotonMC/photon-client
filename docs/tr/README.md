@@ -1,8 +1,8 @@
-# voxel-client (Türkçe)
+# Photon (Türkçe)
 
 > Bu belge projenin eski Türkçe README'sidir ve güncel tutulmaz. Güncel genel bakış kök dizindeki [README.md](../../README.md) dosyasındadır.
 
-Minecraft Java Edition istemcisinin Rust ile sıfırdan yeniden uygulanması için hazırlık deposu. `voxel-client` geçici proje adıdır; Minecraft ile resmî bağlantısı yoktur.
+Minecraft Java Edition istemcisinin Rust ile sıfırdan yeniden uygulanması için hazırlık deposu. Photon geçici proje adıdır; Minecraft ile resmî bağlantısı yoktur.
 
 Hedef, oyuncunun fark hissedemeyeceği davranış ve sunum eşitliğidir: mekanikler, hareket, animasyon, texture, UI ve sesler dahil. Sunucu geliştirilmeyecek; uzun vadeli uyumluluk hedefi [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin). Referans Java Edition **26.2**, protokol **776**, Java **25** olarak sabitlendi. Güncel bağlantı baseline'ı resmi vanilla 26.2 server ile login, configuration, ilk chunk ve ilk oyuncu konumu düzeltmesini doğruladı; chunk wire gövdesi de yapısal olarak tüketiliyor. Mekanik uyumluluk ve oynanabilir istemci henüz yok.
 
@@ -21,7 +21,7 @@ Rust uygulama girişi henüz oynanabilir istemci değildir. İlk gerçek vanilla
 ## Yerel çalıştırma
 
 Referans oyunu `.data/` altına indirmek, test sunucusunu ve istemciyi
-başlatmak için `python3 tools/voxel.py` kullanılır (Linux, macOS, Windows);
+başlatmak için `python3 tools/photon.py` kullanılır (Linux, macOS, Windows);
 ayrıntı [yerel kurulum belgesinde](../local-setup.md). İndirilenler yalnız
 geliştirme makinesinde kalır, dağıtılan istemciye girmez.
 

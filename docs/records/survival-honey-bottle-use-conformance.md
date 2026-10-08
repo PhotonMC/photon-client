@@ -57,7 +57,7 @@ dilimlerdir.
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
+Sunucu `/tmp/photon-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
 view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`,
 peaceful ve spawn protection `0` ayarlarıyla çalıştı. Her oyuncu oyuna girdikten
 sonra console üzerinden aşağıdaki stack verildi; console başarı satırı

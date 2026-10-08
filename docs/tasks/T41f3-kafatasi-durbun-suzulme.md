@@ -5,13 +5,13 @@
 
 ## Oku
 - Java: `client/renderer/entity/player/AvatarRenderer.java` (`setupRotations`, `extractFlightData`), `client/renderer/entity/LivingEntityRenderer.java`, `client/renderer/entity/state/AvatarRenderState.java`.
-- Rust: `voxel-render/src/player_renderer.rs` (`placement_pose`), `crates/voxel/src/{arm_poses,overlays}.rs`.
+- Rust: `photon-render/src/player_renderer.rs` (`placement_pose`), `crates/photon/src/{arm_poses,overlays}.rs`.
 
 ## Oracle
 `entity/avatar-pose` (gerçek `setupRotations` + `submit`'in sonu).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
 `docs/records/client-held-item-parity-conformance.md`.

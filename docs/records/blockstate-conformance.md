@@ -68,8 +68,8 @@ Koşu: `python3 tools/behavior/run.py capture` ardından
 Sonda artık model yolu yerine blok adı alabiliyor:
 
 ```
-VOXEL_ASSETS=<assets> VOXEL_BLOCK=minecraft:oak_stairs \
-VOXEL_STATE="facing=north,half=bottom,shape=straight" cargo run -- window
+PHOTON_ASSETS=<assets> PHOTON_BLOCK=minecraft:oak_stairs \
+PHOTON_STATE="facing=north,half=bottom,shape=straight" cargo run -- window
 ```
 
 Blockstate dosyası okunuyor, özellikler varyantı seçiyor, model ve dönüş

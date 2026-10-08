@@ -36,7 +36,7 @@ Yeni capture kimliği, kaynak/girdi/ortam değişkenleriyle birlikte runner rapo
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/direction.rs` içindeki `Direction::get_y_rot`, Java `Direction.getYRot(Direction)` yatay sabitlerini ve dikey hata yolunu uygular. Rust adapter `direction_get_y_rot` JSONL operation'ı üzerinden başarıda raw f32 bitlerini, hatada Java mesajını dışarı verir; Java oracle static enum metodunu doğrudan çağırır.
+`crates/photon-core/src/direction.rs` içindeki `Direction::get_y_rot`, Java `Direction.getYRot(Direction)` yatay sabitlerini ve dikey hata yolunu uygular. Rust adapter `direction_get_y_rot` JSONL operation'ı üzerinden başarıda raw f32 bitlerini, hatada Java mesajını dışarı verir; Java oracle static enum metodunu doğrudan çağırır.
 
 Altı yön adı test edildi; beklenen başarı ve hata sonuçları Java oracle çıktısından alındı.
 

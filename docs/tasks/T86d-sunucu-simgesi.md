@@ -9,8 +9,8 @@ olarak yazılır (`onPersistentDataChange` → `ServerList.save`); kayıtlı sim
 ## Oku
 - Java: `client/gui/screens/FaviconTexture.java`, `ServerSelectionList.OnlineServerEntry`
   (`uploadServerIcon`, `extractIcon`), `client/multiplayer/ServerData.java` (`validateIcon`).
-- Rust: `crates/voxel-render/src/gui/screen/servers.rs`, `crates/voxel-render/src/gui/atlas.rs`
-  (dinamik doku yok; GUI çizimine ayrı doku yuvası gerekir), `crates/voxel-game/src/servers.rs`.
+- Rust: `crates/photon-render/src/gui/screen/servers.rs`, `crates/photon-render/src/gui/atlas.rs`
+  (dinamik doku yok; GUI çizimine ayrı doku yuvası gerekir), `crates/photon-game/src/servers.rs`.
 
 ## Yapılacaklar
 1. GUI'ye çalışma anında yüklenen dokular (sunucu başına, 64×64); base64 kodlayıcı.

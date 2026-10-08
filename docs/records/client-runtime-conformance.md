@@ -9,9 +9,9 @@ için bu kayıt `client-parity` değildir.
 
 ## Sözleşme
 
-- `voxel-client` binary'si isteğe bağlı olarak `address`, `username`, `ticks`
+- `photon` binary'si isteğe bağlı olarak `address`, `username`, `ticks`
   ve `timeout_seconds` argümanlarını alır. Varsayılanlar sırasıyla
-  `127.0.0.1:25566`, `VoxelClient`, `20` ve `20`'dir.
+  `127.0.0.1:25566`, `Photon`, `20` ve `20`'dir.
 - Giriş noktası mevcut login/configuration/play bağlantısını kurar ve ilk
   chunk akışından `ClientWorld` durumunu oluşturur.
 - Bağlantı döndükten sonra `ticks` kadar `ClientWorld::tick` çağrısı yapılır;
@@ -30,7 +30,7 @@ için bu kayıt `client-parity` değildir.
 
 **Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` altında `127.0.0.1:25566`, seed `776`,
+Sunucu `/tmp/photon-vanilla-26.2-test` altında `127.0.0.1:25566`, seed `776`,
 survival/peaceful, spawn protection `0`, view/simulation distance `5` ve boş
 sunucuda 60 saniye pause ayarıyla çalıştırıldı. JAR ve dünya depoya alınmadı.
 

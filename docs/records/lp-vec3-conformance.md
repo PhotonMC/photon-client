@@ -31,12 +31,12 @@ Girdiler `family: "binary"`, `operation: "read" | "write"` ve `codec: "lp_vec3"`
 
 ## Rust karşılığı
 
-`crates/voxel-core/src/binary.rs` içindeki `read_lp_vec3` ve `write_lp_vec3`, packed header/scale/quantization yollarını uygular. `examples/behavior_adapter.rs` bu API'leri senaryoya bağlar; `tests/behavior/java/BinaryOracle.java` Java LP codec'ini doğrudan çağırır.
+`crates/photon-core/src/binary.rs` içindeki `read_lp_vec3` ve `write_lp_vec3`, packed header/scale/quantization yollarını uygular. `examples/behavior_adapter.rs` bu API'leri senaryoya bağlar; `tests/behavior/java/BinaryOracle.java` Java LP codec'ini doğrudan çağırır.
 
 
 ## Client-parity doğrulaması
 
-`crates/voxel-core/src/binary.rs`, Java `Vec3.LP_STREAM_CODEC` tarafından kullanılan packed Vec3 yolunu `read_lp_vec3` ve `write_lp_vec3` API'leriyle uygular. Oracle doğrudan Java codec'ini çağırır; beklenen baytlar Rust çıktısından türetilmez.
+`crates/photon-core/src/binary.rs`, Java `Vec3.LP_STREAM_CODEC` tarafından kullanılan packed Vec3 yolunu `read_lp_vec3` ve `write_lp_vec3` API'leriyle uygular. Oracle doğrudan Java codec'ini çağırır; beklenen baytlar Rust çıktısından türetilmez.
 
 ## Doğrulama
 

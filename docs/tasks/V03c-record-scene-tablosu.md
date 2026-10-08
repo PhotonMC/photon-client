@@ -5,7 +5,7 @@
 
 ## Oku
 - [V03b devir notu](V03b-render-type-tablosu.md)
-- `crates/voxel-render/src/vulkan/frame/scene.rs` (`record_scene`), `draw_calls.rs`, `crates/voxel-render/src/render_types.rs`
+- `crates/photon-render/src/vulkan/frame/scene.rs` (`record_scene`), `draw_calls.rs`, `crates/photon-render/src/render_types.rs`
 
 ## Yapılacaklar
 - `RenderType { pipeline, layout, descriptor, blend, depth }` (Java `RenderTypes` adlarıyla) ve çizim sırasını veren dizi.
@@ -13,7 +13,7 @@
 - Mevcut çizim sırası (gökyüzü, arazi, entity, yüzeyler, yarı saydam, bulut/hava, el, GUI) bir birim testiyle (komut kaydı yapan sahte backend ya da sıra listesi) sabitlenir.
 
 ## Kabul
-`python3 tools/voxel.py check` → `CHECK OK`; `bench --validation` 0 hata; bir `shot` karesi öncekiyle görsel eşit; kare sırası testi.
+`python3 tools/photon.py check` → `CHECK OK`; `bench --validation` 0 hata; bir `shot` karesi öncekiyle görsel eşit; kare sırası testi.
 
 ## Kapsam dışı
 Senkronizasyon, yeni çizim türü.

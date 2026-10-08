@@ -14,7 +14,7 @@ Bu kayıt `block_display` ve `item_display` entity'lerinin (`Display`, `DisplayR
 
 - `movement/living-entity-animations`'a 6 satır (sessiz, tam veri, aradeğerleme ve araya giren güncelleme ve gecikme, ters yönde dönüş, konum/dönüş süresi, item display bağlamı; her tikte konum/dönüş, durum, blok/eşya ve iki kısmi tikte ilerleme, matris, gölge).
 - `entity/display-pose` 11 satır (dört billboard, tek biçimli ve ezilmiş ve aynalı ölçek, item; her satırda pozun matrisi ve normal matrisi).
-- Rust: `voxel-world::display` (veri, durum, aradeğerleyiciler), `voxel-render::display` (matris, yönelim, poz), `Pose::mul_matrix` genelleşti (normal matrisini yeniden hesaplar, `Matrix3::inverse_transpose`), `DisplayContext::None`, oyunda `displays.rs`.
+- Rust: `photon-world::display` (veri, durum, aradeğerleyiciler), `photon-render::display` (matris, yönelim, poz), `Pose::mul_matrix` genelleşti (normal matrisini yeniden hesaplar, `Matrix3::inverse_transpose`), `DisplayContext::None`, oyunda `displays.rs`.
 
 ## Gölge, görüş menzili ve ışık (T40i3)
 

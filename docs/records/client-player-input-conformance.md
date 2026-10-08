@@ -66,7 +66,7 @@ olarak doğrulandı ve fark `null` kaldı.
 
 ## Rust doğrulaması
 
-`crates/voxel-world/src/input.rs` içindeki `modify_local_player_input`, LocalPlayer dönüşümünü
+`crates/photon-world/src/input.rs` içindeki `modify_local_player_input`, LocalPlayer dönüşümünü
 production kodunda uygular. Behavior adapter aynı helper'ı çağırır; adapter
 ayrı bir matematik kopyası taşımaz.
 
@@ -95,7 +95,7 @@ Mojang vanilla 26.2 dedicated server JAR'ı
 `823e2250d24b3ddac457a60c92a6a941943fcd6a` SHA-1'iyle doğrulandı. Sunucu
 offline ve yalnızca `127.0.0.1:25568` üzerinde, seed `776`, creative,
 peaceful, view/simulation distance `5` ayarlarıyla geçici
-`/tmp/voxel-vanilla-26.2-test` dizininde çalıştırıldı. JAR, dünya ve loglar
+`/tmp/photon-vanilla-26.2-test` dizininde çalıştırıldı. JAR, dünya ve loglar
 depoya alınmadı.
 
 Mevcut movement wire probe şu komutla resmi vanilla sunucusuna karşı

@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/npc/VillagerModel.java`, `client/model/monster/illager/IllagerModel.java`, `client/model/monster/witch/WitchModel.java`, `client/model/animal/golem/IronGolemModel.java`, `client/model/animal/golem/SnowGolemModel.java`, `client/model/animal/golem/CopperGolemModel.java`, `client/model/monster/enderman/EndermanModel.java`, `client/renderer/entity/VillagerRenderer.java`, `client/renderer/entity/IllagerRenderer.java`, `client/renderer/entity/EndermanRenderer.java`.
-- Rust: `crates/voxel-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/voxel/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/voxel-render/src/entity/textures.rs` (`rect`), `crates/voxel-data/src/entity_model.rs` (katman tablosu T23).
+- Rust: `crates/photon-render/src/entity/mob_model.rs` (`MobModel::bake`, `setup_quadruped`; yeni aile için yeni `setup_*` + durum yapısı), `crates/photon/src/mobs.rs` (`KINDS`, `layer_name`, çeşit çözümü), `crates/photon-render/src/entity/textures.rs` (`rect`), `crates/photon-data/src/entity_model.rs` (katman tablosu T23).
 
 ## Yapılacaklar
 1. Villager meslek/seviye katmanı (`VillagerData` verisi; T24b yürüyüşü bunu atlıyor, okuyucu eklenir).
@@ -16,7 +16,7 @@
 `EntityOracle.java` `quadrupedModel` kalıbı: gerçek model sınıfı `setupAnim` ile poz verilir, köşeler `model_layers` tablosuyla birlikte karşılaştırılır; `tools/behavior/cases.py` entity ailesi, `behavior_adapter/main.rs` `entity_result`.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı (`shot`): ilgili türler `summon` ile çağrılır, ekran görüntüsü bir kez okunur.
 
 ## Kapsam dışı
 Ticaret ekranı (`MerchantScreen`, ayrı ekran görevi), köylü sesleri.
@@ -28,7 +28,7 @@ Ticaret ekranı (`MerchantScreen`, ayrı ekran görevi), köylü sesleri.
 Villager dalı açar; illagerlar tablo satırı (aynı model, farklı doku/poz). Aile içi türler ayrı dilim değil, tablo satırıdır (AGENTS.md "varyant değil dal"); yeni probe açmadan önce üç soruyu yanıtla.
 
 ## Devir notu
-- Yapıldı (bölündü): köylü ve gezgin tüccar (`setup_villager`, `voxel-render/src/villager.rs` katman geçişleri, `voxel/src/villagers.rs`), `VillagerData`/mutsuzluk/bebek verisi, tür-meslek kayıt tablosu (`villager_registries.py`). Kayıt: `docs/records/client-villager-parity-conformance.md`.
+- Yapıldı (bölündü): köylü ve gezgin tüccar (`setup_villager`, `photon-render/src/villager.rs` katman geçişleri, `photon/src/villagers.rs`), `VillagerData`/mutsuzluk/bebek verisi, tür-meslek kayıt tablosu (`villager_registries.py`). Kayıt: `docs/records/client-villager-parity-conformance.md`.
 - Oracle: `entity/villager-registries` 22, `villager-model` 25, `villager-layers` 432 satır (gerçek `VillagerProfessionLayer`); `variant-fields` köylü satırları.
 - Sapma: zombi köylü çizilmiyor, kafa eşyası ve çapraz kol eşyası yok.
 - Açık: illager, cadı, golemler, enderman, zombi köylü çizimi (T34b).

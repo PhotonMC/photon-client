@@ -82,7 +82,7 @@ ve özel container'lar sonraki P13 dilimleridir.
 
 ## Çalıştırma
 
-Sunucu `/tmp/voxel-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
+Sunucu `/tmp/photon-vanilla-26.2-test` altında, `online-mode=false`, seed `776`,
 view/simulation distance `5`, `gamemode=survival`, `force-gamemode=true`,
 peaceful ve spawn protection `0` ayarlarıyla çalıştı. Her geçerli koşuda console
 item replacement başarı satırı görülmeden sonuç kabul edilmedi.

@@ -4,13 +4,13 @@
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku
-Java: `client/gui/screens/inventory/BrewingStandScreen.java`, `world/inventory/BrewingStandMenu.java`, `world/item/alchemy/PotionBrewing.java` (`isIngredient`, `isPotionIngredient`). Rust: `crates/voxel-game/src/menus/container.rs` (iksir tarifleri: `grep -rn potion crates/voxel-data/src -l`).
+Java: `client/gui/screens/inventory/BrewingStandScreen.java`, `world/inventory/BrewingStandMenu.java`, `world/item/alchemy/PotionBrewing.java` (`isIngredient`, `isPotionIngredient`). Rust: `crates/photon-game/src/menus/container.rs` (iksir tarifleri: `grep -rn potion crates/photon-data/src -l`).
 
 ## Oracle
 Menü: `movement/container-clicks` simya satırları; ekran: `container_screen` brewing (ilerleme değerleri). G tarifi ve `movement/container-clicks` (README, `docs/gui-oracle.md`).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/voxel.py shot` ile bir kez.
+`tools/photon.py check --capture` → `CHECK OK`. Canlı gözlem yalnız ekran açılıyorsa, `tools/photon.py shot` ile bir kez.
 
 ## Kapsam dışı
 Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.

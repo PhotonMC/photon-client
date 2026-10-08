@@ -9,8 +9,8 @@ döngüsünü bloklamadan arka planda.
 - Java: `client/gui/screens/ConnectScreen.java`, `client/gui/screens/LevelLoadingScreen.java`,
   `client/multiplayer/ClientHandshakePacketListenerImpl.java` (durum metinleri),
   `client/multiplayer/LevelLoadTracker.java`.
-- Rust: `crates/voxel-net/src/connection/session.rs`, `crates/voxel/src/play.rs` (`run_play`),
-  `crates/voxel-render/src/gui/screen/disconnected.rs`.
+- Rust: `crates/photon-net/src/connection/session.rs`, `crates/photon/src/play.rs` (`run_play`),
+  `crates/photon-render/src/gui/screen/disconnected.rs`.
 
 ## Yapılacaklar
 1. Bağlanmayı ayrı iş parçacığına al; ekran durum metnini (Connecting/Logging in/Joining world) gösterir.

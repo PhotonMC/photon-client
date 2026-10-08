@@ -5,10 +5,10 @@
 
 ## Oku
 - Java: `client/renderer/entity/{TntMinecartRenderer,SpawnerMinecartRenderer}.java`, `world/entity/vehicle/minecart/{MinecartTNT,MinecartSpawner}.java`.
-- Rust: `crates/voxel/src/objects/minecarts.rs`, T37b3 (blok kaplaması: fitil beyazı) ve T40'taki TNT/düşen blok çizimi kalıbı.
+- Rust: `crates/photon/src/objects/minecarts.rs`, T37b3 (blok kaplaması: fitil beyazı) ve T40'taki TNT/düşen blok çizimi kalıbı.
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Devir notu
 - Yapıldı: tnt minecart'ın fitili (`MinecartTNT` olay 70, istemci tiki), şişme ve beyaz bindirme (`tnt_swell_amount`, `tnt_is_lit`, `block_swell`), oracle satırları (pose ve bindirme, gerçek tik). Kayıt: `docs/records/client-minecart-parity-conformance.md` ("TNT minecart").

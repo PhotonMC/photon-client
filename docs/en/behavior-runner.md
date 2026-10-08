@@ -51,7 +51,7 @@ Every input contains `schema_version: 1`, `case_id`, `family`, `operation` and f
 
 The wire coverage includes signed min/max, the 7-bit boundaries, negative values, truncated, over-long and non-canonical encodings and the remaining bytes. For every `write` call the original decoder is also called; there are independent synthetic `read` inputs as well. UTF-8 is ready as a Java reference in a separate family; the other P03 formats are not covered yet.
 
-The tool does not prove the programming language of an executable that speaks the JSON protocol. `crates/voxel/examples/behavior_adapter/` is the real Rust wire/timer/math adapter; the report records the executable's SHA-256 and the selected scope. Synthetic programs used while trying out the infrastructure are no proof of game equality.
+The tool does not prove the programming language of an executable that speaks the JSON protocol. `crates/photon/examples/behavior_adapter/` is the real Rust wire/timer/math adapter; the report records the executable's SHA-256 and the selected scope. Synthetic programs used while trying out the infrastructure are no proof of game equality.
 
 ## Family and operation contracts
 

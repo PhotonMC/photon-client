@@ -10,7 +10,7 @@ bir sapma ancak etkisi yazılıp onaylandıktan sonra yapılır.
 
 ## Başlangıç ölçümleri
 
-Oyun açılmadan, `crates/voxel/examples/bench.rs` ile (8 çekirdek, release):
+Oyun açılmadan, `crates/photon/examples/bench.rs` ile (8 çekirdek, release):
 
 | Ölçü | Değer |
 | --- | --- |
@@ -113,7 +113,7 @@ olarak tutulmaz.
 ### F8. Sınıf başına şekiller
 
 - [x] `getShape` ve `getCollisionShape` blok sınıflarının kodundan
-  (`voxel-world/src/block/shape_rules/`); `outline.rs`, `collision.rs` ve
+  (`photon-world/src/block/shape_rules/`); `outline.rs`, `collision.rs` ve
   üreticisi kalktı. Oracle vakaları hesaplanan durum şekillerinden üretilir.
 
 ### F9. Ölçüp karar verilecek sapmalar
@@ -142,7 +142,7 @@ Mesh özetleri (`digest=`) bütün adımlarda aynı kaldı. Açık kalan: D1 (sa
 
 ## Bellek ve yükleme turu (2026-09-30)
 
-- [x] `voxel-data` üretilen dosyaları `src/generated/` altında; yollar aynı.
+- [x] `photon-data` üretilen dosyaları `src/generated/` altında; yollar aynı.
 - [x] CPU atlas kopyaları (3 × ~43 MiB), ekran görüntüsü okuma tamponu ve GUI
   atlas görüntüsü artık tutulmuyor; arena ve staging boş blokları sürücüye
   geri veriyor. Oyun toplam ayak izi (`footprint`, 854×480, girişten 30 sn

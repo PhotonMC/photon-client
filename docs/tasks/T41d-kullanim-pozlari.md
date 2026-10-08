@@ -5,7 +5,7 @@
 
 ## Oku
 - Java: `client/model/HumanoidModel.java` (`poseRightArm`/`poseLeftArm`, `ArmPose`), `client/model/AnimationUtils.java` (`animateCrossbow*`), `client/model/effects/SpearAnimations.java`, `client/renderer/entity/player/AvatarRenderer.java` (`getArmPose`), `client/model/monster/piglin/PiglinModel.java`, `world/entity/LivingEntity.java` (`getTicksUsingItem`, kullanım bayrakları).
-- Rust: `voxel-render/src/player_model.rs` (`ArmPose`, `pose_arm`), `crates/voxel/src/{overlays,mobs}.rs`, `crates/voxel-world/src/entity.rs` (`is_using_item`, `used_item_is_off_hand`).
+- Rust: `photon-render/src/player_model.rs` (`ArmPose`, `pose_arm`), `crates/photon/src/{overlays,mobs}.rs`, `crates/photon-world/src/entity.rs` (`is_using_item`, `used_item_is_off_hand`).
 
 ## Yapılacaklar
 1. `ArmPose` kalan değerleri ve `pose_arm` kolları; `ticksUsingItem` (`useItemRemainingTicks` istemci tarafı) ve eşyanın kullanım animasyonu (`ItemUseAnimation`: eşya bileşeni).
@@ -16,7 +16,7 @@
 `entity/held-item-pose` satırlarına poz ve `ticksUsingItem` alanları (aynı operation).
 
 ## Kabul
-`tools/voxel.py check --capture` → `CHECK OK`.
+`tools/photon.py check --capture` → `CHECK OK`.
 
 ## Kapsam dışı
 Saldırı sallaması (T43).

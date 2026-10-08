@@ -8,7 +8,7 @@ süre). İkisi de ağdan konum kaynağı/hedef okur; `ParticleData`'ya eklenir.
 ## Oku
 Java: `client/particle/{VibrationSignalParticle,TrailParticle}.java`,
 `core/particles/{VibrationParticleOption,TrailParticleOption}.java`,
-`world/level/gameevent/PositionSource*.java`. Rust: `crates/voxel-world/src/particles/attract.rs`.
+`world/level/gameevent/PositionSource*.java`. Rust: `crates/photon-world/src/particles/attract.rs`.
 
 ## Oracle
 `particle-ticks` satırları (gerçek sağlayıcılar, seçenekler satırdan).

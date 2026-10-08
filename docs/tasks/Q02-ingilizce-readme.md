@@ -15,7 +15,7 @@
 - Q02b olarak çekirdek belgelerin (mimari, kodlama standartları, davranış testi) İngilizce sürümü ayrı görev satırı açılır.
 
 ## Kabul
-Kırık iç bağlantı yok (`python3 tools/voxel.py check` belge adımları).
+Kırık iç bağlantı yok (`python3 tools/photon.py check` belge adımları).
 
 ## Kapsam dışı
 Dilim kayıtlarının çevirisi.
@@ -27,6 +27,6 @@ Bu görev dosyasının devir notu; ölçüm sayıları yalnız burada.
 - Kök `README.md` İngilizce yazıldı; eski Türkçe README `docs/tr/README.md`'ye taşındı (bağlantıları `../` ile düzeltildi). Ekran görüntüsü bilerek yok: her kare Mojang asset'i içerir, depoya girmez.
 - `CONTRIBUTING.md` ve `SECURITY.md` eklendi. SECURITY GitHub özel güvenlik bildirimine dayanır; depo sahibi bunu Security sekmesinden açmalı (e-posta uydurulmadı).
 - `tools/move-records.py` 641 kaydı (`*-conformance.md` 632, `*-record.md` 9) `docs/records/`'a taşıdı; Markdown bağlantılarını eski konuma göre çözüp yeniden yazdı, `docs/<ad>.md` metin anmalarını (kod yorumu, AGENTS, görevler) güncelledi. Betik idempotent; yeniden çalıştırmak "nothing to move" der.
-- `tools/check-doc-links.py` yeni: göreli Markdown bağlantılarını denetler, kapıya (`voxel.py check`) bağlandı. Öncesinde iki kırık bağlantı vardı (`chunkpos`, `game-connection`), düzeltildi.
+- `tools/check-doc-links.py` yeni: göreli Markdown bağlantılarını denetler, kapıya (`photon.py check`) bağlandı. Öncesinde iki kırık bağlantı vardı (`chunkpos`, `game-connection`), düzeltildi.
 - Dizin üreticisi `docs/records/`'ı da tarıyor.
 - Açık: belgelerin çoğu hâlâ Türkçe (Q02b); README'deki yerel kurulum bağlantısı "(Turkish)" diye işaretli.

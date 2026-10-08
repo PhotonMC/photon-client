@@ -6,13 +6,13 @@ Her görev **tek oturum, tek commit**tir ve sıfır bağlamla başlanabilecek ka
 
 1. **İlerleme** bloğundaki "sıradaki adaylar" listesinden kritik yola en yakın görevi seç (kullanıcı kimlik verdiyse onu).
 2. Yalnız o görev dosyasını ve onun **Oku** listesini oku. Başka belge, alt ajan veya plan modu gerekmez; arama `grep -n`/`find` ile doğrudan yapılır.
-3. Java sınıfını satır satır oku (`.data/minecraft/source/…`), oracle senaryosunu yaz, Rust'ı yaz. İterasyonda: `cargo build -p <crate> 2>&1 | grep -E '^(error|warning)' -A6 | head -60`, `cargo test -p <crate> <filtre>`, `python3 tools/voxel.py parity --family gui`.
-4. Commit öncesi **bir kez** `python3 tools/voxel.py check` (oracle kaynağı veya `tools/behavior/cases/` değiştiyse `--capture`). `CHECK OK` görmeden commit yok; başarısızsa yalnız basılan hatayı düzelt.
-5. Belge: görev dosyasının **Belgeler** satırı neyi güncelleyeceğini söyler; gui operation'ı eklediysen `docs/gui-oracle.md` tablosuna satır ekle. `python3 tools/voxel.py check` belge indeksini ve hücre sınırını da denetler.
+3. Java sınıfını satır satır oku (`.data/minecraft/source/…`), oracle senaryosunu yaz, Rust'ı yaz. İterasyonda: `cargo build -p <crate> 2>&1 | grep -E '^(error|warning)' -A6 | head -60`, `cargo test -p <crate> <filtre>`, `python3 tools/photon.py parity --family gui`.
+4. Commit öncesi **bir kez** `python3 tools/photon.py check` (oracle kaynağı veya `tools/behavior/cases/` değiştiyse `--capture`). `CHECK OK` görmeden commit yok; başarısızsa yalnız basılan hatayı düzelt.
+5. Belge: görev dosyasının **Belgeler** satırı neyi güncelleyeceğini söyler; gui operation'ı eklediysen `docs/gui-oracle.md` tablosuna satır ekle. `python3 tools/photon.py check` belge indeksini ve hücre sınırını da denetler.
 6. Görev dosyasının sonuna **Devir notu** yaz (≤10 satır: yapılan, Java'dan sapma, açık kalan), panoda kutuyu işaretle (`- [x]`, satır sonuna `bitti (<kısa hash>)`), `python3 tools/task-progress.py` ile yüzdeleri yenile, tek commit at (Türkçe mesaj, **AI imzası/Co-Authored-By yok**, kod yorumu İngilizce). Push/merge yok; sormadan yapılmaz.
 7. Oturuma sığmıyorsa: kapıdan geçen kısmı commit et, kalanı için aynı grupta yeni madde + dosyası aç, bu görevi işaretleyip `bölündü (<hash>)` yaz. Bir `K-` kapsam maddesi görevlere bölününce görevler eklenir ve `K-` maddesi silinir.
 
-Bağlamı korumak için: büyük dosyaları bütün okuma (`AGENTS.md` "Oturum ve token düzeni"). Canlı oyun yalnız görevin **Kabul**ü isterse, `python3 tools/voxel.py shot` ile.
+Bağlamı korumak için: büyük dosyaları bütün okuma (`AGENTS.md` "Oturum ve token düzeni"). Canlı oyun yalnız görevin **Kabul**ü isterse, `python3 tools/photon.py shot` ile.
 
 ## GUI oracle tarifi (G)
 
@@ -20,15 +20,15 @@ GUI görevleri bu beş adımı izler; görev dosyaları "G" diye anar.
 
 1. Java: `tests/behavior/java/GuiOracle.java` — operation yöntemi ekle (örnek `pauseScreen`, `grep -n "pauseScreen"`), `switch` koluna bağla (~485–496). Gerçek Java ekranı Unsafe/yansıma sahtelerle kurulur (`screen(...)`, `set/get` yardımcıları üstte).
 2. `tools/behavior/cases/gui/` — konuya göre modülde `gui_<ad>_cases()` üreticisi (örnek `gui_pause_screen_cases`, `screens.py`); `cases/gui/__init__.py` içindeki `gui_generators` zincirine ekle.
-3. Rust: `crates/voxel-oracle/src/gui.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
+3. Rust: `crates/photon-oracle/src/gui.rs` içindeki `gui_result` match kolu (örnek `"pause_screen"`). Rust ekranı üretimdeki tipin kendisidir; adaptör yalnız kurar ve `draw` çağırır.
 4. `docs/gui-oracle.md` kapsam tablosuna operation satırı.
-5. `python3 tools/voxel.py parity --capture --family gui` yeşil olana dek yinele. Fark çıkarsa Rust'ı düzelt; beklenen değeri Rust çıktısından türetme.
+5. `python3 tools/photon.py parity --capture --family gui` yeşil olana dek yinele. Fark çıkarsa Rust'ı düzelt; beklenen değeri Rust çıktısından türetme.
 
-Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs` (ızgara: `gui/layout.rs`, düğme/simge: `gui/widgets.rs`, sprite: `gui/atlas.rs`); oyuna bağlama `crates/voxel/src/{controls,gui,play}.rs` ve `controls/{pause,death,confirm}.rs` (`open_pause`, `receive_death` örnek).
+Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs` (ızgara: `gui/layout.rs`, düğme/simge: `gui/widgets.rs`, sprite: `gui/atlas.rs`); oyuna bağlama `crates/photon/src/{controls,gui,play}.rs` ve `controls/{pause,death,confirm}.rs` (`open_pause`, `receive_death` örnek).
 
 ## İlerleme
 
-Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
+Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
 **Toplam: %78 bitti** (ağırlıklı) · 234/287 madde işaretli, **53 madde kaldı** (tahmini 97 M-görev eşdeğeri iş).

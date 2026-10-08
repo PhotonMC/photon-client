@@ -80,7 +80,7 @@ creative test modu, `view-distance=5`, `simulation-distance=5`,
 **Sunucu SHA-1:** `823e2250d24b3ddac457a60c92a6a941943fcd6a`
 
 Custom dimension kayıtlarında kullanılan sentetik `p08_custom_dimension`
-datapack'i `/tmp/voxel-vanilla-26.2-world/world/datapacks` altında tutuldu;
+datapack'i `/tmp/photon-vanilla-26.2-world/world/datapacks` altında tutuldu;
 repository'ye eklenmedi ve orijinal asset taşımıyor. Her probe login olduktan
 sonra vanilla server konsolunda şu komutlar çalıştırıldı:
 

@@ -7,7 +7,7 @@ gönderir (sunucu görünmeyen bir pencereyi beklemesin).
 
 ## Menü modeli
 
-`voxel_game::container_menu::ContainerMenu` artık oyuncunun kendi menüsü ile
+`photon_game::container_menu::ContainerMenu` artık oyuncunun kendi menüsü ile
 genel kap menülerini aynı `doClick` portuyla çalıştırır (`MenuKind`). Kap
 menüsünde önce kabın kendi yuvaları, sonra ana envanterin 27'si ve hotbar'ın 9'u
 gelir. Java'dan taşınanlar: `ChestMenu`/`HopperMenu`/`ShulkerBoxMenu`/
@@ -84,11 +84,11 @@ Sunucu paketleri: `RecipeBookAdd` (74), `RecipeBookRemove` (75),
 (47, yazıldı, henüz gönderilmiyor). `RecipeDisplay` 5 türü ve `SlotDisplay` 11
 türü okunur (istasyon alanı atılır). Durum `ClientWorld.recipe_book`
 (bilinen tarifler, vurgular, dört kitap türünün açık/süzgeç ayarı, hayalet).
-`voxel-game/recipe_book.rs`: koleksiyonlar (kategori+grup, grupsuz tarif tek
+`photon-game/recipe_book.rs`: koleksiyonlar (kategori+grup, grupsuz tarif tek
 başına), menüye uyan tarifler (`RecipeCollection.selectRecipes`), üretilebilirlik
 (`StackedContents.canCraft`: çift parçalı eşleştirme, hasarlı/büyülü/adlı
 yığınlar sayılmaz), `PlaceRecipeHelper.placeRecipe` (küçük tarifleri ortalar) ve
-hayalet yuvalar. Arayüz `voxel-render/gui/screen/recipe_book.rs`: düğme, panel
+hayalet yuvalar. Arayüz `photon-render/gui/screen/recipe_book.rs`: düğme, panel
 (arka plan, arama kutusu, süzgeç, sekmeler, 5×4 tarif düğmesi, sayfa okları),
 sol tıkta `PlaceRecipe` (shift = `useMaxItems`, üretilemeyen son tarife tekrar
 basmak yok sayılır), hayalet çizimi, `leftPos` kayması (`379` altı dar düzen
@@ -146,5 +146,5 @@ türleri (beacon, brewing stand, lectern, tüccar, crafter) ve at envanteri.
 
 ## Tüccar (köylü, gezgin tüccar)
 
-`MenuKind::Merchant` (menü türü 19): iki ödeme yuvası, sonuç yuvası, oyuncunun 36 yuvası. Teklifler `ClientboundMerchantOffersPacket`'ten (`MerchantOffer`, `ItemCost` ve bileşen koşulu: `voxel_game::merchant`; paket çözümü `parse_merchant_offers_packet`), seviye ve deneyim `Trader`'da. Sonuç yuvasını istemci yapar (`MerchantContainer.updateSellItem`: seçilen teklif ipucuyla, stokta olmayan teklif sonuç vermez), sonucu almak ödemeyi düşürür (`MerchantResultSlot.onTake`, talep ve özel fiyatla artan/azalan ücret), `quickMoveStack`, çift tıklamada hiçbir yuvadan toplanmaz, `tryMoveItems` seçilen teklifin ödemelerini envanterden getirir (`ServerboundSelectTradePacket`, yerel menüye de yazılır). Oracle: `container-clicks` 7 satır, `container_screen` 9 satır (liste, kaydırıcı, deneyim çubuğu, fiyat üstü çizili, stok dışı) Java ile birebir; düğmeler bir kare sonra görünür (Java'daki gibi). Sapma: ticaret sesi (`getNotifyTradeSound`) ve köylünün `notifyTrade` etkileri yok; ipucu gecikmesiz; fare kaydırıcı imleci yok; tarif/deneyim sunucudan. Canlıda bakılmadı.
+`MenuKind::Merchant` (menü türü 19): iki ödeme yuvası, sonuç yuvası, oyuncunun 36 yuvası. Teklifler `ClientboundMerchantOffersPacket`'ten (`MerchantOffer`, `ItemCost` ve bileşen koşulu: `photon_game::merchant`; paket çözümü `parse_merchant_offers_packet`), seviye ve deneyim `Trader`'da. Sonuç yuvasını istemci yapar (`MerchantContainer.updateSellItem`: seçilen teklif ipucuyla, stokta olmayan teklif sonuç vermez), sonucu almak ödemeyi düşürür (`MerchantResultSlot.onTake`, talep ve özel fiyatla artan/azalan ücret), `quickMoveStack`, çift tıklamada hiçbir yuvadan toplanmaz, `tryMoveItems` seçilen teklifin ödemelerini envanterden getirir (`ServerboundSelectTradePacket`, yerel menüye de yazılır). Oracle: `container-clicks` 7 satır, `container_screen` 9 satır (liste, kaydırıcı, deneyim çubuğu, fiyat üstü çizili, stok dışı) Java ile birebir; düğmeler bir kare sonra görünür (Java'daki gibi). Sapma: ticaret sesi (`getNotifyTradeSound`) ve köylünün `notifyTrade` etkileri yok; ipucu gecikmesiz; fare kaydırıcı imleci yok; tarif/deneyim sunucudan. Canlıda bakılmadı.
 
