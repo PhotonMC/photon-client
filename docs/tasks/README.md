@@ -83,7 +83,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (b3d5a46e)
 - [ ] [T59b](T59b-bundle-ipucu.md) Bundle ipucu ve seçili eşya (`SelectBundleItem`) — M · bağımlı: T59
 - [ ] [T59c](T59c-esya-ipucu-satirlari.md) Kap, harita, iksir ve kitap ipucu satırları; F3+H — M · bağımlı: T59
-- [x] [T59d](T59d-etiket-aramasi.md) Yaratıcı aramada `#etiket` — S · bağımlı: T59 · bitti
+- [x] [T59d](T59d-etiket-aramasi.md) Yaratıcı aramada `#etiket` — S · bağımlı: T59 · bitti (113ef8db)
 
 ### M4 Entity'ler
 
