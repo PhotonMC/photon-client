@@ -48,7 +48,7 @@ impl ClientWorld {
     /// a block broken (its state's number is the data).
     /// The level events since the last call, in the order they came.
     pub fn take_level_events(&mut self) -> Vec<LevelEvent> {
-        std::mem::take(&mut self.level_events)
+        std::mem::take(&mut self.level_events.0)
     }
 
     /// The block and face the player swung at breaking, since the last call.
@@ -71,7 +71,15 @@ impl ClientWorld {
     /// and makes its particles with the level's random.
     pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
         self.level_events
+            .0
             .push(LevelEvent::Level { event, pos, data });
+    }
+
+    /// An explosion the server reports, for the particle engine to play.
+    pub fn apply_explosion(&mut self, explosion: crate::particles::Explosion) {
+        self.level_events
+            .0
+            .push(LevelEvent::Explosion(Box::new(explosion)));
     }
 
     /// `ClientLevel.blockEvent`, for what the client does with one beside a block entity's: a note
@@ -93,6 +101,7 @@ impl ClientWorld {
             .and_then(|note| note.parse().ok())
             .filter(|_| tunable);
         self.level_events
+            .0
             .push(LevelEvent::Note { pos, sound, note });
         true
     }
@@ -143,8 +152,21 @@ fn note_block_sound(instrument: &str) -> Option<&'static str> {
         .map(|index| EVENTS[index])
 }
 
+/// The level events waiting for the particle engine. Which are waiting is no part of what a world is
+/// equal to.
+#[derive(Debug, Clone, Default)]
+pub struct LevelEventQueue(pub(crate) Vec<LevelEvent>);
+
+impl PartialEq for LevelEventQueue {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for LevelEventQueue {}
+
 /// What the level plays when the particle engine takes it, in the order it came.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LevelEvent {
     /// One `ClientboundLevelEventPacket` (or a level event of the client's own).
     Level {
@@ -158,6 +180,8 @@ pub enum LevelEvent {
         sound: &'static str,
         note: Option<i32>,
     },
+    /// An explosion the server reports (`ClientboundExplodePacket`).
+    Explosion(Box<crate::particles::Explosion>),
 }
 
 impl LevelEvent {

@@ -19,6 +19,46 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
             pos()?,
             i32_field(event, "data")?,
         ),
+        "explode" => {
+            let float = |key: &str| -> Result<f32, String> {
+                u32::from_str_radix(string(event, key)?, 16)
+                    .map(f32::from_bits)
+                    .map_err(|error| format!("{key}: {error}"))
+            };
+            let kind = |name: &str| {
+                voxel_data::particle_type::id(name).ok_or(format!("unknown particle {name}"))
+            };
+            let mut block_particles = Vec::new();
+            for info in event["kinds"].as_array().ok_or("kinds must be an array")? {
+                let float = |key: &str| -> Result<f32, String> {
+                    u32::from_str_radix(string(info, key)?, 16)
+                        .map(f32::from_bits)
+                        .map_err(|error| format!("{key}: {error}"))
+                };
+                block_particles.push(voxel_world::particles::ExplosionParticle {
+                    type_id: kind(string(info, "particle")?)?,
+                    data: voxel_world::particles::ParticleData::Plain,
+                    scaling: float("scaling")?,
+                    speed: float("speed")?,
+                    weight: i32_field(info, "weight")?,
+                });
+            }
+            world.apply_explosion(voxel_world::particles::Explosion {
+                center: (
+                    parsed64(event, "x")?,
+                    parsed64(event, "y")?,
+                    parsed64(event, "z")?,
+                ),
+                radius: float("radius")?,
+                block_count: i32_field(event, "block_count")?,
+                particle: (
+                    kind(string(event, "particle")?)?,
+                    voxel_world::particles::ParticleData::Plain,
+                ),
+                sound: Some("minecraft:entity.generic.explode"),
+                block_particles,
+            });
+        }
         "block_event" => {
             world.apply_note_block_event(pos()?);
         }

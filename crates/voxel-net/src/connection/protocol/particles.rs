@@ -20,12 +20,33 @@ pub fn read_level_particles_packet(
     );
     let max_speed = read_f32(input, NAME)?;
     let count = read_i32(input, NAME)?;
-    let type_id = read_varint(input, NAME)?;
-    if voxel_data::particle_type::name(type_id).is_none() {
-        return Err(ConnectionError::Codec("unknown particle type id"));
-    }
+    let Some((type_id, data)) = read_particle_options(input)? else {
+        *input = &[];
+        return Ok(None);
+    };
+    Ok(Some(voxel_world::particles::LevelParticles {
+        type_id,
+        data,
+        override_limiter,
+        always_show,
+        at,
+        spread,
+        max_speed,
+        count,
+    }))
+}
+
+/// `ParticleTypes.STREAM_CODEC`: a type and its options. Nothing for a type whose options are not
+/// read yet, after which nothing more of the input can be read.
+pub(crate) fn read_particle_options(
+    input: &mut &[u8],
+) -> Result<Option<(i32, voxel_world::particles::ParticleData)>, ConnectionError> {
+    const NAME: &str = "particle options";
     use voxel_world::particles::ParticleData;
-    let name = voxel_data::particle_type::name(type_id).unwrap_or_default();
+    let type_id = read_varint(input, NAME)?;
+    let Some(name) = voxel_data::particle_type::name(type_id) else {
+        return Err(ConnectionError::Codec("unknown particle type id"));
+    };
     let color = |input: &mut &[u8]| read_i32(input, NAME).map(|value| value as u32);
     let data = if voxel_data::particle_type::carries_block_state(type_id) {
         ParticleData::Block(read_varint(input, NAME)?)
@@ -49,20 +70,8 @@ pub fn read_level_particles_packet(
                 to: color(input)?,
                 scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
             },
-            _ => {
-                *input = &[];
-                return Ok(None);
-            }
+            _ => return Ok(None),
         }
     };
-    Ok(Some(voxel_world::particles::LevelParticles {
-        type_id,
-        data,
-        override_limiter,
-        always_show,
-        at,
-        spread,
-        max_speed,
-        count,
-    }))
+    Ok(Some((type_id, data)))
 }

@@ -31,7 +31,7 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %77 bitti** (ağırlıklı) · 230/285 madde işaretli, **55 madde kaldı** (tahmini 100 M-görev eşdeğeri iş).
+**Toplam: %77 bitti** (ağırlıklı) · 231/286 madde işaretli, **55 madde kaldı** (tahmini 100 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `█████████████░░░░░░░` | 63 | 23/35 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `██████████████░░░░░░` | 68 | 27/39 |
+| M8 Partikül, efekt ve blok entity | `██████████████░░░░░░` | 68 | 28/40 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76b, T77b, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T77b, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -256,7 +256,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T91b](T91b-bildirim-kutulari.md) Bildirim kutuları (toast) — M · bağımlı: T91
 - [ ] [T92](T92-istatistikler.md) İstatistikler (`AwardStats`, `StatsScreen`) — M · bağımlı: T85
 - [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3), F1 ve F2 — L
-- [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü
+- [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü (d6b5f303)
 - [ ] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
@@ -299,7 +299,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T75](T75-cekim-parcaciklari.md) Portal, büyü masası ve çeken parçacıklar — M · bağımlı: T70b · bitti (40baea57)
 - [ ] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75
 - [x] [T76](T76-vurus-patlama-parcaciklari.md) Vuruş, patlama ve ifade parçacıkları — M · bağımlı: T70b · bitti (76093776)
-- [ ] [T76b](T76b-ciglik-gardiyan-patlama.md) Çığlık, elder gardiyan parçacığı ve `Explode` paketi — M · bağımlı: T76
+- [x] [T76b](T76b-ciglik-gardiyan-patlama.md) Çığlık, elder gardiyan parçacığı ve `Explode` paketi — M · bağımlı: T76 · bölündü
+- [ ] [T76c](T76c-ciglik-gardiyan.md) Çığlık ve elder gardiyan parçacıkları — M · bağımlı: T76b
 - [x] [T77](T77-esya-parcaciklari.md) Eşya parçacıkları ve eşya toplama animasyonu — M · bağımlı: T70b, T25 · bitti (ba01b9b3)
 - [ ] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77
 - [x] [T78](T78-seviye-olaylari.md) `LevelEvent` ve `BlockEvent` işleyicileri — L · bağımlı: T71b, T64b · bölündü (3898df28)

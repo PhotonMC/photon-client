@@ -32,7 +32,7 @@ impl ClientWorld {
             maps: BTreeMap::new(),
             local_player: None,
             sounds: local_player::SoundQueue::default(),
-            level_events: Vec::new(),
+            level_events: Default::default(),
             breaking_effects: Vec::new(),
             world_border: ClientWorldBorder::default(),
             block_animations: block::chest::BlockAnimations::default(),

@@ -263,6 +263,22 @@ impl Particles {
         (player, local): PlayerPlace,
     ) -> Vec<voxel_world::local_player::LocalSound> {
         let mut sounds = Vec::new();
+        // `ClientLevel.tick`'s explosion tracker, before the blocks animate.
+        {
+            let view = AddView {
+                camera: self.camera,
+                status: ParticleStatus::All,
+            };
+            let mut uniquifier = self.uniquifier;
+            let mut context = voxel_world::particles::LevelEventContext {
+                world,
+                view: &view,
+                level_random: &mut self.level_random,
+                particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
+            };
+            self.engine.tick_explosions(&mut context);
+            self.uniquifier = uniquifier;
+        }
         if let Some(center) = player {
             let view = AddView {
                 camera: self.camera,

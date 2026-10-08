@@ -253,6 +253,14 @@ def packet(tick, particle, at, spread, speed, count, override=False, always_show
             "max_speed": float_bits(speed), "count": count}
 
 
+def explode(tick, at, radius, block_count, particle="explosion", kinds=()):
+    return {"tick": tick, "type": "explode", "x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+            "z": float_bits(at[2], "f64"), "radius": float_bits(radius), "block_count": block_count,
+            "particle": particle,
+            "kinds": [{"particle": name, "scaling": float_bits(scaling), "speed": float_bits(speed), "weight": weight}
+                      for name, scaling, speed, weight in kinds]}
+
+
 def level_event(tick, event, pos, data=0):
     return {"tick": tick, "type": "level_event", "event": event, "x": pos[0], "y": pos[1], "z": pos[2],
             "data": data}
@@ -451,6 +459,15 @@ def particle_engine_cases():
                       if (x * z) % 4 == 0]
                    + plane(60, "minecraft:stone"),
                    ticks=60, seeds=400, describe=12),
+        # An explosion: its sound (pitched by the level's random) and its particle at once, then on the level's
+        # next tick its block particles about it where there is air, picked by block count, at most 512.
+        engine_row("explosions", [explode(0, (2.5, 64.5, 1.5), 4.0, 40, kinds=[("poof", 0.5, 1.0, 1), ("smoke", 1.0, 1.0, 1)]),
+                                  explode(0, (-3.0, 65.0, -2.0), 2.5, 9, particle="explosion_emitter",
+                                          kinds=[("poof", 1.0, 0.5, 3)]),
+                                  explode(2, (0.5, 64.0, 0.5), 7.0, 900, kinds=[("poof", 0.5, 1.0, 2), ("smoke", 1.0, 1.0, 1)]),
+                                  explode(3, (8.0, 64.0, 8.0), 3.0, 5)],
+                   blocks=plane(63, "minecraft:stone", size=8) + [{"x": 1, "y": 64, "z": 0, "block": "minecraft:stone"}],
+                   ticks=6, seeds=1500, describe=12),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

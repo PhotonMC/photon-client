@@ -13,6 +13,7 @@ mod attract;
 mod colour;
 mod drip;
 mod engine;
+mod explosion;
 mod falling_dust;
 mod flame;
 mod group;
@@ -33,6 +34,7 @@ mod water;
 pub use engine::{
     AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn,
 };
+pub use explosion::{Explosion, ExplosionParticle};
 pub use level_events::LevelEventContext;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};

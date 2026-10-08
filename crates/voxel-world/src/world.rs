@@ -13,5 +13,5 @@ mod minecarts;
 mod pickup;
 mod recipes;
 mod sounds;
-pub use sounds::{LevelEvent, block_sound_of};
+pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};
 mod weather;

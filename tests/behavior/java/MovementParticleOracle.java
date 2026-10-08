@@ -433,6 +433,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         setField(minecraft, "packetProcessor", new net.minecraft.network.PacketProcessor(Thread.currentThread()));
         setField(listener, "level", level);
         setField(listener, "minecraft", minecraft);
+        setField(minecraft, "level", level);
         var listenerRandom = net.minecraft.util.RandomSource.createThreadSafe();
         listenerRandom.setSeed(row.get("listener_seed").getAsLong());
         setField(listener, "random", listenerRandom);
@@ -480,6 +481,24 @@ class MovementParticleOracle extends MovementMenuOracle {
                 if (event.get("tick").getAsInt() != tick) {
                     continue;
                 }
+                if (event.get("type").getAsString().equals("explode")) {
+                    var weighted = net.minecraft.util.random.WeightedList.<net.minecraft.core.particles.ExplosionParticleInfo>builder();
+                    for (var kind : event.getAsJsonArray("kinds")) {
+                        var info = kind.getAsJsonObject();
+                        weighted.add(new net.minecraft.core.particles.ExplosionParticleInfo(
+                            simpleType(info.get("particle").getAsString()), floatBits(info, "scaling"), floatBits(info, "speed")),
+                            info.get("weight").getAsInt());
+                    }
+                    // `handleExplosion` takes the player's push method whether or not there is a push.
+                    setField(minecraft, "player", unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
+                    listener.handleExplosion(new net.minecraft.network.protocol.game.ClientboundExplodePacket(
+                        new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"), Oracle.f64(event, "y"), Oracle.f64(event, "z")),
+                        floatBits(event, "radius"), event.get("block_count").getAsInt(), java.util.Optional.empty(),
+                        simpleType(event.get("particle").getAsString()),
+                        net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE, weighted.build()));
+                    setField(minecraft, "player", null);
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("animate_tick")) {
                     var animateRandom = net.minecraft.util.RandomSource.create(event.get("seed").getAsLong());
                     var cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
@@ -521,6 +540,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            // `ClientLevel.tick`'s explosion tracker, before the engine.
+            var tracker = getField(level, "explosionTracker");
+            tracker.getClass().getMethod("tick", net.minecraft.client.multiplayer.ClientLevel.class).invoke(tracker, level);
             engine.tick();
             var sounds = new JsonArray();
             SilentSoundManager.PLAYED.forEach(sounds::add);

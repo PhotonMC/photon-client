@@ -113,7 +113,7 @@ pub struct ClientWorld {
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
     /// The level events, until the particle engine takes them.
-    level_events: Vec<LevelEvent>,
+    level_events: world::LevelEventQueue,
     /// The blocks the player is breaking and the face it aims at, for each tick it swings at one
     /// (`Minecraft.continueAttack`'s `addBreakingBlockEffect`), until taken.
     breaking_effects: Vec<((i32, i32, i32), voxel_core::direction::Direction)>,

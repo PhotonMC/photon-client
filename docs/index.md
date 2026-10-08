@@ -133,6 +133,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T27 — Canlı entity vuruş ve ölüm geri bildirimi (`hurtTime`, `deathTime`, kırmızı örtü, yatış) — client-parity](records/client-entity-hurt-death-parity-conformance.md)
 - [T24b — Entity metadata serileştiricileri ve pig/cow çeşitleri — client-parity](records/client-entity-metadata-variants-parity-conformance.md)
 - [T42 — Entity gölgesi — client-parity](records/client-entity-shadow-parity-conformance.md)
+- [T76b — `Explode` paketi ve patlama izleyicisi — client-parity](records/client-explosion-parity-conformance.md)
 - [T33c — Parlayan göz katmanı (örümcek, mağara örümceği, enderman) — client-parity](records/client-eyes-layer-parity-conformance.md)
 - [T40d — Düşen blok — server-conformance](records/client-falling-block-parity-conformance.md)
 - [T32b — Kedi ve ocelot — client-parity](records/client-feline-parity-conformance.md)

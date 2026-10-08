@@ -97,6 +97,8 @@ pub struct ParticleEngine {
     group: ParticleGroup,
     /// The `NO_RENDER` group: the emitters, never drawn.
     emitters: ParticleGroup,
+    /// `ClientExplosionTracker`: the explosions whose block particles the next level tick scatters.
+    pub(super) explosions: Vec<super::Explosion>,
     /// The `ITEM_PICKUP` group, and the ones waiting to join it.
     pickups: ParticleGroup<super::ItemPickup>,
     pickups_to_add: VecDeque<super::ItemPickup>,
@@ -118,6 +120,7 @@ impl ParticleEngine {
         Self {
             group: ParticleGroup::default(),
             emitters: ParticleGroup::default(),
+            explosions: Vec::new(),
             pickups: ParticleGroup::default(),
             pickups_to_add: VecDeque::new(),
             to_add: VecDeque::new(),
@@ -256,6 +259,7 @@ impl ParticleEngine {
         self.emitters.clear();
         self.pickups.clear();
         self.pickups_to_add.clear();
+        self.explosions.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
     }

@@ -341,6 +341,13 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
             }
             let pending = engine.pending_count();
+            let mut context = voxel_world::particles::LevelEventContext {
+                world: &world,
+                view: &view,
+                level_random: &mut level_random,
+                particle_random: &mut particle_random,
+            };
+            engine.tick_explosions(&mut context);
             let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
             sounds.extend(ticked.iter().map(events::sound_line));
             ticks.push(json!({

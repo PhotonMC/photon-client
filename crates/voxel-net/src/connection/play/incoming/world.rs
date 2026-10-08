@@ -103,6 +103,22 @@ impl PlaySession {
         Ok(())
     }
 
+    /// `handleExplosion`: the local player is pushed now; the sound and particles wait for the
+    /// particle engine, in order with the level events.
+    pub(super) fn on_explode(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let Some(read) = parsed(parse_explode_packet(payload), "explode") else {
+            return Ok(());
+        };
+        let Some((explosion, knockback)) = read else {
+            return Ok(());
+        };
+        if let (Some((x, y, z)), Some(player)) = (knockback, self.player.as_mut()) {
+            player.add_delta_movement(voxel_core::math::Vec3::new(x, y, z));
+        }
+        self.trace.world.apply_explosion(explosion);
+        Ok(())
+    }
+
     pub(super) fn on_level_particles(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
         let mut input = payload;
         let packet = read_level_particles_packet(&mut input)?;

@@ -133,3 +133,38 @@ fn take_item_entity_parser_reads_three_varints() {
     payload.push(0);
     assert!(parse_take_item_entity_packet(&payload).is_err());
 }
+
+#[test]
+fn explode_parser_reads_the_push_the_particles_and_the_sound() {
+    let mut payload = Vec::new();
+    for value in [1.5_f64, 64.0, -2.0] {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    payload.extend_from_slice(&4.0_f32.to_be_bytes());
+    payload.extend_from_slice(&7_i32.to_be_bytes());
+    payload.push(1);
+    for value in [0.25_f64, 0.5, 0.0] {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    let explosion = voxel_data::particle_type::id("explosion").unwrap();
+    voxel_core::wire::write_varint(explosion, &mut payload);
+    let sound = voxel_data::sound_event::id("minecraft:entity.generic.explode").unwrap();
+    voxel_core::wire::write_varint(sound + 1, &mut payload);
+    voxel_core::wire::write_varint(1, &mut payload);
+    let poof = voxel_data::particle_type::id("poof").unwrap();
+    voxel_core::wire::write_varint(poof, &mut payload);
+    payload.extend_from_slice(&0.5_f32.to_be_bytes());
+    payload.extend_from_slice(&1.0_f32.to_be_bytes());
+    voxel_core::wire::write_varint(3, &mut payload);
+    let (read, knockback) = super::super::parse_explode_packet(&payload)
+        .expect("explode")
+        .expect("known options");
+    assert_eq!(knockback, Some((0.25, 0.5, 0.0)));
+    assert_eq!(
+        (read.center, read.radius, read.block_count),
+        ((1.5, 64.0, -2.0), 4.0, 7)
+    );
+    assert_eq!(read.sound, Some("minecraft:entity.generic.explode"));
+    assert_eq!(read.block_particles.len(), 1);
+    assert_eq!(read.block_particles[0].weight, 3);
+}

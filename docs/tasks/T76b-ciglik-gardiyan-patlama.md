@@ -20,3 +20,7 @@ Rust: `crates/voxel-world/src/particles/hit.rs`.
 `docs/records/client-particle-hit-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `Explode` paketi (36; parçacık seçeneği okuyucusu ortak), oyuncu itmesi, `particles/explosion.rs`
+(ses, merkez parçacığı, `ClientExplosionTracker`); patlama seviye olayı kuyruğunda, izleyici tik başında.
+Oracle: `explosions` satırı bit eşit; paket okuyucu birim testli.
+Bölündü: çığlık ve elder gardiyan → T76c.
