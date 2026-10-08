@@ -71,7 +71,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [PLAN-M3d](PLAN-M3d.md) Kalan kap ekranları ve tarif kitabını görevlere böl — S · bitti (f64024d2)
 - [x] [T50](T50-loom-cartography-smithing-oracle.md) Loom, cartography ve smithing ekranlarının oracle'ı — M · bitti (12e5d8ea)
 - [ ] [T51](T51-anvil-sonuc-tahmini.md) Örs ve taş çarkı sonucunun istemci tahmini — L
-- [x] [T52](T52-ipucu-bilesen-hash.md) Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması — M · bölündü (HASH)
+- [x] [T52](T52-ipucu-bilesen-hash.md) Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması — M · bölündü (8c1872eb)
 - [ ] [T52b](T52b-bundle-hasar-zirh-kilidi.md) Bundle tıklaması, hasarlı eşya ve zırh kilidi tahmini — M · bağımlı: T52
 - [x] [T53](T53-beacon.md) İşaret ışığı menüsü ve ekranı (`SetBeacon`) — M · bağımlı: T50 · bitti (184cdc4b)
 - [x] [T54](T54-brewing-stand.md) Simya standı menüsü ve ekranı — M · bitti (20572c47)
