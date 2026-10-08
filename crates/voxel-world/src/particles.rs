@@ -6,6 +6,7 @@
 //! the source is handed in.
 
 mod animate;
+mod animate_blocks;
 mod attract;
 mod colour;
 mod drip;

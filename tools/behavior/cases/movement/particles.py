@@ -211,6 +211,8 @@ def particle_cases():
     yield from particle_quad_cases()
     yield from particle_terrain_cases()
     yield from item_pickup_cases()
+    yield {"case_id": "movement/fire-flammability", "family": "movement", "operation": "fire_flammability",
+           "rows": [{"label": "all"}]}
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
@@ -270,6 +272,19 @@ def torch_at(x, z):
              ("soul_wall_torch", {"facing": facing}), ("copper_wall_torch", {"facing": facing}),
              ("redstone_torch", {"lit": "true"}), ("redstone_torch", {"lit": "false"}),
              ("redstone_wall_torch", {"facing": facing, "lit": "true"})]
+    name, properties = kinds[(x * 3 + z * 5) % len(kinds)]
+    return {"x": x, "y": 64, "z": z, "block": "minecraft:" + name, "properties": properties}
+
+
+def hearth_at(x, z):
+    """Light sources across the plane: campfires, furnaces facing each way, candles, a brewing stand."""
+    facing = ["north", "south", "west", "east"][(x * 7 + z) % 4]
+    kinds = [("campfire", {"lit": "true"}), ("soul_campfire", {"lit": "true"}), ("campfire", {"lit": "false"}),
+             ("furnace", {"lit": "true", "facing": facing}), ("blast_furnace", {"lit": "true", "facing": facing}),
+             ("smoker", {"lit": "true", "facing": facing}), ("furnace", {"lit": "false", "facing": facing}),
+             ("brewing_stand", {}), ("candle", {"lit": "true", "candles": str(1 + (x + z) % 4)}),
+             ("red_candle", {"lit": "true", "candles": "4"}), ("candle", {"lit": "false", "candles": "2"}),
+             ("candle_cake", {"lit": "true"}), ("blue_candle_cake", {"lit": "true"})]
     name, properties = kinds[(x * 3 + z * 5) % len(kinds)]
     return {"x": x, "y": 64, "z": z, "block": "minecraft:" + name, "properties": properties}
 
@@ -372,6 +387,18 @@ def particle_engine_cases():
                    blocks=plane(56, "minecraft:water") + plane(55, "minecraft:stone")
                    + plane(60, "minecraft:lava") + plane(59, "minecraft:glass"),
                    ticks=30, seeds=200, describe=10),
+        engine_row("animate-hearths", [animate_tick(0, (0, 64, 0), 250, 82), animate_tick(1, (1, 64, 2), 250, 83)],
+                   blocks=[hearth_at(x, z) for x in range(-15, 16) for z in range(-15, 16)],
+                   ticks=3, seeds=400, describe=12),
+        # Fire on netherrack rises through itself; fire hung in the air between planks smokes off the burning
+        # faces (and off nothing where a face does not burn); soul fire never floats.
+        engine_row("animate-fire", [animate_tick(0, (0, 66, 0), 400, 84), animate_tick(1, (0, 70, 0), 400, 85)],
+                   blocks=plane(64, "minecraft:netherrack") + plane(65, "minecraft:fire")
+                   + [{"x": x, "y": 70, "z": z, "block": "minecraft:fire" if (x + z) % 2 else "minecraft:oak_planks"}
+                      for x in range(-15, 16) for z in range(-15, 16)]
+                   + [{"x": x, "y": 72, "z": z, "block": "minecraft:soul_fire"} for x in range(-15, 16) for z in range(-15, 16)
+                      if (x * z) % 3 == 0],
+                   ticks=3, seeds=900, describe=12),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

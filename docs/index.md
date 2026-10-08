@@ -108,7 +108,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T40 — Zırh askısı — client-parity](records/client-armor-stand-parity-conformance.md)
 - [T39 — Ok ve spektral ok — client-parity](records/client-arrow-parity-conformance.md)
 - [T35f — Aksolotl — client-parity](records/client-axolotl-parity-conformance.md)
-- [T70e — Blokların rastgele görünüm tiki — client-parity](records/client-block-animate-parity-conformance.md)
+- [T70e, T70f — Blokların rastgele görünüm tiki — client-parity](records/client-block-animate-parity-conformance.md)
 - [T64a — Blok sesleri ve oyuncunun hareket sesleri — client-parity (tablo) · server-conformance (tetikler)](records/client-block-sounds-conformance.md)
 - [T38 — Tekneler, sandıklı tekneler ve sallar — client-parity](records/client-boat-parity-conformance.md)
 - [T44a — Oyuncunun tekneyi sürmesi: `AbstractBoat.tick`, `LocalPlayer.rideTick`, `MoveVehicle`, `PaddleBoat` — client-parity](records/client-boat-ride-parity-conformance.md)

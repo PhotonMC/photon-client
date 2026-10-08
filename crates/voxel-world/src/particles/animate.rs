@@ -9,22 +9,6 @@ use super::super::local_player::{LocalSound, LocalSoundSource};
 use super::engine::{ParticleData, ParticleEngine, Spawn};
 use super::level_events::LevelEventContext;
 
-/// `DustParticleOptions.REDSTONE`: red, full size.
-const REDSTONE: ParticleData = ParticleData::Dust {
-    color: 0xFF_0000,
-    scale: 1.0,
-};
-
-/// The unit step away from the wall a wall torch hangs on (`FACING.getOpposite()`), by facing.
-fn away_from_wall(facing: Option<&str>) -> (f64, f64) {
-    match facing {
-        Some("north") => (0.0, 1.0),
-        Some("south") => (0.0, -1.0),
-        Some("west") => (1.0, 0.0),
-        _ => (-1.0, 0.0),
-    }
-}
-
 impl ParticleEngine {
     /// `ClientLevel.animateTick` around `center`: `count` pairs of picks, near and far (the
     /// reference makes 667 pairs a tick); the sounds they play, in order.
@@ -61,7 +45,7 @@ impl ParticleEngine {
         let y = yt + pick(context.level_random);
         let z = zt + pick(context.level_random);
         let state = context.world.block_state_at(x, y, z).unwrap_or(0);
-        self.block_animate_tick(state, (x, y, z), animate_random, context);
+        self.block_animate_tick(state, (x, y, z), animate_random, (context, sounds));
         let Some(info) = crate::block::state(state as u32) else {
             return;
         };
@@ -83,56 +67,6 @@ impl ParticleEngine {
                 "dripping_water"
             };
             self.try_spawn_drip_particles((x, y - 1, z), drip, sturdy, context);
-        }
-    }
-
-    /// `Block.animateTick` of the blocks carried: the torches.
-    fn block_animate_tick<F: FnMut() -> RandomSource>(
-        &mut self,
-        state: i32,
-        (x, y, z): (i32, i32, i32),
-        random: &mut RandomSource,
-        context: &mut LevelEventContext<'_, F>,
-    ) {
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
-        let name = name.strip_prefix("minecraft:").unwrap_or(name);
-        let (x, y, z) = (f64::from(x) + 0.5, f64::from(y) + 0.7, f64::from(z) + 0.5);
-        let facing = || crate::block::rules::property(state, "facing");
-        let lit = || crate::block::rules::property(state, "lit") == Some("true");
-        let flame = |torch: &str| match torch {
-            "soul" => "soul_fire_flame",
-            "copper" => "copper_fire_flame",
-            _ => "flame",
-        };
-        match name {
-            // `TorchBlock.animateTick`.
-            "torch" | "soul_torch" | "copper_torch" => {
-                let torch = name.trim_end_matches("torch").trim_end_matches('_');
-                self.level_add(context, "smoke", (x, y, z), (0.0, 0.0, 0.0));
-                self.level_add(context, flame(torch), (x, y, z), (0.0, 0.0, 0.0));
-            }
-            // `WallTorchBlock.animateTick`: out from the wall and up.
-            "wall_torch" | "soul_wall_torch" | "copper_wall_torch" => {
-                let torch = name.trim_end_matches("wall_torch").trim_end_matches('_');
-                let (ax, az) = away_from_wall(facing());
-                let at = (x + 0.27 * ax, y + 0.22, z + 0.27 * az);
-                self.level_add(context, "smoke", at, (0.0, 0.0, 0.0));
-                self.level_add(context, flame(torch), at, (0.0, 0.0, 0.0));
-            }
-            // `RedstoneTorchBlock.animateTick` and the wall one's: a lit one's dust, jittered.
-            "redstone_torch" | "redstone_wall_torch" if lit() => {
-                let (ax, az, up) = if name == "redstone_wall_torch" {
-                    let (ax, az) = away_from_wall(facing());
-                    (0.27 * ax, 0.27 * az, 0.22)
-                } else {
-                    (0.0, 0.0, 0.0)
-                };
-                let x = x + (random.next_double() - 0.5) * 0.2 + ax;
-                let y = y + (random.next_double() - 0.5) * 0.2 + up;
-                let z = z + (random.next_double() - 0.5) * 0.2 + az;
-                self.level_add_data(context, "dust", REDSTONE, (x, y, z));
-            }
-            _ => {}
         }
     }
 
@@ -285,7 +219,7 @@ impl ParticleEngine {
     }
 
     /// `Level.addParticle` of a type with options, still.
-    fn level_add_data<F: FnMut() -> RandomSource>(
+    pub(super) fn level_add_data<F: FnMut() -> RandomSource>(
         &mut self,
         context: &mut LevelEventContext<'_, F>,
         name: &str,
@@ -320,10 +254,25 @@ fn ambient<F: FnMut() -> RandomSource>(
     position: (f64, f64, f64),
     context: &mut LevelEventContext<'_, F>,
 ) -> LocalSound {
+    local_sound(
+        (event, LocalSoundSource::Ambient),
+        (volume, pitch),
+        position,
+        context,
+    )
+}
+
+/// `Level.playLocalSound` at a place: its seed drawn from the level's random.
+pub(super) fn local_sound<F: FnMut() -> RandomSource>(
+    (event, source): (&'static str, LocalSoundSource),
+    (volume, pitch): (f32, f32),
+    position: (f64, f64, f64),
+    context: &mut LevelEventContext<'_, F>,
+) -> LocalSound {
     context.level_random.next_long();
     LocalSound {
         event,
-        source: LocalSoundSource::Ambient,
+        source,
         volume,
         pitch,
         position,

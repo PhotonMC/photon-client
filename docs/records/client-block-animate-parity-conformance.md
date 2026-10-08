@@ -1,4 +1,4 @@
-# T70e — Blokların rastgele görünüm tiki — [client-parity]
+# T70e, T70f — Blokların rastgele görünüm tiki — [client-parity]
 
 Bu kayıt `ClientLevel.animateTick` döngüsünü ve ilk blokları kapsar: meşale ailesi, kızıltaş
 meşaleleri, lav ve su. Kanıt sınıfı `client-parity`'dir. `movement/particle-engine`'de gerçek
@@ -23,12 +23,26 @@ Rust'a bit bit eşitlenir.
   akan ve düşmeyen su 1/64 ile `water.ambient`; durgun ya da düşen su 1/10 ile `underwater`.
   Her `playLocalSound` seviye rastgelesinden tohum çeker.
 
+- Ateş (T70f): 1/24 ile `fire.ambient`. Altı yanmıyor ve üst yüzü sağlam değilse yanan her
+  komşu yüzden ikişer büyük duman (`0.1F` ince şerit), değilse kendi içinden üç duman çıkar.
+  Ruh ateşi her yüzü yanar sayar. Yanma `FireBlock`'un ateşleme olasılığına bakar, suya
+  batmışta sıfırdır. Bu tablo oracle'dan yakalanır (`movement/fire-flammability`,
+  `python3 tools/generate/fire.py <capture>/outputs.jsonl`) ve her koşuda tümüyle
+  karşılaştırılır.
+- Kamp ateşi yanarken 1/10 ile çıtırdar. Ruh olmayanı 1/5 ile kıvılcım atar; döngü sınırı
+  (`nextInt(1)+1`) her turdan önce yeniden çekilir.
+- Mum her fitilde 0.3 ile duman ve 0.17 ile ses çıkarır, her durumda küçük alev bırakır.
+  Fitiller `CandleBlock.PARTICLE_OFFSETS`'ten, mumlu pastada üstte tek fitil.
+- Fırın, izabe fırını ve tütsülük 0.1 ile ses çıkarır. Önlerinden duman çıkar (fırında alev
+  de); tütsülükte duman üstten çıkar. Simya standı her seçilişte duman bırakır.
+
 ## Kapsam ve dal kararı
 
-İki satır var: 31×31 meşale düzlemi (dokuz tür/yön karışık) ve lav, durgun, akan ve düşen su
-düzlemleri. Sıvıların altı hava; damla yeri seçilmez ama çekilişi sınanır.
+Satırlar: 31×31 meşale düzlemi (dokuz tür/yön karışık); lav ve su düzlemleri; ocak düzlemi
+(kamp ateşi, fırınlar, mumlar, simya standı); yerde ve tahtalar arasında asılı ateş, ruh ateşi.
+Sıvı altı damlaları `animate-drips` satırındadır (T73b).
 
 ## Sapmalar (açık)
 
 - Biyomun ortam parçacıkları ve yaratıcıdaki işaretçi parçacığı yok.
-- Damla parçacığı yok (T73b); öteki blokların `animateTick`'i T70f'de.
+- Öteki blokların `animateTick`'i T70g'de.

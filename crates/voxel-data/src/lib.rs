@@ -16,6 +16,7 @@ pub mod block_sound;
 pub mod damage_effect;
 pub mod entity_model;
 pub mod entity_type;
+pub mod fire;
 mod generated;
 pub mod item;
 pub mod leash;

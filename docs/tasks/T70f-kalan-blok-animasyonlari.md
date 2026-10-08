@@ -1,4 +1,4 @@
-# T70f — Kalan blokların `animateTick`'i
+# T70f — Ateş, kamp ateşi, mum ve fırın animasyonları
 
 **Amaç:** T70e döngüsüne öteki blok sınıflarını eklemek: ateş ve ruh ateşi (duman, ses), kamp
 ateşi, mumlar ve mumlu pasta, fırın/izabe fırını/tütsülük (yanarken), yaprak (düşen yaprak ve damla),
@@ -22,3 +22,8 @@ Java: ilgili blok sınıflarının `animateTick` yöntemleri (`grep -ln "animate
 `docs/records/client-block-animate-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `particles/animate_blocks.rs` (meşaleler taşındı; ateş ve ruh ateşi, kamp ateşleri, mum ve
+mumlu pasta, fırın/izabe/tütsülük, simya standı). `FireBlock` yanıcılık tablosu oracle'dan yakalanıp
+`tools/generate/fire.py` ile `voxel-data/src/generated/fire.rs`'e yazıldı, her koşuda karşılaştırılır.
+Oracle: `animate-hearths`, `animate-fire`, `fire-flammability` bit eşit.
+Bölündü: kalan bloklar, işaretçi ve ortam parçacıkları → T70g.

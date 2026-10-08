@@ -31,7 +31,7 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %77 bitti** (ağırlıklı) · 225/280 madde işaretli, **55 madde kaldı** (tahmini 99 M-görev eşdeğeri iş).
+**Toplam: %77 bitti** (ağırlıklı) · 226/281 madde işaretli, **55 madde kaldı** (tahmini 99 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████░░░░░░░░` | 62 | 22/34 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `█████████████░░░░░░░` | 64 | 23/35 |
+| M8 Partikül, efekt ve blok entity | `█████████████░░░░░░░` | 65 | 24/36 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94, T95, T96, T64d, T70f, T74b, T75b, T76b, T77b, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94, T95, T96, T64d, T70g, T74b, T75b, T76b, T77b, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -286,9 +286,10 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T71b](T71b-blok-parcacigi-cizimi.md) Blok kırıntılarının çizimi, tintler ve oyuna bağlama — M · bağımlı: T71 · bitti
 - [x] [T72](T72-yukselen-parcaciklar.md) Yükselen duman/ateş aileleri — M · bağımlı: T70b · bitti (347718df)
 - [x] [T70e](T70e-blok-animasyon-tiki.md) Blokların rastgele görünüm tiki (`animateTick`): meşale, lav, su — M · bağımlı: T70b, T75 · bitti (55e57c33)
-- [ ] [T70f](T70f-kalan-blok-animasyonlari.md) Kalan blokların `animateTick`'i ve ortam parçacıkları — L · bağımlı: T70e, T73b
+- [x] [T70f](T70f-kalan-blok-animasyonlari.md) Ateş, kamp ateşi, mum ve fırın animasyonları — L · bağımlı: T70e, T73b · bölündü
+- [ ] [T70g](T70g-doga-portal-animasyonlari.md) Doğa, portal ve kızıltaş blok animasyonları, ortam parçacıkları — L · bağımlı: T70f
 - [x] [T73](T73-su-parcaciklari.md) Su ve kabarcık parçacıkları — M · bağımlı: T70b · bitti (430873ec)
-- [x] [T73b](T73b-damlama-parcaciklari.md) Damlama parçacıkları (`DripParticle` ailesi) — M · bağımlı: T73 · bitti
+- [x] [T73b](T73b-damlama-parcaciklari.md) Damlama parçacıkları (`DripParticle` ailesi) — M · bağımlı: T73 · bitti (b58c9f67)
 - [x] [T74](T74-toz-buyu-parcaciklari.md) Toz, büyü ve renkli parçacıklar — M · bağımlı: T70b · bitti (e82e6d38)
 - [ ] [T74b](T74b-dusen-toz-havai-fisek.md) Düşen toz ve havai fişek parçacıkları — M · bağımlı: T74
 - [x] [T75](T75-cekim-parcaciklari.md) Portal, büyü masası ve çeken parçacıklar — M · bağımlı: T70b · bitti (40baea57)

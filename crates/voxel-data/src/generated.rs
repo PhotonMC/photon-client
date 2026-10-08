@@ -12,6 +12,7 @@ pub mod entity_picks;
 pub mod entity_serializers;
 pub mod entity_types;
 pub mod entity_variants;
+pub mod fire;
 pub mod item;
 pub mod map_data;
 pub mod painting_variants;

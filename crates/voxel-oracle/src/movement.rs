@@ -40,6 +40,14 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "particle_engine" {
         return particle_engine_result(request);
     }
+    if string(request, "operation")? == "fire_flammability" {
+        // `FireBlock`'s odds, as the data crate carries them.
+        let blocks: Vec<Value> = voxel_data::fire::all()
+            .iter()
+            .map(|(name, ignite, burn)| json!({"name": name, "ignite": ignite, "burn": burn}))
+            .collect();
+        return Ok(json!({"rows": [{"label": "all", "blocks": blocks}]}));
+    }
     if string(request, "operation")? == "item_pickup" {
         return item_pickup_result(request);
     }
