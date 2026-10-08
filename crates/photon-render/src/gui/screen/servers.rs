@@ -65,6 +65,9 @@ pub struct JoinMultiplayerScreen {
     /// The saved servers' names, in the list's order, and what their pings found.
     names: Vec<String>,
     pings: Vec<Option<PingView>>,
+    /// The texture each server's icon is drawn from (`FaviconTexture.textureLocation`), when it
+    /// has one in the atlas.
+    icons: Vec<Option<String>>,
     selected: Option<Selected>,
     /// Whether the list has the focus (a click on it gives it), which whitens the selection.
     list_focused: bool,
@@ -109,6 +112,7 @@ impl JoinMultiplayerScreen {
             buttons,
             title,
             pings: vec![None; names.len()],
+            icons: vec![None; names.len()],
             names,
             selected: None,
             list_focused: false,
@@ -297,7 +301,9 @@ impl JoinMultiplayerScreen {
         frame.styled_text(atlas, font, &name, x + ICON + 3, y + 1, 0xFFFF_FFFF, true);
         frame.blit_texture(
             atlas,
-            "textures/misc/unknown_server",
+            self.icons[index]
+                .as_deref()
+                .unwrap_or("textures/misc/unknown_server"),
             (ICON, ICON),
             (0, 0),
             x,
@@ -450,6 +456,7 @@ impl JoinMultiplayerScreen {
             Some(ServersAction::Swap(from, to)) => {
                 self.names.swap(from, to);
                 self.pings.swap(from, to);
+                self.icons.swap(from, to);
                 to
             }
             _ => index,
@@ -509,6 +516,13 @@ struct PingView {
 }
 
 impl JoinMultiplayerScreen {
+    /// The texture the icon of the server at `index` is drawn from, none for the unknown one.
+    pub fn set_icon(&mut self, index: usize, texture: Option<String>) {
+        if let Some(slot) = self.icons.get_mut(index) {
+            *slot = texture;
+        }
+    }
+
     /// What a ping of the saved server at `index` found.
     pub fn set_pinged(&mut self, index: usize, pinged: &Pinged, font: &Font, lang: &Lang) {
         let runs = |component: &Component| lang.runs(component, &Style::default());

@@ -57,14 +57,19 @@ pub(super) fn join_multiplayer_screen_case(
     ctx: &mut GuiContext,
     row: &Value,
 ) -> Result<Value, String> {
-    let (font, atlas) = (&ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let lang = photon_game::text::Lang::load(&ctx.root);
-    let names = row["servers"]
+    let font = &ctx.font;
+    let names: Vec<String> = row["servers"]
         .as_array()
         .ok_or("servers")?
         .iter()
         .map(|name| name.as_str().unwrap_or_default().to_owned())
+        .collect();
+    // The saved servers, all at the address the reference's oracle saves them under.
+    let mut saved: Vec<photon_game::servers::ServerData> = names
+        .iter()
+        .map(|name| photon_game::servers::ServerData::new(name, "127.0.0.1:1"))
         .collect();
     let mut screen = photon_render::gui::screen::servers::JoinMultiplayerScreen::new(
         font,
@@ -84,7 +89,25 @@ pub(super) fn join_multiplayer_screen_case(
             Pinged::answered(&status, ping["ping"].as_i64().unwrap_or(0))
         };
         screen.set_pinged(index, &pinged, font, &lang);
+        if let (Some(favicon), Some(server)) = (&pinged.favicon, saved.get_mut(index)) {
+            server.apply_ping_icon(favicon);
+        }
     }
+    // Each entry's check of its icon, as its draw makes it.
+    let mut shown = Vec::new();
+    for (index, server) in saved.iter_mut().enumerate() {
+        let sync = photon_render::gui::favicon::sync_server_icon(
+            &mut ctx.atlas,
+            &mut ctx.atlas_image,
+            server,
+            &mut None,
+        );
+        if let Some(sync) = sync {
+            screen.set_icon(index, sync.texture);
+            shown.push(photon_render::gui::favicon::texture_name(&server.ip));
+        }
+    }
+    let atlas = &ctx.atlas;
     for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         let x = step["x"].as_f64().unwrap_or(0.0);
         let y = step["y"].as_f64().unwrap_or(0.0);
@@ -106,9 +129,14 @@ pub(super) fn join_multiplayer_screen_case(
         ..GuiFrame::default()
     };
     screen.draw(&mut frame, atlas, font, mouse);
+    let ops = gui_ops(&frame.log.take().unwrap_or_default());
+    // The icons go back, for the rows that follow share the atlas.
+    for name in shown {
+        ctx.atlas.set_favicon(&mut ctx.atlas_image, &name, None);
+    }
     Ok(json!({
         "label": row["label"],
-        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+        "ops": ops,
     }))
 }
 

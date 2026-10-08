@@ -109,10 +109,52 @@ fn sprite_names(root: &Path) -> Vec<String> {
     names
 }
 
+/// How many server icons the atlas holds at once.
+const FAVICON_SLOTS: usize = 32;
+/// `FaviconTexture`'s width and height.
+const FAVICON_SIZE: u32 = 64;
+/// The name the reserved icon slots are stitched under.
+const FAVICON_SLOT_PREFIX: &str = "minecraft:favicon_slot/";
+
+/// A place in the atlas for one server icon, which a texture name can claim.
+#[derive(Debug, Clone)]
+struct FaviconSlot {
+    /// The slot's corner in texels.
+    origin: (u32, u32),
+    uv: [f32; 4],
+    /// The sprite key it is claimed under.
+    key: Option<String>,
+}
+
+/// Room for the icons servers send, filled while the game runs.
+fn register_favicon_slots(
+    stitcher: &mut Stitcher,
+    images: &mut BTreeMap<String, DecodedImage>,
+) -> Option<()> {
+    for slot in 0..FAVICON_SLOTS {
+        let key = format!("{FAVICON_SLOT_PREFIX}{slot}");
+        stitcher.register_sprite(SpriteEntry {
+            width: FAVICON_SIZE as i32,
+            height: FAVICON_SIZE as i32,
+            name: Identifier::parse(&key).ok()?,
+        });
+        images.insert(
+            key,
+            DecodedImage {
+                width: FAVICON_SIZE,
+                height: FAVICON_SIZE,
+                rgba: vec![0; (FAVICON_SIZE * FAVICON_SIZE * 4) as usize],
+            },
+        );
+    }
+    Some(())
+}
+
 /// The GUI sprites packed into one texture.
 #[derive(Debug, Clone)]
 pub struct GuiAtlas {
     sprites: BTreeMap<String, [f32; 4]>,
+    favicons: Vec<FaviconSlot>,
 }
 
 impl GuiAtlas {
@@ -172,6 +214,7 @@ impl GuiAtlas {
             });
             images.insert(key, image);
         }
+        register_favicon_slots(&mut stitcher, &mut images)?;
         // One white texel, which fills are drawn with.
         stitcher.register_sprite(SpriteEntry {
             width: 1,
@@ -195,6 +238,7 @@ impl GuiAtlas {
             rgba: vec![0; (width * height * 4) as usize],
         };
         let mut sprites = BTreeMap::new();
+        let mut favicons = Vec::new();
         for placement in stitcher.placements() {
             let key = placement.name.as_string();
             let image = &images[&key];
@@ -213,9 +257,66 @@ impl GuiAtlas {
                 width as i32,
                 height as i32,
             );
-            sprites.insert(key, [sprite.u0, sprite.v0, sprite.u1, sprite.v1]);
+            let uv = [sprite.u0, sprite.v0, sprite.u1, sprite.v1];
+            if key.starts_with(FAVICON_SLOT_PREFIX) {
+                favicons.push(FaviconSlot {
+                    origin: (left, top),
+                    uv,
+                    key: None,
+                });
+            } else {
+                sprites.insert(key, uv);
+            }
         }
-        Some((Self { sprites }, atlas))
+        Some((Self { sprites, favicons }, atlas))
+    }
+
+    /// Every icon texture released (`FaviconTexture.close` of the entries of a list that is gone).
+    pub fn clear_favicons(&mut self) {
+        for slot in &mut self.favicons {
+            if let Some(key) = slot.key.take() {
+                self.sprites.remove(&key);
+            }
+        }
+    }
+
+    /// `FaviconTexture.upload` and `clear` of the texture `name`: put a 64 by 64 `icon` where the
+    /// texture is drawn from, or take the texture out. Whether `atlas`, the image `load` made,
+    /// changed and is to be sent to the GPU again. An icon with no slot left is not shown.
+    pub fn set_favicon(
+        &mut self,
+        atlas: &mut DecodedImage,
+        name: &str,
+        icon: Option<&DecodedImage>,
+    ) -> bool {
+        let key = format!("minecraft:texture/{name}");
+        let claimed = self
+            .favicons
+            .iter()
+            .position(|slot| slot.key.as_deref() == Some(&key));
+        let Some(icon) = icon else {
+            let Some(index) = claimed else {
+                return false;
+            };
+            self.favicons[index].key = None;
+            self.sprites.remove(&key);
+            return false;
+        };
+        let Some(index) =
+            claimed.or_else(|| self.favicons.iter().position(|slot| slot.key.is_none()))
+        else {
+            return false;
+        };
+        let slot = &mut self.favicons[index];
+        slot.key = Some(key.clone());
+        self.sprites.insert(key, slot.uv);
+        let row_bytes = (FAVICON_SIZE * 4) as usize;
+        for row in 0..FAVICON_SIZE {
+            let from = row as usize * row_bytes;
+            let to = (((slot.origin.1 + row) * atlas.width + slot.origin.0) * 4) as usize;
+            atlas.rgba[to..to + row_bytes].copy_from_slice(&icon.rgba[from..from + row_bytes]);
+        }
+        true
     }
 
     pub(crate) fn sprite(&self, name: &str) -> [f32; 4] {

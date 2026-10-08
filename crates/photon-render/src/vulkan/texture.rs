@@ -375,18 +375,38 @@ impl VulkanBackend {
             scene.map_set = Some(set);
             return Ok(());
         }
+        let (set, sampler) = {
+            let scene = self.scene.as_ref().expect("checked above");
+            let texture = scene.map_texture.as_ref().expect("made with the set");
+            (
+                scene.map_set.expect("checked above"),
+                texture.sampler.handle,
+            )
+        };
+        let image = self.replace_image(image, set, sampler)?;
+        if let Some(texture) = self
+            .scene
+            .as_mut()
+            .and_then(|scene| scene.map_texture.as_mut())
+        {
+            texture.image = image;
+        }
+        Ok(())
+    }
+
+    /// Upload `image` and make the descriptor `set` point at it with `sampler`; the image it
+    /// pointed at is left to the caller to drop. The device is made idle first, so nothing in
+    /// flight still reads the old one.
+    fn replace_image(
+        &mut self,
+        image: &DecodedImage,
+        set: vk::DescriptorSet,
+        sampler: vk::Sampler,
+    ) -> Result<Image, VulkanError> {
         // SAFETY: live handles; `device_wait_idle` runs before an old texture is replaced.
         unsafe {
             let _ = self.device.device_wait_idle();
             let image = self.upload_texture(std::slice::from_ref(image))?;
-            let scene = self.scene.as_mut().expect("checked above");
-            let set = scene.map_set.expect("checked above");
-            let sampler = scene
-                .map_texture
-                .as_ref()
-                .expect("made with the set")
-                .sampler
-                .handle;
             let image_info = [vk::DescriptorImageInfo::default()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 .image_view(image.view)
@@ -397,10 +417,27 @@ impl VulkanBackend {
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
-            // The old image is dropped after the set points at the new one; the device is idle.
-            if let Some(texture) = scene.map_texture.as_mut() {
-                texture.image = image;
-            }
+            Ok(image)
+        }
+    }
+
+    /// Hand over the GUI atlas again after icons were put into it: the descriptor set is kept and
+    /// made to point at the new image.
+    pub fn replace_gui_texture(&mut self, atlas: &DecodedImage) -> Result<(), VulkanError> {
+        let Some((set, sampler)) = self
+            .scene
+            .as_ref()
+            .and_then(|scene| Some((scene.gui_set?, scene.gui_texture.as_ref()?.sampler.handle)))
+        else {
+            return Ok(());
+        };
+        let image = self.replace_image(atlas, set, sampler)?;
+        if let Some(texture) = self
+            .scene
+            .as_mut()
+            .and_then(|scene| scene.gui_texture.as_mut())
+        {
+            texture.image = image;
         }
         Ok(())
     }

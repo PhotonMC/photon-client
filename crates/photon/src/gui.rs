@@ -38,6 +38,8 @@ pub struct Gui {
     pub(super) font: Arc<Font>,
     pub(super) alt_font: Arc<Font>,
     pub(super) atlas: GuiAtlas,
+    /// The atlas as the GPU has it, which server icons are put into.
+    pub(super) atlas_image: photon_render::texture::png::DecodedImage,
     pub(super) lang: Arc<Lang>,
     /// Where the other languages are, if the asset folder has them.
     pub(super) languages: Option<Arc<photon_game::language::LanguageSource>>,

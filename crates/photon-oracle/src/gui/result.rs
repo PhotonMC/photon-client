@@ -24,6 +24,8 @@ pub(super) struct GuiContext {
     pub(super) root: std::path::PathBuf,
     pub(super) font: Font,
     pub(super) atlas: GuiAtlas,
+    /// The atlas as the GPU has it, which icons are put into.
+    pub(super) atlas_image: photon_render::texture::png::DecodedImage,
     pub(super) languages: Option<photon_game::language::LanguageSource>,
 }
 
@@ -35,7 +37,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
         .join("../../.data/minecraft/assets/jar/assets");
     let font = Font::load(&root).ok_or("font")?;
     let alt = Font::load_alt(&root).ok_or("alt font")?;
-    let (atlas, _) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
+    let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
     if request["operation"] == "key_mappings" {
         return Ok(key_mappings());
     }
@@ -53,6 +55,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
         root,
         font,
         atlas,
+        atlas_image,
         languages: None,
     };
     let operation = crate::string(request, "operation")?;

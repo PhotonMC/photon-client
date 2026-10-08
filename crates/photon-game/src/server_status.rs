@@ -120,6 +120,8 @@ pub struct Pinged {
     pub version: Component,
     pub ping: i64,
     pub player_list: Vec<Component>,
+    /// The favicon the answer carried, to be offered to the saved server (`apply_ping_icon`).
+    pub favicon: Option<Vec<u8>>,
 }
 
 /// `ServerStatusPinger.formatPlayerCount`.
@@ -184,6 +186,7 @@ impl Pinged {
             version,
             ping,
             player_list,
+            favicon: status.favicon.clone(),
         }
     }
 
@@ -205,6 +208,7 @@ impl Pinged {
             version: Component::empty(),
             ping: 0,
             player_list: Vec::new(),
+            favicon: None,
         }
     }
 }

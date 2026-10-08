@@ -1,4 +1,30 @@
-//! `java.util.Base64.getDecoder()`: the standard alphabet with `=` padding, nothing else allowed.
+//! `java.util.Base64.getDecoder()`/`getEncoder()`: the standard alphabet with `=` padding,
+//! nothing else allowed on decode.
+
+const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// `Base64.getEncoder()`: the standard alphabet, `=` padded, on one line.
+pub fn encode(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let bits = chunk
+            .iter()
+            .enumerate()
+            .fold(0_u32, |bits, (index, &byte)| {
+                bits | u32::from(byte) << (16 - 8 * index)
+            });
+        for index in 0..4 {
+            if index <= chunk.len() {
+                out.push(char::from(
+                    ALPHABET[(bits >> (18 - 6 * index) & 63) as usize],
+                ));
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
 
 /// The bytes `text` encodes, or none when it is not valid base64.
 pub fn decode(text: &str) -> Option<Vec<u8>> {
@@ -45,5 +71,15 @@ mod tests {
         assert_eq!(super::decode("TQ").as_deref(), Some(&b"M"[..]));
         assert_eq!(super::decode("T"), None);
         assert_eq!(super::decode("T!=="), None);
+    }
+
+    #[test]
+    fn encodes_with_padding_and_round_trips() {
+        assert_eq!(super::encode(b"Man"), "TWFu");
+        assert_eq!(super::encode(b"Ma"), "TWE=");
+        assert_eq!(super::encode(b"M"), "TQ==");
+        assert_eq!(super::encode(b""), "");
+        let bytes: Vec<u8> = (0..=255).collect();
+        assert_eq!(super::decode(&super::encode(&bytes)), Some(bytes));
     }
 }

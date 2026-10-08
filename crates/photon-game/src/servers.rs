@@ -37,6 +37,26 @@ impl ServerData {
         }
     }
 
+    /// `ServerData.getIconBytes`.
+    pub fn icon_bytes(&self) -> Option<Vec<u8>> {
+        self.icon.as_deref().and_then(photon_core::base64::decode)
+    }
+
+    /// `ServerData.setIconBytes`.
+    pub fn set_icon_bytes(&mut self, bytes: Option<&[u8]>) {
+        self.icon = bytes.map(photon_core::base64::encode);
+    }
+
+    /// What `handleStatusResponse` does with an answer's favicon: a different one replaces the
+    /// saved icon, kept only when `validate_icon` takes it. Whether the list needs saving.
+    pub fn apply_ping_icon(&mut self, favicon: &[u8]) -> bool {
+        if self.icon_bytes().as_deref() == Some(favicon) {
+            return false;
+        }
+        self.set_icon_bytes(validate_icon(favicon));
+        true
+    }
+
     /// `ServerData.read`.
     fn read(fields: &[Field]) -> Self {
         let string = |key: &str| match field(fields, key) {
@@ -46,7 +66,7 @@ impl ServerData {
         Self {
             name: string("name").unwrap_or_default(),
             ip: string("ip").unwrap_or_default(),
-            icon: string("icon"),
+            icon: string("icon").filter(|text| photon_core::base64::decode(text).is_some()),
             pack_status: match field(fields, "acceptTextures") {
                 Some(FieldValue::Byte(0)) => PackStatus::Disabled,
                 Some(FieldValue::Byte(_)) => PackStatus::Enabled,
@@ -86,6 +106,23 @@ impl ServerData {
         fields.push(entry("hidden", FieldValue::Byte(i8::from(hidden))));
         FieldValue::Compound(fields)
     }
+}
+
+/// `ServerData.validateIcon`: a PNG no bigger than 1024 by 1024, judged by its header alone.
+pub fn validate_icon(bytes: &[u8]) -> Option<&[u8]> {
+    const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1A, b'\n'];
+    let header = bytes.get(..24)?;
+    let size = |at: usize| {
+        u32::from_be_bytes([header[at], header[at + 1], header[at + 2], header[at + 3]])
+    };
+    // Java reads the width and height as signed ints; a negative one is under the limit.
+    let fits = |value: u32| (value as i32) <= 1024;
+    (header[..8] == SIGNATURE
+        && size(8) == 13
+        && header[12..16] == *b"IHDR"
+        && fits(size(16))
+        && fits(size(20)))
+    .then_some(bytes)
 }
 
 fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
@@ -275,6 +312,39 @@ mod tests {
     }
 
     use super::*;
+
+    /// The header of a PNG of `width` by `height`.
+    fn png_header(width: u32, height: u32) -> Vec<u8> {
+        let mut bytes = vec![
+            0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1A, b'\n', 0, 0, 0, 13,
+        ];
+        bytes.extend_from_slice(b"IHDR");
+        bytes.extend_from_slice(&width.to_be_bytes());
+        bytes.extend_from_slice(&height.to_be_bytes());
+        bytes
+    }
+
+    #[test]
+    fn icons_are_kept_up_to_1024_by_1024() {
+        assert!(validate_icon(&png_header(64, 64)).is_some());
+        assert!(validate_icon(&png_header(1024, 1024)).is_some());
+        assert!(validate_icon(&png_header(1025, 1)).is_none());
+        assert!(validate_icon(&png_header(1, 1025)).is_none());
+        assert!(validate_icon(b"not a png at all, just text").is_none());
+        assert!(validate_icon(&png_header(64, 64)[..20]).is_none());
+    }
+
+    #[test]
+    fn a_pinged_icon_replaces_the_saved_one_once() {
+        let mut server = ServerData::new("a", "b");
+        let icon = png_header(64, 64);
+        assert!(server.apply_ping_icon(&icon));
+        assert_eq!(server.icon_bytes(), Some(icon.clone()));
+        assert!(!server.apply_ping_icon(&icon));
+        // An icon past the limit is a change that leaves no icon.
+        assert!(server.apply_ping_icon(&png_header(2000, 2000)));
+        assert_eq!(server.icon, None);
+    }
 
     #[test]
     fn a_saved_list_reads_back() {

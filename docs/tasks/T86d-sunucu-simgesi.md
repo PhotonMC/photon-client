@@ -27,3 +27,7 @@ G: `join_multiplayer_screen` satırlarına favicon'lu yanıt (`texture` op adı 
 `docs/gui-oracle.md` satırı.
 
 ## Devir notu
+- Yapıldı: base64 kodlayıcı ve SHA-1 (`photon-core`), `ServerData` simge işlemleri ve `validateIcon` (`photon-game/servers.rs`), atlasta 32 simge yuvası (`GuiAtlas::set_favicon`, `gui/favicon.rs`), Vulkan'da atlasın yeniden gönderilmesi (`replace_gui_texture`), menüde ping → kaydet → çiz (`menu/icons.rs`). G: `gui/server-list-icons` (10 satır) yeşil; sahte durum sunucusuyla canlıda simge görüldü ve `servers.dat`'a yazıldı.
+- Sapma: simge sayısı 32 ile sınırlı (Java sınırsız); fazlası bilinmeyen simgeyle çizilir. Atlas yeni simgede baştan gönderilir (`device_wait_idle`), nadir olay.
+- Oracle: Java'da `DynamicTexture` GPU ister; yalnız 64×64 başlıklı PNG için GPU'suz doku takılır, geri kalan `FaviconTexture.upload` gerçek.
+- Açık: LAN girdileri, dünya (`forWorld`) simgeleri; kapıdaki `movement/particle-engine` farkı Q04'ten, bu görevden değil.

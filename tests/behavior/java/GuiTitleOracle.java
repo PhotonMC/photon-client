@@ -151,10 +151,50 @@ class GuiTitleOracle extends GuiSettingsOracle {
             server.playerList = names;
         }, () -> server.status = net.minecraft.network.chat.Component.translatable("multiplayer.status.unknown")
             .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        status.favicon().ifPresent(newIcon -> {
+            if (!java.util.Arrays.equals(newIcon.iconBytes(), server.getIconBytes())) {
+                server.setIconBytes(net.minecraft.client.multiplayer.ServerData.validateIcon(newIcon.iconBytes()));
+            }
+        });
         server.ping = ping.get("ping").getAsLong();
         server.setState(server.protocol == net.minecraft.SharedConstants.getCurrentVersion().protocolVersion()
             ? net.minecraft.client.multiplayer.ServerData.State.SUCCESSFUL
             : net.minecraft.client.multiplayer.ServerData.State.INCOMPATIBLE);
+    }
+
+    /** A texture that takes pixels and uploads nothing: the icon's GPU side, which a headless run has none of. */
+    static class NoGpuTexture extends net.minecraft.client.renderer.texture.DynamicTexture {
+        NoGpuTexture() {
+            super(() -> "", new com.mojang.blaze3d.platform.NativeImage(1, 1, false));
+        }
+
+        @Override
+        public void setPixels(com.mojang.blaze3d.platform.NativeImage pixels) {
+        }
+
+        @Override
+        public void upload() {
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    /**
+     * The entry's icon with a GPU-less texture in it where the game's upload would reach the GPU
+     * (a PNG whose header says 64x64), so the rest of `FaviconTexture.upload` (the registration)
+     * runs; elsewhere the icon is left as the game makes it and its own upload rejects the image.
+     */
+    static void presetIcon(Object entry, byte[] bytes) throws Exception {
+        if (bytes == null || bytes.length < 24 || java.nio.ByteBuffer.wrap(bytes).getInt(16) != 64
+            || java.nio.ByteBuffer.wrap(bytes).getInt(20) != 64) {
+            return;
+        }
+        var iconField = entry.getClass().getDeclaredField("icon");
+        iconField.setAccessible(true);
+        var icon = iconField.get(entry);
+        set(icon, "texture", unsafe.allocateInstance(NoGpuTexture.class));
     }
 
     /**
@@ -207,6 +247,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
                     refresh.setAccessible(true);
                     refresh.invoke(selection.children().get(i));
                 }
+                presetIcon(selection.children().get(i), server.getIconBytes());
             }
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();

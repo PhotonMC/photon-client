@@ -18,6 +18,7 @@ impl Gui {
             font,
             alt_font,
             atlas,
+            atlas_image: texture,
             lang: Arc::new(Lang::load(root)),
             languages: photon_game::language::LanguageSource::open(root).map(Arc::new),
             registries: Arc::new(registries),

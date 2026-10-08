@@ -3,6 +3,7 @@
 
 pub mod atlas;
 pub mod chat;
+pub mod favicon;
 pub mod font;
 pub mod frame;
 pub mod hud;

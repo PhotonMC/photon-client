@@ -163,3 +163,58 @@ def gui_server_list_ping_cases():
     ]
     yield {"case_id": "gui/server-list-pings", "family": "gui", "operation": "join_multiplayer_screen",
            "rows": rows}
+
+
+def _png(width, height, seed=0):
+    """A valid RGB PNG of a gradient, made with the standard library only."""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    rows = b"".join(
+        b"\x00" + bytes(value for x in range(width)
+                        for value in ((x * 4 + seed) % 256, (y * 4) % 256, (x + y + seed) % 256))
+        for y in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+def gui_server_icon_cases():
+    """The server list's icons: a 64x64 favicon the entry uploads and blits, one the game rejects
+    for its size (a valid PNG, so it is kept until the entry fails to upload it), one past the
+    1024 limit, bytes that are no PNG, a malformed data URL, a server without one, and icons on
+    only some of the servers."""
+    import base64
+    import json
+
+    def favicon(data):
+        return "data:image/png;base64," + base64.b64encode(data).decode()
+
+    def ping(favicon_text=None):
+        status = {"description": "icon", "version": {"name": "26.2", "protocol": 776},
+                  "players": {"max": 20, "online": 1}}
+        if favicon_text is not None:
+            status["favicon"] = favicon_text
+        return {"json": json.dumps(status), "ping": 40}
+
+    def row(label, pings):
+        return {"label": label, "servers": ["Alpha", "Beta Server", "Gamma"][:len(pings)],
+                "pings": pings, "width": 427, "height": 240, "mouse": [0, 0], "steps": [], "ms": 0}
+
+    rows = [
+        row("icon-64", [ping(favicon(_png(64, 64)))]),
+        row("icon-64-second", [ping(), ping(favicon(_png(64, 64, 7)))]),
+        row("icon-32-rejected", [ping(favicon(_png(32, 32)))]),
+        row("icon-too-large", [ping(favicon(_png(1025, 1)))]),
+        row("icon-1024-rejected", [ping(favicon(_png(1024, 1)))]),
+        row("icon-not-png", [ping(favicon(b"not a png at all, just text"))]),
+        row("icon-bad-prefix", [ping("data:image/jpeg;base64,AAAA")]),
+        row("icon-bad-base64", [ping("data:image/png;base64,!!!")]),
+        row("icon-none", [ping()]),
+        row("icon-three", [ping(favicon(_png(64, 64, 1))), ping(favicon(_png(32, 32))), ping()]),
+    ]
+    yield {"case_id": "gui/server-list-icons", "family": "gui", "operation": "join_multiplayer_screen",
+           "rows": rows}

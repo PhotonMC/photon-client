@@ -22,6 +22,8 @@ use photon_render::gui::widgets::navigation::Direction;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
+mod icons;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// The reference holds a menu with no level to sixty frames a second.
@@ -105,6 +107,10 @@ struct Menu {
     last_click: Option<(Instant, (i32, i32))>,
     /// The answers of the open list's pings, by the address asked.
     pings: Option<std::sync::mpsc::Receiver<(String, Pinged)>>,
+    /// The icon bytes each entry of the open list shows, by index.
+    icons_shown: Vec<Option<Vec<u8>>>,
+    /// Whether the entries' icons are to be checked again.
+    icons_dirty: bool,
 }
 
 impl Menu {
@@ -153,6 +159,8 @@ impl Menu {
             mouse: (0, 0),
             last_click: None,
             pings: None,
+            icons_shown: Vec::new(),
+            icons_dirty: false,
         })
     }
 
@@ -173,6 +181,9 @@ impl Menu {
     fn server_list(&mut self, size: (i32, i32)) -> Screen {
         self.servers = ServerList::load(&self.game_directory);
         self.pings = Some(ping_all(&self.servers));
+        self.gui.atlas.clear_favicons();
+        self.icons_shown.clear();
+        self.icons_dirty = true;
         let names = self
             .servers
             .servers
@@ -198,6 +209,7 @@ impl Menu {
             play::fit_swapchain(client)?;
             let size = gui_size(client);
             self.receive_pings();
+            self.sync_icons(client)?;
             if let Screen::Connecting(_, task) = &self.screen
                 && let Some(result) = task.finished()
             {
@@ -367,6 +379,7 @@ impl Menu {
             return;
         };
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+        let mut icons = Vec::new();
         while let Ok((ip, pinged)) = pings.try_recv() {
             if let Some(index) = self
                 .servers
@@ -375,7 +388,13 @@ impl Menu {
                 .position(|server| server.ip == ip)
             {
                 screen.set_pinged(index, &pinged, font, lang);
+                if let Some(favicon) = &pinged.favicon {
+                    icons.push((index, favicon.clone()));
+                }
             }
+        }
+        for (index, favicon) in icons {
+            self.offer_ping_icon(index, &favicon);
         }
     }
 
@@ -517,6 +536,9 @@ impl Menu {
             }
             Some(ServersAction::Swap(from, to)) => {
                 self.servers.swap(from, to);
+                if from.max(to) < self.icons_shown.len() {
+                    self.icons_shown.swap(from, to);
+                }
                 self.servers.save(&self.game_directory)?;
             }
             Some(ServersAction::Refresh) => self.screen = self.server_list(size),
