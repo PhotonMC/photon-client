@@ -16,8 +16,20 @@ use super::terrain::TerrainMaterials;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Provider {
     Smoke,
+    LargeSmoke,
+    WhiteSmoke,
+    Ash,
+    WhiteAsh,
+    DustPlume,
     Flame,
     SmallFlame,
+    Soul,
+    SculkSoul,
+    Lava,
+    CosySmoke,
+    SignalSmoke,
+    Cloud,
+    Sneeze,
     Terrain,
     Crumbling,
     DustPillar,
@@ -27,8 +39,20 @@ enum Provider {
 fn provider_of(name: &str) -> Option<Provider> {
     Some(match name {
         "smoke" => Provider::Smoke,
+        "large_smoke" => Provider::LargeSmoke,
+        "white_smoke" => Provider::WhiteSmoke,
+        "ash" => Provider::Ash,
+        "white_ash" => Provider::WhiteAsh,
+        "dust_plume" => Provider::DustPlume,
         "flame" | "soul_fire_flame" | "copper_fire_flame" => Provider::Flame,
         "small_flame" => Provider::SmallFlame,
+        "soul" => Provider::Soul,
+        "sculk_soul" => Provider::SculkSoul,
+        "lava" => Provider::Lava,
+        "campfire_cosy_smoke" => Provider::CosySmoke,
+        "campfire_signal_smoke" => Provider::SignalSmoke,
+        "cloud" => Provider::Cloud,
+        "sneeze" => Provider::Sneeze,
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
@@ -117,8 +141,24 @@ impl ParticleResources {
         let sprites = self.sprite_sets.get(name)?;
         let random = random();
         Some(match provider {
-            Provider::Smoke => Particle::smoke(random, at, push, sprites),
+            Provider::Smoke => Particle::smoke(random, at, push, sprites, 1.0),
+            Provider::LargeSmoke => Particle::smoke(random, at, push, sprites, 2.5),
+            Provider::WhiteSmoke => Particle::white_smoke(random, at, push, sprites),
+            Provider::Ash => Particle::ash(random, at, sprites),
+            Provider::WhiteAsh => Particle::white_ash(random, at, sprites, engine_random),
+            Provider::DustPlume => Particle::dust_plume(random, at, push, sprites),
             Provider::Flame => Particle::flame(random, at, push, sprites, engine_random),
+            Provider::Soul => Particle::soul(random, at, push, sprites, false),
+            Provider::SculkSoul => Particle::soul(random, at, push, sprites, true),
+            Provider::Lava => Particle::lava(random, at, sprites, engine_random),
+            Provider::CosySmoke => {
+                Particle::campfire_smoke(random, at, push, (sprites, false), engine_random)
+            }
+            Provider::SignalSmoke => {
+                Particle::campfire_smoke(random, at, push, (sprites, true), engine_random)
+            }
+            Provider::Cloud => Particle::player_cloud(random, at, push, sprites, false),
+            Provider::Sneeze => Particle::player_cloud(random, at, push, sprites, true),
             _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
     }

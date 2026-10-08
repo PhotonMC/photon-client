@@ -25,7 +25,7 @@ impl Particle {
             at,
             (0.0, 0.0, 0.0),
             (sprites, sprites.first()),
-            Kind::AshSmoke,
+            Kind::AshSmoke { decays: false },
         )
         .quad();
         particle.friction = 0.96;
@@ -51,21 +51,100 @@ impl Particle {
         particle
     }
 
-    /// `SmokeParticle.Provider`: smoke, which goes where it is pushed and rises.
+    /// `SmokeParticle.Provider` and `LargeSmokeParticle.Provider` (two and a half times the
+    /// size): smoke, which goes where it is pushed and rises.
     pub fn smoke(
         random: RandomSource,
         at: (f64, f64, f64),
         push: (f64, f64, f64),
         sprites: &Arc<SpriteSet>,
+        scale: f32,
     ) -> Self {
         Self::ash_smoke(
             random,
             at,
             (0.1, 0.1, 0.1),
             push,
-            1.0,
+            scale,
             sprites,
             (0.3, 8, -0.1, true),
         )
     }
+
+    /// `WhiteSmokeParticle.Provider`: smoke tinted a pale grey.
+    pub fn white_smoke(
+        random: RandomSource,
+        at: (f64, f64, f64),
+        push: (f64, f64, f64),
+        sprites: &Arc<SpriteSet>,
+    ) -> Self {
+        let mut particle = Self::smoke(random, at, push, sprites, 1.0);
+        (particle.r_col, particle.g_col, particle.b_col) = (0.729_411_8, 0.694_117_67, 0.760_784_3);
+        particle
+    }
+
+    /// `AshParticle.Provider`: ash that drifts down, whatever it was asked with.
+    pub fn ash(random: RandomSource, at: (f64, f64, f64), sprites: &Arc<SpriteSet>) -> Self {
+        Self::ash_smoke(
+            random,
+            at,
+            (0.1, -0.1, 0.1),
+            (0.0, 0.0, 0.0),
+            1.0,
+            sprites,
+            (0.5, 20, 0.1, false),
+        )
+    }
+
+    /// `WhiteAshParticle.Provider`: pale ash pushed down and back by the provider's random.
+    pub fn white_ash(
+        random: RandomSource,
+        at: (f64, f64, f64),
+        sprites: &Arc<SpriteSet>,
+        provider_random: &mut RandomSource,
+    ) -> Self {
+        let mut draw = || f64::from(provider_random.next_float());
+        let xa = draw() * -1.9 * draw() * 0.1;
+        let ya = draw() * -0.5 * draw() * 0.1 * 5.0;
+        let za = draw() * -1.9 * draw() * 0.1;
+        let mut particle = Self::ash_smoke(
+            random,
+            at,
+            (0.1, -0.1, 0.1),
+            (xa, ya, za),
+            1.0,
+            sprites,
+            (0.0, 20, 0.0125, false),
+        );
+        let [r, g, b] = WHITE_ASH_RGB;
+        (particle.r_col, particle.g_col, particle.b_col) = (r, g, b);
+        particle
+    }
+
+    /// `DustPlumeParticle.Provider`: a puff that bursts up and slows each tick, pale and a
+    /// little darker at random.
+    pub fn dust_plume(
+        random: RandomSource,
+        at: (f64, f64, f64),
+        push: (f64, f64, f64),
+        sprites: &Arc<SpriteSet>,
+    ) -> Self {
+        let mut particle = Self::ash_smoke(
+            random,
+            at,
+            (0.7, 0.6, 0.7),
+            (push.0, push.1 + f64::from(0.15_f32), push.2),
+            1.0,
+            sprites,
+            (0.5, 7, 0.5, false),
+        );
+        particle.kind = Kind::AshSmoke { decays: true };
+        let shift = particle.random.next_float() * 0.2;
+        let [r, g, b] = WHITE_ASH_RGB;
+        (particle.r_col, particle.g_col, particle.b_col) = (r - shift, g - shift, b - shift);
+        particle
+    }
 }
+
+/// `12235202` (`0xBAB1C2`) as `ARGB.red(..) / 255.0F` and the rest.
+const WHITE_ASH_RGB: [f32; 3] = [186.0 / 255.0, 177.0 / 255.0, 194.0 / 255.0];

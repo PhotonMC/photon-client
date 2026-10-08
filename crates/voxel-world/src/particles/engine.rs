@@ -149,9 +149,19 @@ impl ParticleEngine {
         self.to_add.push_back(particle);
     }
 
-    /// `ParticleEngine.tick`: the group ticks, then the particles added meanwhile join it.
-    pub fn tick(&mut self, world: &ClientWorld) {
-        self.group.tick(world);
+    /// `ParticleEngine.tick`: the group ticks, then the particles added meanwhile join it. What a
+    /// particle asks the level for (lava's smoke) goes through `ClientLevel.addParticle`, with
+    /// the level's random source and each new particle's own.
+    pub fn tick(
+        &mut self,
+        world: &ClientWorld,
+        view: &AddView,
+        level_random: &mut RandomSource,
+        mut particle_random: impl FnMut() -> RandomSource,
+    ) {
+        for spawn in self.group.tick(world) {
+            self.add_particle(world, &spawn, view, level_random, &mut particle_random);
+        }
         while let Some(particle) = self.to_add.pop_front() {
             self.group.add(particle, &mut self.random);
         }

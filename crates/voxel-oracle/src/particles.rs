@@ -100,7 +100,30 @@ fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Particle, String
             .ok_or("engine_seed must be an integer")?,
     );
     match string(row, "particle")? {
-        "smoke" => Ok(Particle::smoke(random, at, push, sprites)),
+        "smoke" => Ok(Particle::smoke(random, at, push, sprites, 1.0)),
+        "large_smoke" => Ok(Particle::smoke(random, at, push, sprites, 2.5)),
+        "white_smoke" => Ok(Particle::white_smoke(random, at, push, sprites)),
+        "ash" => Ok(Particle::ash(random, at, sprites)),
+        "white_ash" => Ok(Particle::white_ash(random, at, sprites, &mut engine_random)),
+        "dust_plume" => Ok(Particle::dust_plume(random, at, push, sprites)),
+        "soul" => Ok(Particle::soul(random, at, push, sprites, false)),
+        "sculk_soul" => Ok(Particle::soul(random, at, push, sprites, true)),
+        "campfire_cosy_smoke" => Ok(Particle::campfire_smoke(
+            random,
+            at,
+            push,
+            (sprites, false),
+            &mut engine_random,
+        )),
+        "campfire_signal_smoke" => Ok(Particle::campfire_smoke(
+            random,
+            at,
+            push,
+            (sprites, true),
+            &mut engine_random,
+        )),
+        "cloud" => Ok(Particle::player_cloud(random, at, push, sprites, false)),
+        "sneeze" => Ok(Particle::player_cloud(random, at, push, sprites, true)),
         "flame" => Ok(Particle::flame(
             random,
             at,
@@ -343,7 +366,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
             }
             let pending = engine.pending_count();
-            engine.tick(&world);
+            engine.tick(&world, &view, &mut level_random, &mut particle_random);
             ticks.push(json!({"pending": pending, "particles": engine.particle_count()}));
         }
         let limit =
@@ -550,7 +573,13 @@ pub(super) fn particle_terrain_result(request: &Value) -> Result<Value, String> 
                 }
                 let breaking = string(row, "mode")? == "breaking";
                 // The engine keeps them until its next tick: tick it once with nothing to move them.
-                engine.tick(&world);
+                let view = voxel_world::particles::AddView {
+                    camera: voxel_core::math::Vec3::new(0.0, 0.0, 0.0),
+                    status: voxel_world::particles::ParticleStatus::All,
+                };
+                engine.tick(&world, &view, &mut RandomSource::create(0), || {
+                    RandomSource::create(0)
+                });
                 let made: Vec<Value> = engine
                     .particles()
                     .map(|particle| {

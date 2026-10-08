@@ -159,6 +159,28 @@ class MovementParticleOracle extends MovementMenuOracle {
                 net.minecraft.core.particles.ParticleTypes.FLAME, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
             case "small_flame" -> new net.minecraft.client.particle.FlameParticle.SmallFlameProvider(spriteSet).createParticle(
                 net.minecraft.core.particles.ParticleTypes.SMALL_FLAME, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "large_smoke" -> new net.minecraft.client.particle.LargeSmokeParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "white_smoke" -> new net.minecraft.client.particle.WhiteSmokeParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.WHITE_SMOKE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "ash" -> new net.minecraft.client.particle.AshParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.ASH, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "white_ash" -> new net.minecraft.client.particle.WhiteAshParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.WHITE_ASH, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "dust_plume" -> new net.minecraft.client.particle.DustPlumeParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.DUST_PLUME, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "soul" -> new net.minecraft.client.particle.SoulParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.SOUL, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "sculk_soul" -> new net.minecraft.client.particle.SoulParticle.EmissiveProvider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.SCULK_SOUL, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "campfire_cosy_smoke" -> new net.minecraft.client.particle.CampfireSmokeParticle.CosyProvider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.CAMPFIRE_COSY_SMOKE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "campfire_signal_smoke" -> new net.minecraft.client.particle.CampfireSmokeParticle.SignalProvider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "cloud" -> new net.minecraft.client.particle.PlayerCloudParticle.Provider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.CLOUD, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
+            case "sneeze" -> new net.minecraft.client.particle.PlayerCloudParticle.SneezeProvider(spriteSet).createParticle(
+                net.minecraft.core.particles.ParticleTypes.SNEEZE, level, at[0], at[1], at[2], at[3], at[4], at[5], engineRandom);
             default -> throw new IllegalArgumentException("Unknown particle " + kind);
         };
     }

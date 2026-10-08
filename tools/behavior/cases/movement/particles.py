@@ -57,6 +57,32 @@ def particle_tick_cases():
         row("flame-three-sprites-other-engine", "flame", [], (0.5, 70.0, 0.5), still, 12345, 10,
             sprites=3, engine_seed=12),
         row("small-flame", "small_flame", [], (0.5, 70.0, 0.5), still, 12345, 30, sprites=1),
+        # The rest of the smoke family: two and a half times as big, tinted, ash that falls (white ash
+        # pushed by the provider's random), a dust plume that slows each tick.
+        row("large-smoke", "large_smoke", [], (0.5, 70.0, 0.5), (0.0, 0.02, 0.0), 12345, 40),
+        row("large-smoke-under-a-ceiling", "large_smoke", CEILING, (0.5, 66.0, 0.5), (0.0, 0.1, 0.0), 77, 40),
+        row("white-smoke", "white_smoke", [], (0.5, 70.0, 0.5), still, 4242, 40),
+        row("ash", "ash", [], (0.5, 70.0, 0.5), (0.3, 0.3, 0.3), 12345, 60),
+        row("ash-onto-a-floor", "ash", floor(), (0.5, 64.3, 0.5), still, 99, 80),
+        row("white-ash", "white_ash", [], (0.5, 70.0, 0.5), still, 12345, 60, engine_seed=13),
+        row("white-ash-other-engine", "white_ash", [], (0.5, 70.0, 0.5), still, 12345, 30, engine_seed=14),
+        row("dust-plume", "dust_plume", [], (0.5, 70.0, 0.5), (0.02, 0.0, -0.01), 12345, 30),
+        row("dust-plume-onto-a-floor", "dust_plume", floor(), (0.5, 64.2, 0.5), still, 8, 30),
+        # Soul flames: they rise with physics (a ceiling stops them), and the sculk soul glows.
+        row("soul", "soul", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 30),
+        row("soul-under-a-ceiling", "soul", CEILING, (0.5, 67.3, 0.5), (0.0, 0.08, 0.0), 321, 30),
+        row("sculk-soul", "sculk_soul", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 30),
+        # Campfire smoke wanders up and fades out at its end; the signal fire's lives longer.
+        row("campfire-smoke", "campfire_cosy_smoke", [], (0.5, 70.0, 0.5), (0.0, 0.07, 0.0), 12345, 140,
+            sprites=3, engine_seed=21),
+        row("campfire-smoke-under-a-ceiling", "campfire_cosy_smoke", CEILING, (0.5, 66.5, 0.5),
+            (0.0, 0.07, 0.0), 5, 90, sprites=3),
+        row("signal-smoke", "campfire_signal_smoke", [], (0.5, 70.0, 0.5), (0.0, 0.07, 0.0), 12345, 60,
+            sprites=3, engine_seed=22),
+        # A player's cloud grows in like smoke and goes through blocks; a sneeze is green and faint.
+        row("cloud", "cloud", [], (0.5, 70.0, 0.5), (0.01, 0.05, 0.0), 12345, 40),
+        row("cloud-inside-stone", "cloud", SOLID, (0.5, 64.0, 0.5), still, 77, 30),
+        row("sneeze", "sneeze", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.05), 12345, 30),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}
@@ -123,6 +149,16 @@ def particle_engine_cases():
         engine_row("packet-far", [packet(0, "smoke", far, (1.0, 1.0, 1.0), 0.01, 10),
                                   packet(1, "smoke", far, (1.0, 1.0, 1.0), 0.01, 10, override=True)],
                    seeds=10),
+        # Lava leaves smoke through the level (with its own random and the particles option), and the
+        # rest of the rising and ash families come in from the level as the providers make them.
+        engine_row("lava-leaves-smoke", [add(0, "lava", near), add(0, "lava", (5.5, 64.0, 4.5))],
+                   ticks=40, seeds=120, describe=6),
+        engine_row("lava-decreased", [add(0, "lava", near)], status="DECREASED", ticks=30, seeds=60),
+        engine_row("lava-far", [add(0, "lava", far, override=True)], ticks=20, seeds=40),
+        engine_row("rising-and-ash", [add(0, name, near, (0.0, 0.05, 0.0)) for name in (
+            "large_smoke", "white_smoke", "ash", "white_ash", "dust_plume", "soul", "sculk_soul",
+            "campfire_cosy_smoke", "campfire_signal_smoke", "cloud", "sneeze")],
+                   ticks=12, seeds=11, describe=11),
         # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
         engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
                                  packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],

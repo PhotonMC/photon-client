@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use voxel_core::random::RandomSource;
 
 use super::super::ClientWorld;
+use super::engine::Spawn;
 use super::particle::Particle;
 
 /// `ParticleGroup.MAX_PARTICLES`.
@@ -20,12 +21,15 @@ pub(super) struct ParticleGroup {
 }
 
 impl ParticleGroup {
-    /// `ParticleGroup.tickParticles`: each particle ticks, and the ones that died are dropped.
-    pub(super) fn tick(&mut self, world: &ClientWorld) {
+    /// `ParticleGroup.tickParticles`: each particle ticks, and the ones that died are dropped;
+    /// what they asked the level for, in order.
+    pub(super) fn tick(&mut self, world: &ClientWorld) -> Vec<Spawn> {
+        let mut spawns = Vec::new();
         self.particles.retain_mut(|particle| {
-            particle.tick(world);
+            spawns.extend(particle.tick(world));
             particle.is_alive()
         });
+        spawns
     }
 
     /// `ParticleGroup.add`: whether the particle got in. Past the reservoir's start the chance

@@ -227,7 +227,16 @@ impl Particles {
 
     /// One client tick: `ParticleEngine.tick`.
     pub(crate) fn tick(&mut self, world: &ClientWorld) {
-        self.engine.tick(world);
+        // The particles option is not kept yet: all of them, as `receive` is given.
+        let view = AddView {
+            camera: self.camera,
+            status: ParticleStatus::All,
+        };
+        let mut uniquifier = self.uniquifier;
+        self.engine.tick(world, &view, &mut self.level_random, || {
+            RandomSource::create(unique_seed(&mut uniquifier))
+        });
+        self.uniquifier = uniquifier;
         self.most_alive = self.most_alive.max(self.engine.particle_count());
     }
 

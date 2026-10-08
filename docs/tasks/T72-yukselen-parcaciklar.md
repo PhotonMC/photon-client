@@ -19,4 +19,8 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: `particles/rising.rs` (soul, lava, kamp ateşi dumanı, bulut/hapşırık; `rising_flame` alevle
+paylaşılır), `smoke.rs`'e büyük/beyaz duman, kül, beyaz kül, toz bulutu; `Kind` dalları (tik öncesi/
+sonrası, boy, ışık, `translucent`); motor tiki parçacıkların seviyeden istediğini (lav dumanı)
+`add_particle` yoluyla ekler. Oracle: 20 tek parçacık + 4 motor satırı, hepsi bit eşit.
+Sapma: yarı saydam katman kesik çiziliyor; bulutun oyuncuya yerleşmesi sınanmadı.

@@ -11,6 +11,7 @@ mod group;
 mod light;
 mod particle;
 mod resources;
+mod rising;
 mod smoke;
 mod sprites;
 mod terrain;

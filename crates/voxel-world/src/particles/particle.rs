@@ -19,10 +19,19 @@ const MAXIMUM_COLLISION_VELOCITY_SQUARED: f64 = 10_000.0;
 #[derive(Debug, Clone)]
 pub(super) enum Kind {
     /// `BaseAshSmokeParticle`: the picture follows the age, the quad grows in over the first
-    /// thirty-second of its life.
-    AshSmoke,
+    /// thirty-second of its life. `DustPlumeParticle` (`decays`) slows its fall and its drift
+    /// each tick.
+    AshSmoke { decays: bool },
     /// `FlameParticle`: goes through blocks, shrinks and glows as it ages.
     Flame,
+    /// `SoulParticle`: rises, follows its pictures, translucent; `sculk_soul`'s glows.
+    Soul { glowing: bool },
+    /// `LavaParticle`: falls, shrinks, glows, and leaves smoke as it goes.
+    Lava,
+    /// `CampfireSmokeParticle`: a slow column that wanders and fades out at its end.
+    CampfireSmoke,
+    /// `PlayerCloudParticle`: grows in like smoke and settles to a player beneath it.
+    PlayerCloud,
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -53,7 +62,7 @@ pub struct Particle {
     pub(super) on_ground: bool,
     pub(super) has_physics: bool,
     stopped_by_collision: bool,
-    removed: bool,
+    pub(super) removed: bool,
     bb_width: f32,
     bb_height: f32,
     pub(super) random: RandomSource,
@@ -162,7 +171,7 @@ impl Particle {
     }
 
     /// `Particle.setSize`: the box keeps its middle and its floor.
-    fn set_size(&mut self, width: f32, height: f32) {
+    pub(super) fn set_size(&mut self, width: f32, height: f32) {
         if width != self.bb_width || height != self.bb_height {
             self.bb_width = width;
             self.bb_height = height;
@@ -181,7 +190,7 @@ impl Particle {
     }
 
     /// `Particle.setPos`.
-    fn set_pos(&mut self, x: f64, y: f64, z: f64) {
+    pub(super) fn set_pos(&mut self, x: f64, y: f64, z: f64) {
         self.x = x;
         self.y = y;
         self.z = z;
@@ -212,8 +221,32 @@ impl Particle {
         }
     }
 
-    /// `Particle.tick`, then what the class adds.
-    pub fn tick(&mut self, world: &ClientWorld) {
+    /// `Particle.tick`, with what the class does before and after it; a particle that leaves
+    /// another (lava its smoke) asks for it.
+    pub fn tick(&mut self, world: &ClientWorld) -> Option<super::engine::Spawn> {
+        match self.kind {
+            Kind::CampfireSmoke => {
+                self.campfire_tick(world);
+                return None;
+            }
+            Kind::AshSmoke { decays: true } => {
+                self.gravity *= 0.88;
+                self.friction *= 0.92;
+            }
+            _ => {}
+        }
+        self.base_tick(world);
+        match self.kind {
+            Kind::AshSmoke { .. } | Kind::Soul { .. } => self.set_sprite_from_age(),
+            Kind::PlayerCloud if !self.removed => self.settle_to_player(world),
+            Kind::Lava if !self.removed => return self.lava_smoke(),
+            _ => {}
+        }
+        None
+    }
+
+    /// `Particle.tick`.
+    fn base_tick(&mut self, world: &ClientWorld) {
         self.xo = self.x;
         self.yo = self.y;
         self.zo = self.z;
@@ -236,13 +269,10 @@ impl Particle {
                 self.zd *= f64::from(0.7_f32);
             }
         }
-        if matches!(self.kind, Kind::AshSmoke) {
-            self.set_sprite_from_age();
-        }
     }
 
     /// `Particle.move`, or `FlameParticle.move`, which does not collide.
-    fn move_by(&mut self, world: &ClientWorld, xa: f64, ya: f64, za: f64) {
+    pub(super) fn move_by(&mut self, world: &ClientWorld, xa: f64, ya: f64, za: f64) {
         if matches!(self.kind, Kind::Flame) {
             self.bounding_box = self.bounding_box.move_by(xa, ya, za);
             self.set_location_from_bounding_box();
@@ -288,20 +318,14 @@ impl Particle {
 
     /// The size of the quad at a partial tick: `getQuadSize`.
     pub fn quad_size_at(&self, partial: f32) -> f32 {
+        let s = (self.age as f32 + partial) / self.lifetime as f32;
         match self.kind {
-            Kind::AshSmoke => {
-                self.quad_size
-                    * clamp_f32(
-                        (self.age as f32 + partial) / self.lifetime as f32 * 32.0,
-                        0.0,
-                        1.0,
-                    )
+            Kind::AshSmoke { .. } | Kind::PlayerCloud => {
+                self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0)
             }
-            Kind::Flame => {
-                let s = (self.age as f32 + partial) / self.lifetime as f32;
-                self.quad_size * (1.0 - s * s * 0.5)
-            }
-            Kind::Terrain { .. } => self.quad_size,
+            Kind::Flame => self.quad_size * (1.0 - s * s * 0.5),
+            Kind::Lava => self.quad_size * (1.0 - s * s),
+            _ => self.quad_size,
         }
     }
 
@@ -309,10 +333,12 @@ impl Particle {
     pub fn light_coords_at(&self, world: &ClientWorld, partial: f32) -> i32 {
         let light = particle_light(world, self.x, self.y, self.z);
         match self.kind {
-            Kind::AshSmoke | Kind::Terrain { .. } => light,
             Kind::Flame => {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
+            // `LightCoordsUtil.withBlock(light, 15)`.
+            Kind::Lava | Kind::Soul { glowing: true } => (light & 0xFF_0000) | (15 << 4),
+            _ => light,
         }
     }
 
@@ -321,6 +347,14 @@ impl Particle {
         self.xd *= f64::from(power);
         self.yd = (self.yd - f64::from(0.1_f32)) * f64::from(power) + f64::from(0.1_f32);
         self.zd *= f64::from(power);
+    }
+
+    /// `SingleQuadParticle.Layer.translucent`: drawn blended rather than cut out.
+    pub fn translucent(&self) -> bool {
+        matches!(
+            self.kind,
+            Kind::Soul { .. } | Kind::CampfireSmoke | Kind::PlayerCloud
+        )
     }
 
     /// The atlas the picture is in.
