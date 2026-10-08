@@ -433,7 +433,7 @@ fn the_level_events_wait_for_the_particle_engine_in_order() {
         .default_state_id() as i32;
     world.apply_level_event(2001, (10, 64, -3), stone);
     world.apply_level_event(1000, (0, 0, 0), 0);
-    let event = |event, pos, data| crate::LevelEvent { event, pos, data };
+    let event = |event, pos, data| crate::LevelEvent::Level { event, pos, data };
     assert_eq!(
         world.take_level_events(),
         vec![event(2001, (10, 64, -3), stone), event(1000, (0, 0, 0), 0)]

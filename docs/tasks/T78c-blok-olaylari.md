@@ -22,3 +22,8 @@ için blok entity oracle'ı.
 Yeni kayıt.
 
 ## Devir notu
+Yapılan: `LevelEvent` enum oldu (`Level`, `Note`); nota bloğu paket anındaki durumdan okunur, motor
+parçacık + `RECORDS` sesini seviye rastgelesiyle çalar. `LocalSoundSource::Records` eklendi.
+Oracle: `particle-engine` `note-blocks` satırı (8 çalgı/nota, taş) bit eşit.
+Sapma: `custom_head` sessiz (kafa sesi okunmuyor).
+Açık: piston, saksı, spawner, end geçidi, potent sulfur → T78d.

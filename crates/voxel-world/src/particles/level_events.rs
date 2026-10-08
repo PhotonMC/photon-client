@@ -120,9 +120,15 @@ impl ParticleEngine {
     /// particles go through the level as it asks for them.
     pub fn level_event<F: FnMut() -> RandomSource>(
         &mut self,
-        LevelEvent { event, pos, data }: LevelEvent,
+        level_event: LevelEvent,
         context: &mut LevelEventContext<'_, F>,
     ) -> Vec<LocalSound> {
+        let (event, pos, data) = match level_event {
+            LevelEvent::Level { event, pos, data } => (event, pos, data),
+            LevelEvent::Note { pos, sound, note } => {
+                return vec![self.note_block(context, pos, (sound, note))];
+            }
+        };
         let mut sounds = Vec::new();
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         if let Some((name, source, volume, pitch)) = sound_only(event, data) {
@@ -165,7 +171,7 @@ impl ParticleEngine {
             2000 => self.shoot_particles(context, (pos, data), "smoke"),
             2010 => self.shoot_particles(context, (pos, data), "white_smoke"),
             2001 => {
-                if let Some(sound) = (LevelEvent { event, pos, data }).break_sound() {
+                if let Some(sound) = level_event.break_sound() {
                     // `playSound`'s seed.
                     context.level_random.next_long();
                     sounds.push(sound);
@@ -193,6 +199,33 @@ impl ParticleEngine {
             _ => {}
         }
         sounds
+    }
+
+    /// `NoteBlock.triggerEvent`: a tuned block's note rises from its top (its colour from the note),
+    /// then its sound plays three times as loud, pitched by the note, its seed drawn last.
+    fn note_block<F: FnMut() -> RandomSource>(
+        &mut self,
+        context: &mut LevelEventContext<'_, F>,
+        pos: (i32, i32, i32),
+        (sound, note): (&'static str, Option<i32>),
+    ) -> LocalSound {
+        let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        let pitch = match note {
+            Some(note) => {
+                let at = (x + 0.5, y + 1.2, z + 0.5);
+                self.level_add(context, "note", at, (f64::from(note) / 24.0, 0.0, 0.0));
+                // `NoteBlock.getPitchFromNote`.
+                2.0_f64.powf(f64::from(note - 12) / 12.0) as f32
+            }
+            None => 1.0,
+        };
+        local_sound(
+            sound,
+            LocalSoundSource::Records,
+            (3.0, pitch),
+            pos,
+            context.level_random,
+        )
     }
 
     /// `LevelEventHandler.shootParticles`: ten puffs out of a face (a dispenser's), spread across it.

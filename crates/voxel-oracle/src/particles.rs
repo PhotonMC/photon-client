@@ -207,7 +207,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
-        let world = movement_world(row)?;
+        let mut world = movement_world(row)?;
         let sprites = SpriteSet::new(
             (0..i32_field(row, "sprites")?)
                 .map(|index| format!("sprite_{index}"))
@@ -254,15 +254,18 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 if i32_field(event, "tick")? != tick {
                     continue;
                 }
-                if string(event, "type")? == "level_event" {
-                    let mut context = voxel_world::particles::LevelEventContext {
-                        world: &world,
-                        view: &view,
-                        level_random: &mut level_random,
-                        particle_random: &mut particle_random,
-                    };
-                    let played = engine.level_event(events::level_event_of(event)?, &mut context);
-                    sounds.extend(played.iter().map(events::sound_line));
+                // A level or block event goes through the level as the world queues it.
+                if events::queues(event, &mut world)? {
+                    for queued in world.take_level_events() {
+                        let mut context = voxel_world::particles::LevelEventContext {
+                            world: &world,
+                            view: &view,
+                            level_random: &mut level_random,
+                            particle_random: &mut particle_random,
+                        };
+                        let played = engine.level_event(queued, &mut context);
+                        sounds.extend(played.iter().map(events::sound_line));
+                    }
                     continue;
                 }
                 let name = string(event, "particle")?;

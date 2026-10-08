@@ -3,17 +3,28 @@
 use super::*;
 use voxel_world::local_player::LocalSound;
 
-/// A `level_event` event: the event, the block and the data.
-pub(super) fn level_event_of(event: &Value) -> Result<voxel_world::LevelEvent, String> {
-    Ok(voxel_world::LevelEvent {
-        event: i32_field(event, "event")?,
-        pos: (
+/// A `level_event` (the event, the block and the data) or `block_event` (the block) event, queued
+/// in the world as the client would; false for an event of another kind.
+pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, String> {
+    let pos = || -> Result<(i32, i32, i32), String> {
+        Ok((
             i32_field(event, "x")?,
             i32_field(event, "y")?,
             i32_field(event, "z")?,
+        ))
+    };
+    match string(event, "type")? {
+        "level_event" => world.apply_level_event(
+            i32_field(event, "event")?,
+            pos()?,
+            i32_field(event, "data")?,
         ),
-        data: i32_field(event, "data")?,
-    })
+        "block_event" => {
+            world.apply_note_block_event(pos()?);
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 /// A sound as the reference's silent sound manager writes it: the sound, its kind's name, then

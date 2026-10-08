@@ -210,7 +210,10 @@ impl PlaySession {
 
     pub(super) fn on_block_event(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
         let (pos, event, data) = parse_block_event_packet(payload)?;
-        self.trace.world.apply_chest_block_event(pos, event, data);
+        // `ClientLevel.blockEvent`: the block as it is now takes the event.
+        if !self.trace.world.apply_chest_block_event(pos, event, data) {
+            self.trace.world.apply_note_block_event(pos);
+        }
         Ok(())
     }
 

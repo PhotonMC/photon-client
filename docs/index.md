@@ -162,6 +162,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T38b, T38c — Minecart ailesi (eski ve yeni davranış) — client-parity](records/client-minecart-parity-conformance.md)
 - [T44b1 — Oyuncunun eyerli atı sürmesi: `travelRidden`, `AbstractHorse.tickRidden`, atlama yükü, `PlayerCommand` — client-parity](records/client-mount-ride-parity-conformance.md)
 - [T35e — Nautilus ve zombi nautilus — client-parity](records/client-nautilus-parity-conformance.md)
+- [T78c — Nota bloğu (`BlockEvent`) — client-parity](records/client-note-block-parity-conformance.md)
 - [T62 — Ogg/Vorbis çözümü — client-parity](records/client-ogg-decoding-parity-conformance.md)
 - [T40h — Tablo — client-parity](records/client-painting-parity-conformance.md)
 - [T32f — Panda — client-parity](records/client-panda-parity-conformance.md)

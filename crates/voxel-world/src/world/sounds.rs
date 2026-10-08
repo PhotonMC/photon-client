@@ -70,30 +70,114 @@ impl ClientWorld {
     /// `ClientLevel.levelEvent`: the event waits for the particle engine, which plays its sounds
     /// and makes its particles with the level's random.
     pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
-        self.level_events.push(LevelEvent { event, pos, data });
+        self.level_events
+            .push(LevelEvent::Level { event, pos, data });
+    }
+
+    /// `ClientLevel.blockEvent`, for what the client does with one beside a block entity's: a note
+    /// block plays its instrument as it is now (`NoteBlock.triggerEvent`). False for another block.
+    pub fn apply_note_block_event(&mut self, pos: (i32, i32, i32)) -> bool {
+        let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
+            return false;
+        };
+        if block::state_or_air(i64::from(state)).block().name != "minecraft:note_block" {
+            return false;
+        }
+        let Some(sound) = block::rules::property(state, "instrument").and_then(note_block_sound)
+        else {
+            // `custom_head`: the head above's own sound is not read; it plays nothing.
+            return false;
+        };
+        let tunable = !sound.contains(".imitate.");
+        let note = block::rules::property(state, "note")
+            .and_then(|note| note.parse().ok())
+            .filter(|_| tunable);
+        self.level_events
+            .push(LevelEvent::Note { pos, sound, note });
+        true
     }
 }
 
-/// One `ClientboundLevelEventPacket` (or a level event of the client's own), as it came.
+/// The sound a note block's instrument plays (`NoteBlockInstrument.getSoundEvent`); none for
+/// `custom_head`, whose sound is its head's.
+fn note_block_sound(instrument: &str) -> Option<&'static str> {
+    #[rustfmt::skip]
+    const SOUNDS: [&str; 26] = [
+        "harp", "basedrum", "snare", "hat", "bass", "flute", "bell", "guitar", "chime", "xylophone",
+        "iron_xylophone", "cow_bell", "didgeridoo", "bit", "banjo", "pling", "trumpet",
+        "trumpet_exposed", "trumpet_oxidized", "trumpet_weathered", "imitate.zombie",
+        "imitate.skeleton", "imitate.creeper", "imitate.ender_dragon", "imitate.wither_skeleton",
+        "imitate.piglin",
+    ];
+    #[rustfmt::skip]
+    const EVENTS: [&str; 26] = [
+        "minecraft:block.note_block.harp", "minecraft:block.note_block.basedrum",
+        "minecraft:block.note_block.snare", "minecraft:block.note_block.hat",
+        "minecraft:block.note_block.bass", "minecraft:block.note_block.flute",
+        "minecraft:block.note_block.bell", "minecraft:block.note_block.guitar",
+        "minecraft:block.note_block.chime", "minecraft:block.note_block.xylophone",
+        "minecraft:block.note_block.iron_xylophone", "minecraft:block.note_block.cow_bell",
+        "minecraft:block.note_block.didgeridoo", "minecraft:block.note_block.bit",
+        "minecraft:block.note_block.banjo", "minecraft:block.note_block.pling",
+        "minecraft:block.note_block.trumpet", "minecraft:block.note_block.trumpet_exposed",
+        "minecraft:block.note_block.trumpet_oxidized",
+        "minecraft:block.note_block.trumpet_weathered",
+        "minecraft:block.note_block.imitate.zombie", "minecraft:block.note_block.imitate.skeleton",
+        "minecraft:block.note_block.imitate.creeper",
+        "minecraft:block.note_block.imitate.ender_dragon",
+        "minecraft:block.note_block.imitate.wither_skeleton",
+        "minecraft:block.note_block.imitate.piglin",
+    ];
+    let name = match instrument {
+        "dragon" => "imitate.ender_dragon",
+        "zombie" => "imitate.zombie",
+        "skeleton" => "imitate.skeleton",
+        "creeper" => "imitate.creeper",
+        "wither_skeleton" => "imitate.wither_skeleton",
+        "piglin" => "imitate.piglin",
+        other => other,
+    };
+    SOUNDS
+        .iter()
+        .position(|sound| *sound == name)
+        .map(|index| EVENTS[index])
+}
+
+/// What the level plays when the particle engine takes it, in the order it came.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LevelEvent {
-    pub event: i32,
-    pub pos: (i32, i32, i32),
-    pub data: i32,
+pub enum LevelEvent {
+    /// One `ClientboundLevelEventPacket` (or a level event of the client's own).
+    Level {
+        event: i32,
+        pos: (i32, i32, i32),
+        data: i32,
+    },
+    /// A note block struck: its instrument's sound, and its note when it is tuned.
+    Note {
+        pos: (i32, i32, i32),
+        sound: &'static str,
+        note: Option<i32>,
+    },
 }
 
 impl LevelEvent {
     /// The sound of a block broken (2001): its break sound, louder and lower, at its middle;
     /// nothing for air or another event.
     pub fn break_sound(&self) -> Option<local_player::LocalSound> {
-        if self.event != 2001
-            || block::state_or_air(i64::from(self.data)).block().name == "minecraft:air"
-        {
+        let Self::Level {
+            event: 2001,
+            pos,
+            data,
+        } = *self
+        else {
+            return None;
+        };
+        if block::state_or_air(i64::from(data)).block().name == "minecraft:air" {
             return None;
         }
         block_sound_of(
-            self.pos,
-            self.data,
+            pos,
+            data,
             voxel_data::block_sound::SoundTypeRow::break_sound,
             (|volume| (volume + 1.0) / 2.0, 0.8),
         )

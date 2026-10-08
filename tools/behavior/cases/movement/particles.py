@@ -194,9 +194,9 @@ def particle_cases():
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
-               listener_seed=202, engine_seed=303, describe=4, sprites=8):
+               listener_seed=202, engine_seed=303, describe=4, sprites=8, blocks=()):
     return {
-        "label": label, "blocks": [], "chunk_radius": 1, "events": events, "status": status,
+        "label": label, "blocks": list(blocks), "chunk_radius": 1, "events": events, "status": status,
         "tick_count": ticks, "particle_seeds": seeds, "particle_seed_base": 1000,
         "particle_seed_step": 7919, "camera_x": float_bits(camera[0], "f64"),
         "camera_y": float_bits(camera[1], "f64"), "camera_z": float_bits(camera[2], "f64"),
@@ -224,6 +224,19 @@ def level_event(tick, event, pos, data=0):
     return {"tick": tick, "type": "level_event", "event": event, "x": pos[0], "y": pos[1], "z": pos[2],
             "data": data}
 
+
+def block_event(tick, pos, b0=0, b1=0):
+    return {"tick": tick, "type": "block_event", "x": pos[0], "y": pos[1], "z": pos[2], "b0": b0, "b1": b1}
+
+
+def note_block(pos, instrument, note):
+    return {"x": pos[0], "y": pos[1], "z": pos[2], "block": "minecraft:note_block",
+            "properties": {"instrument": instrument, "note": str(note), "powered": "false"}}
+
+
+NOTE_BLOCKS = [((0, 64, 0), "harp", 0), ((1, 64, 0), "harp", 12), ((2, 64, 0), "harp", 24),
+               ((3, 64, 0), "basedrum", 5), ((4, 64, 0), "trumpet_oxidized", 19), ((5, 64, 0), "zombie", 7),
+               ((6, 64, 0), "dragon", 3), ((7, 64, 0), "custom_head", 9)]
 
 SOUND_ONLY_EVENTS = [1000, 1001, 1002, 1004, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1024, 1025, 1026,
                      1027, 1029, 1030, 1031, 1033, 1034, 1035, 1039, 1040, 1041, 1042, 1043, 1044, 1045, 1046,
@@ -288,6 +301,13 @@ def particle_engine_cases():
                                           for index, event in enumerate(SOUND_ONLY_EVENTS)]
                    + [level_event(0, 1009, (1, 64, 1), 0), level_event(1, 1009, (1, 64, 1), 1),
                       level_event(1, 1009, (1, 64, 1), 2), level_event(2, 1999, (0, 64, 0), 5)]),
+        # A note block struck plays its instrument: a tuned one pitched by its note with a note rising from it,
+        # a mob head's at its own pitch, a custom head's not at all (no head above); any other block nothing.
+        engine_row("note-blocks", [block_event(index % 2, pos, 0, 0) for index, (pos, _, _) in enumerate(NOTE_BLOCKS)]
+                   + [block_event(2, (0, 64, 0)), block_event(2, (0, 64, 0)), block_event(2, (9, 64, 0))],
+                   blocks=[note_block(*block) for block in NOTE_BLOCKS]
+                   + [{"x": 9, "y": 64, "z": 0, "block": "minecraft:stone"}],
+                   ticks=5, seeds=12, describe=8),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

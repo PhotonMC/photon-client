@@ -457,6 +457,13 @@ class MovementParticleOracle extends MovementMenuOracle {
                 if (event.get("tick").getAsInt() != tick) {
                     continue;
                 }
+                if (event.get("type").getAsString().equals("block_event")) {
+                    var at = new net.minecraft.core.BlockPos(
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt());
+                    level.blockEvent(at, level.getBlockState(at).getBlock(), event.get("b0").getAsInt(),
+                        event.get("b1").getAsInt());
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("level_event")) {
                     level.levelEvent(event.get("event").getAsInt(), new net.minecraft.core.BlockPos(
                         event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
