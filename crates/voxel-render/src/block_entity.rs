@@ -4,4 +4,5 @@ pub mod banner;
 pub mod bell;
 pub mod chest;
 pub mod shulker_box;
+pub mod sign;
 pub mod skull;

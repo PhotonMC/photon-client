@@ -283,6 +283,13 @@ impl Play {
             displays::display_texts(&self.session, (self.gui.lang(), font, atlas), view);
         see_through.extend(shown_through);
         normal.extend(shown);
+        let first_person = self.controls.camera_type == CameraType::FirstPerson;
+        normal.extend(crate::world::signs::sign_texts(
+            &self.session,
+            (self.gui.lang(), font, atlas),
+            view,
+            first_person,
+        ));
         // The leads are a flat colour lit by the lightmap, as the world text is.
         leashes::leashes(&self.session, view, &mut normal);
         self.backend.set_name_tags(&see_through, &normal)?;

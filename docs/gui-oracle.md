@@ -43,6 +43,7 @@ Arayüzün yerleşimi ve davranışı, Java'nın **kendi GUI kodunun** başsız 
 | `tab_list` | `PlayerTabOverlay` | sütunlar, sıralama (takım dahil), ping, üst/alt yazı, 80 sınırı, puan sütunu, kalpler |
 | `container_screen` | `AnvilScreen`, `GrindstoneScreen`, `StonecutterScreen`, `LoomScreen`, `EnchantmentScreen`, `CartographyTableScreen`, `SmithingScreen`, `BrewingStandScreen`, `BeaconScreen`, `CrafterScreen`, `LecternScreen`, `MerchantScreen` Java'nın kendi menüsüyle (`MovementOracle.openMenu`) | etiketler, doku/sprite yerleri, ad kutusu, taş kesici girdileri/kaydırma/vurgu, büyü satırları ve adları, smithing'in boş yuvalarında şablona göre dönen simgeler (`CyclingSlotBackground`, bir tık sonra) |
 | `key_mappings` | yeni bir `Options`'ın `keyMappings`'i, `KeyMapping.Category.SORT_ORDER`, `InputConstants.Type` ad tabloları | eşleme adı, kategori, varsayılan tuş, `order`; adı olan her tuş (üretilmiş tablo, `tools/generate/key_mappings.py`) |
+| `sign_texts` | gerçek `StandingSignRenderer`/`HangingSignRenderer.submit` (font gerçek, `SubmitNodeCollector` vekili) | ayakta/asılı, on altı dilim ve dört duvar, on altı boya, parlayan metin yakında/uzakta, filtrelenmiş satırlar, genişliğe sığmayan satırlar, stilli bileşenler |
 
 Yeni bir ekran için: Java'da gerçek sınıfı çağıran bir operation, `tools/behavior/cases/gui/` altında senaryo satırları, adaptörde aynı sahnenin Rust karşılığı.
 

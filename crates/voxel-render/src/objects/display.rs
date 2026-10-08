@@ -211,24 +211,37 @@ pub fn text_vertices(
         push(corners.map(|[x, y, z]| place(x, y, z, none, tint)));
     }
     for (runs, (x, y)) in lines.iter().zip(&submit.lines) {
-        for corners in crate::gui::frame::glyph_quads(
+        let quads = crate::gui::frame::glyph_quads(
             atlas,
             font,
             runs,
             (*x, *y),
             submit.color as u32,
             submit.shadow,
-        ) {
-            push(corners.map(|corner| {
-                place(
-                    corner.position[0],
-                    corner.position[1],
-                    0.0,
-                    corner.uv,
-                    corner.colour,
-                )
-            }));
-        }
+        );
+        world_glyphs(&submit.pose, quads, light, &mut vertices);
     }
     vertices
+}
+
+/// Glyph quads laid out in a pose's plane (`z` 0) as world triangles, lit by `light` (the
+/// lightmap's coordinates).
+pub(crate) fn world_glyphs(
+    pose: &Matrix4,
+    quads: Vec<[crate::gui::frame::GuiVertex; 4]>,
+    light: [f32; 2],
+    vertices: &mut Vec<crate::scene::Vertex>,
+) {
+    for corners in quads {
+        let corners = corners.map(|corner| crate::scene::Vertex {
+            position: pose.transform_position(corner.position[0], corner.position[1], 0.0),
+            uv: corner.uv,
+            shade: 1.0,
+            tint: corner.colour,
+            light,
+        });
+        for index in [0, 1, 2, 0, 2, 3] {
+            vertices.push(corners[index]);
+        }
+    }
 }

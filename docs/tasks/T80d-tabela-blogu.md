@@ -19,4 +19,7 @@ Başka blok entity aileleri.
 `docs/records/client-chest-parity-conformance.md`'ye bölüm, `docs/index.md` gerekirse.
 
 ## Devir notu
-(boş)
+Yapılan: tabela metni (ayakta, duvar, asılı; iki yüz, boya, parlama, kontur, filtre) gerçek renderer'a bit bit eşit (`gui/sign-texts`, GUI ailesi: gerçek font orada). Tahta 26.2'de blok modeli; renderer yalnız metin verir.
+Kayıt: [client-chest-parity-conformance.md](../records/client-chest-parity-conformance.md#tabela-t80d).
+Sapma: `POLYGON_OFFSET` yok (ad etiketi boru hattı); oyunda filtre hep kapalı; glif/kontur dörtgenleri oracle'sız.
+Açık: canlıda görülmedi (Kabul istemiyor); balmumu/düzenleme T89. Kapıda yalnız bilinen Q04 farkı (`movement/particle-engine`).

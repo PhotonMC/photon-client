@@ -126,6 +126,29 @@ impl ClientWorld {
         })
     }
 
+    /// The sign or hanging sign at a block.
+    pub fn sign_view(&self, pos: (i32, i32, i32)) -> Option<SignView<'_>> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_sign_state(state) {
+            return None;
+        }
+        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let property = |key| crate::local_player::property(Some(state), key);
+        Some(SignView {
+            hanging: is_hanging_sign_state(state),
+            wall: name
+                .contains("_wall_")
+                .then(|| property("facing").and_then(Direction::from_name))
+                .flatten(),
+            rotation: property("rotation")
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0),
+            tag: self
+                .block_entity_at(pos.0, pos.1, pos.2)
+                .and_then(|entity| entity.tag.as_deref()),
+        })
+    }
+
     /// The skull or head at a block.
     pub fn skull_block_view(&self, pos: (i32, i32, i32), partial: f32) -> Option<SkullBlockView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;

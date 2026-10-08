@@ -13,6 +13,7 @@ pub mod registries;
 pub mod scoreboard;
 pub mod server_status;
 pub mod servers;
+pub mod sign;
 pub mod sounds;
 pub mod splash;
 pub mod text;

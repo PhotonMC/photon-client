@@ -344,4 +344,124 @@ class GuiOverlayOracle extends GuiHudOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /** A sign face from a request: four lines as component JSON, the filtered ones, dye, glow. */
+    static net.minecraft.world.level.block.entity.SignText signText(JsonObject face) {
+        java.util.function.Function<com.google.gson.JsonArray, Component[]> lines = array -> {
+            var out = new Component[4];
+            for (int i = 0; i < 4; i++) {
+                out[i] = net.minecraft.network.chat.ComponentSerialization.CODEC
+                    .parse(com.mojang.serialization.JsonOps.INSTANCE, array.get(i)).getOrThrow();
+            }
+            return out;
+        };
+        var messages = lines.apply(face.getAsJsonArray("messages"));
+        var filtered = face.get("filtered").isJsonNull() ? messages.clone() : lines.apply(face.getAsJsonArray("filtered"));
+        return new net.minecraft.world.level.block.entity.SignText(messages, filtered,
+            net.minecraft.world.item.DyeColor.valueOf(face.get("color").getAsString().toUpperCase()),
+            face.get("glowing").getAsBoolean());
+    }
+
+    /**
+     * What the real `StandingSignRenderer` or `HangingSignRenderer` submits for a sign: each
+     * line's pose, place, text (as runs of one colour), light, colours and how it is drawn.
+     */
+    static JsonObject signTexts(JsonObject request) throws Exception {
+        var font = loadedFont();
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            boolean hanging = row.get("kind").getAsString().equals("hanging");
+            var wall = row.get("wall").isJsonNull() ? null
+                : net.minecraft.core.Direction.valueOf(row.get("wall").getAsString().toUpperCase());
+            int rotation = row.get("rotation").getAsInt();
+            net.minecraft.client.renderer.blockentity.AbstractSignRenderer<?> renderer;
+            net.minecraft.client.renderer.blockentity.state.SignRenderState state;
+            if (hanging) {
+                renderer = (net.minecraft.client.renderer.blockentity.AbstractSignRenderer<?>) unsafe.allocateInstance(
+                    net.minecraft.client.renderer.blockentity.HangingSignRenderer.class);
+                var t = net.minecraft.client.renderer.blockentity.HangingSignRenderer.TRANSFORMATIONS;
+                state = new net.minecraft.client.renderer.blockentity.state.HangingSignRenderState();
+                state.transformations = wall == null ? t.freeTransformations(rotation) : t.wallTransformation(wall);
+                state.maxTextLineWidth = 60;
+                state.textLineHeight = 9;
+            } else {
+                renderer = (net.minecraft.client.renderer.blockentity.AbstractSignRenderer<?>) unsafe.allocateInstance(
+                    net.minecraft.client.renderer.blockentity.StandingSignRenderer.class);
+                var t = net.minecraft.client.renderer.blockentity.StandingSignRenderer.TRANSFORMATIONS;
+                state = new net.minecraft.client.renderer.blockentity.state.StandingSignRenderState();
+                state.transformations = wall == null ? t.freeTransformations(rotation) : t.wallTransformation(wall);
+                state.maxTextLineWidth = 90;
+                state.textLineHeight = 10;
+            }
+            MovementOracle.setField(renderer, "font", font);
+            state.frontText = signText(row.getAsJsonObject("front"));
+            state.backText = signText(row.getAsJsonObject("back"));
+            state.isTextFilteringEnabled = row.get("filtering").getAsBoolean();
+            state.drawOutline = row.get("draw_outline").getAsBoolean();
+            state.lightCoords = row.get("light").getAsInt();
+            var submits = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                GuiOverlayOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (!method.getName().equals("submitText")) {
+                        throw new IllegalStateException(method.getName());
+                    }
+                    var out = new JsonObject();
+                    var pose = new float[16];
+                    ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(pose);
+                    var matrix = new JsonArray();
+                    for (float value : pose) {
+                        matrix.add(Oracle.bits(value));
+                    }
+                    out.add("pose", matrix);
+                    out.addProperty("x", Oracle.bits((Float) args[1]));
+                    out.addProperty("y", Oracle.bits((Float) args[2]));
+                    // The line as runs of one colour (-1 for none).
+                    var runs = new JsonArray();
+                    var text = new StringBuilder();
+                    int[] colour = {Integer.MIN_VALUE};
+                    ((net.minecraft.util.FormattedCharSequence) args[3]).accept((position, style, codepoint) -> {
+                        int next = style.getColor() == null ? -1 : style.getColor().getValue();
+                        if (next != colour[0] && text.length() > 0) {
+                            var run = new JsonArray();
+                            run.add(text.toString());
+                            run.add(colour[0]);
+                            runs.add(run);
+                            text.setLength(0);
+                        }
+                        colour[0] = next;
+                        text.appendCodePoint(codepoint);
+                        return true;
+                    });
+                    if (text.length() > 0) {
+                        var run = new JsonArray();
+                        run.add(text.toString());
+                        run.add(colour[0]);
+                        runs.add(run);
+                    }
+                    out.add("runs", runs);
+                    out.addProperty("shadow", (Boolean) args[4]);
+                    out.addProperty("mode", args[5].toString());
+                    out.addProperty("light", (Integer) args[6]);
+                    out.addProperty("color", Integer.toHexString((Integer) args[7]));
+                    out.addProperty("background", (Integer) args[8]);
+                    out.addProperty("outline", Integer.toHexString((Integer) args[9]));
+                    submits.add(out);
+                    return null;
+                });
+            @SuppressWarnings("unchecked")
+            var typed = (net.minecraft.client.renderer.blockentity.AbstractSignRenderer<
+                net.minecraft.client.renderer.blockentity.state.SignRenderState>) renderer;
+            typed.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("submits", submits);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

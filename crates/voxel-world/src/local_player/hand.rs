@@ -135,6 +135,19 @@ impl LocalPlayer {
         self.hands.using_off_hand
     }
 
+    /// `Player.isScoping`: a spyglass is in use.
+    pub fn is_scoping(&self) -> bool {
+        let used = if self.hands.using_off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        self.hands.using_item
+            && crate::block::rules::item(used).is_some_and(|item| {
+                item.class == voxel_data::item::classes::ItemClass::SpyglassItem
+            })
+    }
+
     /// `LivingEntity.getTicksUsingItem(partialTicks)`.
     pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
         if self.hands.using_item {

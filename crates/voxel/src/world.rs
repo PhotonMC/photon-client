@@ -5,4 +5,5 @@ pub(crate) mod atmosphere;
 pub(crate) mod block_entities;
 mod flood;
 pub(crate) mod sections;
+pub(crate) mod signs;
 pub(crate) mod sky;

@@ -70,6 +70,25 @@ pub(crate) fn is_banner_state(state_id: i32) -> bool {
     is_of_classes(state_id, &[BlockClass::AbstractBannerBlock], &BLOCKS)
 }
 
+/// Whether a block state is a sign's or a hanging sign's.
+pub(crate) fn is_sign_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::SignBlock], &BLOCKS)
+}
+
+/// Whether a block state is a hanging sign's (on a ceiling or a wall).
+pub(super) fn is_hanging_sign_state(state_id: i32) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(
+        state_id,
+        &[
+            BlockClass::CeilingHangingSignBlock,
+            BlockClass::WallHangingSignBlock,
+        ],
+        &BLOCKS,
+    )
+}
+
 /// `BannerBlockEntity.loadAdditional`: the layers of a `patterns` list, a layer without a pattern
 /// id or a colour left out.
 pub(super) fn banner_patterns(tag: &[u8]) -> Vec<(String, String)> {
@@ -109,6 +128,7 @@ pub(crate) fn is_drawn_state(state_id: i32) -> bool {
         || is_bell_state(state_id)
         || is_skull_state(state_id)
         || is_banner_state(state_id)
+        || is_sign_state(state_id)
 }
 
 /// The chest blocks of a chunk's sections.
@@ -179,4 +199,17 @@ pub struct SkullBlockView {
     pub rotation: i32,
     /// `SkullBlockEntity.getAnimation`.
     pub animation: f32,
+}
+
+/// What a sign block is, for drawing its text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignView<'a> {
+    /// A hanging sign's text is drawn by `HangingSignRenderer`, another's by `StandingSignRenderer`.
+    pub hanging: bool,
+    /// The facing of a sign on a wall, none for one standing or hanging from a ceiling.
+    pub wall: Option<Direction>,
+    /// The `rotation` of one that is not on a wall.
+    pub rotation: i32,
+    /// The block entity's tag, which carries the text.
+    pub tag: Option<&'a [u8]>,
 }

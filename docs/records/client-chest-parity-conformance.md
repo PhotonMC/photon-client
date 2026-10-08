@@ -1,4 +1,4 @@
-# T79, T80 — Sandık, shulker kutusu, çan, kafa ve bayrak blok entity çizimi — [client-parity]
+# T79, T80 — Sandık, shulker kutusu, çan, kafa, bayrak ve tabela blok entity çizimi — [client-parity]
 
 Gerçek `ChestRenderer` ve sandık modelleri (Java) ile Rust `voxel_render::chest` aynı girdide karşılaştırılır: `entity/chest-model` (üç model, dört açıklık) ve `entity/chest-pose` (tür × yön × malzeme × açıklık; kapak, kilit ve gövdenin kaydedilen köşe, UV ve ışığı).
 
@@ -51,3 +51,12 @@ Gerçek `BannerRenderer.submit` ile Rust `voxel_render::banner` aynı girdide ka
 - Katmanlar: düz katman (`entity/banner/base`) bayrağın rengiyle, sonra `patterns` listesinin ilk on altısı kendi `entity/banner/<ad>` maskesi ve boyasıyla, birbirinin üstüne harmanlanarak. Renk bloğun adından, desenler blok entity verisinden gelir.
 - İstemci durumu: canlı oturum `BlockEntityData` paketini ve parça paketindeki blok entity'leri artık dünyaya işliyor (yalnız sınama koşucusu işliyordu); blok başka cins bir blokla değişince eski blok entity'si düşer (`LevelChunk.setBlockState`).
 - Sapma: katman dokusunun yüzde ona inmeyen alfa kesimi (`ALPHA_CUTOUT`) bayrak katmanlarında da var, `gradient` desenlerinin çok şeffaf texel'leri Java'da çizilir; deseni kayıt satırı yerine satır içi bileşen olarak veren (veri paketi) desenler çizilmez; eşya olarak bayrak ve kalkan bu görevde değil. Canlıda yer ve duvar bayrağı, renkli desenler görüldü.
+
+## Tabela (T80d)
+
+26.2'de tabelanın tahtası ve direği blok modelidir (`oak_sign_rot_*`, `*_hanging_sign_*`); `StandingSignRenderer` ve `HangingSignRenderer` yalnız iki yüzün metnini `submitText` ile verir. Gerçek renderer'lar ile Rust `voxel_render::block_entity::sign` GUI ailesinde aynı girdide karşılaştırılır (`gui/sign-texts`, 94 satır; gerçek font gerektiği için GUI ailesinde): her satırın poz matrisi, `x`/`y`, tek renkli run'lara bölünmüş metni, ışık, renk, arka plan, kontur rengi, gölge ve çizim kipi.
+
+- Dönüşüm: ayakta tabela `(0,5; 0,5; 0,5)`, `Y` dönüşü, duvardaysa `(0; −0,3125; −0,4375)`, arka yüzde 180°, `(0; 1/3; 0,0467)` ve `1/96` ölçek; asılı tabela `(0,5; 0,9375; 0,5)`, dönüş, `−0,3125`, arka yüz, `(0; −0,32; 0,073)` ve `0,0140625` ölçek. Satır genişliği 90/60, yüksekliği 10/9; satır, genişliğe bölünen ilk parçasıdır ve `−genişlik/2` (tam sayı bölmesi) konumundan çizilir.
+- Renk: parlamayan metin boyanın `0,4` katı, kendi ışığıyla; parlayan metin boyanın kendi rengi, tam parlaklıkta, siyahsa ya da kamera varlığı 16 blok içindeyse (veya birinci şahısta dürbünle bakılıyorsa) koyu renkte sekiz yönlü konturla; parlayan siyahın koyu rengi `#F0EBCC`.
+- İstemci durumu: tabela blokları blok entity çizim listesine girdi; `front_text`/`back_text` (`messages`, `filtered_messages`, `color`, `has_glowing_text`) blok entity verisinden `voxel_game::sign` ile okunur, hatalı yüz boş yüz olur.
+- Sapma: filtrelenmiş satırlar oracle'da sınanır, oyunda hep yazılmış satırlar çizilir (`isTextFilteringEnabled` çevrimiçi hesabın bayrağıdır). `POLYGON_OFFSET` kipi yok: metin ad etiketi boru hattında, tahtadan 0,005 önde çizilir. Glif dörtgenleri (kontur dahil) metin display'in yoluyla kurulur ve ayrıca oracle'la sınanmadı; balmumu ve tabela düzenleme T89'dadır.

@@ -54,7 +54,7 @@ mod region_copy;
 mod ride;
 mod shadow;
 
-pub use block::chest::{BannerView, ChestView, DYES, ShulkerBoxView, SkullBlockView};
+pub use block::chest::{BannerView, ChestView, DYES, ShulkerBoxView, SignView, SkullBlockView};
 pub use block::entity::*;
 pub use block::registry::*;
 pub use border::*;

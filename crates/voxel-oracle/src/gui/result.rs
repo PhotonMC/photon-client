@@ -15,6 +15,8 @@ mod container;
 use container::*;
 mod title;
 use title::*;
+mod signs;
+use signs::*;
 
 /// What the GUI scenarios share: the game's assets, the font and the atlas drawn from it, and
 /// the language source, read once because its index has thousands of files.
@@ -84,6 +86,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "locator_bar" => locator_bar_case(&mut ctx, row)?,
             "tab_list" => tab_list_case(&mut ctx, row)?,
             "container_screen" => container_screen_case(&mut ctx, row)?,
+            "sign_texts" => sign_texts_case(&mut ctx, row)?,
             _ => return Err("unknown gui operation".into()),
         });
     }
