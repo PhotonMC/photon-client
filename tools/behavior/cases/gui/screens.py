@@ -134,13 +134,14 @@ def gui_container_screen_cases():
     data. Slots hold items, which are not recorded."""
     def screen(label, menu, title_key, slots=(), data=None, xp=None, keys=(), sync_slot=None,
                mouse=(0, 0), width=427, height=240, stonecutter=(), data_after=None, tooltips=True, game_mode="survival", books=None, offers=None,
-               merchant=None):
+               merchant=None, patches=None, cooldowns=None, cooldown_ticks=0):
         row = {"label": label, "width": width, "height": height, "mouse_x": mouse[0],
                "mouse_y": mouse[1], "menu": f"minecraft:{menu}", "title_key": title_key,
                "container_id": 4, "game_mode": game_mode, "selected": 0, "state_id": 0,
                "blocks": [], "chunk_radius": 0, "clicks": [], "keys": list(keys),
                "slots": [dict({"slot": slot, "item": f"minecraft:{item}", "count": count},
-                              **({"book_pages": books[slot]} if books and slot in books else {}))
+                              **({"book_pages": books[slot]} if books and slot in books else {}),
+                              **({"patch": patches[slot]} if patches and slot in patches else {}))
                          for slot, item, count in slots]}
         if data is not None:
             row["data"] = data
@@ -154,6 +155,9 @@ def gui_container_screen_cases():
             row["offers"] = offers
         if merchant is not None:
             row["merchant"] = merchant
+        if cooldowns is not None:
+            row["cooldowns"] = [{"group": group, "duration": duration} for group, duration in cooldowns]
+            row["cooldown_ticks"] = cooldown_ticks
         if not tooltips:
             row["tooltips"] = False
         if stonecutter:
@@ -276,6 +280,52 @@ def gui_container_screen_cases():
         screen("narrow", "anvil", "container.repair", width=320, height=240),
         screen("tall", "grindstone", "container.grindstone_title", width=640, height=480),
     ]
+
+    # `itemDecorations`' bar: durability, and a bundle's fullness.
+    def varint(value):
+        out = bytearray()
+        while value & ~0x7F:
+            out.append((value & 0x7F) | 0x80)
+            value >>= 7
+        out.append(value)
+        return out.hex()
+
+    def damaged(value):
+        return "0100" + "03" + varint(value)
+
+    def bundle(*items):
+        # (item registry id, count) per stack, each with no patch.
+        value = varint(len(items)) + "".join(varint(item) + varint(count) + "0000" for item, count in items)
+        return "0100" + "32" + value
+
+    worn = [(3, 0), (4, 1), (5, 30), (6, 125), (7, 200), (8, 249), (9, 250)]
+    rows += [
+        screen("decorations-durability", "grindstone", "container.grindstone_title",
+               slots=[(slot, "iron_sword", 1) for slot, _ in worn] + [(10, "diamond_pickaxe", 1),
+                                                                     (11, "elytra", 1)],
+               patches=dict([(slot, damaged(value)) for slot, value in worn]
+                            + [(10, damaged(1000)), (11, damaged(431))]), tooltips=False),
+        screen("decorations-bundle", "grindstone", "container.grindstone_title",
+               slots=[(12, "bundle", 1), (13, "bundle", 1), (14, "bundle", 1), (15, "bundle", 1),
+                      (16, "bundle", 1)],
+               patches={13: bundle((1, 32)), 14: bundle((1, 64)), 15: bundle((1144, 3)),
+                        16: bundle((1, 63))}, tooltips=False),
+    ]
+
+    def use_cooldown(group):
+        # `UseCooldown.STREAM_CODEC`: the seconds (a float), then the group if any.
+        encoded = group.encode()
+        return "0100" + "1a" + "3f800000" + "01" + varint(len(encoded)) + encoded.hex()
+
+    for ticks in (0, 5, 7, 19, 20):
+        rows.append(screen(f"decorations-cooldown-{ticks}", "grindstone", "container.grindstone_title",
+                           slots=[(20, "ender_pearl", 16), (21, "ender_pearl", 1), (22, "chorus_fruit", 3),
+                                  (23, "stick", 1), (24, "stick", 1), (25, "wind_charge", 2)],
+                           patches={23: use_cooldown("minecraft:charge"), 24: use_cooldown("pearls")},
+                           cooldowns=[("minecraft:ender_pearl", 20), ("minecraft:chorus_fruit", 30),
+                                      ("minecraft:charge", 13), ("minecraft:pearls", 7),
+                                      ("minecraft:wind_charge", 3)],
+                           cooldown_ticks=ticks, tooltips=False))
     yield {"case_id": "gui/container-screen", "family": "gui", "operation": "container_screen",
            "rows": rows}
 

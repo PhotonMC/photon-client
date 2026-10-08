@@ -158,6 +158,9 @@ pub struct GuiFrame {
     /// The clock a label that does not fit in its button scrolls by
     /// (`Util.getMillis`).
     pub millis: u64,
+    /// The player's item cooldowns at this frame: each group and what is left
+    /// of it (`ItemCooldowns.getCooldownPercent`).
+    pub cooldowns: Vec<(String, f32)>,
 }
 
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position.

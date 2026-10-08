@@ -25,6 +25,7 @@ impl PlaySession {
             miner: &miner,
             mode: self.game_mode,
             selected_slot: self.status.selected_slot,
+            cooldowns: &self.item_cooldowns,
         };
         let sent = self.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {

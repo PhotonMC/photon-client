@@ -63,6 +63,8 @@ impl HeartType {
 /// What the HUD shows, as the client knows it this frame.
 #[derive(Debug, Clone)]
 pub struct HudInput {
+    /// The player's item cooldowns at this frame (see [`GuiFrame::cooldowns`]).
+    pub cooldowns: Vec<(String, f32)>,
     /// The camera is in the player's eyes: the crosshair shows.
     pub first_person: bool,
     pub spectator: bool,
@@ -188,7 +190,7 @@ impl Hud {
                 );
             }
             // `extractSlot` for each hotbar slot, then the off hand: the
-            // item, then its count when it is not one.
+            // item, its bar and cooldown, then its count when it is not one.
             let y = height - 16 - 3;
             let slots = (0..9)
                 .map(|i| (&input.hotbar[i], centre - 90 + i as i32 * 20 + 2))
@@ -198,6 +200,8 @@ impl Hud {
                     continue;
                 };
                 frame.item(draw_item, stack, x, y);
+                frame.item_bar(atlas, stack, x, y);
+                frame.item_cooldown(atlas, stack, x, y);
                 if stack.item_count() != 1 {
                     let text = stack.item_count().to_string();
                     frame.text_with_shadow(
@@ -252,7 +256,10 @@ impl Hud {
         now_millis: u128,
         draw_item: &mut ItemDrawer<'_>,
     ) -> GuiFrame {
-        let mut frame = GuiFrame::default();
+        let mut frame = GuiFrame {
+            cooldowns: input.cooldowns.clone(),
+            ..GuiFrame::default()
+        };
         self.draw(
             &mut frame, atlas, font, width, height, input, now_millis, draw_item,
         );

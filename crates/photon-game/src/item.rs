@@ -3,6 +3,7 @@
 
 #[cfg(test)]
 mod component_tests;
+pub mod cooldowns;
 pub mod default_components;
 pub mod in_hand;
 pub mod values;

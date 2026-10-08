@@ -115,6 +115,8 @@ pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID: i32 = 18;
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID: i32 = 19;
 
 pub(crate) const PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID: i32 = 20;
+/// `ClientboundCooldownPacket`: an item group's cooldown, or its end.
+pub(crate) const PLAY_CLIENTBOUND_COOLDOWN_PACKET_ID: i32 = 22;
 
 pub(crate) const PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID: i32 = 133;
 

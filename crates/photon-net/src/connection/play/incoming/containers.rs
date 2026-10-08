@@ -57,6 +57,22 @@ impl PlaySession {
         Ok(())
     }
 
+    /// `handleItemCooldown`: a group's cooldown starts, or ends at zero.
+    pub(super) fn on_cooldown(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let mut input = payload;
+        let group = photon_core::identifier::read_identifier(&mut input)
+            .map_err(|_| ConnectionError::Codec("cooldown group"))?
+            .as_string();
+        let duration = photon_core::wire::read_varint(&mut input)
+            .map_err(|_| ConnectionError::Codec("cooldown duration"))?;
+        if duration == 0 {
+            self.item_cooldowns.remove(&group);
+        } else {
+            self.item_cooldowns.add(group, duration);
+        }
+        Ok(())
+    }
+
     pub(super) fn on_container_set_slot(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
         let packet = match parse_container_set_slot_packet(payload) {
             Ok(packet) => packet,

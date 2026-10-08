@@ -153,6 +153,7 @@ impl PlaySession {
             PLAY_CLIENTBOUND_PLACE_GHOST_RECIPE_PACKET_ID => self.on_place_ghost_recipe(payload)?,
             PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID => self.on_update_recipes(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => self.on_container_set_slot(payload)?,
+            PLAY_CLIENTBOUND_COOLDOWN_PACKET_ID => self.on_cooldown(payload)?,
             PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => self.on_set_cursor_item(payload)?,
             PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
                 self.on_set_player_inventory(payload)?

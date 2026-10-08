@@ -94,12 +94,18 @@ impl Gui {
             &self.font,
             size.gui_scaled_width(),
             size.gui_scaled_height(),
-            &hud_input(
-                session,
-                controls.camera_type == CameraType::FirstPerson,
-                locator_camera,
-                controls.options.attack_indicator,
-            ),
+            &photon_render::gui::HudInput {
+                // `getGameTimeDeltaPartialTick(true)`.
+                cooldowns: session
+                    .item_cooldowns()
+                    .percents((self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0)),
+                ..hud_input(
+                    session,
+                    controls.camera_type == CameraType::FirstPerson,
+                    locator_camera,
+                    controls.options.attack_indicator,
+                )
+            },
             self.started_at.elapsed().as_millis(),
             &mut draw_item,
         );

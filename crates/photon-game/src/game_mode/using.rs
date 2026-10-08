@@ -164,9 +164,8 @@ impl GameMode {
             }
         }
         match item {
-            // No item cooldowns are tracked yet.
-            Some((item, _)) => self.item_use_on(ctx, hand, item, aim),
-            None => UseResult::Pass,
+            Some((item, _)) if !ctx.on_cooldown(hand) => self.item_use_on(ctx, hand, item, aim),
+            _ => UseResult::Pass,
         }
     }
 
@@ -297,6 +296,7 @@ impl GameMode {
         let sequence = ctx.world.start_predicting();
         let (y_rot, x_rot) = ctx.player.rotation();
         let result = match ctx.held(hand) {
+            Some(_) if ctx.on_cooldown(hand) => UseResult::Pass,
             // `WritableBookItem.use`: its screen opens (`LocalPlayer.openItemGui`).
             Some((item, _)) if crate::item::id_of("minecraft:writable_book") == Some(item) => {
                 self.opened_book = Some(hand);

@@ -447,6 +447,8 @@ impl GuiFrame {
         y: i32,
     ) {
         self.item(draw, stack, x, y);
+        self.item_bar(atlas, stack, x, y);
+        self.item_cooldown(atlas, stack, x, y);
         let count_text = count.to_string();
         let shown = match text {
             Some(text) => Some(text),
@@ -462,6 +464,53 @@ impl GuiFrame {
                 y + 6 + 3,
                 colour,
             );
+        }
+    }
+
+    /// `itemBar`: the durability (or a bundle's fullness) under the item, on
+    /// a black strip.
+    pub fn item_bar(
+        &mut self,
+        atlas: &GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    ) {
+        let Some((width, colour)) = photon_game::menus::container::item_bar(stack) else {
+            return;
+        };
+        let (left, top) = (x + 2, y + 13);
+        self.fill(atlas, (left, top, left + 13, top + 2), 0xFF00_0000);
+        // `ARGB.opaque`.
+        self.fill(
+            atlas,
+            (left, top, left + width, top + 1),
+            colour as u32 | 0xFF00_0000,
+        );
+    }
+
+    /// `itemCooldown`: a white veil over the item, as tall as what is left of
+    /// its group's cooldown.
+    pub fn item_cooldown(
+        &mut self,
+        atlas: &GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    ) {
+        if self.cooldowns.is_empty() {
+            return;
+        }
+        let group = photon_game::item::cooldowns::group(stack);
+        let cooldown = self
+            .cooldowns
+            .iter()
+            .find(|(name, _)| *name == group)
+            .map_or(0.0, |(_, percent)| *percent);
+        if cooldown > 0.0 {
+            let top = y + photon_core::math::floor_f32(16.0 * (1.0 - cooldown));
+            let bottom = top + (16.0 * cooldown).ceil() as i32;
+            self.fill(atlas, (x, top, x + 16, bottom), 0x7FFF_FFFF);
         }
     }
 

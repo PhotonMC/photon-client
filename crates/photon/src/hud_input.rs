@@ -76,6 +76,7 @@ pub fn hud_input(
             .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
     });
     photon_render::gui::HudInput {
+        cooldowns: Vec::new(),
         first_person,
         spectator: game_mode == photon_world::ClientPlayerGameMode::Spectator,
         survival: game_mode.is_survival(),

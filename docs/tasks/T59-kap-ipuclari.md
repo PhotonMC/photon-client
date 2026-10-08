@@ -19,4 +19,8 @@ Başka menü türleri (kendi görevlerinde); tarif kitabı kaplaması.
 `docs/records/generic-container-conformance.md` (ilgili bölüm), `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: dayanıklılık ve bundle çubuğu (`menus/container/bar.rs`), `ItemCooldowns` + `Cooldown` paketi
+(id 22) + bekleme örtüsü + kullanım engeli; `GuiFrame::cooldowns`, `HudInput::cooldowns`. Oracle:
+`gui/container-screen` `decorations-*` (dayanıklılık, bundle, 5 bekleme anı). Kısmi tik 0 ile sınandı.
+Bölündü: bundle ipucu/seçimi → T59b, kap/harita/iksir/kitap ipucu satırları ve F3+H → T59c,
+`#etiket` araması → T59d. Canlı görüntü alınmadı (RCON kapalı).

@@ -399,6 +399,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     miner: &miner,
                     mode: game_mode_of_row,
                     selected_slot: 0,
+                    cooldowns: &photon_game::item::cooldowns::ItemCooldowns::default(),
                 };
                 actions = game_mode.keys_tick(&mut ctx, keys, aim);
             }

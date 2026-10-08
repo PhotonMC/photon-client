@@ -110,6 +110,8 @@ pub struct PlaySession {
     pub(super) client_information: crate::configuration::ClientInformation,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
+    /// `Player.getCooldowns`.
+    pub(super) item_cooldowns: photon_game::item::cooldowns::ItemCooldowns,
     /// What menus read of the enchantments, from the data pack.
     pub(super) enchantment_traits:
         std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,

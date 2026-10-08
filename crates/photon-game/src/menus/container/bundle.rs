@@ -147,6 +147,21 @@ fn content_weight(items: &[Stack]) -> Option<Fraction> {
     })
 }
 
+/// `BundleItem.getWeightSafe` of a bundle's contents, as a numerator and a
+/// denominator (zero for an error); none for a stack that is no bundle.
+pub(super) fn bundle_weight(stack: &Stack) -> Option<(i64, i64)> {
+    let bundle = stacking(stack).is_some_and(|item| {
+        item.class.owner_of(ItemMethod::OverrideStackedOnOther) == ItemClass::BundleItem
+    });
+    if !bundle {
+        return None;
+    }
+    let weight = contents(stack)
+        .and_then(|items| content_weight(&items))
+        .unwrap_or(Fraction::ZERO);
+    Some((weight.numerator, weight.denominator))
+}
+
 /// `BundleContents.canItemBeInBundle`.
 fn can_be_in_bundle(stack: &Stack) -> bool {
     stack.item_count() > 0 && can_fit_inside_container_items(stack)

@@ -44,6 +44,8 @@ impl PlaySession {
         if self.loaded
             && let Some(player) = self.player.as_mut()
         {
+            // `Player.tick` counts the item cooldowns down.
+            self.item_cooldowns.tick();
             player.set_hand_state(self.trace.world.local_hand_state(self.status.selected_slot));
             let ticked = match ridden.and_then(|id| self.trace.world.vehicle_view(id)) {
                 Some(view) => player
@@ -187,6 +189,7 @@ impl PlaySession {
             dimension_type_id: 0,
             hashed_seed: 0,
             enchantment_traits: std::sync::Arc::default(),
+            item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
             game_time: 0,
             rain_level: 0.0,
             thunder_level: 0.0,

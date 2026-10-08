@@ -189,3 +189,14 @@ eşit değer yamadan düşer (`components.rs`). Hangi büyünün lanet olduğu v
 paketinin `curse` etiketinden (`EnchantmentTraits`). Java tıklama paketinde
 bileşenleri kimlik haritası sırasıyla yazar; oracle paketi tür kimliği sırasına
 çevirir, Rust da o sırayla yazar (sunucu sırayı okumaz). Örs sonucu T51b'de.
+
+## Eşya süsleri (`client-parity`)
+
+`itemDecorations`'ın çubuğu ve bekleme örtüsü: `Item.getBarWidth/Color`
+(hasar, HSV) ve bundle'ın doluluk çubuğu (`menus/container/bar.rs`), yuvalarda
+ve hotbar'da (`GuiFrame::item_bar`, `item_cooldown`). `ItemCooldowns`
+(`photon-game/src/item/cooldowns.rs`) `Cooldown` paketiyle dolar, oyuncu tikiyle
+azalır; grup `use_cooldown` bileşeninden ya da eşya kimliğinden. Bekleyen eşya
+kullanılamaz (`useItem`/`useItemOn`). Oracle: `gui/container-screen`
+`decorations-*` satırları (Java'nın kaydettiği dolgular). Hotbar aynı çağrıyı
+kullanır, ayrı oracle satırı yok.

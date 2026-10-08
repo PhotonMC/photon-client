@@ -94,6 +94,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let attack_indicator =
         photon_game::options::AttackIndicator::ALL[int("attack_indicator") as usize];
     let input = HudInput {
+        cooldowns: Vec::new(),
         first_person: !flag("third_person"),
         spectator: flag("spectator"),
         // The reference draws the crosshair and the hotbar alone here.
@@ -172,6 +173,7 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             ticks += 1;
         }
         let input = HudInput {
+            cooldowns: Vec::new(),
             first_person: true,
             spectator: false,
             survival: true,

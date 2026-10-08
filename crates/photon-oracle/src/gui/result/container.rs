@@ -8,6 +8,17 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     use photon_render::gui::screen::Screen;
     use photon_render::gui::screen::generic::{EnchantText, GenericScreen, Titles};
     let name = row["menu"].as_str().ok_or("menu")?;
+    // Item cooldowns the server set, then the player's ticks since.
+    let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
+    for cooldown in row["cooldowns"].as_array().into_iter().flatten() {
+        cooldowns.add(
+            photon_game::item::cooldowns::namespaced(cooldown["group"].as_str().ok_or("group")?),
+            cooldown["duration"].as_i64().ok_or("duration")? as i32,
+        );
+    }
+    for _ in 0..row["cooldown_ticks"].as_i64().unwrap_or(0) {
+        cooldowns.tick();
+    }
     let mut menu = crate::menu_named(name, row)?;
     for slot in row["slots"].as_array().ok_or("slots")? {
         let index = slot["slot"].as_u64().ok_or("slot")? as usize;
@@ -20,7 +31,14 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         if let Some(pages) = slot["book_pages"].as_array() {
             stack = stack.with_patch_bytes(written_book_patch(pages));
         }
-        menu.slots[index] = Some(stack);
+        if let Some(hex_patch) = slot["patch"].as_str() {
+            // The component patch as the wire carries it.
+            let bytes = crate::hex::hex_bytes(hex_patch)?;
+            let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
+                .map_err(|_| format!("malformed patch {hex_patch}"))?;
+            stack.set_patch(&patch);
+        }
+        menu.set_slot(index, Some(stack));
     }
     // Setting the payments made the merchant's result, as the reference's slots do.
     if menu.kind == photon_game::menus::container::MenuKind::Merchant {
@@ -126,6 +144,8 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         }
         let mut drawn = GuiFrame {
             log: Some(Vec::new()),
+            // The game's clock has not advanced: no partial tick.
+            cooldowns: cooldowns.percents(0.0),
             ..GuiFrame::default()
         };
         let mut draw = photon_render::gui::screen::ScreenDraw {

@@ -86,6 +86,11 @@ impl PlaySession {
             .map(String::as_str)
     }
 
+    /// `Player.getCooldowns`: the item groups waiting to be usable again.
+    pub fn item_cooldowns(&self) -> &photon_game::item::cooldowns::ItemCooldowns {
+        &self.item_cooldowns
+    }
+
     /// The entry names of one synchronised registry, in network order.
     pub fn registry_names(&self, registry: &str) -> &[String] {
         self.trace

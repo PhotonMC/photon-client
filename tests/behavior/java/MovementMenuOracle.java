@@ -47,6 +47,18 @@ class MovementMenuOracle extends MovementPlayerOracle {
         setField(minecraft, "gameMode", gameMode);
         setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         player.getInventory().setSelectedSlot(row.get("selected").getAsInt());
+        // Item cooldowns the server set, then the player's ticks since.
+        if (row.has("cooldowns")) {
+            for (var element : row.getAsJsonArray("cooldowns")) {
+                var cooldown = element.getAsJsonObject();
+                player.getCooldowns().addCooldown(
+                    net.minecraft.resources.Identifier.parse(cooldown.get("group").getAsString()),
+                    cooldown.get("duration").getAsInt());
+            }
+            for (int tick = 0; tick < row.get("cooldown_ticks").getAsInt(); tick++) {
+                player.getCooldowns().tick();
+            }
+        }
         net.minecraft.world.inventory.AbstractContainerMenu menu = player.inventoryMenu;
         int containerId = 0;
         if (row.has("menu")) {
