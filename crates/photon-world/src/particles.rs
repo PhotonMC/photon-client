@@ -31,10 +31,12 @@ mod rising;
 mod smoke;
 mod sprites;
 mod terrain;
+mod vibration;
 mod water;
 
 pub use engine::{
-    AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn,
+    AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, PositionSource,
+    Spawn,
 };
 pub use explosion::{Explosion, ExplosionParticle};
 pub use level_events::LevelEventContext;

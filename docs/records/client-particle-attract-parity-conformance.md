@@ -1,12 +1,13 @@
-# T75 — Portal, çekim ve asılı parçacıklar — [client-parity]
+# T75/T75b — Portal, çekim, asılı, titreşim ve iz parçacıkları — [client-parity]
 
-Bu kayıt bir yere çekilen ve havada asılı kalan parçacıkları kapsar: `PortalParticle`,
-`ReversePortalParticle`, `FlyTowardsPositionParticle` (`enchant`, `nautilus`, `vault_connection`),
-`FlyStraightTowardsParticle` (`ominous_spawning`), `SuspendedParticle` (`underwater`,
-`warped_spore`, `crimson_spore`, `spore_blossom_air`) ve `SuspendedTownParticle` (`mycelium`,
-`happy_villager`, `egg_crack`, `composter`, `dolphin`). Kanıt sınıfı `client-parity`'dir: gerçek
-sağlayıcılar tohumlanmış parçacık, motor ve seviye rastgeleleriyle `movement/particle-ticks`'te
-koşturulur, alanlar bit bit karşılaştırılır.
+Bu kayıt bir yere çekilen, havada asılı kalan ve bir hedefe doğru kapanan parçacıkları kapsar:
+`PortalParticle`, `ReversePortalParticle`, `FlyTowardsPositionParticle` (`enchant`, `nautilus`,
+`vault_connection`), `FlyStraightTowardsParticle` (`ominous_spawning`), `SuspendedParticle`
+(`underwater`, `warped_spore`, `crimson_spore`, `spore_blossom_air`), `SuspendedTownParticle`
+(`mycelium`, `happy_villager`, `egg_crack`, `composter`, `dolphin`), `VibrationSignalParticle`
+(`vibration`) ve `TrailParticle` (`trail`). Kanıt sınıfı `client-parity`'dir: gerçek sağlayıcılar
+tohumlanmış parçacık, motor ve seviye rastgeleleriyle `movement/particle-ticks`'te koşturulur,
+alanlar bit bit karşılaştırılır.
 
 ## Java kaynak incelemesi
 
@@ -23,14 +24,31 @@ koşturulur, alanlar bit bit karşılaştırılır.
   `ParticleLimit.SPORE_BLOSSOM`'a (1000) sayılır.
 - `SuspendedTown`: hız ×0.02, ömrü geri sayar, bloklardan geçer, ×0.99; kompostçu ömrü seviye
   rastgelesinden, yunusunki opaklık ve yarı ömür.
+- `VibrationSignalParticle`: `PositionSource` (blok ya da izlenen entity, dikey kaymasıyla)
+  hedefine her tikte `1/kalanTik` payı kadar yaklaşır, `Mth.atan2` ile hedefe döner (`rot`/`pitch`,
+  çizimde iki dörtgen); hedef bulunamazsa (entity gitmiş) silinir. Işığı `LightCoordsUtil.withBlock(
+  ışık, 15)`: blok kanalı sabit 15, gök kanalı normal. `VibrationParticleOption`'ın
+  `PositionSource.STREAM_CODEC`'i bir kayıt kimliği (`BLOCK`=0, `ENTITY`=1, kayıt sırası) sonra
+  türün kendi alanları.
+- `TrailParticle`: sabit bir hedefe aynı `1/kalanTik` payıyla yaklaşır; rengi `ARGB.scaleRGB` ile
+  her kanal kendi `0.875+r*0.25` çarpanıyla (8 bitlik kanal üstünde kesilip [0,255]'e kırpılır,
+  sonra 255'e bölünür); ışığı sabit tam parlaklık (`15728880`).
 
 ## Kapsam ve dal kararı
 
-`particle-ticks`'e 16 satır. Motor artık sağlayıcılara seviye rastgelesini verir ve spor çiçeği
-sayısını tutar (eklemede sınır, ölümde ve gruba girememede düşer).
+`particle-ticks`'e 20 satır (16 + titreşim/iz). Motor artık sağlayıcılara seviye rastgelesini
+verir ve spor çiçeği sayısını tutar (eklemede sınır, ölümde ve gruba girememede düşer).
 
 ## Sapmalar (açık)
 
 - `crimson_spore` satırı yok: hızı Gauss dağılımından (Q04, `Math.log` farkı).
 - Spor çiçeği sınırı (1000) oracle'da sınanmıyor (bin parçacık gerekir).
 - Kasa bağlantısının yarı saydamlığı kesik çiziliyor.
+- Titreşim parçacığının blok hedefli durumu sınandı; entity hedefli (izlenen bir varlığa doğru,
+  `EntityPositionSource`) durum oracle'da yok — tek parçacıklık `particle-ticks` koşumunda izlenen
+  bir entity fikstürü kurmak gerekirdi. Rust tarafı entity hedefini çözüyor (`ClientWorld` üstünden
+  id ile), yalnız kanıtlanmadı.
+- Titreşim parçacığının çizimi (iki döndürülmüş dörtgen, `extractRotatedQuad`) bu dilimde yok;
+  `photon-render`'ın `quad()` ilkeli hazır (`crates/photon-render/src/particles.rs`), yalnız
+  bağlanmadı. Dünya tarafı tiki (konum, ömür, silinme, ışık) kanıtlı; render'da iz parçacığıyla
+  aynı genel kamera-dönük dörtgenle çiziliyor (yanlış ama görünür).

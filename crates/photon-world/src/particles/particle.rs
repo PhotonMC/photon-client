@@ -46,6 +46,10 @@ pub(super) enum Kind {
     Glow,
     /// The particles drawn to a place, each with its own tick.
     Attract(super::attract::Attract),
+    /// `VibrationSignalParticle`: chases a position source, turning to face it.
+    Vibration(super::vibration::Vibration),
+    /// `TrailParticle`: chases a fixed target.
+    Trail { target: [f64; 3] },
     /// `SuspendedParticle`: hangs in the air, the plain tick.
     Suspended,
     /// `CritParticle`: grows in, its green and blue fading each tick.
@@ -279,6 +283,14 @@ impl Particle {
             }
             Kind::Attract(attract) => {
                 self.attract_tick(attract);
+                return Vec::new();
+            }
+            Kind::Vibration(vibration) => {
+                self.vibration_tick(world, vibration);
+                return Vec::new();
+            }
+            Kind::Trail { target } => {
+                self.trail_tick(target);
                 return Vec::new();
             }
             Kind::Burst => {

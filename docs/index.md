@@ -235,7 +235,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [P08.c — server-conformance ClientWorld block update uygulaması](records/client-world-block-update-conformance.md)
 - [P08.c.1 — ClientWorld block update ve section sayaçları — client-parity](records/client-world-block-update-parity-conformance.md)
 - [P09.i — Statik world-border collision shape — client-parity birleşik kayıt](records/client-world-border-collision-conformance.md)
-- [T84 — Dünya sınırı canlı oturumda: paketler ve oyuncunun çarpışması — client-parity (çarpışma) · server-conformance (paketler)](records/client-world-border-live-parity-conformance.md)
+- [T84/T84b — Dünya sınırı canlı oturumda: paketler, çarpışma ve çizim — client-parity (çarpışma, çizim geometrisi) · server-conformance (paketler)](records/client-world-border-live-parity-conformance.md)
 - [P09.j — Moving world-border extent — client-parity birleşik kayıt](records/client-world-border-moving-conformance.md)
 - [P09.k — ClientWorld world-border state — client-parity birleşik kayıt](records/client-world-border-state-conformance.md)
 - [P08.d — ClientChunkCache yaşam döngüsü — client-parity birleşik kayıt](records/client-world-chunk-cache-parity-conformance.md)

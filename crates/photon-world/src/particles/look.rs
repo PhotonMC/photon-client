@@ -42,6 +42,7 @@ impl Particle {
             | Kind::Soul { glowing: true }
             | Kind::SculkCharge
             | Kind::Drip(super::drip::Drip { glowing: true, .. })
+            | Kind::Vibration(_)
             | Kind::Attract(
                 super::attract::Attract::FlyTowards { glowing: true, .. }
                 | super::attract::Attract::FlyStraight { .. },
@@ -54,10 +55,13 @@ impl Particle {
                 brightness *= brightness;
                 add_smooth_block_emission(light, brightness)
             }
-            // `SimpleAnimatedParticle.getLightCoords`: full bright.
-            Kind::Water(super::water::Water::Ink) | Kind::Totem | Kind::Burst | Kind::EndRod => {
-                15_728_880
-            }
+            // `SimpleAnimatedParticle.getLightCoords`: full bright. `TrailParticle`'s is its own
+            // fixed override.
+            Kind::Water(super::water::Water::Ink)
+            | Kind::Totem
+            | Kind::Burst
+            | Kind::EndRod
+            | Kind::Trail { .. } => 15_728_880,
             _ => light,
         }
     }

@@ -70,6 +70,33 @@ pub(crate) fn read_particle_options(
                 to: color(input)?,
                 scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
             },
+            "vibration" => {
+                // `PositionSource.STREAM_CODEC`: a registry id (`PositionSourceType.BLOCK` = 0,
+                // `.ENTITY` = 1, their registration order) then the type's own fields.
+                let destination = match read_varint(input, NAME)? {
+                    0 => photon_world::particles::PositionSource::Block(
+                        photon_core::binary::BlockPos::unpack(read_i64(input, NAME)? as u64),
+                    ),
+                    1 => photon_world::particles::PositionSource::Entity {
+                        id: read_varint(input, NAME)?,
+                        y_offset: read_f32(input, NAME)?,
+                    },
+                    _ => return Err(ConnectionError::Codec("unknown position source type")),
+                };
+                ParticleData::Vibration {
+                    destination,
+                    arrival_in_ticks: read_varint(input, NAME)?,
+                }
+            }
+            "trail" => ParticleData::Trail {
+                target: (
+                    read_f64(input, NAME)?,
+                    read_f64(input, NAME)?,
+                    read_f64(input, NAME)?,
+                ),
+                color: color(input)?,
+                duration: read_varint(input, NAME)?,
+            },
             // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
             "item" => {
                 let item = read_varint(input, NAME)?;

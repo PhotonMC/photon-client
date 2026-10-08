@@ -191,7 +191,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
                 "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",
                 "landing_obsidian_tear", "dripping_dripstone_water", "falling_dripstone_water",
-                "dripping_dripstone_lava", "falling_dripstone_lava" -> true;
+                "dripping_dripstone_lava", "falling_dripstone_lava", "vibration", "trail" -> true;
             default -> false;
         };
         if (registered) {
@@ -433,6 +433,15 @@ class MovementParticleOracle extends MovementMenuOracle {
                 net.minecraft.core.particles.ParticleTypes.TINTED_LEAVES, color);
             case "entity_effect" -> net.minecraft.core.particles.ColorParticleOption.create(
                 net.minecraft.core.particles.ParticleTypes.ENTITY_EFFECT, color);
+            case "vibration" -> new net.minecraft.core.particles.VibrationParticleOption(
+                new net.minecraft.world.level.gameevent.BlockPositionSource(new net.minecraft.core.BlockPos(
+                    from.get("destination_x").getAsInt(), from.get("destination_y").getAsInt(),
+                    from.get("destination_z").getAsInt())),
+                from.get("arrival_in_ticks").getAsInt());
+            case "trail" -> new net.minecraft.core.particles.TrailParticleOption(
+                new net.minecraft.world.phys.Vec3(Oracle.f64(from, "target_x"), Oracle.f64(from, "target_y"),
+                    Oracle.f64(from, "target_z")),
+                color, from.get("duration").getAsInt());
             default -> simpleType(name);
         };
     }

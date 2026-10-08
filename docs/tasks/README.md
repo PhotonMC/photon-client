@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %78 bitti** (ağırlıklı) · 235/287 madde işaretli, **52 madde kaldı** (tahmini 96 M-görev eşdeğeri iş).
+**Toplam: %78 bitti** (ağırlıklı) · 236/287 madde işaretli, **51 madde kaldı** (tahmini 95 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `█████████████░░░░░░░` | 63 | 23/35 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `███████████████░░░░░` | 77 | 32/41 |
+| M8 Partikül, efekt ve blok entity | `████████████████░░░░` | 79 | 33/41 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T89, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T89, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T76c, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -297,7 +297,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T74b](T74b-dusen-toz-havai-fisek.md) Düşen toz ve havai fişek parçacıkları — M · bağımlı: T74 · bölündü (0eced9d5)
 - [ ] [T74c](T74c-havai-fisek.md) Havai fişek parçacıkları — L · bağımlı: T74b
 - [x] [T75](T75-cekim-parcaciklari.md) Portal, büyü masası ve çeken parçacıklar — M · bağımlı: T70b · bitti (40baea57)
-- [ ] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75
+- [x] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75 · bitti
 - [x] [T76](T76-vurus-patlama-parcaciklari.md) Vuruş, patlama ve ifade parçacıkları — M · bağımlı: T70b · bitti (76093776)
 - [x] [T76b](T76b-ciglik-gardiyan-patlama.md) Çığlık, elder gardiyan parçacığı ve `Explode` paketi — M · bağımlı: T76 · bölündü (d18ef7d8)
 - [ ] [T76c](T76c-ciglik-gardiyan.md) Çığlık ve elder gardiyan parçacıkları — M · bağımlı: T76b

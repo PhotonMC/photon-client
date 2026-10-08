@@ -49,6 +49,44 @@ pub enum ParticleData {
     Roll(f32),
     /// `ItemParticleOption`: the item, by its registry id (its components are not read).
     Item(i32),
+    /// `VibrationParticleOption`: where it is headed, and how many ticks until it arrives.
+    Vibration {
+        destination: PositionSource,
+        arrival_in_ticks: i32,
+    },
+    /// `TrailParticleOption`: where it is headed, its colour, and how long it takes.
+    Trail {
+        target: (f64, f64, f64),
+        color: u32,
+        duration: i32,
+    },
+}
+
+/// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity
+/// tracked by id with a vertical offset (`EntityPositionSource`, resolved each tick the way
+/// `ClientLevel.getEntity` does).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PositionSource {
+    Block(BlockPos),
+    Entity { id: i32, y_offset: f32 },
+}
+
+impl PositionSource {
+    /// `PositionSource.getPosition`: a block's centre, or a tracked entity's position (gone once
+    /// it cannot be found), with the entity source's vertical offset added.
+    pub fn position(self, world: &ClientWorld) -> Option<(f64, f64, f64)> {
+        match self {
+            Self::Block(pos) => Some((
+                f64::from(pos.x) + 0.5,
+                f64::from(pos.y) + 0.5,
+                f64::from(pos.z) + 0.5,
+            )),
+            Self::Entity { id, y_offset } => {
+                let (x, y, z) = world.entities().at(id)?.position();
+                Some((x, y + f64::from(y_offset), z))
+            }
+        }
+    }
 }
 
 impl ParticleData {

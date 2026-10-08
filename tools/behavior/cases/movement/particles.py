@@ -211,6 +211,20 @@ def particle_tick_cases():
         row("end-rod", "end_rod", floor(), (0.5, 66.5, 0.5), (0.003, -0.002, 0.001), 12345, 70),
         row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
             engine_seed=65),
+        # A vibration signal closes in on a block position a share of the remaining distance each
+        # tick, gone once it arrives; a trail does the same toward a fixed point, tinted at random.
+        dict(row("vibration-to-a-block", "vibration", [], (0.5, 70.0, 0.5), still, 12345, 12),
+             destination_x=3, destination_y=72, destination_z=1, arrival_in_ticks=10),
+        dict(row("vibration-another-destination", "vibration", [], (0.5, 70.0, 0.5), still, 77, 8,
+                 engine_seed=51),
+             destination_x=-2, destination_y=68, destination_z=4, arrival_in_ticks=6),
+        dict(row("trail-to-a-point", "trail", [], (0.5, 70.0, 0.5), still, 12345, 24),
+             target_x=float_bits(2.5, "f64"), target_y=float_bits(71.0, "f64"),
+             target_z=float_bits(-1.5, "f64"), color=0xFF8800, duration=20),
+        dict(row("trail-pushed", "trail", [], (0.5, 70.0, 0.5), (0.1, 0.05, -0.08), 77, 10,
+                 engine_seed=52),
+             target_x=float_bits(-3.0, "f64"), target_y=float_bits(69.0, "f64"),
+             target_z=float_bits(0.5, "f64"), color=0x33CCFF, duration=6),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}

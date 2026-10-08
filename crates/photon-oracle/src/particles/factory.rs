@@ -117,6 +117,38 @@ pub(super) fn particle_of(
         )),
         "totem_of_undying" => Ok(Particle::totem(random, motion, sprites)),
         "end_rod" => Ok(Particle::end_rod(random, motion, sprites)),
+        "vibration" => {
+            let destination = photon_world::particles::PositionSource::Block(BlockPos {
+                x: i32_field(row, "destination_x")?,
+                y: i32_field(row, "destination_y")?,
+                z: i32_field(row, "destination_z")?,
+            });
+            let sprite = sprites.from_random(&mut engine_random);
+            Ok(Particle::vibration(
+                random,
+                at,
+                destination,
+                i32_field(row, "arrival_in_ticks")?,
+                (sprites, sprite),
+                world,
+            ))
+        }
+        "trail" => {
+            let target = (
+                parsed64(row, "target_x")?,
+                parsed64(row, "target_y")?,
+                parsed64(row, "target_z")?,
+            );
+            let sprite = sprites.from_random(&mut engine_random);
+            Ok(Particle::trail(
+                random,
+                motion,
+                target,
+                color,
+                i32_field(row, "duration")?,
+                (sprites, sprite),
+            ))
+        }
         "item_crumb" => Ok(Particle::breaking_item(
             random,
             motion,

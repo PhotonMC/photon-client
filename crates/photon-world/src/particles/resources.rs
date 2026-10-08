@@ -63,6 +63,8 @@ enum Provider {
     EndRod,
     FallingLeaves,
     BreakingItem,
+    Vibration,
+    Trail,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -116,6 +118,8 @@ fn provider_of(name: &str) -> Option<Provider> {
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
         "end_rod" => Provider::EndRod,
+        "vibration" => Provider::Vibration,
+        "trail" => Provider::Trail,
         "item" | "item_slime" | "item_cobweb" | "item_snowball" | "sulfur_cube_goo" => {
             Provider::BreakingItem
         }
@@ -236,6 +240,7 @@ impl ParticleResources {
                 | Provider::Mark(_)
                 | Provider::FallingLeaves
                 | Provider::BreakingItem
+                | Provider::Vibration
         ) {
             return self.create_own(
                 provider,
@@ -292,6 +297,7 @@ impl ParticleResources {
             }
             Provider::Totem => Particle::totem(random, motion, sprites),
             Provider::EndRod => Particle::end_rod(random, motion, sprites),
+            Provider::Trail => trail(data, random, motion, (sprites, engine_random))?,
             Provider::Glow => Particle::glow(name, random, motion, sprites, engine_random),
             Provider::Portal
             | Provider::ReversePortal
@@ -359,6 +365,25 @@ impl ParticleResources {
         if provider == Provider::Drip {
             let sprites = self.sprite_sets.get(name)?;
             return Particle::drip_provider(name, random(), at, sprites, engine_random);
+        }
+        if provider == Provider::Vibration {
+            let super::engine::ParticleData::Vibration {
+                destination,
+                arrival_in_ticks,
+            } = data
+            else {
+                return None;
+            };
+            let sprites = self.sprite_sets.get(name)?;
+            let sprite = sprites.from_random(engine_random);
+            return Some(Particle::vibration(
+                random(),
+                at,
+                destination,
+                arrival_in_ticks,
+                (sprites, sprite),
+                world,
+            ));
         }
         if let Provider::Mark(mark) = provider {
             let sprites = if mark.is_emitter() {
@@ -432,6 +457,32 @@ fn attract(
         // `Provider::SuspendedTown`.
         _ => Particle::suspended_town(name, random, motion, sprites, (engine_random, level_random)),
     }
+}
+
+/// `TrailParticle.Provider`: nothing for options of another kind.
+fn trail(
+    data: super::engine::ParticleData,
+    random: RandomSource,
+    motion: ((f64, f64, f64), (f64, f64, f64)),
+    (sprites, engine_random): (&Arc<SpriteSet>, &mut RandomSource),
+) -> Option<Particle> {
+    let super::engine::ParticleData::Trail {
+        target,
+        color,
+        duration,
+    } = data
+    else {
+        return None;
+    };
+    let sprite = sprites.from_random(engine_random);
+    Some(Particle::trail(
+        random,
+        motion,
+        target,
+        color,
+        duration,
+        (sprites, sprite),
+    ))
 }
 
 /// The providers that read the colours their options carry: nothing for options of another kind.
