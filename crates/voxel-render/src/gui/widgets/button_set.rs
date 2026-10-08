@@ -36,20 +36,27 @@ impl<A: Copy> ButtonSet<A> {
         }
     }
 
-    /// A button at `(x, y, width, height)`, with the tooltip `tooltip` names if any.
+    /// A button at `(x, y, width, height)`, with the tooltip `tooltip` names if any; its place
+    /// in the arena.
     pub fn add(
         &mut self,
         (x, y, width, height): (i32, i32, i32, i32),
         (kind, active): (Kind, bool),
         action: A,
         tooltip: Option<(&Lang, &str)>,
-    ) {
+    ) -> usize {
         let rect = self.arena.add(width, height);
         self.arena.0[rect].x = x;
         self.arena.0[rect].y = y;
         let holder = tooltip.map(|(lang, key)| Holder::of(lang, &Component::translatable(key)));
         self.buttons
             .push((Widget { rect, active, kind }, action, holder));
+        rect
+    }
+
+    /// Wake or still the button at `index` of those added.
+    pub fn set_active(&mut self, index: usize, active: bool) {
+        self.buttons[index].0.active = active;
     }
 
     /// The screen size the buttons were laid out for.

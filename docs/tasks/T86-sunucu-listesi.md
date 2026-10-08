@@ -31,3 +31,10 @@ Durum sorgusu (T86b), LAN keşfi.
 `docs/gui-oracle.md` satırları.
 
 ## Devir notu
+Yapılan: `servers.dat` modeli (`voxel-game/src/servers.rs`: okuma/yazma, gizli sunucular, adres
+varsayılan portu), `JoinMultiplayerScreen` (`voxel-render/src/gui/screen/servers.rs`: satırlar
+ping beklerken, dönen çubuklar, durum ipucu, katıl/taşı okları, LAN başlığı ve noktaları, seçim,
+kaydırma, alt düğmeler), menüde Multiplayer → liste, Join/çift tık/Enter bağlanır, taşıma kaydedilir,
+Back/Esc başlığa, F5 yeniler. Oracle `join_multiplayer_screen` 30 satır.
+Sapma: SRV kaydı sorulmuyor; klavye odağı (Tab/ok) listeye taşınmadı.
+Açık: Add/Edit/Delete/Direct → T86c; durum sorgusu → T86b; LAN keşfi yok.

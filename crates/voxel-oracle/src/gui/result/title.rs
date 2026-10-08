@@ -50,3 +50,51 @@ pub(super) fn title_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }
+
+/// `join_multiplayer_screen`: the server list over the row's saved servers, after clicks and
+/// scrolls, under a mouse.
+pub(super) fn join_multiplayer_screen_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+) -> Result<Value, String> {
+    let (font, atlas) = (&ctx.font, &ctx.atlas);
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let lang = voxel_game::text::Lang::load(&ctx.root);
+    let names = row["servers"]
+        .as_array()
+        .ok_or("servers")?
+        .iter()
+        .map(|name| name.as_str().unwrap_or_default().to_owned())
+        .collect();
+    let mut screen = voxel_render::gui::screen::servers::JoinMultiplayerScreen::new(
+        font,
+        &lang,
+        (int("width"), int("height")),
+        names,
+    );
+    for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
+        let x = step["x"].as_f64().unwrap_or(0.0);
+        let y = step["y"].as_f64().unwrap_or(0.0);
+        match step["do"].as_str() {
+            Some("click") => {
+                screen.clicked((x as i32, y as i32), false);
+            }
+            Some("scroll") => screen.scrolled((x, y), step["dy"].as_f64().unwrap_or(0.0)),
+            other => return Err(format!("unknown step {other:?}")),
+        }
+    }
+    let mouse = (
+        row["mouse"][0].as_i64().unwrap_or(0) as i32,
+        row["mouse"][1].as_i64().unwrap_or(0) as i32,
+    );
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        millis: row["ms"].as_u64().unwrap_or(0),
+        ..GuiFrame::default()
+    };
+    screen.draw(&mut frame, atlas, font, mouse);
+    Ok(json!({
+        "label": row["label"],
+        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+    }))
+}

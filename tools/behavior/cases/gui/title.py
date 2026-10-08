@@ -29,3 +29,40 @@ def gui_title_screen_cases():
         row("arrow-to-quit", steps=[key("down")] * 5 + [key("right")]),
     ]
     yield {"case_id": "gui/title-screen", "family": "gui", "operation": "title_screen", "rows": rows}
+
+
+def gui_join_multiplayer_screen_cases():
+    """The server list: saved servers being asked about (the bars turn with the clock), the local
+    network's header, the mouse over a server and its join and move arrows, the status tooltip,
+    clicks that select or move a server, scrolling a long list, and several screen sizes."""
+    three = ["Alpha", "Beta Server", "Gamma"]
+
+    def row(label, servers=three, width=427, height=240, mouse=(0, 0), steps=(), ms=0):
+        return {"label": label, "servers": list(servers), "width": width, "height": height,
+                "mouse": list(mouse), "steps": list(steps), "ms": ms}
+
+    click = lambda x, y: {"do": "click", "x": x, "y": y}
+    scroll = lambda dy: {"do": "scroll", "x": 213, "y": 100, "dy": dy}
+    many = ["Server %d" % index for index in range(1, 7)]
+    rows = [row("three"), row("none", servers=[]), row("one", servers=["Only"]),
+            row("small", width=320), row("wide", width=640, height=360), row("tall", height=480),
+            row("long-name", servers=["A server with a rather long name for its row"])]
+    rows += [row("bars-%d" % ms, ms=ms) for ms in (100, 250, 450, 700, 1234)]
+    rows += [
+        row("hover-text", mouse=(200, 80)), row("hover-join", mouse=(90, 80)),
+        row("hover-move-up", mouse=(70, 75)), row("hover-move-down", mouse=(70, 95)),
+        row("hover-first-no-up", mouse=(70, 40)), row("hover-last-no-down", mouse=(70, 125)),
+        row("hover-lan-header", mouse=(213, 150)), row("tip-status", mouse=(352, 40)),
+        row("hover-back", mouse=(323, 222)),
+        row("select-second", steps=[click(200, 80)]),
+        row("select-then-hover-delete", mouse=(161, 222), steps=[click(200, 80)]),
+        row("select-lan-header", steps=[click(213, 150)]),
+        row("move-first-down", steps=[click(70, 57)]),
+        row("move-last-up", steps=[click(70, 110)]),
+        row("many", servers=many),
+        row("many-scrolled", servers=many, steps=[scroll(-1)]),
+        row("many-scrolled-end", servers=many, steps=[scroll(-10)]),
+        row("many-scrolled-back", servers=many, steps=[scroll(-3), scroll(1)]),
+    ]
+    yield {"case_id": "gui/join-multiplayer-screen", "family": "gui",
+           "operation": "join_multiplayer_screen", "rows": rows}

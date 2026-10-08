@@ -23,6 +23,7 @@ public final class GuiOracle extends GuiTitleOracle {
                 case "command_suggest" -> commandSuggest(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "title_screen" -> titleScreen(request);
+                case "join_multiplayer_screen" -> joinMultiplayerScreen(request);
                 case "name_tags" -> nameTags(request);
                 case "hud_hotbar" -> hudHotbar(request);
                 case "hud_status" -> hudStatus(request);

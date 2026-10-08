@@ -1,19 +1,18 @@
 use super::*;
 
 impl Gui {
-    /// A frame of the title screen, with nothing behind it but the clear colour.
-    pub fn draw_title(
+    /// A frame of a menu, with nothing behind it but the clear colour.
+    pub fn draw_menu_screen(
         &self,
         backend: &mut VulkanBackend,
         surface: &WindowSurface,
-        screen: &voxel_render::gui::screen::title::TitleScreen,
-        mouse: (i32, i32),
+        draw: impl FnOnce(&mut voxel_render::gui::GuiFrame, &GuiAtlas, &Font),
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut frame = voxel_render::gui::GuiFrame {
             millis: self.started_at.elapsed().as_millis() as u64,
             ..voxel_render::gui::GuiFrame::default()
         };
-        screen.draw(&mut frame, &self.atlas, &self.font, mouse);
+        draw(&mut frame, &self.atlas, &self.font);
         let size = surface.scale();
         let scale = size.gui_scale() as f32;
         backend.set_gui(

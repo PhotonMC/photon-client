@@ -31,7 +31,7 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %75 bitti** (ağırlıklı) · 210/267 madde işaretli, **57 madde kaldı** (tahmini 101 M-görev eşdeğeri iş).
+**Toplam: %76 bitti** (ağırlıklı) · 211/268 madde işaretli, **57 madde kaldı** (tahmini 100 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `████████████░░░░░░░░` | 58 | 7/11 |
 | M4 Entity'ler | `████████████████████` | 98 | 129/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `██████████░░░░░░░░░░` | 51 | 17/31 |
+| M6 Ekranlar ve ayarlar | `███████████░░░░░░░░░` | 54 | 18/32 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
 | M8 Partikül, efekt ve blok entity | `███████████░░░░░░░░░` | 53 | 13/25 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86, T87, T88, T90, T91, T92, T93, T94, T95, T96, T64d, T72, T73, T74, T75, T76, T77, T78, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86c, T86b, T87, T88, T90, T91, T92, T93, T94, T95, T96, T64d, T72, T73, T74, T75, T76, T77, T78, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -242,9 +242,10 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T11b](T11b-liste-klavye-odagi.md) Ayar listelerinde klavye odağı (Tab, ok) — M · bağımlı: T11 · bitti
 - [x] [T66](T66-hud-durum-oracle.md) HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) — M · bağımlı: T45 · bitti (5814a8cd)
 - [x] [PLAN-M6](PLAN-M3d.md) Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl — S · bitti
-- [x] [T85](T85-uygulama-durumu-baslik.md) Uygulama durumu (menü ↔ oyun) ve başlık ekranı — L · bitti
+- [x] [T85](T85-uygulama-durumu-baslik.md) Uygulama durumu (menü ↔ oyun) ve başlık ekranı — L · bitti (5558d989)
 - [ ] [T85b](T85b-panorama.md) Başlık ekranının panoraması ve menü bulanıklığı — M · bağımlı: T85
-- [ ] [T86](T86-sunucu-listesi.md) Sunucu listesi, `servers.dat`, ekle/düzenle, doğrudan bağlan — L · bağımlı: T85
+- [x] [T86](T86-sunucu-listesi.md) Sunucu listesi ve `servers.dat` — L · bağımlı: T85 · bitti
+- [ ] [T86c](T86c-sunucu-ekle-duzenle.md) Sunucu ekleme, düzenleme, silme ve doğrudan bağlanma — M · bağımlı: T86
 - [ ] [T86b](T86b-sunucu-durumu.md) Sunucu durum sorgusu: MOTD, ping, favicon — M · bağımlı: T86
 - [ ] [T87](T87-baglanma-yukleme.md) Bağlanma ve dünya yükleme ekranları — M · bağımlı: T85
 - [ ] [T88](T88-kitap-duzenleme.md) Kitap açma ve düzenleme (`OpenBook`, `EditBook`) — M · bağımlı: T56

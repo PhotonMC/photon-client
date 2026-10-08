@@ -60,6 +60,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "sidebar" => sidebar_case(&mut ctx, row)?,
             "pause_screen" => pause_screen_case(&mut ctx, row)?,
             "title_screen" => title_screen_case(&mut ctx, row)?,
+            "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
             "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
             "widgets" => widgets_case(&mut ctx, row)?,
             "options_screen" => options_screen_case(&mut ctx, row)?,

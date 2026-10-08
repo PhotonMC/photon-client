@@ -24,7 +24,7 @@ const SPRITE_FOLDERS: [&str; 9] = [
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 36] = [
+const WHOLE_TEXTURES: [&str; 37] = [
     "menu_background",
     "inworld_menu_background",
     "menu_list_background",
@@ -61,6 +61,7 @@ const WHOLE_TEXTURES: [&str; 36] = [
     "title/minecraft",
     "title/edition",
     "title/background/panorama_overlay",
+    "textures/misc/unknown_server",
 ];
 
 /// The names of the banner pattern textures (`creeper`), without `banner`
@@ -142,7 +143,12 @@ impl GuiAtlas {
             images.insert(format!("minecraft:{name}"), image);
         }
         for name in WHOLE_TEXTURES {
-            let path = assets_root.join(format!("minecraft/textures/gui/{name}.png"));
+            // A name with its folder (`textures/misc/...`) is outside `textures/gui`.
+            let path = if name.starts_with("textures/") {
+                assets_root.join(format!("minecraft/{name}.png"))
+            } else {
+                assets_root.join(format!("minecraft/textures/gui/{name}.png"))
+            };
             let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
             let key = format!("minecraft:texture/{name}");
             stitcher.register_sprite(SpriteEntry {
