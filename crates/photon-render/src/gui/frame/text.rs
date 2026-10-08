@@ -14,6 +14,12 @@ impl GuiFrame {
         stretch_inner: bool,
         (x, y, w, h): (i32, i32, i32, i32),
     ) {
+        // Nothing for no width or height; a border is at most half the size.
+        if w == 0 || h == 0 {
+            return;
+        }
+        let (left, right) = (left.min(w / 2), right.min(w / 2));
+        let (top, bottom) = (top.min(h / 2), bottom.min(h / 2));
         if let Some(log) = &mut self.log {
             // The reference blits a nine-slice sprite as one call.
             log.push(DrawOp::Sprite {
@@ -119,6 +125,17 @@ impl GuiFrame {
             .unwrap_or(0);
         let height = lines.len() as i32 * 10 - if lines.len() == 1 { 2 } else { 0 };
         let (x, y) = positioner.position(screen, mouse, (width, height));
+        self.tooltip_box(atlas, x, y, width, height);
+        let mut line_y = y;
+        for (index, line) in lines.iter().enumerate() {
+            self.styled_text(atlas, font, line, x, line_y, 0xFFFF_FFFF, true);
+            line_y += 10 + if index == 0 { 2 } else { 0 };
+        }
+    }
+
+    /// `TooltipRenderUtil.extractTooltipBackground`: the background and the
+    /// frame around a tooltip's contents at `(x, y)`, `width` by `height`.
+    pub fn tooltip_box(&mut self, atlas: &GuiAtlas, x: i32, y: i32, width: i32, height: i32) {
         let (x0, y0) = (x - 3 - 9, y - 3 - 9);
         let (padded_w, padded_h) = (width + 6 + 18, height + 6 + 18);
         self.nine_slice(
@@ -143,11 +160,6 @@ impl GuiFrame {
             padded_w,
             padded_h,
         );
-        let mut line_y = y;
-        for (index, line) in lines.iter().enumerate() {
-            self.styled_text(atlas, font, line, x, line_y, 0xFFFF_FFFF, true);
-            line_y += 10 + if index == 0 { 2 } else { 0 };
-        }
     }
 
     /// `GuiGraphics.text` without a shadow: each glyph of the default font

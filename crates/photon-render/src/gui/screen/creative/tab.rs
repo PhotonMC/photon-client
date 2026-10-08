@@ -282,8 +282,9 @@ impl CreativeScreen {
                 .cloned()
                 .map(|stack| (stack, matches!(view.target(slot), Target::Window(_))))
         });
-        if inventory.carried.is_none()
-            && let Some((stack, creative_slot)) = hovered_stack
+        if let Some((stack, creative_slot)) = hovered_stack
+            && (inventory.carried.is_none()
+                || super::super::bundle_tooltip::shows_with_item_in_hand(&stack))
         {
             let mut lines = (draw.tooltip)(&stack, creative_slot);
             let kind = CREATIVE_TABS[selected].kind;
@@ -321,7 +322,7 @@ impl CreativeScreen {
                     }
                 }
             }
-            self.layout.tooltip(draw, &lines, mouse);
+            super::super::bundle_tooltip::stack_tooltip(&self.layout, draw, &stack, &lines, mouse);
             return;
         }
         let (xm, ym) = self.layout.relative(mouse);

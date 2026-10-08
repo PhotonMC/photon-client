@@ -102,6 +102,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "book_sign_screen" => book_sign_screen_case(&mut ctx, row)?,
             "book_view" => book_view_case(&mut ctx, row)?,
             "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
+            "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
             _ => return Err("unknown gui operation".into()),
         });
     }

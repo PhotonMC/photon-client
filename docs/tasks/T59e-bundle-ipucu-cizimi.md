@@ -20,4 +20,7 @@ G tarifi: ipucunu doğrudan çizen yeni bir gui operation'ı (konteyner oracle'�
 `docs/records/generic-container-conformance.md`, `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+- `screen/bundle_tooltip.rs`: `item_tooltip`/`stack_tooltip` (görüntülü yerleşim), üç kap ekranında kullanılıyor.
+- `ScreenDraw.lang` eklendi; `GuiFrame::tooltip_box` ayrıldı; dokuz dilim kenarı yarıya sınırlı, sıfır boyut çizilmez.
+- Oracle `gui/bundle-tooltip` (`GuiTooltipOracle.bundleTooltip`), 10 satır birebir.
+- Sapma: `tooltip_style` bileşeni (özel ipucu sprite'ı) okunmuyor.

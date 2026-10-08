@@ -18,6 +18,7 @@ pub mod book;
 pub mod book_edit;
 pub mod book_sign;
 pub mod bundle_mouse;
+pub mod bundle_tooltip;
 pub mod container;
 pub mod creative;
 pub mod generic;
@@ -52,6 +53,8 @@ pub struct ScreenDraw<'a, 'b> {
     pub item: &'a mut ItemDrawer<'b>,
     pub player: &'a mut PlayerDrawer<'b>,
     pub tooltip: &'a mut TooltipLines<'b>,
+    /// The language the screens' own texts are read in.
+    pub lang: &'a photon_game::text::Lang,
     /// The recipe book and the item tags its recipes are read against.
     pub book: &'a photon_world::RecipeBook,
     pub tags: &'a photon_world::block::tags::ItemTags,

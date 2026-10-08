@@ -279,6 +279,7 @@ impl Gui {
                 item: &mut draw_item,
                 player: &mut draw_player,
                 tooltip: &mut tooltip_lines,
+                lang: &self.lang,
                 control_held: controls.control_held,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
                 widget_tooltips: true,

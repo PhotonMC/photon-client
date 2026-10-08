@@ -186,7 +186,16 @@ Shift/sayı tuşu tıklamasında seçim düşer ve her seferinde
 `SelectBundleItem` (`-1` dahil, boş bundle'da da) gider. Oracle:
 `movement/container-clicks`'e `SCROLL`/`UNHOVER` adımları ve
 `bundle_selections` alanı, 5 satır. Açık: yaratıcı ekran ve ekran kapanışında
-seçim düşürme yok; ipucu çizimi T59e.
+seçim düşürme yok.
+
+İpucu görüntüsü (T59e): `ClientBundleTooltip` ve `GuiGraphics.tooltip`'in
+metin + görüntü yerleşimi (`photon-render/src/gui/screen/bundle_tooltip.rs`):
+sağ alttan dolan 24'lük yuvalar, seçili yuva vurgusu, 12'yi aşınca `+N`,
+seçilenin adı üstte ayrı ipucunda, doluluk çubuğu (boş/dolu yazısı, dolu
+sprite'ı), boş bundle açıklaması; bundle taşınırken de ipucu çıkar
+(`showTooltipWithItemInHand`), yaratıcı ekranda da. Dokuz dilimli
+sprite'larda kenar boyutun yarısıyla sınırlanır, sıfır boyutlu çizim
+yapılmaz. Oracle: `gui/bundle-tooltip`, 10 satır.
 
 ## Taş çarkı sonucu (`client-parity`)
 

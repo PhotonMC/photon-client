@@ -394,3 +394,41 @@ impl ContainerMenu {
         true
     }
 }
+
+/// What a bundle's tooltip image shows (`BundleItem.getTooltipImage`,
+/// `ClientBundleTooltip`).
+#[derive(Debug, Clone)]
+pub struct BundleView {
+    /// The contents, first first.
+    pub items: Vec<Stack>,
+    /// Their weight as a numerator and a denominator; `None` where the
+    /// reference's is an error (the image then draws nothing).
+    pub weight: Option<(i64, i64)>,
+    /// The selected item, or -1.
+    pub selected: i32,
+    /// `getNumberOfItemsToShow`.
+    pub to_show: i32,
+}
+
+/// `BundleItem.getTooltipImage`: a bundle's contents unless its tooltip hides
+/// them; `None` for any other stack.
+pub fn bundle_view(stack: &Stack) -> Option<BundleView> {
+    let bundle = stacking(stack).is_some_and(|item| {
+        item.class.owner_of(ItemMethod::OverrideStackedOnOther) == ItemClass::BundleItem
+    });
+    if !bundle {
+        return None;
+    }
+    let values = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes());
+    let (hide, hidden) = values.tooltip_display();
+    if hide || hidden.contains(&ids::BUNDLE_CONTENTS) {
+        return None;
+    }
+    let items = contents(stack)?;
+    Some(BundleView {
+        weight: content_weight(&items).map(|weight| (weight.numerator, weight.denominator)),
+        selected: stack.bundle_selected(),
+        to_show: bundle_items_to_show(stack),
+        items,
+    })
+}

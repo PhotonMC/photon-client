@@ -148,7 +148,12 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         let json = photon_core::json::parse(&page.to_string()).map_err(|_| "json")?;
         pages.push(photon_game::text::Component::from_json(&json).ok_or("component")?);
     }
-    let mut screen = BookScreen::held((int("width"), int("height")), lang, font.clone(), pages);
+    let mut screen = BookScreen::held(
+        (int("width"), int("height")),
+        lang.clone(),
+        font.clone(),
+        pages,
+    );
     let menu = photon_game::menus::container::ContainerMenu::default();
     for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         match step["do"].as_str() {
@@ -198,6 +203,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         item: &mut item,
         player: &mut player,
         tooltip: &mut tooltip,
+        lang: &lang,
         book: &book,
         tags: &tags,
         control_held: false,

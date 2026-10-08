@@ -158,6 +158,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             item: &mut item_drawer,
             player: &mut player,
             tooltip: &mut tooltip,
+            lang: &lang,
             book: &book,
             tags: &tags,
             control_held: false,

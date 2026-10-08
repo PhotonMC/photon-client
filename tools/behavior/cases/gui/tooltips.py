@@ -1,6 +1,6 @@
 """The `gui` family: item tooltip lines (`ItemStack.getTooltipLines`)."""
 
-from cases.movement.player.containers import CUSTOM_NAME, DAMAGE, ITEM_IDS, LORE, nbt, patch, varint
+from cases.movement.player.containers import CUSTOM_NAME, DAMAGE, ITEM_IDS, LORE, bundle, nbt, patch, varint
 
 MAP_ID, MAP_POST_PROCESSING, WRITTEN_BOOK_CONTENT, BANNER_PATTERNS, CONTAINER = 46, 48, 55, 72, 75
 LOCK, SCALE = 0, 1
@@ -66,3 +66,36 @@ def gui_tooltip_cases():
             [(BANNER_PATTERNS, varint(1) + varint(1) + varint(14)), (LORE, varint(1) + nbt("Note"))]),
     ]
     yield {"case_id": "gui/tooltip-lines", "family": "gui", "operation": "tooltip_lines", "rows": rows}
+
+
+def gui_bundle_tooltip_cases():
+    """A bundle's tooltip in a container screen: empty, some stacks with and without a selected
+    one (a named one, a damaged one), full, more than twelve stacks, and placed by the screen's
+    edges."""
+    empty = patch()
+
+    def row(label, contents=None, selected=None, mouse=(120, 100), width=427, height=240):
+        made = {"label": label, "item": "minecraft:bundle", "count": 1, "width": width, "height": height,
+                "mouse_x": mouse[0], "mouse_y": mouse[1]}
+        if contents is not None:
+            made["patch"] = bundle(contents)
+        if selected is not None:
+            made["selected"] = selected
+        return made
+
+    three = [("dirt", 5, empty), ("ender_pearl", 2, empty), ("stone", 3, empty)]
+    named = patch([(CUSTOM_NAME, nbt("Rock"))])
+    damaged = patch([(DAMAGE, varint(100))])
+    rows = [
+        row("empty"),
+        row("three", three),
+        row("three, second selected", three, selected=1),
+        row("named selected", [("stone", 2, named)] + three, selected=0),
+        row("damaged sword", [("iron_sword", 1, damaged), ("stone", 9, empty)], selected=1),
+        row("full", [("stone", 64, empty)]),
+        row("nine", [("stone", 1, empty)] * 9, selected=8),
+        row("thirteen", [("stone", n, empty) for n in range(1, 14)], selected=2),
+        row("by the right edge", three, selected=2, mouse=(400, 60)),
+        row("by the bottom", [("stone", 1, empty)] * 12, mouse=(50, 230), width=320, height=240),
+    ]
+    yield {"case_id": "gui/bundle-tooltip", "family": "gui", "operation": "bundle_tooltip", "rows": rows}

@@ -414,15 +414,20 @@ impl Screen for GenericScreen {
         {
             self.layout.tooltip(draw, &lines, mouse);
         }
-        if menu.carried.is_none()
-            && let Some(stack) = self
-                .hovered
-                .and_then(|slot| menu.slots.get(slot))
-                .and_then(Option::as_ref)
-        {
-            let lines = (draw.tooltip)(stack, false);
-            self.layout.tooltip(draw, &lines, mouse);
-        } else if let Some(book) = &self.book {
+        let hovered = self
+            .hovered
+            .and_then(|slot| menu.slots.get(slot))
+            .and_then(Option::as_ref);
+        let shown = hovered.is_some_and(|stack| {
+            super::bundle_tooltip::item_tooltip(
+                &self.layout,
+                draw,
+                stack,
+                menu.carried.is_some(),
+                mouse,
+            )
+        });
+        if !shown && let Some(book) = &self.book {
             book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
     }

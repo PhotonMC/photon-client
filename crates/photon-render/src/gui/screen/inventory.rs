@@ -5,6 +5,7 @@
 //!
 //! The recipe book beside it is [`super::recipe_book`]'s.
 
+use super::bundle_tooltip::item_tooltip;
 use super::container::{ContainerLayout, ContainerMouse, SlotClick, SlotView, slot_key_clicks};
 use super::recipe_book::{RecipeAssets, RecipeBookPanel};
 use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
@@ -316,13 +317,12 @@ impl Screen for InventoryScreen {
         self.book
             .draw_ghost(draw, menu, (left, top), &slot_position);
         self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
-        // The hovered stack's tooltip, when nothing is carried.
-        if menu.carried.is_none()
-            && let Some(stack) = self.hovered.and_then(|slot| menu.slots[slot].as_ref())
-        {
-            let lines = (draw.tooltip)(stack, false);
-            self.layout.tooltip(draw, &lines, mouse);
-        } else {
+        // The hovered stack's tooltip, when nothing is carried (or it is a bundle's).
+        let hovered = self.hovered.and_then(|slot| menu.slots[slot].as_ref());
+        let shown = hovered.is_some_and(|stack| {
+            item_tooltip(&self.layout, draw, stack, menu.carried.is_some(), mouse)
+        });
+        if !shown {
             self.book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
     }
