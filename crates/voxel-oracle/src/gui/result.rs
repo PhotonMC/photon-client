@@ -62,6 +62,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "title_screen" => title_screen_case(&mut ctx, row)?,
             "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
             "server_form" => server_form_case(&mut ctx, row)?,
+            "connect_screen" => connect_screen_case(&mut ctx, row)?,
             "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
             "widgets" => widgets_case(&mut ctx, row)?,
             "options_screen" => options_screen_case(&mut ctx, row)?,

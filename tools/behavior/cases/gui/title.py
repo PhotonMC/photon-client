@@ -104,3 +104,18 @@ def gui_server_form_cases():
         row("direct-small", kind="direct", width=320, ip="example.org"),
     ]
     yield {"case_id": "gui/server-form", "family": "gui", "operation": "server_form", "rows": rows}
+
+
+def gui_connect_screen_cases():
+    """The screens of a join: connecting with each status the handshake shows, the mouse on
+    Cancel, and loading the terrain, in several screen sizes."""
+    def row(label, screen="connect", status="connect.connecting", width=427, height=240, mouse=(0, 0)):
+        return {"label": label, "screen": screen, "status": status, "width": width, "height": height,
+                "mouse": list(mouse)}
+
+    rows = [row("connecting"), row("joining", status="connect.joining"),
+            row("negotiating", status="connect.negotiating"), row("connecting-small", width=320),
+            row("connecting-wide", width=640, height=360), row("hover-cancel", mouse=(213, 200)),
+            row("loading", screen="loading"), row("loading-small", screen="loading", width=320),
+            row("loading-tall", screen="loading", height=480)]
+    yield {"case_id": "gui/connect-screen", "family": "gui", "operation": "connect_screen", "rows": rows}

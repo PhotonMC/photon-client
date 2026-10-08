@@ -173,3 +173,31 @@ pub(super) fn server_form_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }
+
+/// `connect_screen`: the connecting screen with a status, or the terrain loading screen.
+pub(super) fn connect_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use voxel_render::gui::screen::connect::{ConnectScreen, draw_level_loading};
+    let (font, atlas) = (&ctx.font, &ctx.atlas);
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let lang = voxel_game::text::Lang::load(&ctx.root);
+    let size = (int("width"), int("height"));
+    let mouse = (
+        row["mouse"][0].as_i64().unwrap_or(0) as i32,
+        row["mouse"][1].as_i64().unwrap_or(0) as i32,
+    );
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    if row["screen"] == "loading" {
+        draw_level_loading(&mut frame, atlas, font, &lang, size);
+    } else {
+        let mut screen = ConnectScreen::new(&lang, size);
+        screen.set_status(&lang, row["status"].as_str().unwrap_or_default());
+        screen.draw(&mut frame, atlas, font, mouse);
+    }
+    Ok(json!({
+        "label": row["label"],
+        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+    }))
+}

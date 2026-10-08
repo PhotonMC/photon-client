@@ -248,4 +248,47 @@ class GuiTitleOracle extends GuiSettingsOracle {
         result.add("rows", rows);
         return result;
     }
+    /** The game's own screens of a join: connecting (with a status) and loading the terrain. */
+    static JsonObject connectScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            var panorama = menu(screen);
+            var last = new net.minecraft.client.gui.screens.TitleScreen(false);
+            panorama.holdSpin();
+            net.minecraft.client.gui.screens.Screen shown;
+            if (row.get("screen").getAsString().equals("loading")) {
+                shown = new net.minecraft.client.gui.screens.LevelLoadingScreen(
+                    new net.minecraft.client.multiplayer.LevelLoadTracker(),
+                    net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.OTHER);
+            } else {
+                var constructor = net.minecraft.client.gui.screens.ConnectScreen.class.getDeclaredConstructor(
+                    net.minecraft.client.gui.screens.Screen.class, net.minecraft.network.chat.Component.class);
+                constructor.setAccessible(true);
+                shown = constructor.newInstance(last, net.minecraft.network.chat.CommonComponents.CONNECT_FAILED);
+                var update = net.minecraft.client.gui.screens.ConnectScreen.class.getDeclaredMethod(
+                    "updateStatus", net.minecraft.network.chat.Component.class);
+                update.setAccessible(true);
+                update.invoke(shown, net.minecraft.network.chat.Component.translatable(row.get("status").getAsString()));
+            }
+            shown.init(width, height);
+            shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

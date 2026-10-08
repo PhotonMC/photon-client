@@ -5,6 +5,7 @@
 //! answers with the clicks it wants run ([`ScreenAction`]), and draws itself
 //! into the GUI frame through a [`ScreenDraw`].
 pub mod confirm;
+pub mod connect;
 pub mod death;
 pub mod disconnected;
 pub mod pause;

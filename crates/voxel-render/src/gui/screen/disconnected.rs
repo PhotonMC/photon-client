@@ -20,15 +20,33 @@ pub struct DisconnectedScreen {
     focused: bool,
     /// What it was made for, to make it again for another size.
     cause: Component,
+    heading: Component,
 }
 
 impl DisconnectedScreen {
     /// `DisconnectedScreen.init` for a reason, in a screen of `width` by
     /// `height` units.
-    pub fn new(font: &Font, lang: &Lang, (width, height): (i32, i32), reason: &Component) -> Self {
+    pub fn new(font: &Font, lang: &Lang, size: (i32, i32), reason: &Component) -> Self {
+        Self::titled(
+            font,
+            lang,
+            size,
+            &Component::translatable("disconnect.lost"),
+            reason,
+        )
+    }
+
+    /// The screen with another title (`connect.failed` for a connection that never came).
+    pub fn titled(
+        font: &Font,
+        lang: &Lang,
+        (width, height): (i32, i32),
+        heading: &Component,
+        reason: &Component,
+    ) -> Self {
         let mut arena = Arena::default();
         let runs = |component: &Component| lang.runs(component, &Style::default());
-        let title_text = runs(&Component::translatable("disconnect.lost"));
+        let title_text = runs(heading);
         let title_rect = arena.add(font.width_of_runs(&title_text), 9);
         let reason_runs = runs(reason);
         // `splitLines` of no text is no line.
@@ -75,12 +93,13 @@ impl DisconnectedScreen {
             size: (width, height),
             focused: false,
             cause: reason.clone(),
+            heading: heading.clone(),
         }
     }
 
     /// The screen again for a screen of another size.
     pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
-        Self::new(font, lang, size, &self.cause)
+        Self::titled(font, lang, size, &self.heading, &self.cause)
     }
 
     pub fn size(&self) -> (i32, i32) {

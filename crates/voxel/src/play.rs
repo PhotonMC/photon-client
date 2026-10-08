@@ -66,8 +66,9 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
+    let session = join(server, &Status::default())?;
     let client = Client::open((width, height))?;
-    Play::start(client, server)?.run()?;
+    Play::start(client, session)?.run()?;
     Ok(())
 }
 
@@ -134,9 +135,52 @@ pub(crate) enum Exit {
     Title,
 }
 
-/// Join `server` in `client`'s window and play until the player leaves or the window closes.
-pub(crate) fn play_in(client: Client, server: SocketAddr) -> Result<(Client, Exit)> {
-    Play::start(client, server)?.run()
+/// Play the joined `session` in `client`'s window until the player leaves or the window closes.
+pub(crate) fn play_in(client: Client, session: PlaySession) -> Result<(Client, Exit)> {
+    Play::start(client, session)?.run()
+}
+
+/// How far a join has come: still connecting, or in the level waiting for it to load.
+#[derive(Default)]
+pub(crate) struct Status(std::sync::atomic::AtomicBool);
+
+impl Status {
+    pub(crate) fn loading(&self) -> bool {
+        self.0.load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
+
+/// A join on its own thread (`ConnectScreen.connect`'s "Server Connector"), so the window keeps
+/// drawing; its session, or why it failed.
+pub(crate) struct JoinTask {
+    pub status: Arc<Status>,
+    result: std::sync::mpsc::Receiver<std::result::Result<PlaySession, String>>,
+}
+
+impl JoinTask {
+    pub(crate) fn start(server: SocketAddr) -> Self {
+        let status = Arc::new(Status::default());
+        let (send, result) = std::sync::mpsc::channel();
+        let shared = Arc::clone(&status);
+        std::thread::Builder::new()
+            .name("Server Connector".to_owned())
+            .spawn(move || {
+                let _ = send.send(join(server, &shared).map_err(|error| error.to_string()));
+            })
+            .expect("a thread to connect on");
+        Self { status, result }
+    }
+
+    /// The session once the join has finished, or why it failed; none while it goes on.
+    pub(crate) fn finished(&self) -> Option<std::result::Result<PlaySession, String>> {
+        match self.result.try_recv() {
+            Ok(result) => Some(result),
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                Some(Err("the connection thread stopped".to_owned()))
+            }
+        }
+    }
 }
 
 /// What a drawn frame leaves the loop to do.
@@ -344,9 +388,12 @@ fn sky_sprites(block_renderer: &BlockRenderer) -> voxel_render::sky::SkySprites 
 
 /// Join a server and wait until its level has loaded around the player,
 /// then a little longer for the chunks near them.
-fn join(server: SocketAddr, username: &str, auto_jump: bool) -> Result<PlaySession> {
+fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
+    let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
+    let auto_jump = env::var("VOXEL_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
-    let mut session = PlaySession::connect(server, username, Duration::from_secs(30), auto_jump)?;
+    let mut session = PlaySession::connect(server, &username, Duration::from_secs(30), auto_jump)?;
+    status.0.store(true, std::sync::atomic::Ordering::Relaxed);
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();
     while !session.is_loaded() {

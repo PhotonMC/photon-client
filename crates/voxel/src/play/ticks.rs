@@ -6,7 +6,7 @@ impl Play {
         clippy::too_many_lines,
         reason = "start-up builds each part of the session in turn"
     )]
-    pub(super) fn start(client: Client, server: SocketAddr) -> Result<Self> {
+    pub(super) fn start(client: Client, mut session: PlaySession) -> Result<Self> {
         let Client {
             mut surface,
             mut backend,
@@ -16,15 +16,12 @@ impl Play {
         } = client;
         let root =
             env::var("VOXEL_ASSETS").map_err(|_| "VOXEL_ASSETS must name the asset folder")?;
-        let username = env::var("VOXEL_USER").unwrap_or_else(|_| "VoxelClient".to_owned());
-        let auto_jump = env::var("VOXEL_AUTO_JUMP").is_ok_and(|value| value == "1");
         let script = env::var("VOXEL_SCRIPT")
             .ok()
             .map(|text| Script::parse(&text))
             .transpose()?;
 
         let mut particles = crate::particles::Particles::load(&root);
-        let mut session = join(server, &username, auto_jump)?;
         let position = report_spawn(&session)?;
         // The vanilla data pack the server runs, which sits next to the
         // assets: the biomes' colours and the sky's data come from it.

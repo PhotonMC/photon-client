@@ -9,14 +9,17 @@ use std::time::{Duration, Instant};
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
 use voxel_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
 use voxel_game::text::Component;
+use voxel_net::connection::PlaySession;
 use voxel_render::gui::screen::confirm::{ConfirmAction, ConfirmScreen};
+use voxel_render::gui::screen::connect::{ConnectScreen, draw_level_loading};
+use voxel_render::gui::screen::disconnected::DisconnectedScreen;
 use voxel_render::gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use voxel_render::gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use voxel_render::gui::screen::title::{TitleAction, TitleScreen};
 use voxel_render::gui::widgets::navigation::Direction;
 
 use crate::gui::Gui;
-use crate::play::{self, Client, Exit};
+use crate::play::{self, Client, Exit, JoinTask};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -28,7 +31,8 @@ const DOUBLE_CLICK: Duration = Duration::from_millis(250);
 /// What the menus chose.
 enum Choice {
     Quit,
-    Join(SocketAddr),
+    /// A joined server, its level loaded.
+    Play(Box<PlaySession>),
 }
 
 /// The menu open.
@@ -39,6 +43,10 @@ enum Screen {
     Form(ServerFormScreen, Option<usize>),
     /// Whether to delete the saved server at this place.
     Confirm(ConfirmScreen, usize),
+    /// A join going on.
+    Connecting(ConnectScreen, JoinTask),
+    /// A join that failed (`DisconnectedScreen` with `connect.failed`).
+    Failed(DisconnectedScreen),
 }
 
 /// `voxel` or `voxel menu [server [width height]]`: the title screen, the server list from its
@@ -62,16 +70,15 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut client = Client::open((width, height))?;
     let mut scripted_join = env::var_os("VOXEL_SCRIPT").is_some();
     loop {
-        let choice = if std::mem::take(&mut scripted_join) {
-            Choice::Join(server)
-        } else {
-            Menu::open(&mut client)?.run(&mut client)?
-        };
-        match choice {
+        let mut menu = Menu::open(&mut client)?;
+        if std::mem::take(&mut scripted_join) {
+            menu.connect(server, gui_size(&client));
+        }
+        match menu.run(&mut client)? {
             Choice::Quit => return Ok(()),
-            Choice::Join(server) => {
+            Choice::Play(session) => {
                 client.backend.set_gui_only(false);
-                let (back, exit) = play::play_in(client, server)?;
+                let (back, exit) = play::play_in(client, *session)?;
                 client = back;
                 if let Exit::Quit = exit {
                     return Ok(());
@@ -146,6 +153,14 @@ impl Menu {
         Screen::Title(TitleScreen::new(font, lang, size, self.splash.as_deref()))
     }
 
+    /// `ConnectScreen.startConnecting`: the join starts on its own thread.
+    fn connect(&mut self, server: SocketAddr, size: (i32, i32)) {
+        self.screen = Screen::Connecting(
+            ConnectScreen::new(self.gui.lang(), size),
+            JoinTask::start(server),
+        );
+    }
+
     /// `JoinMultiplayerScreen`, the saved servers read again.
     fn server_list(&mut self, size: (i32, i32)) -> Screen {
         self.servers = ServerList::load(&self.game_directory);
@@ -173,11 +188,28 @@ impl Menu {
             }
             play::fit_swapchain(client)?;
             let size = gui_size(client);
-            // The forms and the question keep the size they were opened in.
+            if let Screen::Connecting(_, task) = &self.screen
+                && let Some(result) = task.finished()
+            {
+                match result {
+                    Ok(session) => return Ok(Choice::Play(Box::new(session))),
+                    Err(reason) => {
+                        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+                        self.screen = Screen::Failed(DisconnectedScreen::titled(
+                            font,
+                            lang,
+                            gui_size(client),
+                            &Component::translatable("connect.failed"),
+                            &Component::literal(&reason),
+                        ));
+                    }
+                }
+            }
+            // The forms, the question and the join keep the size they were opened in.
             let current = match &self.screen {
                 Screen::Title(screen) => Some(screen.size()),
                 Screen::Servers(screen) => Some(screen.size()),
-                Screen::Form(..) | Screen::Confirm(..) => None,
+                _ => None,
             };
             if current.is_some_and(|current| current != size) {
                 self.screen = match self.screen {
@@ -187,6 +219,7 @@ impl Menu {
             }
             let mouse = self.mouse;
             let screen = &self.screen;
+            let lang = self.gui.lang();
             self.gui.draw_menu_screen(
                 &mut client.backend,
                 &client.surface,
@@ -195,9 +228,18 @@ impl Menu {
                     Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
                     Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
                     Screen::Confirm(screen, _) => screen.draw(frame, atlas, font, mouse),
+                    // In the level: `LevelLoadingScreen` until it has loaded.
+                    Screen::Connecting(screen, task) if task.status.loading() => {
+                        draw_level_loading(frame, atlas, font, lang, screen.size());
+                    }
+                    Screen::Connecting(screen, _) => screen.draw(frame, atlas, font, mouse),
+                    Screen::Failed(screen) => screen.draw(frame, atlas, font, mouse),
                 },
             )?;
-            frames += 1;
+            // A join's screens are not what a capture waits for.
+            if !matches!(self.screen, Screen::Connecting(..)) {
+                frames += 1;
+            }
             if let Some(path) = capture.as_deref().filter(|_| frames == 10) {
                 let captured = client
                     .backend
@@ -281,41 +323,47 @@ impl Menu {
                 };
                 return self.form_result(result, size);
             }
-            Screen::Confirm(screen, index) => {
-                let index = *index;
-                let answer = match event {
-                    WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
-                        screen.clicked(mouse)
-                    }
-                    WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
-                        screen.tab(!modifiers.contains(Modifiers::Shift));
-                        None
-                    }
-                    WindowEvent::Key(
-                        Key::Enter | Key::KpEnter | Key::Space,
-                        _,
-                        Action::Press,
-                        _,
-                    ) => screen.pressed(),
-                    WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
-                    _ => None,
-                };
-                // `deleteCallback`.
-                match answer {
-                    Some(ConfirmAction::Yes) => {
-                        if index < self.servers.servers.len() {
-                            self.servers.servers.remove(index);
-                            self.servers.save(&self.game_directory)?;
-                        }
-                        self.screen = self.server_list(size);
-                    }
-                    Some(_) => self.screen = self.server_list(size),
-                    None => {}
+            Screen::Connecting(screen, task) => {
+                // Cancel: back to the list; the join's thread finishes alone and is dropped.
+                if let WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) = event
+                    && !task.status.loading()
+                    && screen.cancelled(mouse)
+                {
+                    self.screen = self.server_list(size);
                 }
                 return Ok(None);
             }
+            Screen::Failed(screen) => {
+                if failed_event(screen, event, mouse) {
+                    self.screen = self.server_list(size);
+                }
+                return Ok(None);
+            }
+            Screen::Confirm(screen, index) => {
+                let index = *index;
+                let answer = confirm_event(screen, event, mouse);
+                return self.delete_answer(answer, index, size);
+            }
         };
         self.servers_action(action, size)
+    }
+
+    /// `deleteCallback`: Yes removes the server and saves; either answer shows the list again.
+    fn delete_answer(
+        &mut self,
+        answer: Option<ConfirmAction>,
+        index: usize,
+        size: (i32, i32),
+    ) -> Result<Option<Choice>> {
+        let Some(answer) = answer else {
+            return Ok(None);
+        };
+        if answer == ConfirmAction::Yes && index < self.servers.servers.len() {
+            self.servers.servers.remove(index);
+            self.servers.save(&self.game_directory)?;
+        }
+        self.screen = self.server_list(size);
+        Ok(None)
     }
 
     /// What leaving a form does (`addServerCallback`, `editServerCallback`, `directJoinCallback`):
@@ -370,7 +418,10 @@ impl Menu {
                     self.servers.add(ServerData::new(&name, &ip), true);
                     self.servers.save(&self.game_directory)?;
                 }
-                return Ok(resolve(&ip).map(Choice::Join));
+                if let Some(address) = resolve(&ip) {
+                    self.connect(address, size);
+                }
+                return Ok(None);
             }
         }
         self.screen = self.server_list(size);
@@ -404,7 +455,10 @@ impl Menu {
                 let Some(server) = self.servers.servers.get(index) else {
                     return Ok(None);
                 };
-                return Ok(resolve(&server.ip).map(Choice::Join));
+                if let Some(address) = resolve(&server.ip) {
+                    self.connect(address, size);
+                }
+                return Ok(None);
             }
             Some(ServersAction::Add) => self.screen = self.form(FormKind::Add, size, None),
             Some(ServersAction::Edit(index)) => {
@@ -470,6 +524,41 @@ fn title_event(
             }
             None
         }
+        _ => None,
+    }
+}
+
+/// An event for the failed join's screen: whether its button was pressed.
+fn failed_event(screen: &mut DisconnectedScreen, event: WindowEvent, mouse: (i32, i32)) -> bool {
+    match event {
+        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => screen.clicked(mouse),
+        WindowEvent::Key(Key::Tab, _, Action::Press, _) => {
+            screen.tab();
+            false
+        }
+        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+            screen.pressed()
+        }
+        _ => false,
+    }
+}
+
+/// An event for the question: its answer, if one was given.
+fn confirm_event(
+    screen: &mut ConfirmScreen,
+    event: WindowEvent,
+    mouse: (i32, i32),
+) -> Option<ConfirmAction> {
+    match event {
+        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => screen.clicked(mouse),
+        WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+            screen.tab(!modifiers.contains(Modifiers::Shift));
+            None
+        }
+        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+            screen.pressed()
+        }
+        WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
         _ => None,
     }
 }
