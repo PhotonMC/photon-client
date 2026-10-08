@@ -102,6 +102,16 @@ impl ContainerMenu {
     /// `Slot.mayPickup`: every slot but the anvil's result, which needs the
     /// levels it costs; armour locks are not read.
     pub(super) fn may_pickup(&self, index: usize) -> bool {
+        // `ArmorSlot`: armour with an enchantment that prevents changing it
+        // stays on but in creative.
+        if self.armour_at(index).is_some()
+            && !self.infinite_materials
+            && self.slots[index].as_ref().is_some_and(|stack| {
+                enchantment_ids(stack).any(|id| self.locking_enchantments.contains(&id))
+            })
+        {
+            return false;
+        }
         if self.kind == MenuKind::Anvil && index == 2 {
             let cost = i32::from(self.data.first().copied().unwrap_or(0));
             return (self.infinite_materials || self.xp_level >= cost) && cost > 0;

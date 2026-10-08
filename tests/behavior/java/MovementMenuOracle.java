@@ -28,6 +28,12 @@ class MovementMenuOracle extends MovementPlayerOracle {
             net.minecraft.world.entity.player.Input.EMPTY, false, null);
         player.setId(1);
         setField(minecraft, "player", player);
+        // A bundle's sounds are played where the player is, timed by the camera's distance.
+        var camera = new net.minecraft.client.Camera();
+        camera.setEntity(player);
+        var gameRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        setField(gameRenderer, "mainCamera", camera);
+        setField(minecraft, "gameRenderer", gameRenderer);
         var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
         var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
         var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
@@ -211,6 +217,7 @@ class MovementMenuOracle extends MovementPlayerOracle {
         for (var element : row.getAsJsonArray("clicks")) {
             var click = element.getAsJsonObject();
             wire.sent.clear();
+            SilentSoundManager.PLAYED.clear();
             gameMode.handleContainerInput(containerId, click.get("slot").getAsInt(), click.get("button").getAsInt(),
                 net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
             var described = new JsonObject();
@@ -222,6 +229,14 @@ class MovementMenuOracle extends MovementPlayerOracle {
                 packets.add(packetJson);
             }
             described.add("sent", packets);
+            // A bundle's sounds, by name: their pitch is drawn from the level's unseeded random.
+            if (!SilentSoundManager.PLAYED.isEmpty()) {
+                var sounds = new JsonArray();
+                for (var played : SilentSoundManager.PLAYED) {
+                    sounds.add(played.substring(0, played.indexOf(',')));
+                }
+                described.add("sounds", sounds);
+            }
             var slots = new JsonArray();
             for (var slot : menu.slots) {
                 slots.add(describeStack(slot.getItem()));

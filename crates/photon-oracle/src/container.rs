@@ -36,6 +36,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         }
     };
     let enchantments = std::sync::Arc::new(vanilla_enchantments());
+    let locking = std::sync::Arc::new(vanilla_locking_enchantments());
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -45,6 +46,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             Some(name) => menu_named(name, row)?,
         };
         menu.enchantments = enchantments.clone();
+        menu.locking_enchantments = locking.clone();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.slots[index] = Some(stack(slot)?);
@@ -92,6 +94,9 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
                 .map(|slot| describe(slot.as_ref()))
                 .collect();
             let mut described = json!({"sent": sent, "slots": slots, "selected": selected});
+            if !menu.sounds().is_empty() {
+                described["sounds"] = json!(menu.sounds());
+            }
             if menu.carried.is_some() {
                 described["carried"] = describe(menu.carried.as_ref());
             }
@@ -102,14 +107,27 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
     Ok(json!({"rows": out}))
 }
 
-/// The vanilla enchantments by network id, as the data pack names them.
-fn vanilla_enchantments() -> Vec<String> {
+/// The vanilla enchantments, in network order, as the data pack has them.
+fn vanilla_enchantment_entries() -> Vec<photon_game::registries::EnchantmentEntry> {
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
-    photon_game::registries::Registries::vanilla(&data_root)
-        .enchantments
+    photon_game::registries::Registries::vanilla(&data_root).enchantments
+}
+
+/// The vanilla enchantments by network id, as the data pack names them.
+fn vanilla_enchantments() -> Vec<String> {
+    vanilla_enchantment_entries()
         .into_iter()
         .map(|entry| entry.name)
+        .collect()
+}
+
+/// The network ids of the vanilla enchantments that keep armour on.
+fn vanilla_locking_enchantments() -> Vec<i32> {
+    (0..)
+        .zip(vanilla_enchantment_entries())
+        .filter(|(_, entry)| entry.prevents_armor_change)
+        .map(|(id, _)| id)
         .collect()
 }
 

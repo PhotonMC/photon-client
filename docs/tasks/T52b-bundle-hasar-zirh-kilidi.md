@@ -26,4 +26,9 @@ Bundle ipucu çizimi (T59); kalan bileşenlerin hash'i (gerektikçe tablo satır
 `docs/records/generic-container-conformance.md` (bileşen hash'leri bölümü), `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+Yapılan: bundle geçersiz kılmaları ve `Mutable` (`menus/container/bundle.rs`), `bundle_contents` hash'i,
+hasar/`max_stack_size` bileşenli `isStackable`, `ArmorSlot` kilidi (veri paketinden `prevent_armor_change`,
+`PlaySession::set_locking_enchantments`), bundle sesleri oyunda dünyanın ses kuyruğuna. Boş yama tek biçim.
+Oracle: `container-clicks`'e 8 satır (sesler adıyla), `component-hashes`'e iç içe bundle; Java sahnesine kamera.
+Sapma: hasarlı yığın birim testiyle (çok bileşenli bayt sırası Java'da rastgele).
+Açık: seçili eşya ve `SelectBundleItem` (ipucu kaydırması, T59'a eklendi).

@@ -368,7 +368,7 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                     let mut wire = Vec::new();
                     photon_core::wire::write_varint(made.item_count(), &mut wire);
                     photon_core::wire::write_varint(made.item_registry_id(), &mut wire);
-                    wire.extend_from_slice(made.patch_bytes());
+                    wire.extend(made.patch().trusted());
                     let mut components = serde_json::Map::new();
                     for component in entry.components {
                         if let Some((id, _)) = photon_game::item::default_components::encode(

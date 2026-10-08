@@ -1,4 +1,5 @@
 use super::*;
+use photon_world::item_components::ids;
 
 impl ContainerMenu {
     /// An `Inventory` index as this menu's slot: the hotbar and the main
@@ -39,14 +40,64 @@ pub(super) fn stacking(stack: &Stack) -> Option<&'static Item> {
         .and_then(|id| ITEMS.get(id))
 }
 
-/// `ItemStack.getMaxStackSize`.
+/// `ItemStack.getMaxStackSize`: the patch's `max_stack_size`, or the item's.
 pub fn max_stack_size(stack: &Stack) -> i32 {
-    stacking(stack).map_or(64, |item| item.max_stack_size)
+    match stack.patched(ids::MAX_STACK_SIZE) {
+        Some(Some(value)) => varint_of(&value).unwrap_or(1),
+        Some(None) => 1,
+        None => stacking(stack).map_or(64, |item| item.max_stack_size),
+    }
 }
 
-/// `ItemStack.isStackable`, taking every stack as undamaged.
+/// The varint a component's value is.
+fn varint_of(value: &[u8]) -> Option<i32> {
+    photon_core::wire::read_varint(&mut &value[..]).ok()
+}
+
+/// Whether the stack has a component, the item's own being present when
+/// `default` says so.
+fn has(stack: &Stack, id: i32, default: bool) -> bool {
+    stack.patched(id).map_or(default, |value| value.is_some())
+}
+
+/// `ItemStack.isDamaged`: damageable (`max_damage` and `damage`, not
+/// `unbreakable`) with damage above zero.
+pub(super) fn is_damaged(stack: &Stack) -> bool {
+    let durable = stacking(stack).is_some_and(|item| item.max_damage > 0);
+    if !has(stack, ids::MAX_DAMAGE, durable) || has(stack, ids::UNBREAKABLE, false) {
+        return false;
+    }
+    match stack.patched(ids::DAMAGE) {
+        Some(Some(value)) => varint_of(&value).is_some_and(|damage| damage > 0),
+        // The item's own damage is zero.
+        _ => false,
+    }
+}
+
+/// The network ids of the stack's `enchantments` (the items' own have none).
+pub(super) fn enchantment_ids(stack: &Stack) -> impl Iterator<Item = i32> {
+    let value = stack
+        .patched(ids::ENCHANTMENTS)
+        .flatten()
+        .unwrap_or_default();
+    let mut input = value.as_slice();
+    let count = photon_core::wire::read_varint(&mut input).unwrap_or(0);
+    let mut found = Vec::new();
+    for _ in 0..count {
+        let (Ok(id), Ok(_level)) = (
+            photon_core::wire::read_varint(&mut input),
+            photon_core::wire::read_varint(&mut input),
+        ) else {
+            break;
+        };
+        found.push(id);
+    }
+    found.into_iter()
+}
+
+/// `ItemStack.isStackable`.
 pub(super) fn is_stackable(stack: &Stack) -> bool {
-    max_stack_size(stack) > 1
+    max_stack_size(stack) > 1 && !is_damaged(stack)
 }
 
 /// `LivingEntity.getEquipmentSlotForItem` for a player, by name.
@@ -76,16 +127,6 @@ pub(super) fn armour_index(slot: &str) -> Option<usize> {
         "head" => Some(3),
         _ => None,
     }
-}
-
-pub(super) fn overrides_click(stack: Option<&Stack>, carried: bool) -> bool {
-    stack.and_then(stacking).is_some_and(|item| {
-        if carried {
-            item.class.owner_of(ItemMethod::OverrideStackedOnOther) != ItemClass::Item
-        } else {
-            item.class.owner_of(ItemMethod::OverrideOtherStackedOnMe) != ItemClass::Item
-        }
-    })
 }
 
 /// A stack emptied in place reads as no stack.
@@ -135,7 +176,7 @@ pub(super) fn write_hashed_stack(
     stack: Option<&Stack>,
     enchantments: &[String],
 ) {
-    use photon_world::item_components::{hash::component_hash, read_patch};
+    use photon_world::item_components::hash::component_hash;
     let Some(stack) = stack else {
         out.push(0);
         return;
@@ -143,11 +184,7 @@ pub(super) fn write_hashed_stack(
     out.push(1);
     photon_core::wire::write_varint(stack.item_registry_id(), out);
     photon_core::wire::write_varint(stack.item_count(), out);
-    let patch =
-        read_patch(&mut stack.patch_bytes()).unwrap_or(photon_world::item_components::Patch {
-            added: Vec::new(),
-            removed: Vec::new(),
-        });
+    let patch = stack.patch();
     let added: Vec<(i32, i32)> = patch
         .added
         .iter()
@@ -295,6 +332,29 @@ mod tests {
             menu.slots[9 + 27 + 3].as_ref().map(Stack::item_count),
             Some(2)
         );
+    }
+
+    #[test]
+    fn a_damaged_stack_does_not_stack() {
+        // Two components: the reference writes them in no fixed order, so
+        // the oracle's packet bytes cannot take this.
+        use photon_data::item::component_types::{DAMAGE, MAX_DAMAGE, MAX_STACK_SIZE};
+        let with = |damage: u8| {
+            let patch = crate::item_components::Patch {
+                added: vec![
+                    (MAX_STACK_SIZE, vec![4]),
+                    (MAX_DAMAGE, vec![10]),
+                    (DAMAGE, vec![damage]),
+                ],
+                removed: Vec::new(),
+            };
+            let mut stick = stack("minecraft:stick", 2);
+            stick.set_patch(&patch);
+            stick
+        };
+        assert_eq!(max_stack_size(&with(0)), 4);
+        assert!(is_stackable(&with(0)));
+        assert!(!is_stackable(&with(3)));
     }
 
     #[test]

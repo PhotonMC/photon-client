@@ -11,11 +11,8 @@
 //!
 //! Stacks are values here where the reference shares objects; each step
 //! writes back what the shared object would have become. Not ported: the
-//! bundle's click overrides (a click with a bundle carried or clicked is
-//! sent without a prediction), damaged items (a damaged stack counts as
-//! undamaged) and enchantments that lock armour. Component hashes are
-//! ported for the components [`hash`](photon_world::item_components::hash)
-//! names.
+//! bundle's selected item. Component hashes are ported for the components
+//! [`hash`](photon_world::item_components::hash) names.
 
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
@@ -50,6 +47,8 @@ pub struct ContainerMenu {
     /// The enchantment registry's entries by network id, which the click
     /// packet's component hashes name.
     pub enchantments: std::sync::Arc<Vec<String>>,
+    /// The network ids of the enchantments with `prevent_armor_change`.
+    pub locking_enchantments: std::sync::Arc<Vec<i32>>,
     /// Whether the last click was made with infinite materials (creative).
     pub(super) infinite_materials: bool,
     /// The item in the stonecutter's input the last time its list was made.
@@ -71,6 +70,8 @@ pub struct ContainerMenu {
     /// Arm swings the click caused: `LivingEntity.drop` swings on the
     /// client instead of dropping.
     pub(super) swings: usize,
+    /// Sounds the click played (a bundle's), by event name.
+    pub(super) sounds: Vec<&'static str>,
 }
 
 impl Default for ContainerMenu {
@@ -88,6 +89,7 @@ impl Default for ContainerMenu {
             options: Vec::new(),
             xp_level: 0,
             enchantments: std::sync::Arc::default(),
+            locking_enchantments: std::sync::Arc::default(),
             infinite_materials: false,
             last_input: None,
             data: Vec::new(),
@@ -100,10 +102,13 @@ impl Default for ContainerMenu {
             quickcraft_type: 0,
             quickcraft_slots: Vec::new(),
             swings: 0,
+            sounds: Vec::new(),
         }
     }
 }
 
+mod bundle;
+pub use bundle::{BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE};
 mod clicks;
 mod kinds;
 pub use kinds::*;

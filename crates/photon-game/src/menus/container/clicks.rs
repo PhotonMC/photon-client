@@ -46,6 +46,7 @@ impl ContainerMenu {
     ) -> (usize, Vec<u8>) {
         let before = self.slots.clone();
         self.swings = 0;
+        self.sounds.clear();
         self.clicked(slot, button, click, player);
         let changed: Vec<(usize, Option<&Stack>)> = (0..self.slots.len())
             .filter(|&index| !match (&before[index], &self.slots[index]) {
@@ -86,6 +87,7 @@ impl ContainerMenu {
         player: Player,
     ) -> usize {
         self.swings = 0;
+        self.sounds.clear();
         self.clicked(slot, button, click, player);
         self.swings
     }
@@ -253,9 +255,7 @@ impl ContainerMenu {
                 let Ok(index) = usize::try_from(slot_index) else {
                     return;
                 };
-                if overrides_click(self.carried.as_ref(), true)
-                    || overrides_click(self.slots[index].as_ref(), false)
-                {
+                if self.bundle_click(index, primary, player) {
                     return;
                 }
                 match (self.slots[index].clone(), self.carried.take()) {
@@ -435,6 +435,11 @@ impl ContainerMenu {
         if stack.is_some() {
             self.swings += 1;
         }
+    }
+
+    /// The sounds the last click played, by event name.
+    pub fn sounds(&self) -> &[&'static str] {
+        &self.sounds
     }
 
     /// Whether the last click was made with infinite materials.

@@ -56,6 +56,16 @@ CUSTOM_DATA, MAX_STACK_SIZE, MAX_DAMAGE, DAMAGE, UNBREAKABLE = 0, 1, 2, 3, 4
 CUSTOM_NAME, ITEM_NAME, LORE, RARITY, ENCHANTMENTS = 6, 9, 11, 12, 13
 REPAIR_COST, GLINT, STORED_ENCHANTMENTS, DYED_COLOR = 19, 21, 42, 44
 EFFICIENCY, MENDING, PROTECTION, SHARPNESS, UNBREAKING = 8, 23, 28, 33, 40
+BINDING_CURSE, BUNDLE_CONTENTS = 2, 50
+# Item registry ids of the items a bundle holds here.
+ITEM_IDS = {"stone": 1, "dirt": 55, "ender_pearl": 1144, "bundle": 1065, "iron_sword": 959}
+
+
+def bundle(items):
+    """A `bundle_contents` patch: (item, count, patch hex) per stack, first first."""
+    value = varint(len(items)) + "".join(
+        varint(ITEM_IDS[item]) + varint(count) + inner for item, count, inner in items)
+    return patch([(BUNDLE_CONTENTS, value)])
 
 
 def patch(added=(), removed=()):
@@ -455,6 +465,31 @@ def cases():
     ]
     click_rows[-3]["carried"]["patch"] = patch([(CUSTOM_NAME, nbt("Rock"))])
     click_rows[-2]["carried"]["patch"] = patch([(ENCHANTMENTS, enchantments([(EFFICIENCY, 3), (UNBREAKING, 2)]))])
+    empty = patch()
+    click_rows += [
+        clicks("a carried bundle takes a stack in and puts it out",
+               [st(20, "stone", 64)], [cl(20, 0, P), cl(21, 1, P), cl(22, 1, P)], carried=("bundle", 1)),
+        clicks("a carried bundle takes what fits and then fails",
+               [st(20, "stone", 64), st(21, "dirt", 5)], [cl(20, 0, P), cl(21, 0, P)], carried=("bundle", 1)),
+        clicks("a stack carried onto a bundle merges and comes back out",
+               [with_patch(st(20, "bundle", 1), bundle([("dirt", 5, empty), ("ender_pearl", 2, empty)]))],
+               [cl(20, 0, P), cl(20, 1, P), cl(20, 1, P), cl(20, 0, P)], carried=("dirt", 30)),
+        clicks("a sword and a bundle go into a bundle",
+               [st(20, "iron_sword", 1), with_patch(st(21, "bundle", 1), bundle([("stone", 3, empty)]))],
+               [cl(20, 0, P), cl(21, 0, P), cl(22, 1, P)], carried=("bundle", 1)),
+        clicks("a shulker box does not go into a bundle",
+               [st(20, "bundle", 1)], [cl(20, 0, P), cl(21, 1, P)], carried=("shulker_box", 1)),
+        clicks("a secondary click on an empty bundle takes nothing",
+               [st(20, "stone", 1), st(21, "bundle", 1)], [cl(21, 1, P), cl(20, 1, P), cl(-999, 0, P)]),
+        clicks("cursed armour stays on in survival",
+               [with_patch(st(5, "iron_helmet", 1), patch([(ENCHANTMENTS, enchantments([(BINDING_CURSE, 1)]))])),
+                st(36, "stone", 1)],
+               [cl(5, 0, P), cl(5, 0, SW), cl(5, 0, Q)]),
+        clicks("cursed armour comes off in creative",
+               [with_patch(st(5, "iron_helmet", 1), patch([(ENCHANTMENTS, enchantments([(BINDING_CURSE, 1)]))]))],
+               [cl(5, 0, P)], game_mode="creative"),
+    ]
+    click_rows[-7]["carried"]["patch"] = bundle([("ender_pearl", 10, empty)])
 
     yield {
         "case_id": "movement/container-clicks",
@@ -497,6 +532,10 @@ def cases():
                 "float": ("f", 0.5), "double": ("d", -1.25), "text": "ş", "bytes": ("B", [1, -1]),
                 "ints": ("I", [3, 4]), "longs": ("L", [5]), "list": [("i", 1), ("i", 2)],
                 "nested": {"empty": []}}))])),
+            hashed("bundle contents", "bundle", bundle([
+                ("stone", 1, patch()),
+                ("dirt", 5, patch([(CUSTOM_NAME, nbt("x"))], removed=[MAX_STACK_SIZE])),
+                ("bundle", 1, bundle([("ender_pearl", 3, patch())]))])),
             hashed("added and removed together", "diamond_sword", patch(
                 [(CUSTOM_NAME, nbt("Mixed")), (DAMAGE, varint(1))], removed=[MAX_STACK_SIZE])),
         ],

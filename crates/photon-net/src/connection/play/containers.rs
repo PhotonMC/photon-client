@@ -82,6 +82,39 @@ impl PlaySession {
         (tags.members(&tag).collect(), layers)
     }
 
+    /// `BundleItem.playInsertSound` and the like: `LocalPlayer.playSound`
+    /// where the player is, pitched by the level's random but for a failure.
+    fn play_bundle_sound(&mut self, event: &'static str) {
+        use photon_game::menus::container::BUNDLE_INSERT_FAIL;
+        use photon_world::local_player::{LocalSound, LocalSoundSource};
+        let Some(position) = self
+            .trace
+            .world
+            .local_player()
+            .map(|player| player.position())
+        else {
+            return;
+        };
+        let (volume, pitch) = if event == BUNDLE_INSERT_FAIL {
+            (1.0, 1.0)
+        } else {
+            (0.8, 0.8 + self.level_random.next_float() * 0.4)
+        };
+        self.trace.world.push_sound(LocalSound {
+            event,
+            source: LocalSoundSource::Players,
+            volume,
+            pitch,
+            position,
+        });
+    }
+
+    /// The enchantments (network ids) with `prevent_armor_change`, which the
+    /// data pack says and the session cannot read itself.
+    pub fn set_locking_enchantments(&mut self, ids: Vec<i32>) {
+        self.locking_enchantments = std::sync::Arc::new(ids);
+    }
+
     /// The enchantment registry's entries, which a click's component hashes name.
     fn enchantment_names(&self) -> std::sync::Arc<Vec<String>> {
         std::sync::Arc::new(self.registry_names("minecraft:enchantment").to_vec())
@@ -105,6 +138,7 @@ impl PlaySession {
             .world
             .local_player()
             .is_some_and(|player| player.open_container().is_some());
+        let sounds: Vec<&'static str>;
         let (swings, body) = if opened {
             // Synced before the click; `None` when the container is of a kind
             // with no menu here, which no screen sends clicks for.
@@ -113,6 +147,7 @@ impl PlaySession {
             }
             let menu = self.open_menu.as_mut().expect("synced above");
             let clicked = menu.handle_click(slot, button, kind, player);
+            sounds = menu.sounds().to_vec();
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
             self.trace
                 .world
@@ -124,13 +159,18 @@ impl PlaySession {
             };
             self.container_menu.load(slots, carried, state_id);
             self.container_menu.enchantments = self.enchantment_names();
+            self.container_menu.locking_enchantments = self.locking_enchantments.clone();
             let clicked = self.container_menu.handle_click(slot, button, kind, player);
+            sounds = self.container_menu.sounds().to_vec();
             let menu = &self.container_menu;
             self.trace
                 .world
                 .set_local_player_menu(&menu.slots, menu.carried.clone());
             clicked
         };
+        for event in sounds {
+            self.play_bundle_sound(event);
+        }
         for _ in 0..swings {
             // `LocalPlayer.swing`: the arm, then the packet.
             if let Some(player) = self.player.as_mut() {
@@ -317,6 +357,7 @@ impl PlaySession {
             }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.enchantments = enchantments;
+            menu.locking_enchantments = self.locking_enchantments.clone();
             menu.xp_level = self.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
                 // The merchant's offers; the result is the client's own to make.

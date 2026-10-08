@@ -189,6 +189,14 @@ pub fn component_hash(type_id: i32, value: &[u8], enchantments: &[String]) -> Op
             map(entries)
         }
         ids::ENCHANTMENT_GLINT_OVERRIDE => boolean(cursor.boolean().ok()?),
+        ids::BUNDLE_CONTENTS => {
+            let count = cursor.count().ok()?;
+            let mut items = Vec::with_capacity(count);
+            for _ in 0..count {
+                items.push(item_template(&mut cursor, enchantments)?);
+            }
+            list(items)
+        }
         ids::DYED_COLOR => {
             let bytes: [u8; 4] = cursor.data.get(..4)?.try_into().ok()?;
             int(i32::from_be_bytes(bytes))
@@ -196,6 +204,46 @@ pub fn component_hash(type_id: i32, value: &[u8], enchantments: &[String]) -> Op
         _ => return None,
     };
     Some(hash as i32)
+}
+
+/// `ItemStackTemplate.CODEC` of a template as its stream codec wrote it:
+/// the item's id, the count unless it is one, the patch unless it is empty.
+fn item_template(cursor: &mut Cursor, enchantments: &[String]) -> Option<u32> {
+    let item = usize::try_from(cursor.varint().ok()?).ok()?;
+    let count = cursor.varint().ok()?;
+    let patch = cursor.patch().ok()?;
+    let mut entries = vec![(
+        string("id"),
+        string(photon_data::item::registry::ITEMS.get(item)?.name),
+    )];
+    if count != 1 {
+        entries.push((string("count"), int(count)));
+    }
+    if !patch.added.is_empty() || !patch.removed.is_empty() {
+        entries.push((string("components"), patch_map(&patch, enchantments)?));
+    }
+    Some(map(entries))
+}
+
+/// `DataComponentPatch.CODEC`: each added component under its id, each
+/// removed one under `!` and its id with the unit (an empty map).
+fn patch_map(patch: &super::Patch, enchantments: &[String]) -> Option<u32> {
+    let name = |id: i32| {
+        photon_data::item::component_types::NAMES
+            .get(usize::try_from(id).ok()?)
+            .copied()
+    };
+    let mut entries = Vec::new();
+    for (id, value) in &patch.added {
+        entries.push((
+            string(name(*id)?),
+            component_hash(*id, value, enchantments)? as u32,
+        ));
+    }
+    for id in &patch.removed {
+        entries.push((string(&format!("!{}", name(*id)?)), map(Vec::new())));
+    }
+    Some(map(entries))
 }
 
 #[cfg(test)]

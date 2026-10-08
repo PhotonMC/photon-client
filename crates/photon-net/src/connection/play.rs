@@ -110,6 +110,8 @@ pub struct PlaySession {
     pub(super) client_information: crate::configuration::ClientInformation,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
+    /// The enchantments (network ids) that keep armour on, from the data pack.
+    pub(super) locking_enchantments: std::sync::Arc<Vec<i32>>,
     pub(super) game_time: i64,
     pub(super) rain_level: f32,
     pub(super) thunder_level: f32,
@@ -131,6 +133,8 @@ pub struct PlaySession {
     pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
     /// `ClientPacketListener.random`: the pitch of a pickup's sound.
     pub(super) listener_random: photon_core::random::RandomSource,
+    /// `ClientLevel.random`, unseeded as the reference's is.
+    pub(super) level_random: photon_core::random::RandomSource,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
     pub(super) aimed_entity: Option<i32>,
     /// Whether the level is hardcore, as the login said.

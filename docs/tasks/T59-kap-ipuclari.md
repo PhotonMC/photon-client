@@ -1,6 +1,6 @@
 # T59 — Kap içeriği ipucu, `#etiket` araması ve eşya süsleri
 
-**Amaç:** Shulker/bundle satırları ipucunda, harita/simya/kitap ipucu satırları, creative arama `#etiket`, dayanıklılık çubuğu ve bekleme örtüsü; F3+H gelişmiş ipucu.
+**Amaç:** Shulker/bundle satırları ipucunda, harita/simya/kitap ipucu satırları, creative arama `#etiket`, dayanıklılık çubuğu ve bekleme örtüsü; F3+H gelişmiş ipucu; bundle ipucunda kaydırmayla seçili eşya (`BundleMouseActions`, `SelectBundleItem`; `removeOne` seçiliyi alır, bkz. `menus/container/bundle.rs`).
 **Bağımlılık:** –. **Boy:** M.
 
 ## Oku

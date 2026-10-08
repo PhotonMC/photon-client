@@ -55,8 +55,49 @@ impl ClientItemStackState {
         Self::from_wire(item_count, item_registry_id, Vec::new(), Vec::new())
     }
 
+    /// `ItemStack.set`/`remove` on the patch: the same stack (object) with
+    /// this patch.
+    pub fn set_patch(&mut self, patch: &crate::item_components::Patch) {
+        self.positive_component_type_ids = patch.added.iter().map(|(id, _)| *id).collect();
+        self.negative_component_type_ids.clone_from(&patch.removed);
+        self.patch_bytes = if patch.added.is_empty() && patch.removed.is_empty() {
+            Vec::new()
+        } else {
+            patch.trusted()
+        };
+    }
+
+    /// The stack's component patch, split; empty for one with none.
+    pub fn patch(&self) -> crate::item_components::Patch {
+        crate::item_components::read_patch(&mut self.patch_bytes.as_slice()).unwrap_or(
+            crate::item_components::Patch {
+                added: Vec::new(),
+                removed: Vec::new(),
+            },
+        )
+    }
+
+    /// What the patch says of a component: `Some(Some(value))` it sets it,
+    /// `Some(None)` it removes it, `None` the item's own stands.
+    pub fn patched(&self, id: i32) -> Option<Option<Vec<u8>>> {
+        let patch = self.patch();
+        if patch.removed.contains(&id) {
+            return Some(None);
+        }
+        patch
+            .added
+            .into_iter()
+            .find(|(added, _)| *added == id)
+            .map(|(_, value)| Some(value))
+    }
+
+    /// An empty patch is kept as no bytes, however it was written.
     pub fn with_patch_bytes(mut self, patch_bytes: Vec<u8>) -> Self {
-        self.patch_bytes = patch_bytes;
+        self.patch_bytes = if patch_bytes == [0, 0] {
+            Vec::new()
+        } else {
+            patch_bytes
+        };
         self
     }
 

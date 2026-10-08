@@ -186,6 +186,7 @@ impl PlaySession {
             client_information: crate::configuration::ClientInformation::default(),
             dimension_type_id: 0,
             hashed_seed: 0,
+            locking_enchantments: std::sync::Arc::default(),
             game_time: 0,
             rain_level: 0.0,
             thunder_level: 0.0,
@@ -201,6 +202,11 @@ impl PlaySession {
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_or(0, |elapsed| elapsed.as_nanos() as i64),
+            ),
+            level_random: photon_core::random::RandomSource::create(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |elapsed| elapsed.as_nanos() as i64 ^ 0x5DEE_CE66),
             ),
             aimed_entity: None,
             hardcore: false,

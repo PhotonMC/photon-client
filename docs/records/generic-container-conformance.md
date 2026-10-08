@@ -71,8 +71,7 @@ Denetimle düzeltilenler: örs ad kutusu boş slotta yazı almaz ve özgün ada 
 loom'da seçili düğmede ipucu yok, taş kesici kaydırması girdi sayısı değişince
 da sıfırlanır, orta tıkla `CLONE` (yaratıcı), kırılmaz eşya grindstone'a girmez.
 
-Bilinen sapmalar: bundle/hasarlı eşya/zırh kilidi tahmin edilmez (T52b);
-harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
+Bilinen sapmalar: harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
 çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
 tüketimi tahmin edilmez.
 
@@ -157,7 +156,8 @@ kodlayıp hash'ler; kaldırılanlar adıyla gider
 (`photon-world/src/item_components/hash.rs`). Taşınan bileşenler: `custom_data`,
 `max_stack_size`, `max_damage`, `damage`, `repair_cost`, `unbreakable`,
 `custom_name`, `item_name`, `lore`, `rarity`, `enchantments`,
-`stored_enchantments`, `enchantment_glint_override`, `dyed_color`. Metin
+`stored_enchantments`, `enchantment_glint_override`, `dyed_color`,
+`bundle_contents` (iç yığınların yamasıyla). Metin
 bileşenleri ağdaki etiketten hash'lenir; `Style`/`NbtContents`'in boolean
 alanları bayt değil boolean sayılır. Kalan bileşenler pakette yazılmaz
 (sunucu yuvayı düzeltir). Java'nın kimlik haritası birden çok bileşeni rastgele
@@ -165,3 +165,16 @@ sırada yazar; Rust yamanın sırasını kullanır (sunucu sırayı okumaz), bu 
 paket baytı karşılaştırması tek bileşenli yığınlarla, çok bileşenli hash'ler
 `movement/component-hashes` ile (bileşen adına göre) yapılır. Java bir yamayı
 eşyanın varsayılanına göre sadeleştirir; ağ zaten sadeleşmiş yama taşır.
+
+## Bundle, hasarlı eşya, zırh kilidi (`client-parity`)
+
+`BundleItem`ın tıklama geçersiz kılmaları ve `BundleContents.Mutable`
+(`photon-game/src/menus/container/bundle.rs`): taşınan bundle yuvadaki yığını
+alır/birini bırakır, bundle üstüne taşınan yığın girer/biri imlece çıkar;
+ağırlık kesirleri tam, boş içerik yamadan düşer. Sesler adıyla karşılaştırılır
+(perde seviyenin tohumsuz rastgelesinden). `isStackable` hasar ve yamadaki
+`max_stack_size`'ı okur (birim testi: iki bileşenli yığının bayt sırası
+Java'da sabit değil). `prevent_armor_change` etkili büyülü zırh yaratıcı dışında
+çıkmaz; hangi büyülerin bu etkiyi taşıdığı veri paketinden. Boş yama artık
+her yerde bayt yok olarak tutulur (ağdaki `00 00` ile yerel yığın eşitlenir).
+Açık: bundle'da seçili eşya ve `SelectBundleItem` (kaydırma, ipucuyla T59).

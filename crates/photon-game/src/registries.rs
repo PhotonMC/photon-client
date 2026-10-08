@@ -19,6 +19,9 @@ pub struct EnchantmentEntry {
     pub max_level: i32,
     /// Its place in the `tooltip_order` tag, or -1.
     pub tooltip_order: i32,
+    /// Whether it has the `prevent_armor_change` effect (armour it is on
+    /// cannot be taken off but in creative).
+    pub prevents_armor_change: bool,
 }
 
 /// `PaintingVariant`.
@@ -143,6 +146,9 @@ impl Registries {
             .map(|name| {
                 let entry = read_entry(data_root, "enchantment", &name);
                 EnchantmentEntry {
+                    prevents_armor_change: entry.object("effects").is_some_and(|effects| {
+                        effects.get_str("minecraft:prevent_armor_change").is_some()
+                    }),
                     description: component(&entry, "description"),
                     curse: curse.contains(&name),
                     max_level: entry.i32("max_level").unwrap_or(1),
