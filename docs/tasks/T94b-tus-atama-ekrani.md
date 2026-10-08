@@ -22,3 +22,10 @@ G: `key_binds_screen` (seçili satır, çakışma, bekleme hâli).
 `docs/gui-oracle.md`.
 
 ## Devir notu
+Yapılan: `KeyBindsScreen`/`KeyBindsList` (`photon-render/src/gui/options/keybinds{,/list,/list/focus}.rs`),
+Controls'taki "Key Binds..." düğmesinden açılır (`photon/src/controls/keybinds.rs`); atanan tuş hemen
+`Options`'a yazılır, kapanışta `options.txt` kaydedilir. G: `key_binds_screen` (35 satır) yeşil.
+Tuş adı `glfwGetKeyName` ile (oyunda gerçek, oracle'da her iki tarafta yok → çeviri anahtarı);
+dünya olaylarında kodsuz tuş artık scancode olarak eşlenir (`InputConstants.getKey`).
+Açık: canlı oyunda atama denenmedi (script ayar ekranlarına tıklama iletmiyor); `glfwGetKeyName`
+dalı (büyük harfli sistem adı) oracle'la karşılaştırılamadı; anlatım (narration) yok.

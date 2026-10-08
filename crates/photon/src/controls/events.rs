@@ -16,8 +16,8 @@ impl Controls {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                 self.open_pause(surface, assets);
             }
-            WindowEvent::Key(key, _, action, _) => {
-                let input = photon_data::keys::InputKey::Keysym(key as i32);
+            WindowEvent::Key(key, scancode, action, _) => {
+                let input = keybinds::input_key(key, scancode);
                 self.mapped_input(input, action, (session, surface, assets), spectating);
             }
             WindowEvent::MouseButton(_, Action::Press, _) if !self.captured => {
@@ -242,6 +242,10 @@ impl Controls {
         }
         if self.language_screen.is_some() && for_screen {
             self.language_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.key_binds_screen.is_some() && for_screen {
+            self.key_binds_event(event, surface, assets);
             return Ok(());
         }
         if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {

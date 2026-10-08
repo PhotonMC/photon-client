@@ -23,6 +23,7 @@ const WHEEL: u8 = 2;
 const INVERT_X: u8 = 3;
 const INVERT_Y: u8 = 4;
 const MOUSE_SETTINGS: u8 = 5;
+const KEY_BINDS: u8 = 6;
 
 type Wheel = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
 
@@ -204,10 +205,12 @@ pub struct ControlsInput {
     pub done: bool,
     /// "Mouse Settings..." was pressed.
     pub mouse_settings: bool,
+    /// "Key Binds..." was pressed.
+    pub key_binds: bool,
 }
 
 /// `ControlsScreen`: the mouse settings and the key binds, then how each
-/// key is held. Only the mouse settings open anything.
+/// key is held.
 pub struct ControlsScreen {
     screen: SubScreen,
 }
@@ -228,7 +231,7 @@ impl ControlsScreen {
                     lang,
                     vec![
                         (MOUSE_SETTINGS, button("options.mouse_settings")),
-                        (PLAIN, button("controls.keybinds")),
+                        (KEY_BINDS, button("controls.keybinds")),
                     ],
                 );
                 list.add_small(
@@ -274,6 +277,7 @@ impl ControlsScreen {
         ControlsInput {
             done: input.done,
             mouse_settings: input.changed == Some(MOUSE_SETTINGS),
+            key_binds: input.changed == Some(KEY_BINDS),
         }
     }
 
@@ -292,6 +296,7 @@ impl ControlsScreen {
         ControlsInput {
             done: input.done,
             mouse_settings: input.changed == Some(MOUSE_SETTINGS),
+            key_binds: input.changed == Some(KEY_BINDS),
         }
     }
 

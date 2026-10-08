@@ -2,6 +2,7 @@
 //! button under the title, the buttons that open the other settings screens
 //! in two columns, and Done.
 pub mod chat;
+pub mod keybinds;
 pub mod language;
 pub mod list;
 pub mod mouse;

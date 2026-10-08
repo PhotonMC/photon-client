@@ -108,6 +108,7 @@ impl Default for Options {
 }
 
 mod bindings;
+pub use bindings::{default_bindings, key_display_name};
 mod enums;
 pub use enums::*;
 mod file;

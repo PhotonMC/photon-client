@@ -19,6 +19,8 @@ mod signs;
 use signs::*;
 mod books;
 use books::*;
+mod keybinds;
+use keybinds::*;
 
 /// What the GUI scenarios share: the game's assets, the font and the atlas drawn from it, and
 /// the language source, read once because its index has thousands of files.
@@ -81,6 +83,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             | "mouse_settings_screen"
             | "controls_screen"
             | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
+            "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
             "lang_text" => lang_text_case(&mut ctx, row)?,
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,

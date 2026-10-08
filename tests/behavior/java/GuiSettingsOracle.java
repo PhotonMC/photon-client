@@ -100,6 +100,16 @@ class GuiSettingsOracle extends GuiScreenOracle {
             if (row.has("options")) {
                 chatOptions(minecraft.options, row.getAsJsonObject("options"));
             }
+            if (row.has("bindings")) {
+                // Keys bound before the screen opens, as `options.txt` would have them.
+                for (var mapping : minecraft.options.keyMappings) {
+                    var bound = row.getAsJsonObject("bindings").get(mapping.getName());
+                    if (bound != null) {
+                        mapping.setKey(com.mojang.blaze3d.platform.InputConstants.getKey(bound.getAsString()));
+                    }
+                }
+                net.minecraft.client.KeyMapping.resetMapping();
+            }
             minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
             var languageBefore = net.minecraft.locale.Language.getInstance();
             if (kind.equals("language")) {
@@ -111,6 +121,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
                 case "mouse" -> new net.minecraft.client.gui.screens.options.MouseSettingsScreen(null, minecraft.options);
                 case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
+                case "keybinds" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, minecraft.options);
                 case "sound" -> new net.minecraft.client.gui.screens.options.SoundOptionsScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
@@ -153,7 +164,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                         video.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x, y,
-                            new net.minecraft.client.input.MouseButtonInfo(0, step.has("shift") && step.get("shift").getAsBoolean() ? 1 : 0)),
+                            new net.minecraft.client.input.MouseButtonInfo(
+                                step.has("button") ? step.get("button").getAsInt() : 0, step.has("shift") && step.get("shift").getAsBoolean() ? 1 : 0)),
                             step.has("double") && step.get("double").getAsBoolean());
                     }
                     case "char" -> video.charTyped(new net.minecraft.client.input.CharacterEvent(
@@ -169,7 +181,14 @@ class GuiSettingsOracle extends GuiScreenOracle {
                             case "right" -> 262;
                             case "up" -> 265;
                             case "down" -> 264;
-                            default -> throw new IllegalArgumentException(name);
+                            case "escape" -> 256;
+                            default -> {
+                                // Any other key by its GLFW code.
+                                if (!name.startsWith("code:")) {
+                                    throw new IllegalArgumentException(name);
+                                }
+                                yield Integer.parseInt(name.substring(5));
+                            }
                         };
                         // `KeyboardHandler.keyPress` notes what kind of key it was.
                         if (code == 258) {
@@ -205,7 +224,12 @@ class GuiSettingsOracle extends GuiScreenOracle {
             video.extractRenderState(graphics, mouseX, mouseY, 0.0F);
             graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
             double scrollAmount;
-            if (kind.equals("language")) {
+            if (kind.equals("keybinds")) {
+                var keyList = video.getClass().getDeclaredField("keyBindsList");
+                keyList.setAccessible(true);
+                scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) keyList.get(video))
+                    .scrollAmount();
+            } else if (kind.equals("language")) {
                 var languageList = video.getClass().getDeclaredField("languageSelectionList");
                 languageList.setAccessible(true);
                 scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) languageList.get(video))

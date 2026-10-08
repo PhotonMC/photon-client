@@ -22,6 +22,7 @@ impl Gui {
             };
         }
         sized!(controls.language_screen);
+        sized!(controls.key_binds_screen);
         sized!(controls.mouse_screen);
         sized!(controls.controls_screen);
         sized!(controls.chat_options_screen);

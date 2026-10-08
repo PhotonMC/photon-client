@@ -33,6 +33,7 @@ impl Controls {
         self.controls_screen = None;
         self.language_screen = None;
         self.mouse_screen = None;
+        self.key_binds_screen = None;
         self.death = None;
         self.confirm = None;
         self.screen = None;
@@ -106,6 +107,7 @@ impl Controls {
             self.controls_screen = None;
             self.language_screen = None;
             self.mouse_screen = None;
+            self.key_binds_screen = None;
             self.screen = None;
             self.captured = false;
             self.last_cursor = None;

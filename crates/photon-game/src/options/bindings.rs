@@ -3,20 +3,53 @@
 use photon_data::keys::{InputKey, key_name, key_of, mappings};
 
 use super::Options;
+use crate::text::{Component, Lang};
 
 /// The `options.txt` name of a mapping's line.
 fn line_name(mapping: &str) -> String {
     format!("key_{mapping}")
 }
 
-/// Every mapping bound to its default key.
-pub(super) fn default_bindings() -> Vec<InputKey> {
+/// Every mapping bound to its default key (`KeyMapping.getDefaultKey`), in `keyMappings` order.
+pub fn default_bindings() -> Vec<InputKey> {
     mappings()
         .map(|mapping| key_of(mapping.default_key).unwrap_or(InputKey::Keysym(-1)))
         .collect()
 }
 
+/// `InputConstants.Key.getDisplayName`: the name the system gives a keyboard key
+/// (`glfwGetKeyName`, `system`), upper-cased for a key code, else the key's own name; a mouse
+/// button by its name if the language has one, else by its number.
+pub fn key_display_name(key: InputKey, system: Option<String>, lang: &Lang) -> Component {
+    let name = key_name(key);
+    match key {
+        InputKey::Keysym(_) if name == "key.keyboard.unknown" => Component::translatable(name),
+        InputKey::Keysym(_) => system.map_or_else(
+            || Component::translatable(name),
+            |system| Component::literal(system.to_uppercase()),
+        ),
+        InputKey::Scancode(_) => {
+            system.map_or_else(|| Component::translatable(name), Component::literal)
+        }
+        InputKey::Mouse(button) if lang.get(&name).is_none() => Component::translatable_with(
+            "key.mouse",
+            vec![Component::literal((button + 1).to_string())],
+        ),
+        InputKey::Mouse(_) => Component::translatable(name),
+    }
+}
+
 impl Options {
+    /// Every mapping's key, in `keyMappings` order.
+    pub fn key_bindings(&self) -> &[InputKey] {
+        &self.key_bindings
+    }
+
+    /// Every mapping's key at once, in `keyMappings` order.
+    pub fn set_key_bindings(&mut self, keys: &[InputKey]) {
+        self.key_bindings = keys.to_vec();
+    }
+
     /// The key a mapping (`key.forward`) is bound to.
     pub fn key_binding(&self, mapping: &str) -> Option<InputKey> {
         mappings()

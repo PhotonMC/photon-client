@@ -15,6 +15,8 @@ impl Controls {
             }
         } else if self.language_screen.is_some() {
             self.language_screen = None;
+        } else if self.key_binds_screen.is_some() {
+            self.close_key_binds();
         } else if self.mouse_screen.is_some() || self.controls_screen.is_some() {
             self.close_controls();
         } else if self.sound_screen.is_some() {

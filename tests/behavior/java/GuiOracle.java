@@ -42,6 +42,7 @@ public final class GuiOracle extends GuiSignOracle {
                 case "mouse_settings_screen" -> settingsScreen(request, "mouse");
                 case "sound_options_screen" -> settingsScreen(request, "sound");
                 case "controls_screen" -> settingsScreen(request, "controls");
+                case "key_binds_screen" -> settingsScreen(request, "keybinds");
                 case "key_mappings" -> keyMappings(request);
                 case "language_screen" -> settingsScreen(request, "language");
                 case "lang_text" -> langText(request);

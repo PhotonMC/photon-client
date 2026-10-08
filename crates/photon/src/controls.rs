@@ -17,6 +17,8 @@ use photon_render::gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScr
 
 use photon_render::gui::options::chat::ChatOptionsScreen;
 
+use photon_render::gui::options::keybinds::{BindKey, KeyBindsScreen};
+
 use photon_render::gui::options::language::LanguageSelectScreen;
 
 use photon_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
@@ -98,6 +100,8 @@ pub struct Controls {
     /// When and where the primary button last went down.
     pub(super) last_press: Option<(Instant, (i32, i32))>,
     pub mouse_screen: Option<MouseSettingsScreen>,
+    /// The key binds, over the controls screen.
+    pub key_binds_screen: Option<KeyBindsScreen>,
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
@@ -283,6 +287,8 @@ mod death;
 
 mod events;
 
+mod keybinds;
+
 mod options;
 
 mod pause;
@@ -326,6 +332,7 @@ impl Controls {
             language_request: None,
             last_press: None,
             mouse_screen: None,
+            key_binds_screen: None,
             death: None,
             sign_edit: None,
             book_edit: None,

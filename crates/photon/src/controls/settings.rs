@@ -180,6 +180,7 @@ impl Controls {
         let wheel = self.options.mouse_wheel_sensitivity;
         let mut done = false;
         let mut open_mouse = false;
+        let mut open_key_binds = false;
         if let WindowEvent::CursorPos(x, y) = event {
             let before = self.gui_mouse.1;
             self.move_gui_mouse((x, y), surface);
@@ -206,6 +207,7 @@ impl Controls {
                         let input = screen.key_pressed(lang, key, shift);
                         done = input.done;
                         open_mouse = input.mouse_settings;
+                        open_key_binds = input.key_binds;
                     }
                 }
             }
@@ -220,6 +222,7 @@ impl Controls {
                     let input = screen.clicked(lang, mouse, shift);
                     done = input.done;
                     open_mouse = input.mouse_settings;
+                    open_key_binds = input.key_binds;
                 }
             }
             WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
@@ -241,6 +244,8 @@ impl Controls {
         self.take_mouse_choices();
         if open_mouse {
             self.open_mouse_settings(surface, assets);
+        } else if open_key_binds {
+            self.open_key_binds(surface, assets);
         } else if done {
             self.close_controls();
         }
