@@ -59,6 +59,7 @@ enum Provider {
     DustPillar,
     Mark(super::hit::Mark),
     Drip,
+    FallingDust,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -110,6 +111,7 @@ fn provider_of(name: &str) -> Option<Provider> {
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
+        "falling_dust" => Provider::FallingDust,
         name if name.starts_with("dripping_")
             || name.starts_with("landing_")
             || matches!(
@@ -219,26 +221,17 @@ impl ParticleResources {
                 engine_random,
             );
         }
-        if provider == Provider::Drip {
-            let sprites = self.sprite_sets.get(name)?;
-            return Particle::drip_provider(name, random(), at, sprites, engine_random);
-        }
-        if let Provider::Mark(mark) = provider {
-            let sprites = if mark.is_emitter() {
-                // The emitters have no pictures.
-                &Arc::new(SpriteSet::new(Vec::new()))
-            } else {
-                self.sprite_sets.get(name)?
-            };
-            let motion = (at, push);
-            return Particle::hit_provider(
-                name,
+        if matches!(
+            provider,
+            Provider::FallingDust | Provider::Drip | Provider::Mark(_)
+        ) {
+            return self.create_own(
+                provider,
                 world,
-                random(),
-                motion,
-                sprites,
+                (name, data),
+                (at, push),
+                random,
                 engine_random,
-                data,
             );
         }
         let sprites = self.sprite_sets.get(name)?;
@@ -302,6 +295,53 @@ impl ParticleResources {
             ),
             _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
+    }
+
+    /// The providers that make their own particle from the level or the options: falling dust,
+    /// drips, and the hits and bursts.
+    fn create_own(
+        &self,
+        provider: Provider,
+        world: &ClientWorld,
+        (name, data): (&str, super::engine::ParticleData),
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
+        random: impl FnOnce() -> RandomSource,
+        engine_random: &mut RandomSource,
+    ) -> Option<Particle> {
+        if provider == Provider::FallingDust {
+            let state = data.block_state()?;
+            let sprites = self.sprite_sets.get(name)?;
+            let materials = self.terrain.as_deref();
+            return Particle::falling_dust_provider(
+                random,
+                at,
+                (state, sprites),
+                (world, materials),
+            );
+        }
+        if provider == Provider::Drip {
+            let sprites = self.sprite_sets.get(name)?;
+            return Particle::drip_provider(name, random(), at, sprites, engine_random);
+        }
+        if let Provider::Mark(mark) = provider {
+            let sprites = if mark.is_emitter() {
+                // The emitters have no pictures.
+                &Arc::new(SpriteSet::new(Vec::new()))
+            } else {
+                self.sprite_sets.get(name)?
+            };
+            let motion = (at, push);
+            return Particle::hit_provider(
+                name,
+                world,
+                random(),
+                motion,
+                sprites,
+                engine_random,
+                data,
+            );
+        }
+        None
     }
 
     /// The providers of flakes of blocks: nothing without the materials or for a block that

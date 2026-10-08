@@ -19,3 +19,7 @@ ve alt sınıflarının `getDustColor`'ı, `MapColor`. Rust: `crates/voxel-world
 `docs/records/client-particle-colour-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `particles/falling_dust.rs`, `animate_falling.rs` (düşen blok tozu, kum çöl sesi); harita rengi
+ve toz rengi tabloları oracle'dan (`tools/generate/map_colors.py`), her koşuda karşılaştırılır.
+Görünmez blokta tohum harcanmıyor. Oracle: `animate-falling`, `falling-dust-add`, `block-map-colors` eşit.
+Bölündü: havai fişek → T74c.

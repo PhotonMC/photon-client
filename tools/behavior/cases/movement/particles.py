@@ -213,6 +213,8 @@ def particle_cases():
     yield from item_pickup_cases()
     yield {"case_id": "movement/fire-flammability", "family": "movement", "operation": "fire_flammability",
            "rows": [{"label": "all"}]}
+    yield {"case_id": "movement/block-map-colors", "family": "movement", "operation": "block_map_colors",
+           "rows": [{"label": "all"}]}
 
 
 def engine_row(label, events, status="ALL", ticks=3, seeds=8, camera=(0.0, 64.0, 0.0), level_seed=101,
@@ -399,6 +401,19 @@ def particle_engine_cases():
                    + [{"x": x, "y": 72, "z": z, "block": "minecraft:soul_fire"} for x in range(-15, 16) for z in range(-15, 16)
                       if (x * z) % 3 == 0],
                    ticks=3, seeds=900, describe=12),
+        # Falling blocks over air sift dust (sand, gravel, concrete powder, anvils, a dragon egg), sand under
+        # open sky draws for the desert's sound; dust asked for directly takes a block's tint or map colour,
+        # and a block drawn as nothing makes none.
+        engine_row("animate-falling", [animate_tick(0, (0, 70, 0), 400, 86), animate_tick(1, (0, 70, 0), 400, 87)],
+                   blocks=[{"x": x, "y": 70, "z": z, "block": "minecraft:" + ["sand", "red_sand", "gravel",
+                            "white_concrete_powder", "anvil", "dragon_egg", "lime_concrete_powder"][(x * 3 + z) % 7],
+                            "properties": {}} for x in range(-15, 16) for z in range(-15, 16)]
+                   + plane(62, "minecraft:stone"),
+                   ticks=40, seeds=400, describe=12),
+        engine_row("falling-dust-add", [dict(add(0, "falling_dust", (1.5, 66.0, 0.5)), block="minecraft:" + name)
+                                        for name in ("stone", "grass_block", "spruce_leaves", "barrier", "water",
+                                                     "air", "blue_concrete_powder", "damaged_anvil")],
+                   blocks=plane(63, "minecraft:stone", size=4), ticks=50, seeds=10, describe=8),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

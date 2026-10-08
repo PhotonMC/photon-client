@@ -56,6 +56,8 @@ pub(super) enum Kind {
     Bobbing,
     /// `SculkChargeParticle`, `SculkChargePopParticle`: glows, translucent, follows its pictures.
     SculkCharge,
+    /// `FallingDustParticle`: drifts down, turning.
+    FallingDust { rot_speed: f32 },
     /// `DripParticle`: a drop hanging, falling or landed.
     Drip(super::drip::Drip),
     /// A `NoRenderParticle`: never drawn, leaves others about it.
@@ -277,6 +279,10 @@ impl Particle {
             }
             Kind::Emitter(emitter) => return self.emitter_tick(emitter),
             Kind::Drip(drip) => return self.drip_tick(world, drip),
+            Kind::FallingDust { rot_speed } => {
+                self.falling_dust_tick(world, rot_speed);
+                return Vec::new();
+            }
             Kind::AshSmoke { decays: true } => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;

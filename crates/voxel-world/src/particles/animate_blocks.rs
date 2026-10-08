@@ -54,9 +54,15 @@ impl ParticleEngine {
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
     ) {
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
-        let name = name.strip_prefix("minecraft:").unwrap_or(name);
+        let full = crate::block::state_or_air(i64::from(state)).block().name;
+        let name = full.strip_prefix("minecraft:").unwrap_or(full);
         let lit = crate::block::rules::property(state, "lit") == Some("true");
+        if voxel_data::map::dust_color(full).is_some() {
+            // `SandBlock` plays the desert's sounds after.
+            let sand = matches!(name, "sand" | "red_sand");
+            self.falling_block_animate_tick((state, sand), pos, random, (context, sounds));
+            return;
+        }
         match name {
             "fire" | "soul_fire" => self.fire(pos, name == "soul_fire", random, (context, sounds)),
             "campfire" | "soul_campfire" if lit => {

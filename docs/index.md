@@ -173,6 +173,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T70 — Partikül çekirdeği: `Particle`, duman ve alev — client-parity](records/client-particle-core-parity-conformance.md)
 - [T73b — Damla parçacıkları — client-parity](records/client-particle-drip-parity-conformance.md)
 - [T70b — Partikül motoru ve `LevelParticles` — client-parity ve server-conformance](records/client-particle-engine-parity-conformance.md)
+- [T74b — Düşen toz ve düşen blok animasyonu — client-parity](records/client-particle-falling-dust-parity-conformance.md)
 - [T76 — Vuruş, patlama ve ifade parçacıkları — client-parity](records/client-particle-hit-parity-conformance.md)
 - [T70c — Partikül dörtgenleri ve çizimi — client-parity ve server-conformance](records/client-particle-quads-parity-conformance.md)
 - [T72 — Yükselen duman/ateş ve kül parçacıkları — client-parity](records/client-particle-rising-parity-conformance.md)

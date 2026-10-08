@@ -48,6 +48,29 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             .collect();
         return Ok(json!({"rows": [{"label": "all", "blocks": blocks}]}));
     }
+    if string(request, "operation")? == "block_map_colors" {
+        // The map colours and dust colours, as the data crate carries them.
+        let (blocks, states, dust) = voxel_data::map::map_color_tables();
+        let rows: Vec<Value> = blocks
+            .iter()
+            .map(|(name, color)| {
+                let others: Vec<Value> = states
+                    .iter()
+                    .filter(|(state, _)| {
+                        voxel_data::block::registry::block_for_state(*state)
+                            .is_some_and(|(block, _)| block.name == *name)
+                    })
+                    .map(|(state, color)| json!([state, color]))
+                    .collect();
+                let mut entry = json!({"name": name, "color": color, "states": others});
+                if let Some((_, color)) = dust.iter().find(|(block, _)| block == name) {
+                    entry["dust"] = json!(color);
+                }
+                entry
+            })
+            .collect();
+        return Ok(json!({"rows": [{"label": "all", "blocks": rows}]}));
+    }
     if string(request, "operation")? == "item_pickup" {
         return item_pickup_result(request);
     }

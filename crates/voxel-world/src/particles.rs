@@ -7,10 +7,12 @@
 
 mod animate;
 mod animate_blocks;
+mod animate_falling;
 mod attract;
 mod colour;
 mod drip;
 mod engine;
+mod falling_dust;
 mod flame;
 mod group;
 mod hit;

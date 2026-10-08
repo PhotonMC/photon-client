@@ -237,6 +237,12 @@ pub(super) fn event_data(event: &Value, name: &str) -> voxel_world::particles::P
         },
         "entity_effect" => ParticleData::Color(color),
         "sculk_charge" => ParticleData::Roll(float("roll")),
+        "falling_dust" => ParticleData::Block(
+            event["block"]
+                .as_str()
+                .and_then(voxel_data::block::registry::block)
+                .map_or(0, |block| block.default_state_id() as i32),
+        ),
         _ => ParticleData::Plain,
     }
 }

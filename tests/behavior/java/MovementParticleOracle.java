@@ -388,6 +388,10 @@ class MovementParticleOracle extends MovementMenuOracle {
         int color = from.has("color") ? (int) from.get("color").getAsLong() : 0;
         return switch (name) {
             case "dust" -> new net.minecraft.core.particles.DustParticleOptions(color, floatBits(from, "scale"));
+            case "falling_dust" -> new net.minecraft.core.particles.BlockParticleOption(
+                net.minecraft.core.particles.ParticleTypes.FALLING_DUST,
+                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(
+                    net.minecraft.resources.Identifier.parse(from.get("block").getAsString())).defaultBlockState());
             case "dust_color_transition" -> new net.minecraft.core.particles.DustColorTransitionOptions(
                 color, (int) from.get("to_color").getAsLong(), floatBits(from, "scale"));
             case "effect", "instant_effect" -> net.minecraft.core.particles.SpellParticleOption.create(
@@ -459,6 +463,8 @@ class MovementParticleOracle extends MovementMenuOracle {
             engine.seeds.add(base + step * index);
         }
         setField(minecraft, "particleEngine", engine);
+        // A block's dust takes its tint (`BlockColors`).
+        setField(minecraft, "blockColors", net.minecraft.client.color.block.BlockColors.createDefault());
 
         var partials = row.getAsJsonArray("partials");
         @SuppressWarnings("unchecked")

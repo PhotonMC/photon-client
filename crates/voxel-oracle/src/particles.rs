@@ -217,6 +217,8 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         for particle in voxel_data::particle_type::PARTICLE_TYPES {
             resources.set_sprites(particle.name, sprites.clone());
         }
+        // The tints a block's dust takes (`BlockColors`), as the flakes' rows know them.
+        resources.set_terrain(Arc::new(OracleTerrain));
         let seed_of = |key: &str| {
             row[key]
                 .as_i64()

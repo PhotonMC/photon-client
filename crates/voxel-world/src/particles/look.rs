@@ -15,7 +15,8 @@ impl Particle {
             | Kind::PlayerCloud
             | Kind::Dust { .. }
             | Kind::Crit
-            | Kind::Bobbing => self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0),
+            | Kind::Bobbing
+            | Kind::FallingDust { .. } => self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0),
             Kind::Flame => self.quad_size * (1.0 - s * s * 0.5),
             Kind::Lava => self.quad_size * (1.0 - s * s),
             Kind::Attract(super::attract::Attract::Portal { reverse: false, .. }) => {
