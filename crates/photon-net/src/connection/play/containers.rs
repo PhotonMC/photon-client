@@ -109,10 +109,13 @@ impl PlaySession {
         });
     }
 
-    /// The enchantments (network ids) with `prevent_armor_change`, which the
-    /// data pack says and the session cannot read itself.
-    pub fn set_locking_enchantments(&mut self, ids: Vec<i32>) {
-        self.locking_enchantments = std::sync::Arc::new(ids);
+    /// What menus read of the enchantments (curses, armour locks), which
+    /// the data pack says and the session cannot read itself.
+    pub fn set_enchantment_traits(
+        &mut self,
+        traits: Vec<photon_game::menus::container::EnchantmentTraits>,
+    ) {
+        self.enchantment_traits = std::sync::Arc::new(traits);
     }
 
     /// The enchantment registry's entries, which a click's component hashes name.
@@ -159,7 +162,7 @@ impl PlaySession {
             };
             self.container_menu.load(slots, carried, state_id);
             self.container_menu.enchantments = self.enchantment_names();
-            self.container_menu.locking_enchantments = self.locking_enchantments.clone();
+            self.container_menu.enchantment_traits = self.enchantment_traits.clone();
             let clicked = self.container_menu.handle_click(slot, button, kind, player);
             sounds = self.container_menu.sounds().to_vec();
             let menu = &self.container_menu;
@@ -357,7 +360,7 @@ impl PlaySession {
             }
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.enchantments = enchantments;
-            menu.locking_enchantments = self.locking_enchantments.clone();
+            menu.enchantment_traits = self.enchantment_traits.clone();
             menu.xp_level = self.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
                 // The merchant's offers; the result is the client's own to make.

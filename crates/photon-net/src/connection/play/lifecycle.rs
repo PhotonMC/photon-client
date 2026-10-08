@@ -186,7 +186,7 @@ impl PlaySession {
             client_information: crate::configuration::ClientInformation::default(),
             dimension_type_id: 0,
             hashed_seed: 0,
-            locking_enchantments: std::sync::Arc::default(),
+            enchantment_traits: std::sync::Arc::default(),
             game_time: 0,
             rain_level: 0.0,
             thunder_level: 0.0,

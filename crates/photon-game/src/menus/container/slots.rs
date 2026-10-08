@@ -107,7 +107,7 @@ impl ContainerMenu {
         if self.armour_at(index).is_some()
             && !self.infinite_materials
             && self.slots[index].as_ref().is_some_and(|stack| {
-                enchantment_ids(stack).any(|id| self.locking_enchantments.contains(&id))
+                enchantment_ids(stack).any(|id| self.traits(id).prevents_armor_change)
             })
         {
             return false;

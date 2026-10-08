@@ -110,8 +110,9 @@ pub struct PlaySession {
     pub(super) client_information: crate::configuration::ClientInformation,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
-    /// The enchantments (network ids) that keep armour on, from the data pack.
-    pub(super) locking_enchantments: std::sync::Arc<Vec<i32>>,
+    /// What menus read of the enchantments, from the data pack.
+    pub(super) enchantment_traits:
+        std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,
     pub(super) game_time: i64,
     pub(super) rain_level: f32,
     pub(super) thunder_level: f32,

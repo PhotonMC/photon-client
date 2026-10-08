@@ -54,24 +54,9 @@ fn varint_of(value: &[u8]) -> Option<i32> {
     photon_core::wire::read_varint(&mut &value[..]).ok()
 }
 
-/// Whether the stack has a component, the item's own being present when
-/// `default` says so.
-fn has(stack: &Stack, id: i32, default: bool) -> bool {
-    stack.patched(id).map_or(default, |value| value.is_some())
-}
-
-/// `ItemStack.isDamaged`: damageable (`max_damage` and `damage`, not
-/// `unbreakable`) with damage above zero.
+/// `ItemStack.isDamaged`.
 pub(super) fn is_damaged(stack: &Stack) -> bool {
-    let durable = stacking(stack).is_some_and(|item| item.max_damage > 0);
-    if !has(stack, ids::MAX_DAMAGE, durable) || has(stack, ids::UNBREAKABLE, false) {
-        return false;
-    }
-    match stack.patched(ids::DAMAGE) {
-        Some(Some(value)) => varint_of(&value).is_some_and(|damage| damage > 0),
-        // The item's own damage is zero.
-        _ => false,
-    }
+    components::is_damageable(stack) && components::damage(stack) > 0
 }
 
 /// The network ids of the stack's `enchantments` (the items' own have none).
@@ -168,9 +153,10 @@ pub(super) fn inventory_to_menu(index: usize) -> usize {
 }
 
 /// `HashedStack` as its codec writes it: the added components with their
-/// hashes, then the removed ones, in the patch's order (the reference's
-/// identity map and set have none). An added component whose hash is not
-/// ported is left out, which the server reads as a changed stack.
+/// hashes, then the removed ones, each in type id order (the reference's
+/// identity map and set have no order to follow; the server reads a map).
+/// An added component whose hash is not ported is left out, which the
+/// server reads as a changed stack.
 pub(super) fn write_hashed_stack(
     out: &mut Vec<u8>,
     stack: Option<&Stack>,
@@ -184,7 +170,9 @@ pub(super) fn write_hashed_stack(
     out.push(1);
     photon_core::wire::write_varint(stack.item_registry_id(), out);
     photon_core::wire::write_varint(stack.item_count(), out);
-    let patch = stack.patch();
+    let mut patch = stack.patch();
+    patch.added.sort_by_key(|(id, _)| *id);
+    patch.removed.sort_unstable();
     let added: Vec<(i32, i32)> = patch
         .added
         .iter()
@@ -332,29 +320,6 @@ mod tests {
             menu.slots[9 + 27 + 3].as_ref().map(Stack::item_count),
             Some(2)
         );
-    }
-
-    #[test]
-    fn a_damaged_stack_does_not_stack() {
-        // Two components: the reference writes them in no fixed order, so
-        // the oracle's packet bytes cannot take this.
-        use photon_data::item::component_types::{DAMAGE, MAX_DAMAGE, MAX_STACK_SIZE};
-        let with = |damage: u8| {
-            let patch = crate::item_components::Patch {
-                added: vec![
-                    (MAX_STACK_SIZE, vec![4]),
-                    (MAX_DAMAGE, vec![10]),
-                    (DAMAGE, vec![damage]),
-                ],
-                removed: Vec::new(),
-            };
-            let mut stick = stack("minecraft:stick", 2);
-            stick.set_patch(&patch);
-            stick
-        };
-        assert_eq!(max_stack_size(&with(0)), 4);
-        assert!(is_stackable(&with(0)));
-        assert!(!is_stackable(&with(3)));
     }
 
     #[test]

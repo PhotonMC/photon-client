@@ -167,6 +167,51 @@ class MovementMenuOracle extends MovementPlayerOracle {
         return new OpenMenu(scene, player, menu, containerId);
     }
 
+    /**
+     * A click packet with each stack's components in type id order: the
+     * client writes them from an identity map, in an order no port can
+     * follow, and the server reads them into a map.
+     */
+    @SuppressWarnings("unchecked")
+    static net.minecraft.network.protocol.Packet<?> canonical(net.minecraft.network.protocol.Packet<?> packet)
+        throws Exception {
+        if (!(packet instanceof net.minecraft.network.protocol.game.ServerboundContainerClickPacket click)) {
+            return packet;
+        }
+        // The packet keeps an unmodifiable view; the map under it keeps its own order of slots.
+        java.lang.reflect.Field field = null;
+        for (Class<?> type = click.changedSlots().getClass(); field == null && type != null; type = type.getSuperclass()) {
+            try {
+                field = type.getDeclaredField("map");
+            } catch (NoSuchFieldException missing) {
+                // Look further up.
+            }
+        }
+        field.setAccessible(true);
+        var slots = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraft.network.HashedStack>) field.get(click.changedSlots());
+        slots.replaceAll((slot, stack) -> canonical(stack));
+        return new net.minecraft.network.protocol.game.ServerboundContainerClickPacket(
+            click.containerId(), click.stateId(), click.slotNum(), click.buttonNum(), click.containerInput(),
+            slots, canonical(click.carriedItem()));
+    }
+
+    static net.minecraft.network.HashedStack canonical(net.minecraft.network.HashedStack stack) {
+        if (!(stack instanceof net.minecraft.network.HashedStack.ActualItem item)) {
+            return stack;
+        }
+        var types = net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_TYPE;
+        java.util.Comparator<net.minecraft.core.component.DataComponentType<?>> byId =
+            java.util.Comparator.comparingInt(types::getId);
+        var added = new java.util.LinkedHashMap<net.minecraft.core.component.DataComponentType<?>, Integer>();
+        item.components().addedComponents().entrySet().stream()
+            .sorted(java.util.Map.Entry.comparingByKey(byId))
+            .forEach(entry -> added.put(entry.getKey(), entry.getValue()));
+        var removed = new java.util.LinkedHashSet<net.minecraft.core.component.DataComponentType<?>>();
+        item.components().removedComponents().stream().sorted(byId).forEach(removed::add);
+        return new net.minecraft.network.HashedStack.ActualItem(
+            item.item(), item.count(), new net.minecraft.network.HashedPatchMap(added, removed));
+    }
+
     /** `ClientPacketListener.decoratedHashOpsGenerator` over the vanilla registries. */
     static net.minecraft.network.HashedPatchMap.HashGenerator hashGenerator() {
         var ops = Oracle.vanillaRegistries().createSerializationContext(
@@ -222,7 +267,8 @@ class MovementMenuOracle extends MovementPlayerOracle {
                 net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
             var described = new JsonObject();
             var packets = new JsonArray();
-            for (var packet : wire.sent) {
+            for (var sentPacket : wire.sent) {
+                var packet = canonical(sentPacket);
                 var packetJson = new JsonObject();
                 packetJson.addProperty("type", packet.type().id().toString());
                 packetJson.addProperty("bytes", encode(packet));

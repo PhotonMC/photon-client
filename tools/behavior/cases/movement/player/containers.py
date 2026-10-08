@@ -56,7 +56,7 @@ CUSTOM_DATA, MAX_STACK_SIZE, MAX_DAMAGE, DAMAGE, UNBREAKABLE = 0, 1, 2, 3, 4
 CUSTOM_NAME, ITEM_NAME, LORE, RARITY, ENCHANTMENTS = 6, 9, 11, 12, 13
 REPAIR_COST, GLINT, STORED_ENCHANTMENTS, DYED_COLOR = 19, 21, 42, 44
 EFFICIENCY, MENDING, PROTECTION, SHARPNESS, UNBREAKING = 8, 23, 28, 33, 40
-BINDING_CURSE, BUNDLE_CONTENTS = 2, 50
+BINDING_CURSE, BUNDLE_CONTENTS, VANISHING_CURSE = 2, 50, 41
 # Item registry ids of the items a bundle holds here.
 ITEM_IDS = {"stone": 1, "dirt": 55, "ender_pearl": 1144, "bundle": 1065, "iron_sword": 959}
 
@@ -490,6 +490,41 @@ def cases():
                [cl(5, 0, P)], game_mode="creative"),
     ]
     click_rows[-7]["carried"]["patch"] = bundle([("ender_pearl", 10, empty)])
+
+    def enchanted(slot, item, levels, kind=ENCHANTMENTS):
+        return with_patch(st(slot, item, 1), patch([(kind, enchantments(levels))]))
+
+    def worn(slot, item, damage):
+        return with_patch(st(slot, item, 1), patch([(DAMAGE, varint(damage))]))
+
+    damaged_stick = patch([(MAX_STACK_SIZE, varint(4)), (MAX_DAMAGE, varint(10)), (DAMAGE, varint(3))])
+    click_rows += [
+        clicks("grindstone strips all but curses",
+               [enchanted(30, "diamond_sword", [(SHARPNESS, 3), (VANISHING_CURSE, 1)])],
+               [cl(30, 0, P), cl(0, 0, P), cl(2, 0, P), cl(20, 0, P)], menu="grindstone"),
+        clicks("grindstone merges two worn pickaxes",
+               [worn(0, "iron_pickaxe", 100), worn(30, "iron_pickaxe", 200)],
+               [cl(30, 0, P), cl(1, 0, P), cl(2, 0, Q)], menu="grindstone"),
+        clicks("grindstone merges enchantments and keeps curses",
+               [enchanted(0, "diamond_sword", [(BINDING_CURSE, 1), (SHARPNESS, 2)]),
+                enchanted(30, "diamond_sword", [(VANISHING_CURSE, 1), (SHARPNESS, 5), (UNBREAKING, 3)])],
+               [cl(30, 0, P), cl(1, 0, P)], menu="grindstone"),
+        clicks("grindstone turns a book of no curse into a book",
+               [enchanted(30, "enchanted_book", [(SHARPNESS, 2)], STORED_ENCHANTMENTS),
+                enchanted(31, "enchanted_book", [(VANISHING_CURSE, 1), (MENDING, 1)], STORED_ENCHANTMENTS)],
+               [cl(30, 0, P), cl(0, 0, P), cl(2, 0, Q), cl(31, 0, P), cl(1, 0, P), cl(1, 0, Q)],
+               menu="grindstone"),
+        clicks("grindstone refuses two books and two items of a kind",
+               [enchanted(0, "enchanted_book", [(SHARPNESS, 2)], STORED_ENCHANTMENTS),
+                enchanted(30, "enchanted_book", [(UNBREAKING, 1)], STORED_ENCHANTMENTS),
+                enchanted(31, "iron_sword", [(SHARPNESS, 1)])],
+               [cl(30, 0, P), cl(1, 0, P), cl(1, 0, P), cl(31, 0, P), cl(0, 0, SW)], menu="grindstone"),
+        clicks("damaged stacks do not merge on a quick move",
+               [with_patch(st(9, "stick", 1), damaged_stick), with_patch(st(36, "stick", 1), damaged_stick),
+                with_patch(st(10, "stick", 1), patch([(MAX_STACK_SIZE, varint(4))])),
+                with_patch(st(37, "stick", 1), patch([(MAX_STACK_SIZE, varint(4))]))],
+               [cl(9, 0, Q), cl(10, 0, Q)]),
+    ]
 
     yield {
         "case_id": "movement/container-clicks",

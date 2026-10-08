@@ -46,7 +46,7 @@ tik dalları) ile canlı sunucuya karşı `server-conformance` kayıtlarıdır;
 [görev panosunun](tasks/README.md) ilgili grubundadır.
 
 - [x] **M1 Blok eylemleri**, **M2 Eşya çizimi**, **M3 Envanter**: pano öncesi.
-- [ ] **M3.d Sunucunun açtığı kaplar** (L): kalan örs/taş çarkı tahmini (T51), bundle seçimi (`SelectBundleItem`, T59), binek envanteri (T58), kap ipuçları (T59).
+- [ ] **M3.d Sunucunun açtığı kaplar** (L): örs sonucu tahmini (T51b), bundle seçimi (`SelectBundleItem`, T59), binek envanteri (T58), kap ipuçları (T59).
 - [ ] **M4 Entity'ler** (XL): içerik bitti; kalan uzaklık/bölüm ayıklaması (T47) ve P24 kapsam denetimi.
 - [ ] **M5 Metin ve chat** (L): kalan unifont/bidi/IME, sohbet kalanları (§5), imzalı sohbet (M9 ile).
 - [ ] **M6 Ekranlar** (L): kalan ana menü, sunucu listesi, yükleme, kitap/tabela, ilerlemeler, kalan ayarlar; planı PLAN-M6.

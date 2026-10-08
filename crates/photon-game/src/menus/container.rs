@@ -47,8 +47,8 @@ pub struct ContainerMenu {
     /// The enchantment registry's entries by network id, which the click
     /// packet's component hashes name.
     pub enchantments: std::sync::Arc<Vec<String>>,
-    /// The network ids of the enchantments with `prevent_armor_change`.
-    pub locking_enchantments: std::sync::Arc<Vec<i32>>,
+    /// What the menu reads of each enchantment, by network id.
+    pub enchantment_traits: std::sync::Arc<Vec<EnchantmentTraits>>,
     /// Whether the last click was made with infinite materials (creative).
     pub(super) infinite_materials: bool,
     /// The item in the stonecutter's input the last time its list was made.
@@ -74,6 +74,39 @@ pub struct ContainerMenu {
     pub(super) sounds: Vec<&'static str>,
 }
 
+/// What a menu reads of an enchantment, from the data pack.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EnchantmentTraits {
+    /// In the `curse` tag.
+    pub curse: bool,
+    /// Has the `prevent_armor_change` effect.
+    pub prevents_armor_change: bool,
+}
+
+impl EnchantmentTraits {
+    /// The traits of the registries' enchantments, in network order.
+    pub fn of(registries: &crate::registries::Registries) -> Vec<Self> {
+        registries
+            .enchantments
+            .iter()
+            .map(|entry| Self {
+                curse: entry.curse,
+                prevents_armor_change: entry.prevents_armor_change,
+            })
+            .collect()
+    }
+}
+
+impl ContainerMenu {
+    /// The traits of an enchantment; none for one not known.
+    pub(super) fn traits(&self, id: i32) -> EnchantmentTraits {
+        usize::try_from(id)
+            .ok()
+            .and_then(|id| self.enchantment_traits.get(id).copied())
+            .unwrap_or_default()
+    }
+}
+
 impl Default for ContainerMenu {
     fn default() -> Self {
         Self {
@@ -89,7 +122,7 @@ impl Default for ContainerMenu {
             options: Vec::new(),
             xp_level: 0,
             enchantments: std::sync::Arc::default(),
-            locking_enchantments: std::sync::Arc::default(),
+            enchantment_traits: std::sync::Arc::default(),
             infinite_materials: false,
             last_input: None,
             data: Vec::new(),
@@ -110,6 +143,8 @@ impl Default for ContainerMenu {
 mod bundle;
 pub use bundle::{BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE};
 mod clicks;
+mod components;
+mod grindstone;
 mod kinds;
 pub use kinds::*;
 mod quick_move;

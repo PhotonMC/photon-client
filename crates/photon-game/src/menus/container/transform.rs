@@ -6,9 +6,10 @@
 //! level to make them with, or is predicted as empty), and arrive as slot
 //! updates.
 //!
-//! Not predicted (the server corrects): the grindstone's, the loom's and the
-//! anvil's result, which the reference works out on the client too; the
-//! anvil's use of its additional item on a repair.
+//! The grindstone's result is predicted ([`grindstone`](super::grindstone)).
+//! Not predicted (the server corrects): the loom's and the anvil's result,
+//! which the reference works out on the client too; the anvil's use of its
+//! additional item on a repair.
 
 use photon_data::item::classes::ItemClass;
 use photon_data::item::component_types as ids;
@@ -30,7 +31,7 @@ fn has_component(stack: &Stack, component: i32) -> bool {
 }
 
 /// `EnchantmentHelper.hasAnyEnchantments`.
-fn has_any_enchantments(stack: &Stack) -> bool {
+pub(super) fn has_any_enchantments(stack: &Stack) -> bool {
     let values = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes());
     !values.enchantments(ids::ENCHANTMENTS).is_empty()
         || !values.enchantments(ids::STORED_ENCHANTMENTS).is_empty()
@@ -52,9 +53,8 @@ impl ContainerMenu {
 
     /// `slotsChanged` of these menus, as far as the client runs it: a result
     /// slot whose inputs changed is emptied, which is what the ones that make
-    /// nothing on the client do, and what the ones that do make (the
-    /// grindstone's, the loom's and the anvil's) start from before the server
-    /// sends theirs.
+    /// nothing on the client do, and what the ones not ported here (the
+    /// loom's and the anvil's) start from before the server sends theirs.
     pub(super) fn inputs_changed(&mut self) {
         let Some(result) = self.kind.result_slot() else {
             return;
@@ -80,7 +80,17 @@ impl ContainerMenu {
                 }
             }
             MenuKind::Merchant => self.update_sell_item(),
+            MenuKind::Grindstone => self.slots[result] = self.grindstone_result(),
             _ => self.slots[result] = None,
+        }
+    }
+
+    /// `Slot.set` from the server: an input of a menu whose result the
+    /// client makes (the grindstone's) makes it again.
+    pub fn set_slot(&mut self, index: usize, stack: Option<Stack>) {
+        self.slots[index] = stack;
+        if self.kind == MenuKind::Grindstone && self.input_slots().contains(&index) {
+            self.inputs_changed();
         }
     }
 

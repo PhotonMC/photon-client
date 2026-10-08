@@ -173,8 +173,19 @@ eşyanın varsayılanına göre sadeleştirir; ağ zaten sadeleşmiş yama taş�
 alır/birini bırakır, bundle üstüne taşınan yığın girer/biri imlece çıkar;
 ağırlık kesirleri tam, boş içerik yamadan düşer. Sesler adıyla karşılaştırılır
 (perde seviyenin tohumsuz rastgelesinden). `isStackable` hasar ve yamadaki
-`max_stack_size`'ı okur (birim testi: iki bileşenli yığının bayt sırası
-Java'da sabit değil). `prevent_armor_change` etkili büyülü zırh yaratıcı dışında
+`max_stack_size`'ı okur. `prevent_armor_change` etkili büyülü zırh yaratıcı dışında
 çıkmaz; hangi büyülerin bu etkiyi taşıdığı veri paketinden. Boş yama artık
 her yerde bayt yok olarak tutulur (ağdaki `00 00` ile yerel yığın eşitlenir).
 Açık: bundle'da seçili eşya ve `SelectBundleItem` (kaydırma, ipucuyla T59).
+
+## Taş çarkı sonucu (`client-parity`)
+
+`GrindstoneMenu.computeResult` istemcide çalışır
+(`photon-game/src/menus/container/grindstone.rs`): tek büyülü eşya lanetleri
+dışında büyüsünü kaybeder (lanetsiz büyülü kitap düz kitap olur), aynı iki eşya
+%5 dayanıklılık payıyla birleşir; onarım maliyeti kalan lanetlerden yeniden
+hesaplanır. Bileşen yazımı `ItemStack.set/remove` gibi: eşyanın kendi değerine
+eşit değer yamadan düşer (`components.rs`). Hangi büyünün lanet olduğu veri
+paketinin `curse` etiketinden (`EnchantmentTraits`). Java tıklama paketinde
+bileşenleri kimlik haritası sırasıyla yazar; oracle paketi tür kimliği sırasına
+çevirir, Rust da o sırayla yazar (sunucu sırayı okumaz). Örs sonucu T51b'de.

@@ -36,7 +36,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         }
     };
     let enchantments = std::sync::Arc::new(vanilla_enchantments());
-    let locking = std::sync::Arc::new(vanilla_locking_enchantments());
+    let traits = std::sync::Arc::new(vanilla_enchantment_traits());
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -46,10 +46,10 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             Some(name) => menu_named(name, row)?,
         };
         menu.enchantments = enchantments.clone();
-        menu.locking_enchantments = locking.clone();
+        menu.enchantment_traits = traits.clone();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
-            menu.slots[index] = Some(stack(slot)?);
+            menu.set_slot(index, Some(stack(slot)?));
         }
         if row.get("carried").is_some() {
             menu.carried = Some(stack(&row["carried"])?);
@@ -122,13 +122,13 @@ fn vanilla_enchantments() -> Vec<String> {
         .collect()
 }
 
-/// The network ids of the vanilla enchantments that keep armour on.
-fn vanilla_locking_enchantments() -> Vec<i32> {
-    (0..)
-        .zip(vanilla_enchantment_entries())
-        .filter(|(_, entry)| entry.prevents_armor_change)
-        .map(|(id, _)| id)
-        .collect()
+/// What menus read of the vanilla enchantments.
+fn vanilla_enchantment_traits() -> Vec<photon_game::menus::container::EnchantmentTraits> {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    photon_game::menus::container::EnchantmentTraits::of(
+        &photon_game::registries::Registries::vanilla(&data_root),
+    )
 }
 
 /// The hash the click packet gives each component a stack's patch adds,

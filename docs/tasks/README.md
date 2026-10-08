@@ -31,12 +31,12 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %79 bitti** (ağırlıklı) · 245/290 madde işaretli, **45 madde kaldı** (tahmini 89 M-görev eşdeğeri iş).
+**Toplam: %80 bitti** (ağırlıklı) · 246/291 madde işaretli, **45 madde kaldı** (tahmini 89 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
 | Temel (pano öncesi) | `████████████████████` | 100 | 7/7 |
-| M3.d Sunucunun açtığı kaplar | `██████████████░░░░░░` | 69 | 9/12 |
+| M3.d Sunucunun açtığı kaplar | `██████████████░░░░░░` | 72 | 10/13 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 74 | 28/36 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T58, T59, T85b, T90, T91, T92, T93, T95, T96, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51b, T58, T59, T85b, T90, T91, T92, T93, T95, T96, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -70,7 +70,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 
 - [x] [PLAN-M3d](PLAN-M3d.md) Kalan kap ekranları ve tarif kitabını görevlere böl — S · bitti (f64024d2)
 - [x] [T50](T50-loom-cartography-smithing-oracle.md) Loom, cartography ve smithing ekranlarının oracle'ı — M · bitti (12e5d8ea)
-- [ ] [T51](T51-anvil-sonuc-tahmini.md) Örs ve taş çarkı sonucunun istemci tahmini — L
+- [x] [T51](T51-anvil-sonuc-tahmini.md) Örs ve taş çarkı sonucunun istemci tahmini — L · bölündü (HASH)
+- [ ] [T51b](T51b-ors-sonucu.md) Örs sonucunun istemci tahmini — L · bağımlı: T51
 - [x] [T52](T52-ipucu-bilesen-hash.md) Bileşenli eşyada tıklama paketi hash'i ve bundle tıklaması — M · bölündü (8c1872eb)
 - [x] [T52b](T52b-bundle-hasar-zirh-kilidi.md) Bundle tıklaması, hasarlı eşya ve zırh kilidi tahmini — M · bağımlı: T52 · bitti (1601f7b0)
 - [x] [T53](T53-beacon.md) İşaret ışığı menüsü ve ekranı (`SetBeacon`) — M · bağımlı: T50 · bitti (184cdc4b)

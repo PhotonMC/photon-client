@@ -113,13 +113,9 @@ impl Play {
         let registries = photon_game::registries::Registries::load(&data_root, |registry| {
             session.registry_names(registry).to_vec()
         });
-        session.set_locking_enchantments(
-            (0..)
-                .zip(&registries.enchantments)
-                .filter(|(_, entry)| entry.prevents_armor_change)
-                .map(|(id, _)| id)
-                .collect(),
-        );
+        session.set_enchantment_traits(photon_game::menus::container::EnchantmentTraits::of(
+            &registries,
+        ));
         // `PHOTON_CAMERA=back` or `front` starts detached.
         let camera_type = match env::var("PHOTON_CAMERA").as_deref() {
             Ok("back") => CameraType::ThirdPersonBack,
