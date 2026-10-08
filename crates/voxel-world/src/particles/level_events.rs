@@ -256,7 +256,7 @@ impl ParticleEngine {
     }
 
     /// `Level.addParticle` of a plain type.
-    fn level_add<F: FnMut() -> RandomSource>(
+    pub(super) fn level_add<F: FnMut() -> RandomSource>(
         &mut self,
         context: &mut LevelEventContext<'_, F>,
         name: &str,

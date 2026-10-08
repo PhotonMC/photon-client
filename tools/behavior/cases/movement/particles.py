@@ -238,6 +238,27 @@ NOTE_BLOCKS = [((0, 64, 0), "harp", 0), ((1, 64, 0), "harp", 12), ((2, 64, 0), "
                ((3, 64, 0), "basedrum", 5), ((4, 64, 0), "trumpet_oxidized", 19), ((5, 64, 0), "zombie", 7),
                ((6, 64, 0), "dragon", 3), ((7, 64, 0), "custom_head", 9)]
 
+def animate_tick(tick, center, count, seed):
+    return {"tick": tick, "type": "animate_tick", "x": center[0], "y": center[1], "z": center[2],
+            "count": count, "seed": seed}
+
+
+def torch_at(x, z):
+    """A torch of each kind across the plane: standing, on walls facing each way, redstone lit or not."""
+    facing = ["north", "south", "west", "east"][(x * 7 + z) % 4]
+    kinds = [("torch", {}), ("soul_torch", {}), ("copper_torch", {}), ("wall_torch", {"facing": facing}),
+             ("soul_wall_torch", {"facing": facing}), ("copper_wall_torch", {"facing": facing}),
+             ("redstone_torch", {"lit": "true"}), ("redstone_torch", {"lit": "false"}),
+             ("redstone_wall_torch", {"facing": facing, "lit": "true"})]
+    name, properties = kinds[(x * 3 + z * 5) % len(kinds)]
+    return {"x": x, "y": 64, "z": z, "block": "minecraft:" + name, "properties": properties}
+
+
+def plane(y, block, properties=None, size=15):
+    return [{"x": x, "y": y, "z": z, "block": block, "properties": properties or {}}
+            for x in range(-size, size + 1) for z in range(-size, size + 1)]
+
+
 SOUND_ONLY_EVENTS = [1000, 1001, 1002, 1004, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1024, 1025, 1026,
                      1027, 1029, 1030, 1031, 1033, 1034, 1035, 1039, 1040, 1041, 1042, 1043, 1044, 1045, 1046,
                      1047, 1048, 1049, 1050, 1051, 1052]
@@ -308,6 +329,17 @@ def particle_engine_cases():
                    blocks=[note_block(*block) for block in NOTE_BLOCKS]
                    + [{"x": 9, "y": 64, "z": 0, "block": "minecraft:stone"}],
                    ticks=5, seeds=12, describe=8),
+        # Blocks about the player animate: picks by the level's random, then each torch's flame and smoke (a
+        # wall torch's out from its wall), a lit redstone torch's dust; lava under open air pops, still and
+        # falling water has specks, flowing water murmurs (ambient sounds, not compared); fluids over air drip
+        # nowhere but still draw for it.
+        engine_row("animate-torches", [animate_tick(0, (0, 64, 0), 200, 77), animate_tick(1, (2, 63, -1), 150, 78)],
+                   blocks=[torch_at(x, z) for x in range(-15, 16) for z in range(-15, 16)],
+                   ticks=3, seeds=200, describe=12),
+        engine_row("animate-fluids", [animate_tick(0, (0, 56, 0), 300, 79), animate_tick(1, (0, 50, 0), 300, 80)],
+                   blocks=plane(60, "minecraft:lava") + plane(56, "minecraft:water")
+                   + plane(52, "minecraft:water", {"level": "3"}) + plane(48, "minecraft:water", {"level": "8"}),
+                   ticks=4, seeds=300, describe=12),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],

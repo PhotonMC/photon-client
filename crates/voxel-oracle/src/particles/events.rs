@@ -42,3 +42,26 @@ pub(super) fn sound_line(sound: &LocalSound) -> String {
         bits64(z)
     )
 }
+
+/// An `animate_tick` event: `count` pairs of picks around the block, the blocks' draws from a
+/// random seeded as given; the sounds that are not ambient (the reference's sound manager here
+/// leaves those out).
+pub(super) fn animate_tick<F: FnMut() -> RandomSource>(
+    event: &Value,
+    engine: &mut voxel_world::particles::ParticleEngine,
+    context: &mut voxel_world::particles::LevelEventContext<'_, F>,
+) -> Result<Vec<String>, String> {
+    let center = (
+        i32_field(event, "x")?,
+        i32_field(event, "y")?,
+        i32_field(event, "z")?,
+    );
+    let count = usize::try_from(i32_field(event, "count")?).map_err(|error| error.to_string())?;
+    let seed = event["seed"].as_i64().ok_or("seed must be an integer")?;
+    let played = engine.animate_tick((center, count), &mut RandomSource::create(seed), context);
+    Ok(played
+        .iter()
+        .filter(|sound| sound.source != voxel_world::local_player::LocalSoundSource::Ambient)
+        .map(sound_line)
+        .collect())
+}

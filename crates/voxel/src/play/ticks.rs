@@ -450,7 +450,18 @@ impl Play {
             let at = player.position();
             voxel_world::particles::pickup_target((at.x, at.y, at.z), player.eye_height())
         });
-        self.particles.tick(session.world(), local);
+        let block = session.player().map(|player| {
+            let at = player.position();
+            (
+                at.x.floor() as i32,
+                at.y.floor() as i32,
+                at.z.floor() as i32,
+            )
+        });
+        let block_sounds = self.particles.tick(session.world(), (block, local));
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle_local(block_sounds);
+        }
         if let Some(player) = session.player() {
             self.camera.tick(player);
         }

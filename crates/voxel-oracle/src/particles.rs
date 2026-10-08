@@ -254,6 +254,16 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 if i32_field(event, "tick")? != tick {
                     continue;
                 }
+                if string(event, "type")? == "animate_tick" {
+                    let mut context = voxel_world::particles::LevelEventContext {
+                        world: &world,
+                        view: &view,
+                        level_random: &mut level_random,
+                        particle_random: &mut particle_random,
+                    };
+                    sounds.extend(events::animate_tick(event, &mut engine, &mut context)?);
+                    continue;
+                }
                 // A level or block event goes through the level as the world queues it.
                 if events::queues(event, &mut world)? {
                     for queued in world.take_level_events() {

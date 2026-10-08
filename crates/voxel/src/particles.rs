@@ -26,12 +26,17 @@ use voxel_world::particles::{
 const UNIQUIFIER_START: i64 = 8_682_522_807_148_012;
 const UNIQUIFIER_STEP: i64 = 1_181_783_497_276_652_981;
 
+/// Where the local player is for a tick: its block, and the place a pickup heads for.
+type PlayerPlace = (Option<(i32, i32, i32)>, Option<(f64, f64, f64)>);
+
 pub(crate) struct Particles {
     engine: ParticleEngine,
     /// The listener's random source (the spread of a counted packet) and the level's (which of
     /// the particles the option lets in).
     listener_random: RandomSource,
     level_random: RandomSource,
+    /// `animateTick`'s own (`RandomSource.createThreadLocalInstance`), the blocks' draws.
+    animate_random: RandomSource,
     uniquifier: i64,
     /// Where the camera was when the last frame was drawn.
     camera: Vec3,
@@ -128,6 +133,7 @@ impl Particles {
             ),
             listener_random: RandomSource::create(unique_seed(&mut uniquifier)),
             level_random: RandomSource::create(unique_seed(&mut uniquifier)),
+            animate_random: RandomSource::create(unique_seed(&mut uniquifier)),
             uniquifier,
             camera: Vec3::new(0.0, 0.0, 0.0),
             textures,
@@ -248,9 +254,32 @@ impl Particles {
         self.engine.pickups()
     }
 
-    /// One client tick: `ParticleEngine.tick`; the pickups head for where their takers are
-    /// (`local`, the local player's place to head for, when there is one).
-    pub(crate) fn tick(&mut self, world: &ClientWorld, local: Option<(f64, f64, f64)>) {
+    /// One client tick: `ClientLevel.animateTick` around the player's block (`player`), then
+    /// `ParticleEngine.tick`; the pickups head for where their takers are (`local`, the local
+    /// player's place to head for, when there is one). The sounds the blocks played, in order.
+    pub(crate) fn tick(
+        &mut self,
+        world: &ClientWorld,
+        (player, local): PlayerPlace,
+    ) -> Vec<voxel_world::local_player::LocalSound> {
+        let mut sounds = Vec::new();
+        if let Some(center) = player {
+            let view = AddView {
+                camera: self.camera,
+                status: ParticleStatus::All,
+            };
+            let mut uniquifier = self.uniquifier;
+            let mut context = voxel_world::particles::LevelEventContext {
+                world,
+                view: &view,
+                level_random: &mut self.level_random,
+                particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
+            };
+            sounds =
+                self.engine
+                    .animate_tick((center, 667), &mut self.animate_random, &mut context);
+            self.uniquifier = uniquifier;
+        }
         self.engine.tick_pickups(|target| match target {
             None => local,
             Some(id) => world.entities().at(id).map(|entity| {
@@ -268,6 +297,7 @@ impl Particles {
         });
         self.uniquifier = uniquifier;
         self.most_alive = self.most_alive.max(self.engine.particle_count());
+        sounds
     }
 
     /// The packets that came and the most particles alive at once, for a scripted run's report.

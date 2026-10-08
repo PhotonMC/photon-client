@@ -15,6 +15,7 @@ pub enum LocalSoundSource {
     Hostile,
     Neutral,
     Records,
+    Ambient,
 }
 
 impl LocalSoundSource {
@@ -26,6 +27,7 @@ impl LocalSoundSource {
             Self::Hostile => "hostile",
             Self::Neutral => "neutral",
             Self::Records => "record",
+            Self::Ambient => "ambient",
         }
     }
 }
