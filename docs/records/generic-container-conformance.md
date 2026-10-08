@@ -176,7 +176,17 @@ ağırlık kesirleri tam, boş içerik yamadan düşer. Sesler adıyla karşıla
 `max_stack_size`'ı okur. `prevent_armor_change` etkili büyülü zırh yaratıcı dışında
 çıkmaz; hangi büyülerin bu etkiyi taşıdığı veri paketinden. Boş yama artık
 her yerde bayt yok olarak tutulur (ağdaki `00 00` ile yerel yığın eşitlenir).
-Açık: bundle'da seçili eşya ve `SelectBundleItem` (kaydırma, ipucuyla T59).
+Seçili eşya (T59b): `BundleContents.selectedItem` yığının yanında tutulur
+(telde yok, eşitlikte sayılmaz); ikincil tıklama seçileni çıkarır, ekleme
+indeksi korur, birincil boş tıklama ve çıkarma seçimi düşürür. Ekranın
+`BundleMouseActions`ı (`photon-render/src/gui/screen/bundle_mouse.rs`):
+tekerlek `ScrollWheelHandler` adımlarıyla tersine sarar (gösterilen sayı:
+en çok 12, 12'yi aşarsa 11, son satır dolu), fare yuvadan ayrılınca ya da
+Shift/sayı tuşu tıklamasında seçim düşer ve her seferinde
+`SelectBundleItem` (`-1` dahil, boş bundle'da da) gider. Oracle:
+`movement/container-clicks`'e `SCROLL`/`UNHOVER` adımları ve
+`bundle_selections` alanı, 5 satır. Açık: yaratıcı ekran ve ekran kapanışında
+seçim düşürme yok; ipucu çizimi T59e.
 
 ## Taş çarkı sonucu (`client-parity`)
 

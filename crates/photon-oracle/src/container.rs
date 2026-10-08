@@ -37,6 +37,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
     };
     let enchantments = std::sync::Arc::new(vanilla_enchantments());
     let traits = std::sync::Arc::new(vanilla_enchantment_traits());
+    let item_tags = std::sync::Arc::new(vanilla_item_tags()?);
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -45,6 +46,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
             None => ContainerMenu::default(),
             Some(name) => menu_named(name, row)?,
         };
+        menu.item_tags = item_tags.clone();
         menu.enchantments = enchantments.clone();
         menu.enchantment_traits = traits.clone();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
@@ -75,8 +77,12 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         };
         let mut clicks = Vec::new();
         for click in row["clicks"].as_array().ok_or("clicks must be an array")? {
-            let kind = ClickType::from_name(click["type"].as_str().ok_or("type must be a string")?)
-                .ok_or("unknown click type")?;
+            let name = click["type"].as_str().ok_or("type must be a string")?;
+            if name == "SCROLL" || name == "UNHOVER" {
+                clicks.push(bundle_mouse_step(&mut menu, click, selected)?);
+                continue;
+            }
+            let kind = ClickType::from_name(name).ok_or("unknown click type")?;
             let (swings, body) = menu.handle_click(
                 click["slot"].as_i64().ok_or("slot must be a number")? as i32,
                 click["button"].as_i64().ok_or("button must be a number")? as i32,
@@ -94,6 +100,9 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
                 .map(|slot| describe(slot.as_ref()))
                 .collect();
             let mut described = json!({"sent": sent, "slots": slots, "selected": selected});
+            if let Some(selections) = bundle_selections(&menu) {
+                described["bundle_selections"] = selections;
+            }
             if !menu.sounds().is_empty() {
                 described["sounds"] = json!(menu.sounds());
             }
@@ -160,4 +169,78 @@ pub(super) fn component_hashes_result(request: &Value) -> Result<Value, String> 
         out.push(json!({"label": label, "added": added, "removed": removed}));
     }
     Ok(json!({"rows": out}))
+}
+
+/// The screen's bundle actions over a slot, as a click row's step: the wheel by
+/// whole steps (`button`), or the mouse leaving it; what it selects and sends.
+fn bundle_mouse_step(
+    menu: &mut photon_game::menus::container::ContainerMenu,
+    click: &Value,
+    selected: usize,
+) -> Result<Value, String> {
+    use photon_render::gui::screen::ScreenAction;
+    let slot = click["slot"].as_u64().ok_or("slot must be a number")? as usize;
+    let mut mouse = photon_render::gui::screen::bundle_mouse::BundleMouse::default();
+    if click["type"] == "SCROLL" {
+        let wheel = click["button"].as_i64().ok_or("button must be a number")?;
+        mouse.scrolled(wheel as f64, Some(slot), menu);
+    } else {
+        mouse.hover_changed(Some(slot), None, menu);
+    }
+    let mut sent = Vec::new();
+    for action in mouse.drain() {
+        if let ScreenAction::SelectBundleItem { slot, selected } = action
+            && menu.select_bundle_item(slot as usize, selected)
+        {
+            let mut body = Vec::new();
+            photon_core::wire::write_varint(slot, &mut body);
+            photon_core::wire::write_varint(selected, &mut body);
+            sent.push(json!({"type": "minecraft:bundle_item_selected", "bytes": hex(&body)}));
+        }
+    }
+    let slots: Vec<Value> = menu
+        .slots
+        .iter()
+        .map(|stack| match stack {
+            None => Value::Null,
+            Some(stack) => json!({
+                "item": photon_data::item::registry::ITEMS[stack.item_registry_id() as usize].name,
+                "count": stack.item_count(),
+            }),
+        })
+        .collect();
+    let mut described = json!({"sent": sent, "slots": slots, "selected": selected});
+    if let Some(selections) = bundle_selections(menu) {
+        described["bundle_selections"] = selections;
+    }
+    if let Some(carried) = &menu.carried {
+        described["carried"] = json!({
+            "item": photon_data::item::registry::ITEMS[carried.item_registry_id() as usize].name,
+            "count": carried.item_count(),
+        });
+    }
+    Ok(described)
+}
+
+/// The bundles' selected items: `[slot, index]` for each that has one, -1
+/// for the carried stack; `None` when none has.
+fn bundle_selections(menu: &photon_game::menus::container::ContainerMenu) -> Option<Value> {
+    let mut selections: Vec<Value> = menu
+        .slots
+        .iter()
+        .enumerate()
+        .filter_map(|(slot, stack)| {
+            let selected = stack.as_ref()?.bundle_selected();
+            (selected != -1).then(|| json!([slot, selected]))
+        })
+        .collect();
+    if let Some(selected) = menu
+        .carried
+        .as_ref()
+        .map(|stack| stack.bundle_selected())
+        .filter(|&selected| selected != -1)
+    {
+        selections.push(json!([-1, selected]));
+    }
+    (!selections.is_empty()).then(|| json!(selections))
 }

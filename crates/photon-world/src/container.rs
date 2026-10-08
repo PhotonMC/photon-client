@@ -15,6 +15,10 @@ pub struct ClientItemStackState {
     /// one, and changing a stack in place (`shrink`) keeps it. The hand
     /// compares held stacks by object.
     pub(crate) identity: u64,
+    /// `BundleContents.selectedItem`: the item of a bundle's contents the
+    /// player has scrolled to, or -1. The client's own: the wire does not
+    /// carry it, and the stacks compare without it.
+    pub(crate) bundle_selected: i32,
 }
 
 static NEXT_IDENTITY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -47,7 +51,18 @@ impl ClientItemStackState {
             negative_component_type_ids,
             patch_bytes: Vec::new(),
             identity: NEXT_IDENTITY.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            bundle_selected: -1,
         }
+    }
+
+    /// The bundle contents' selected item, or -1.
+    pub fn bundle_selected(&self) -> i32 {
+        self.bundle_selected
+    }
+
+    /// The contents set again with this selected item.
+    pub fn set_bundle_selected(&mut self, selected: i32) {
+        self.bundle_selected = selected;
     }
 
     /// A stack of an item with no component patch.

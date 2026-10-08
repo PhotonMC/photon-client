@@ -275,8 +275,23 @@ class MovementMenuOracle extends MovementPlayerOracle {
             var click = element.getAsJsonObject();
             wire.sent.clear();
             SilentSoundManager.PLAYED.clear();
-            gameMode.handleContainerInput(containerId, click.get("slot").getAsInt(), click.get("button").getAsInt(),
-                net.minecraft.world.inventory.ContainerInput.valueOf(click.get("type").getAsString()), player);
+            var type = click.get("type").getAsString();
+            if (type.equals("SCROLL") || type.equals("UNHOVER")) {
+                // The screen's bundle actions over a slot: the wheel (by whole steps) or the
+                // mouse leaving it.
+                var actions = new net.minecraft.client.gui.BundleMouseActions(minecraft);
+                var slot = menu.getSlot(click.get("slot").getAsInt());
+                if (slot.hasItem() && actions.matches(slot)) {
+                    if (type.equals("SCROLL")) {
+                        actions.onMouseScrolled(0.0, click.get("button").getAsInt(), slot.index, slot.getItem());
+                    } else {
+                        actions.onStopHovering(slot);
+                    }
+                }
+            } else {
+                gameMode.handleContainerInput(containerId, click.get("slot").getAsInt(), click.get("button").getAsInt(),
+                    net.minecraft.world.inventory.ContainerInput.valueOf(type), player);
+            }
             var described = new JsonObject();
             var packets = new JsonArray();
             for (var sentPacket : wire.sent) {
@@ -300,6 +315,28 @@ class MovementMenuOracle extends MovementPlayerOracle {
                 slots.add(describeStack(slot.getItem()));
             }
             described.add("slots", slots);
+            // The bundles' selected items, which the wire does not carry: [slot, index] for each
+            // with one (-1 for the carried stack).
+            var selections = new JsonArray();
+            for (var slot : menu.slots) {
+                int index = net.minecraft.world.item.BundleItem.getSelectedItemIndex(slot.getItem());
+                if (index != -1) {
+                    var pair = new JsonArray();
+                    pair.add(slot.index);
+                    pair.add(index);
+                    selections.add(pair);
+                }
+            }
+            int carriedIndex = net.minecraft.world.item.BundleItem.getSelectedItemIndex(menu.getCarried());
+            if (carriedIndex != -1) {
+                var pair = new JsonArray();
+                pair.add(-1);
+                pair.add(carriedIndex);
+                selections.add(pair);
+            }
+            if (!selections.isEmpty()) {
+                described.add("bundle_selections", selections);
+            }
             described.add("carried", describeStack(menu.getCarried()));
             described.addProperty("selected", player.getInventory().getSelectedSlot());
             clicks.add(described);

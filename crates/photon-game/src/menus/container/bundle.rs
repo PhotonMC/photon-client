@@ -2,9 +2,9 @@
 //! carried onto a slot takes its stack in or puts one out, and a stack
 //! carried onto a bundle goes in (or one comes out onto the cursor).
 //!
-//! The selected item (`SelectBundleItem`, from scrolling over the bundle's
-//! tooltip) is not ported: every override resets it, so the first stack is
-//! the one taken out.
+//! The selected item (`BundleContents.selectedItem`, chosen by scrolling over
+//! the bundle and sent as `SelectBundleItem`) is the one a secondary click
+//! takes out; the stack keeps it beside its components.
 
 use super::*;
 use photon_world::item_components::ids;
@@ -80,9 +80,16 @@ fn contents(stack: &Stack) -> Option<Vec<Stack>> {
     Some(items)
 }
 
-/// `stack.set(BUNDLE_CONTENTS, ...)`: an empty bundle is the item's own, so
+/// `stack.set(BUNDLE_CONTENTS, contents.toImmutable())`: the items and the
+/// selected one. An empty bundle is the item's own (selecting nothing), so
 /// the patch drops the entry; a changed one keeps its place in the patch.
-fn set_contents(stack: &mut Stack, items: &[Stack]) {
+fn set_contents(stack: &mut Stack, contents: &Contents) {
+    stack.set_bundle_selected(if contents.items.is_empty() {
+        -1
+    } else {
+        contents.selected
+    });
+    let items = &contents.items;
     let mut patch = stack.patch();
     let place = patch
         .added
@@ -157,18 +164,41 @@ fn can_be_in_bundle(stack: &Stack) -> bool {
 struct Contents {
     items: Vec<Stack>,
     weight: Fraction,
+    selected: i32,
 }
 
 impl Contents {
-    /// A bundle whose weight is an error starts empty.
-    fn new(items: Vec<Stack>) -> Self {
+    /// The contents of a bundle with its selected item; a bundle whose weight
+    /// is an error starts empty, with none selected.
+    fn new(items: Vec<Stack>, selected: i32) -> Self {
         match content_weight(&items) {
-            Some(weight) => Self { items, weight },
+            Some(weight) => Self {
+                items,
+                weight,
+                selected,
+            },
             None => Self {
                 items: Vec::new(),
                 weight: Fraction::ZERO,
+                selected: -1,
             },
         }
+    }
+
+    /// The contents of a bundle stack, if it is one.
+    fn of(stack: &Stack) -> Option<Self> {
+        contents(stack).map(|items| Self::new(items, stack.bundle_selected()))
+    }
+
+    /// `toggleSelectedItem`: another item in bounds is selected, anything
+    /// else selects none.
+    fn toggle_selected(&mut self, selected: i32) {
+        let outside = usize::try_from(selected).map_or(true, |index| index >= self.items.len());
+        self.selected = if self.selected != selected && !outside {
+            selected
+        } else {
+            -1
+        };
     }
 
     fn max_amount_to_add(&self, item_weight: Fraction) -> i32 {
@@ -210,17 +240,23 @@ impl Contents {
         amount
     }
 
-    /// `removeOne`: the first stack, with no item selected.
+    /// `removeOne`: the selected stack, else the first; none is selected
+    /// after.
     fn remove_one(&mut self) -> Option<Stack> {
         if self.items.is_empty() {
             return None;
         }
-        let removed = self.items.remove(0);
+        let index = usize::try_from(self.selected)
+            .ok()
+            .filter(|&index| index < self.items.len())
+            .unwrap_or(0);
+        let removed = self.items.remove(index);
         let stack = removed.copy_with_count(removed.item_count());
         let item_weight = weight(&stack).expect("it went in with a weight");
         self.weight = self
             .weight
             .subtract(item_weight.times(i64::from(stack.item_count())));
+        self.toggle_selected(-1);
         Some(stack)
     }
 }
@@ -229,21 +265,21 @@ impl ContainerMenu {
     /// `AbstractContainerMenu.tryItemClickBehaviourOverride` for bundles:
     /// whether the click was the bundle's, not the slot's.
     pub(super) fn bundle_click(&mut self, index: usize, primary: bool, player: Player) -> bool {
-        if let Some(items) = self.carried.as_ref().and_then(contents) {
+        if let Some(carried) = self.carried.as_ref().and_then(Contents::of) {
             let slot_empty = self.slots[index].is_none();
             if primary && !slot_empty {
-                let mut bundle = Contents::new(items);
+                let mut bundle = carried;
                 let moved = self.try_transfer(&mut bundle, index, player);
                 self.sounds.push(if moved > 0 {
                     BUNDLE_INSERT
                 } else {
                     BUNDLE_INSERT_FAIL
                 });
-                set_contents(self.carried.as_mut().expect("checked above"), &bundle.items);
+                set_contents(self.carried.as_mut().expect("checked above"), &bundle);
                 return true;
             }
             if !primary && slot_empty {
-                let mut bundle = Contents::new(items);
+                let mut bundle = carried;
                 if let Some(stack) = bundle.remove_one() {
                     let count = stack.item_count();
                     match self.safe_insert(index, stack, count) {
@@ -253,14 +289,13 @@ impl ContainerMenu {
                         _ => self.sounds.push(BUNDLE_REMOVE_ONE),
                     }
                 }
-                set_contents(self.carried.as_mut().expect("checked above"), &bundle.items);
+                set_contents(self.carried.as_mut().expect("checked above"), &bundle);
                 return true;
             }
         }
-        let Some(items) = self.slots[index].as_ref().and_then(contents) else {
+        let Some(mut bundle) = self.slots[index].as_ref().and_then(Contents::of) else {
             return false;
         };
-        let mut bundle = Contents::new(items);
         let handled = match (primary, self.carried.is_some()) {
             (true, true) => {
                 let allowed = self.allow_modification(index);
@@ -283,13 +318,13 @@ impl ContainerMenu {
                 }
                 true
             }
-            // `toggleSelectedItem(-1)`, which only rewrites the contents.
-            _ => false,
+            // `toggleSelectedItem(-1)`.
+            _ => {
+                bundle.toggle_selected(-1);
+                false
+            }
         };
-        set_contents(
-            self.slots[index].as_mut().expect("checked above"),
-            &bundle.items,
-        );
+        set_contents(self.slots[index].as_mut().expect("checked above"), &bundle);
         handled
     }
 
@@ -308,5 +343,54 @@ impl ContainerMenu {
         }
         self.safe_take(index, other.item_count(), max, player)
             .map_or(0, |mut taken| bundle.try_insert(&mut taken))
+    }
+}
+
+/// `BundleItem.getNumberOfItemsToShow`: up to three rows of four, the last
+/// row full, and one place fewer for the count of the rest when there are
+/// more than twelve stacks.
+pub fn bundle_items_to_show(stack: &Stack) -> i32 {
+    let size = contents(stack).map_or(0, |items| items.len() as i32);
+    let available = if size > 12 { 11 } else { 12 };
+    let on_last_row = size % 4;
+    let empty_on_last_row = if on_last_row == 0 { 0 } else { 4 - on_last_row };
+    size.min(available - empty_on_last_row)
+}
+
+/// `BundleItem.toggleSelectedItem`: the bundle's contents with another item
+/// selected (or none); nothing for a stack that is no bundle.
+pub fn toggle_bundle_selected(stack: &mut Stack, selected: i32) {
+    if let Some(mut bundle) = Contents::of(stack) {
+        bundle.toggle_selected(selected);
+        set_contents(stack, &bundle);
+    }
+}
+
+impl ContainerMenu {
+    /// `BundleMouseActions.matches`: whether a slot holds a stack of the
+    /// `#bundles` tag.
+    pub fn is_bundle_slot(&self, slot: usize) -> bool {
+        self.slots
+            .get(slot)
+            .and_then(Option::as_ref)
+            .is_some_and(|stack| {
+                self.item_tags
+                    .contains(stack.item_registry_id(), "minecraft:bundles")
+            })
+    }
+
+    /// `BundleMouseActions.toggleSelectedBundleItem` on a slot's stack:
+    /// another of its items selected (or none, for -1), and whether the
+    /// server is to be told. An index past what the bundle shows does
+    /// nothing.
+    pub fn select_bundle_item(&mut self, slot: usize, selected: i32) -> bool {
+        let Some(stack) = self.slots.get_mut(slot).and_then(Option::as_mut) else {
+            return false;
+        };
+        if selected >= bundle_items_to_show(stack) {
+            return false;
+        }
+        toggle_bundle_selected(stack, selected);
+        true
     }
 }

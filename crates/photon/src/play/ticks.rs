@@ -419,6 +419,8 @@ impl Play {
         if let Some(screen) = self.controls.screen.as_mut() {
             screen.tick(self.session.active_menu());
         }
+        // What the screen asked for as it was drawn (a bundle the mouse left).
+        self.controls.drain_screen_actions(&mut self.session)?;
         let session = &mut self.session;
         // `Minecraft.handleKeybinds`: the attack key is spent before the
         // player moves, aiming the way `GameRenderer.pick` aims.

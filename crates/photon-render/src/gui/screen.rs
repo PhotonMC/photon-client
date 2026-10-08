@@ -17,6 +17,7 @@ pub mod title;
 pub mod book;
 pub mod book_edit;
 pub mod book_sign;
+pub mod bundle_mouse;
 pub mod container;
 pub mod creative;
 pub mod generic;
@@ -75,6 +76,9 @@ pub enum ScreenAction {
     /// A button of the open menu pressed (`ContainerButtonClick`): a
     /// stonecutter recipe, a loom pattern or an enchantment.
     Button(i32),
+    /// The bundle in a slot selects another of its items, or none for -1
+    /// (`BundleMouseActions.toggleSelectedBundleItem`, `SelectBundleItem`).
+    SelectBundleItem { slot: i32, selected: i32 },
     /// The beacon's screen confirmed its choice (`SetBeacon`), by effect registry id.
     SetBeacon {
         primary: Option<i32>,
@@ -145,8 +149,8 @@ pub trait Screen {
     /// `mouseDragged`, while a button is held.
     fn mouse_dragged(&mut self, mouse: (f64, f64), menu: &ContainerMenu);
 
-    /// `mouseScrolled`.
-    fn mouse_scrolled(&mut self, _y: f64) {}
+    /// `mouseScrolled`; what it asks for comes out of [`Screen::drain_actions`].
+    fn mouse_scrolled(&mut self, _y: f64, _menu: &ContainerMenu) {}
 
     /// `keyPressed`.
     fn key_pressed(

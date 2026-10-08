@@ -250,7 +250,7 @@ impl Screen for CreativeScreen {
     }
 
     /// `mouseScrolled`: the wheel scrolls the rows.
-    fn mouse_scrolled(&mut self, y: f64) {
+    fn mouse_scrolled(&mut self, y: f64, _menu: &ContainerMenu) {
         if self.can_scroll() {
             let scroll = self.menu.subtract_input_from_scroll(self.menu.scroll(), y);
             self.menu.set_scroll(scroll);
@@ -529,7 +529,7 @@ mod tests {
         screen.mouse_dragged((x, f64::from(screen.layout.top() + 200)), &inventory);
         assert_eq!(screen.menu.scroll(), 1.0);
         screen.mouse_released((x, y), 0, false, &inventory);
-        screen.mouse_scrolled(1.0);
+        screen.mouse_scrolled(1.0, &ContainerMenu::default());
         assert!(screen.menu.scroll() < 1.0);
     }
 

@@ -141,6 +141,16 @@ impl PlaySession {
             .world
             .local_player()
             .is_some_and(|player| player.open_container().is_some());
+        // `BundleMouseActions.onSlotClicked`: a shift click or a number key on a bundle selects
+        // none of its items first.
+        if matches!(
+            kind,
+            photon_game::menus::container::ClickType::QuickMove
+                | photon_game::menus::container::ClickType::Swap
+        ) && usize::try_from(slot).is_ok_and(|index| self.active_menu().is_bundle_slot(index))
+        {
+            self.select_bundle_item(slot, -1)?;
+        }
         let sounds: Vec<&'static str>;
         let (swings, body) = if opened {
             // Synced before the click; `None` when the container is of a kind
@@ -490,7 +500,49 @@ impl PlaySession {
         if let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() {
             self.container_menu.load(slots, carried, state_id);
         }
+        self.container_menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
         &self.container_menu
+    }
+
+    /// `BundleMouseActions.toggleSelectedBundleItem`: the bundle in a slot of the open menu
+    /// selects another of its items (or none, for -1), and the server is told
+    /// (`ServerboundSelectBundleItemPacket`).
+    pub fn select_bundle_item(&mut self, slot: i32, selected: i32) -> Result<(), ConnectionError> {
+        let Ok(index) = usize::try_from(slot) else {
+            return Ok(());
+        };
+        let opened = self
+            .trace
+            .world
+            .local_player()
+            .is_some_and(|player| player.open_container().is_some());
+        let changed = if opened {
+            if self.open_container_menu().is_none() {
+                return Ok(());
+            }
+            let menu = self.open_menu.as_mut().expect("synced above");
+            let changed = menu.select_bundle_item(index, selected);
+            let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
+            self.trace
+                .world
+                .set_local_player_container_menu(&slots, carried);
+            changed
+        } else {
+            self.container_menu();
+            let menu = &mut self.container_menu;
+            let changed = menu.select_bundle_item(index, selected);
+            let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
+            self.trace.world.set_local_player_menu(&slots, carried);
+            changed
+        };
+        if !changed {
+            return Ok(());
+        }
+        self.send(PLAY_SERVERBOUND_SELECT_BUNDLE_ITEM_PACKET_ID, |output| {
+            photon_core::wire::write_varint(slot, output);
+            photon_core::wire::write_varint(selected, output);
+            Ok(())
+        })
     }
 
     /// The container the server opened, as a screen needs to know it: its id,

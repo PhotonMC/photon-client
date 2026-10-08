@@ -20,4 +20,9 @@ G tarifi (ipucu çizimi) ve `movement/container-clicks` (seçimden sonra çıkar
 `docs/records/generic-container-conformance.md`, `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+- Bölündü: seçim mantığı burada, ipucu çizimi T59e'de.
+- `ClientItemStackState::bundle_selected` (telde yok); `Contents` seçimi taşır, `remove_one` seçileni alır.
+- `BundleMouse` (render): tekerlek/ayrılma → `ScreenAction::SelectBundleItem` → `select_bundle_item`
+  (menü + paket 3); Shift/sayı tıklaması `container_click`'te önce seçimi düşürür.
+- Oracle: container-clicks `SCROLL`/`UNHOVER` adımları, `bundle_selections`; 5 satır Java ile birebir.
+- Açık: yaratıcı ekran, ekran kapanışında düşürme (`onClose`).

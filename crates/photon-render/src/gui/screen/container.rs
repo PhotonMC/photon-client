@@ -49,6 +49,8 @@ pub struct ContainerMouse {
     last_quick_moved: Option<Stack>,
     /// `MouseHandler`'s last click: when, and which button.
     last_click: Option<(std::time::Instant, i32)>,
+    /// `BundleMouseActions`.
+    pub(crate) bundle: super::bundle_mouse::BundleMouse,
 }
 
 impl Default for ContainerMouse {
@@ -63,6 +65,7 @@ impl Default for ContainerMouse {
             skip_next_release: true,
             double_click: false,
             last_quick_moved: None,
+            bundle: super::bundle_mouse::BundleMouse::default(),
             last_click: None,
         }
     }

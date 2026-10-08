@@ -280,7 +280,7 @@ impl Controls {
     }
 
     /// The clicks the open screen queued while it took a key or a character.
-    pub(super) fn drain_screen_actions(&mut self, session: &mut PlaySession) -> Result {
+    pub(crate) fn drain_screen_actions(&mut self, session: &mut PlaySession) -> Result {
         let Some(screen) = self.screen.as_mut() else {
             return Ok(());
         };
@@ -352,7 +352,10 @@ impl Controls {
                     self.last_cursor = None;
                 }
             }
-            glfw::WindowEvent::Scroll(_, y) => screen.mouse_scrolled(y),
+            glfw::WindowEvent::Scroll(_, y) => {
+                let menu = session.active_menu().clone();
+                screen.mouse_scrolled(y, &menu);
+            }
             glfw::WindowEvent::CursorPos(x, y) => {
                 // `MouseHandler.onMove`: screen coordinates to GUI units.
                 let size = surface.scale();

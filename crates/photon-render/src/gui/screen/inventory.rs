@@ -242,8 +242,14 @@ impl Screen for InventoryScreen {
         self.book.char_typed(character);
     }
 
+    fn mouse_scrolled(&mut self, y: f64, menu: &ContainerMenu) {
+        self.mouse.bundle.scrolled(y, self.hovered, menu);
+    }
+
     fn drain_actions(&mut self) -> Vec<ScreenAction> {
-        self.book.drain_actions()
+        let mut actions = self.mouse.bundle.drain();
+        actions.extend(self.book.drain_actions());
+        actions
     }
 
     fn scripted_click(&mut self, slot: i32, button: i32, kind: ClickType) -> ScreenAction {
@@ -290,7 +296,11 @@ impl Screen for InventoryScreen {
             top + 6,
             0xFF40_4040,
         );
+        let previous = self.hovered;
         self.hovered = self.hovered_slot(mouse);
+        self.mouse
+            .bundle
+            .hover_changed(previous, self.hovered, menu);
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(slot), false);
         }

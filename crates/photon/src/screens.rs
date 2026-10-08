@@ -223,6 +223,9 @@ pub fn run_actions(
                 session.set_beacon(primary, secondary)?;
             }
             ScreenAction::SelectTrade(trade) => session.select_trade(trade)?,
+            ScreenAction::SelectBundleItem { slot, selected } => {
+                session.select_bundle_item(slot, selected)?;
+            }
             ScreenAction::SlotState { slot, enabled } => {
                 session.set_crafter_slot_state(slot, enabled)?;
             }

@@ -293,7 +293,10 @@ impl Screen for GenericScreen {
         }
     }
 
-    fn mouse_scrolled(&mut self, y: f64) {
+    fn mouse_scrolled(&mut self, y: f64, menu: &ContainerMenu) {
+        if self.mouse.bundle.scrolled(y, self.hovered, menu) {
+            return;
+        }
         if let Some(panel) = &mut self.merchant {
             panel.wheel(y);
         }
@@ -311,7 +314,8 @@ impl Screen for GenericScreen {
     }
 
     fn drain_actions(&mut self) -> Vec<ScreenAction> {
-        let mut actions = self.take_queued();
+        let mut actions = self.mouse.bundle.drain();
+        actions.extend(self.take_queued());
         if let Some(book) = &mut self.book {
             actions.extend(book.drain_actions());
         }
@@ -354,7 +358,11 @@ impl Screen for GenericScreen {
             panel.buttons(draw, (left, top), mouse);
         }
         self.draw_labels(draw, menu, mouse, (left, top), (width, height));
+        let previous = self.hovered;
         self.hovered = self.hovered_slot(mouse);
+        self.mouse
+            .bundle
+            .hover_changed(previous, self.hovered, menu);
         let kind = self.kind;
         if kind == MenuKind::Smithing {
             self.extras.draw_smithing_icons(draw, menu, (left, top));

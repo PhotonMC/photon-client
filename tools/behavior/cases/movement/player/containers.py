@@ -490,6 +490,28 @@ def cases():
                [cl(5, 0, P)], game_mode="creative"),
     ]
     click_rows[-7]["carried"]["patch"] = bundle([("ender_pearl", 10, empty)])
+    # The screen's bundle actions: the wheel over a bundle selects one of its items (against the
+    # wheel, wrapping), a secondary click takes the selected one, leaving the slot selects none
+    # and tells the server even when nothing was selected, a stack put in keeps the index.
+    S, U = "SCROLL", "UNHOVER"
+    three = bundle([("dirt", 5, empty), ("ender_pearl", 2, empty), ("stone", 3, empty)])
+    click_rows += [
+        clicks("the wheel selects a bundle's item and a secondary click takes it",
+               [with_patch(st(20, "bundle", 1), three)],
+               [cl(20, 1, S), cl(20, -1, S), cl(20, -1, S), cl(20, 1, P), cl(20, 1, P)]),
+        clicks("leaving a bundle selects none and says so each time",
+               [with_patch(st(20, "bundle", 1), three), st(21, "bundle", 1)],
+               [cl(20, 1, S), cl(20, 0, U), cl(20, 0, U), cl(21, 1, S), cl(21, 0, U), cl(22, 0, U)]),
+        clicks("a stack put into a bundle keeps the selected index",
+               [with_patch(st(20, "bundle", 1), three)],
+               [cl(20, -1, S), cl(20, 0, P), cl(20, 1, P)], carried=("ender_pearl", 4)),
+        clicks("a primary click with nothing carried selects none",
+               [with_patch(st(20, "bundle", 1), three)],
+               [cl(20, 1, S), cl(20, 0, P), cl(21, 0, P), cl(20, 1, P)]),
+        clicks("thirteen stacks show eleven and the wheel wraps there",
+               [with_patch(st(20, "bundle", 1), bundle([("stone", 1, empty)] * 13))],
+               [cl(20, 1, S), cl(20, -1, S), cl(20, -1, S), cl(20, 1, P)]),
+    ]
 
     def enchanted(slot, item, levels, kind=ENCHANTMENTS):
         return with_patch(st(slot, item, 1), patch([(kind, enchantments(levels))]))
