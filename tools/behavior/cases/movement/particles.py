@@ -159,6 +159,26 @@ def particle_tick_cases():
         row("egg-crack", "egg_crack", [], (0.5, 70.0, 0.5), (0.0, 0.5, 0.0), 77, 30),
         dict(row("composter", "composter", [], (0.5, 70.0, 0.5), (0.0, 0.2, 0.0), 12345, 10), level_seed=54),
         row("dolphin", "dolphin", POOL, (0.5, 63.0, 0.5), (0.3, 0.0, 0.3), 12345, 30, engine_seed=55),
+        # Hits: a crit ticks once as it is made (a damage indicator rises and lasts twenty, the enchanted
+        # one is bluer); a sweep, an explosion and a sonic boom stand still, full bright, sized by the
+        # first push; a poof rises; hearts and notes bob up (a note's colour from its push, under a
+        # ceiling that speeds it sideways); gusts stand still; sculk charges turn by their roll and glow.
+        row("crit", "crit", [], (0.5, 70.0, 0.5), (0.4, 0.2, -0.3), 12345, 12, engine_seed=61),
+        row("damage-indicator", "damage_indicator", [], (0.5, 70.0, 0.5), (0.0, 0.1, 0.0), 77, 22),
+        row("enchanted-hit", "enchanted_hit", [], (0.5, 70.0, 0.5), (-0.2, 0.3, 0.1), 12345, 12),
+        row("sweep-attack", "sweep_attack", [], (0.5, 70.0, 0.5), (0.3, 0.0, 0.0), 12345, 6),
+        row("poof", "poof", [], (0.5, 70.0, 0.5), (0.02, 0.05, -0.01), 12345, 50),
+        row("explosion", "explosion", [], (0.5, 70.0, 0.5), (0.5, 0.0, 0.0), 12345, 12),
+        row("sonic-boom", "sonic_boom", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 12345, 18),
+        row("heart", "heart", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 12345, 18, engine_seed=62),
+        row("angry-villager", "angry_villager", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 77, 18),
+        row("note", "note", CEILING, (0.5, 67.5, 0.5), (0.375, 0.0, 0.0), 12345, 8, engine_seed=63),
+        row("gust", "gust", [], (0.5, 70.0, 0.5), (0.25, 0.0, 0.0), 12345, 17),
+        row("small-gust", "small_gust", [], (0.5, 70.0, 0.5), (0.0, 0.0, 0.0), 77, 17),
+        dict(row("sculk-charge", "sculk_charge", [], (0.5, 70.0, 0.5), (0.01, 0.02, 0.0), 12345, 22,
+                 engine_seed=64), roll=float_bits(0.7)),
+        row("sculk-charge-pop", "sculk_charge_pop", [], (0.5, 70.0, 0.5), (0.0, 0.03, 0.0), 12345, 12,
+            engine_seed=65),
     ]
     yield {"case_id": "movement/particle-ticks", "family": "movement", "operation": "particle_ticks",
            "rows": rows}
@@ -245,6 +265,11 @@ def particle_engine_cases():
             "large_smoke", "white_smoke", "ash", "white_ash", "dust_plume", "soul", "sculk_soul",
             "campfire_cosy_smoke", "campfire_signal_smoke", "cloud", "sneeze")],
                    ticks=12, seeds=11, describe=11),
+        # The emitters leave explosions and gusts about them through the level; they are a group of their own.
+        engine_row("emitters", [add(0, "explosion_emitter", (5.0, 64.0, 5.0)),
+                                add(0, "gust_emitter_large", (-5.0, 64.0, 5.0)),
+                                add(1, "gust_emitter_small", (5.0, 64.0, -5.0))],
+                   ticks=12, seeds=100, describe=10),
         # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
         engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
                                  packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],

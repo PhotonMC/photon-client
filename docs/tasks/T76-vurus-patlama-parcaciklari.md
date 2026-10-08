@@ -19,4 +19,9 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: `particles/hit.rs` (kıvılcım ailesi, süpürme, puf, patlama, sonik patlama, kalp, nota,
+rüzgâr, sculk yükü) ve motorda ayrı `NO_RENDER` grubu (patlama ve rüzgâr yayıcıları). Ağ
+okuyucu `sculk_charge` dönüşünü okur. Oracle: 14 tek parçacık satırı ve yayıcı satırı bit eşit.
+Sapma: Java grupları kimlik hash sırasıyla tikler; Rust önce dörtgenleri tikler (aynı rastgeleyi
+paylaşmadıkları için gözlenmez).
+Açık: çığlık, elder gardiyan, `Explode` paketi → T76b.

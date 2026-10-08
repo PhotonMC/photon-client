@@ -109,7 +109,7 @@ pub(super) fn particle_ticks_result(request: &Value) -> Result<Value, String> {
                 .map(|index| format!("sprite_{index}"))
                 .collect(),
         ));
-        let mut particle = particle_of(row, &sprites)?;
+        let mut particle = particle_of(row, &world, &sprites)?;
         let partials = f32_bits(&row["partials"])?;
         let mut states = vec![describe(&particle, &world, &partials)];
         for _ in 0..i32_field(row, "tick_count")? {
@@ -136,7 +136,7 @@ pub(super) fn particle_quads_result(request: &Value) -> Result<Value, String> {
                 .map(|index| format!("sprite_{index}"))
                 .collect(),
         ));
-        let mut particle = particle_of(row, &sprites)?;
+        let mut particle = particle_of(row, &world, &sprites)?;
         for _ in 0..i32_field(row, "tick_count")? {
             particle.tick(&world);
         }
@@ -312,7 +312,11 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             }
             let pending = engine.pending_count();
             engine.tick(&world, &view, &mut level_random, &mut particle_random);
-            ticks.push(json!({"pending": pending, "particles": engine.particle_count()}));
+            ticks.push(json!({
+                "pending": pending,
+                "particles": engine.particle_count(),
+                "emitters": engine.emitter_count(),
+            }));
         }
         let limit =
             usize::try_from(i32_field(row, "describe")?).map_err(|error| error.to_string())?;

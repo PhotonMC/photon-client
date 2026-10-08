@@ -57,6 +57,7 @@ enum Provider {
     Terrain,
     Crumbling,
     DustPillar,
+    Mark(super::hit::Mark),
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -108,7 +109,7 @@ fn provider_of(name: &str) -> Option<Provider> {
         "block" => Provider::Terrain,
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
-        _ => return None,
+        _ => Provider::Mark(super::hit::Mark::of(name)?),
     })
 }
 
@@ -201,6 +202,24 @@ impl ParticleResources {
                 engine_random,
             );
         }
+        if let Provider::Mark(mark) = provider {
+            let sprites = if mark.is_emitter() {
+                // The emitters have no pictures.
+                &Arc::new(SpriteSet::new(Vec::new()))
+            } else {
+                self.sprite_sets.get(name)?
+            };
+            let motion = (at, push);
+            return Particle::hit_provider(
+                name,
+                world,
+                random(),
+                motion,
+                sprites,
+                engine_random,
+                data,
+            );
+        }
         let sprites = self.sprite_sets.get(name)?;
         let spell_random = &mut self.spell_random;
         let random = random();
@@ -235,30 +254,12 @@ impl ParticleResources {
             Provider::CurrentDown => Particle::current_down(random, at, sprites, engine_random),
             Provider::SquidInk => Particle::squid_ink(random, (at, push), sprites, false),
             Provider::GlowSquidInk => Particle::squid_ink(random, (at, push), sprites, true),
-            Provider::Dust => {
-                let super::engine::ParticleData::Dust { color, scale } = data else {
-                    return None;
-                };
-                Particle::dust(random, motion, sprites, (color, scale))
-            }
-            Provider::DustTransition => {
-                let super::engine::ParticleData::DustTransition { from, to, scale } = data else {
-                    return None;
-                };
-                Particle::dust_transition(random, motion, sprites, (from, to, scale))
+            Provider::Dust | Provider::DustTransition => {
+                coloured(provider, data, random, motion, (sprites, spell_random))?
             }
             Provider::Spell => Particle::spell(random, motion, sprites, spell_random),
-            Provider::InstantSpell => {
-                let super::engine::ParticleData::Spell { color, power } = data else {
-                    return None;
-                };
-                Particle::instant_spell(random, motion, sprites, spell_random, (color, power))
-            }
-            Provider::MobEffect => {
-                let super::engine::ParticleData::Color(color) = data else {
-                    return None;
-                };
-                Particle::mob_effect(random, motion, sprites, spell_random, color)
+            Provider::InstantSpell | Provider::MobEffect => {
+                coloured(provider, data, random, motion, (sprites, spell_random))?
             }
             Provider::Witch => {
                 Particle::witch(random, motion, sprites, (spell_random, engine_random))
@@ -333,4 +334,41 @@ fn attract(
         // `Provider::SuspendedTown`.
         _ => Particle::suspended_town(name, random, motion, sprites, (engine_random, level_random)),
     }
+}
+
+/// The providers that read the colours their options carry: nothing for options of another kind.
+fn coloured(
+    provider: Provider,
+    data: super::engine::ParticleData,
+    random: RandomSource,
+    motion: ((f64, f64, f64), (f64, f64, f64)),
+    (sprites, spell_random): (&Arc<SpriteSet>, &mut RandomSource),
+) -> Option<Particle> {
+    Some(match provider {
+        Provider::Dust => {
+            let super::engine::ParticleData::Dust { color, scale } = data else {
+                return None;
+            };
+            Particle::dust(random, motion, sprites, (color, scale))
+        }
+        Provider::DustTransition => {
+            let super::engine::ParticleData::DustTransition { from, to, scale } = data else {
+                return None;
+            };
+            Particle::dust_transition(random, motion, sprites, (from, to, scale))
+        }
+        Provider::InstantSpell => {
+            let super::engine::ParticleData::Spell { color, power } = data else {
+                return None;
+            };
+            Particle::instant_spell(random, motion, sprites, spell_random, (color, power))
+        }
+        Provider::MobEffect => {
+            let super::engine::ParticleData::Color(color) = data else {
+                return None;
+            };
+            Particle::mob_effect(random, motion, sprites, spell_random, color)
+        }
+        _ => return None,
+    })
 }

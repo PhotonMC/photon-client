@@ -43,6 +43,7 @@ pub fn read_level_particles_packet(
                 color: color(input)?,
                 scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
             },
+            "sculk_charge" => ParticleData::Roll(read_f32(input, NAME)?),
             "dust_color_transition" => ParticleData::DustTransition {
                 from: color(input)?,
                 to: color(input)?,

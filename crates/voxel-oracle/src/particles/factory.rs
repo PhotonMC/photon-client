@@ -3,7 +3,11 @@
 use super::*;
 
 /// The particle a row asks for, made by its type's provider with the row's seeds.
-pub(super) fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Particle, String> {
+pub(super) fn particle_of(
+    row: &Value,
+    world: &ClientWorld,
+    sprites: &Arc<SpriteSet>,
+) -> Result<Particle, String> {
     let at = (
         parsed64(row, "x")?,
         parsed64(row, "y")?,
@@ -186,7 +190,16 @@ pub(super) fn particle_of(row: &Value, sprites: &Arc<SpriteSet>) -> Result<Parti
             sprites,
             &mut engine_random,
         )),
-        other => Err(format!("unknown particle {other}")),
+        name => Particle::hit_provider(
+            name,
+            world,
+            random,
+            motion,
+            sprites,
+            &mut engine_random,
+            event_data(row, name),
+        )
+        .ok_or_else(|| format!("unknown particle {name}")),
     }
 }
 
@@ -216,6 +229,7 @@ pub(super) fn event_data(event: &Value, name: &str) -> voxel_world::particles::P
             power: float("power"),
         },
         "entity_effect" => ParticleData::Color(color),
+        "sculk_charge" => ParticleData::Roll(float("roll")),
         _ => ParticleData::Plain,
     }
 }

@@ -10,6 +10,7 @@ mod colour;
 mod engine;
 mod flame;
 mod group;
+mod hit;
 mod light;
 mod particle;
 mod resources;

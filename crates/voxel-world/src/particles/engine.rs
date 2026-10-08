@@ -45,6 +45,8 @@ pub enum ParticleData {
     Dust { color: u32, scale: f32 },
     /// `DustColorTransitionOptions`: from one colour to another, and a size.
     DustTransition { from: u32, to: u32, scale: f32 },
+    /// `SculkChargeParticleOptions`: how far the quad is turned.
+    Roll(f32),
 }
 
 impl ParticleData {
@@ -86,6 +88,8 @@ pub struct LevelParticles {
 #[derive(Debug, Clone)]
 pub struct ParticleEngine {
     group: ParticleGroup,
+    /// The `NO_RENDER` group: the emitters, never drawn.
+    emitters: ParticleGroup,
     to_add: VecDeque<Particle>,
     random: RandomSource,
     resources: ParticleResources,
@@ -103,6 +107,7 @@ impl ParticleEngine {
     pub fn new(random: RandomSource, resources: ParticleResources) -> Self {
         Self {
             group: ParticleGroup::default(),
+            emitters: ParticleGroup::default(),
             to_add: VecDeque::new(),
             random,
             resources,
@@ -201,14 +206,22 @@ impl ParticleEngine {
         level_random: &mut RandomSource,
         mut particle_random: impl FnMut() -> RandomSource,
     ) {
-        let (spawns, limited_gone) = self.group.tick(world);
+        // The reference ticks its groups in no fixed order; the emitters' particles go through
+        // the level after the quads have moved.
+        let (mut spawns, limited_gone) = self.group.tick(world);
         self.spore_blossoms -= limited_gone;
+        spawns.append(&mut self.emitters.tick(world).0);
         for spawn in spawns {
             self.add_particle(world, &spawn, view, level_random, &mut particle_random);
         }
         while let Some(particle) = self.to_add.pop_front() {
             let limited = particle.is_limited();
-            if !self.group.add(particle, &mut self.random) && limited {
+            let group = if particle.is_emitter() {
+                &mut self.emitters
+            } else {
+                &mut self.group
+            };
+            if !group.add(particle, &mut self.random) && limited {
                 self.spore_blossoms -= 1;
             }
         }
@@ -217,6 +230,7 @@ impl ParticleEngine {
     /// `ParticleEngine.clearParticles`.
     pub fn clear(&mut self) {
         self.group.clear();
+        self.emitters.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
     }
@@ -228,6 +242,11 @@ impl ParticleEngine {
 
     pub fn particle_count(&self) -> usize {
         self.group.len()
+    }
+
+    /// How many emitters are alive.
+    pub fn emitter_count(&self) -> usize {
+        self.emitters.len()
     }
 
     /// How many wait to join the group.

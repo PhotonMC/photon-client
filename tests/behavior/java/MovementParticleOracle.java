@@ -160,7 +160,9 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "totem_of_undying", "glow", "electric_spark", "scrape", "wax_on", "wax_off", "portal",
                 "reverse_portal", "enchant", "nautilus", "vault_connection", "ominous_spawning", "underwater",
                 "crimson_spore", "warped_spore", "spore_blossom_air", "mycelium", "happy_villager", "egg_crack",
-                "composter", "dolphin" -> true;
+                "composter", "dolphin", "crit", "damage_indicator", "enchanted_hit", "sweep_attack", "poof",
+                "explosion", "sonic_boom", "heart", "angry_villager", "note", "gust", "small_gust", "sculk_charge",
+                "sculk_charge_pop" -> true;
             default -> false;
         };
         if (registered) {
@@ -376,6 +378,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             case "effect", "instant_effect" -> net.minecraft.core.particles.SpellParticleOption.create(
                 name.equals("effect") ? net.minecraft.core.particles.ParticleTypes.EFFECT
                     : net.minecraft.core.particles.ParticleTypes.INSTANT_EFFECT, color, floatBits(from, "power"));
+            case "sculk_charge" -> new net.minecraft.core.particles.SculkChargeParticleOptions(floatBits(from, "roll"));
             case "entity_effect" -> net.minecraft.core.particles.ColorParticleOption.create(
                 net.minecraft.core.particles.ParticleTypes.ENTITY_EFFECT, color);
             default -> simpleType(name);
@@ -470,6 +473,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             counted.addProperty("pending", pending.size());
             engine.tick();
             counted.addProperty("particles", groupParticles(engine).size());
+            counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());
             ticks.add(counted);
         }
         entry.add("ticks", ticks);
@@ -493,11 +497,19 @@ class MovementParticleOracle extends MovementMenuOracle {
         return entry;
     }
 
-    /** The particles of the engine's group, in the order they tick. */
+    /** The particles of the engine's quad group, in the order they tick. */
     private static java.util.List<net.minecraft.client.particle.Particle> groupParticles(
         net.minecraft.client.particle.ParticleEngine engine) throws Exception {
+        return groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.SINGLE_QUADS);
+    }
+
+    /** The particles of one of the engine's groups, in the order they tick. */
+    private static java.util.List<net.minecraft.client.particle.Particle> groupParticles(
+        net.minecraft.client.particle.ParticleEngine engine,
+        net.minecraft.client.particle.ParticleRenderType type) throws Exception {
         var all = new java.util.ArrayList<net.minecraft.client.particle.Particle>();
-        for (var group : ((java.util.Map<?, ?>) getField(engine, "particles")).values()) {
+        var group = ((java.util.Map<?, ?>) getField(engine, "particles")).get(type);
+        if (group != null) {
             for (var particle : (java.util.Queue<?>) getField(group, "particles")) {
                 all.add((net.minecraft.client.particle.Particle) particle);
             }

@@ -46,6 +46,19 @@ pub(super) enum Kind {
     Attract(super::attract::Attract),
     /// `SuspendedParticle`: hangs in the air, the plain tick.
     Suspended,
+    /// `CritParticle`: grows in, its green and blue fading each tick.
+    Crit,
+    /// `AttackSweepParticle`, `HugeExplosionParticle`, `GustParticle`: still and full bright,
+    /// following its pictures.
+    Burst,
+    /// `ExplodeParticle`: the plain tick, following its pictures.
+    Poof,
+    /// `HeartParticle`, `NoteParticle`: the plain tick, grows in.
+    Bobbing,
+    /// `SculkChargeParticle`, `SculkChargePopParticle`: glows, translucent, follows its pictures.
+    SculkCharge,
+    /// A `NoRenderParticle`: never drawn, leaves others about it.
+    Emitter(super::hit::Emitter),
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -240,20 +253,25 @@ impl Particle {
 
     /// `Particle.tick`, with what the class does before and after it; a particle that leaves
     /// another (lava its smoke) asks for it.
-    pub fn tick(&mut self, world: &ClientWorld) -> Option<super::engine::Spawn> {
+    pub fn tick(&mut self, world: &ClientWorld) -> Vec<super::engine::Spawn> {
         match self.kind {
             Kind::CampfireSmoke => {
                 self.campfire_tick(world);
-                return None;
+                return Vec::new();
             }
             Kind::Water(water) => {
                 self.water_tick(world, water);
-                return None;
+                return Vec::new();
             }
             Kind::Attract(attract) => {
                 self.attract_tick(attract);
-                return None;
+                return Vec::new();
             }
+            Kind::Burst => {
+                self.burst_tick();
+                return Vec::new();
+            }
+            Kind::Emitter(emitter) => return self.emitter_tick(emitter),
             Kind::AshSmoke { decays: true } => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -262,8 +280,17 @@ impl Particle {
         }
         self.base_tick(world);
         match self.kind {
-            Kind::AshSmoke { .. } | Kind::Soul { .. } | Kind::Dust { .. } | Kind::Glow => {
+            Kind::AshSmoke { .. }
+            | Kind::Soul { .. }
+            | Kind::Dust { .. }
+            | Kind::Glow
+            | Kind::Poof
+            | Kind::SculkCharge => {
                 self.set_sprite_from_age();
+            }
+            Kind::Crit => {
+                self.g_col *= 0.96;
+                self.b_col *= 0.9;
             }
             Kind::Spell { original_alpha } => {
                 self.set_sprite_from_age();
@@ -272,10 +299,10 @@ impl Particle {
             }
             Kind::Totem => self.animated_fade(),
             Kind::PlayerCloud if !self.removed => self.settle_to_player(world),
-            Kind::Lava if !self.removed => return self.lava_smoke(),
+            Kind::Lava if !self.removed => return self.lava_smoke().into_iter().collect(),
             _ => {}
         }
-        None
+        Vec::new()
     }
 
     /// `Particle.tick`.
@@ -359,9 +386,11 @@ impl Particle {
     pub fn quad_size_at(&self, partial: f32) -> f32 {
         let s = (self.age as f32 + partial) / self.lifetime as f32;
         match self.kind {
-            Kind::AshSmoke { .. } | Kind::PlayerCloud | Kind::Dust { .. } => {
-                self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0)
-            }
+            Kind::AshSmoke { .. }
+            | Kind::PlayerCloud
+            | Kind::Dust { .. }
+            | Kind::Crit
+            | Kind::Bobbing => self.quad_size * clamp_f32(s * 32.0, 0.0, 1.0),
             Kind::Flame => self.quad_size * (1.0 - s * s * 0.5),
             Kind::Lava => self.quad_size * (1.0 - s * s),
             Kind::Attract(super::attract::Attract::Portal { reverse: false, .. }) => {
@@ -385,6 +414,7 @@ impl Particle {
             // `LightCoordsUtil.withBlock(light, 15)`.
             Kind::Lava
             | Kind::Soul { glowing: true }
+            | Kind::SculkCharge
             | Kind::Attract(
                 super::attract::Attract::FlyTowards { glowing: true, .. }
                 | super::attract::Attract::FlyStraight { .. },
@@ -398,7 +428,7 @@ impl Particle {
                 add_smooth_block_emission(light, brightness)
             }
             // `SimpleAnimatedParticle.getLightCoords`: full bright.
-            Kind::Water(super::water::Water::Ink) | Kind::Totem => 15_728_880,
+            Kind::Water(super::water::Water::Ink) | Kind::Totem | Kind::Burst => 15_728_880,
             _ => light,
         }
     }
@@ -420,6 +450,7 @@ impl Particle {
                 | Kind::Water(super::water::Water::Ink)
                 | Kind::Spell { .. }
                 | Kind::Totem
+                | Kind::SculkCharge
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }
 
@@ -440,6 +471,11 @@ impl Particle {
             }
             _ => None,
         }
+    }
+
+    /// Whether it is a `NoRenderParticle`, kept in a group of its own and never drawn.
+    pub fn is_emitter(&self) -> bool {
+        matches!(self.kind, Kind::Emitter(_))
     }
 
     /// Whether it counts against the spore blossom's limit.

@@ -27,7 +27,7 @@ impl ParticleGroup {
         let mut spawns = Vec::new();
         let mut limited_gone = 0;
         self.particles.retain_mut(|particle| {
-            spawns.extend(particle.tick(world));
+            spawns.append(&mut particle.tick(world));
             let alive = particle.is_alive();
             if !alive && particle.is_limited() {
                 limited_gone += 1;
