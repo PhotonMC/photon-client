@@ -217,8 +217,52 @@ pub fn address_with_port(ip: &str) -> String {
     }
 }
 
+/// `ServerAddress.isValidAddress`: Guava's `HostAndPort.fromString` takes it (a bracketed or
+/// bare IPv6 host, else `host[:port]` with a port of digits up to 65535) and the host is not
+/// empty, nor a name `IDN.toASCII` refuses (a label longer than 63).
+pub fn is_valid_address(input: &str) -> bool {
+    let host = if let Some(rest) = input.strip_prefix('[') {
+        let Some(close) = rest.find(']') else {
+            return false;
+        };
+        let after = &rest[close + 1..];
+        if !after.is_empty() && !after.strip_prefix(':').is_some_and(valid_port) {
+            return false;
+        }
+        &rest[..close]
+    } else {
+        match input.split_once(':') {
+            Some((host, port)) if !port.contains(':') => {
+                if !valid_port(port) {
+                    return false;
+                }
+                host
+            }
+            _ => input,
+        }
+    };
+    !host.is_empty() && host.split('.').all(|label| label.chars().count() <= 63)
+}
+
+/// Guava's port: ASCII digits (no sign) of a number up to 65535.
+fn valid_port(port: &str) -> bool {
+    !port.is_empty()
+        && port.bytes().all(|byte| byte.is_ascii_digit())
+        && port.parse::<u32>().is_ok_and(|port| port <= 65_535)
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn addresses_are_checked_as_the_reference_does() {
+        use super::is_valid_address as valid;
+        assert!(valid("example.com") && valid("127.0.0.1:25600") && valid("[::1]:25565"));
+        assert!(valid("::1") && valid("[::1]"));
+        assert!(!valid("") && !valid(":25565") && !valid("host:") && !valid("host:+1"));
+        assert!(!valid("host:65536") && !valid("[::1") && !valid("[::1]x"));
+        assert!(!valid(&"a".repeat(64)));
+    }
+
     #[test]
     fn an_address_gets_the_default_port() {
         assert_eq!(super::address_with_port("example.com"), "example.com:25565");

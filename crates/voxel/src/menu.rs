@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
-use voxel_game::servers::{ServerList, address_with_port};
+use voxel_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
+use voxel_game::text::Component;
+use voxel_render::gui::screen::confirm::{ConfirmAction, ConfirmScreen};
+use voxel_render::gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use voxel_render::gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
 use voxel_render::gui::screen::title::{TitleAction, TitleScreen};
 use voxel_render::gui::widgets::navigation::Direction;
@@ -32,6 +35,10 @@ enum Choice {
 enum Screen {
     Title(TitleScreen),
     Servers(JoinMultiplayerScreen),
+    /// A form of the server list, with the place of the server it edits.
+    Form(ServerFormScreen, Option<usize>),
+    /// Whether to delete the saved server at this place.
+    Confirm(ConfirmScreen, usize),
 }
 
 /// `voxel` or `voxel menu [server [width height]]`: the title screen, the server list from its
@@ -166,14 +173,16 @@ impl Menu {
             }
             play::fit_swapchain(client)?;
             let size = gui_size(client);
+            // The forms and the question keep the size they were opened in.
             let current = match &self.screen {
-                Screen::Title(screen) => screen.size(),
-                Screen::Servers(screen) => screen.size(),
+                Screen::Title(screen) => Some(screen.size()),
+                Screen::Servers(screen) => Some(screen.size()),
+                Screen::Form(..) | Screen::Confirm(..) => None,
             };
-            if size != current {
+            if current.is_some_and(|current| current != size) {
                 self.screen = match self.screen {
-                    Screen::Title(_) => self.title(size),
                     Screen::Servers(_) => self.server_list(size),
+                    _ => self.title(size),
                 };
             }
             let mouse = self.mouse;
@@ -184,6 +193,8 @@ impl Menu {
                 |frame, atlas, font| match screen {
                     Screen::Title(screen) => screen.draw(frame, atlas, font, mouse),
                     Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
+                    Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
+                    Screen::Confirm(screen, _) => screen.draw(frame, atlas, font, mouse),
                 },
             )?;
             frames += 1;
@@ -204,7 +215,7 @@ impl Menu {
     }
 
     /// One window event for the open menu; what it chose, if anything.
-    fn handle(&mut self, event: WindowEvent, client: &Client) -> Result<Option<Choice>> {
+    fn handle(&mut self, event: WindowEvent, client: &mut Client) -> Result<Option<Choice>> {
         let size = gui_size(client);
         if let WindowEvent::CursorPos(x, y) = event {
             let scale = client.surface.scale();
@@ -246,8 +257,140 @@ impl Menu {
                 WindowEvent::Key(Key::F5, _, Action::Press, _) => Some(ServersAction::Refresh),
                 _ => None,
             },
+            Screen::Form(screen, _) => {
+                let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+                let result = match event {
+                    WindowEvent::Char(character) => {
+                        screen.char_typed(font, character);
+                        None
+                    }
+                    WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => screen
+                        .key_pressed(
+                            (font, lang),
+                            key,
+                            (
+                                modifiers.contains(Modifiers::Control),
+                                modifiers.contains(Modifiers::Shift),
+                            ),
+                            &mut crate::screens::WindowClipboard(&mut client.surface),
+                        ),
+                    WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
+                        screen.clicked((font, lang), mouse, modifiers.contains(Modifiers::Shift))
+                    }
+                    _ => None,
+                };
+                return self.form_result(result, size);
+            }
+            Screen::Confirm(screen, index) => {
+                let index = *index;
+                let answer = match event {
+                    WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
+                        screen.clicked(mouse)
+                    }
+                    WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+                        screen.tab(!modifiers.contains(Modifiers::Shift));
+                        None
+                    }
+                    WindowEvent::Key(
+                        Key::Enter | Key::KpEnter | Key::Space,
+                        _,
+                        Action::Press,
+                        _,
+                    ) => screen.pressed(),
+                    WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
+                    _ => None,
+                };
+                // `deleteCallback`.
+                match answer {
+                    Some(ConfirmAction::Yes) => {
+                        if index < self.servers.servers.len() {
+                            self.servers.servers.remove(index);
+                            self.servers.save(&self.game_directory)?;
+                        }
+                        self.screen = self.server_list(size);
+                    }
+                    Some(_) => self.screen = self.server_list(size),
+                    None => {}
+                }
+                return Ok(None);
+            }
         };
         self.servers_action(action, size)
+    }
+
+    /// What leaving a form does (`addServerCallback`, `editServerCallback`, `directJoinCallback`):
+    /// the list is saved and shown again, or the direct address joined.
+    fn form_result(
+        &mut self,
+        result: Option<FormResult>,
+        size: (i32, i32),
+    ) -> Result<Option<Choice>> {
+        let Some(result) = result else {
+            return Ok(None);
+        };
+        let Screen::Form(form, editing) = &self.screen else {
+            return Ok(None);
+        };
+        let (kind, editing) = (form.kind(), *editing);
+        if kind == FormKind::Direct {
+            // `DirectJoinServerScreen.removed`: the address is kept for the next time.
+            let mut options = crate::controls::load_options();
+            options.last_server = form.address();
+            options.save(&crate::controls::options_path())?;
+        }
+        let FormResult::Accepted { name, ip, pack } = result else {
+            self.screen = self.server_list(size);
+            return Ok(None);
+        };
+        match kind {
+            FormKind::Add => {
+                match self.servers.unhide(&ip) {
+                    Some(server) => server.name = name,
+                    None => self.servers.add(
+                        ServerData {
+                            pack_status: pack,
+                            ..ServerData::new(&name, &ip)
+                        },
+                        false,
+                    ),
+                }
+                self.servers.save(&self.game_directory)?;
+            }
+            FormKind::Edit => {
+                if let Some(server) = editing.and_then(|index| self.servers.servers.get_mut(index))
+                {
+                    server.name = name;
+                    server.ip = ip;
+                    server.pack_status = pack;
+                }
+                self.servers.save(&self.game_directory)?;
+            }
+            FormKind::Direct => {
+                if self.servers.find(&ip).is_none() {
+                    self.servers.add(ServerData::new(&name, &ip), true);
+                    self.servers.save(&self.game_directory)?;
+                }
+                return Ok(resolve(&ip).map(Choice::Join));
+            }
+        }
+        self.screen = self.server_list(size);
+        Ok(None)
+    }
+
+    /// A form of the server list.
+    fn form(&self, kind: FormKind, size: (i32, i32), editing: Option<usize>) -> Screen {
+        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+        let server = editing.and_then(|index| self.servers.servers.get(index));
+        let last = crate::controls::load_options().last_server;
+        let fields = match (kind, server) {
+            (FormKind::Direct, _) => ("", last.as_str(), PackStatus::Prompt),
+            (_, Some(server)) => (server.name.as_str(), server.ip.as_str(), server.pack_status),
+            _ => ("", "", PackStatus::Prompt),
+        };
+        Screen::Form(
+            ServerFormScreen::new(font, lang, kind, size, fields),
+            editing,
+        )
     }
 
     /// What a press on the server list does.
@@ -261,14 +404,31 @@ impl Menu {
                 let Some(server) = self.servers.servers.get(index) else {
                     return Ok(None);
                 };
-                match address_with_port(&server.ip).to_socket_addrs() {
-                    Ok(mut addresses) => {
-                        if let Some(address) = addresses.next() {
-                            return Ok(Some(Choice::Join(address)));
-                        }
-                    }
-                    Err(error) => log::warn!("cannot resolve {}: {error}", server.ip),
-                }
+                return Ok(resolve(&server.ip).map(Choice::Join));
+            }
+            Some(ServersAction::Add) => self.screen = self.form(FormKind::Add, size, None),
+            Some(ServersAction::Edit(index)) => {
+                self.screen = self.form(FormKind::Edit, size, Some(index));
+            }
+            Some(ServersAction::Direct) => self.screen = self.form(FormKind::Direct, size, None),
+            Some(ServersAction::Delete(index)) => {
+                let Some(server) = self.servers.servers.get(index) else {
+                    return Ok(None);
+                };
+                let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+                let question = ConfirmScreen::new(
+                    font,
+                    lang,
+                    size,
+                    &Component::translatable("selectServer.deleteQuestion"),
+                    &Component::translatable_with(
+                        "selectServer.deleteWarning",
+                        vec![Component::literal(&server.name)],
+                    ),
+                    &Component::translatable("selectServer.deleteButton"),
+                    &Component::translatable("gui.cancel"),
+                );
+                self.screen = Screen::Confirm(question, index);
             }
             Some(ServersAction::Swap(from, to)) => {
                 self.servers.swap(from, to);
@@ -276,8 +436,7 @@ impl Menu {
             }
             Some(ServersAction::Refresh) => self.screen = self.server_list(size),
             Some(ServersAction::Back) => self.screen = self.title(size),
-            // Adding, editing, deleting and joining directly are not here yet.
-            _ => {}
+            None => {}
         }
         Ok(None)
     }
@@ -312,6 +471,17 @@ fn title_event(
             None
         }
         _ => None,
+    }
+}
+
+/// The address a server's `ip` names (`ServerAddress.parseString`, then the resolver).
+fn resolve(ip: &str) -> Option<SocketAddr> {
+    match address_with_port(ip).to_socket_addrs() {
+        Ok(mut addresses) => addresses.next(),
+        Err(error) => {
+            log::warn!("cannot resolve {ip}: {error}");
+            None
+        }
     }
 }
 

@@ -30,3 +30,9 @@ Durum sorgusu (T86b), LAN.
 `docs/gui-oracle.md` satırları.
 
 ## Devir notu
+Yapılan: `ServerFormScreen` (`voxel-render/src/gui/screen/server_form.rs`: Add/Edit/Direct;
+kutular, ipucu, kaynak paketi döngüsü, Done'ın `isValidAddress` ile uyanması, Tab, tıklama),
+`is_valid_address` (Guava `HostAndPort` kuralları), `options.txt` `lastServer`; menüde ekle/düzenle/
+sil (onay) ve doğrudan bağlan (gizli sunucu olarak kaydedilir). Oracle `server_form` 21 satır.
+Sapma: IDN'nin ASCII dışı ad denetimi yok (yalnız etiket uzunluğu); form ve onay ekranı pencere
+boyutu değişince yeniden kurulmuyor; onay ekranının arkasında panorama örtüsü yok.

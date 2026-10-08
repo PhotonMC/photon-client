@@ -8,7 +8,7 @@
 use super::{Value, json};
 
 /// A clipboard for a test with nothing to copy.
-struct NoClipboard;
+pub(crate) struct NoClipboard;
 
 impl voxel_render::gui::widgets::edit_box::Clipboard for NoClipboard {
     fn get(&mut self) -> String {

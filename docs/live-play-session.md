@@ -67,8 +67,8 @@ Sunucu klasörü yerel; `server.properties` çevrimdışı mod, hayatta kalma,
 barışçıl ve `server-port=25600` içeriyor.
 
 Argümansız `voxel` (ya da `voxel menu [adres [genişlik yükseklik]]`) başlık ekranını açar
-(`TitleScreen`, T85); Multiplayer oyun klasörünün `servers.dat`'ını listeler (T86), Join ya da
-çift tık bağlanır; Disconnect ve bağlantı kopması ekranının düğmesi başlığa döner.
+(`TitleScreen`, T85); Multiplayer oyun klasörünün `servers.dat`'ını listeler (T86; ekle, düzenle, sil ve
+doğrudan bağlan T86c), Join ya da çift tık bağlanır; Disconnect ve bağlantı kopması ekranının düğmesi başlığa döner.
 Pencere, Vulkan arka ucu ve blok atlası menü ile oyunlar arasında bir kez kurulur. `voxel play`
 geliştirici kısayoludur: doğrudan bağlanır, ayrılınca kapanır. Betikli çalıştırma (`VOXEL_SCRIPT`)
 menüden ilk başlıkta verilen adrese (varsayılan `127.0.0.1:25565`) kendiliğinden bağlanır; `VOXEL_CAPTURE_PPM` menüde onuncu kareyi kaydedip

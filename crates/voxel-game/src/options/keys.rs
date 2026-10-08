@@ -16,6 +16,7 @@ pub(super) enum Key {
     InvertYMouse,
     MouseSensitivity,
     Lang,
+    LastServer,
     ChatVisibility,
     ChatOpacity,
     ChatLineSpacing,
@@ -36,7 +37,7 @@ pub(super) enum Key {
     SoundCategory(SoundSource),
 }
 
-pub(super) const KEYS: [(&str, Key); 37] = [
+pub(super) const KEYS: [(&str, Key); 38] = [
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
@@ -46,6 +47,7 @@ pub(super) const KEYS: [(&str, Key); 37] = [
     ("invertYMouse", Key::InvertYMouse),
     ("mouseSensitivity", Key::MouseSensitivity),
     ("lang", Key::Lang),
+    ("lastServer", Key::LastServer),
     ("chatVisibility", Key::ChatVisibility),
     ("chatOpacity", Key::ChatOpacity),
     ("chatLineSpacing", Key::ChatLineSpacing),

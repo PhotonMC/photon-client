@@ -91,6 +91,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
     static net.minecraft.client.renderer.Panorama menu(Screen screen) throws Exception {
         var minecraft = screen.minecraft();
         set(minecraft, "allowsMultiplayer", true);
+        // A pressed button clicks, heard by no one.
+        set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
         var offline = com.mojang.authlib.minecraft.UserApiService.class.getField("OFFLINE_PROPERTIES").get(null);
         set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(offline));
         set(minecraft, "profileFuture", java.util.concurrent.CompletableFuture.completedFuture(null));
@@ -161,6 +163,81 @@ class GuiTitleOracle extends GuiSettingsOracle {
             list.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             list.removed();
+            clockField.set(null, clockBefore);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+    /**
+     * The game's own forms of the server list (adding, editing, joining directly) for a server of
+     * the row, after text typed, keys and clicks.
+     */
+    static JsonObject serverForm(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clockField.setAccessible(true);
+            var clockBefore = clockField.get(null);
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
+            var panorama = menu(screen);
+            var last = new net.minecraft.client.gui.screens.TitleScreen(false);
+            panorama.holdSpin();
+            var data = new net.minecraft.client.multiplayer.ServerData(row.get("name").getAsString(),
+                row.get("ip").getAsString(), net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+            data.setResourcePackStatus(net.minecraft.client.multiplayer.ServerData.ServerPackStatus.valueOf(
+                row.get("pack").getAsString()));
+            String kind = row.get("kind").getAsString();
+            net.minecraft.client.gui.screens.Screen form;
+            if (kind.equals("direct")) {
+                minecraft.options.lastMpIp = row.get("ip").getAsString();
+                form = new net.minecraft.client.gui.screens.DirectJoinServerScreen(last, accepted -> {}, data);
+            } else {
+                var title = net.minecraft.network.chat.Component.translatable(
+                    kind.equals("add") ? "manageServer.add.title" : "manageServer.edit.title");
+                form = new net.minecraft.client.gui.screens.ManageServerScreen(last, title, accepted -> {}, data);
+            }
+            form.init(width, height);
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                switch (step.get("do").getAsString()) {
+                    case "type" -> step.get("text").getAsString().codePoints().forEach(cp ->
+                        form.charTyped(new net.minecraft.client.input.CharacterEvent(cp)));
+                    case "key" -> {
+                        String name = step.get("key").getAsString();
+                        int code = switch (name) {
+                            case "tab", "shift+tab" -> 258;
+                            case "backspace" -> 259;
+                            case "enter" -> 257;
+                            case "left" -> 263;
+                            case "home" -> 268;
+                            case "space" -> 32;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                        form.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                    }
+                    case "click" -> form.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                    default -> throw new IllegalArgumentException(step.toString());
+                }
+            }
+            form.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            form.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

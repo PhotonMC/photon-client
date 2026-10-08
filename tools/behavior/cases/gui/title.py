@@ -66,3 +66,41 @@ def gui_join_multiplayer_screen_cases():
     ]
     yield {"case_id": "gui/join-multiplayer-screen", "family": "gui",
            "operation": "join_multiplayer_screen", "rows": rows}
+
+
+def gui_server_form_cases():
+    """The server list's forms: adding (an empty name shows its hint once the box loses the
+    focus), editing, joining directly; text typed and erased, Tab through the widgets, the
+    resource pack choice cycled, Done asleep for an address the resolver refuses."""
+    def row(label, kind="add", name="", ip="", pack="PROMPT", width=427, height=240, mouse=(0, 0),
+            steps=()):
+        return {"label": label, "kind": kind, "name": name, "ip": ip, "pack": pack, "width": width,
+                "height": height, "mouse": list(mouse), "steps": list(steps)}
+
+    type_ = lambda text: {"do": "type", "text": text}
+    key = lambda name: {"do": "key", "key": name}
+    click = lambda x, y: {"do": "click", "x": x, "y": y}
+    rows = [
+        row("add-empty"), row("add-small", width=320), row("add-wide", width=640, height=360),
+        row("add-typed-name", steps=[type_("My Server")]),
+        row("add-tab-to-address", steps=[key("tab")]),
+        row("add-typed-both", steps=[type_("Home"), key("tab"), type_("localhost:25600")]),
+        row("add-bad-port", steps=[key("tab"), type_("host:99999")]),
+        row("add-erased", steps=[type_("abc"), key("backspace"), key("backspace")]),
+        row("add-tab-to-pack", steps=[key("tab"), key("tab")]),
+        row("add-pack-cycled", steps=[key("tab"), key("tab"), key("space")]),
+        row("add-pack-clicked", steps=[click(213, 135)]),
+        row("add-click-address", steps=[click(250, 115)]),
+        row("add-hover-cancel", mouse=(213, 205)),
+        row("edit", kind="edit", name="Old Name", ip="old.example:25565", pack="ENABLED"),
+        row("edit-long-address", kind="edit", name="N",
+            ip="a.very.long.server.address.that.does.not.fit.in.the.box.example.com"),
+        row("edit-tab-to-done", kind="edit", name="N", ip="x.example",
+            steps=[key("tab"), key("tab"), key("tab")]),
+        row("direct-empty", kind="direct"),
+        row("direct-last", kind="direct", ip="127.0.0.1:25600"),
+        row("direct-typed", kind="direct", steps=[type_("example.org")]),
+        row("direct-tab", kind="direct", ip="example.org", steps=[key("tab")]),
+        row("direct-small", kind="direct", width=320, ip="example.org"),
+    ]
+    yield {"case_id": "gui/server-form", "family": "gui", "operation": "server_form", "rows": rows}

@@ -205,7 +205,7 @@ pub(crate) fn game_directory() -> std::path::PathBuf {
 }
 
 /// `Options.optionsFile`.
-pub(super) fn options_path() -> std::path::PathBuf {
+pub(crate) fn options_path() -> std::path::PathBuf {
     game_directory().join("options.txt")
 }
 

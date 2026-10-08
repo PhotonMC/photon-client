@@ -35,6 +35,8 @@ pub struct Options {
     pub mouse_wheel_sensitivity: f64,
     /// `lang`.
     pub language_code: String,
+    /// `lastServer` (`lastMpIp`): the address the direct connection last had.
+    pub last_server: String,
     pub chat_visibility: ChatVisibility,
     pub chat_opacity: f64,
     pub chat_line_spacing: f64,
@@ -72,6 +74,7 @@ impl Default for Options {
             sensitivity: 0.5,
             mouse_wheel_sensitivity: log_mouse(0),
             language_code: "en_us".to_owned(),
+            last_server: String::new(),
             chat_visibility: ChatVisibility::Full,
             chat_opacity: 1.0,
             chat_line_spacing: 0.0,

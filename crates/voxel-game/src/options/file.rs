@@ -130,6 +130,7 @@ impl Options {
             | Key::SoundCategory(_) => self.read_sound(key, &json),
             Key::MouseSensitivity => self.sensitivity = unit().unwrap_or(self.sensitivity),
             Key::Lang => text.clone_into(&mut self.language_code),
+            Key::LastServer => text.clone_into(&mut self.last_server),
             Key::ChatVisibility => {
                 if let Json::Number(number) = json {
                     // `ByIdMap` wraps an id out of range.
@@ -178,6 +179,7 @@ impl Options {
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::MouseSensitivity => java_double(self.sensitivity),
             Key::Lang => self.language_code.clone(),
+            Key::LastServer => self.last_server.clone(),
             Key::ChatVisibility => self.chat_visibility.id().to_string(),
             Key::ChatOpacity => java_double(self.chat_opacity),
             Key::ChatLineSpacing => java_double(self.chat_line_spacing),
