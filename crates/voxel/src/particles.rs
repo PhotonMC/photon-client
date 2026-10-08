@@ -152,20 +152,30 @@ impl Particles {
         self.renderer = Some(renderer);
     }
 
-    /// The blocks that broke: each makes its flakes.
-    pub(crate) fn blocks_broke(
+    /// The level events since the last tick (`LevelEventHandler.levelEvent`): their particles are
+    /// made, and the sounds they play given back in order.
+    pub(crate) fn level_events(
         &mut self,
         world: &ClientWorld,
-        breaks: Vec<((i32, i32, i32), i32)>,
-    ) {
-        for ((x, y, z), state) in breaks {
-            let mut uniquifier = self.uniquifier;
-            self.engine
-                .add_destroy_block_effect(world, (BlockPos::new(x, y, z), state), || {
-                    RandomSource::create(unique_seed(&mut uniquifier))
-                });
-            self.uniquifier = uniquifier;
+        events: Vec<voxel_world::LevelEvent>,
+    ) -> Vec<voxel_world::local_player::LocalSound> {
+        let view = AddView {
+            camera: self.camera,
+            status: ParticleStatus::All,
+        };
+        let mut uniquifier = self.uniquifier;
+        let mut context = voxel_world::particles::LevelEventContext {
+            world,
+            view: &view,
+            level_random: &mut self.level_random,
+            particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
+        };
+        let mut sounds = Vec::new();
+        for event in events {
+            sounds.extend(self.engine.level_event(event, &mut context));
         }
+        self.uniquifier = uniquifier;
+        sounds
     }
 
     /// The blocks the player swung at breaking: each makes a flake on the face aimed at.

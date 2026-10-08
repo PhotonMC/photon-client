@@ -11,34 +11,17 @@ impl ClientWorld {
         std::mem::take(&mut self.sounds.0)
     }
 
-    /// The sound a block makes (`SoundType`) at its middle: its volume and pitch scaled as the event
-    /// asks, whichever of the five sounds `pick` takes. Nothing for a state with no sound type.
+    /// The sound a block makes (`SoundType`) at its middle, played now.
     pub(crate) fn block_sound(
         &mut self,
         pos: (i32, i32, i32),
         state: i32,
         pick: fn(&voxel_data::block_sound::SoundTypeRow) -> &'static str,
-        (volume, pitch): (fn(f32) -> f32, f32),
+        scale: (fn(f32) -> f32, f32),
     ) {
-        let id = i64::from(state);
-        let info = block::state_or_air(id);
-        let Some(sound_type) = u32::try_from(id)
-            .ok()
-            .and_then(|id| voxel_data::block_sound::of_state(info.block().name, id))
-        else {
-            return;
-        };
-        self.sounds.0.push(local_player::LocalSound {
-            event: pick(sound_type),
-            source: local_player::LocalSoundSource::Blocks,
-            volume: volume(sound_type.volume),
-            pitch: sound_type.pitch * pitch,
-            position: (
-                f64::from(pos.0) + 0.5,
-                f64::from(pos.1) + 0.5,
-                f64::from(pos.2) + 0.5,
-            ),
-        });
+        if let Some(sound) = block_sound_of(pos, state, pick, scale) {
+            self.sounds.0.push(sound);
+        }
     }
 
     /// `BlockItem.place`'s sound: the block placed, a little softer than loud and lower.
@@ -63,10 +46,9 @@ impl ClientWorld {
 
     /// `LevelEventHandler.levelEvent`, for the events that make a sound the client knows: `2001`,
     /// a block broken (its state's number is the data).
-    /// The blocks that broke since the last call, each with the state it had: what the level
-    /// event 2001 made flakes of.
-    pub fn take_block_breaks(&mut self) -> Vec<((i32, i32, i32), i32)> {
-        std::mem::take(&mut self.block_breaks)
+    /// The level events since the last call, in the order they came.
+    pub fn take_level_events(&mut self) -> Vec<LevelEvent> {
+        std::mem::take(&mut self.level_events)
     }
 
     /// The block and face the player swung at breaking, since the last call.
@@ -85,17 +67,61 @@ impl ClientWorld {
         self.breaking_effects.push((pos, face));
     }
 
+    /// `ClientLevel.levelEvent`: the event waits for the particle engine, which plays its sounds
+    /// and makes its particles with the level's random.
     pub fn apply_level_event(&mut self, event: i32, pos: (i32, i32, i32), data: i32) {
-        if event == 2001 {
-            self.block_breaks.push((pos, data));
-        }
-        if event == 2001 && block::state_or_air(i64::from(data)).block().name != "minecraft:air" {
-            self.block_sound(
-                pos,
-                data,
-                voxel_data::block_sound::SoundTypeRow::break_sound,
-                (|volume| (volume + 1.0) / 2.0, 0.8),
-            );
-        }
+        self.level_events.push(LevelEvent { event, pos, data });
     }
+}
+
+/// One `ClientboundLevelEventPacket` (or a level event of the client's own), as it came.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LevelEvent {
+    pub event: i32,
+    pub pos: (i32, i32, i32),
+    pub data: i32,
+}
+
+impl LevelEvent {
+    /// The sound of a block broken (2001): its break sound, louder and lower, at its middle;
+    /// nothing for air or another event.
+    pub fn break_sound(&self) -> Option<local_player::LocalSound> {
+        if self.event != 2001
+            || block::state_or_air(i64::from(self.data)).block().name == "minecraft:air"
+        {
+            return None;
+        }
+        block_sound_of(
+            self.pos,
+            self.data,
+            voxel_data::block_sound::SoundTypeRow::break_sound,
+            (|volume| (volume + 1.0) / 2.0, 0.8),
+        )
+    }
+}
+
+/// The sound a block makes (`SoundType`) at its middle: its volume and pitch scaled as the event
+/// asks, whichever of the five sounds `pick` takes. Nothing for a state with no sound type.
+pub fn block_sound_of(
+    pos: (i32, i32, i32),
+    state: i32,
+    pick: fn(&voxel_data::block_sound::SoundTypeRow) -> &'static str,
+    (volume, pitch): (fn(f32) -> f32, f32),
+) -> Option<local_player::LocalSound> {
+    let id = i64::from(state);
+    let info = block::state_or_air(id);
+    let sound_type = u32::try_from(id)
+        .ok()
+        .and_then(|id| voxel_data::block_sound::of_state(info.block().name, id))?;
+    Some(local_player::LocalSound {
+        event: pick(sound_type),
+        source: local_player::LocalSoundSource::Blocks,
+        volume: volume(sound_type.volume),
+        pitch: sound_type.pitch * pitch,
+        position: (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        ),
+    })
 }

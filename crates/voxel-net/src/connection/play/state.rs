@@ -25,9 +25,9 @@ impl PlaySession {
         std::mem::take(&mut self.item_pickups)
     }
 
-    /// The blocks that broke since the last call (level event 2001), each with the state it had.
-    pub fn take_block_breaks(&mut self) -> Vec<((i32, i32, i32), i32)> {
-        self.trace.world.take_block_breaks()
+    /// The level events since the last call, in the order they came.
+    pub fn take_level_events(&mut self) -> Vec<voxel_world::LevelEvent> {
+        self.trace.world.take_level_events()
     }
 
     /// The blocks the player swung at breaking, with the face aimed at, since the last call.

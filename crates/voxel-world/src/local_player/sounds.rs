@@ -12,6 +12,20 @@ use super::{ClientEntityPose, Level, LocalPlayer};
 pub enum LocalSoundSource {
     Players,
     Blocks,
+    Hostile,
+    Neutral,
+}
+
+impl LocalSoundSource {
+    /// `SoundSource.getName`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Players => "player",
+            Self::Blocks => "block",
+            Self::Hostile => "hostile",
+            Self::Neutral => "neutral",
+        }
+    }
 }
 
 /// A sound the local player asks for, at a place.

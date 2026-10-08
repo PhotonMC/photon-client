@@ -20,10 +20,10 @@ impl ClientWorld {
         let is_item = voxel_data::entity_type::id("minecraft:item") == Some(entity.type_id);
         let (event, volume, pitch) = if is_orb {
             let pitch = (random.next_float() - random.next_float()) * 0.35 + 0.9;
-            ("entity.experience_orb.pickup", 0.1, pitch)
+            ("minecraft:entity.experience_orb.pickup", 0.1, pitch)
         } else {
             let pitch = (random.next_float() - random.next_float()) * 1.4 + 2.0;
-            ("entity.item.pickup", 0.2, pitch)
+            ("minecraft:entity.item.pickup", 0.2, pitch)
         };
         // `extractEntity(from, 1.0F)`: as it is at the end of the tick.
         let age_in_ticks = entity.tick_count() as f32 + 1.0;

@@ -220,6 +220,16 @@ def packet(tick, particle, at, spread, speed, count, override=False, always_show
             "max_speed": float_bits(speed), "count": count}
 
 
+def level_event(tick, event, pos, data=0):
+    return {"tick": tick, "type": "level_event", "event": event, "x": pos[0], "y": pos[1], "z": pos[2],
+            "data": data}
+
+
+SOUND_ONLY_EVENTS = [1000, 1001, 1002, 1004, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1024, 1025, 1026,
+                     1027, 1029, 1030, 1031, 1033, 1034, 1035, 1039, 1040, 1041, 1042, 1043, 1044, 1045, 1046,
+                     1047, 1048, 1049, 1050, 1051, 1052]
+
+
 def particle_engine_cases():
     near = (5.0, 64.0, 5.0)
     far = (40.0, 64.0, 0.0)
@@ -271,6 +281,22 @@ def particle_engine_cases():
                                 add(0, "gust_emitter_large", (-5.0, 64.0, 5.0)),
                                 add(1, "gust_emitter_small", (5.0, 64.0, -5.0))],
                    ticks=12, seeds=100, describe=10),
+        # Level events: the sounds alone (their pitch and seed from the level's random, in order), then
+        # the ones that puff smoke, a cloud or an explosion about the block, and the dispenser's ten puffs
+        # out of each face; one the client does not know plays nothing.
+        engine_row("level-event-sounds", [level_event(index % 3, event, (index - 17, 64 + index % 5, 3 - index))
+                                          for index, event in enumerate(SOUND_ONLY_EVENTS)]
+                   + [level_event(0, 1009, (1, 64, 1), 0), level_event(1, 1009, (1, 64, 1), 1),
+                      level_event(1, 1009, (1, 64, 1), 2), level_event(2, 1999, (0, 64, 0), 5)]),
+        engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
+                                         level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
+                                         level_event(2, 2009, (-2, 64, -2))],
+                   ticks=6, seeds=45, describe=12),
+        engine_row("level-event-decreased", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1))],
+                   status="DECREASED", ticks=4, seeds=15, describe=6),
+        engine_row("level-event-shoot", [level_event(0, 2000, (1, 64, 1), face) for face in range(6)]
+                   + [level_event(1, 2010, (-1, 64, -1), 9), level_event(1, 2000, (0, 64, 3), -4)],
+                   ticks=4, seeds=80, describe=16),
         # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
         engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
                                  packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],

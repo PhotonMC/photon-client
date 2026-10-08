@@ -449,10 +449,18 @@ class MovementParticleOracle extends MovementMenuOracle {
         @SuppressWarnings("unchecked")
         var pending = (java.util.Queue<net.minecraft.client.particle.Particle>) getField(engine, "particlesToAdd");
         var ticks = new JsonArray();
+        setField(level, "levelEventHandler", new net.minecraft.client.renderer.LevelEventHandler(minecraft, level));
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            SilentSoundManager.PLAYED.clear();
             for (var element : row.getAsJsonArray("events")) {
                 var event = element.getAsJsonObject();
                 if (event.get("tick").getAsInt() != tick) {
+                    continue;
+                }
+                if (event.get("type").getAsString().equals("level_event")) {
+                    level.levelEvent(event.get("event").getAsInt(), new net.minecraft.core.BlockPos(
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
+                        event.get("data").getAsInt());
                     continue;
                 }
                 var options = optionsOf(event.get("particle").getAsString(), event);
@@ -471,6 +479,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            var sounds = new JsonArray();
+            SilentSoundManager.PLAYED.forEach(sounds::add);
+            counted.add("sounds", sounds);
             engine.tick();
             counted.addProperty("particles", groupParticles(engine).size());
             counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());

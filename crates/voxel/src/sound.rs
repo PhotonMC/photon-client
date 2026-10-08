@@ -145,6 +145,8 @@ impl SoundSystem {
             let source = match sound.source {
                 LocalSoundSource::Players => SoundSource::Players,
                 LocalSoundSource::Blocks => SoundSource::Blocks,
+                LocalSoundSource::Hostile => SoundSource::Hostile,
+                LocalSoundSource::Neutral => SoundSource::Neutral,
             };
             // The reference draws the seed from the level's own random source.
             let seed = i64::from(self.local_sounds).wrapping_mul(0x5DEE_CE66_D1CE_4E5B);

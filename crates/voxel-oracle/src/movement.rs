@@ -415,11 +415,15 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 .take_sounds()
                 .into_iter()
                 .chain(world.take_sounds())
+                // A block the player broke plays its sound as a level event.
+                .chain(
+                    world
+                        .take_level_events()
+                        .iter()
+                        .filter_map(voxel_world::LevelEvent::break_sound),
+                )
                 .map(|sound| {
-                    let source = match sound.source {
-                        voxel_world::local_player::LocalSoundSource::Players => "player",
-                        voxel_world::local_player::LocalSoundSource::Blocks => "block",
-                    };
+                    let source = sound.source.name();
                     // The swim, splash, hurt and death sounds' pitch is random in Java and is compared by volume only.
                     let pitch = if sound.event == "minecraft:entity.player.swim"
                         || sound.event.starts_with("minecraft:entity.player.splash")

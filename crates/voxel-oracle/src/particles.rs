@@ -4,6 +4,7 @@ use super::*;
 use std::sync::Arc;
 mod factory;
 use factory::*;
+mod events;
 mod pickup;
 pub(super) use pickup::item_pickup_result;
 use voxel_world::particles::{
@@ -248,8 +249,20 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         let events = row["events"].as_array().ok_or("events must be an array")?;
         let mut ticks = Vec::new();
         for tick in 0..i32_field(row, "tick_count")? {
+            let mut sounds = Vec::new();
             for event in events {
                 if i32_field(event, "tick")? != tick {
+                    continue;
+                }
+                if string(event, "type")? == "level_event" {
+                    let mut context = voxel_world::particles::LevelEventContext {
+                        world: &world,
+                        view: &view,
+                        level_random: &mut level_random,
+                        particle_random: &mut particle_random,
+                    };
+                    let played = engine.level_event(events::level_event_of(event)?, &mut context);
+                    sounds.extend(played.iter().map(events::sound_line));
                     continue;
                 }
                 let name = string(event, "particle")?;
@@ -317,6 +330,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             ticks.push(json!({
                 "pending": pending,
                 "particles": engine.particle_count(),
+                "sounds": sounds,
                 "emitters": engine.emitter_count(),
             }));
         }

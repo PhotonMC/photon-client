@@ -11,6 +11,7 @@ mod engine;
 mod flame;
 mod group;
 mod hit;
+mod level_events;
 mod light;
 mod particle;
 mod pickup;
@@ -22,6 +23,7 @@ mod terrain;
 mod water;
 
 pub use engine::{AddView, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, Spawn};
+pub use level_events::LevelEventContext;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;

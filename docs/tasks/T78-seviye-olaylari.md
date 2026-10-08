@@ -19,4 +19,8 @@ Başka aileler (kendi görevlerinde); performans optimizasyonu.
 İlgili contract/parity kaydı (`docs/` altında yeni dosya), `docs/index.md`, `docs/remaining-work.md` §8 işareti.
 
 ## Devir notu
-(boş)
+Yapılan: olaylar ağdan kuyruğa girer, motor seviye rastgelesiyle işler (`particles/level_events.rs`):
+ses olayları 1000–1052, 1009, 1501–1503, 2000/2008/2009/2010, 2001 (ses ve kırıntı). Her sesten sonra
+tohum için `nextLong` çekilir. `LocalSoundSource`'a düşman ve tarafsız eklendi.
+Oracle: `particle-engine`'de dört satır; sesler eşit, atış özeti Q04 Gauss farkıyla tutmuyor.
+Bölündü: kalan olaylar → T78b, `BlockEvent` → T78c.

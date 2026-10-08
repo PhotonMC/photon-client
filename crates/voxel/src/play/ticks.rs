@@ -254,8 +254,11 @@ impl Play {
             let level_particles = self.session.take_level_particles();
             let pickups = self.session.take_item_pickups();
             self.particles.add_pickups(pickups);
-            let broke = self.session.take_block_breaks();
-            self.particles.blocks_broke(self.session.world(), broke);
+            let events = self.session.take_level_events();
+            let event_sounds = self.particles.level_events(self.session.world(), events);
+            if let Some(sound) = self.sound.as_mut() {
+                sound.handle_local(event_sounds);
+            }
             self.particles.receive(
                 level_particles,
                 self.session.world(),

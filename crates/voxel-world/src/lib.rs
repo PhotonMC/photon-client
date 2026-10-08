@@ -75,7 +75,7 @@ pub use recipes::{
 };
 pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
-pub use world::Entities;
+pub use world::{Entities, LevelEvent, block_sound_of};
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,8 +112,8 @@ pub struct ClientWorld {
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
-    /// The blocks the server said broke (level event 2001), with the state they had, until taken.
-    block_breaks: Vec<((i32, i32, i32), i32)>,
+    /// The level events, until the particle engine takes them.
+    level_events: Vec<LevelEvent>,
     /// The blocks the player is breaking and the face it aims at, for each tick it swings at one
     /// (`Minecraft.continueAttack`'s `addBreakingBlockEffect`), until taken.
     breaking_effects: Vec<((i32, i32, i32), voxel_core::direction::Direction)>,

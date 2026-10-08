@@ -93,9 +93,13 @@ impl PlaySession {
         if !input.is_empty() {
             return Err(ConnectionError::Codec("level event trailing payload"));
         }
-        self.trace
-            .world
-            .apply_level_event(event.event, event.pos, event.data);
+        // `handleLevelEvent`: a global event (a wither's or a dragon's, heard from afar) is not
+        // the level's; those are not played yet.
+        if !event.global {
+            self.trace
+                .world
+                .apply_level_event(event.event, event.pos, event.data);
+        }
         Ok(())
     }
 

@@ -306,18 +306,20 @@ fn a_block_broken_makes_its_break_sound_at_its_middle_and_a_hit_a_softer_one() {
     let stone = voxel_data::block::registry::block("minecraft:stone")
         .expect("stone")
         .default_state_id() as i32;
-    world.apply_level_event(2001, (10, 64, -3), stone);
-    let sounds = world.take_sounds();
-    assert_eq!(sounds.len(), 1);
-    assert_eq!(sounds[0].event, "minecraft:block.stone.break");
-    assert_eq!((sounds[0].volume, sounds[0].pitch), (1.0, 0.8));
-    assert_eq!(sounds[0].position, (10.5, 64.5, -2.5));
+    let broken = crate::block_sound_of(
+        (10, 64, -3),
+        stone,
+        voxel_data::block_sound::SoundTypeRow::break_sound,
+        (|volume| (volume + 1.0) / 2.0, 0.8),
+    )
+    .expect("stone has a sound");
+    assert_eq!(broken.event, "minecraft:block.stone.break");
+    assert_eq!((broken.volume, broken.pitch), (1.0, 0.8));
+    assert_eq!(broken.position, (10.5, 64.5, -2.5));
     world.play_hit_sound((0, 0, 0), stone);
     let hit = world.take_sounds();
     assert_eq!(hit[0].event, "minecraft:block.stone.hit");
     assert_eq!((hit[0].volume, hit[0].pitch), (0.25, 0.5));
-    // Air breaks with no sound, and nothing is left waiting.
-    world.apply_level_event(2001, (0, 0, 0), 0);
     assert!(world.take_sounds().is_empty());
 }
 
@@ -424,13 +426,17 @@ fn an_item_frame_keeps_the_turn_of_its_item() {
 }
 
 #[test]
-fn a_block_broken_waits_for_its_flakes_with_the_state_it_had() {
+fn the_level_events_wait_for_the_particle_engine_in_order() {
     let mut world = ClientWorld::default();
     let stone = voxel_data::block::registry::block("minecraft:stone")
         .expect("stone")
         .default_state_id() as i32;
     world.apply_level_event(2001, (10, 64, -3), stone);
     world.apply_level_event(1000, (0, 0, 0), 0);
-    assert_eq!(world.take_block_breaks(), vec![((10, 64, -3), stone)]);
-    assert!(world.take_block_breaks().is_empty());
+    let event = |event, pos, data| crate::LevelEvent { event, pos, data };
+    assert_eq!(
+        world.take_level_events(),
+        vec![event(2001, (10, 64, -3), stone), event(1000, (0, 0, 0), 0)]
+    );
+    assert!(world.take_level_events().is_empty());
 }
