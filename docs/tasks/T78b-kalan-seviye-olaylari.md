@@ -22,3 +22,7 @@ Rust: `crates/voxel-world/src/particles/level_events.rs`.
 `docs/records/client-level-event-parity-conformance.md`.
 
 ## Devir notu
+Yapılan: `particles/level_events_more.rs`: 1500, 2002/2007, 2003, 2004, 2011/2012, 2013. Oracle motoru
+tohum denemelerinde seviye rastgelesini de geri sarar; `item` sağlayıcısı ilk sonda resmini kullanır.
+Oracle: `level-event-more` bir `sin` ulp'i dışında eşit (Q04 sınıfı); 2013 satırda yok.
+Bölündü: kalan olaylar → T78e.

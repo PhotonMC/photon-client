@@ -159,7 +159,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T94 — Tuş eşlemeleri ve `key_` satırları — client-parity](records/client-key-mappings-parity-conformance.md)
 - [T43b, T30c — Anahtar kare animasyonu ve tavşan — client-parity](records/client-keyframe-animation-parity-conformance.md)
 - [T40f — Bağ düğümü — client-parity](records/client-leash-knot-parity-conformance.md)
-- [T78 — Seviye olaylarının sesleri ve dumanları — client-parity](records/client-level-event-parity-conformance.md)
+- [T78, T78b — Seviye olaylarının sesleri ve parçacıkları — client-parity](records/client-level-event-parity-conformance.md)
 - [P08.c-light.2 — İstemci ışık motoru ve yeniden aydınlatma — client-parity kaydı](records/client-light-engine-conformance.md)
 - [T40e — Yıldırım — client-parity](records/client-lightning-bolt-parity-conformance.md)
 - [T38b, T38c — Minecart ailesi (eski ve yeni davranış) — client-parity](records/client-minecart-parity-conformance.md)

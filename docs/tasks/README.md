@@ -31,7 +31,7 @@ Rust ekran kalıbı: `voxel-render/src/gui/screen/{pause,death,disconnected}.rs`
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`voxel.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %77 bitti** (ağırlıklı) · 232/286 madde işaretli, **54 madde kaldı** (tahmini 99 M-görev eşdeğeri iş).
+**Toplam: %77 bitti** (ağırlıklı) · 233/287 madde işaretli, **54 madde kaldı** (tahmini 99 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `█████████████░░░░░░░` | 63 | 23/35 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `██████████████░░░░░░` | 71 | 29/40 |
+| M8 Partikül, efekt ve blok entity | `██████████████░░░░░░` | 72 | 30/41 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T78b, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T78e, T78d, T80d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -302,9 +302,10 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T76b](T76b-ciglik-gardiyan-patlama.md) Çığlık, elder gardiyan parçacığı ve `Explode` paketi — M · bağımlı: T76 · bölündü (d18ef7d8)
 - [ ] [T76c](T76c-ciglik-gardiyan.md) Çığlık ve elder gardiyan parçacıkları — M · bağımlı: T76b
 - [x] [T77](T77-esya-parcaciklari.md) Eşya parçacıkları ve eşya toplama animasyonu — M · bağımlı: T70b, T25 · bitti (ba01b9b3)
-- [x] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77 · bitti
+- [x] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77 · bitti (7e60ee72)
 - [x] [T78](T78-seviye-olaylari.md) `LevelEvent` ve `BlockEvent` işleyicileri — L · bağımlı: T71b, T64b · bölündü (3898df28)
-- [ ] [T78b](T78b-kalan-seviye-olaylari.md) Kalan seviye olayları (iksir, kemik tozu, 3000'ler, küresel, jukebox) — L · bağımlı: T78, T77b
+- [x] [T78b](T78b-kalan-seviye-olaylari.md) Kalan seviye olayları (iksir, kemik tozu, 3000'ler, küresel, jukebox) — L · bağımlı: T78, T77b · bölündü
+- [ ] [T78e](T78e-son-seviye-olaylari.md) Son seviye olayları (kemik tozu, ejderha nefesi, 3000'ler, küresel, jukebox) — L · bağımlı: T78b
 - [x] [T78c](T78c-blok-olaylari.md) `BlockEvent` işleyicileri (nota bloğu, piston, çan) — M · bağımlı: T78 · bitti (cdbcfa0c)
 - [ ] [T78d](T78d-kalan-blok-olaylari.md) Kalan blok olayları (piston, saksı, spawner, geçit) — L · bağımlı: T78c
 - [x] [T79](T79-blok-entity-cizici-iskeleti.md) Blok entity çizici iskeleti ve sandık ailesi — L · bitti (864fe2b0)

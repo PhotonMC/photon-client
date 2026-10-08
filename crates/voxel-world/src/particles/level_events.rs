@@ -144,6 +144,9 @@ impl ParticleEngine {
             };
             sounds.push(local_sound(name, source, (volume, pitch), pos, random));
         }
+        if self.more_level_event((event, pos, data), context, &mut sounds) {
+            return sounds;
+        }
         match event {
             1501 => {
                 for _ in 0..8 {

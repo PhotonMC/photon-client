@@ -363,9 +363,16 @@ class MovementParticleOracle extends MovementMenuOracle {
                 long engineSeedBefore = engineSeed.get();
                 var spell = spellSeed();
                 long spellSeedBefore = spell.get();
+                // And what it drew from the level's random (a composter's life).
+                var levelRandom = getField(level, "random");
+                var levelSeedField = levelRandom.getClass().getDeclaredField("seed");
+                levelSeedField.setAccessible(true);
+                var levelSeed = (java.util.concurrent.atomic.AtomicLong) levelSeedField.get(levelRandom);
+                long levelSeedBefore = levelSeed.get();
                 var particle = seededParticle(seeds.isEmpty() ? 0L : seeds.peekFirst(), () -> {
                     engineSeed.set(engineSeedBefore);
                     spell.set(spellSeedBefore);
+                    levelSeed.set(levelSeedBefore);
                     var made = super.createParticle(options, x, y, z, xa, ya, za);
                     if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())) {
                         queue.remove(made);
@@ -481,6 +488,23 @@ class MovementParticleOracle extends MovementMenuOracle {
         for (var set : sets.values()) {
             rebind.invoke(set, sprites.sprites);
         }
+        // An item's crumbs show the first picture: no item model is resolved here (as an item with no
+        // model, the pick draws nothing).
+        var crumb = net.minecraft.client.particle.BreakingItemParticle.class.getDeclaredConstructor(
+            net.minecraft.client.multiplayer.ClientLevel.class, double.class, double.class, double.class,
+            double.class, double.class, double.class, net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+        crumb.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var providers = (java.util.Map<Object, Object>) getField(resources, "providers");
+        providers.put(net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getId(net.minecraft.core.particles.ParticleTypes.ITEM),
+            (net.minecraft.client.particle.ParticleProvider<net.minecraft.core.particles.ItemParticleOption>)
+                (options, at, x, y, z, xa, ya, za, random) -> {
+                    try {
+                        return (net.minecraft.client.particle.Particle) crumb.newInstance(at, x, y, z, xa, ya, za, sprites.sprites.get(0));
+                    } catch (ReflectiveOperationException error) {
+                        throw new IllegalStateException(error);
+                    }
+                });
         seedSpellRandom(row.has("spell_seed") ? row.get("spell_seed").getAsLong() : 0L);
         var engine = new SeededEngine(level, resources);
         setField(engine, "random", net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));

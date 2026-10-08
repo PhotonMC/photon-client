@@ -226,6 +226,18 @@ impl ParticleEngine {
         data: ParticleData,
         at: (f64, f64, f64),
     ) {
+        self.level_add_data_pushed(context, name, data, at, (0.0, 0.0, 0.0));
+    }
+
+    /// `Level.addParticle` of a type with options, pushed.
+    pub(super) fn level_add_data_pushed<F: FnMut() -> RandomSource>(
+        &mut self,
+        context: &mut LevelEventContext<'_, F>,
+        name: &str,
+        data: ParticleData,
+        at: (f64, f64, f64),
+        push: (f64, f64, f64),
+    ) {
         let Some(type_id) = voxel_data::particle_type::id(name) else {
             return;
         };
@@ -235,7 +247,7 @@ impl ParticleEngine {
             override_limiter: false,
             always_show: false,
             at,
-            push: (0.0, 0.0, 0.0),
+            push,
         };
         self.add_particle(
             context.world,

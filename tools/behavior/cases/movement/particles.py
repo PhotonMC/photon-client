@@ -473,6 +473,18 @@ def particle_engine_cases():
                                   explode(3, (8.0, 64.0, 8.0), 3.0, 5)],
                    blocks=plane(63, "minecraft:stone", size=8) + [{"x": 1, "y": 64, "z": 0, "block": "minecraft:stone"}],
                    ticks=6, seeds=1500, describe=12),
+        # More level events: the composter filling (or not), a splash potion's shards, specks and sound (and
+        # an instant one's), an ender eye's shards and ring, a spawner's flames, bone meal's sparkles in a
+        # block and in the air (a mace's smash, 2013, needs the block models: its dust is the terrain rows').
+        engine_row("level-event-more", [level_event(0, 1500, (1, 64, 1), 1), level_event(0, 1500, (2, 64, 1), 0),
+                                        level_event(0, 2002, (-2, 64, 2), 0x3F76E4), level_event(1, 2007, (3, 64, -2), 0xF82423),
+                                        level_event(1, 2003, (0, 64, 0)), level_event(2, 2004, (-3, 65, -3)),
+                                        level_event(2, 2011, (4, 64, 4), 15), level_event(2, 2012, (4, 70, 4), 6)],
+                   blocks=plane(63, "minecraft:stone", size=8)
+                   + [{"x": 1, "y": 64, "z": 1, "block": "minecraft:composter", "properties": {"level": "3"}},
+                      {"x": 2, "y": 64, "z": 1, "block": "minecraft:composter", "properties": {"level": "0"}},
+                      {"x": 4, "y": 64, "z": 4, "block": "minecraft:oak_sapling", "properties": {"stage": "0"}}],
+                   ticks=6, seeds=600, describe=14),
         engine_row("level-event-smoke", [level_event(0, 1501, (2, 63, 2)), level_event(0, 1502, (-3, 64, 1)),
                                          level_event(1, 1503, (0, 64, -4)), level_event(1, 2008, (4, 64, 4)),
                                          level_event(2, 2009, (-2, 64, -2))],
