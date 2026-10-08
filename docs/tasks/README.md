@@ -250,7 +250,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T86d](T86d-sunucu-simgesi.md) Sunucu simgesi (favicon) çizimi ve kaydı — M · bağımlı: T86b · bitti (a183b8e4)
 - [x] [T87](T87-baglanma-yukleme.md) Bağlanma ve dünya yükleme ekranları — M · bağımlı: T85 · bitti (e4b946ec)
 - [x] [T88](T88-kitap-duzenleme.md) Kitap açma ve düzenleme (`OpenBook`, `EditBook`) — M · bağımlı: T56 · bölündü (57f247fe)
-- [x] [T88b](T88b-kitap-imza-openbook.md) Kitap imzalama ve `OpenBook` — M · bağımlı: T88 · bitti
+- [x] [T88b](T88b-kitap-imza-openbook.md) Kitap imzalama ve `OpenBook` — M · bağımlı: T88 · bitti (fa466bf1)
 - [x] [T89](T89-tabela-duzenleme.md) Tabela düzenleme (`OpenSignEditor`, `SignUpdate`) — M · bağımlı: T80d · bitti (15ddbd47)
 - [ ] [T90](T90-komut-yapi-bloklari.md) Komut bloğu, yapı bloğu ve jigsaw ekranları — L · bağımlı: T85
 - [ ] [T91](T91-ilerlemeler.md) İlerlemeler (`UpdateAdvancements`, `AdvancementsScreen`) — L · bağımlı: T85
