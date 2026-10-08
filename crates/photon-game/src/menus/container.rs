@@ -146,6 +146,7 @@ mod bundle;
 pub use bundle::{BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE};
 mod clicks;
 mod components;
+pub use components::{damage, max_damage};
 mod grindstone;
 mod kinds;
 pub use kinds::*;

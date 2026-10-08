@@ -55,7 +55,7 @@ fn varint_of(value: &[u8]) -> Option<i32> {
 }
 
 /// `ItemStack.isDamaged`.
-pub(super) fn is_damaged(stack: &Stack) -> bool {
+pub fn is_damaged(stack: &Stack) -> bool {
     components::is_damageable(stack) && components::damage(stack) > 0
 }
 

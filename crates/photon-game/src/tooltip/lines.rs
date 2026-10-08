@@ -1,13 +1,20 @@
 use super::*;
 
 /// `ItemStack.getTooltipLines`. `player` is whether a player is at hand,
-/// which the attribute lines add its base values for.
+/// which the attribute lines add its base values for; `maps` is the map data
+/// the client holds.
 #[expect(
     clippy::cognitive_complexity,
     clippy::too_many_lines,
     reason = "kept whole to read against the reference method line by line"
 )]
-pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries) -> Vec<Component> {
+pub fn lines(
+    stack: &Stack,
+    player: bool,
+    flags: Flags,
+    registries: &Registries,
+    maps: Maps,
+) -> Vec<Component> {
     let values = Values::with_registries(stack.item_registry_id(), stack.patch_bytes(), registries);
     let (hide, hidden) = values.tooltip_display();
     if !flags.creative && hide {
@@ -61,12 +68,32 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
     {
         out.push(Component::translatable(format!("{id}.desc")).with_colour("gray"));
     }
+    smithing_template_lines(item, &mut out);
     if shows(ids::INSTRUMENT)
         && let Some(id) = values.holder_id(ids::INSTRUMENT)
         && let Some(entry) = registries.instruments.get(id as usize)
         && let Some(description) = entry.description.as_ref().and_then(json_component)
     {
         out.push(description.with_style(&Style::coloured("gray")));
+    }
+    if shows(ids::MAP_ID) {
+        map_lines(&values, flags, maps, &mut out);
+    }
+    if shows(ids::CONTAINER) {
+        container_lines(&values, registries, &mut out);
+    }
+    if shows(ids::BANNER_PATTERNS) {
+        for (pattern, dye) in values.banner_layers().into_iter().take(6) {
+            if let Some(entry) = registries.banner_patterns.get(pattern as usize) {
+                out.push(
+                    Component::translatable(format!("{}.{}", entry.translation_key, dye_name(dye)))
+                        .with_colour("gray"),
+                );
+            }
+        }
+    }
+    if shows(ids::WRITTEN_BOOK_CONTENT) {
+        written_book_lines(&values, &mut out);
     }
     if shows(ids::FIREWORKS)
         && let Some((flight, explosions)) = values.fireworks()
@@ -212,16 +239,6 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
         };
         out.extend(values.lore().into_iter().map(|line| line.with_style(&lore)));
     }
-    if shows(ids::BANNER_PATTERNS) {
-        for (pattern, dye) in values.banner_layers().into_iter().take(6) {
-            if let Some(entry) = registries.banner_patterns.get(pattern as usize) {
-                out.push(
-                    Component::translatable(format!("{}.{}", entry.translation_key, dye_name(dye)))
-                        .with_colour("gray"),
-                );
-            }
-        }
-    }
     attribute_tooltips_if(shows(ids::ATTRIBUTE_MODIFIERS), &values, player, &mut out);
     if shows(ids::INTANGIBLE_PROJECTILE) && values.has(ids::INTANGIBLE_PROJECTILE) {
         out.push(Component::translatable("item.intangible").with_colour("gray"));
@@ -263,6 +280,9 @@ pub fn lines(stack: &Stack, player: bool, flags: Flags, registries: &Registries)
             .with_colour("gray"),
         );
     }
+    if flags.advanced {
+        advanced_lines(stack, &values, shows, &mut out);
+    }
     out
 }
 
@@ -280,9 +300,18 @@ pub(super) fn attribute_tooltips_if(
 /// The tooltip's lines as the search reads them: formatting stripped, each
 /// trimmed, the empty ones left out.
 pub fn search_lines(stack: &Stack, lang: &Lang, registries: &Registries) -> Vec<String> {
-    lines(stack, false, Flags { creative: true }, registries)
-        .iter()
-        .map(|line| lang.plain(line).trim().to_owned())
-        .filter(|line| !line.is_empty())
-        .collect()
+    lines(
+        stack,
+        false,
+        Flags {
+            creative: true,
+            advanced: false,
+        },
+        registries,
+        &no_maps,
+    )
+    .iter()
+    .map(|line| lang.plain(line).trim().to_owned())
+    .filter(|line| !line.is_empty())
+    .collect()
 }

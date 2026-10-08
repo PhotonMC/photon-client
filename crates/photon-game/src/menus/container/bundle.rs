@@ -74,23 +74,9 @@ fn contents(stack: &Stack) -> Option<Vec<Stack>> {
     };
     let mut input = value.as_slice();
     let count = photon_core::wire::read_varint(&mut input).ok()?;
-    let mut items = Vec::new();
-    for _ in 0..count {
-        let item = photon_core::wire::read_varint(&mut input).ok()?;
-        let count = photon_core::wire::read_varint(&mut input).ok()?;
-        let start = input;
-        let patch = photon_world::item_components::read_patch(&mut input).ok()?;
-        let bytes = start[..start.len() - input.len()].to_vec();
-        items.push(
-            Stack::from_wire(
-                count,
-                item,
-                patch.added.iter().map(|(id, _)| *id).collect(),
-                patch.removed,
-            )
-            .with_patch_bytes(bytes),
-        );
-    }
+    let items = (0..count)
+        .map(|_| crate::item::read_template(&mut input))
+        .collect::<Option<Vec<_>>>()?;
     Some(items)
 }
 

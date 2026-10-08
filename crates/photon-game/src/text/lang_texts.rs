@@ -8,8 +8,16 @@ impl Lang {
         }
     }
 
-    /// The default language from `assets/minecraft/lang/en_us.json`.
+    /// The default language from `assets/minecraft/lang/en_us.json`, with
+    /// the deprecated keys removed and renamed (`Language.loadDefault`).
     pub fn load(assets_root: &std::path::Path) -> Self {
+        let mut texts = Self::load_raw(assets_root).texts;
+        apply_deprecated(assets_root, &mut texts);
+        Self { texts }
+    }
+
+    /// `en_us.json` as it is, for a language read over it.
+    pub(crate) fn load_raw(assets_root: &std::path::Path) -> Self {
         let Ok(text) = std::fs::read_to_string(assets_root.join("minecraft/lang/en_us.json"))
         else {
             return Self::default();
@@ -154,5 +162,41 @@ impl Lang {
             .into_iter()
             .map(|run| run.text)
             .collect()
+    }
+}
+
+/// `DeprecatedTranslationsInfo.applyToMap` with the jar's
+/// `lang/deprecated.json`: removed keys go, and a renamed key's text moves to
+/// its new key (which goes too when the old one is missing).
+pub(crate) fn apply_deprecated(assets_root: &std::path::Path, texts: &mut HashMap<String, String>) {
+    let Some(info) =
+        photon_core::json::read_object(&assets_root.join("minecraft/lang/deprecated.json"))
+    else {
+        return;
+    };
+    let strings = |value: &JsonValue| match value {
+        JsonValue::String(units) => String::from_utf16(units).ok(),
+        _ => None,
+    };
+    for key in info
+        .array("removed")
+        .unwrap_or_default()
+        .iter()
+        .filter_map(strings)
+    {
+        texts.remove(&key);
+    }
+    for (from, to) in info
+        .object("renamed")
+        .into_iter()
+        .flat_map(|renamed| renamed.entries())
+    {
+        let (Ok(from), Some(to)) = (String::from_utf16(from), strings(to)) else {
+            continue;
+        };
+        match texts.remove(&from) {
+            Some(text) => texts.insert(to, text),
+            None => texts.remove(&to),
+        };
     }
 }

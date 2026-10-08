@@ -411,6 +411,7 @@ pub struct Lang {
 mod translatable;
 
 mod lang_texts;
+pub(crate) use lang_texts::apply_deprecated;
 
 #[cfg(test)]
 mod tests {

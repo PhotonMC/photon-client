@@ -52,3 +52,22 @@ pub fn is_correct_for_drops(tool: &Tool, registry: &ClientBlockStateRegistry, st
         .and_then(|rule| rule.correct_for_drops)
         .unwrap_or(false)
 }
+
+/// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a component patch,
+/// as a stack that keeps the patch's bytes.
+pub fn read_template(input: &mut &[u8]) -> Option<photon_world::ClientItemStackState> {
+    let item = photon_core::wire::read_varint(input).ok()?;
+    let count = photon_core::wire::read_varint(input).ok()?;
+    let start = *input;
+    let patch = photon_world::item_components::read_patch(input).ok()?;
+    let bytes = start[..start.len() - input.len()].to_vec();
+    Some(
+        photon_world::ClientItemStackState::from_wire(
+            count,
+            item,
+            patch.added.iter().map(|(id, _)| *id).collect(),
+            patch.removed,
+        )
+        .with_patch_bytes(bytes),
+    )
+}

@@ -133,6 +133,13 @@ class BlockItemOracle extends BlockPropertyOracle {
                 }
             }
             described.add("components", ids);
+            // Every type of the item's own components, transient ones too:
+            // what ItemStack's component count starts from.
+            var all = new java.util.TreeSet<Integer>();
+            item.components().forEach(component -> all.add(types.getId(component.type())));
+            var allIds = new JsonArray();
+            all.forEach(allIds::add);
+            described.add("types", allIds);
             items.add(described);
         }
         entry.add("items", items);

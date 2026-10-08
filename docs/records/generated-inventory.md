@@ -29,6 +29,7 @@ Doğrulama: her dosya bir Java yakalamasındaki (`outputs.jsonl`) satırdan `too
 | `map_data.rs` | 81 | `world/level/material/MapColor`, `MapDecorationType` | `map_data.py` (entity) | a | `photon-data/src/map_data.rs` |
 | `item/items.rs` | 1892 | `world/item/Items` (kayıt sırası) | `items.py` (block) | a | `photon-data/src/item/items.rs` |
 | `item/classes.rs` | 312 | `world/item/*Item` sınıf hiyerarşisi | `items.py` (block) | a | `photon-data/src/item/classes.rs` |
+| `item/component_sets.rs` | 1546 | eşyaların varsayılan bileşen türleri (`Item.components`, geçiciler dahil) | `item_components.py` (block) | a | `photon-data/src/item/component_sets.rs` |
 | `item/component_types.rs` | 240 | `core/component/DataComponents` (kayıt sırası) | `component_types.py` (block) | a | `photon-data/src/item/component_types.rs` |
 | `item/creative_tabs.rs` | 4345 | `world/item/CreativeModeTabs` (varsayılan özellikler, operatörsüz oyuncu) | `creative_tabs.py` (block) | a | `photon-data/src/item/creative_tabs.rs`, sekme başına modül (sınır 600 satır) |
 | `item/attributes.rs` | 50 | `world/entity/ai/attributes/Attributes` | `attributes.py` (block) | a | `photon-data/src/item/attributes.rs` |
@@ -42,7 +43,7 @@ Ek üretici çıktısı: `item_components.py` bir Rust dosyası değil `tests/be
 
 | Sınıf | Dosya | Satır | Not |
 | --- | ---: | ---: | --- |
-| (a) elle Rust modülü | 22 | ≈ 28 000 | Java'daki dosya düzenini izler; her modül 600 satırı geçmez ([kural](../coding-standards.md#dosya-boyutu)): `animations` ve `entity_models` sınıf başına, `creative_tabs` sekme başına bölünür |
+| (a) elle Rust modülü | 23 | ≈ 29 500 | Java'daki dosya düzenini izler; her modül 600 satırı geçmez ([kural](../coding-standards.md#dosya-boyutu)): `animations` ve `entity_models` sınıf başına, `creative_tabs` sekme başına bölünür |
 | (b) çalışma anında veri | 4 | ≈ 180 | `damage_effects`, üç çeşit tablosu; kaynak oyunun yerel `data/` klasörü veya sunucunun eşitlediği kayıtlar |
 | (a + b) | 1 | 36 | `villager_registries` |
 | (c) hesaplanır | 0 | 0 | `block/classes.rs` ve `item/classes.rs` Java'da sınıf hiyerarşisidir (tanım), hesaplama değil; hiçbir tablo salt Java tarafından hesaplanmıyor |

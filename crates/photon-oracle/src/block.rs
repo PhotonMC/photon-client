@@ -292,9 +292,13 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                 // back from what it read.
                 const PATCHES: &str =
                     include_str!("../../../tests/behavior/fixtures/item-default-patches.txt");
+                use photon_data::item::component_sets::DEFAULT_COMPONENT_SETS;
                 let items: Vec<Value> = PATCHES
                     .lines()
-                    .map(|line| {
+                    .enumerate()
+                    .map(|(index, line)| {
+                        let set = DEFAULT_COMPONENT_SETS.get(index).copied().unwrap_or(0);
+                        let types: Vec<u32> = (0..128).filter(|id| set >> id & 1 == 1).collect();
                         let (name, wire) = line.split_once(' ').expect("a name and its bytes");
                         let bytes: Vec<u8> = (0..wire.len())
                             .step_by(2)
@@ -307,6 +311,7 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                                 "wire": hex(&patch.trusted()),
                                 "delimited": hex(&patch.delimited()),
                                 "components": patch.added.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+                                "types": types,
                             }),
                             _ => json!({"name": name, "wire": "unreadable"}),
                         }

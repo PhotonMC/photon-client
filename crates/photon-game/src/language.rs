@@ -121,13 +121,15 @@ impl LanguageSource {
     /// A language of a code: `en_us`, with the texts of the code over it
     /// (`ClientLanguage.loadFrom` with the stack `en_us`, code).
     pub fn lang(&self, code: &str) -> Lang {
-        let mut texts = Lang::load(&self.jar_assets).into_texts();
+        let mut texts = Lang::load_raw(&self.jar_assets).into_texts();
         if code != "en_us"
             && let Some(path) = self.object(&format!("minecraft/lang/{code}.json"))
             && let Ok(text) = std::fs::read_to_string(path)
         {
             texts.extend(Lang::parse_texts(&text));
         }
+        // `ClientLanguage.loadFrom`: over every file, once.
+        crate::text::apply_deprecated(&self.jar_assets, &mut texts);
         Lang::new(texts)
     }
 }

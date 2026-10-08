@@ -21,6 +21,8 @@ mod books;
 use books::*;
 mod keybinds;
 use keybinds::*;
+mod tooltip;
+use tooltip::*;
 
 /// What the GUI scenarios share: the game's assets, the font and the atlas drawn from it, and
 /// the language source, read once because its index has thousands of files.
@@ -99,6 +101,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "book_edit_screen" => book_edit_screen_case(&mut ctx, row)?,
             "book_sign_screen" => book_sign_screen_case(&mut ctx, row)?,
             "book_view" => book_view_case(&mut ctx, row)?,
+            "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
             _ => return Err("unknown gui operation".into()),
         });
     }

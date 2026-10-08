@@ -249,12 +249,24 @@ impl Gui {
             // A stack's tooltip in words.
             let lang = &self.lang;
             let registries = &self.registries;
+            let world = session.world();
+            let maps = |id: i32| {
+                world.map_data(id).map(|map| photon_game::tooltip::MapInfo {
+                    scale: map.scale,
+                    locked: map.locked,
+                })
+            };
             let mut tooltip_lines = |stack: &ClientItemStackState, creative: bool| {
+                // `advancedItemTooltips` is off: its `F3+H` toggle is not ported.
                 photon_game::tooltip::lines(
                     stack,
                     true,
-                    photon_game::tooltip::Flags { creative },
+                    photon_game::tooltip::Flags {
+                        creative,
+                        advanced: false,
+                    },
                     registries,
+                    &maps,
                 )
                 .iter()
                 .map(|line| lang.runs(line, &Style::default()))

@@ -19,4 +19,9 @@ Java: `world/item/Item.java` ve alt sınıfların `appendHoverText`i, `world/ite
 `docs/records/generic-container-conformance.md`, `docs/gui-oracle.md` tablosu, `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+- Yeni `gui/tooltip-lines` oracle'ı (`GuiTooltipOracle.java`, `cases/gui/tooltips.py`): Java'nın
+  `getTooltipLines`ı ile Rust `tooltip::lines` stilli parçalarla, 18 satır birebir.
+- Eklenen: harita (istemci harita verisi `Maps`), kap içeriği, yazılı kitap (+ başlık adı), demirci
+  şablonu, gelişmiş satırlar (`Flags::advanced`, bileşen sayısı `component_sets.rs` tablosundan).
+- Düzeltilen: bayrak desenleri Java sırasına; dil `deprecated.json`ı uygular (oyunda da).
+- Açık: arı/ganimet/saksı/mermi/balık/profil/varlık/spawner satırları; `F3+H` anahtarı T93'te.

@@ -92,14 +92,14 @@ pub(super) fn transmute(stack: &Stack, item: i32) -> Stack {
 }
 
 /// `ItemStack.getMaxDamage`.
-pub(super) fn max_damage(stack: &Stack) -> i32 {
+pub fn max_damage(stack: &Stack) -> i32 {
     get(stack, ids::MAX_DAMAGE)
         .and_then(|value| varint_of(&value))
         .unwrap_or(0)
 }
 
 /// `ItemStack.getDamageValue`.
-pub(super) fn damage(stack: &Stack) -> i32 {
+pub fn damage(stack: &Stack) -> i32 {
     get(stack, ids::DAMAGE)
         .and_then(|value| varint_of(&value))
         .unwrap_or(0)

@@ -1,5 +1,24 @@
 use super::*;
 
+/// A stack as a row describes it: its item, count, and a written book's
+/// pages or the component patch as the wire carries it.
+pub(super) fn row_stack(slot: &Value) -> Result<photon_world::ClientItemStackState, String> {
+    let item =
+        photon_game::item::id_of(slot["item"].as_str().ok_or("item")?).ok_or("unknown item")?;
+    let mut stack =
+        photon_world::ClientItemStackState::new(slot["count"].as_i64().unwrap_or(1) as i32, item);
+    if let Some(pages) = slot["book_pages"].as_array() {
+        stack = stack.with_patch_bytes(written_book_patch(pages));
+    }
+    if let Some(hex_patch) = slot["patch"].as_str() {
+        let bytes = crate::hex::hex_bytes(hex_patch)?;
+        let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
+            .map_err(|_| format!("malformed patch {hex_patch}"))?;
+        stack.set_patch(&patch);
+    }
+    Ok(stack)
+}
+
 pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let font = &ctx.font;
@@ -22,23 +41,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let mut menu = crate::menu_named(name, row)?;
     for slot in row["slots"].as_array().ok_or("slots")? {
         let index = slot["slot"].as_u64().ok_or("slot")? as usize;
-        let item =
-            photon_game::item::id_of(slot["item"].as_str().ok_or("item")?).ok_or("unknown item")?;
-        let mut stack = photon_world::ClientItemStackState::new(
-            slot["count"].as_i64().unwrap_or(1) as i32,
-            item,
-        );
-        if let Some(pages) = slot["book_pages"].as_array() {
-            stack = stack.with_patch_bytes(written_book_patch(pages));
-        }
-        if let Some(hex_patch) = slot["patch"].as_str() {
-            // The component patch as the wire carries it.
-            let bytes = crate::hex::hex_bytes(hex_patch)?;
-            let patch = photon_game::item_components::read_patch(&mut bytes.as_slice())
-                .map_err(|_| format!("malformed patch {hex_patch}"))?;
-            stack.set_patch(&patch);
-        }
-        menu.set_slot(index, Some(stack));
+        menu.set_slot(index, Some(row_stack(slot)?));
     }
     // Setting the payments made the merchant's result, as the reference's slots do.
     if menu.kind == photon_game::menus::container::MenuKind::Merchant {

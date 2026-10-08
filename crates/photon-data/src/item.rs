@@ -8,5 +8,6 @@ pub mod effect;
 pub mod registry;
 
 pub use crate::generated::item::{
-    attributes, classes, component_types, creative_tabs, items, mob_effects, potions,
+    attributes, classes, component_sets, component_types, creative_tabs, items, mob_effects,
+    potions,
 };

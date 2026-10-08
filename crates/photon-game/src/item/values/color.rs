@@ -35,6 +35,28 @@ impl Values {
 
     /// A component's value bytes: the patch's, or the item's default unless
     /// the patch removes it.
+    /// How many components the stack has (`PatchedDataComponentMap.size`):
+    /// the item's own, given as a set of type ids (`DEFAULT_COMPONENT_SETS`),
+    /// with what the patch adds and less what it removes.
+    pub fn count(&self, own: u128) -> usize {
+        let bit = |id: &i32| {
+            u32::try_from(*id)
+                .ok()
+                .and_then(|id| 1_u128.checked_shl(id))
+                .unwrap_or(0)
+        };
+        let mut present = own;
+        if let Some(patch) = &self.patch {
+            present |= patch
+                .added
+                .iter()
+                .map(|(id, _)| bit(id))
+                .fold(0, |set, id| set | id);
+            present &= !patch.removed.iter().map(bit).fold(0, |set, id| set | id);
+        }
+        present.count_ones() as usize
+    }
+
     pub fn raw(&self, component: i32) -> Option<&[u8]> {
         if let Some(patch) = &self.patch {
             if let Some((_, value)) = patch.added.iter().find(|(id, _)| *id == component) {

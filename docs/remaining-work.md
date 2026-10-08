@@ -46,7 +46,7 @@ tik dalları) ile canlı sunucuya karşı `server-conformance` kayıtlarıdır;
 [görev panosunun](tasks/README.md) ilgili grubundadır.
 
 - [x] **M1 Blok eylemleri**, **M2 Eşya çizimi**, **M3 Envanter**: pano öncesi.
-- [ ] **M3.d Sunucunun açtığı kaplar** (L): örs sonucu tahmini (T51b), bundle ipucu ve seçimi (T59b), binek envanteri (T58), kap ipuçları (T59c).
+- [ ] **M3.d Sunucunun açtığı kaplar** (L): örs sonucu tahmini (T51b), bundle ipucu ve seçimi (T59b), binek envanteri (T58).
 - [ ] **M4 Entity'ler** (XL): içerik bitti; kalan uzaklık/bölüm ayıklaması (T47) ve P24 kapsam denetimi.
 - [ ] **M5 Metin ve chat** (L): kalan unifont/bidi/IME, sohbet kalanları (§5), imzalı sohbet (M9 ile).
 - [ ] **M6 Ekranlar** (L): kalan ana menü, sunucu listesi, yükleme, kitap/tabela, ilerlemeler, kalan ayarlar; planı PLAN-M6.
@@ -82,8 +82,8 @@ sunucu listesini bekler.
   `PlaceRecipe`), tarif tablosu için oracle.
 - **S** Kalan envanter davranışı: bundle tıklama tahmini ve ipucu
   (`SelectBundleItem`), kalan bileşenlerin hash'i, sürükleme yuva sırası.
-- **S** Eşya ipuçları: kapsayıcı içerik ipucu (shulker/bundle satırları), harita
-  ipucu, simya şablonu ve kitap ipucu satırları, gelişmiş ipucu (F3+H).
+- **S** Eşya ipuçları: bundle ipucu (T59b); arı, kap ganimeti, saksı, yüklü
+  mermi, tropikal balık, profil, varlık ve spawner satırları.
 
 Kanıt: kap tıklamaları için `movement/container-clicks` ailesinin
 genişletilmesi (`client-parity`), ekranlar canlı gözlem.
@@ -98,7 +98,7 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 - Bundle'da seçili eşya (kaydırma, `SelectBundleItem`) yok; çıkan hep ilk yığın.
 - Tarif kitabı çekirdeği var; kaplama, vurgu/tost, `SeenRecipe` ve dar ekran
   düzeni eksik (ayrıntı `generic-container-conformance.md`).
-- Kap içeriği ipucu (shulker/bundle satırları) yok.
+- Bundle ipucu yok (T59b).
 - Java menüleri girdi değişince sonucu istemcide de hesaplar (`AnvilMenu.createResult`,
   `GrindstoneMenu.createResult`, `LoomMenu.slotsChanged`): bizde sonuç yuvası
   yalnız sunucunun gönderdiği olur (taşınmadı). Anvil için onarım maliyeti, büyü

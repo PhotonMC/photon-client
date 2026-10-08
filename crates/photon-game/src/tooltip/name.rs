@@ -55,7 +55,7 @@ pub(super) fn potion_name(
 
 /// `ItemStack.getHoverName`.
 pub(super) fn hover_name(stack: &Stack, values: &Values) -> Component {
-    if let Some(name) = values.custom_name() {
+    if let Some(name) = values.custom_name().or_else(|| book_title(values)) {
         return name;
     }
     let item = item_name_of(stack);
@@ -397,7 +397,7 @@ pub fn styled_name(stack: &Stack, values: &Values) -> Component {
     let mut name = Component::empty()
         .append(hover_name(stack, values))
         .with_colour(rarity_colour(rarity(values)));
-    if values.custom_name().is_some() {
+    if values.has(ids::CUSTOM_NAME) {
         name = name.italic();
     }
     name

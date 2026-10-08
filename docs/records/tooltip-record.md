@@ -46,6 +46,22 @@ iksirler; hepsi kayıt numarasıyla (`crates/photon-data/src/item/tooltip.rs`,
 `crates/photon-data/src/generated/item/potions.rs`, `tools/generate/`) ve adaptörle her koşuda
 referanstan karşılaştırılır.
 
+Satırların kendisi T59c'den beri `client-parity`: `gui/tooltip-lines`
+oracle'ı Java'nın `ItemStack.getTooltipLines`ını (oyuncusuz, normal/gelişmiş,
+isteğe bağlı yaratıcı, istemcinin harita verisini veren bir bağlamla) Rust'ın
+`tooltip::lines`ıyla satır satır, stilli parçalar hâlinde karşılaştırır
+(`tools/behavior/cases/gui/tooltips.py`, 18 satır). Bu kapsamla gelenler:
+harita kimliği/kilidi/ölçeği (`MapId`, `map_post_processing`), kap içeriği
+(ilk beş yığın, "and N more"), yazılı kitap yazarı/kuşağı ve başlığın ad
+oluşu, demirci şablonları, gelişmiş satırlar (dayanıklılık, eşya kimliği,
+bileşen sayısı) ve bayrak desenlerinin Java sırasına (açıklamadan önce)
+taşınması. Bileşen sayısı eşyanın tüm varsayılan bileşen türlerinden gelir:
+`component_sets.rs` (`tools/generate/item_components.py`), her koşuda
+`block/item-components`ın `types` alanıyla baştan sona karşılaştırılır. Dil
+artık `lang/deprecated.json`ı uygular (`Language.loadDefault`,
+`ClientLanguage`): kaldırılan anahtarlar düşer, yeniden adlananlar taşınır
+(şablon adları ve kap satırları bunu ister).
+
 ## Yaratıcı arama
 
 Arama sekmesinin kutusu `EditBox`ın (`crates/photon-render/src/gui/widgets/edit_box.rs`) taşıdır: yazı,
@@ -78,8 +94,9 @@ yazınca elmas eşyalar listelendi.
 
 - `#etiket` aramasının ipucu satırları oracle'da çizilmedi (yalnız
   etiket kümesi karşılaştırılır).
-- Simya şablonu, harita, kap, kitap ve arı satırları, gelişmiş (F3+H) satırlar
-  ve macera modu yüklemleri yok.
+- Arı, kap ganimeti, saksı, yüklü mermi, tropikal balık, profil, sülfür küpü,
+  varlık ve spawner satırları, macera modu yüklemleri yok; `F3+H`
+  anahtarı yok (T93), oyunda gelişmiş satırlar kapalı.
 - Aramada kutuya fareyle tıklama, çift tıklamayla kelime seçme ve IME yok;
   seçim vurgusu referansın mantıksal işlemi yerine yarı saydam mavi.
 - Büyü sırası, ipucu sırası etiketinde olmayanlar için telden geldiği gibi;

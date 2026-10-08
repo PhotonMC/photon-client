@@ -6,9 +6,10 @@
 //! player head, compass), painting variants, disc fragments, instruments,
 //! fireworks and stars, potion and ominous bottle effects, jukebox songs,
 //! armour trims, enchantments, dye, lore, attribute modifiers, unbreakable,
-//! banner patterns, suspicious stew and beehive honey. Not ported: smithing
-//! templates, map, container, book and bee lines, the adventure predicates
-//! and the advanced lines (the `F3+H` toggle is off).
+//! banner patterns, suspicious stew, beehive honey, smithing templates, maps,
+//! container contents, written books and the advanced lines. Not ported: bee,
+//! container loot, pot, charged projectile, tropical fish, profile, sulfur
+//! cube, entity and spawner lines, and the adventure predicates.
 
 use crate::item::values::{AttributeDisplay, Explosion, PaintingVariant, Values};
 use crate::item_components::ids;
@@ -26,6 +27,8 @@ use photon_world::ClientItemStackState as Stack;
 pub struct Flags {
     /// `isCreative`: the creative inventory's hovered slot.
     pub creative: bool,
+    /// `isAdvanced`: the `F3+H` toggle.
+    pub advanced: bool,
 }
 
 /// The two base attributes a player's attribute modifiers are added to.
@@ -44,6 +47,9 @@ mod name;
 pub use name::*;
 mod lines;
 pub use lines::*;
+mod details;
+use details::*;
+pub use details::{MapInfo, Maps, no_maps};
 
 #[cfg(test)]
 mod tests {
@@ -83,6 +89,7 @@ mod tests {
             false,
             Flags::default(),
             &registries(),
+            &no_maps,
         );
         assert_eq!(lines.len(), 1);
     }
