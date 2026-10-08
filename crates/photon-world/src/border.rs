@@ -13,6 +13,17 @@ pub enum ClientWorldBorderStatus {
     Growing,
 }
 
+impl ClientWorldBorderStatus {
+    /// `BorderStatus.getColor()`.
+    pub fn color(self) -> i32 {
+        match self {
+            Self::Growing => 4_259_712,
+            Self::Shrinking => 16_724_016,
+            Self::Stationary => 2_138_367,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ClientWorldBorderExtent {
     Static {

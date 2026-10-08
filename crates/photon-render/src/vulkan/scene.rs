@@ -109,6 +109,8 @@ impl VulkanBackend {
             let dissolve_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Dissolve)?;
             let rays_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Rays)?;
+            let world_border_pipeline =
+                self.create_pipeline(descriptors.layout, PipelineKind::WorldBorder)?;
             let gui_invert_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::GuiInvert)?;
             let gui_item_pipeline =
@@ -142,6 +144,9 @@ impl VulkanBackend {
                 glint_pipeline,
                 dissolve_pipeline,
                 rays_pipeline,
+                world_border_pipeline,
+                world_border_texture: None,
+                world_border_set: None,
                 crack_texture: None,
                 crack_set: None,
                 entity_texture: None,

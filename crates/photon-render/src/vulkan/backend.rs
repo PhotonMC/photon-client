@@ -52,6 +52,9 @@ pub struct VulkanBackend {
     pub(super) weather_buffer: DynamicBuffer,
     /// The rain's and the snow's vertex counts in the weather buffer.
     pub(super) weather_counts: (u32, u32),
+    /// The world border overlay's triangles for the next frame.
+    pub(super) world_border_buffer: DynamicBuffer,
+    pub(super) world_border_count: u32,
     /// The entities' triangles for the next frame.
     pub(super) entity: DrawList,
     /// The dropped items' triangles, which sample the block atlas.

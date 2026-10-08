@@ -195,3 +195,187 @@ pub(super) fn client_world_border_state_case(request: &Value) -> Result<Value, S
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"tracks": tracks}))
 }
+
+fn border_side_name(side: u8) -> &'static str {
+    match side {
+        photon_render::border::SOUTH => "SOUTH",
+        photon_render::border::WEST => "WEST",
+        photon_render::border::NORTH => "NORTH",
+        _ => "EAST",
+    }
+}
+
+pub(super) fn world_border_render_case(request: &Value) -> Result<Value, String> {
+    let inputs = request
+        .get("inputs")
+        .ok_or("inputs must be an array")?
+        .as_array()
+        .ok_or("inputs must be an array")?;
+    let states = inputs
+        .iter()
+        .map(world_border_render_state)
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({"states": states}))
+}
+
+fn world_border_render_state(entry: &Value) -> Result<Value, String> {
+    let input = entry
+        .as_object()
+        .ok_or("world border input must be an object")?;
+    let center_x = f64_value(
+        input
+            .get("center_x")
+            .ok_or("center_x must be a bit string")?,
+        "center_x",
+    )?;
+    let center_z = f64_value(
+        input
+            .get("center_z")
+            .ok_or("center_z must be a bit string")?,
+        "center_z",
+    )?;
+    let absolute_max_size = input
+        .get("absolute_max_size")
+        .and_then(Value::as_i64)
+        .and_then(|value| i32::try_from(value).ok())
+        .ok_or("absolute_max_size must be an i32")?;
+
+    let border = if let Some(from_value) = input.get("from") {
+        let from = f64_value(from_value, "from")?;
+        let to = f64_value(input.get("to").ok_or("to must be a bit string")?, "to")?;
+        let duration = input
+            .get("duration")
+            .and_then(Value::as_i64)
+            .ok_or("duration must be an i64")?;
+        let ticks = input
+            .get("ticks")
+            .and_then(Value::as_i64)
+            .filter(|value| *value >= 0)
+            .ok_or("ticks must be a non-negative i64")?;
+        let mut border = ClientWorldBorder::new(center_x, center_z, absolute_max_size, from);
+        border.lerp_size_between(from, to, duration);
+        for _ in 0..ticks {
+            border.tick();
+        }
+        border
+    } else {
+        let size = f64_value(
+            input.get("size").ok_or("size must be a bit string")?,
+            "size",
+        )?;
+        ClientWorldBorder::new(center_x, center_z, absolute_max_size, size)
+    };
+
+    let partial_tick = f32_value(
+        input
+            .get("partial_tick")
+            .ok_or("partial_tick must be a bit string")?,
+        "partial_tick",
+    )?;
+    let camera_x = f64_value(
+        input
+            .get("camera_x")
+            .ok_or("camera_x must be a bit string")?,
+        "camera_x",
+    )?;
+    let camera_y = f64_value(
+        input
+            .get("camera_y")
+            .ok_or("camera_y must be a bit string")?,
+        "camera_y",
+    )?;
+    let camera_z = f64_value(
+        input
+            .get("camera_z")
+            .ok_or("camera_z must be a bit string")?,
+        "camera_z",
+    )?;
+    let render_distance = f64_value(
+        input
+            .get("render_distance")
+            .ok_or("render_distance must be a bit string")?,
+        "render_distance",
+    )?;
+    let half_height_y = f32_value(
+        input
+            .get("half_height_y")
+            .ok_or("half_height_y must be a bit string")?,
+        "half_height_y",
+    )?;
+    let time_millis = input
+        .get("time_millis")
+        .and_then(Value::as_i64)
+        .ok_or("time_millis must be an i64")?;
+
+    let min_x = border.min_x(partial_tick);
+    let max_x = border.max_x(partial_tick);
+    let min_z = border.min_z(partial_tick);
+    let max_z = border.max_z(partial_tick);
+    let status_color = border.status().color();
+
+    let extract = photon_render::border::extract(
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+        status_color,
+        camera_x,
+        camera_z,
+        render_distance,
+    );
+
+    let closest =
+        photon_render::border::closest_sides(min_x, max_x, min_z, max_z, camera_x, camera_z)
+            .into_iter()
+            .map(|(side, distance)| {
+                json!({
+                    "direction": border_side_name(side),
+                    "distance": format!("{:016x}", distance.to_bits()),
+                })
+            })
+            .collect::<Vec<_>>();
+
+    let quads = if extract.alpha <= 0.0 {
+        Vec::new()
+    } else {
+        photon_render::border::quads(
+            min_x,
+            max_x,
+            min_z,
+            max_z,
+            [camera_x, camera_y, camera_z],
+            [0, 0, 0],
+            render_distance,
+            half_height_y,
+            time_millis,
+            extract.tint,
+            extract.alpha as f32,
+        )
+        .into_iter()
+        .map(|(side, corners)| {
+            json!({
+                "side": border_side_name(side),
+                "corners": corners
+                    .iter()
+                    .map(|vertex| json!({
+                        "x": format!("{:08x}", vertex.position[0].to_bits()),
+                        "y": format!("{:08x}", vertex.position[1].to_bits()),
+                        "z": format!("{:08x}", vertex.position[2].to_bits()),
+                        "u": format!("{:08x}", vertex.uv[0].to_bits()),
+                        "v": format!("{:08x}", vertex.uv[1].to_bits()),
+                    }))
+                    .collect::<Vec<_>>(),
+            })
+        })
+        .collect::<Vec<_>>()
+    };
+
+    Ok(json!({
+        "alpha": format!("{:016x}", extract.alpha.to_bits()),
+        "tint_red": format!("{:08x}", extract.tint[0].to_bits()),
+        "tint_green": format!("{:08x}", extract.tint[1].to_bits()),
+        "tint_blue": format!("{:08x}", extract.tint[2].to_bits()),
+        "closest": closest,
+        "quads": quads,
+    }))
+}

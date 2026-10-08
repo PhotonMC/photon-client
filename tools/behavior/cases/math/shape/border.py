@@ -78,3 +78,50 @@ def cases():
                 {"op": "warning_time", "value": 0},
             ]},
            ]}
+
+    yield {"case_id": "shape/world-border-render/extract-and-quads", "family": "math",
+           "operation": "shape", "kind": "world_border_render",
+           "inputs": [
+            # Stationary, camera close to the +X edge only: one quad (EAST).
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "absolute_max_size": 1000, "size": float_bits(100.0, "f64"),
+             "partial_tick": float_bits(0.0, "f32"),
+             "camera_x": float_bits(45.0, "f64"), "camera_y": float_bits(70.0, "f64"),
+             "camera_z": float_bits(0.0, "f64"), "render_distance": float_bits(16.0, "f64"),
+             "half_height_y": float_bits(8.0, "f32"), "time_millis": 0},
+            # Stationary, camera near the +X/+Z corner: tied distances on
+            # SOUTH and EAST (quads on both, in that stable-sort order).
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "absolute_max_size": 1000, "size": float_bits(100.0, "f64"),
+             "partial_tick": float_bits(0.0, "f32"),
+             "camera_x": float_bits(45.0, "f64"), "camera_y": float_bits(70.0, "f64"),
+             "camera_z": float_bits(45.0, "f64"), "render_distance": float_bits(16.0, "f64"),
+             "half_height_y": float_bits(8.0, "f32"), "time_millis": 0},
+            # Far from every edge and outside the padded bounding box: zero
+            # alpha, no quads, but `closest` is still reported.
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "absolute_max_size": 10000, "size": float_bits(100.0, "f64"),
+             "partial_tick": float_bits(0.0, "f32"),
+             "camera_x": float_bits(1000.0, "f64"), "camera_y": float_bits(70.0, "f64"),
+             "camera_z": float_bits(1000.0, "f64"), "render_distance": float_bits(16.0, "f64"),
+             "half_height_y": float_bits(8.0, "f32"), "time_millis": 0},
+            # Growing mid-lerp, fractional partial tick and camera Y (so
+            # `v0`'s `frac(cameraY * 0.5)` is non-trivial), non-zero and
+            # wrapping `time_millis` for the texture scroll.
+            {"center_x": float_bits(10.0, "f64"), "center_z": float_bits(-5.0, "f64"),
+             "absolute_max_size": 1000, "from": float_bits(20.0, "f64"),
+             "to": float_bits(60.0, "f64"), "duration": 8, "ticks": 4,
+             "partial_tick": float_bits(0.5, "f32"),
+             "camera_x": float_bits(39.0, "f64"), "camera_y": float_bits(71.3, "f64"),
+             "camera_z": float_bits(-5.0, "f64"), "render_distance": float_bits(16.0, "f64"),
+             "half_height_y": float_bits(10.0, "f32"), "time_millis": 4200},
+            # Shrinking mid-lerp, camera on the WEST side, a different
+            # `half_height_y` and a `time_millis` under one scroll period.
+            {"center_x": float_bits(0.0, "f64"), "center_z": float_bits(0.0, "f64"),
+             "absolute_max_size": 1000, "from": float_bits(100.0, "f64"),
+             "to": float_bits(40.0, "f64"), "duration": 10, "ticks": 3,
+             "partial_tick": float_bits(1.0, "f32"),
+             "camera_x": float_bits(-40.0, "f64"), "camera_y": float_bits(70.0, "f64"),
+             "camera_z": float_bits(2.0, "f64"), "render_distance": float_bits(16.0, "f64"),
+             "half_height_y": float_bits(8.0, "f32"), "time_millis": 900},
+           ]}

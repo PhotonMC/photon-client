@@ -54,7 +54,13 @@ impl VulkanBackend {
                         }
                     }
                     Pass::Clouds => self.record_clouds(scene),
-                    Pass::Weather => self.record_weather(scene, &terrain_push),
+                    Pass::Weather => {
+                        self.record_weather(scene, &terrain_push);
+                        // The reference draws the world border in the same
+                        // pass, right after the rain and snow
+                        // (`LevelRenderer.addWeatherPass`).
+                        self.record_world_border(scene, &terrain_push);
+                    }
                     Pass::Hand => self.record_hand(scene, &terrain_push),
                     Pass::Gui => self.record_gui(scene),
                 }
@@ -302,6 +308,33 @@ impl VulkanBackend {
                     (first, count),
                 );
             }
+        }
+    }
+
+    /// The world border overlay, over everything the weather pass already drew, leaving the depth
+    /// alone except for its own small bias.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope; `scene` is live.
+    unsafe fn record_world_border(&self, scene: &SceneResources, terrain_push: &[f32; 40]) {
+        let (Some(buffer), Some(set)) = (self.world_border_buffer.as_ref(), scene.world_border_set)
+        else {
+            return;
+        };
+        let push = [(
+            vk::ShaderStageFlags::VERTEX,
+            0,
+            &as_bytes(terrain_push)[..64],
+        )];
+        // SAFETY: recording (see `# Safety`).
+        unsafe {
+            self.draw_vertices(
+                &scene.world_border_pipeline,
+                (Some(set), &push),
+                buffer,
+                (0, self.world_border_count),
+            );
         }
     }
 

@@ -9,7 +9,7 @@ use photon_render::block::biome_tint::BiomeTints;
 use photon_render::sky::{Attributes, Environment, SkySprites};
 
 use crate::view::CLOUD_RANGE;
-use crate::world::atmosphere::{Clouds, Flicker, rain_fog_target, weather};
+use crate::world::atmosphere::{Clouds, Flicker, rain_fog_target, weather, world_border};
 
 /// Where the sky is seen from this frame.
 pub struct SkyCamera {
@@ -116,6 +116,19 @@ impl Sky {
         self.rain_fog += (target - self.rain_fog) * camera.frame_ticks * 0.2;
         let weather = weather(session, tints, camera.eye, camera.origin, partial);
         backend.set_weather(&weather.rain, &weather.snow)?;
+        let time_millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_millis() as i64);
+        let border_vertices = world_border(
+            session,
+            camera.eye,
+            camera.origin,
+            partial,
+            camera.render_distance,
+            CLOUD_RANGE,
+            time_millis,
+        );
+        backend.set_world_border(&border_vertices)?;
         let (y_rot, x_rot) = camera.rotation;
         let look = Vec3::direction_from_rotation_components(x_rot, y_rot);
         let sky = photon_render::sky::build_frame(

@@ -3,6 +3,7 @@
 use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::{BiomeTints, Precipitation};
+use photon_render::scene::Vertex;
 
 /// `AtmosphericFogEnvironment.updateRainFogState`'s target: rain pulls the
 /// fog in where the camera sees the sky, half as much in a biome without
@@ -68,6 +69,60 @@ pub fn weather(
         partial,
         session.rain_level(),
     )
+}
+
+/// The world border overlay's triangles, placed like the terrain's:
+/// `WorldBorderRenderer.extract` and the quads its `render` lays out, with
+/// nothing to draw once `extract` leaves the border transparent.
+pub fn world_border(
+    session: &PlaySession,
+    eye: Vec3,
+    origin: [i32; 3],
+    partial: f32,
+    render_distance_chunks: i32,
+    cloud_range_chunks: i32,
+    time_millis: i64,
+) -> Vec<Vertex> {
+    let border = session.world().world_border();
+    let min_x = border.min_x(partial);
+    let max_x = border.max_x(partial);
+    let min_z = border.min_z(partial);
+    let max_z = border.max_z(partial);
+    let render_distance = f64::from(render_distance_chunks * 16);
+    let extract = photon_render::border::extract(
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+        border.status().color(),
+        eye.x,
+        eye.z,
+        render_distance,
+    );
+    if extract.alpha <= 0.0 {
+        return Vec::new();
+    }
+    // `Camera.update`'s `depthFar`: four times the render distance, or the
+    // cloud range if that is farther.
+    let half_height_y =
+        ((render_distance_chunks * 16 * 4) as f32).max((cloud_range_chunks * 16) as f32);
+    let mut vertices = Vec::new();
+    for (_, quad) in photon_render::border::quads(
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+        [eye.x, eye.y, eye.z],
+        origin,
+        render_distance,
+        half_height_y,
+        time_millis,
+        extract.tint,
+        extract.alpha as f32,
+    ) {
+        vertices.extend(photon_render::border::triangulate(quad));
+    }
+    vertices
 }
 
 /// `LightmapRenderStateExtractor`'s block light flicker: it wanders by a

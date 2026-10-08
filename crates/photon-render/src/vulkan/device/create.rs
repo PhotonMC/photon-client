@@ -98,6 +98,8 @@ impl VulkanBackend {
                 cloud_buffer: None,
                 weather_buffer: DynamicBuffer::default(),
                 weather_counts: (0, 0),
+                world_border_buffer: DynamicBuffer::default(),
+                world_border_count: 0,
                 entity: DrawList::default(),
                 ground: DrawList::default(),
                 name_tag_see: DrawList::default(),

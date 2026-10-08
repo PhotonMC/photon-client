@@ -251,6 +251,19 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the next frame's world border overlay triangles, placed
+    /// like the terrain's.
+    pub fn set_world_border(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let mut slot = std::mem::take(&mut self.world_border_buffer);
+        // SAFETY: live handles; `fill_dynamic` waits for the frames that may draw the buffer it
+        // replaces.
+        let written = unsafe { self.fill_dynamic(&mut slot, &[as_bytes(vertices)], 1 << 16) };
+        self.world_border_buffer = slot;
+        written?;
+        self.world_border_count = vertices.len() as u32;
+        Ok(())
+    }
+
     /// Replace the clouds' faces, placed from the camera's cell corner.
     pub fn set_cloud_faces(
         &mut self,

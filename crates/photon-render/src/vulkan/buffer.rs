@@ -69,6 +69,9 @@ pub(super) enum PipelineKind {
     Dissolve,
     /// The dying dragon's rays (`DRAGON_RAYS`): coloured triangles added to what is behind.
     Rays,
+    /// The world border overlay (`WORLD_BORDER`): the forcefield texture, tinted and blended by
+    /// `BlendFunction.OVERLAY`, pulled towards the camera by a depth bias.
+    WorldBorder,
 }
 
 /// Instance API version the reference asks for.
@@ -194,6 +197,10 @@ pub(super) struct SceneResources {
     pub(super) glint_pipeline: Pipeline,
     pub(super) dissolve_pipeline: Pipeline,
     pub(super) rays_pipeline: Pipeline,
+    pub(super) world_border_pipeline: Pipeline,
+    /// The forcefield texture, once loaded, with its set.
+    pub(super) world_border_texture: Option<Texture>,
+    pub(super) world_border_set: Option<vk::DescriptorSet>,
     pub(super) crack_texture: Option<Texture>,
     pub(super) crack_set: Option<vk::DescriptorSet>,
     /// The skin entities are drawn with.

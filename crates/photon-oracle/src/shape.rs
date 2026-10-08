@@ -75,6 +75,7 @@ pub(super) fn shape_result(request: &Value) -> Result<Value, String> {
         "world_border_collision_shape" => world_border_collision_shape_case(request),
         "world_border_collision_shape_moving" => world_border_collision_shape_moving_case(request),
         "client_world_border_state" => client_world_border_state_case(request),
+        "world_border_render" => world_border_render_case(request),
         "collect_step_up_heights" => collect_step_up_heights_case(request),
         "select_step_up_movement" => select_step_up_movement_case(request),
         "collect_block_collisions" => collect_block_collisions_case(request),

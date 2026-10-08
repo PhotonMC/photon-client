@@ -31,6 +31,7 @@ impl VulkanBackend {
         let weather = kind == PipelineKind::Weather;
         let dissolve = kind == PipelineKind::Dissolve;
         let rays = kind == PipelineKind::Rays;
+        let world_border = kind == PipelineKind::WorldBorder;
         let entity = kind == PipelineKind::Entity || dissolve;
         let shadow = kind == PipelineKind::Shadow;
         let swirl = kind == PipelineKind::Swirl;
@@ -56,6 +57,8 @@ impl VulkanBackend {
                 (ENTITY_VERTEX_SHADER, DISSOLVE_FRAGMENT_SHADER)
             } else if rays {
                 (RAYS_VERTEX_SHADER, RAYS_FRAGMENT_SHADER)
+            } else if world_border {
+                (WORLD_BORDER_VERTEX_SHADER, WORLD_BORDER_FRAGMENT_SHADER)
             } else if entity {
                 (ENTITY_VERTEX_SHADER, ENTITY_FRAGMENT_SHADER)
             } else if swirl {
@@ -300,6 +303,7 @@ impl VulkanBackend {
                         || swirl
                         || glint
                         || rays
+                        || world_border
                         || text
                         || text_see_through
                         || gui
@@ -314,10 +318,24 @@ impl VulkanBackend {
                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
                 .line_width(1.0)
                 // The crack is pulled towards the camera so it wins over the
-                // block's own faces: the reference's polygon offset.
-                .depth_bias_enable(crumbling)
-                .depth_bias_constant_factor(if crumbling { 10.0 } else { 0.0 })
-                .depth_bias_slope_factor(if crumbling { 1.0 } else { 0.0 });
+                // block's own faces: the reference's polygon offset. The
+                // world border overlay gets its own, smaller offset
+                // (`DepthStencilState`'s own bias factors).
+                .depth_bias_enable(crumbling || world_border)
+                .depth_bias_constant_factor(if crumbling {
+                    10.0
+                } else if world_border {
+                    3.0
+                } else {
+                    0.0
+                })
+                .depth_bias_slope_factor(if crumbling {
+                    1.0
+                } else if world_border {
+                    3.0
+                } else {
+                    0.0
+                });
             let multisample = vk::PipelineMultisampleStateCreateInfo::default()
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
@@ -339,6 +357,7 @@ impl VulkanBackend {
                         | PipelineKind::Text
                         | PipelineKind::Lines
                         | PipelineKind::GuiItem
+                        | PipelineKind::WorldBorder
                 ))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if crumbling {
@@ -362,8 +381,9 @@ impl VulkanBackend {
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::SkyOverlay || rays {
-                // Added by its alpha (`BlendFunction.LIGHTNING`).
+            } else if kind == PipelineKind::SkyOverlay || rays || world_border {
+                // Added by its alpha (`BlendFunction.LIGHTNING`/`BlendFunction.OVERLAY`:
+                // the same factors).
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)
                     .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)

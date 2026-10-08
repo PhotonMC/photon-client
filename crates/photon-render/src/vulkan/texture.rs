@@ -258,6 +258,68 @@ impl VulkanBackend {
         }
     }
 
+    /// Load the forcefield texture the world border overlay samples,
+    /// sampled at the nearest texel and repeating, as the reference's
+    /// plain resource textures are.
+    pub fn load_world_border_texture(
+        &mut self,
+        forcefield: &DecodedImage,
+    ) -> Result<(), VulkanError> {
+        if self
+            .scene
+            .as_ref()
+            .is_none_or(|scene| scene.world_border_set.is_some())
+        {
+            return Ok(());
+        }
+        // SAFETY: live handles; this only creates objects and stores them in the scene.
+        unsafe {
+            let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptors.layout) else {
+                return Ok(());
+            };
+            let pool = self.scene.as_ref().expect("checked above").descriptors.pool;
+            let sampler = self
+                .device
+                .create_sampler(
+                    &vk::SamplerCreateInfo::default()
+                        .mag_filter(vk::Filter::NEAREST)
+                        .min_filter(vk::Filter::NEAREST)
+                        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+                        .address_mode_u(vk::SamplerAddressMode::REPEAT)
+                        .address_mode_v(vk::SamplerAddressMode::REPEAT)
+                        .address_mode_w(vk::SamplerAddressMode::REPEAT)
+                        .max_lod(0.0),
+                    None,
+                )
+                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+            let sampler = Sampler::new(&self.device, sampler);
+            let image = self.upload_texture(std::slice::from_ref(forcefield))?;
+            let layouts = [layout];
+            let set = self
+                .device
+                .allocate_descriptor_sets(
+                    &vk::DescriptorSetAllocateInfo::default()
+                        .descriptor_pool(pool)
+                        .set_layouts(&layouts),
+                )
+                .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
+            let image_info = [vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(image.view)
+                .sampler(sampler.handle)];
+            let write = vk::WriteDescriptorSet::default()
+                .dst_set(set)
+                .dst_binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .image_info(&image_info);
+            self.device.update_descriptor_sets(&[write], &[]);
+            let scene = self.scene.as_mut().expect("checked above");
+            scene.world_border_texture = Some(Texture { image, sampler });
+            scene.world_border_set = Some(set);
+            Ok(())
+        }
+    }
+
     /// Load the skin entities are drawn with, sampled texel by texel.
     /// Hand over the ten crack stages, stacked top to bottom in one image.
     pub fn load_crack_texture(&mut self, stages: &DecodedImage) -> Result<(), VulkanError> {

@@ -45,6 +45,7 @@ class MathShapeOracle extends MathLocalPlayerOracle {
             case "world_border_collision_shape" -> shapeworldBorderCollisionShapeCase(request);
             case "world_border_collision_shape_moving" -> shapeworldBorderCollisionShapeMovingCase(request);
             case "client_world_border_state" -> shapeclientWorldBorderStateCase(request);
+            case "world_border_render" -> shapeworldBorderRenderCase(request);
             case "client_world_collision" -> shapeclientWorldCollisionCase(request);
             case "client_world_indexed_collision" -> shapeclientWorldIndexedCollisionCase(request);
             case "client_world_entity_section_index" -> shapeclientWorldEntitySectionIndexCase(request);

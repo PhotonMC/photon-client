@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %78 bitti** (ağırlıklı) · 234/287 madde işaretli, **53 madde kaldı** (tahmini 97 M-görev eşdeğeri iş).
+**Toplam: %78 bitti** (ağırlıklı) · 235/287 madde işaretli, **52 madde kaldı** (tahmini 96 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `█████████████░░░░░░░` | 63 | 23/35 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `███████████████░░░░░` | 75 | 31/41 |
+| M8 Partikül, efekt ve blok entity | `███████████████░░░░░` | 77 | 32/41 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T89, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T78e, T78d, T81, T82, T83b, T84b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T51, T52, T58, T59, T47b, T85b, T86d, T88, T89, T90, T91, T92, T93, T94b, T95, T96, T64d, T70i, T74c, T75b, T76c, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -319,7 +319,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T83](T83-hasar-ve-etki-orturleri.md) Hasarda kameranın eğilmesi (`bobHurt`) — M · bitti (4641bad8)
 - [ ] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri ve etki sisleri — M · bağımlı: T83
 - [x] [T84](T84-dunya-siniri.md) Dünya sınırı: paketler ve çarpışma — M · bitti (33f8b5f5)
-- [ ] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84
+- [x] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84 · bitti
 
 ### M9 Sunucu uyumluluğu
 

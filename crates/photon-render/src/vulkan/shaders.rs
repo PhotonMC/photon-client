@@ -49,3 +49,5 @@ pub(super) const SKY_FRAGMENT_SHADER: Shader = shader!("sky.frag");
 pub(super) const CLOUD_VERTEX_SHADER: Shader = shader!("cloud.vert");
 pub(super) const CLOUD_FRAGMENT_SHADER: Shader = shader!("cloud.frag");
 pub(super) const WEATHER_FRAGMENT_SHADER: Shader = shader!("weather.frag");
+pub(super) const WORLD_BORDER_VERTEX_SHADER: Shader = shader!("world_border.vert");
+pub(super) const WORLD_BORDER_FRAGMENT_SHADER: Shader = shader!("world_border.frag");
