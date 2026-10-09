@@ -275,7 +275,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M · bölündü (0c4fd423)
 - [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (47232984)
 - [x] [T96c](T96c-sosyal-etkilesimler.md) Sosyal etkileşimler ekranı — M · bağımlı: T85 · bölündü (3d7b02b8)
-- [x] [T96d](T96d-sosyal-baglama.md) Sosyal etkileşimler ekranını oyuna bağla (tıklama, yazma, P tuşu, sohbet süzgeci) — M · bağımlı: T96c · bitti (HASH)
+- [x] [T96d](T96d-sosyal-baglama.md) Sosyal etkileşimler ekranını oyuna bağla (tıklama, yazma, P tuşu, sohbet süzgeci) — M · bağımlı: T96c · bitti (4c552ca0)
 
 ### M7 Ses
 
