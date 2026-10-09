@@ -17,6 +17,8 @@ mod title;
 use title::*;
 mod signs;
 use signs::*;
+mod social;
+use social::*;
 mod books;
 use books::*;
 mod keybinds;
@@ -93,6 +95,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,
             "credits_screen" => credits_screen_case(&mut ctx, row)?,
+            "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
             "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
             "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,
             "hud_status" => hud_status_case(&mut ctx, row)?,

@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %81 bitti** (ağırlıklı) · 259/301 madde işaretli, **42 madde kaldı** (tahmini 85 M-görev eşdeğeri iş).
+**Toplam: %81 bitti** (ağırlıklı) · 261/302 madde işaretli, **41 madde kaldı** (tahmini 84 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,15 +39,15 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `███████████████████░` | 95 | 19/20 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `████████████████░░░░` | 78 | 32/39 |
+| M6 Ekranlar ve ayarlar | `████████████████░░░░` | 79 | 33/40 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
 | M8 Partikül, efekt ve blok entity | `████████████████░░░░` | 79 | 34/42 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
-| Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
+| Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T90, T91, T92, T93, T95, T96c, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T90, T91, T92, T93, T95, T96d, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -273,7 +273,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
 - [x] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M · bölündü (0c4fd423)
 - [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (47232984)
-- [ ] [T96c](T96c-sosyal-etkilesimler.md) Sosyal etkileşimler ekranı — M · bağımlı: T85
+- [x] [T96c](T96c-sosyal-etkilesimler.md) Sosyal etkileşimler ekranı — M · bağımlı: T85 · bölündü (HASH)
+- [ ] [T96d](T96d-sosyal-baglama.md) Sosyal etkileşimler ekranını oyuna bağla (tıklama, yazma, P tuşu, sohbet süzgeci) — M · bağımlı: T96c
 
 ### M7 Ses
 
@@ -352,7 +353,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] **K-B1** Hareket kalanları: uçuş, elytra, auto-jump, portal, dimension (P10.d/e, P11.c) — L×3
 - [ ] **K-B2** Kamera kalanları: üçüncü şahıs çarpışması, yumuşatma, sıvı kontrolü (P14) — M×2
 - [ ] **K-B3** Işık/görüntü kalanları: AO, nether ışığı, gece görüşü, bulanıklık — M×3
-- [ ] [Q04](Q04-math-log-intrinsic.md) `Math.log`'un JVM intrinsic'i ile bit eşitliği (kapıdaki particle-engine farkı; lisans kararı bekliyor) — M
+- [x] [Q04](Q04-math-log-intrinsic.md) `Math.*` intrinsic'leri: oracle JVM'i fdlibm'e sabitlendi, Rust fdlibm portları — M · bitti (05067e83)
 
 ### Kod kalitesi ve performans
 

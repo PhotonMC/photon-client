@@ -588,6 +588,7 @@
         "GuiSettingsOracle.java",
         "GuiSignOracle.java",
         "GuiCreditsOracle.java",
+        "GuiSocialOracle.java",
         "GuiTitleOracle.java",
         "GuiTooltipOracle.java",
         "MovementAnimalEvents.java",

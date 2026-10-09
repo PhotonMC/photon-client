@@ -10,7 +10,8 @@ use photon_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 11] = [
+const SPRITE_FOLDERS: [&str; 12] = [
+    "social_interactions",
     "gamemode_switcher",
     "boss_bar",
     "server_list",
@@ -133,6 +134,38 @@ fn register_folder(
     Some(())
 }
 
+/// The whole textures screens blit parts of (`WHOLE_TEXTURES`), and the default skins whose
+/// faces the social screen draws, stitched under `minecraft:texture/<name>`.
+fn register_whole_textures(
+    stitcher: &mut Stitcher,
+    images: &mut BTreeMap<String, DecodedImage>,
+    assets_root: &Path,
+) -> Option<()> {
+    let skins =
+        crate::entity::player_renderer::skin_textures().map(|name| format!("textures/{name}"));
+    let wholes = WHOLE_TEXTURES
+        .iter()
+        .map(|name| (*name).to_owned())
+        .chain(skins);
+    for name in wholes {
+        // A name with its folder (`textures/misc/...`) is outside `textures/gui`.
+        let path = if name.starts_with("textures/") {
+            assets_root.join(format!("minecraft/{name}.png"))
+        } else {
+            assets_root.join(format!("minecraft/textures/gui/{name}.png"))
+        };
+        let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+        let key = format!("minecraft:texture/{name}");
+        stitcher.register_sprite(SpriteEntry {
+            width: image.width as i32,
+            height: image.height as i32,
+            name: Identifier::parse(&key).ok()?,
+        });
+        images.insert(key, image);
+    }
+    Some(())
+}
+
 /// How many server icons the atlas holds at once.
 const FAVICON_SLOTS: usize = 32;
 /// `FaviconTexture`'s width and height.
@@ -209,22 +242,7 @@ impl GuiAtlas {
             });
             images.insert(format!("minecraft:{name}"), image);
         }
-        for name in WHOLE_TEXTURES {
-            // A name with its folder (`textures/misc/...`) is outside `textures/gui`.
-            let path = if name.starts_with("textures/") {
-                assets_root.join(format!("minecraft/{name}.png"))
-            } else {
-                assets_root.join(format!("minecraft/textures/gui/{name}.png"))
-            };
-            let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
-            let key = format!("minecraft:texture/{name}");
-            stitcher.register_sprite(SpriteEntry {
-                width: image.width as i32,
-                height: image.height as i32,
-                name: Identifier::parse(&key).ok()?,
-            });
-            images.insert(key, image);
-        }
+        register_whole_textures(&mut stitcher, &mut images, assets_root)?;
         // The boards the sign editing screens show, one per wood, and the
         // banner patterns' textures, which the loom's buttons show a piece of.
         let textures = assets_root.join("minecraft/textures");

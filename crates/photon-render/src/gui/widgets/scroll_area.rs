@@ -40,11 +40,7 @@ impl Place {
     /// `scrollerHeight`.
     pub fn scroller_height(&self, content_height: i32) -> i32 {
         let share = ((self.height * self.height) as f32 / content_height as f32) as i32;
-        if share < SCROLLBAR_MIN_HEIGHT {
-            SCROLLBAR_MIN_HEIGHT
-        } else {
-            share.min(self.height - 8)
-        }
+        share.max(SCROLLBAR_MIN_HEIGHT).min(self.height - 8)
     }
 
     /// `scrollBarY`.
