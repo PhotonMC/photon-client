@@ -45,6 +45,7 @@ use crate::frame_timing::{BackendTimings, GpuTimings, TIMESTAMP_COUNT};
 use crate::scene::{BlockVertex, Mesh, Vertex};
 use crate::texture::png::DecodedImage;
 
+mod blur;
 mod bytes;
 mod device;
 mod draws;

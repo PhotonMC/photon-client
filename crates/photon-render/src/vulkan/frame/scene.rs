@@ -24,6 +24,9 @@ impl VulkanBackend {
                 return;
             };
             self.stamp(0);
+            if self.gui_only && self.blur_active() {
+                self.record_blurred_panorama(scene);
+            }
             self.begin_rendering(self.image_views[index], depth.view);
             // The terrain shaders also take the lightmap's inputs, the camera and the fog; most
             // runs push the same.

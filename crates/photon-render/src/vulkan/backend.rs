@@ -50,6 +50,8 @@ pub struct VulkanBackend {
     pub(super) pending_sky: Option<PendingSky>,
     /// The title screen's cube map: where it is seen from, column by column; none to draw none.
     pub(super) panorama_view: Option<[f32; 16]>,
+    /// How far the cube is blurred, in texels; 0 for not at all.
+    pub(super) panorama_blur: u32,
     pub(super) cloud_buffer: Option<CloudBuffer>,
     pub(super) weather_buffer: DynamicBuffer,
     /// The rain's and the snow's vertex counts in the weather buffer.

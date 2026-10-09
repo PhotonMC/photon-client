@@ -25,4 +25,6 @@ Oyun içi ekran örtüsü (`extractTransparentBackground`), `blur` dışındaki 
 `docs/gui-oracle.md`.
 
 ## Devir notu
-(boş)
+- Yapılan: `vulkan/blur.rs`: küp ekran dışı görüntüye çizilir, `box_blur` (yatay/dikey, üç tur, bilinear) iki görüntü üzerinde uygulanır, sonuç GUI'nin altına kopyalanır (`screenquad.vert`, `blur.frag`, `copy.frag`). Menüde başlık dışındaki her ekranda (seviye yükleme dahil) yarıçap 5.
+- Sapma: `menuBackgroundBlurriness` seçeneği okunmuyor, sabit 5 (T95). Çekirdek GLSL'de, Java ile bit karşılaştırması yok; kabul `shot` benzeri menü yakalamasıyla (sunucu listesi). GUI oracle'ı bulanıklık işaretini kaydetmiyor; hangi ekranın bulandığı `menu.rs`'te elle (Java `extractBackground` okunarak).
+- Açık: oyun içi menüler (duraklatma vb.) dünyayı bulandırır; ayrı iş.

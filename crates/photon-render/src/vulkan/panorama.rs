@@ -1,14 +1,15 @@
 //! The title screen's panorama (`CubeMap`): six faces in one cube image, drawn as a cube round the
 //! camera before the GUI.
 
-use super::shaders::{PANORAMA_FRAGMENT_SHADER, PANORAMA_VERTEX_SHADER};
+use super::shaders::{PANORAMA_FRAGMENT_SHADER, PANORAMA_VERTEX_SHADER, Shader};
 use super::*;
 
 /// The cube image, the set that samples it and the pipeline that draws the cube.
 pub(super) struct PanoramaScene {
     _texture: Texture,
-    set: vk::DescriptorSet,
+    pub(super) set: vk::DescriptorSet,
     pipeline: Pipeline,
+    pub(super) blur: super::blur::BlurScene,
 }
 
 /// The cube's vertices: six quads of two triangles, generated in the vertex shader.
@@ -70,10 +71,12 @@ impl VulkanBackend {
                 &[],
             );
             let pipeline = self.create_panorama_pipeline(layout)?;
+            let blur = self.create_blur_scene(layout, pool)?;
             self.scene.as_mut().expect("checked above").panorama = Some(PanoramaScene {
                 _texture: Texture { image, sampler },
                 set,
                 pipeline,
+                blur,
             });
             Ok(())
         }
@@ -98,6 +101,10 @@ impl VulkanBackend {
         // SAFETY: recording (see `# Safety`); the pipeline and set are live and the cube needs no
         // vertex buffer.
         unsafe {
+            if self.blur_active() {
+                self.draw_blurred_panorama(scene);
+                return;
+            }
             self.bind_state(
                 &panorama.pipeline,
                 Some(panorama.set),
@@ -220,6 +227,31 @@ impl VulkanBackend {
         &self,
         descriptor_layout: vk::DescriptorSetLayout,
     ) -> Result<Pipeline, VulkanError> {
+        // SAFETY: the caller's contract.
+        unsafe {
+            self.create_plain_pipeline(
+                descriptor_layout,
+                (&PANORAMA_VERTEX_SHADER, &PANORAMA_FRAGMENT_SHADER),
+                (vk::ShaderStageFlags::VERTEX, 64),
+                true,
+            )
+        }
+    }
+
+    /// A pipeline with no vertex input and nothing blended or depth tested: the shaders, the
+    /// stage and size of its push constants, and whether the target it draws to has a depth
+    /// attachment.
+    ///
+    /// # Safety
+    ///
+    /// Live handles; `descriptor_layout` belongs to this device.
+    pub(super) unsafe fn create_plain_pipeline(
+        &self,
+        descriptor_layout: vk::DescriptorSetLayout,
+        (vertex, fragment): (&Shader, &Shader),
+        (push_stage, push_size): (vk::ShaderStageFlags, u32),
+        with_depth: bool,
+    ) -> Result<Pipeline, VulkanError> {
         // SAFETY: the shader modules are made from the embedded SPIR-V and destroyed once the
         // pipeline is built, and every create-info points at locals that outlive its call.
         unsafe {
@@ -228,8 +260,8 @@ impl VulkanBackend {
                     .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(&code), None)
                     .map_err(|result| VulkanError::Call("vkCreateShaderModule", result))
             };
-            let vertex_module = make_module(PANORAMA_VERTEX_SHADER.words())?;
-            let fragment_module = make_module(PANORAMA_FRAGMENT_SHADER.words())?;
+            let vertex_module = make_module(vertex.words())?;
+            let fragment_module = make_module(fragment.words())?;
             let entry = CString::new("main").expect("static name");
             let stages = [
                 vk::PipelineShaderStageCreateInfo::default()
@@ -262,8 +294,8 @@ impl VulkanBackend {
                 .color_write_mask(vk::ColorComponentFlags::RGBA)];
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
             let push_ranges = [vk::PushConstantRange::default()
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
-                .size(64)];
+                .stage_flags(push_stage)
+                .size(push_size)];
             let set_layouts = [descriptor_layout];
             let pipeline_layout = self
                 .device
@@ -277,11 +309,13 @@ impl VulkanBackend {
             let colour_formats = [self.description.surface_format];
             let mut rendering = vk::PipelineRenderingCreateInfo::default()
                 .color_attachment_formats(&colour_formats)
-                .depth_attachment_format(
+                .depth_attachment_format(if with_depth {
                     self.depth
                         .as_ref()
-                        .map_or(vk::Format::UNDEFINED, |d| d.format),
-                );
+                        .map_or(vk::Format::UNDEFINED, |d| d.format)
+                } else {
+                    vk::Format::UNDEFINED
+                });
             let create = vk::GraphicsPipelineCreateInfo::default()
                 .stages(&stages)
                 .vertex_input_state(&vertex_input)

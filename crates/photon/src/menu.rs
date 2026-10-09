@@ -185,6 +185,16 @@ impl Menu {
         // `panoramaScrollSpeed` is not read yet; its default is a full speed.
         self.spin = photon_render::panorama::spin_after(self.spin, ticks, 1.0);
         let extent = client.backend.description().extent;
+        // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
+        // background of its own. `menuBackgroundBlurriness` is not read yet; its default is 5.
+        let blur = if matches!(self.screen, Screen::Title(_)) {
+            0
+        } else {
+            5
+        };
+        if let Err(error) = client.backend.set_panorama_blur(blur) {
+            log::warn!("panorama blur: {error:?}");
+        }
         client
             .backend
             .set_panorama(Some(photon_render::panorama::view_projection(
