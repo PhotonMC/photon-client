@@ -498,6 +498,16 @@ pub(crate) fn wolf_data_from_metadata(type_id: i32, metadata: &[u8]) -> WolfData
     }
 }
 
+/// A nautilus's `TamableAnimal` flags, when the data holds them.
+pub(crate) fn nautilus_flags_from_metadata(type_id: i32, metadata: &[u8]) -> Option<u8> {
+    matches!(
+        photon_data::entity_type::name(type_id),
+        Some("minecraft:nautilus" | "minecraft:zombie_nautilus")
+    )
+    .then(|| metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID))
+    .flatten()
+}
+
 pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
     if photon_data::entity_type::name(type_id) != Some("minecraft:cat") {
         return CatData::default();

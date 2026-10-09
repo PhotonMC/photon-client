@@ -332,7 +332,15 @@ impl PlaySession {
             carried,
             state_id,
         } = self.trace.world.local_player_container_menu()?;
-        let kind = photon_game::menus::container::MenuKind::from_menu_type(menu_type_id)?;
+        let mount = self
+            .mount
+            .clone()
+            .filter(|(id, ..)| *id == container_id)
+            .filter(|_| menu_type_id == photon_game::menus::container::MOUNT_MENU_TYPE);
+        let kind = match &mount {
+            Some((_, mount, _)) => photon_game::menus::container::MenuKind::Mount(*mount),
+            None => photon_game::menus::container::MenuKind::from_menu_type(menu_type_id)?,
+        };
         match self.open_menu.as_mut() {
             Some(menu) if menu.container_id == container_id && menu.kind == kind => {
                 menu.load(slots, carried, state_id);
@@ -378,6 +386,9 @@ impl PlaySession {
             menu.enchantments = enchantments;
             menu.enchantment_traits = self.enchantment_traits.clone();
             menu.lang = self.lang.clone();
+            if let Some((_, _, entity)) = &mount {
+                menu.mount = entity.clone();
+            }
             menu.xp_level = self.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
                 // The merchant's offers; the result is the client's own to make.

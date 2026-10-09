@@ -85,6 +85,17 @@ desteklenmeyen büyü, dışlayan büyü, 40 sınırı, yaratıcı, ad). Bilinen
 ad karşılaştırması istemcinin dilindedir ve bayat `infinite_materials`
 yalnız sunucudan gelen `SetSlot`ta eskiyebilir.
 
+## Binek envanteri menüsü (at, eşek, katır, deve, lama, nautilus)
+
+`ClientboundMountScreenOpen` (41) menüyü varlığın durumundan kurar (`HorseInventoryMenu`,
+`NautilusInventoryMenu`): 0 eyer, 1 zırh, sandık sütunları × 3, sonra oyuncunun 36'sı
+(`container/mount.rs`). Yuvalar `ArmorSlot` gibidir: `equippable` bileşeninin yuvası,
+varlığın `canUseSlot`ı ve `allowed_entities` (etiketler sunucunun gönderdiği varlık türü
+etiketleri; eşyanın kendi izin listesi `item/equippable_allowed.rs`) ve bağlanma laneti.
+`canUseSlot` at, iskelet ve zombi atı ile lamada hep açık; eşek, katır, deve ve nautilusta
+eyer evcil yetişkin ister (nautilusta zırh da). Oracle: `container-clicks` mount satırları
+(`client-parity`, gerçek menü ve gerçek varlık). Ekran ve varlık önizlemesi T58b'dedir.
+
 ## Tarif kitabı (envanter 2×2, çalışma tezgâhı, fırınlar)
 
 Sunucu paketleri: `RecipeBookAdd` (74), `RecipeBookRemove` (75),

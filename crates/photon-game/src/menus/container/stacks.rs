@@ -25,6 +25,7 @@ impl ContainerMenu {
             || (self.kind == MenuKind::Enchantment && index == 0)
             || (self.kind == MenuKind::Brewing && index < 3)
             || (self.kind == MenuKind::Beacon && index == 0)
+            || (matches!(self.kind, MenuKind::Mount(_)) && index < 2)
         {
             1
         } else {

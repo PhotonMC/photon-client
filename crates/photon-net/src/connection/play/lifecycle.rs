@@ -223,6 +223,7 @@ impl PlaySession {
             sign_editor: None,
             opened_book: None,
             merchant: None,
+            mount: None,
             chat_events: Vec::new(),
             signature_cache: SignatureCache::default(),
             hud_events: Vec::new(),

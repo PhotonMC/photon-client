@@ -218,6 +218,7 @@ impl ContainerMenu {
             // `LecternMenu.quickMoveStack` moves nothing.
             MenuKind::Lectern => None,
             MenuKind::Merchant => self.quick_move_merchant(index, player),
+            MenuKind::Mount(_) => self.quick_move_mount(index, player),
             MenuKind::Inventory => self.quick_move_inventory(index, player),
             MenuKind::Crafting => self.quick_move_crafting(index, player),
             _ => self.quick_move_container(index, player),

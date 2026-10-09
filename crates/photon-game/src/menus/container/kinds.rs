@@ -1,3 +1,5 @@
+use super::Mount;
+
 /// `ContainerInput`, by its id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClickType {
@@ -65,6 +67,9 @@ pub enum MenuKind {
     Crafter,
     /// `LecternMenu`: the book, and no inventory under it.
     Lectern,
+    /// `HorseInventoryMenu` or `NautilusInventoryMenu`: the saddle, the body armour and the
+    /// mount's chest.
+    Mount(Mount),
     /// `MerchantMenu`: two payments and what they buy.
     Merchant,
 }
@@ -148,6 +153,7 @@ impl MenuKind {
             Self::Crafter => 9,
             Self::Lectern => 1,
             Self::Merchant => 3,
+            Self::Mount(mount) => 2 + usize::from(mount.columns) * 3,
             Self::Loom | Self::Smithing => 4,
         }
     }

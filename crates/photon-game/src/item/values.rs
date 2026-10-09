@@ -4,6 +4,7 @@
 //! The values are read from the bytes a patch carries, on demand; only the
 //! components something reads are decoded.
 
+use super::equippable_allowed::Allowed;
 use crate::item_components::{self, Cursor, Patch, PotionContents, ids};
 use crate::registries::Registries;
 use crate::text::Component;
@@ -214,11 +215,42 @@ impl Values {
         let asset = if cursor.boolean().ok()? {
             let length = cursor.count().ok()?;
             let name = cursor.data.get(..length)?;
-            Some(String::from_utf8_lossy(name).into_owned())
+            let name = String::from_utf8_lossy(name).into_owned();
+            cursor.skip(length).ok()?;
+            Some(name)
         } else {
             None
         };
-        Some(Equippable { slot, asset })
+        // The camera overlay, then the entities that may wear it: a holder
+        // set, which is a tag's name or a count plus one and the types.
+        if cursor.boolean().ok()? {
+            let length = cursor.count().ok()?;
+            cursor.skip(length).ok()?;
+        }
+        let allowed_entities = if cursor.boolean().ok()? {
+            match cursor.count().ok()? {
+                0 => {
+                    let length = cursor.count().ok()?;
+                    let tag = String::from_utf8_lossy(cursor.data.get(..length)?).into_owned();
+                    Some(Allowed::Tag(tag))
+                }
+                count => {
+                    let mut types = Vec::new();
+                    for _ in 1..count {
+                        let id = cursor.varint().ok()?;
+                        types.push(photon_data::entity_type::name(id)?.to_owned());
+                    }
+                    Some(Allowed::Types(types))
+                }
+            }
+        } else {
+            None
+        };
+        Some(Equippable {
+            slot,
+            asset,
+            allowed_entities,
+        })
     }
 
     /// `ItemStack.hasFoil`: the glint override if the stack has one, else whether it has any
@@ -479,6 +511,8 @@ mod tests {
 pub struct Equippable {
     pub slot: &'static str,
     pub asset: Option<String>,
+    /// `allowedEntities`; none lets every entity wear it.
+    pub allowed_entities: Option<Allowed>,
 }
 
 /// `ItemStack.get(DataComponents.EQUIPPABLE)`: the stack's patch over the item's own.
@@ -497,5 +531,6 @@ pub fn equippable_of(item: i32, patch: &[u8]) -> Option<Equippable> {
     Some(Equippable {
         slot: equip.slot,
         asset: equip.asset.map(str::to_owned),
+        allowed_entities: super::equippable_allowed::allowed_entities(item.name),
     })
 }

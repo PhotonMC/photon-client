@@ -91,6 +91,9 @@ impl ContainerMenu {
         if self.kind == MenuKind::ShulkerBox && index < self.kind.top_slots() {
             return can_fit_inside_container_items(stack);
         }
+        if matches!(self.kind, MenuKind::Mount(_)) {
+            return self.mount_may_place(index, stack);
+        }
         match self.armour_at(index) {
             Some(slot) => stacking(stack)
                 .and_then(|item| item.equippable.as_ref())
@@ -104,6 +107,9 @@ impl ContainerMenu {
     pub(super) fn may_pickup(&self, index: usize) -> bool {
         // `ArmorSlot`: armour with an enchantment that prevents changing it
         // stays on but in creative.
+        if self.mount_keeps(index) {
+            return false;
+        }
         if self.armour_at(index).is_some()
             && !self.infinite_materials
             && self.slots[index].as_ref().is_some_and(|stack| {

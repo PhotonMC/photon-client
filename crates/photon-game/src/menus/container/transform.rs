@@ -205,7 +205,7 @@ impl ContainerMenu {
 
     /// The generic end of a `quickMoveStack`: the source slot settles, a
     /// stack that did not change comes to nothing, then `onTake`.
-    fn finish_quick_move(
+    pub(super) fn finish_quick_move(
         &mut self,
         index: usize,
         stack: Stack,

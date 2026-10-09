@@ -9,6 +9,7 @@ use crate::animation_state::AnimationState;
 use photon_core::java_float::JavaF32;
 
 /// `AbstractHorse.DATA_ID_FLAGS` bits.
+const FLAG_TAME: u8 = 2;
 const FLAG_EATING: u8 = 16;
 const FLAG_STANDING: u8 = 32;
 const FLAG_OPEN_MOUTH: u8 = 64;
@@ -333,6 +334,11 @@ impl HorseState {
     }
 
     /// Whether the animal rears (`AbstractHorse.isStanding`).
+    /// `AbstractHorse.isTamed`.
+    pub fn is_tamed(&self) -> bool {
+        self.flags & FLAG_TAME != 0
+    }
+
     pub fn is_standing(&self) -> bool {
         self.flags & FLAG_STANDING != 0
     }

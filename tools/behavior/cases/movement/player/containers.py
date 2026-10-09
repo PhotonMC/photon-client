@@ -592,6 +592,56 @@ def cases():
                extra={"xp_level": 12, "item_name": "Sting"}),
     ]
 
+    # A mount's menu (`HorseInventoryMenu`, `NautilusInventoryMenu`): the saddle and the body
+    # armour take what the entity may wear, by its tame and baby state and the item's allowed
+    # entities; the chest is the columns' three rows; shift-click goes by the reference's order.
+    def mount_row(label, entity, slots, click_list, columns=0, baby=False, tame=True, **more):
+        return clicks(label, slots, click_list, menu="mount",
+                      extra={"mount": {"entity": f"minecraft:{entity}", "columns": columns,
+                                       "baby": baby, "tame": tame}}, **more)
+
+    hot = 29  # the first hotbar slot of a mount menu without a chest
+    wear = [cl(hot, 0, P), cl(0, 0, P), cl(hot + 1, 0, P), cl(1, 0, P), cl(hot + 2, 0, P), cl(0, 0, P)]
+    gear = [st(hot, "saddle", 1), st(hot + 1, "iron_horse_armor", 1), st(hot + 2, "white_carpet", 1)]
+    click_rows += [
+        mount_row("a tame horse takes a saddle and horse armour", "horse", gear, wear),
+        mount_row("an untamed horse takes a saddle all the same", "horse", gear, wear, tame=False),
+        mount_row("an untamed donkey takes armour but no saddle", "donkey", gear, wear, tame=False),
+        mount_row("a donkey foal takes armour but no saddle", "donkey", gear, wear, baby=True),
+        mount_row("a llama takes a carpet and no saddle or horse armour", "llama",
+                  [st(hot + 6, "saddle", 1), st(hot + 7, "iron_horse_armor", 1),
+                   st(hot + 8, "white_carpet", 1)],
+                  [cl(hot + 6, 0, P), cl(0, 0, P), cl(hot + 7, 0, P), cl(1, 0, P),
+                   cl(hot + 8, 0, P), cl(1, 0, P)], columns=2, tame=False),
+        mount_row("a camel takes a saddle", "camel", gear, wear),
+        mount_row("a tame nautilus takes a saddle and nautilus armour", "nautilus",
+                  [st(hot, "saddle", 1), st(hot + 1, "diamond_nautilus_armor", 1),
+                   st(hot + 2, "iron_horse_armor", 1)],
+                  [cl(hot, 0, P), cl(0, 0, P), cl(hot + 1, 0, P), cl(1, 0, P),
+                   cl(hot + 2, 0, P), cl(1, 0, P)]),
+        mount_row("an untamed nautilus takes nothing", "nautilus",
+                  [st(hot, "saddle", 1), st(hot + 1, "diamond_nautilus_armor", 1)],
+                  [cl(hot, 0, P), cl(0, 0, P), cl(hot + 1, 0, P), cl(1, 0, P)], tame=False),
+        mount_row("shift-click puts gear on and the rest in the chest", "donkey",
+                  [st(hot + 9, "saddle", 1), st(hot + 10, "iron_horse_armor", 1),
+                   st(hot + 11, "stone", 20), st(hot + 12, "saddle", 1)],
+                  [cl(hot + 9, 0, Q), cl(hot + 10, 0, Q), cl(hot + 11, 0, Q), cl(hot + 12, 0, Q)],
+                  columns=5),
+        mount_row("shift-click from the chest and the saddle slot goes to the inventory", "mule",
+                  [st(0, "saddle", 1), st(1, "iron_horse_armor", 1), st(2, "stone", 5),
+                   st(8, "dirt", 7)],
+                  [cl(0, 0, Q), cl(1, 0, Q), cl(2, 0, Q), cl(8, 0, Q)], columns=3),
+        mount_row("shift-click moves between the inventory rows of a mount with no chest", "horse",
+                  [st(5, "stone", 3), st(hot + 3, "dirt", 4)],
+                  [cl(5, 0, Q), cl(hot + 3, 0, Q)]),
+        mount_row("horse armour that cannot be taken off stays on", "horse",
+                  [enchanted(1, "iron_horse_armor", [(BINDING_CURSE, 1)])],
+                  [cl(1, 0, P), cl(1, 0, Q)]),
+        mount_row("horse armour that cannot be taken off comes off in creative", "horse",
+                  [enchanted(1, "iron_horse_armor", [(BINDING_CURSE, 1)])],
+                  [cl(1, 0, P)], game_mode="creative"),
+    ]
+
     yield {
         "case_id": "movement/container-clicks",
         "family": "movement",

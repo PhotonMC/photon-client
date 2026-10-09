@@ -48,6 +48,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         let label = row["label"].as_str().ok_or("label must be a string")?;
         let mut menu = match row.get("menu").and_then(Value::as_str) {
             None => ContainerMenu::default(),
+            Some(_) if row.get("mount").is_some() => mount_menu(&row["mount"])?,
             Some(name) => menu_named(name, row)?,
         };
         menu.item_tags = item_tags.clone();
@@ -259,4 +260,25 @@ fn bundle_selections(menu: &photon_game::menus::container::ContainerMenu) -> Opt
         selections.push(json!([-1, selected]));
     }
     (!selections.is_empty()).then(|| json!(selections))
+}
+
+/// The menu `handleMountScreenOpen` builds: the mount's family and chest columns, and what the
+/// menu reads of its entity.
+fn mount_menu(mount: &Value) -> Result<photon_game::menus::container::ContainerMenu, String> {
+    use photon_game::menus::container::{ContainerMenu, Mount, MountEntity, MountFamily};
+    let name = mount["entity"].as_str().ok_or("entity must be a string")?;
+    let family = MountFamily::of_entity(name).ok_or_else(|| format!("{name} is not a mount"))?;
+    let columns = mount["columns"]
+        .as_u64()
+        .ok_or("columns must be a number")? as u8;
+    let baby = mount["baby"].as_bool().ok_or("baby must be a bool")?;
+    let tame = mount["tame"].as_bool().ok_or("tame must be a bool")?;
+    let kind = photon_game::menus::container::MenuKind::Mount(Mount { family, columns });
+    let mut menu = ContainerMenu::for_menu(kind, 4, Vec::new(), None, 0);
+    menu.mount = MountEntity {
+        entity_type: photon_data::entity_type::id(name).ok_or("unknown entity")?,
+        can_use: MountEntity::can_use_slots(name, baby, tame),
+        entity_tags: std::sync::Arc::new(vanilla_entity_type_tags()?),
+    };
+    Ok(menu)
 }

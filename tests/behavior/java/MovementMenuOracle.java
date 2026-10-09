@@ -16,6 +16,33 @@ class MovementMenuOracle extends MovementPlayerOracle {
     record OpenMenu(Scene scene, net.minecraft.client.player.LocalPlayer player,
                     net.minecraft.world.inventory.AbstractContainerMenu menu, int containerId) {}
 
+    /**
+     * The menu `ClientPacketListener.handleMountScreenOpen` builds for a mount: its entity made as
+     * the data says (tame, baby), its chest a container of the columns' three rows.
+     */
+    static net.minecraft.world.inventory.AbstractContainerMenu mountMenu(
+        JsonObject mount, int containerId, net.minecraft.client.player.LocalPlayer player,
+        net.minecraft.client.multiplayer.ClientLevel level) throws Exception {
+        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+            net.minecraft.resources.Identifier.parse(mount.get("entity").getAsString()));
+        var entity = type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+        int columns = mount.get("columns").getAsInt();
+        if (mount.get("baby").getAsBoolean()) {
+            ((net.minecraft.world.entity.AgeableMob) entity).setBaby(true);
+        }
+        var container = new net.minecraft.world.SimpleContainer(
+            net.minecraft.world.inventory.AbstractMountInventoryMenu.getInventorySize(columns));
+        if (entity instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
+            horse.setTamed(mount.get("tame").getAsBoolean());
+            return new net.minecraft.world.inventory.HorseInventoryMenu(
+                containerId, player.getInventory(), container, horse, columns);
+        }
+        var nautilus = (net.minecraft.world.entity.animal.nautilus.AbstractNautilus) entity;
+        nautilus.setTame(mount.get("tame").getAsBoolean(), false);
+        return new net.minecraft.world.inventory.NautilusInventoryMenu(
+            containerId, player.getInventory(), container, nautilus, columns);
+    }
+
     static OpenMenu openMenu(JsonObject row) throws Exception {
         var scene = buildScene(row);
         var listener = scene.listener();
@@ -114,12 +141,16 @@ class MovementMenuOracle extends MovementPlayerOracle {
             }
             setField(listener, "recipes", new net.minecraft.client.multiplayer.ClientRecipeContainer(
                 sets, new net.minecraft.world.item.crafting.SelectableRecipe.SingleInputSet<>(cutter)));
-            var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
-                net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
             if (row.has("xp_level")) {
                 player.experienceLevel = row.get("xp_level").getAsInt();
             }
-            menu = type.create(containerId, player.getInventory());
+            if (row.has("mount")) {
+                menu = mountMenu(row.getAsJsonObject("mount"), containerId, player, level);
+            } else {
+                var type = net.minecraft.core.registries.BuiltInRegistries.MENU.getValue(
+                    net.minecraft.resources.Identifier.parse(row.get("menu").getAsString()));
+                menu = type.create(containerId, player.getInventory());
+            }
             player.containerMenu = menu;
             if (menu instanceof net.minecraft.world.inventory.MerchantMenu merchantMenu) {
                 // What the server's merchant offers, and how far it has levelled.

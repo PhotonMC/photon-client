@@ -37,6 +37,22 @@ pub fn slot_position(kind: MenuKind, index: usize) -> (i32, i32) {
     if kind == MenuKind::Crafter && index == 45 {
         return (134, 35);
     }
+    // `HorseInventoryMenu`: the saddle, the armour, then the chest's three rows.
+    if let MenuKind::Mount(mount) = kind
+        && index < top
+    {
+        return match index {
+            0 => (8, 18),
+            1 => (8, 36),
+            _ => {
+                let (column, row) = (
+                    (index - 2) % usize::from(mount.columns),
+                    (index - 2) / usize::from(mount.columns),
+                );
+                (80 + column as i32 * 18, 18 + row as i32 * 18)
+            }
+        };
+    }
     if kind == MenuKind::Merchant && index < 3 {
         return [(136, 37), (162, 37), (220, 37)][index];
     }

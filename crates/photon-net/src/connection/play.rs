@@ -163,6 +163,12 @@ pub struct PlaySession {
     pub(super) opened_book: Option<u8>,
     /// What the server last said of the merchant whose menu is open, by container.
     pub(super) merchant: Option<(i32, photon_game::menus::merchant::MerchantState)>,
+    /// The mount whose screen the server opened, by container: what its menu reads of it.
+    pub(super) mount: Option<(
+        i32,
+        photon_game::menus::container::Mount,
+        photon_game::menus::container::MountEntity,
+    )>,
     /// Chat the server sent that the client has not shown yet, and the
     /// `nextChatIndex` its player chat must come in.
     pub(super) chat_events: Vec<ChatEvent>,

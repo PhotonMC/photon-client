@@ -393,6 +393,15 @@ pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags,
         .ok_or_else(|| "no item tags".to_owned())
 }
 
+/// The entity type tags of the data pack, as a tag packet would carry them.
+pub(super) fn vanilla_entity_type_tags() -> Result<photon_world::block::tags::ItemTags, String> {
+    let packet = vanilla_tags_of("entity_type", "minecraft:entity_type", &|name| {
+        photon_data::entity_type::id(name)
+    })?;
+    photon_world::block::tags::ItemTags::of_registry(&packet.registries, "minecraft:entity_type")
+        .ok_or_else(|| "no entity type tags".to_owned())
+}
+
 /// The creative search tab's tag search for what the box holds, over the
 /// data pack's item tags: the places found and the tags named, sorted.
 pub(super) fn creative_tag_search(label: &str, row: &Value) -> Result<Value, String> {

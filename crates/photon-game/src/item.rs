@@ -5,6 +5,7 @@
 mod component_tests;
 pub mod cooldowns;
 pub mod default_components;
+pub mod equippable_allowed;
 pub mod in_hand;
 pub(crate) mod repairable;
 pub mod values;
