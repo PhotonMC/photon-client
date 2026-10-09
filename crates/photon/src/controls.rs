@@ -36,6 +36,7 @@ use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, Conf
 use photon_render::gui::screen::credits::CreditsScreen;
 use photon_render::gui::screen::death::{DeathAction, DeathScreen};
 use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
+use photon_render::gui::screen::social::SocialInteractionsScreen;
 
 use photon_render::gui::screen::disconnected::DisconnectedScreen;
 
@@ -110,6 +111,10 @@ pub struct Controls {
     pub death: Option<DeathScreen>,
     /// The credits, from the server's `WIN_GAME` until they end or are closed.
     pub credits: Option<CreditsScreen>,
+    /// The social interactions screen, while it is open.
+    pub social: Option<SocialInteractionsScreen>,
+    /// `PlayerSocialManager.hiddenPlayers`: whose chat the player hid, for as long as the client runs.
+    pub hidden_players: Vec<photon_core::binary::Uuid>,
     /// The game mode switcher (F3+F4), while F3 is held.
     pub game_mode_switcher: Option<GameModeSwitcherScreen>,
     /// Whether F3, the debug modifier, is held.
@@ -310,6 +315,8 @@ mod scripted;
 mod settings;
 
 mod sign;
+
+mod social;
 pub use sign::SignEdit;
 
 mod book;
@@ -347,6 +354,8 @@ impl Controls {
             key_binds_screen: None,
             death: None,
             credits: None,
+            social: None,
+            hidden_players: Vec::new(),
             game_mode_switcher: None,
             debug_down: false,
             sign_edit: None,

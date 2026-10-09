@@ -191,6 +191,9 @@ pub struct PlaySession {
     pub(super) username: String,
     pub(super) suggestions: Option<CommandSuggestions>,
     pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
+    /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,
+    /// kept when they leave the tab list.
+    pub(super) seen_players: std::collections::BTreeMap<(u64, u64), String>,
     pub(super) next_chat_index: i32,
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     pub(super) drop_spam: i32,

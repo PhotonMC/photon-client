@@ -174,6 +174,26 @@ impl<A: Copy> ButtonSet<A> {
             .map(|(_, action, _)| *action)
     }
 
+    /// The index and action of the first active button under `mouse`, in the order they were
+    /// added.
+    pub fn button_at(&self, mouse: (i32, i32)) -> Option<(usize, A)> {
+        self.buttons
+            .iter()
+            .enumerate()
+            .find(|(_, (widget, _, _))| widget.is_active() && widget.contains(&self.arena, mouse))
+            .map(|(index, (_, action, _))| (index, *action))
+    }
+
+    /// The button the focus is on, or none.
+    pub fn set_focus(&mut self, focus: Option<usize>) {
+        self.focus = focus;
+    }
+
+    /// The label of the button at `index`.
+    pub fn set_label(&mut self, index: usize, label: Vec<photon_game::text::Run>) {
+        self.buttons[index].0.kind = Kind::Button { label };
+    }
+
     /// Enter or Space: what the focused button asks for.
     pub fn pressed(&self) -> Option<A> {
         self.focus

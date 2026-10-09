@@ -11,6 +11,13 @@ impl PlaySession {
                 self.removed_player_vehicle = None;
             }
             entities::add(&mut self.trace.world, &packet);
+            // `handleAddEntity`: a player in the tab list is remembered as seen.
+            let id = (packet.uuid.most, packet.uuid.least);
+            if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id)
+                && let Some(info) = self.player_infos.get(&id)
+            {
+                self.seen_players.insert(id, info.name.clone());
+            }
         }
         Ok(())
     }

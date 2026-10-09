@@ -202,6 +202,12 @@ impl Gui {
                 }
                 book.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
             }
+        } else if let Some(social) = controls.social.as_mut() {
+            if social.size() != gui_size {
+                *social = social.resized(&self.font, &self.lang, gui_size);
+            }
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            social.draw(&mut frame, &self.atlas, &self.font, mouse);
         }
         if let Some(switcher) = controls.game_mode_switcher.as_mut() {
             switcher.resize(gui_size);

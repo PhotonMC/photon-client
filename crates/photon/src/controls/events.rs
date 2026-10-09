@@ -93,6 +93,9 @@ impl Controls {
                     self.captured = false;
                     self.release_keys();
                 }
+                "key.socialInteractions" if press && self.captured => {
+                    self.open_social(session, surface, assets);
+                }
                 "key.chat" if press && self.captured => {
                     self.open_chat(ChatMethod::Message, true, surface, assets);
                 }
@@ -278,6 +281,10 @@ impl Controls {
         }
         if self.options_screen.is_some() && for_screen {
             self.options_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.social.is_some() && for_screen {
+            self.social_event(event, surface, assets);
             return Ok(());
         }
         if self.pause.is_some() && for_screen {

@@ -3,6 +3,22 @@ import com.google.gson.JsonObject;
 
 /** The social interactions screen: who is online, hidden or blocked, and the search over them. */
 class GuiSocialOracle extends GuiCreditsOracle {
+    /** A game that remembers the screens it was told to show instead of switching to them. */
+    static final class RecordingGui extends net.minecraft.client.gui.Gui {
+        final java.util.List<String> events = new java.util.ArrayList<>();
+
+        RecordingGui() {
+            super(null, null, null);
+        }
+
+        @Override
+        public void setScreen(net.minecraft.client.gui.screens.Screen screen) {
+            events.add(screen == null ? "close"
+                : screen instanceof net.minecraft.client.gui.screens.ConfirmLinkScreen ? "link"
+                : screen.getClass().getSimpleName());
+        }
+    }
+
     /** A listed player whose face is the default skin its id picks, as an offline profile's is. */
     private static net.minecraft.client.multiplayer.PlayerInfo info(JsonObject player) throws Exception {
         var profile = new com.mojang.authlib.GameProfile(java.util.UUID.fromString(player.get("id").getAsString()),
@@ -50,6 +66,16 @@ class GuiSocialOracle extends GuiCreditsOracle {
                 java.util.Optional.empty(), java.util.Optional.empty()));
             set(player, "chatAbilities", net.minecraft.client.multiplayer.chat.ChatAbilities.NO_RESTRICTIONS);
             set(minecraft, "player", player);
+            // The buttons click when pressed, heard by no one.
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            // The game that hears of the screens opened and the chat it is told.
+            var recording = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);
+            var hud = get(get(minecraft, "gui"), "hud");
+            var chat = new net.minecraft.client.gui.components.ChatComponent(minecraft);
+            set(hud, "chat", chat);
+            set(recording, "hud", hud);
+            set(recording, "events", new java.util.ArrayList<String>());
+            set(minecraft, "gui", recording);
             // Opened in a game: the dimmed world behind, no panorama.
             set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
             var server = new net.minecraft.client.multiplayer.ServerData(row.get("server").getAsString(),
@@ -87,12 +113,50 @@ class GuiSocialOracle extends GuiCreditsOracle {
                 social_screen.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
                 screen.state().reset();
             }
+            // The steps, each followed by a frame, as the game draws between its events.
+            if (row.has("steps")) {
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
+                    double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
+                    var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                    switch (step.get("do").getAsString()) {
+                        case "click" -> social_screen.mouseClicked(press, false);
+                        case "release" -> social_screen.mouseReleased(press);
+                        case "drag" -> social_screen.mouseDragged(press, 0.0, step.get("dy").getAsDouble());
+                        case "scroll" -> social_screen.mouseScrolled(x, y, 0.0, step.get("dy").getAsDouble());
+                        case "type" -> {
+                            for (var cp : (Iterable<Integer>) step.get("text").getAsString().codePoints()::iterator) {
+                                social_screen.charTyped(new net.minecraft.client.input.CharacterEvent(cp));
+                            }
+                        }
+                        case "key" -> social_screen.keyPressed(
+                            new net.minecraft.client.input.KeyEvent(step.get("key").getAsInt(), 0, 0));
+                        default -> throw new IllegalArgumentException(step.toString());
+                    }
+                    social_screen.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+                    social_screen.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+                    screen.state().reset();
+                }
+            }
             social_screen.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             social_screen.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            // What the screen asked of the game, and the chat it was told.
+            var events = new JsonArray();
+            for (var event : recording.events) {
+                events.add(event);
+            }
+            @SuppressWarnings("unchecked")
+            var told = (java.util.List<net.minecraft.client.multiplayer.chat.GuiMessage>) get(chat, "allMessages");
+            for (int i = told.size() - 1; i >= 0; i--) {
+                events.add("chat:" + told.get(i).content().getString());
+            }
+            out.add("events", events);
             rows.add(out);
         }
         var result = new JsonObject();

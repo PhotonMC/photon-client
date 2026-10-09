@@ -6,6 +6,9 @@
 //! Not drawn: players the chat log remembers (their profiles come from the chat), the tooltips of
 //! the entry buttons, and a skin other than a default one.
 
+mod draw;
+mod input;
+
 use std::cell::Cell;
 use std::time::Instant;
 
@@ -52,6 +55,33 @@ pub enum Page {
 pub enum SocialAction {
     Page(Page),
     Done,
+}
+
+/// What the screen asks the game for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SocialEvent {
+    /// The screen closes (`onClose`).
+    Close,
+    /// A player was hidden from the chat or shown again (`PlayerEntry`'s buttons).
+    Hidden {
+        id: Uuid,
+        name: String,
+        hidden: bool,
+    },
+    /// The report button of a player (the report screen needs the online services).
+    Report(Uuid),
+    /// The "Manage with Microsoft account" button: a link to confirm.
+    BlockingHelp,
+}
+
+/// Where the keyboard is (`Screen.getFocused`): the search box at first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    Search,
+    /// A button of the screen's set, by its index.
+    Button(usize),
+    Hint,
+    List,
 }
 
 /// A player the screen can list.
@@ -108,16 +138,10 @@ fn layout(
     font: &Font,
     lang: &Lang,
     size: (i32, i32),
-    page: Page,
+    (page, labels): (Page, &[[Vec<Run>; 2]; 3]),
 ) -> (ButtonSet<SocialAction>, Widget, Widget) {
     let runs = |component: &Component| lang.runs(component, &Style::default());
     let key = |key: &str| runs(&Component::translatable(key));
-    let underlined = |name: &str| {
-        runs(&Component::translatable(name).with_style(&Style {
-            underlined: Some(true),
-            ..Style::default()
-        }))
-    };
     let (width, height) = size;
     let window_height = (height - 128 - 16).max(52);
     let row_left = width / 2 - ROW_WIDTH / 2;
@@ -125,24 +149,12 @@ fn layout(
     let tab_width = ROW_WIDTH / 3;
     let mut buttons = ButtonSet::new(size);
     let tabs = [
-        ("gui.socialInteractions.tab_all", Page::All, row_left),
-        (
-            "gui.socialInteractions.tab_hidden",
-            Page::Hidden,
-            (row_left + row_right - tab_width) / 2 + 1,
-        ),
-        (
-            "gui.socialInteractions.tab_blocked",
-            Page::Blocked,
-            row_right - tab_width + 1,
-        ),
+        (Page::All, row_left),
+        (Page::Hidden, (row_left + row_right - tab_width) / 2 + 1),
+        (Page::Blocked, row_right - tab_width + 1),
     ];
-    for (name, tab, x) in tabs {
-        let label = if tab == page {
-            underlined(name)
-        } else {
-            key(name)
-        };
+    for (index, (tab, x)) in tabs.into_iter().enumerate() {
+        let label = labels[index][usize::from(tab == page)].clone();
         buttons.add(
             (x, 45, tab_width, 20),
             (Kind::Button { label }, true),
@@ -202,6 +214,13 @@ pub struct SocialInteractionsScreen {
     hint_visible: Cell<bool>,
     search: EditBox,
     focused_at: Instant,
+    focus: Focus,
+    /// The search box's hint, shown while it is empty and has not the focus.
+    search_hint: Vec<Run>,
+    /// The tab labels, plain and underlined, by tab.
+    tab_labels: [[Vec<Run>; 2]; 3],
+    /// Whether the list's scroll bar is held (`AbstractScrollArea.scrolling`).
+    scrolling: bool,
     last_search: String,
     page: Page,
     roster: Roster,
@@ -224,14 +243,34 @@ impl SocialInteractionsScreen {
         let grey = |name: &str| runs(&Component::translatable(name).with_colour("gray"));
         let (width, height) = size;
         let list_end = 80 + (height - 128 - 16).max(52) - 8;
-        let (buttons, title, blocking_hint) = layout(font, lang, size, page);
+        let tab_labels = ["tab_all", "tab_hidden", "tab_blocked"].map(|name| {
+            let name = format!("gui.socialInteractions.{name}");
+            [
+                runs(&Component::translatable(name.clone())),
+                runs(&Component::translatable(name).with_style(&Style {
+                    underlined: Some(true),
+                    ..Style::default()
+                })),
+            ]
+        });
+        let (buttons, title, blocking_hint) = layout(font, lang, size, (page, &tab_labels));
+        let search_hint = runs(
+            &Component::translatable("gui.socialInteractions.search_hint")
+                .with_colour("gray")
+                .italic(),
+        );
         let mut screen = Self {
             buttons,
             title,
             blocking_hint,
             hint_visible: Cell::new(true),
-            search: EditBox::new(200, 16).with_colour(0xFFFF_FFFF),
+            // `EditBox.getInnerWidth` of the 200 wide box.
+            search: EditBox::new(192, 16).with_colour(0xFFFF_FFFF),
             focused_at: Instant::now(),
+            focus: Focus::Search,
+            search_hint,
+            tab_labels,
+            scrolling: false,
             last_search: String::new(),
             page,
             roster,
@@ -287,17 +326,15 @@ impl SocialInteractionsScreen {
         self.size
     }
 
-    /// The text typed into the search box, which filters the list when it changes
-    /// (`checkSearchStringUpdate`).
-    pub fn type_search(&mut self, text: &str, font: &Font) {
-        for character in text.chars() {
-            self.search.char_typed(character, font);
-        }
-        let lowered = self.search.value().to_lowercase();
-        if lowered != self.last_search {
-            self.last_search = lowered;
-            self.show_page(self.page);
-        }
+    /// The screen laid out again for another window size (`Screen.resize`): the page, the roster
+    /// as it is now and the search text are kept, the scroll and the focus are not. (The reference
+    /// leaves the list unfiltered until the text changes again.)
+    pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
+        let mut screen = Self::new(font, lang, size, self.roster.clone(), self.page);
+        screen.search.set_value(&self.search.value(), font);
+        screen.last_search.clone_from(&self.last_search);
+        screen.show_page(self.page);
+        screen
     }
 
     fn window_height(&self) -> i32 {
@@ -356,6 +393,7 @@ impl SocialInteractionsScreen {
         let filter = &self.last_search;
         entries.retain(|entry| entry.player.name.to_lowercase().contains(filter.as_str()));
         self.entries = entries;
+        self.set_scroll(self.scroll);
     }
 
     /// `sortPlayerEntries`: the local player, a draft report, those who spoke, the rest, offline
@@ -392,225 +430,5 @@ impl SocialInteractionsScreen {
 
     fn entry_y(&self, index: usize) -> i32 {
         self.place.y + 2 - self.scroll as i32 + index as i32 * ENTRY_HEIGHT
-    }
-
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
-        let (width, height) = self.size;
-        // `extractBackground` in a game: the dimmed world behind, then the window.
-        frame.tile_texture(
-            atlas,
-            "inworld_menu_background",
-            (32, 32),
-            (0, 0, width, height),
-        );
-        let window_x = self.margin_x() + 3;
-        frame.sprite(
-            atlas,
-            "social_interactions/background",
-            window_x,
-            64,
-            BACKGROUND_WIDTH,
-            self.window_height() + 16,
-        );
-        frame.sprite(atlas, "icon/search", window_x + 10, 76, 12, 12);
-        self.buttons.draw(frame, atlas, font, mouse);
-        self.title
-            .draw(frame, atlas, font, &self.buttons.arena, false);
-        let (field_x, field_y) = (self.margin_x() + 28, 74);
-        frame.nine_slice(
-            atlas,
-            "widget/text_field_highlighted",
-            (200, 20),
-            1,
-            false,
-            field_x,
-            field_y,
-            200,
-            15,
-        );
-        let text_at = (field_x + 4, field_y + (15 - 8) / 2);
-        self.search
-            .draw_formatted(frame, atlas, font, text_at, Some(self.focused_at), None);
-        if self.hint_visible.get() {
-            let highlighted = self.blocking_hint.contains(&self.buttons.arena, mouse);
-            self.blocking_hint
-                .draw(frame, atlas, font, &self.buttons.arena, highlighted);
-        }
-        if !self.server_label.is_empty() {
-            frame.styled_text(
-                atlas,
-                font,
-                &self.server_label,
-                self.margin_x() + 8,
-                35,
-                0xFFFF_FFFF,
-                true,
-            );
-        }
-        if !self.entries.is_empty() {
-            self.draw_list(frame, atlas, font, mouse);
-        } else {
-            let empty = if !self.search.is_empty() {
-                Some(&self.empty[0])
-            } else {
-                match self.page {
-                    Page::All => None,
-                    Page::Hidden => Some(&self.empty[1]),
-                    Page::Blocked => Some(&self.empty[2]),
-                }
-            };
-            if let Some(text) = empty {
-                let x = width / 2 - font.width_of_runs(text) / 2;
-                frame.styled_text(
-                    atlas,
-                    font,
-                    text,
-                    x,
-                    (72 + self.list_end()) / 2,
-                    0xFFFF_FFFF,
-                    true,
-                );
-            }
-        }
-        self.hint_visible.set(self.page == Page::Blocked);
-    }
-
-    /// The list: its rows, cut to the list's window, and its scrollbar.
-    fn draw_list(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
-        let place = self.place;
-        let left = self.row_left();
-        let mark = frame.mark();
-        let window = (0, place.y + 4, place.width, place.bottom());
-        let in_window = mouse.1 >= window.1 && mouse.1 < window.3;
-        for (index, entry) in self.entries.iter().enumerate() {
-            let y = self.entry_y(index);
-            if y + ENTRY_HEIGHT < place.y || y > place.bottom() {
-                continue;
-            }
-            self.draw_entry(
-                frame,
-                atlas,
-                font,
-                entry,
-                (left + 2, y + 2),
-                (mouse, in_window),
-            );
-        }
-        frame.clip_from(mark, window);
-        place.draw_scrollbar(
-            frame,
-            atlas,
-            left + ROW_WIDTH + SCROLLBAR_WIDTH + 2,
-            self.scroll,
-            self.content_height(),
-        );
-    }
-
-    /// `PlayerEntry.extractContent`: the row, the face, the name and status, and the buttons.
-    fn draw_entry(
-        &self,
-        frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &Font,
-        entry: &Entry,
-        (x, y): (i32, i32),
-        (mouse, in_window): ((i32, i32), bool),
-    ) {
-        let (content_width, content_height) = (ROW_WIDTH - 4, ENTRY_HEIGHT - 4);
-        let skin_x = x + 4;
-        let skin_y = y + (content_height - SKIN_SIZE) / 2;
-        let text_x = skin_x + SKIN_SIZE + 4;
-        let hidden = self.hidden(entry.player.id);
-        let status = &self.statuses[status_index(hidden, entry.removed)];
-        let rect = (x, y, x + content_width, y + content_height);
-        let text_y = if status.is_empty() {
-            frame.fill(atlas, rect, BG_FILL);
-            y + (content_height - 9) / 2
-        } else {
-            frame.fill(atlas, rect, BG_FILL_REMOVED);
-            let text_y = y + (content_height - 18) / 2;
-            frame.styled_text(
-                atlas,
-                font,
-                status,
-                text_x,
-                text_y + 12,
-                PLAYER_STATUS_COLOUR,
-                true,
-            );
-            text_y
-        };
-        let texture = format!("textures/{}", default_skin(entry.player.id).texture);
-        for u in [8, 40] {
-            frame.blit_texture_stretched(
-                atlas,
-                &texture,
-                (64, 64),
-                (u, 8, 8, 8),
-                (skin_x, skin_y, SKIN_SIZE, SKIN_SIZE),
-            );
-        }
-        let name = [Run {
-            text: entry.player.name.clone(),
-            style: Style::default(),
-        }];
-        frame.styled_text(atlas, font, &name, text_x, text_y, 0xFFFF_FFFF, true);
-        if entry.removed {
-            frame.fill(
-                atlas,
-                (skin_x, skin_y, skin_x + SKIN_SIZE, skin_y + SKIN_SIZE),
-                SKIN_SHADE,
-            );
-        }
-        if entry.player.id == self.roster.local {
-            return;
-        }
-        let button_y = y + (content_height - 20) / 2;
-        let report_x = x + content_width - 24;
-        let hide_x = report_x - 24;
-        let over = |button_x: i32| {
-            in_window
-                && mouse.0 >= button_x
-                && mouse.0 < button_x + 20
-                && mouse.1 >= button_y
-                && mouse.1 < button_y + 20
-        };
-        let (hide_sprite, hide_lit) = if hidden {
-            ("unmute_button", "unmute_button_highlighted")
-        } else {
-            ("mute_button", "mute_button_highlighted")
-        };
-        let sprite = if over(hide_x) { hide_lit } else { hide_sprite };
-        frame.sprite(
-            atlas,
-            &format!("social_interactions/{sprite}"),
-            hide_x,
-            button_y,
-            20,
-            20,
-        );
-        let report = match (self.roster.reporting, over(report_x)) {
-            (false, _) => "report_button_disabled",
-            (true, true) => "report_button_highlighted",
-            (true, false) => "report_button",
-        };
-        frame.sprite(
-            atlas,
-            &format!("social_interactions/{report}"),
-            report_x,
-            button_y,
-            20,
-            20,
-        );
-        if entry.player.draft_report {
-            frame.sprite(
-                atlas,
-                "icon/draft_report",
-                report_x + 5,
-                button_y + 1,
-                15,
-                15,
-            );
-        }
     }
 }

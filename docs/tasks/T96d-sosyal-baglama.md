@@ -21,4 +21,5 @@ Raporlama ekranları (çevrimiçi servis), engelleme (çevrimiçi mod), düğme 
 `docs/gui-oracle.md` satırını güncelle.
 
 ## Devir notu
-(boş)
+Yapıldı: ekran etkileşimi (`photon-render/.../social/input.rs`: sekme, gizle/göster, Bitti, engelleme düğmesi, çubuk sürükleme, tekerlek, arama yazma/odak, P/Esc) Java'ya karşı oracle'da (`steps`, olaylar ve sohbet satırları dahil); oyunda P tuşu, `controls/social.rs`, gizli oyuncular (`Controls::hidden_players`), `shouldHideMessageFrom` sohbet süzgeci, `seen_players` ve `social_players()` (photon-net).
+Sapma/açık: bildir düğmesi no-op (rapor ekranı çevrimiçi servis ister); Tab/ok odağı, Enter ve çift tıklama yok; sunucu adı hep `selectServer.defaultName` (liste girişi adı oyuna taşınmıyor); boyut değişince Java listeyi süzmeden bırakır, Rust süzer; bağlantı onayından dönüşte Java ekranı yeniden kurar, Rust kurmaz; sistem iletilerinde `hideMatchedNames` yok.

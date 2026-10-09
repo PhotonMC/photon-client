@@ -95,9 +95,28 @@ impl Gui {
     }
 
     /// The chat the server sent, worded and added to the log.
-    pub fn receive_chat(&mut self, events: Vec<ChatEvent>, log: &mut ChatLog, focused: bool) {
+    pub fn receive_chat(
+        &mut self,
+        events: Vec<ChatEvent>,
+        log: &mut ChatLog,
+        (focused, hidden): (bool, &[photon_core::binary::Uuid]),
+    ) {
         use photon_render::gui::chat::Tag;
         for event in events {
+            // `Minecraft.isBlocked`: what a player the local player hid says is not shown (the
+            // local player's own words always are).
+            if let ChatEvent::Player {
+                packet,
+                sender_is_local: false,
+                ..
+            } = &event
+                && hidden.contains(&photon_core::binary::Uuid::new(
+                    packet.sender.0,
+                    packet.sender.1,
+                ))
+            {
+                continue;
+            }
             match event {
                 ChatEvent::System {
                     content,

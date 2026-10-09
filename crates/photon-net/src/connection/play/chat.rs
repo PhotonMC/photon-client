@@ -99,6 +99,24 @@ impl PlaySession {
             .map(|info| info.name.as_str())
     }
 
+    /// `getOnlinePlayerIds` with their names, and the seen players who have left
+    /// (`getSeenPlayers`), for the social interactions screen.
+    pub fn social_players(&self) -> SocialPlayers {
+        let id = |(most, least): (u64, u64)| photon_core::binary::Uuid::new(most, least);
+        let online: Vec<_> = self
+            .player_infos
+            .iter()
+            .map(|(key, info)| (id(*key), info.name.clone()))
+            .collect();
+        let gone = self
+            .seen_players
+            .iter()
+            .filter(|(key, _)| !self.player_infos.contains_key(*key))
+            .map(|(key, name)| (id(*key), name.clone()))
+            .collect();
+        SocialPlayers { online, gone }
+    }
+
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
     pub fn listed_players(&self) -> Vec<&PlayerInfo> {
         self.player_infos
@@ -170,4 +188,11 @@ impl PlaySession {
             Ok(())
         })
     }
+}
+
+/// The players the social interactions screen lists: who is on the server, and who was seen and
+/// has left, by id and name.
+pub struct SocialPlayers {
+    pub online: Vec<(photon_core::binary::Uuid, String)>,
+    pub gone: Vec<(photon_core::binary::Uuid, String)>,
 }

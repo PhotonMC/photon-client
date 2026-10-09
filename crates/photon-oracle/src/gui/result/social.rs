@@ -1,7 +1,10 @@
 use super::*;
 
 use photon_core::binary::Uuid;
-use photon_render::gui::screen::social::{Page, Roster, SocialInteractionsScreen, SocialPlayer};
+use photon_game::text::Component;
+use photon_render::gui::screen::social::{
+    Page, Roster, SocialEvent, SocialInteractionsScreen, SocialPlayer,
+};
 
 /// A `UUID.toString` text as an id.
 fn uuid(text: &str) -> Result<Uuid, String> {
@@ -67,6 +70,77 @@ pub(super) fn social_interactions_screen_case(
     for _ in 1..row["frames"].as_u64().unwrap_or(1) {
         screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
     }
+    // The steps, each followed by a frame, and what the screen asked of the game.
+    let mut events = Vec::new();
+    let mut chat = Vec::new();
+    for step in row["steps"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+    {
+        let at = (
+            step["x"].as_f64().unwrap_or(0.0),
+            step["y"].as_f64().unwrap_or(0.0),
+        );
+        let dy = step["dy"].as_f64().unwrap_or(0.0);
+        let asked = match step["do"].as_str().ok_or("do")? {
+            "click" => screen.clicked(at, &ctx.font),
+            "release" => {
+                screen.released();
+                None
+            }
+            "drag" => {
+                screen.dragged(at, dy);
+                None
+            }
+            "scroll" => {
+                screen.scrolled(at, dy);
+                None
+            }
+            "type" => {
+                screen.type_search(step["text"].as_str().unwrap_or_default(), &ctx.font);
+                None
+            }
+            "key" => {
+                let code = step["key"].as_i64().ok_or("key")?;
+                let key = match code {
+                    80 => glfw::Key::P,
+                    256 => glfw::Key::Escape,
+                    259 => glfw::Key::Backspace,
+                    _ => return Err(format!("a key: {code}")),
+                };
+                screen.key_pressed(
+                    key,
+                    (false, false),
+                    code == 80,
+                    &ctx.font,
+                    &mut crate::gui::NoClipboard,
+                )
+            }
+            other => return Err(format!("a step: {other}")),
+        };
+        match asked {
+            Some(SocialEvent::Close) => events.push("close".to_owned()),
+            Some(SocialEvent::BlockingHelp) => events.push("link".to_owned()),
+            Some(SocialEvent::Hidden { name, hidden, .. }) => {
+                let key = if hidden {
+                    "gui.socialInteractions.hidden_in_chat"
+                } else {
+                    "gui.socialInteractions.shown_in_chat"
+                };
+                let message = Component::translatable_with(key, vec![Component::literal(name)]);
+                let text: String = lang
+                    .runs(&message, &photon_game::text::Style::default())
+                    .iter()
+                    .map(|run| run.text.as_str())
+                    .collect();
+                chat.push(format!("chat:{text}"));
+            }
+            Some(SocialEvent::Report(_)) | None => {}
+        }
+        screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
+    }
+    events.extend(chat);
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
@@ -75,5 +149,6 @@ pub(super) fn social_interactions_screen_case(
     Ok(json!({
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+        "events": events,
     }))
 }

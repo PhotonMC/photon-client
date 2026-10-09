@@ -237,6 +237,7 @@ impl PlaySession {
             username: username.to_owned(),
             suggestions: None,
             player_infos: std::collections::BTreeMap::new(),
+            seen_players: std::collections::BTreeMap::new(),
             next_chat_index: 0,
             drop_spam: 0,
             dirty_sections: std::collections::BTreeSet::new(),
