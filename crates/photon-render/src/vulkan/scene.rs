@@ -158,6 +158,7 @@ impl VulkanBackend {
                 gui_pipeline,
                 gui_invert_pipeline,
                 gui_highlight_pipeline,
+                panorama: None,
                 gui_vignette_pipeline,
                 gui_item_pipeline,
                 gui_texture: None,

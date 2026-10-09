@@ -47,6 +47,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
     if request["operation"] == "key_mappings" {
         return Ok(key_mappings());
     }
+    if request["operation"] == "panorama_view" {
+        return panorama_view(request);
+    }
     if request["operation"] == "command_parse" {
         return crate::command_parse_result(request, &root);
     }
@@ -132,4 +135,24 @@ fn key_mappings() -> Value {
         "categories": photon_data::keys::categories(),
         "keys": keys,
     })
+}
+
+/// `panorama_view`: the cube's model-view and the spin a frame adds, from the production module.
+fn panorama_view(request: &Value) -> Result<Value, String> {
+    use crate::{f32_field, f64_field};
+    let matrix = photon_render::panorama::model_view(
+        f32_field(request, "rot_x")?,
+        f32_field(request, "rot_y")?,
+    );
+    let bits: Vec<String> = matrix
+        .iter()
+        .flatten()
+        .map(|value| format!("{:08x}", value.to_bits()))
+        .collect();
+    let spin = photon_render::panorama::spin_after(
+        f32_field(request, "spin")?,
+        f32_field(request, "ticks")?,
+        f64_field(request, "speed")?,
+    );
+    Ok(json!({"matrix": bits, "spin": format!("{:08x}", spin.to_bits())}))
 }

@@ -53,7 +53,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// `command_buffer` must be recording inside the scene's rendering scope.
-    pub(super) unsafe fn bind_state(
+    pub(in super::super) unsafe fn bind_state(
         &self,
         pipeline: &Pipeline,
         set: Option<vk::DescriptorSet>,

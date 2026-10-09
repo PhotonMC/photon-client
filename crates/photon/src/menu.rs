@@ -85,6 +85,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             Choice::Quit => return Ok(()),
             Choice::Play(session) => {
                 client.backend.set_gui_only(false);
+                client.backend.set_panorama(None);
                 let (back, exit) = play::play_in(client, *session)?;
                 client = back;
                 if let Exit::Quit = exit {
@@ -111,6 +112,9 @@ struct Menu {
     icons_shown: Vec<Option<Vec<u8>>>,
     /// Whether the entries' icons are to be checked again.
     icons_dirty: bool,
+    /// `Panorama.spin`, in degrees, and when it last advanced.
+    spin: f32,
+    last_spin: Instant,
 }
 
 impl Menu {
@@ -133,6 +137,11 @@ impl Menu {
         client.surface.set_gui_scale_option(options.gui_scale);
         client.surface.set_cursor_captured(false);
         client.backend.set_gui_only(true);
+        client
+            .backend
+            .load_panorama(&photon_render::panorama::layers(&panorama_faces(
+                &root.to_string_lossy(),
+            )?))?;
         let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -161,7 +170,28 @@ impl Menu {
             pings: None,
             icons_shown: Vec::new(),
             icons_dirty: false,
+            spin: 0.0,
+            last_spin: Instant::now(),
         })
+    }
+
+    /// `Panorama.extractRenderState`: turn the cube by the frame's real time and show it.
+    fn spin_panorama(&mut self, client: &mut Client) {
+        let now = Instant::now();
+        let ticks = photon_render::panorama::real_delta_ticks(
+            now.duration_since(self.last_spin).as_secs_f32(),
+        );
+        self.last_spin = now;
+        // `panoramaScrollSpeed` is not read yet; its default is a full speed.
+        self.spin = photon_render::panorama::spin_after(self.spin, ticks, 1.0);
+        let extent = client.backend.description().extent;
+        client
+            .backend
+            .set_panorama(Some(photon_render::panorama::view_projection(
+                -self.spin,
+                extent.width,
+                extent.height,
+            )));
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
@@ -239,6 +269,7 @@ impl Menu {
                     _ => self.title(size),
                 };
             }
+            self.spin_panorama(client);
             let mouse = self.mouse;
             let screen = &self.screen;
             let lang = self.gui.lang();
@@ -673,3 +704,15 @@ const IDENTITY: [[f32; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
+
+/// `panorama_0` to `panorama_5` of the title screen's background.
+fn panorama_faces(root: &str) -> Result<[photon_render::DecodedImage; 6]> {
+    let face = |index: usize| {
+        play::texture(
+            root,
+            &format!("gui/title/background/panorama_{index}"),
+            "panorama",
+        )
+    };
+    Ok([face(0)?, face(1)?, face(2)?, face(3)?, face(4)?, face(5)?])
+}

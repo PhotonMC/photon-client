@@ -51,6 +51,7 @@ mod draws;
 mod frame;
 mod memory;
 mod owned;
+mod panorama;
 mod pipeline;
 mod pipeline_cache;
 mod scene;

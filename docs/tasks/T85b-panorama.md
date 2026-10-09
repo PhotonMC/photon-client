@@ -27,3 +27,6 @@ Menü dışı ekranlarda bulanıklık (oyun içi ekranlar ayrı).
 `docs/gui-oracle.md` satırı.
 
 ## Devir notu
+- Yapılan: `panorama_*` küp dokusu (altı katman, `CubeMapTexture` sırası ve satır çevirme), `PANORAMA` boru hattı (`vulkan/panorama.rs`, `Pass::Panorama`), model-view/dönüş (`photon-render/src/panorama.rs`, `panorama_view` oracle'ı JOML ile bit eşit), menü döngüsünde dönüş.
+- Sapma: `panoramaScrollSpeed` seçeneği okunmuyor, hız 1.0 (T95 erişilebilirlik ayarları). `jar/assets` içindeki panorama dosyaları 1x1 yer tutucu; görsel kontrol `named` kopyalarıyla yapıldı.
+- Açık: bulanıklık [T85c](T85c-menu-bulaniklik.md)'e bölündü.

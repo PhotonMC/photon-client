@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %81 bitti** (ağırlıklı) · 257/300 madde işaretli, **43 madde kaldı** (tahmini 86 M-görev eşdeğeri iş).
+**Toplam: %81 bitti** (ağırlıklı) · 258/301 madde işaretli, **43 madde kaldı** (tahmini 86 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `███████████████████░` | 95 | 19/20 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 75 | 30/38 |
+| M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 76 | 31/39 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
 | M8 Partikül, efekt ve blok entity | `████████████████░░░░` | 79 | 34/42 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T85b, T90, T91, T92, T93, T95, T96c, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T85c, T90, T91, T92, T93, T95, T96c, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -252,7 +252,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T66](T66-hud-durum-oracle.md) HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) — M · bağımlı: T45 · bitti (5814a8cd)
 - [x] [PLAN-M6](PLAN-M3d.md) Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl — S · bitti
 - [x] [T85](T85-uygulama-durumu-baslik.md) Uygulama durumu (menü ↔ oyun) ve başlık ekranı — L · bitti (5558d989)
-- [ ] [T85b](T85b-panorama.md) Başlık ekranının panoraması ve menü bulanıklığı — M · bağımlı: T85
+- [x] [T85b](T85b-panorama.md) Başlık ekranının panoraması (küp doku, dönüş) — M · bağımlı: T85 · bölündü (PLACEHOLDER)
+- [ ] [T85c](T85c-menu-bulaniklik.md) Menü arka planının bulanıklığı (`blur` post zinciri) — M · bağımlı: T85b
 - [x] [T86](T86-sunucu-listesi.md) Sunucu listesi ve `servers.dat` — L · bağımlı: T85 · bitti (3563fe38)
 - [x] [T86c](T86c-sunucu-ekle-duzenle.md) Sunucu ekleme, düzenleme, silme ve doğrudan bağlanma — M · bağımlı: T86 · bitti (adee2f1a)
 - [x] [T86b](T86b-sunucu-durumu.md) Sunucu durum sorgusu: MOTD, ping, oyuncu sayısı — M · bağımlı: T86 · bitti (3c8c8a46)

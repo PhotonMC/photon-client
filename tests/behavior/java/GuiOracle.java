@@ -9,6 +9,28 @@ import com.google.gson.JsonObject;
 public final class GuiOracle extends GuiCreditsOracle {
     GuiOracle() {}
 
+    /**
+     * The title screen's panorama: the cube's model-view (`CubeMap.render`) and the spin one
+     * frame adds (`Panorama.extractRenderState`), for the given inputs.
+     */
+    static JsonObject panoramaView(JsonObject request) {
+        var matrix = new org.joml.Matrix4f().rotationX((float) Math.PI);
+        matrix.rotateX(Oracle.f32(request, "rot_x") * (float) (Math.PI / 180.0));
+        matrix.rotateY(Oracle.f32(request, "rot_y") * (float) (Math.PI / 180.0));
+        var bits = new com.google.gson.JsonArray();
+        for (int column = 0; column < 4; column++) {
+            for (int row = 0; row < 4; row++) {
+                bits.add(Oracle.bits(matrix.get(column, row)));
+            }
+        }
+        float delta = (float) (Oracle.f32(request, "ticks") * Oracle.f64(request, "speed"));
+        float spin = net.minecraft.util.Mth.wrapDegrees(Oracle.f32(request, "spin") + delta * 0.1F);
+        var result = new JsonObject();
+        result.add("matrix", bits);
+        result.addProperty("spin", Oracle.bits(spin));
+        return result;
+    }
+
     public static JsonObject run(JsonObject request) {
         try {
             return switch (request.get("operation").getAsString()) {
@@ -44,6 +66,7 @@ public final class GuiOracle extends GuiCreditsOracle {
                 case "controls_screen" -> settingsScreen(request, "controls");
                 case "key_binds_screen" -> settingsScreen(request, "keybinds");
                 case "key_mappings" -> keyMappings(request);
+                case "panorama_view" -> panoramaView(request);
                 case "language_screen" -> settingsScreen(request, "language");
                 case "lang_text" -> langText(request);
                 case "death_screen" -> deathScreen(request);

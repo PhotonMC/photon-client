@@ -25,12 +25,14 @@ pub(super) enum Pass {
     Weather,
     /// The first-person hand and what it holds, over a cleared depth.
     Hand,
+    /// The title screen's cube map, under the GUI.
+    Panorama,
     /// The GUI over everything, run by run in its blends.
     Gui,
 }
 
 /// The passes in draw order.
-pub(super) const PASSES: [Pass; 11] = [
+pub(super) const PASSES: [Pass; 12] = [
     Pass::Sky,
     Pass::Terrain,
     Pass::Entities,
@@ -41,6 +43,7 @@ pub(super) const PASSES: [Pass; 11] = [
     Pass::Clouds,
     Pass::Weather,
     Pass::Hand,
+    Pass::Panorama,
     Pass::Gui,
 ];
 
@@ -55,7 +58,7 @@ impl Pass {
             Self::Translucent => Some(5),
             Self::Weather => Some(6),
             Self::Hand => Some(7),
-            Self::Outline | Self::Particles | Self::Clouds | Self::Gui => None,
+            Self::Outline | Self::Particles | Self::Clouds | Self::Panorama | Self::Gui => None,
         }
     }
 }

@@ -34,7 +34,7 @@ impl VulkanBackend {
             terrain_push[28..31].copy_from_slice(&self.sort_origin);
             terrain_push[32..].copy_from_slice(&self.fog);
             for pass in PASSES {
-                if self.gui_only && !matches!(pass, Pass::Gui) {
+                if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui) {
                     continue;
                 }
                 match pass {
@@ -62,6 +62,7 @@ impl VulkanBackend {
                         self.record_world_border(scene, &terrain_push);
                     }
                     Pass::Hand => self.record_hand(scene, &terrain_push),
+                    Pass::Panorama => self.record_panorama(scene),
                     Pass::Gui => self.record_gui(scene),
                 }
                 if let Some(query) = pass.stamp_after() {

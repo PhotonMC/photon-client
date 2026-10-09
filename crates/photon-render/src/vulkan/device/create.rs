@@ -95,6 +95,7 @@ impl VulkanBackend {
                 scene: None,
                 sky_buffer: DynamicBuffer::default(),
                 pending_sky: None,
+                panorama_view: None,
                 cloud_buffer: None,
                 weather_buffer: DynamicBuffer::default(),
                 weather_counts: (0, 0),

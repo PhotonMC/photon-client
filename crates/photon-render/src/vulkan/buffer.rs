@@ -220,6 +220,8 @@ pub(super) struct SceneResources {
     /// The maps' colours and the decoration sprites, packed in one image, and its sampler and set.
     pub(super) map_texture: Option<Texture>,
     pub(super) map_set: Option<vk::DescriptorSet>,
+    /// The title screen's cube map, once loaded.
+    pub(super) panorama: Option<super::panorama::PanoramaScene>,
 }
 
 /// A rectangle of one atlas level to rewrite.
