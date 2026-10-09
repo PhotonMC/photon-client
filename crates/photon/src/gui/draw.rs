@@ -289,7 +289,7 @@ impl Gui {
                 );
                 crate::mobs::animals::farm_animals::gui_preview(
                     world,
-                    mob_models,
+                    (&mut *mob_models, &mut *armor),
                     entity_textures,
                     entity,
                     &view,

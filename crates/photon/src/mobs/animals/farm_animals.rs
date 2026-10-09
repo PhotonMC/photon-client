@@ -4,17 +4,20 @@
 //! `RabbitRenderer`, `BeeRenderer`, `HorseRenderer`, `DonkeyRenderer`,
 //! `UndeadHorseRenderer`, `HorseMarkingLayer`).
 
+mod gear;
+
 use photon_net::connection::PlaySession;
 use photon_render::entity::block::mooshroom_mushroom_poses;
 use photon_render::entity::mob_model::{
-    BeeState, CamelState, EquineKind, EquineState, GoatState, MobModel, MobPlacement,
-    QuadrupedState, RabbitState, mob_vertices, overlay_code, placement_pose,
+    BeeState, CamelState, EquineKind, GoatState, MobModel, MobPlacement, QuadrupedState,
+    RabbitState, mob_vertices, overlay_code, placement_pose,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::ClientEntity;
 use photon_world::animation_state::AnimationState;
 
+use crate::equipment::armor::Armor;
 use crate::equipment::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -364,25 +367,13 @@ fn pose(
         }
         Animal::Horse | Animal::Equine(_) => {
             let donkey = matches!(animal, Animal::Equine(index) if OTHER_EQUINES[index].3);
-            let anim = entity.horse();
-            model.setup_equine(&EquineState {
-                kind: match (donkey, baby) {
-                    (false, false) => EquineKind::Horse,
-                    (false, true) => EquineKind::BabyHorse,
-                    (true, false) => EquineKind::Donkey,
-                    (true, true) => EquineKind::BabyDonkey,
-                },
-                quadruped: look,
-                age_in_ticks: entity.tick_count() as f32 + partial,
-                eat_animation: anim.map_or(0.0, |horse| horse.eat_animation(partial)),
-                stand_animation: anim.map_or(0.0, |horse| horse.stand_animation(partial)),
-                feeding_animation: anim.map_or(0.0, |horse| horse.mouth_animation(partial)),
-                animate_tail: anim.is_some_and(|horse| horse.tail_counter() > 0),
-                // Whether the animal is in water is not tracked for mobs yet.
-                in_water: false,
-                age_scale: if baby { 0.5 } else { 1.0 },
-                has_chest: entity.horse_has_chest(),
-            });
+            let kind = match (donkey, baby) {
+                (false, false) => EquineKind::Horse,
+                (false, true) => EquineKind::BabyHorse,
+                (true, false) => EquineKind::Donkey,
+                (true, true) => EquineKind::BabyDonkey,
+            };
+            model.setup_equine(&gear::equine_state(entity, kind, (look, partial)));
         }
         Animal::Bee => {
             let (x, y, z) = entity.motion();
@@ -481,7 +472,7 @@ fn animal_kinds() -> Vec<(i32, Animal)> {
 /// drawn yet.
 pub fn remote_farm_animals(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
@@ -526,16 +517,24 @@ pub fn remote_farm_animals(
         {
             vertices.extend(mob_vertices(model, &placed, marking));
         }
+        gear::layers(
+            armor,
+            textures,
+            (animal, entity),
+            (look, partial),
+            &placed,
+            vertices,
+        );
     }
 }
 
 /// An animal in a screen's box (`InventoryScreen.extractEntityInInventoryFollowsMouse`): its
 /// model posed as the entity stands now, its head turned to the mouse, at the origin turned to
 /// the view's body rotation; none for an entity this module does not draw. The coat's markings
-/// come with it; a horse's saddle and armour layers are not drawn yet.
+/// come with it, and a horse's saddle and armor or a llama's carpet.
 pub fn gui_preview(
     world: &photon_world::ClientWorld,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     entity: &ClientEntity,
     view: &photon_render::entity::player_renderer::GuiEntityView,
@@ -571,5 +570,13 @@ pub fn gui_preview(
     {
         vertices.extend(mob_vertices(model, &placed, marking));
     }
+    gear::layers(
+        armor,
+        textures,
+        (animal, entity),
+        (look, 1.0),
+        &placed,
+        &mut vertices,
+    );
     Some(vertices)
 }

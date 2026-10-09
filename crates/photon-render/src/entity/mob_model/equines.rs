@@ -134,6 +134,19 @@ impl MobModel {
         }
     }
 
+    /// `EquineSaddleModel.setupAnim`: the horse's pose, and the reins show while the animal
+    /// is ridden.
+    pub fn setup_equine_saddle(&mut self, state: &EquineState, ridden: bool) {
+        self.setup_equine(state);
+        if let Some(head) = self.root.child_mut("head_parts") {
+            for name in ["left_saddle_line", "right_saddle_line"] {
+                if let Some(line) = head.child_mut(name) {
+                    line.visible = ridden;
+                }
+            }
+        }
+    }
+
     /// `CamelModel.setupAnim`: the head follows the look within limits (and
     /// dips while the dash cools down), then the walk and each animation state
     /// that has started.

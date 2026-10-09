@@ -315,7 +315,13 @@ pub(super) fn remote_families(
     pandas::remote_pandas(session, models, textures, (view, &mut *held), vertices);
     ravagers::remote_ravagers(session, models, textures, view, vertices);
     remote_projectiles_and_vehicles(session, models, textures, (view, &mut *held), vertices);
-    farm_animals::remote_farm_animals(session, models, textures, (view, &mut *held), vertices);
+    farm_animals::remote_farm_animals(
+        session,
+        (&mut *models, &mut *armor),
+        textures,
+        (view, &mut *held),
+        vertices,
+    );
     golems::remote_golems(session, models, textures, (view, &mut *held), vertices);
     villagers::remote_witches(session, models, textures, (view, &mut *held), vertices);
     illagers::remote_illagers(session, models, textures, (view, held), vertices);

@@ -10,4 +10,5 @@ Java: `client/renderer/entity/{HorseRenderer,LlamaRenderer}.java`, `layers/{Simp
 Dünya çizimine katmanları ekle; `gui_preview` aynı yardımcıyı kullansın (kopyalama). Oracle/kabul/belgeler T58d gibi.
 
 ## Devir notu
-(boş)
+At ailesi eyeri (`horse#saddle` vb., sürülürken dizgin), at/ölü at zırhı (boyalı deri dahil: `simple_layer` artık boyayı uygular), lama halısı ve gezgin tüccar lamasının örtüsü (`farm_animals/gear.rs`) dünyada ve `gui_preview`de çiziliyor. Yavru eyer/zırh taşımaz (Java). Sapma yok.
+Açık: bu katmanlarda büyü parıltısı (`renderFoil`) yok; `simple_layer` parıltıyı hiçbir tüketicide çizmiyor.

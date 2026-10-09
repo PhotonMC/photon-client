@@ -105,13 +105,20 @@ const HUMANOID: &str = "humanoid";
 const LEGGINGS: &str = "humanoid_leggings";
 const BABY: &str = "humanoid_baby";
 const WINGS: &str = "wings";
-/// The layer types mobs wear one piece in (`SimpleEquipmentLayer`): the saddles, the
-/// happy ghast's harness and the nautilus's armor.
-const SIMPLE: [&str; 4] = [
+/// The layer types mobs wear one piece in (`SimpleEquipmentLayer`, `LlamaDecorLayer`): the
+/// saddles, the happy ghast's harness, the nautilus's and the horse's armor, the llama's carpet.
+const SIMPLE: [&str; 11] = [
     "strider_saddle",
     "happy_ghast_body",
     "nautilus_body",
     "nautilus_saddle",
+    "horse_body",
+    "llama_body",
+    "horse_saddle",
+    "donkey_saddle",
+    "mule_saddle",
+    "skeleton_horse_saddle",
+    "zombie_horse_saddle",
 ];
 
 impl Armor {
@@ -415,7 +422,7 @@ impl Armor {
 
     /// `SimpleEquipmentLayer`: what a mob wears in the equipment slot `slot`
     /// (a saddle) drawn in the layer type `layer_type` of its asset on the
-    /// model `model`, posed as the wearer is posed.
+    /// model `model`, posed as the wearer is posed. A dyed stack colours its dyeable layers.
     pub fn simple_layer(
         &mut self,
         stack: &ClientItemStackState,
@@ -427,10 +434,40 @@ impl Armor {
         let Some(asset) = self.asset_for(stack, slot) else {
             return Vec::new();
         };
-        let layers: Vec<String> = self.infos[&asset]
+        let dye = Values::new(stack.item_registry_id(), stack.patch_bytes())
+            .dyed_color()
+            .map_or(0, |rgb| rgb as u32 | 0xFF00_0000);
+        self.asset_layer(&asset, (layer_type, model, dye), textures, pose, place)
+    }
+
+    /// The layers of the equipment asset `asset` (`trader_llama`) with no stack behind it, as
+    /// `simple_layer` draws them.
+    pub fn named_layer(
+        &mut self,
+        asset: &str,
+        (layer_type, model): (&str, &str),
+        textures: &EntityTextures,
+        pose: &dyn Fn(&mut MobModel),
+        place: Place,
+    ) -> Vec<Vertex> {
+        self.asset_layer(asset, (layer_type, model, 0), textures, pose, place)
+    }
+
+    fn asset_layer(
+        &mut self,
+        asset: &str,
+        (layer_type, model, dye): (&str, &str, u32),
+        textures: &EntityTextures,
+        pose: &dyn Fn(&mut MobModel),
+        place: Place,
+    ) -> Vec<Vertex> {
+        let Some(info) = self.infos.get(asset) else {
+            return Vec::new();
+        };
+        let layers: Vec<(String, u32)> = info
             .layers(layer_type)
             .iter()
-            .map(|layer| layer.texture_path(layer_type))
+            .map(|layer| (layer.texture_path(layer_type), layer.colour(dye)))
             .collect();
         if !self.models.contains_key(model) {
             let Some(layer) = photon_data::entity_model::layer(model) else {
@@ -445,8 +482,16 @@ impl Armor {
         pose(model);
         layers
             .iter()
-            .filter_map(|texture| textures.rect(texture))
-            .flat_map(|rect| place(model, rect, None))
+            // A layer coloured to nothing is not drawn; white is no colour.
+            .filter(|(_, colour)| *colour != 0)
+            .filter_map(|(texture, colour)| Some((textures.rect(texture)?, *colour)))
+            .flat_map(|(rect, colour)| {
+                place(
+                    model,
+                    rect,
+                    (colour != 0xFFFF_FFFF).then_some(colour & 0x00FF_FFFF),
+                )
+            })
             .collect()
     }
 
