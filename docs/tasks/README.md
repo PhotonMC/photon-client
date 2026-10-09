@@ -252,7 +252,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T66](T66-hud-durum-oracle.md) HUD durum çubukları oracle'ı (kalpler, zırh, yiyecek, hava, deneyim) — M · bağımlı: T45 · bitti (5814a8cd)
 - [x] [PLAN-M6](PLAN-M3d.md) Ana menü, sunucu listesi, ilerlemeler, kitap/tabela ve kalan ekranları görevlere böl — S · bitti
 - [x] [T85](T85-uygulama-durumu-baslik.md) Uygulama durumu (menü ↔ oyun) ve başlık ekranı — L · bitti (5558d989)
-- [x] [T85b](T85b-panorama.md) Başlık ekranının panoraması (küp doku, dönüş) — M · bağımlı: T85 · bölündü (PLACEHOLDER)
+- [x] [T85b](T85b-panorama.md) Başlık ekranının panoraması (küp doku, dönüş) — M · bağımlı: T85 · bölündü (5cd57b3d)
 - [ ] [T85c](T85c-menu-bulaniklik.md) Menü arka planının bulanıklığı (`blur` post zinciri) — M · bağımlı: T85b
 - [x] [T86](T86-sunucu-listesi.md) Sunucu listesi ve `servers.dat` — L · bağımlı: T85 · bitti (3563fe38)
 - [x] [T86c](T86c-sunucu-ekle-duzenle.md) Sunucu ekleme, düzenleme, silme ve doğrudan bağlanma — M · bağımlı: T86 · bitti (adee2f1a)
