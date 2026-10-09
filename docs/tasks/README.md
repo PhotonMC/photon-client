@@ -271,7 +271,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
 - [x] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M · bölündü (0c4fd423)
-- [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (HASH)
+- [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (47232984)
 - [ ] [T96c](T96c-sosyal-etkilesimler.md) Sosyal etkileşimler ekranı — M · bağımlı: T85
 
 ### M7 Ses
