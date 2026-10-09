@@ -226,6 +226,12 @@ impl PlaySession {
         self.death.take()
     }
 
+    /// Whether the server ended the game (`WIN_GAME`) since this was last asked: the credits are
+    /// yet to be shown.
+    pub fn take_win_game(&mut self) -> bool {
+        std::mem::take(&mut self.win_game)
+    }
+
     /// `LocalPlayer.respawn`: ask the server to bring the player back.
     pub fn respawn(&mut self) -> Result<(), ConnectionError> {
         self.send(

@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %80 bitti** (ağırlıklı) · 256/300 madde işaretli, **44 madde kaldı** (tahmini 87 M-görev eşdeğeri iş).
+**Toplam: %81 bitti** (ağırlıklı) · 257/300 madde işaretli, **43 madde kaldı** (tahmini 86 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `███████████████████░` | 95 | 19/20 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 73 | 29/38 |
+| M6 Ekranlar ve ayarlar | `███████████████░░░░░` | 75 | 30/38 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
 | M8 Partikül, efekt ve blok entity | `████████████████░░░░` | 79 | 34/42 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T85b, T90, T91, T92, T93, T95, T96b, T96c, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T85b, T90, T91, T92, T93, T95, T96c, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, Q04, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -271,7 +271,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
 - [ ] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L
 - [x] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M · bölündü (0c4fd423)
-- [ ] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85
+- [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (HASH)
 - [ ] [T96c](T96c-sosyal-etkilesimler.md) Sosyal etkileşimler ekranı — M · bağımlı: T85
 
 ### M7 Ses

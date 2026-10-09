@@ -170,33 +170,38 @@ impl TitleScreen {
             (0, 0, width, height),
         );
         self.buttons.draw(frame, atlas, font, mouse);
-        // `LogoRenderer`: the logo thirty units down, the edition overlapping its foot by seven.
-        frame.blit_texture(
-            atlas,
-            "title/minecraft",
-            (256, 64),
-            (0, 0),
-            width / 2 - 128,
-            30,
-            256,
-            44,
-        );
-        frame.blit_texture(
-            atlas,
-            "title/edition",
-            (128, 16),
-            (0, 0),
-            width / 2 - 64,
-            30 + 44 - 7,
-            128,
-            14,
-        );
+        draw_logo(frame, atlas, width, 30);
         if let Some(splash) = &self.splash {
             draw_splash(frame, atlas, font, splash, width);
         }
         frame.text_with_shadow(atlas, font, &self.version, 2, height - 10, 0xFFFF_FFFF);
         self.buttons.draw_tooltip(frame, atlas, font, mouse);
     }
+}
+
+/// `LogoRenderer.extractRenderState`: the logo `top` units down, the edition overlapping its foot
+/// by seven.
+pub fn draw_logo(frame: &mut GuiFrame, atlas: &GuiAtlas, width: i32, top: i32) {
+    frame.blit_texture(
+        atlas,
+        "title/minecraft",
+        (256, 64),
+        (0, 0),
+        width / 2 - 128,
+        top,
+        256,
+        44,
+    );
+    frame.blit_texture(
+        atlas,
+        "title/edition",
+        (128, 16),
+        (0, 0),
+        width / 2 - 64,
+        top + 44 - 7,
+        128,
+        14,
+    );
 }
 
 /// `SplashRenderer.extractRenderState`: the text turned and scaled about its place, its size

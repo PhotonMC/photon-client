@@ -26,6 +26,8 @@ pub enum GuiBlend {
     Invert,
     /// A text selection, added to what is behind it.
     Highlight,
+    /// The credits' vignette: what is behind it darkened by its colour.
+    Vignette,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
     /// The player's model in a screen, whose run counts in

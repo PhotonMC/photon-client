@@ -147,6 +147,9 @@ impl PlaySession {
         if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
             self.show_death_screen = event.param == 0.0;
         }
+        if event.event_id == GAME_EVENT_WIN_GAME_ID {
+            self.win_game = true;
+        }
         if event.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID {
             // `MultiPlayerGameMode.setLocalMode`: a change keeps the mode left as the previous.
             let mode = ClientPlayerGameMode::from_game_event_param(event.param);

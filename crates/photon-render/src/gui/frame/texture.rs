@@ -280,6 +280,43 @@ impl GuiFrame {
         }
     }
 
+    /// `GuiGraphics.blit` of a texture `tile` big repeated over a rectangle, the first row being
+    /// `v` texels down: `WinScreen`'s background, which moves by less than a texel.
+    pub fn tile_texture_scrolled(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        tile: (i32, i32),
+        v: f32,
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        if let Some(log) = &mut self.log {
+            let (tw, th) = (tile.0 as f32, tile.1 as f32);
+            log.push(DrawOp::Texture {
+                name: name.to_owned(),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                uv: (0.0 / tw, (0.0 + w as f32) / tw, v / th, (v + h as f32) / th),
+            });
+        }
+        let first = v.rem_euclid(tile.1 as f32);
+        let mut top = 0;
+        let mut from_v = first;
+        while top < h {
+            let piece_h = ((tile.1 as f32 - from_v).ceil() as i32).clamp(1, h - top);
+            let mut left = 0;
+            while left < w {
+                let piece_w = tile.0.min(w - left);
+                let region = (0.0, from_v, piece_w as f32, piece_h as f32);
+                let rect = (x + left, y + top, piece_w, piece_h);
+                let texture = format!("texture/{name}");
+                self.blit_region_f32(atlas, GuiBlend::Translucent, &texture, tile, region, rect);
+                left += piece_w;
+            }
+            top += piece_h;
+            from_v = (from_v + piece_h as f32).rem_euclid(tile.1 as f32);
+        }
+    }
+
     /// `GuiGraphics.enableScissor` over what was drawn since `mark`: each
     /// rectangle of two triangles is cut to `(left, top, right, bottom)`, its
     /// texture with it; what falls outside is flattened to nothing, and the
@@ -400,6 +437,37 @@ impl GuiFrame {
         region: (i32, i32, i32, i32),
         rect: (i32, i32, i32, i32),
     ) {
+        self.blit_stretched_with(
+            atlas,
+            GuiBlend::Translucent,
+            name,
+            texture_size,
+            region,
+            rect,
+        );
+    }
+
+    /// `blit` through the `VIGNETTE` pipeline: the whole texture over `rect`.
+    pub fn vignette(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        texture_size: (i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        let region = (0, 0, texture_size.0, texture_size.1);
+        self.blit_stretched_with(atlas, GuiBlend::Vignette, name, texture_size, region, rect);
+    }
+
+    fn blit_stretched_with(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        name: &str,
+        texture_size: (i32, i32),
+        region: (i32, i32, i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
         if let Some(log) = &mut self.log {
             let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
             log.push(DrawOp::Texture {
@@ -420,7 +488,7 @@ impl GuiFrame {
         }
         self.blit_region(
             atlas,
-            GuiBlend::Translucent,
+            blend,
             &format!("texture/{name}"),
             texture_size,
             region,

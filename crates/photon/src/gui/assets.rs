@@ -33,6 +33,8 @@ impl Gui {
             last_tick: std::time::Instant::now(),
             items: ItemLayerCache::new(photon_render::model::DisplayContext::Gui),
             started_at: std::time::Instant::now(),
+            assets_root: root.to_path_buf(),
+            last_frame_ms: 0,
         };
         gui.hud
             .set_waypoint_styles(photon_render::gui::hud::locator::WaypointStyles::load(root));
@@ -81,6 +83,7 @@ impl Gui {
             alt_font: self.alt_font.clone(),
             lang: lang.clone(),
             languages: self.languages.clone(),
+            assets_root: self.assets_root.clone(),
         }
     }
 

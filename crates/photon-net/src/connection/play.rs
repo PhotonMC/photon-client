@@ -130,6 +130,8 @@ pub struct PlaySession {
     pub(super) disconnect: Option<photon_game::text::Component>,
     /// The message of a death the death screen is yet to show.
     pub(super) death: Option<photon_game::text::Component>,
+    /// A `WIN_GAME` event the credits screen is yet to show.
+    pub(super) win_game: bool,
     /// Swing packets sent, for scripted runs to report.
     pub(super) swings: u32,
     /// The sound packets since the last [`Self::take_sounds`].

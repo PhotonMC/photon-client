@@ -319,6 +319,8 @@ pub(crate) const PLAY_SERVERBOUND_USE_ITEM_PACKET_ID: i32 = 67;
 
 pub(crate) const GAME_EVENT_CHANGE_GAME_MODE_ID: u8 = 3;
 
+pub(crate) const GAME_EVENT_WIN_GAME_ID: u8 = 4;
+
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 pub(crate) const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;

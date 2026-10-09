@@ -115,6 +115,8 @@ impl VulkanBackend {
                 self.create_pipeline(descriptors.layout, PipelineKind::GuiInvert)?;
             let gui_highlight_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::GuiHighlight)?;
+            let gui_vignette_pipeline =
+                self.create_pipeline(descriptors.layout, PipelineKind::GuiVignette)?;
             let gui_item_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::GuiItem)?;
 
@@ -156,6 +158,7 @@ impl VulkanBackend {
                 gui_pipeline,
                 gui_invert_pipeline,
                 gui_highlight_pipeline,
+                gui_vignette_pipeline,
                 gui_item_pipeline,
                 gui_texture: None,
                 gui_set: None,

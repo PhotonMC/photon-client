@@ -240,6 +240,9 @@ impl Controls {
         if self.confirm.is_some() && for_screen {
             return self.confirm_event(event, session, surface);
         }
+        if self.credits.is_some() && for_screen {
+            return self.credits_event(event, session, surface);
+        }
         if self.death.is_some() && for_screen {
             return self.death_event(event, session, surface, assets);
         }

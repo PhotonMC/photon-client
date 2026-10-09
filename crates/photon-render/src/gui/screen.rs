@@ -6,6 +6,7 @@
 //! into the GUI frame through a [`ScreenDraw`].
 pub mod confirm;
 pub mod connect;
+pub mod credits;
 pub mod death;
 pub mod disconnected;
 pub mod game_mode;

@@ -344,6 +344,8 @@ impl Play {
         self.controls
             .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
+            .receive_win_game(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls
             .open_sign_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .open_book_editor(&mut self.session, &mut self.surface, &self.screen_assets);
@@ -483,6 +485,7 @@ impl Play {
         if let Some(death) = self.controls.death.as_mut() {
             death.tick();
         }
+        self.controls.credits_tick(session, &mut self.surface)?;
         if let Some(confirm) = self.controls.confirm.as_mut() {
             confirm.tick();
         }

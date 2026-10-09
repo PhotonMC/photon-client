@@ -33,6 +33,7 @@ use photon_render::gui::screen::confirm::ConfirmAction as LinkAction;
 
 use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 
+use photon_render::gui::screen::credits::CreditsScreen;
 use photon_render::gui::screen::death::{DeathAction, DeathScreen};
 use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
 
@@ -107,6 +108,8 @@ pub struct Controls {
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
+    /// The credits, from the server's `WIN_GAME` until they end or are closed.
+    pub credits: Option<CreditsScreen>,
     /// The game mode switcher (F3+F4), while F3 is held.
     pub game_mode_switcher: Option<GameModeSwitcherScreen>,
     /// Whether F3, the debug modifier, is held.
@@ -289,6 +292,8 @@ mod chat;
 
 mod confirm;
 
+mod credits;
+
 mod death;
 mod game_mode_switcher;
 
@@ -341,6 +346,7 @@ impl Controls {
             mouse_screen: None,
             key_binds_screen: None,
             death: None,
+            credits: None,
             game_mode_switcher: None,
             debug_down: false,
             sign_edit: None,

@@ -359,14 +359,28 @@ impl GuiFrame {
         name: &str,
         size: (i32, i32),
         (u, v, uw, vh): (i32, i32, i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        let region = (u as f32, v as f32, uw as f32, vh as f32);
+        self.blit_region_f32(atlas, blend, name, size, region, rect);
+    }
+
+    /// `blit_region` with the first texel anywhere in the texture: a scrolling background.
+    pub(crate) fn blit_region_f32(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        name: &str,
+        size: (i32, i32),
+        (u, v, uw, vh): (f32, f32, f32, f32),
         (x, y, w, h): (i32, i32, i32, i32),
     ) {
-        if w == 0 || h == 0 || uw == 0 || vh == 0 {
+        if w == 0 || h == 0 || uw == 0.0 || vh == 0.0 {
             return;
         }
         let [u0, v0, u1, v1] = atlas.sprite(name);
-        let su = |offset: i32| u0 + (u1 - u0) * offset as f32 / size.0 as f32;
-        let sv = |offset: i32| v0 + (v1 - v0) * offset as f32 / size.1 as f32;
+        let su = |offset: f32| u0 + (u1 - u0) * offset / size.0 as f32;
+        let sv = |offset: f32| v0 + (v1 - v0) * offset / size.1 as f32;
         let (left, right) = (su(u), su(u + uw));
         let (top, bottom) = (sv(v), sv(v + vh));
         let corner = |px: i32, py: i32, uv: [f32; 2]| GuiVertex {

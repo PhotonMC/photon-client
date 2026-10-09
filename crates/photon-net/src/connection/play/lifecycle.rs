@@ -199,6 +199,7 @@ impl PlaySession {
             show_death_screen: true,
             disconnect: None,
             death: None,
+            win_game: false,
             swings: 0,
             sounds: Vec::new(),
             level_particles: Vec::new(),

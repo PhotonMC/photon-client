@@ -20,6 +20,8 @@ class GuiFonts {
     static sun.misc.Unsafe unsafe;
 
     static Font font;
+    /** The game's own assets, once loaded: what screens read texts from. */
+    static net.minecraft.server.packs.resources.ResourceManager resources;
 
     /** Each font's providers, and the advances asked of them. */
     static final Map<String, List<com.mojang.blaze3d.font.GlyphProvider>> FONTS = new HashMap<>();
@@ -174,6 +176,7 @@ class GuiFonts {
                 net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
         var manager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
             net.minecraft.server.packs.PackType.CLIENT_RESOURCES, List.of(pack));
+        resources = manager;
         for (String name : new String[] {"default", "alt"}) {
             var providers = new ArrayList<com.mojang.blaze3d.font.GlyphProvider>();
             loadFont(manager, Identifier.withDefaultNamespace(name), providers);

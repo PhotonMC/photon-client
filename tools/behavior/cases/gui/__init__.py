@@ -3,6 +3,7 @@
 import itertools
 
 from cases.gui.books import gui_book_edit_screen_cases, gui_book_sign_screen_cases, gui_book_view_cases
+from cases.gui.credits import gui_credits_screen_cases
 from cases.gui.chat import gui_cases, gui_chat_draft_cases, gui_suggestion_cases
 from cases.gui.commands import command_tree_hex, gui_command_parse_cases, gui_command_suggest_cases
 from cases.gui.hud import _waypoint_bytes, gui_boss_bar_cases, gui_hud_hotbar_cases, gui_hud_status_cases, gui_locator_bar_cases, gui_name_tag_cases, gui_sidebar_cases, gui_tab_list_cases, gui_title_cases
@@ -19,7 +20,7 @@ def gui_generators():
     return itertools.chain(
         gui_cases(), gui_suggestion_cases(), gui_title_cases(), gui_boss_bar_cases(),
         gui_sidebar_cases(), gui_command_parse_cases(), gui_command_suggest_cases(),
-        gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(),
+        gui_pause_screen_cases(), gui_death_screen_cases(), gui_disconnected_screen_cases(), gui_credits_screen_cases(),
         gui_tab_list_cases(), gui_container_screen_cases(), gui_game_mode_switcher_cases(),
         gui_confirm_screen_cases(), gui_widgets_cases(),
         gui_options_screen_cases(), gui_video_settings_cases(), gui_chat_options_cases(),

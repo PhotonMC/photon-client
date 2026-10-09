@@ -59,6 +59,10 @@ pub struct Gui {
     pub(super) last_tick: std::time::Instant,
     pub(super) items: ItemLayerCache,
     pub(super) started_at: std::time::Instant,
+    /// Where the assets are read from, and when (in `started_at` milliseconds) the last frame was
+    /// drawn: the credits roll by the time between frames.
+    pub(super) assets_root: std::path::PathBuf,
+    pub(super) last_frame_ms: u64,
 }
 
 /// `FilterMask.applyWithFormatting`: the text with the hidden characters

@@ -38,6 +38,7 @@ pub(super) enum PipelineKind {
     GuiInvert,
     /// A text selection, added to what is behind it (`GUI_TEXT_HIGHLIGHT`).
     GuiHighlight,
+    GuiVignette,
     /// Items in GUI slots, over a cleared depth.
     GuiItem,
     /// The aimed block's outline.
@@ -211,6 +212,7 @@ pub(super) struct SceneResources {
     pub(super) gui_pipeline: Pipeline,
     pub(super) gui_invert_pipeline: Pipeline,
     pub(super) gui_highlight_pipeline: Pipeline,
+    pub(super) gui_vignette_pipeline: Pipeline,
     pub(super) gui_item_pipeline: Pipeline,
     /// The GUI sprites' atlas.
     pub(super) gui_texture: Option<Texture>,

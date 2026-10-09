@@ -230,3 +230,43 @@ pub(super) fn disconnected_screen_case(ctx: &mut GuiContext, row: &Value) -> Res
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }
+
+pub(super) fn credits_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    let assets = ctx.root.clone();
+    let mut screen = photon_render::gui::screen::credits::CreditsScreen::new(
+        &ctx.font,
+        &assets,
+        (int("width"), int("height")),
+        row["poem"].as_bool().unwrap_or(false),
+        row["player"].as_str().unwrap_or_default(),
+    );
+    screen.set_scroll(row["scroll"].as_f64().unwrap_or(0.0) as f32);
+    for step in row["keys"].as_array().ok_or("keys")? {
+        let code = step["code"].as_i64().unwrap_or(0) as i32;
+        if step["down"].as_bool().unwrap_or(false) {
+            screen.key_pressed(code);
+        } else {
+            screen.key_released(code);
+        }
+    }
+    let finished = screen.tick();
+    screen.draw(
+        &mut frame,
+        &ctx.atlas,
+        &ctx.font,
+        row["partial"].as_f64().unwrap_or(0.0) as f32,
+    );
+    Ok(json!({
+        "label": row["label"],
+        "finished": finished,
+        // As the float's shortest text, which is what the reference writes.
+        "scroll": screen.scroll().to_string().parse::<f64>().unwrap_or_default(),
+        "lines": screen.line_count(),
+        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+    }))
+}

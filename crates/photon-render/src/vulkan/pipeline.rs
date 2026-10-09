@@ -40,7 +40,10 @@ impl VulkanBackend {
         let text_see_through = kind == PipelineKind::TextSeeThrough;
         let gui = matches!(
             kind,
-            PipelineKind::Gui | PipelineKind::GuiInvert | PipelineKind::GuiHighlight
+            PipelineKind::Gui
+                | PipelineKind::GuiInvert
+                | PipelineKind::GuiHighlight
+                | PipelineKind::GuiVignette
         );
         let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
@@ -382,6 +385,17 @@ impl VulkanBackend {
                     .color_blend_op(vk::BlendOp::ADD)
                     .src_alpha_blend_factor(vk::BlendFactor::ONE)
                     .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .alpha_blend_op(vk::BlendOp::ADD)
+                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+            } else if kind == PipelineKind::GuiVignette {
+                // The credits' `VIGNETTE`: the destination darkened by the source colour.
+                vk::PipelineColorBlendAttachmentState::default()
+                    .blend_enable(true)
+                    .src_color_blend_factor(vk::BlendFactor::ZERO)
+                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+                    .color_blend_op(vk::BlendOp::ADD)
+                    .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
                     .alpha_blend_op(vk::BlendOp::ADD)
                     .color_write_mask(vk::ColorComponentFlags::RGBA)
             } else if kind == PipelineKind::GuiHighlight {

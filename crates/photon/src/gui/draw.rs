@@ -156,6 +156,7 @@ impl Gui {
         }
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
         let now = self.started_at.elapsed().as_millis() as u64;
+        let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
         self.boss_bars
             .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
         self.titles
@@ -172,6 +173,10 @@ impl Gui {
             }
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             confirm.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if let Some(credits) = controls.credits.as_mut() {
+            // `deltaTracker.getGameTimeDeltaPartialTick`: the time since the last frame in ticks.
+            let delta = now.saturating_sub(last_frame) as f32 / 50.0;
+            credits.draw(&mut frame, &self.atlas, &self.font, delta);
         } else if let Some(death) = controls.death.as_mut() {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             death.draw(&mut frame, &self.atlas, &self.font, mouse);
