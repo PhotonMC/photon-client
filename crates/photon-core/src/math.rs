@@ -8,6 +8,8 @@ use crate::random::RandomSource;
 
 mod constants;
 pub use constants::*;
+mod fdlibm;
+pub use fdlibm::*;
 mod java;
 pub use java::*;
 mod lerp;

@@ -130,11 +130,17 @@ def preflight(families, runtime, jdk_home, run_dir):
         "schema_version": 1, "minecraft_version": pin["version"], "protocol": pin["protocol"],
         "client_sha1": pin["client_sha1"], "libraries": {k: pin["libraries"][k] for k in keys},
         "jdk": versions, "os": platform.system(), "arch": platform.machine(),
-        "families": sorted(families),
+        "families": sorted(families), "jvm_flags": JVM_FLAGS,
         "oracle_sources": {p.name: digest(p.read_bytes()) for p in sources},
         "runner_sha256": digest(Path(__file__).read_bytes()),
     }
     return identity, commands, os.pathsep.join(classpath), sources
+
+
+# HotSpot answers Math.sin/cos/log/pow/exp with its own stubs on x86-64, which round differently
+# from fdlibm in some arguments (and from other platforms' JVMs). The reference runs with them off,
+# so `Math.*` is `StrictMath.*` and the same bits on every machine.
+JVM_FLAGS = ["-XX:+UnlockDiagnosticVMOptions", "-XX:-UseLibmIntrinsic"]
 
 
 def parse_records(raw, cases):
@@ -246,7 +252,7 @@ def run_command(args, run_dir, report):
     execute([commands["javac"], "-encoding", "UTF-8", "-cp", classpath, "-d", str(classes),
              *map(str, sources)], run_dir, "javac")
     java = [commands["java"], "-Djava.awt.headless=true", "-Duser.language=en", "-Duser.country=US",
-            "-Duser.timezone=UTC", "-cp", str(classes) + os.pathsep + classpath, "Oracle"]
+            "-Duser.timezone=UTC", *JVM_FLAGS, "-cp", str(classes) + os.pathsep + classpath, "Oracle"]
     # Bootstrapping the game's registries and walking every block state takes
     # longer than the other families put together, so that family gets room.
     java_timeout = 900 if {"block", "movement"} & set(families) else 60

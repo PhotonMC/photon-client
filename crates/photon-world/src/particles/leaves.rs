@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use photon_core::math::{fdlibm_cos, fdlibm_pow, fdlibm_sin};
 use photon_core::random::RandomSource;
 use photon_core::shape::{BooleanOp, Shapes};
 
@@ -100,8 +101,8 @@ impl Particle {
             wind_big: side,
             swirl,
             flow_away,
-            xa_flow_scale: f64::from(angle * 60.0).to_radians().cos() * wind,
-            za_flow_scale: f64::from(angle * 60.0).to_radians().sin() * wind,
+            xa_flow_scale: fdlibm_cos(f64::from(angle * 60.0).to_radians()) * wind,
+            za_flow_scale: fdlibm_sin(f64::from(angle * 60.0).to_radians()) * wind,
             swirl_period: f64::from(1000.0 + angle * 3000.0).to_radians(),
         });
         particle
@@ -123,14 +124,14 @@ impl Particle {
         let relative_age = (alive / INITIAL_LIFETIME as f32).min(1.0);
         let (mut xa, mut za) = (0.0, 0.0);
         if leaf.flow_away {
-            let curve = f64::from(relative_age).powf(1.25);
+            let curve = fdlibm_pow(f64::from(relative_age), 1.25);
             xa += leaf.xa_flow_scale * curve;
             za += leaf.za_flow_scale * curve;
         }
         if leaf.swirl {
             let turn = f64::from(relative_age) * leaf.swirl_period;
-            xa += f64::from(relative_age) * turn.cos() * f64::from(leaf.wind_big);
-            za += f64::from(relative_age) * turn.sin() * f64::from(leaf.wind_big);
+            xa += f64::from(relative_age) * fdlibm_cos(turn) * f64::from(leaf.wind_big);
+            za += f64::from(relative_age) * fdlibm_sin(turn) * f64::from(leaf.wind_big);
         }
         self.xd += xa * f64::from(0.0025_f32);
         self.zd += za * f64::from(0.0025_f32);

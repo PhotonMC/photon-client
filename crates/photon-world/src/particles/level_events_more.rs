@@ -2,6 +2,7 @@
 //! eye shattering, a spawner's flames, bone meal's sparkles and a mace's smash.
 
 use photon_core::direction::Axis;
+use photon_core::math::{fdlibm_cos, fdlibm_sin};
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
@@ -120,7 +121,7 @@ impl ParticleEngine {
             let random = &mut *context.level_random;
             let dist = random.next_double() * 4.0;
             let angle = random.next_double() * std::f64::consts::PI * 2.0;
-            let (vx, vz) = (angle.cos() * dist, angle.sin() * dist);
+            let (vx, vz) = (fdlibm_cos(angle) * dist, fdlibm_sin(angle) * dist);
             let vy = 0.01 + random.next_double() * 0.5;
             let brightness = 0.75 + random.next_float() * 0.25;
             let data = ParticleData::Spell {
@@ -163,7 +164,7 @@ impl ParticleEngine {
         }
         let mut angle = 0.0_f64;
         while angle < std::f64::consts::PI * 2.0 {
-            let (cos, sin) = (angle.cos(), angle.sin());
+            let (cos, sin) = (fdlibm_cos(angle), fdlibm_sin(angle));
             let at = (x + cos * 5.0, y - 0.4, z + sin * 5.0);
             self.level_add(context, "portal", at, (cos * -5.0, 0.0, sin * -5.0));
             self.level_add(context, "portal", at, (cos * -7.0, 0.0, sin * -7.0));

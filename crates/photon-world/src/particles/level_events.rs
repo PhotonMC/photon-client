@@ -2,6 +2,7 @@
 //! level's random in the order the reference draws them.
 
 use photon_core::binary::BlockPos;
+use photon_core::math::fdlibm_pow;
 use photon_core::random::RandomSource;
 use photon_data::particle_type;
 
@@ -219,7 +220,7 @@ impl ParticleEngine {
                 let at = (x + 0.5, y + 1.2, z + 0.5);
                 self.level_add(context, "note", at, (f64::from(note) / 24.0, 0.0, 0.0));
                 // `NoteBlock.getPitchFromNote`.
-                2.0_f64.powf(f64::from(note - 12) / 12.0) as f32
+                fdlibm_pow(2.0, f64::from(note - 12) / 12.0) as f32
             }
             None => 1.0,
         };
