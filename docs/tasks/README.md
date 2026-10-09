@@ -79,7 +79,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T55](T55-tuccar-menusu.md) Tüccar menüsü ve `MerchantOffers` — L · bağımlı: T50 · bitti (968caf60)
 - [x] [T56](T56-lectern-kitap.md) Kürsü menüsü ve kitap görünümü — M · bitti (8519cd70)
 - [x] [T57](T57-crafter.md) Crafter menüsü ve ekranı — M · bitti (3b303cb3)
-- [x] [T58](T58-binek-envanteri.md) At, eşek, katır ve nautilus envanteri — L · bağımlı: T50 · bölündü (HASH)
+- [x] [T58](T58-binek-envanteri.md) At, eşek, katır ve nautilus envanteri — L · bağımlı: T50 · bölündü (3b1ce5e5)
 - [ ] [T58b](T58b-binek-ekrani.md) Binek envanteri ekranı ve önizleme — L · bağımlı: T58
 - [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (b3d5a46e)
 - [x] [T59b](T59b-bundle-ipucu.md) Bundle ipucu ve seçili eşya (`SelectBundleItem`) — M · bağımlı: T59 · bölündü (29b2871d)
