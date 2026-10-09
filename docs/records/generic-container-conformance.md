@@ -55,7 +55,7 @@ ham demir ve kömür hızlı taşınınca doğru yuvalara gitti, pişirme ilerle
 
 Hepsi `MenuKind` ile aynı `doClick` portundan geçer (`container_menu/transform.rs`:
 yerleştirme kuralları, alma kancası, `quickMoveStack`, girdi değişince sonucu
-temizleme). Sonuç yuvalarının içeriğini sunucu üretir; istemci girdi değişince
+temizleme). Grindstone ve örs dışında sonuç yuvalarını sunucu üretir; istemci girdi değişince
 sonucu boşaltır ve sunucunun `SetSlot`'unu bekler (Java'nın tahmin ettiği
 sonuçlar için bilinen sapma, sunucu düzeltir). Taş kesici tarifleri
 `UpdateRecipes`'ten (`SlotDisplay`), loom desenleri `banner_pattern`
@@ -72,8 +72,18 @@ loom'da seçili düğmede ipucu yok, taş kesici kaydırması girdi sayısı de�
 da sıfırlanır, orta tıkla `CLONE` (yaratıcı), kırılmaz eşya grindstone'a girmez.
 
 Bilinen sapmalar: harita görüntüsü, zırh askısı, büyülü kitap ve bayrak önizlemeleri
-çizilmez; smithing/örs dönen simgeleri sadeleştirildi; örste onarım malzemesi
-tüketimi tahmin edilmez.
+çizilmez; smithing/örs dönen simgeleri sadeleştirildi.
+
+Örs sonucu (T51b, `client-parity`): `AnvilMenu.createResult` ve `onTake`
+(`container/anvil.rs`): onarım malzemesi (`repairable`), iki aynı eşya,
+kitap büyüleri (destek etiketi, `exclusive_set`, azami seviye, `anvil_cost`),
+ön iş cezası, 40 sınırı, yeniden adlandırma (`setItemName`) ve eklenen eşyanın
+tüketimi. `repairable` üretilmiş eşya tablosunda yok; `item/repairable.rs`
+Java dökümünden alınan tablodur ve fixture ile her testte karşılaştırılır.
+Oracle satırları `movement/container-clicks` (örs: onarım, iki alet, kitap,
+desteklenmeyen büyü, dışlayan büyü, 40 sınırı, yaratıcı, ad). Bilinen sapma:
+ad karşılaştırması istemcinin dilindedir ve bayat `infinite_materials`
+yalnız sunucudan gelen `SetSlot`ta eskiyebilir.
 
 ## Tarif kitabı (envanter 2×2, çalışma tezgâhı, fırınlar)
 

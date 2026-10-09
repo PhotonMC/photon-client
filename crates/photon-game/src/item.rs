@@ -6,6 +6,7 @@ mod component_tests;
 pub mod cooldowns;
 pub mod default_components;
 pub mod in_hand;
+pub(crate) mod repairable;
 pub mod values;
 
 use photon_data::item::registry::{ITEMS, Item, RuleBlocks, Tool};

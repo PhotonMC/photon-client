@@ -51,6 +51,11 @@ impl Gui {
         &self.lang
     }
 
+    /// The same language, shared.
+    pub fn lang_shared(&self) -> Arc<Lang> {
+        Arc::clone(&self.lang)
+    }
+
     pub fn text_assets(&self) -> (&Font, &GuiAtlas) {
         (&self.font, &self.atlas)
     }

@@ -46,7 +46,7 @@ tik dalları) ile canlı sunucuya karşı `server-conformance` kayıtlarıdır;
 [görev panosunun](tasks/README.md) ilgili grubundadır.
 
 - [x] **M1 Blok eylemleri**, **M2 Eşya çizimi**, **M3 Envanter**: pano öncesi.
-- [ ] **M3.d Sunucunun açtığı kaplar** (L): örs sonucu tahmini (T51b), binek envanteri (T58).
+- [ ] **M3.d Sunucunun açtığı kaplar** (L): binek envanteri (T58).
 - [ ] **M4 Entity'ler** (XL): içerik bitti; kalan uzaklık/bölüm ayıklaması (T47) ve P24 kapsam denetimi.
 - [ ] **M5 Metin ve chat** (L): kalan unifont/bidi/IME, sohbet kalanları (§5), imzalı sohbet (M9 ile).
 - [ ] **M6 Ekranlar** (L): kalan ana menü, sunucu listesi, yükleme, kitap/tabela, ilerlemeler, kalan ayarlar; planı PLAN-M6.
@@ -99,9 +99,8 @@ genişletilmesi (`client-parity`), ekranlar canlı gözlem.
 - Tarif kitabı çekirdeği var; kaplama, vurgu/tost, `SeenRecipe` ve dar ekran
   düzeni eksik (ayrıntı `generic-container-conformance.md`).
 - Java menüleri girdi değişince sonucu istemcide de hesaplar (`AnvilMenu.createResult`,
-  `GrindstoneMenu.createResult`, `LoomMenu.slotsChanged`): bizde sonuç yuvası
-  yalnız sunucunun gönderdiği olur (taşınmadı). Anvil için onarım maliyeti, büyü
-  birleştirme ve yeniden adlandırma tahmini L iş.
+  `GrindstoneMenu.createResult`, `LoomMenu.slotsChanged`): grindstone ve örs
+  taşındı, loom'un sonucu yalnız sunucunun gönderdiği olur.
 - Modellenmeyen menüler açılınca istemci hemen kapanış paketi gönderir.
 
 ## 4. M4 — Entity'ler

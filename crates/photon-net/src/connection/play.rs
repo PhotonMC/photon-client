@@ -115,6 +115,8 @@ pub struct PlaySession {
     /// What menus read of the enchantments, from the data pack.
     pub(super) enchantment_traits:
         std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,
+    /// The language item names are compared in.
+    pub(super) lang: std::sync::Arc<photon_game::text::Lang>,
     pub(super) game_time: i64,
     pub(super) rain_level: f32,
     pub(super) thunder_level: f32,

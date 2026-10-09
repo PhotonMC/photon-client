@@ -51,6 +51,10 @@ pub struct ContainerMenu {
     pub enchantment_traits: std::sync::Arc<Vec<EnchantmentTraits>>,
     /// Whether the last click was made with infinite materials (creative).
     pub(super) infinite_materials: bool,
+    /// The language item names are compared in (the anvil's rename).
+    pub lang: std::sync::Arc<crate::text::Lang>,
+    /// What the anvil's `createResult` keeps between calls.
+    pub(super) anvil: anvil::AnvilState,
     /// The item in the stonecutter's input the last time its list was made.
     pub(super) last_input: Option<i32>,
     /// The menu's `ContainerData` (a furnace's burn and cook progress).
@@ -75,12 +79,18 @@ pub struct ContainerMenu {
 }
 
 /// What a menu reads of an enchantment, from the data pack.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EnchantmentTraits {
     /// In the `curse` tag.
     pub curse: bool,
     /// Has the `prevent_armor_change` effect.
     pub prevents_armor_change: bool,
+    pub anvil_cost: i32,
+    pub max_level: i32,
+    /// The item tag the enchantment is supported on.
+    pub supported_items: String,
+    /// The network ids of the enchantments it excludes.
+    pub exclusive_set: Vec<i32>,
 }
 
 impl EnchantmentTraits {
@@ -92,6 +102,20 @@ impl EnchantmentTraits {
             .map(|entry| Self {
                 curse: entry.curse,
                 prevents_armor_change: entry.prevents_armor_change,
+                anvil_cost: entry.anvil_cost,
+                max_level: entry.max_level,
+                supported_items: entry.supported_items.clone(),
+                exclusive_set: entry
+                    .exclusive_set
+                    .iter()
+                    .filter_map(|name| {
+                        registries
+                            .enchantments
+                            .iter()
+                            .position(|other| other.name == *name)
+                            .map(|id| id as i32)
+                    })
+                    .collect(),
             })
             .collect()
     }
@@ -102,7 +126,7 @@ impl ContainerMenu {
     pub(super) fn traits(&self, id: i32) -> EnchantmentTraits {
         usize::try_from(id)
             .ok()
-            .and_then(|id| self.enchantment_traits.get(id).copied())
+            .and_then(|id| self.enchantment_traits.get(id).cloned())
             .unwrap_or_default()
     }
 }
@@ -124,6 +148,8 @@ impl Default for ContainerMenu {
             enchantments: std::sync::Arc::default(),
             enchantment_traits: std::sync::Arc::default(),
             infinite_materials: false,
+            lang: std::sync::Arc::default(),
+            anvil: anvil::AnvilState::default(),
             last_input: None,
             data: Vec::new(),
             offers: std::sync::Arc::default(),
@@ -140,6 +166,7 @@ impl Default for ContainerMenu {
     }
 }
 
+mod anvil;
 mod bar;
 pub use bar::item_bar;
 mod bundle;

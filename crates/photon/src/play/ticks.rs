@@ -146,6 +146,7 @@ impl Play {
             language,
         )?;
         gui.set_player_skin(skin_rect);
+        session.set_lang(gui.lang_shared());
         let capture_frames = env::var("PHOTON_CAPTURE_FRAMES")
             .ok()
             .and_then(|value| value.parse().ok())
@@ -230,6 +231,7 @@ impl Play {
             // screens that are open are made again in them.
             if let Some(code) = self.controls.take_language_request() {
                 self.gui.set_language(&code);
+                self.session.set_lang(self.gui.lang_shared());
                 self.screen_assets = self.gui.screen_assets();
                 self.gui.reword_chat(&mut self.controls.chat_log);
                 self.controls

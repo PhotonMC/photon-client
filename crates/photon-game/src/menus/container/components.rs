@@ -30,6 +30,7 @@ fn prototype(item: i32, id: i32) -> Option<Vec<u8>> {
         {
             Some(varint(0))
         }
+        ids::REPAIRABLE => crate::item::repairable::repairable_value(item),
         ids::MAX_DAMAGE => (durability > 0).then(|| varint(durability)),
         ids::DAMAGE => (durability > 0).then(|| varint(0)),
         _ => crate::item::values::Values::new(item, &[])
@@ -115,6 +116,14 @@ pub(super) fn set_damage(stack: &mut Stack, damage: i32) {
 /// `ItemStack.isDamageableItem`.
 pub(super) fn is_damageable(stack: &Stack) -> bool {
     has(stack, ids::MAX_DAMAGE) && !has(stack, ids::UNBREAKABLE) && has(stack, ids::DAMAGE)
+}
+
+/// `ItemStack.getOrDefault` of an int component.
+pub(super) fn int_or(stack: Option<&Stack>, id: i32, default: i32) -> i32 {
+    stack
+        .and_then(|stack| get(stack, id))
+        .and_then(|value| varint_of(&value))
+        .unwrap_or(default)
 }
 
 /// `ItemStack.set(REPAIR_COST, ...)`.

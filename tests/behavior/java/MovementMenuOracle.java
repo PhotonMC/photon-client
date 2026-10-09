@@ -159,6 +159,9 @@ class MovementMenuOracle extends MovementPlayerOracle {
             var slot = element.getAsJsonObject();
             menu.getSlot(slot.get("slot").getAsInt()).set(stack(slot));
         }
+        if (row.has("item_name") && menu instanceof net.minecraft.world.inventory.AnvilMenu anvilMenu) {
+            anvilMenu.setItemName(row.get("item_name").getAsString());
+        }
         if (row.has("carried")) {
             menu.setCarried(stack(row.getAsJsonObject("carried")));
         }

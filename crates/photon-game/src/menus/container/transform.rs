@@ -6,10 +6,10 @@
 //! level to make them with, or is predicted as empty), and arrive as slot
 //! updates.
 //!
-//! The grindstone's result is predicted ([`grindstone`](super::grindstone)).
-//! Not predicted (the server corrects): the loom's and the anvil's result,
-//! which the reference works out on the client too; the anvil's use of its
-//! additional item on a repair.
+//! The grindstone's and the anvil's results are predicted
+//! ([`grindstone`](super::grindstone), [`anvil`](super::anvil)). Not
+//! predicted (the server corrects): the loom's result, which the reference
+//! works out on the client too.
 
 use photon_data::item::classes::ItemClass;
 use photon_data::item::component_types as ids;
@@ -81,6 +81,7 @@ impl ContainerMenu {
             }
             MenuKind::Merchant => self.update_sell_item(),
             MenuKind::Grindstone => self.slots[result] = self.grindstone_result(),
+            MenuKind::Anvil => self.anvil_create_result(),
             _ => self.slots[result] = None,
         }
     }
@@ -89,7 +90,9 @@ impl ContainerMenu {
     /// client makes (the grindstone's) makes it again.
     pub fn set_slot(&mut self, index: usize, stack: Option<Stack>) {
         self.slots[index] = stack;
-        if self.kind == MenuKind::Grindstone && self.input_slots().contains(&index) {
+        if matches!(self.kind, MenuKind::Grindstone | MenuKind::Anvil)
+            && self.input_slots().contains(&index)
+        {
             self.inputs_changed();
         }
     }
@@ -195,12 +198,7 @@ impl ContainerMenu {
                     settle(&mut self.slots[input]);
                 }
             }
-            MenuKind::Anvil => {
-                // `repairItemCountCost` and `onlyRenaming` are not known
-                // here, so the additional item goes whole.
-                self.slots[1] = None;
-                self.slots[0] = None;
-            }
+            MenuKind::Anvil => self.anvil_taken(),
             _ => {}
         }
     }

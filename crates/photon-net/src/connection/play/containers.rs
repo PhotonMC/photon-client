@@ -109,6 +109,11 @@ impl PlaySession {
         });
     }
 
+    /// The language the anvil compares item names in.
+    pub fn set_lang(&mut self, lang: std::sync::Arc<photon_game::text::Lang>) {
+        self.lang = lang;
+    }
+
     /// What menus read of the enchantments (curses, armour locks), which
     /// the data pack says and the session cannot read itself.
     pub fn set_enchantment_traits(
@@ -173,6 +178,7 @@ impl PlaySession {
             self.container_menu.load(slots, carried, state_id);
             self.container_menu.enchantments = self.enchantment_names();
             self.container_menu.enchantment_traits = self.enchantment_traits.clone();
+            self.container_menu.lang = self.lang.clone();
             let clicked = self.container_menu.handle_click(slot, button, kind, player);
             sounds = self.container_menu.sounds().to_vec();
             let menu = &self.container_menu;
@@ -371,6 +377,7 @@ impl PlaySession {
             menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
             menu.enchantments = enchantments;
             menu.enchantment_traits = self.enchantment_traits.clone();
+            menu.lang = self.lang.clone();
             menu.xp_level = self.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
                 // The merchant's offers; the result is the client's own to make.
@@ -459,6 +466,14 @@ impl PlaySession {
 
     /// `ServerboundRenameItemPacket`: the anvil's name box changed.
     pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
+        // `AnvilScreen.onNameChanged`: the menu works its result out again.
+        if let Some(menu) = self
+            .open_menu
+            .as_mut()
+            .filter(|menu| menu.kind == photon_game::menus::container::MenuKind::Anvil)
+        {
+            menu.set_item_name(name);
+        }
         self.send(PLAY_SERVERBOUND_RENAME_ITEM_PACKET_ID, |output| {
             photon_core::wire::write_varint(name.len() as i32, output);
             output.extend_from_slice(name.as_bytes());

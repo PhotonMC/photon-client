@@ -22,6 +22,12 @@ pub struct EnchantmentEntry {
     /// Whether it has the `prevent_armor_change` effect (armour it is on
     /// cannot be taken off but in creative).
     pub prevents_armor_change: bool,
+    /// `anvil_cost`.
+    pub anvil_cost: i32,
+    /// The item tag of `supported_items`, without its `#`.
+    pub supported_items: String,
+    /// The enchantments of `exclusive_set`, by name.
+    pub exclusive_set: Vec<String>,
 }
 
 /// `PaintingVariant`.
@@ -150,6 +156,18 @@ impl Registries {
                         effects.get_str("minecraft:prevent_armor_change").is_some()
                     }),
                     description: component(&entry, "description"),
+                    anvil_cost: entry.i32("anvil_cost").unwrap_or(1),
+                    supported_items: entry
+                        .text("supported_items")
+                        .map(|tag| tag.trim_start_matches('#').to_owned())
+                        .unwrap_or_default(),
+                    exclusive_set: match entry.text("exclusive_set") {
+                        Some(set) => match set.strip_prefix('#') {
+                            Some(tag) => tag_values(data_root, "enchantment", tag),
+                            None => vec![set],
+                        },
+                        None => Vec::new(),
+                    },
                     curse: curse.contains(&name),
                     max_level: entry.i32("max_level").unwrap_or(1),
                     tooltip_order: order

@@ -189,6 +189,7 @@ impl PlaySession {
             dimension_type_id: 0,
             hashed_seed: 0,
             enchantment_traits: std::sync::Arc::default(),
+            lang: std::sync::Arc::default(),
             item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
             game_time: 0,
             rain_level: 0.0,

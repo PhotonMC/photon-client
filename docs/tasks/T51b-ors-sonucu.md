@@ -28,4 +28,10 @@ kitap, uyumsuz büyü, ad değişimi (`RenameItem` için ekran yolu veya `setIte
 `docs/records/generic-container-conformance.md`, `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+- `container/anvil.rs`: `createResult`, `setItemName`, `onTake` satır satır; maliyet `data[0]`'da. `RenameItem` yolu
+  (`rename_item`) menüyü de günceller; `lang` oturumdan menüye verilir (ad karşılaştırması).
+- Veri: `registries.rs` büyü girdisine `anvil_cost`/`supported_items`/`exclusive_set`; `EnchantmentTraits` artık `Clone`.
+  `repairable` için `item/repairable.rs` (Java dökümünden tablo, fixture ile test karşılaştırır).
+- Oracle: `container-clicks`e 10 örs satırı, `item_name` adımı (Java `setItemName`); eski `data` satırları aynen.
+- Sapma/açık: `infinite_materials` yalnız tıklamada güncellenir; metin süzgeci UTF-16 ve NUL'a kadar birebir değil.
+- Parity: `movement` yalnız bilinen Q04 (`particle-engine`) farkıyla kırmızı.

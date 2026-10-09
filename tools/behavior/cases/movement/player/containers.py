@@ -57,6 +57,7 @@ CUSTOM_NAME, ITEM_NAME, LORE, RARITY, ENCHANTMENTS = 6, 9, 11, 12, 13
 REPAIR_COST, GLINT, STORED_ENCHANTMENTS, DYED_COLOR = 19, 21, 42, 44
 EFFICIENCY, MENDING, PROTECTION, SHARPNESS, UNBREAKING = 8, 23, 28, 33, 40
 BINDING_CURSE, BUNDLE_CONTENTS, VANISHING_CURSE = 2, 50, 41
+SMITE = 35
 # Item registry ids of the items a bundle holds here.
 ITEM_IDS = {"stone": 1, "dirt": 55, "ender_pearl": 1144, "bundle": 1065, "iron_sword": 959}
 
@@ -546,6 +547,49 @@ def cases():
                 with_patch(st(10, "stick", 1), patch([(MAX_STACK_SIZE, varint(4))])),
                 with_patch(st(37, "stick", 1), patch([(MAX_STACK_SIZE, varint(4))]))],
                [cl(9, 0, Q), cl(10, 0, Q)]),
+    ]
+
+    # The anvil's result is the client's own to make: a repair with its material, two worn items,
+    # a book's enchantments (compatible, not supported, excluded), the levels it costs, the
+    # forty-level limit, and a rename.
+    book = lambda slot, levels: enchanted(slot, "enchanted_book", levels, STORED_ENCHANTMENTS)
+    prior_work = patch([(REPAIR_COST, varint(31))])
+    take = [cl(2, 0, P), cl(20, 0, P)]
+    click_rows += [
+        clicks("anvil repairs with its material",
+               [worn(0, "iron_sword", 100), st(1, "iron_ingot", 5)], take, menu="anvil",
+               extra={"xp_level": 12}),
+        clicks("anvil repair needs the levels",
+               [worn(0, "iron_sword", 100), st(1, "iron_ingot", 5)], take, menu="anvil",
+               extra={"xp_level": 1}),
+        clicks("anvil merges two worn tools",
+               [worn(0, "iron_pickaxe", 100), worn(1, "iron_pickaxe", 150)], take, menu="anvil",
+               extra={"xp_level": 12}),
+        clicks("anvil puts a book's enchantments on an item",
+               [enchanted(0, "diamond_sword", [(UNBREAKING, 2)]),
+                book(1, [(UNBREAKING, 2), (SHARPNESS, 3)])], take, menu="anvil",
+               extra={"xp_level": 30}),
+        clicks("anvil refuses a book of enchantments the item does not take",
+               [st(0, "iron_pickaxe", 1), book(1, [(SHARPNESS, 3)])], take, menu="anvil",
+               extra={"xp_level": 30}),
+        clicks("anvil charges for the enchantments that exclude each other",
+               [enchanted(0, "diamond_sword", [(SHARPNESS, 3)]),
+                book(1, [(SMITE, 2), (UNBREAKING, 1)])], take, menu="anvil",
+               extra={"xp_level": 30}),
+        clicks("anvil refuses a result of forty levels",
+               [with_patch(st(0, "diamond_sword", 1), prior_work),
+                with_patch(book(1, [(UNBREAKING, 3)]), prior_work)], take, menu="anvil",
+               extra={"xp_level": 40}),
+        clicks("anvil gives a result of forty levels in creative",
+               [with_patch(st(0, "diamond_sword", 1), prior_work),
+                with_patch(book(1, [(UNBREAKING, 3)]), prior_work)], take, menu="anvil",
+               game_mode="creative"),
+        clicks("anvil renames and keeps the additional item",
+               [st(0, "iron_sword", 1), st(1, "stone", 3)], take, menu="anvil",
+               extra={"xp_level": 5, "item_name": "Sting"}),
+        clicks("anvil renames while it repairs",
+               [worn(0, "iron_sword", 100), st(1, "iron_ingot", 5)], take, menu="anvil",
+               extra={"xp_level": 12, "item_name": "Sting"}),
     ]
 
     yield {

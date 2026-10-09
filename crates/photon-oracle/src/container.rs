@@ -38,6 +38,10 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
     let enchantments = std::sync::Arc::new(vanilla_enchantments());
     let traits = std::sync::Arc::new(vanilla_enchantment_traits());
     let item_tags = std::sync::Arc::new(vanilla_item_tags()?);
+    let lang = std::sync::Arc::new(photon_game::text::Lang::load(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.data/minecraft/assets/jar/assets"),
+    ));
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
@@ -49,9 +53,21 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         menu.item_tags = item_tags.clone();
         menu.enchantments = enchantments.clone();
         menu.enchantment_traits = traits.clone();
+        menu.lang = lang.clone();
         for slot in row["slots"].as_array().ok_or("slots must be an array")? {
             let index = slot["slot"].as_u64().ok_or("slot must be a number")? as usize;
             menu.set_slot(index, Some(stack(slot)?));
+        }
+        if let Some(name) = row.get("item_name").and_then(Value::as_str) {
+            menu.set_item_name(name);
+        }
+        if menu.kind == photon_game::menus::container::MenuKind::Anvil
+            && let Some(data) = row.get("data").and_then(Value::as_array)
+        {
+            // What the server last sent of the cost, which the slots would make again.
+            for (index, value) in data.iter().enumerate() {
+                menu.data[index] = value.as_i64().unwrap_or(0) as i16;
+            }
         }
         if row.get("carried").is_some() {
             menu.carried = Some(stack(&row["carried"])?);

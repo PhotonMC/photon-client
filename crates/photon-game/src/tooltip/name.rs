@@ -54,7 +54,7 @@ pub(super) fn potion_name(
 }
 
 /// `ItemStack.getHoverName`.
-pub(super) fn hover_name(stack: &Stack, values: &Values) -> Component {
+pub fn hover_name(stack: &Stack, values: &Values) -> Component {
     if let Some(name) = values.custom_name().or_else(|| book_title(values)) {
         return name;
     }
