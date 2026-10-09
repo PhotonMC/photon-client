@@ -532,7 +532,7 @@ pub fn remote_farm_animals(
 /// An animal in a screen's box (`InventoryScreen.extractEntityInInventoryFollowsMouse`): its
 /// model posed as the entity stands now, its head turned to the mouse, at the origin turned to
 /// the view's body rotation; none for an entity this module does not draw. The coat's markings
-/// come with it; the saddle and armour layers are not drawn.
+/// come with it; a horse's saddle and armour layers are not drawn yet.
 pub fn gui_preview(
     world: &photon_world::ClientWorld,
     models: &mut MobModels,

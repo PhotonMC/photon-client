@@ -31,12 +31,12 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %81 bitti** (ağırlıklı) · 261/302 madde işaretli, **41 madde kaldı** (tahmini 84 M-görev eşdeğeri iş).
+**Toplam: %81 bitti** (ağırlıklı) · 262/303 madde işaretli, **41 madde kaldı** (tahmini 84 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
 | Temel (pano öncesi) | `████████████████████` | 100 | 7/7 |
-| M3.d Sunucunun açtığı kaplar | `███████████████████░` | 95 | 19/20 |
+| M3.d Sunucunun açtığı kaplar | `███████████████████░` | 96 | 20/21 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 79 | 33/40 |
@@ -47,7 +47,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58d, T90, T91, T92, T93, T95, T96d, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T58e, T90, T91, T92, T93, T95, T96d, T64d, T70i, T74c, T76c2, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -82,7 +82,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T58](T58-binek-envanteri.md) At, eşek, katır ve nautilus envanteri — L · bağımlı: T50 · bölündü (3b1ce5e5)
 - [x] [T58b](T58b-binek-ekrani.md) Binek envanteri ekranı (yuvalar, sprite'lar, başlık) — L · bağımlı: T58 · bölündü (789e4245)
 - [x] [T58c](T58c-binek-onizlemesi.md) Binek envanteri ekranında varlık modeli (at ailesi, lama, deve) — M · bağımlı: T58b · bitti (de9dd98d)
-- [ ] [T58d](T58d-binek-onizleme-katmanlari.md) Binek önizlemesinde nautilus modeli ve eyer/zırh/halı katmanları — M · bağımlı: T58c
+- [x] [T58d](T58d-binek-onizleme-katmanlari.md) Binek önizlemesinde nautilus modeli ve eyer/zırh katmanları — M · bağımlı: T58c · bitti (HASH)
+- [ ] [T58e](T58e-at-eyer-zirh-hali.md) At ailesi eyeri, at zırhı ve lama halısı (dünya ve önizleme) — M · bağımlı: T58d
 - [x] [T59](T59-kap-ipuclari.md) Kap içeriği ipucu, `#etiket` araması ve eşya süsleri — M · bölündü (b3d5a46e)
 - [x] [T59b](T59b-bundle-ipucu.md) Bundle ipucu ve seçili eşya (`SelectBundleItem`) — M · bağımlı: T59 · bölündü (29b2871d)
 - [x] [T59e](T59e-bundle-ipucu-cizimi.md) Bundle ipucunun çizimi (`ClientBundleTooltip`) — M · bağımlı: T59b · bitti (62743ff5)

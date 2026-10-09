@@ -19,4 +19,5 @@ Java: `client/renderer/entity/{HorseRenderer,LlamaRenderer,NautilusRenderer}.jav
 `docs/records/generic-container-conformance.md`, `docs/gui-oracle.md` satırı.
 
 ## Devir notu
-(boş)
+Nautilus ve zombi nautilus önizlemesi eyer ve gövde zırhıyla çiziliyor (`nautilus::gui_preview`, dünya çizimiyle aynı `appearance`/`pose_state`/`worn_layers`). Sapma yok.
+Açık: at ailesi eyeri, at zırhı ve lama halısı dünya çiziminde de yok; önizleme onlarsız kalır. Yeni görev T58e.

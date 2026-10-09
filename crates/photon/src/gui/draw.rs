@@ -55,10 +55,13 @@ impl Gui {
         session: &mut PlaySession,
         controls: &mut Controls,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-        (player_model, locator_camera, mob_models, entity_textures): (
+        (player_model, locator_camera, (mob_models, armor), entity_textures): (
             &mut PlayerModel,
             LocatorCamera,
-            &mut crate::mobs::MobModels,
+            (
+                &mut crate::mobs::MobModels,
+                &mut crate::equipment::armor::Armor,
+            ),
             &photon_render::entity::textures::EntityTextures,
         ),
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -291,6 +294,16 @@ impl Gui {
                     entity,
                     &view,
                 )
+                .or_else(|| {
+                    crate::mobs::aquatic::nautilus::gui_preview(
+                        world,
+                        session.registry_names("minecraft:zombie_nautilus_variant"),
+                        (mob_models, armor),
+                        entity_textures,
+                        entity,
+                        &view,
+                    )
+                })
                 .map(|vertices| {
                     photon_render::entity::player_renderer::gui_mob_vertices(&vertices, &view)
                 })
