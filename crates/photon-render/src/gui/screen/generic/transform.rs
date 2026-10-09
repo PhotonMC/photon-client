@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use super::{GenericScreen, GuiBlend, KeyResult, MenuKind, ScreenAction, ScreenDraw};
 use crate::gui::widgets::edit_box::{Clipboard, EditBox, edit_key};
-use photon_game::menus::container::ContainerMenu;
+use photon_game::menus::container::{ContainerMenu, MountFamily};
 
 /// Where a slot sits in the image, for the menus this module knows; `None`
 /// for the rest.
@@ -84,6 +84,12 @@ pub(super) fn empty_icon(kind: MenuKind, index: usize) -> Option<&'static str> {
         (MenuKind::Enchantment, 1) => Some("container/slot/lapis_lazuli"),
         (MenuKind::Brewing, 0..=2) => Some("container/slot/potion"),
         (MenuKind::Brewing, 4) => Some("container/slot/brewing_fuel"),
+        (MenuKind::Mount(_), 0) => Some("container/slot/saddle"),
+        (MenuKind::Mount(mount), 1) => Some(match mount.family {
+            MountFamily::Horse => "container/slot/horse_armor",
+            MountFamily::Llama => "container/slot/llama_armor",
+            MountFamily::Nautilus => "container/slot/nautilus_armor_inventory",
+        }),
         _ => None,
     }
 }

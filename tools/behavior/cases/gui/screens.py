@@ -326,6 +326,30 @@ def gui_container_screen_cases():
                                       ("minecraft:charge", 13), ("minecraft:pearls", 7),
                                       ("minecraft:wind_charge", 3)],
                            cooldown_ticks=ticks, tooltips=False))
+    def mount_screen(label, entity, title_key, columns=0, tame=True, baby=False, slots=(), mouse=(0, 0)):
+        row = screen(label, "mount", title_key, slots=slots, mouse=mouse)
+        row["mount"] = {"entity": f"minecraft:{entity}", "columns": columns, "baby": baby, "tame": tame}
+        return row
+
+    # `HorseInventoryScreen`, `NautilusInventoryScreen`: the texture, the chest's slots sprite, the
+    # saddle and armour frames where the entity wears them, the empty icons and the title. The
+    # mount's model is not recorded.
+    rows += [
+        mount_screen("mount-horse", "horse", "entity.minecraft.horse"),
+        mount_screen("mount-horse-saddled", "horse", "entity.minecraft.horse",
+                     slots=[(0, "saddle", 1), (1, "iron_horse_armor", 1)], mouse=(220, 100)),
+        mount_screen("mount-donkey-chest", "donkey", "entity.minecraft.donkey", columns=5,
+                     slots=[(2, "stone", 3), (9, "bread", 2)]),
+        mount_screen("mount-donkey-untamed", "donkey", "entity.minecraft.donkey", tame=False),
+        mount_screen("mount-donkey-foal", "donkey", "entity.minecraft.donkey", baby=True),
+        mount_screen("mount-mule-chest", "mule", "entity.minecraft.mule", columns=3),
+        mount_screen("mount-llama", "llama", "entity.minecraft.llama", columns=2, tame=False),
+        mount_screen("mount-camel", "camel", "entity.minecraft.camel"),
+        mount_screen("mount-skeleton-horse", "skeleton_horse", "entity.minecraft.skeleton_horse"),
+        mount_screen("mount-nautilus", "nautilus", "entity.minecraft.nautilus"),
+        mount_screen("mount-nautilus-untamed", "nautilus", "entity.minecraft.nautilus", tame=False),
+        mount_screen("mount-zombie-nautilus", "zombie_nautilus", "entity.minecraft.zombie_nautilus"),
+    ]
     yield {"case_id": "gui/container-screen", "family": "gui", "operation": "container_screen",
            "rows": rows}
 

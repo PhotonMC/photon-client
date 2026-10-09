@@ -308,9 +308,27 @@ impl PlaySession {
             .local_player()
             .and_then(|player| player.open_container())
             .is_some_and(|container| {
-                photon_game::menus::container::MenuKind::from_menu_type(container.menu_type_id())
+                self.menu_kind(container.container_id(), container.menu_type_id())
                     .is_none()
             })
+    }
+
+    /// The menu a container the server opened is: its type's, or the mount screen the server
+    /// opened for this container.
+    fn menu_kind(
+        &self,
+        container_id: i32,
+        menu_type_id: i32,
+    ) -> Option<photon_game::menus::container::MenuKind> {
+        use photon_game::menus::container::{MOUNT_MENU_TYPE, MenuKind};
+        if menu_type_id == MOUNT_MENU_TYPE {
+            return self
+                .mount
+                .as_ref()
+                .filter(|(id, ..)| *id == container_id)
+                .map(|(_, mount, _)| MenuKind::Mount(*mount));
+        }
+        MenuKind::from_menu_type(menu_type_id)
     }
 
     /// The menu an open screen is over: the container the server opened, or
@@ -337,10 +355,7 @@ impl PlaySession {
             .clone()
             .filter(|(id, ..)| *id == container_id)
             .filter(|_| menu_type_id == photon_game::menus::container::MOUNT_MENU_TYPE);
-        let kind = match &mount {
-            Some((_, mount, _)) => photon_game::menus::container::MenuKind::Mount(*mount),
-            None => photon_game::menus::container::MenuKind::from_menu_type(menu_type_id)?,
-        };
+        let kind = self.menu_kind(container_id, menu_type_id)?;
         match self.open_menu.as_mut() {
             Some(menu) if menu.container_id == container_id && menu.kind == kind => {
                 menu.load(slots, carried, state_id);
@@ -578,8 +593,7 @@ impl PlaySession {
         &self,
     ) -> Option<(i32, photon_game::menus::container::MenuKind, Vec<u8>)> {
         let container = self.trace.world.local_player()?.open_container()?;
-        let kind =
-            photon_game::menus::container::MenuKind::from_menu_type(container.menu_type_id())?;
+        let kind = self.menu_kind(container.container_id(), container.menu_type_id())?;
         // A screen opens once the server has sent what is in the container.
         self.trace.world.local_player_container_menu()?;
         Some((

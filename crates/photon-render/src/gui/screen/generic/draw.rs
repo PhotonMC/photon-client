@@ -30,6 +30,67 @@ impl GenericScreen {
         })
     }
 
+    /// `AbstractContainerScreen.extractSlots`: each slot in use, with its items or its empty icon.
+    pub(super) fn draw_slots(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        (left, top): (i32, i32),
+    ) {
+        let crafter_data = |slot: usize| menu.data.get(slot).copied().unwrap_or(0);
+        for index in 0..self.kind.slot_count() {
+            let (x, y) = slot_position(self.kind, index);
+            // `AbstractContainerScreen.extractSlots`: only the slots in use.
+            if !menu.slot_active(index) {
+                continue;
+            }
+            // `CrafterScreen.extractSlot`: a switched-off slot is drawn as one, items or not.
+            if self.kind == MenuKind::Crafter && index < 9 && crafter_data(index) == 1 {
+                draw.frame.sprite(
+                    draw.atlas,
+                    "container/crafter/disabled_slot",
+                    left + x - 1,
+                    top + y - 1,
+                    18,
+                    18,
+                );
+                continue;
+            }
+            self.mouse.draw_slot(
+                draw,
+                menu,
+                index,
+                (left + x, top + y),
+                transform::empty_icon(self.kind, index),
+            );
+        }
+    }
+
+    /// `AbstractMountInventoryScreen.extractBackground` after the texture: the chest's slots, the
+    /// frames of the saddle and the armour slot that are in use. (The mount's model is not drawn.)
+    pub(super) fn mount_background(
+        &self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mount: photon_game::menus::container::Mount,
+    ) {
+        let (left, top) = (self.layout.left(), self.layout.top());
+        if mount.columns > 0 && mount.family != MountFamily::Nautilus {
+            draw.frame.sprite_part(
+                draw.atlas,
+                "container/horse/chest_slots",
+                (90, 54),
+                (left + 79, top + 17, i32::from(mount.columns) * 18, 54),
+            );
+        }
+        for (index, y) in [(0, 35 - 18), (1, 35)] {
+            if menu.slot_active(index) {
+                draw.frame
+                    .sprite(draw.atlas, "container/slot", left + 7, top + y, 18, 18);
+            }
+        }
+    }
+
     /// `MerchantScreen.extractLabels`: the title, with the merchant's level when its bar shows, the
     /// inventory's label and the list's.
     pub(super) fn draw_merchant_labels(

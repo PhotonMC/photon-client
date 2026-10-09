@@ -38,7 +38,11 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     for _ in 0..row["cooldown_ticks"].as_i64().unwrap_or(0) {
         cooldowns.tick();
     }
-    let mut menu = crate::menu_named(name, row)?;
+    let mut menu = if row.get("mount").is_some() {
+        crate::mount_menu(&row["mount"])?
+    } else {
+        crate::menu_named(name, row)?
+    };
     for slot in row["slots"].as_array().ok_or("slots")? {
         let index = slot["slot"].as_u64().ok_or("slot")? as usize;
         menu.set_slot(index, Some(row_stack(slot)?));

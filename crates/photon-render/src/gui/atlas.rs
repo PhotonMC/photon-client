@@ -25,7 +25,7 @@ const SPRITE_FOLDERS: [&str; 10] = [
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 37] = [
+const WHOLE_TEXTURES: [&str; 39] = [
     "menu_background",
     "inworld_menu_background",
     "menu_list_background",
@@ -53,6 +53,8 @@ const WHOLE_TEXTURES: [&str; 37] = [
     "container/beacon",
     "container/crafter",
     "container/villager",
+    "container/horse",
+    "container/nautilus",
     "book",
     "container/shulker_box",
     "container/creative_inventory/tab_items",

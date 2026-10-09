@@ -264,7 +264,9 @@ fn bundle_selections(menu: &photon_game::menus::container::ContainerMenu) -> Opt
 
 /// The menu `handleMountScreenOpen` builds: the mount's family and chest columns, and what the
 /// menu reads of its entity.
-fn mount_menu(mount: &Value) -> Result<photon_game::menus::container::ContainerMenu, String> {
+pub(super) fn mount_menu(
+    mount: &Value,
+) -> Result<photon_game::menus::container::ContainerMenu, String> {
     use photon_game::menus::container::{ContainerMenu, Mount, MountEntity, MountFamily};
     let name = mount["entity"].as_str().ok_or("entity must be a string")?;
     let family = MountFamily::of_entity(name).ok_or_else(|| format!("{name} is not a mount"))?;

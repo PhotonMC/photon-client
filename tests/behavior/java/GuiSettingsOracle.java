@@ -335,6 +335,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     case "minecraft:enchantment" -> new net.minecraft.client.gui.screens.inventory.EnchantmentScreen(
                         (net.minecraft.world.inventory.EnchantmentMenu) menu, inventory,
                         Component.translatable("container.enchant"));
+                    case "minecraft:mount" -> mountScreen(
+                        (net.minecraft.world.inventory.AbstractMountInventoryMenu) menu, inventory, minecraft,
+                        row.getAsJsonObject("mount").get("columns").getAsInt());
                     default -> throw new IllegalArgumentException("Unknown menu screen");
                 };
             set(screen, "minecraft", minecraft);
@@ -423,6 +426,63 @@ class GuiSettingsOracle extends GuiScreenOracle {
         public void updateForTopItem(net.minecraft.client.renderer.item.ItemStackRenderState output,
                 net.minecraft.world.item.ItemStack item, net.minecraft.world.item.ItemDisplayContext context,
                 net.minecraft.world.level.Level level, net.minecraft.world.entity.ItemOwner owner, int seed) {}
+    }
+
+    /**
+     * The renderer the mount screens' model preview asks the dispatcher for: it makes a render
+     * state that has the entity's height and nothing else (the model is not recorded).
+     */
+    static final class StubRenderer extends net.minecraft.client.renderer.entity.EntityRenderer<
+        net.minecraft.world.entity.LivingEntity,
+        net.minecraft.client.renderer.entity.state.LivingEntityRenderState> {
+        private StubRenderer() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.renderer.entity.state.LivingEntityRenderState createRenderState() {
+            return new net.minecraft.client.renderer.entity.state.LivingEntityRenderState();
+        }
+
+        @Override
+        public void extractRenderState(net.minecraft.world.entity.LivingEntity entity,
+                net.minecraft.client.renderer.entity.state.LivingEntityRenderState state, float partialTicks) {
+            state.boundingBoxHeight = entity.getBbHeight();
+        }
+
+        @Override
+        protected void finalizeRenderState(net.minecraft.world.entity.LivingEntity entity,
+                net.minecraft.client.renderer.entity.state.LivingEntityRenderState state) {}
+    }
+
+    /** The screen `ClientPacketListener.handleMountScreenOpen` opens for a mount menu. */
+    static net.minecraft.client.gui.screens.Screen mountScreen(
+        net.minecraft.world.inventory.AbstractMountInventoryMenu menu,
+        net.minecraft.world.entity.player.Inventory inventory, net.minecraft.client.Minecraft minecraft,
+        int columns) throws Exception {
+        var field = net.minecraft.world.inventory.AbstractMountInventoryMenu.class.getDeclaredField("mount");
+        field.setAccessible(true);
+        var mount = (net.minecraft.world.entity.LivingEntity) field.get(menu);
+        // The title is the entity's display name, which asks its team of the level's scoreboard.
+        var connection = minecraft.level.getClass().getDeclaredField("connection");
+        connection.setAccessible(true);
+        set(connection.get(minecraft.level), "scoreboard", new net.minecraft.world.scores.Scoreboard());
+        var stub = unsafe.allocateInstance(StubRenderer.class);
+        var dispatcher = unsafe.allocateInstance(net.minecraft.client.renderer.entity.EntityRenderDispatcher.class);
+        set(dispatcher, "renderers", new java.util.HashMap<Object, Object>() {
+            @Override
+            public Object get(Object key) {
+                return stub;
+            }
+        });
+        set(minecraft, "entityRenderDispatcher", dispatcher);
+        if (menu instanceof net.minecraft.world.inventory.HorseInventoryMenu horseMenu) {
+            return new net.minecraft.client.gui.screens.inventory.HorseInventoryScreen(
+                horseMenu, inventory, (net.minecraft.world.entity.animal.equine.AbstractHorse) mount, columns);
+        }
+        return new net.minecraft.client.gui.screens.inventory.NautilusInventoryScreen(
+            (net.minecraft.world.inventory.NautilusInventoryMenu) menu, inventory,
+            (net.minecraft.world.entity.animal.nautilus.AbstractNautilus) mount, columns);
     }
 
     /** Lighting with no GPU behind it. */

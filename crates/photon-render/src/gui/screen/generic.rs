@@ -13,7 +13,7 @@ use super::{KeyMods, KeyResult, Screen, ScreenAction, ScreenDraw};
 use crate::gui::font::Font;
 use crate::gui::frame::GuiBlend;
 use crate::gui::widgets::edit_box::Clipboard;
-use photon_game::menus::container::{ClickType, ContainerMenu, MenuKind, Smelter};
+use photon_game::menus::container::{ClickType, ContainerMenu, MenuKind, MountFamily, Smelter};
 use photon_game::menus::recipe_book::BookKind;
 
 /// The size of the screen's image for a menu.
@@ -212,7 +212,7 @@ impl Screen for GenericScreen {
         if self.book_covers() {
             return Vec::new();
         }
-        let slot = self.hovered_slot(mouse);
+        let slot = self.hovered_slot(mouse, menu);
         let outside = self.outside(mouse);
         let clicks = self.mouse.clicked(
             double,
@@ -233,7 +233,7 @@ impl Screen for GenericScreen {
         }
         self.stone_drag(mouse);
         self.loom_drag(mouse);
-        let slot = self.hovered_slot(mouse);
+        let slot = self.hovered_slot(mouse, menu);
         self.mouse.dragged(slot, menu);
     }
 
@@ -259,7 +259,7 @@ impl Screen for GenericScreen {
         if self.book_covers() {
             return Vec::new();
         }
-        let slot = self.hovered_slot(mouse);
+        let slot = self.hovered_slot(mouse, menu);
         let outside = self.outside(mouse);
         let clicks = self.mouse.released(
             slot,
@@ -354,6 +354,9 @@ impl Screen for GenericScreen {
         let (width, height) = image(self.kind);
         self.layout.background(draw);
         self.blit_background(draw);
+        if let MenuKind::Mount(mount) = self.kind {
+            self.mount_background(draw, menu, mount);
+        }
         if let Some(panel) = &self.merchant {
             panel.background(draw, menu, (left, top));
         }
@@ -375,7 +378,7 @@ impl Screen for GenericScreen {
         }
         self.draw_labels(draw, menu, mouse, (left, top), (width, height));
         let previous = self.hovered;
-        self.hovered = self.hovered_slot(mouse);
+        self.hovered = self.hovered_slot(mouse, menu);
         self.mouse
             .bundle
             .hover_changed(previous, self.hovered, menu);
@@ -387,29 +390,7 @@ impl Screen for GenericScreen {
             self.layout
                 .highlight(draw, slot_position(kind, slot), false);
         }
-        let crafter_data = |slot: usize| menu.data.get(slot).copied().unwrap_or(0);
-        for index in 0..kind.slot_count() {
-            let (x, y) = slot_position(kind, index);
-            // `CrafterScreen.extractSlot`: a switched-off slot is drawn as one, items or not.
-            if kind == MenuKind::Crafter && index < 9 && crafter_data(index) == 1 {
-                draw.frame.sprite(
-                    draw.atlas,
-                    "container/crafter/disabled_slot",
-                    left + x - 1,
-                    top + y - 1,
-                    18,
-                    18,
-                );
-                continue;
-            }
-            self.mouse.draw_slot(
-                draw,
-                menu,
-                index,
-                (left + x, top + y),
-                transform::empty_icon(kind, index),
-            );
-        }
+        self.draw_slots(draw, menu, (left, top));
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(kind, slot), true);
         }

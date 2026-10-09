@@ -45,13 +45,14 @@ impl GenericScreen {
             })
     }
 
-    pub(super) fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
+    pub(super) fn hovered_slot(&self, mouse: (f64, f64), menu: &ContainerMenu) -> Option<usize> {
         if self.book_covers() {
             return None;
         }
         let kind = self.kind;
         self.layout
             .hovered(mouse, kind.slot_count(), |index| slot_position(kind, index))
+            .filter(|&slot| menu.slot_active(slot))
     }
 
     /// The screen's texture, over the image's rectangle.
@@ -92,6 +93,10 @@ impl GenericScreen {
                     MenuKind::Furnace(Smelter::BlastFurnace) => "container/blast_furnace",
                     MenuKind::Furnace(Smelter::Smoker) => "container/smoker",
                     MenuKind::ShulkerBox => "container/shulker_box",
+                    MenuKind::Mount(mount) if mount.family == MountFamily::Nautilus => {
+                        "container/nautilus"
+                    }
+                    MenuKind::Mount(_) => "container/horse",
                     other => transform::texture(other).unwrap_or("container/hopper"),
                 };
                 // The villager's is twice as wide.

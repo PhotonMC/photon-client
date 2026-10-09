@@ -74,6 +74,20 @@ impl MountEntity {
         }
     }
 
+    /// `Slot.isActive` of the saddle and the armour slot, which the screen also draws by:
+    /// the entity can use the slot and is of a kind that wears it.
+    pub fn active(&self, family: MountFamily) -> [bool; 2] {
+        let tag = |name: &str| self.entity_tags.contains(self.entity_type, name);
+        match family {
+            MountFamily::Nautilus => self.can_use,
+            MountFamily::Horse | MountFamily::Llama => [
+                self.can_use[0] && tag("minecraft:can_equip_saddle"),
+                self.can_use[1]
+                    && (tag("minecraft:can_wear_horse_armor") || family == MountFamily::Llama),
+            ],
+        }
+    }
+
     /// `Equippable.canBeEquippedBy`.
     fn allows(&self, allowed: Option<&Allowed>) -> bool {
         match allowed {
@@ -86,6 +100,14 @@ impl MountEntity {
 }
 
 impl ContainerMenu {
+    /// `Slot.isActive`: a slot that is not takes no click and is not drawn.
+    pub fn slot_active(&self, index: usize) -> bool {
+        match self.kind {
+            MenuKind::Mount(mount) if index < 2 => self.mount.active(mount.family)[index],
+            _ => true,
+        }
+    }
+
     /// The mount slot's equipment slot, for the saddle (0) and the body armour (1).
     fn mount_slot_name(index: usize) -> Option<&'static str> {
         match index {

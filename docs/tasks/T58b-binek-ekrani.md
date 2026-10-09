@@ -21,4 +21,7 @@ G tarifi (README): `GuiOracle.java`'ya `horse_inventory`/`nautilus_inventory` op
 `docs/gui-oracle.md`, `docs/records/generic-container-conformance.md`, `docs/remaining-work.md` §3.
 
 ## Devir notu
-(boş)
+- Bitti (`client-parity`, gerçek `HorseInventoryScreen`/`NautilusInventoryScreen`): arka plan dokusu, sandık yuvası sprite'ı (kısmi blit), kullanımdaki eyer/zırh çerçeveleri, boş yuva simgeleri, etkin olmayan yuvanın çizilmemesi ve tıklanmaması (`ContainerMenu::slot_active`), başlık. `MountEntity::active` `isActive` kuralıdır.
+- Canlı akış: mount menüsü "desteklenmeyen" sayılıp hemen kapanıyordu; `menu_kind` (oturum) artık mount'a duyarlı.
+- Oracle: `container_screen`e 12 mount satırı; Java'da `StubRenderer` (varlığın yalnız boyu) ve ölçek tahtası; model kaydedilmez.
+- Açık: varlık modeli (T58c); başlık yalnız çeviri anahtarı (özel ad yok).
