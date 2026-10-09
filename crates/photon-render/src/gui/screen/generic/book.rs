@@ -22,6 +22,7 @@ impl GenericScreen {
             extras: transform::Extras::new(),
             beacon: (kind == MenuKind::Beacon).then(beacon::BeaconPanel::new),
             merchant: (kind == MenuKind::Merchant).then(merchant::MerchantPanel::new),
+            last_mouse: (0.0, 0.0),
         }
     }
 

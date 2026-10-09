@@ -148,6 +148,9 @@ pub struct GenericScreen {
     beacon: Option<beacon::BeaconPanel>,
     /// The trading screen's list, for the merchant's menu.
     merchant: Option<merchant::MerchantPanel>,
+    /// `AbstractMountInventoryScreen.xMouse` and `yMouse`: the mouse of the frame before, which
+    /// the background turns the mount's model by.
+    last_mouse: (f64, f64),
 }
 
 impl Screen for GenericScreen {
@@ -427,6 +430,7 @@ impl Screen for GenericScreen {
         if !shown && let Some(book) = &self.book {
             book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
+        self.last_mouse = mouse;
     }
 }
 

@@ -406,6 +406,20 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 screen.extractRenderState(frame.graphics(), row.get("mouse_x").getAsInt(),
                     row.get("mouse_y").getAsInt(), 0.0F);
                 step.add("ops", record(frame.state()));
+                // The mount's model as the screen asks for it: the background draws it with the
+                // mouse the screen saw in the frame before (none yet, so the corner).
+                var entities = new com.google.gson.JsonArray();
+                var last = new net.minecraft.client.renderer.state.gui.pip.GuiEntityRenderState[1];
+                frame.state().forEachPictureInPicture(pip -> {
+                    if (pip instanceof net.minecraft.client.renderer.state.gui.pip.GuiEntityRenderState entity
+) {
+                        last[0] = entity;
+                    }
+                });
+                if (last[0] != null && row.has("mount")) {
+                    entities.add(entityState(last[0]));
+                }
+                step.add("entities", entities);
                 steps.add(step);
             }
             out.add("steps", steps);
@@ -453,6 +467,36 @@ class GuiSettingsOracle extends GuiScreenOracle {
         @Override
         protected void finalizeRenderState(net.minecraft.world.entity.LivingEntity entity,
                 net.minecraft.client.renderer.entity.state.LivingEntityRenderState state) {}
+    }
+
+    /** A number the way the comparison reads it: five decimals, no negative zero. */
+    static double rounded(double value) {
+        return Math.round(value * 100000.0) / 100000.0 + 0.0;
+    }
+
+    /** What `GuiGraphicsExtractor.entity` was asked: the box, the scale, the lift and the turns. */
+    static JsonObject entityState(net.minecraft.client.renderer.state.gui.pip.GuiEntityRenderState state) {
+        var out = new JsonObject();
+        out.addProperty("x0", state.x0());
+        out.addProperty("y0", state.y0());
+        out.addProperty("x1", state.x1());
+        out.addProperty("y1", state.y1());
+        out.addProperty("scale", rounded(state.scale()));
+        var translation = state.translation();
+        out.addProperty("translation_y", rounded(translation.y()));
+        var rotation = state.rotation();
+        var quaternion = new com.google.gson.JsonArray();
+        quaternion.add(rounded(rotation.x()));
+        quaternion.add(rounded(rotation.y()));
+        quaternion.add(rounded(rotation.z()));
+        quaternion.add(rounded(rotation.w()));
+        out.add("rotation", quaternion);
+        if (state.renderState() instanceof net.minecraft.client.renderer.entity.state.LivingEntityRenderState living) {
+            out.addProperty("body_rot", rounded(living.bodyRot));
+            out.addProperty("y_rot", rounded(living.yRot));
+            out.addProperty("x_rot", rounded(living.xRot));
+        }
+        return out;
     }
 
     /** The screen `ClientPacketListener.handleMountScreenOpen` opens for a mount menu. */

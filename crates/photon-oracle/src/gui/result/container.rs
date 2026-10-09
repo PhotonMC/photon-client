@@ -155,12 +155,34 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             cooldowns: cooldowns.percents(0.0),
             ..GuiFrame::default()
         };
+        // What the screen asks of the mount's model: the box, the scale, the lift (the mount's
+        // height) and the turns, as the reference's `GuiEntityRenderState` reports them.
+        let mut entities = Vec::new();
+        let mut entity =
+            |_: i32, area: (i32, i32, i32, i32), size: f32, offset: f32, mouse: (f32, f32)| {
+                let height = mount_height(row);
+                let view = photon_render::entity::player_renderer::GuiEntityView::new(
+                    area, size, offset, mouse, height,
+                );
+                let [x, y, z, w] = view.rotation_quaternion();
+                entities.push(json!({
+                    "x0": area.0, "y0": area.1, "x1": area.2, "y1": area.3,
+                    "scale": round5(size),
+                    "translation_y": round5(view.translation_y()),
+                    "rotation": [round5(x), round5(y), round5(z), round5(w)],
+                    "body_rot": round5(view.body_rot()),
+                    "y_rot": round5(view.head_yaw()),
+                    "x_rot": round5(view.pitch_degrees()),
+                }));
+                Vec::<photon_render::gui::GuiItemVertex>::new()
+            };
         let mut draw = photon_render::gui::screen::ScreenDraw {
             frame: &mut drawn,
             atlas,
             font,
             item: &mut item_drawer,
             player: &mut player,
+            entity: &mut entity,
             tooltip: &mut tooltip,
             lang: &lang,
             book: &book,
@@ -173,7 +195,28 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         steps.push(json!({
             "key": key,
             "ops": gui_ops(&drawn.log.take().unwrap_or_default()),
+            "entities": entities,
         }));
     }
     Ok(json!({"label": row["label"], "steps": steps}))
+}
+
+/// A number the way the comparison reads it: five decimals, no negative zero.
+fn round5(value: f32) -> f64 {
+    (f64::from(value) * 100_000.0).round() / 100_000.0 + 0.0
+}
+
+/// The mount's height in blocks (`Entity.getBbHeight`): its type's, a baby's for a baby.
+fn mount_height(row: &Value) -> f32 {
+    let Some(pick) = row["mount"]["entity"]
+        .as_str()
+        .and_then(photon_data::entity_type::id)
+        .and_then(photon_data::entity_type::pick)
+    else {
+        return 0.0;
+    };
+    match pick.baby {
+        Some(baby) if row["mount"]["baby"].as_bool() == Some(true) => baby.1,
+        _ => pick.size.1,
+    }
 }

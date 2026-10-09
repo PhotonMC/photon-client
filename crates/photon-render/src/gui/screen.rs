@@ -39,6 +39,12 @@ pub use container::SlotClick;
 pub type PlayerDrawer<'a> =
     dyn FnMut((i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
 
+/// Draws an entity of the world, by its id, into a box (`x0, y0, x1, y1`) at a size and an offset,
+/// turned towards the mouse (`InventoryScreen.extractEntityInInventoryFollowsMouse`), as
+/// triangles for [`GuiFrame::entity`]; none when it is not drawn.
+pub type EntityDrawer<'a> =
+    dyn FnMut(i32, (i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
+
 /// An item's tooltip as lines of styled text: for a stack, and whether it is
 /// on one of the creative inventory's own slots.
 pub type TooltipLines<'a> =
@@ -52,6 +58,8 @@ pub struct ScreenDraw<'a, 'b> {
     pub font: &'a Font,
     pub item: &'a mut ItemDrawer<'b>,
     pub player: &'a mut PlayerDrawer<'b>,
+    /// Another entity in a screen's box (a mount's).
+    pub entity: &'a mut EntityDrawer<'b>,
     pub tooltip: &'a mut TooltipLines<'b>,
     /// The language the screens' own texts are read in.
     pub lang: &'a photon_game::text::Lang,

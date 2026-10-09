@@ -453,18 +453,9 @@ fn mushrooms(
     }
 }
 
-/// `GoatRenderer`, `MushroomCowRenderer` and `RabbitRenderer` for the goats,
-/// mooshrooms and rabbits the server added. A mooshroom's mushrooms on an
-/// invisible animal that glows would be drawn as outlines only, which is not
-/// drawn yet.
-pub fn remote_farm_animals(
-    session: &PlaySession,
-    models: &mut MobModels,
-    textures: &EntityTextures,
-    (view, held): (FrameView, &mut Vec<HeldItem>),
-    vertices: &mut Vec<Vertex>,
-) {
-    let kinds: Vec<(i32, Animal)> = [
+/// The animals this module draws, by entity type id.
+fn animal_kinds() -> Vec<(i32, Animal)> {
+    [
         ("minecraft:goat", Animal::Goat),
         ("minecraft:mooshroom", Animal::Mooshroom),
         ("minecraft:rabbit", Animal::Rabbit),
@@ -481,7 +472,21 @@ pub fn remote_farm_animals(
     ]
     .into_iter()
     .filter_map(|(name, animal)| Some((photon_data::entity_type::id(name)?, animal)))
-    .collect();
+    .collect()
+}
+
+/// `GoatRenderer`, `MushroomCowRenderer` and `RabbitRenderer` for the goats,
+/// mooshrooms and rabbits the server added. A mooshroom's mushrooms on an
+/// invisible animal that glows would be drawn as outlines only, which is not
+/// drawn yet.
+pub fn remote_farm_animals(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (view, held): (FrameView, &mut Vec<HeldItem>),
+    vertices: &mut Vec<Vertex>,
+) {
+    let kinds = animal_kinds();
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world.entities().drawn() {
@@ -522,4 +527,49 @@ pub fn remote_farm_animals(
             vertices.extend(mob_vertices(model, &placed, marking));
         }
     }
+}
+
+/// An animal in a screen's box (`InventoryScreen.extractEntityInInventoryFollowsMouse`): its
+/// model posed as the entity stands now, its head turned to the mouse, at the origin turned to
+/// the view's body rotation; none for an entity this module does not draw. The coat's markings
+/// come with it; the saddle and armour layers are not drawn.
+pub fn gui_preview(
+    world: &photon_world::ClientWorld,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    entity: &ClientEntity,
+    view: &photon_render::entity::player_renderer::GuiEntityView,
+) -> Option<Vec<Vertex>> {
+    let animal = animal_kinds()
+        .into_iter()
+        .find(|(id, _)| *id == entity.type_id)
+        .map(|(_, animal)| animal)?;
+    // `createRenderState(entity, 1.0F)`.
+    let snapshot = world.entity_snapshot(entity.id(), 1.0)?;
+    let look = QuadrupedState {
+        head_y_rot: view.head_yaw(),
+        x_rot: view.pitch_degrees(),
+        walk_position: snapshot.walk_position,
+        walk_speed: snapshot.walk_speed,
+    };
+    let (texture, layer) = appearance(animal, entity, world.game_time());
+    let (rect, model) = (textures.rect(texture)?, models.model(layer)?);
+    pose(model, animal, entity, (look, 1.0, world.game_time()));
+    let placed = MobPlacement {
+        body_rot: view.body_rot(),
+        scale: 1.0,
+        flip_degrees: photon_render::entity::mob_model::FLIP_DEGREES,
+        ..MobPlacement::default()
+    };
+    let mut vertices = mob_vertices(model, &placed, rect);
+    if animal == Animal::Horse
+        && !entity.is_invisible()
+        && let Some(markings) = usize::try_from(entity.horse_look().1)
+            .ok()
+            .and_then(|index| MARKINGS[index])
+        && let Some(marking) = textures.rect(markings[usize::from(entity.is_baby())])
+    {
+        vertices.extend(mob_vertices(model, &placed, marking));
+    }
+    Some(vertices)
 }

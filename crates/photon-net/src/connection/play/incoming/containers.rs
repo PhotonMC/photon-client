@@ -39,6 +39,7 @@ impl PlaySession {
             columns: columns.clamp(0, 9) as u8,
         };
         let state = MountEntity {
+            entity_id,
             entity_type: entity.type_id,
             can_use: MountEntity::can_use_slots(name, entity.is_baby(), tame),
             entity_tags: world.block_state_registry().entity_type_tags().clone(),

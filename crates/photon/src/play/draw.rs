@@ -412,7 +412,12 @@ impl Play {
             &mut self.session,
             &mut self.controls,
             (&self.block_renderer, &self.biome_tints),
-            (&mut self.player_model, frame.locator),
+            (
+                &mut self.player_model,
+                frame.locator,
+                &mut self.mob_models,
+                &self.entity_textures,
+            ),
         )?;
         let built = Instant::now();
         self.backend.draw_scene(colour, frame.view_projection)?;

@@ -46,7 +46,8 @@ pub struct Mount {
 /// What the menu reads of the mount entity when it opens.
 #[derive(Debug, Clone, Default)]
 pub struct MountEntity {
-    /// The entity type's registry id.
+    /// The entity's id and its type's registry id.
+    pub entity_id: i32,
     pub entity_type: i32,
     /// `canUseSlot(SADDLE)` and `canUseSlot(BODY)`.
     pub can_use: [bool; 2],

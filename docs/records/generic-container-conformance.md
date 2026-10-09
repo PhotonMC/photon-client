@@ -94,7 +94,7 @@ varlığın `canUseSlot`ı ve `allowed_entities` (etiketler sunucunun gönderdi�
 etiketleri; eşyanın kendi izin listesi `item/equippable_allowed.rs`) ve bağlanma laneti.
 `canUseSlot` at, iskelet ve zombi atı ile lamada hep açık; eşek, katır, deve ve nautilusta
 eyer evcil yetişkin ister (nautilusta zırh da). Oracle: `container-clicks` mount satırları
-(`client-parity`, gerçek menü ve gerçek varlık). Ekran (T58b, `container_screen` ile gerçek ekrana karşı): doku, sandık yuvası sprite'ı, kullanımdaki yuva çerçeveleri, boş yuva simgeleri ve başlık; etkin olmayan yuva çizilmez ve tıklanmaz. Varlık modeli çizilmez (T58c).
+(`client-parity`, gerçek menü ve gerçek varlık). Ekran (T58b, `container_screen` ile gerçek ekrana karşı): doku, sandık yuvası sprite'ı, kullanımdaki yuva çerçeveleri, boş yuva simgeleri ve başlık; etkin olmayan yuva çizilmez ve tıklanmaz. Varlık modeli at, eşek, katır, iskelet/zombi atı, deve ve lama için çizilir (kutu, ölçek, yükseklik ve dönüşler Java'nın `GuiEntityRenderState`ine eşit; Java'daki gibi bir önceki karenin faresiyle); eyer/zırh/halı katmanları ve nautilus modeli çizilmez.
 
 ## Tarif kitabı (envanter 2×2, çalışma tezgâhı, fırınlar)
 

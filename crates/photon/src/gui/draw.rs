@@ -55,7 +55,12 @@ impl Gui {
         session: &mut PlaySession,
         controls: &mut Controls,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-        (player_model, locator_camera): (&mut PlayerModel, LocatorCamera),
+        (player_model, locator_camera, mob_models, entity_textures): (
+            &mut PlayerModel,
+            LocatorCamera,
+            &mut crate::mobs::MobModels,
+            &photon_render::entity::textures::EntityTextures,
+        ),
     ) -> Result<(), Box<dyn std::error::Error>> {
         let size = surface.scale();
         let screen_menu = controls
@@ -246,10 +251,38 @@ impl Gui {
                         self.player_skin,
                     )
                 };
+            // A mount in the box of its screen, between two ticks as it stands now.
+            let world = session.world();
+            let mut draw_entity = |id: i32,
+                                   area: (i32, i32, i32, i32),
+                                   size: f32,
+                                   offset_y: f32,
+                                   mouse: (f32, f32)| {
+                let Some(entity) = world.entities().at(id) else {
+                    return Vec::new();
+                };
+                let view = photon_render::entity::player_renderer::GuiEntityView::new(
+                    area,
+                    size,
+                    offset_y,
+                    mouse,
+                    entity.bb_height(),
+                );
+                crate::mobs::animals::farm_animals::gui_preview(
+                    world,
+                    mob_models,
+                    entity_textures,
+                    entity,
+                    &view,
+                )
+                .map(|vertices| {
+                    photon_render::entity::player_renderer::gui_mob_vertices(&vertices, &view)
+                })
+                .unwrap_or_default()
+            };
             // A stack's tooltip in words.
             let lang = &self.lang;
             let registries = &self.registries;
-            let world = session.world();
             let maps = |id: i32| {
                 world.map_data(id).map(|map| photon_game::tooltip::MapInfo {
                     scale: map.scale,
@@ -278,6 +311,7 @@ impl Gui {
                 font: &self.font,
                 item: &mut draw_item,
                 player: &mut draw_player,
+                entity: &mut draw_entity,
                 tooltip: &mut tooltip_lines,
                 lang: &self.lang,
                 control_held: controls.control_held,

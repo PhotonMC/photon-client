@@ -78,6 +78,9 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
+    let mut entity = |_: i32, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
+        Vec::<photon_render::gui::GuiItemVertex>::new()
+    };
     let mut tooltip = |stack: &photon_world::ClientItemStackState, _: bool| {
         lines(stack, false, Flags::default(), &registries, &no_maps)
             .iter()
@@ -98,6 +101,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         font: &ctx.font,
         item: &mut item,
         player: &mut player,
+        entity: &mut entity,
         tooltip: &mut tooltip,
         lang: &lang,
         book: &book,

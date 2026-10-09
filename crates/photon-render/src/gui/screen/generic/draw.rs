@@ -67,13 +67,14 @@ impl GenericScreen {
     }
 
     /// `AbstractMountInventoryScreen.extractBackground` after the texture: the chest's slots, the
-    /// frames of the saddle and the armour slot that are in use. (The mount's model is not drawn.)
+    /// frames of the saddle and the armour slot that are in use, then the mount itself.
     pub(super) fn mount_background(
         &self,
         draw: &mut ScreenDraw<'_, '_>,
         menu: &ContainerMenu,
         mount: photon_game::menus::container::Mount,
     ) {
+        let mouse = self.last_mouse;
         let (left, top) = (self.layout.left(), self.layout.top());
         if mount.columns > 0 && mount.family != MountFamily::Nautilus {
             draw.frame.sprite_part(
@@ -89,6 +90,15 @@ impl GenericScreen {
                     .sprite(draw.atlas, "container/slot", left + 7, top + y, 18, 18);
             }
         }
+        // `InventoryScreen.extractEntityInInventoryFollowsMouse` of the mount.
+        let model = (draw.entity)(
+            menu.mount.entity_id,
+            (left + 26, top + 18, left + 78, top + 70),
+            17.0,
+            0.25,
+            (mouse.0 as f32, mouse.1 as f32),
+        );
+        draw.frame.entity(&model);
     }
 
     /// `MerchantScreen.extractLabels`: the title, with the merchant's level when its bar shows, the
