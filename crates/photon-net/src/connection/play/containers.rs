@@ -490,6 +490,20 @@ impl PlaySession {
             .map_or(0, |container| container.container_id())
     }
 
+    /// `ServerboundChangeGameModePacket`: the game mode switcher picked a mode.
+    pub fn change_game_mode(&mut self, mode: ClientPlayerGameMode) -> Result<(), ConnectionError> {
+        let id = match mode {
+            ClientPlayerGameMode::Survival => 0,
+            ClientPlayerGameMode::Creative => 1,
+            ClientPlayerGameMode::Adventure => 2,
+            ClientPlayerGameMode::Spectator => 3,
+        };
+        self.send(PLAY_SERVERBOUND_CHANGE_GAME_MODE_PACKET_ID, |output| {
+            photon_core::wire::write_varint(id, output);
+            Ok(())
+        })
+    }
+
     /// `ServerboundRenameItemPacket`: the anvil's name box changed.
     pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
         // `AnvilScreen.onNameChanged`: the menu works its result out again.

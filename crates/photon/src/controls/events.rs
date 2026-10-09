@@ -16,6 +16,10 @@ impl Controls {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                 self.open_pause(surface, assets);
             }
+            // `key.debug.switchGameMode` with the debug modifier held.
+            WindowEvent::Key(Key::F4, _, Action::Press, _) if self.debug_down => {
+                self.debug_switch_game_mode(session, surface, assets);
+            }
             WindowEvent::Key(key, scancode, action, _) => {
                 let input = keybinds::input_key(key, scancode);
                 self.mapped_input(input, action, (session, surface, assets), spectating);
@@ -202,6 +206,10 @@ impl Controls {
             if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
                 self.ctrl_down = action != glfw::Action::Release;
             }
+            // `key.debug.modifier`.
+            if key == glfw::Key::F3 {
+                self.debug_down = action != glfw::Action::Release;
+            }
         }
         if let Some(screen) = self.screen.as_mut() {
             let size = surface.scale();
@@ -215,6 +223,9 @@ impl Controls {
                 | glfw::WindowEvent::Scroll(..)
                 | glfw::WindowEvent::CursorPos(..)
         );
+        if self.game_mode_switcher.is_some() && for_screen {
+            return self.game_mode_switcher_event(event, session, surface, assets);
+        }
         if self.link_confirm.is_some() && for_screen {
             self.link_event(event, surface);
             return Ok(());

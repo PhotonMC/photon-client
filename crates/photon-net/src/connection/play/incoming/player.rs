@@ -31,6 +31,10 @@ impl PlaySession {
         self.player_id = Some(login.player_id);
         self.permission_level = 0;
         self.game_mode = ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
+        self.previous_game_mode = login
+            .spawn_info
+            .previous_game_type
+            .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
         Ok(())
     }
 
@@ -55,6 +59,9 @@ impl PlaySession {
             environment,
         );
         self.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
+        self.previous_game_mode = spawn_info
+            .previous_game_type
+            .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
         // The new player starts with an empty inventory; the server
         // sends it again.
         self.trace.world.recreate_local_player(data_to_keep);
@@ -141,7 +148,12 @@ impl PlaySession {
             self.show_death_screen = event.param == 0.0;
         }
         if event.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID {
-            self.game_mode = ClientPlayerGameMode::from_game_event_param(event.param);
+            // `MultiPlayerGameMode.setLocalMode`: a change keeps the mode left as the previous.
+            let mode = ClientPlayerGameMode::from_game_event_param(event.param);
+            if mode != self.game_mode {
+                self.previous_game_mode = Some(self.game_mode);
+            }
+            self.game_mode = mode;
             if let Some(player) = self.player.as_mut() {
                 player.set_game_mode(self.game_mode);
             }

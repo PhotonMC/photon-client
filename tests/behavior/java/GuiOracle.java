@@ -50,6 +50,7 @@ public final class GuiOracle extends GuiSignOracle {
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);
                 case "container_screen" -> containerScreen(request);
+                case "game_mode_switcher" -> gameModeSwitcher(request);
                 case "tooltip_lines" -> GuiTooltipOracle.tooltipLines(request);
                 case "bundle_tooltip" -> GuiTooltipOracle.bundleTooltip(request);
                 default -> throw new IllegalArgumentException("Unknown gui operation");

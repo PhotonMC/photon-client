@@ -517,3 +517,37 @@ def gui_widgets_cases():
         row("visibility-scroll-down", "chat_visibility", 1, steps=[scroll(-1.0), scroll(-1.0)]),
     ]
     yield {"case_id": "gui/widgets", "family": "gui", "operation": "widgets", "rows": rows}
+
+
+def gui_game_mode_switcher_cases():
+    """`GameModeSwitcherScreen` (F3+F4) over the game's own client: where it starts, the switch key,
+    and the mouse picking a slot once it has moved."""
+    def row(label, game_mode, steps, previous=None, width=427, height=240):
+        made = {"label": label, "width": width, "height": height, "game_mode": game_mode,
+                "selected": 0, "state_id": 0, "blocks": [], "chunk_radius": 0, "clicks": [],
+                "slots": [], "steps": [{"mouse": list(mouse), **({"key": True} if key else {})}
+                                        for mouse, key in steps]}
+        if previous is not None:
+            made["previous"] = previous
+        return made
+
+    away = (10, 10)
+    rows = [
+        row("from-creative", "creative", [(away, False)]),
+        row("from-survival", "survival", [(away, False)]),
+        row("previous-spectator", "survival", [(away, False)], previous="spectator"),
+        row("previous-adventure", "creative", [(away, False)], previous="adventure"),
+        row("switch-key-cycles", "survival", [(away, False), (away, True), (away, True), (away, True),
+                                              (away, True)]),
+        # The slots lie at x 154, 185, 216 and 247, 26 wide, from y 89.
+        row("mouse-picks-once-moved", "survival", [((170, 100), False), ((170, 100), False),
+                                                   ((200, 100), False), ((260, 100), False),
+                                                   (away, False)]),
+        row("mouse-waits-for-motion", "creative", [((230, 100), False), ((230, 100), False),
+                                                   ((231, 100), False)]),
+        row("switch-key-then-mouse", "creative", [((200, 100), False), ((200, 100), True),
+                                                   ((200, 100), False), ((170, 95), False)]),
+        row("small-window", "survival", [(away, False), ((20, 30), True)], width=200, height=120),
+    ]
+    yield {"case_id": "gui/game-mode-switcher", "family": "gui", "operation": "game_mode_switcher",
+           "rows": rows}

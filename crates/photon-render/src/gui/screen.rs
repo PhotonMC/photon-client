@@ -8,6 +8,7 @@ pub mod confirm;
 pub mod connect;
 pub mod death;
 pub mod disconnected;
+pub mod game_mode;
 pub mod pause;
 pub mod server_form;
 pub mod servers;

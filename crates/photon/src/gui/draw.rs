@@ -195,6 +195,17 @@ impl Gui {
                 book.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
             }
         }
+        if let Some(switcher) = controls.game_mode_switcher.as_mut() {
+            switcher.resize(gui_size);
+            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+            switcher.draw(
+                &mut frame,
+                (&self.atlas, &self.font, &self.lang),
+                &mut draw_item,
+                mouse,
+                "F4",
+            );
+        }
         if let Some(disconnected) = controls.disconnected.as_mut() {
             if disconnected.size() != gui_size {
                 *disconnected = disconnected.resized(&self.font, &self.lang, gui_size);

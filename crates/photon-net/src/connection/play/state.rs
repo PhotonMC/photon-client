@@ -110,6 +110,16 @@ impl PlaySession {
     }
 
     /// The player's game mode, as the server last set it.
+    /// `MultiPlayerGameMode.getPreviousPlayerMode`.
+    pub fn previous_game_mode(&self) -> Option<ClientPlayerGameMode> {
+        self.previous_game_mode
+    }
+
+    /// Whether the player may run `/gamemode` (`GameModeCommand.PERMISSION_CHECK`: game master).
+    pub fn may_change_game_mode(&self) -> bool {
+        self.permission_level >= 2
+    }
+
     pub fn game_mode(&self) -> ClientPlayerGameMode {
         self.game_mode
     }

@@ -220,3 +220,57 @@ fn mount_height(row: &Value) -> f32 {
         _ => pick.size.1,
     }
 }
+
+/// The game mode switcher: each step's mouse and whether the switch key was pressed, then the
+/// screen drawn and the mode it picked.
+pub(super) fn game_mode_switcher_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
+    use photon_world::ClientPlayerGameMode;
+    let mode = |name: &str| match name {
+        "creative" => ClientPlayerGameMode::Creative,
+        "adventure" => ClientPlayerGameMode::Adventure,
+        "spectator" => ClientPlayerGameMode::Spectator,
+        _ => ClientPlayerGameMode::Survival,
+    };
+    let lang = photon_game::text::Lang::load(&ctx.root);
+    let size = (
+        row["width"].as_i64().unwrap_or(0) as i32,
+        row["height"].as_i64().unwrap_or(0) as i32,
+    );
+    let current = mode(row["game_mode"].as_str().unwrap_or("survival"));
+    let previous = row["previous"].as_str().map(mode);
+    let mut screen = GameModeSwitcherScreen::new(
+        GameModeSwitcherScreen::default_selected(previous, current),
+        size,
+    );
+    let mut item = |_: &photon_world::ClientItemStackState,
+                    _: f32,
+                    _: f32,
+                    _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut steps = Vec::new();
+    for step in row["steps"].as_array().into_iter().flatten() {
+        if step.get("key").is_some() {
+            screen.next_mode();
+        }
+        let mouse = (
+            step["mouse"][0].as_i64().unwrap_or(0) as i32,
+            step["mouse"][1].as_i64().unwrap_or(0) as i32,
+        );
+        let mut drawn = GuiFrame {
+            log: Some(Vec::new()),
+            ..GuiFrame::default()
+        };
+        screen.draw(
+            &mut drawn,
+            (&ctx.atlas, &ctx.font, &lang),
+            &mut item,
+            mouse,
+            "F4",
+        );
+        steps.push(json!({
+            "ops": gui_ops(&drawn.log.take().unwrap_or_default()),
+            "selected": format!("{:?}", screen.selected()).to_uppercase(),
+        }));
+    }
+    Ok(json!({"label": row["label"], "steps": steps}))
+}

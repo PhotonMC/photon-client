@@ -29,3 +29,6 @@ Raporlama ekranları (çevrimiçi servis).
 `docs/gui-oracle.md`.
 
 ## Devir notu
+- Bölündü: oyun modu seçici bitti (aşağıda); kredi ekranı T96b, sosyal etkileşimler T96c.
+- Oyun modu seçici (F3+F4, `client-parity`): `photon-render/gui/screen/game_mode.rs`, `controls/game_mode_switcher.rs`; Java'nın gözlenen kuralları korundu (seçim sprite'ı bir geçiş sonra, fare yalnız kımıldadıktan sonra seçer, F4 fareyi sıfırlar). Oturum: `previous_game_mode` (giriş/yeniden doğma/oyun olayı), `may_change_game_mode` (izin düzeyi ≥ 2), `ChangeGameMode` paketi (sunucuya, kimlik 5).
+- Açık: F3/F4 tuşları sabit (hata ayıklama tuşları yeniden atanamıyor, T93); F3'ü bırakmanın geçişi ve izinsiz iletinin sohbet satırı yalnız elle doğrulanır (oracle ekranı çizer; tuş akışı ve paket değil).

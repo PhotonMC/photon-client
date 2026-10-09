@@ -99,6 +99,8 @@ pub struct PlaySession {
     pub(super) trace: PlayConnectionTrace,
     pub(super) player_id: Option<i32>,
     pub(super) game_mode: ClientPlayerGameMode,
+    /// `MultiPlayerGameMode.previousLocalPlayerMode`: the mode played in before this one.
+    pub(super) previous_game_mode: Option<ClientPlayerGameMode>,
     pub(super) abilities: Option<ClientPlayerAbilities>,
     pub(super) player: Option<LocalPlayer>,
     pub(super) loaded: bool,

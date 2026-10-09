@@ -178,6 +178,7 @@ impl PlaySession {
             trace,
             player_id: None,
             game_mode: ClientPlayerGameMode::Survival,
+            previous_game_mode: None,
             abilities: None,
             player: None,
             loaded: false,

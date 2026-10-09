@@ -34,6 +34,7 @@ use photon_render::gui::screen::confirm::ConfirmAction as LinkAction;
 use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 
 use photon_render::gui::screen::death::{DeathAction, DeathScreen};
+use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
 
 use photon_render::gui::screen::disconnected::DisconnectedScreen;
 
@@ -106,6 +107,10 @@ pub struct Controls {
     /// The death screen, from the server's word of a death until the player
     /// has health again.
     pub death: Option<DeathScreen>,
+    /// The game mode switcher (F3+F4), while F3 is held.
+    pub game_mode_switcher: Option<GameModeSwitcherScreen>,
+    /// Whether F3, the debug modifier, is held.
+    debug_down: bool,
     /// The sign the player is writing on, while its screen is up.
     pub sign_edit: Option<SignEdit>,
     /// The book and quill being written in, while its screen is up.
@@ -285,6 +290,7 @@ mod chat;
 mod confirm;
 
 mod death;
+mod game_mode_switcher;
 
 mod events;
 
@@ -335,6 +341,8 @@ impl Controls {
             mouse_screen: None,
             key_binds_screen: None,
             death: None,
+            game_mode_switcher: None,
+            debug_down: false,
             sign_edit: None,
             book_edit: None,
             confirm: None,

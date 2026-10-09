@@ -469,6 +469,74 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 net.minecraft.client.renderer.entity.state.LivingEntityRenderState state) {}
     }
 
+    /**
+     * The game mode switcher over the game's own client: for each step the mouse where it is, and
+     * the switch key pressed or not; every step draws the screen and reports what it picked.
+     */
+    static JsonObject gameModeSwitcher(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            setup();
+            MovementOracle.bootstrap();
+            var open = MovementOracle.openMenu(row);
+            var minecraft = open.scene().minecraft();
+            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
+            instance.setAccessible(true);
+            instance.set(null, minecraft);
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var first = row.getAsJsonArray("steps").get(0).getAsJsonObject().getAsJsonArray("mouse");
+            var drawn = prepare(minecraft, width, height, first.get(0).getAsInt(), first.get(1).getAsInt());
+            set(minecraft, "itemModelResolver", unsafe.allocateInstance(NoItems.class));
+            var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            set(renderer, "lighting", unsafe.allocateInstance(NoLighting.class));
+            set(minecraft, "gameRenderer", renderer);
+            set(minecraft, "level", open.scene().level());
+            // The mode played in before, which the screen starts from.
+            var gameMode = minecraft.gameMode;
+            set(gameMode, "previousLocalPlayerMode", row.has("previous")
+                ? net.minecraft.world.level.GameType.byName(row.get("previous").getAsString()) : null);
+            var screen = new net.minecraft.client.gui.screens.debug.GameModeSwitcherScreen();
+            set(screen, "minecraft", minecraft);
+            set(screen, "font", font);
+            set(screen, "width", width);
+            set(screen, "height", height);
+            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(screen);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var steps = new JsonArray();
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                int mouseX = step.getAsJsonArray("mouse").get(0).getAsInt();
+                int mouseY = step.getAsJsonArray("mouse").get(1).getAsInt();
+                if (step.has("key")) {
+                    // The switch key (F4).
+                    screen.keyPressed(new net.minecraft.client.input.KeyEvent(293, 0, 0));
+                }
+                var frame = prepare(minecraft, width, height, mouseX, mouseY);
+                frame.graphics().nextStratum();
+                screen.extractBackground(frame.graphics(), mouseX, mouseY, 0.0F);
+                frame.graphics().nextStratum();
+                screen.extractRenderState(frame.graphics(), mouseX, mouseY, 0.0F);
+                var done = new JsonObject();
+                done.add("ops", record(frame.state()));
+                var field = net.minecraft.client.gui.screens.debug.GameModeSwitcherScreen.class
+                    .getDeclaredField("currentlyHovered");
+                field.setAccessible(true);
+                done.addProperty("selected", field.get(screen).toString());
+                steps.add(done);
+            }
+            out.add("steps", steps);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A number the way the comparison reads it: five decimals, no negative zero. */
     static double rounded(double value) {
         return Math.round(value * 100000.0) / 100000.0 + 0.0;
