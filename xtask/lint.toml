@@ -39,4 +39,5 @@ photon-oracle = [
     "photon-render",
     "photon-audio",
 ]
-xtask = []
+parity-cases = []
+xtask = ["parity-cases"]

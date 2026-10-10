@@ -25,7 +25,7 @@ usage: cargo xtask <command>
   commit-msg <file>         validate a commit message (git hook)
   install-hooks             point git at the tracked hooks in .githooks/
   affected [--base <ref>]   print the crates touched since <ref> and their dependents
-  parity [--capture] [--family <name>]...
+  parity [--recapture] [--compare-generators] [--family <name>]...
                             compare the Rust adapter with the Java reference";
 
 fn main() -> ExitCode {

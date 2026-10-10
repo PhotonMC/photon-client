@@ -14,15 +14,23 @@ pub struct Package {
     pub dev_deps: Vec<String>,
 }
 
+/// The directories whose subdirectories are workspace members.
+const MEMBER_DIRS: &[&str] = &["crates", "parity"];
+
 /// Reads every workspace member manifest.
 pub fn packages() -> Result<Vec<Package>, String> {
     let root = process::root();
-    let mut dirs: Vec<String> = fs::read_dir(root.join("crates"))
-        .map_err(|error| format!("cannot list crates/: {error}"))?
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .map(|entry| format!("crates/{}", entry.file_name().to_string_lossy()))
-        .collect();
+    let mut dirs = Vec::new();
+    for parent in MEMBER_DIRS {
+        let entries = fs::read_dir(root.join(parent))
+            .map_err(|error| format!("cannot list {parent}/: {error}"))?;
+        dirs.extend(
+            entries
+                .filter_map(Result::ok)
+                .filter(|entry| entry.path().join("Cargo.toml").is_file())
+                .map(|entry| format!("{parent}/{}", entry.file_name().to_string_lossy())),
+        );
+    }
     dirs.push("xtask".to_owned());
     dirs.sort();
     let manifests = dirs

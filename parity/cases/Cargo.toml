@@ -1,0 +1,13 @@
+[package]
+name = "parity-cases"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Parity case definitions: original synthetic inputs for the Java/Rust comparison."
+
+[dependencies]
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+
+[lints]
+workspace = true

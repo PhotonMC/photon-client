@@ -8,6 +8,7 @@ description = "Repository automation: lint rules, git hooks, the commit gate."
 
 [dependencies]
 flate2.workspace = true
+parity-cases.workspace = true
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 sha1 = "0.10"
 sha2 = "0.10"
