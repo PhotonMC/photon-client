@@ -172,7 +172,7 @@ impl PlaySession {
     fn show_elder_guardian(&mut self, param: i32) {
         let (Some(player), Some(type_id)) = (
             self.player.as_ref(),
-            photon_data::particle_type::id("minecraft:elder_guardian"),
+            photon_data::particle_type::id("elder_guardian"),
         ) else {
             return;
         };

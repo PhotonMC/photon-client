@@ -192,7 +192,7 @@ impl ParticleEngine {
         (random, level_random): (impl FnOnce() -> RandomSource, &mut RandomSource),
     ) -> bool {
         // `ElderGuardianParticle.Provider`: a particle with no picture of the atlas.
-        if particle_type::id("minecraft:elder_guardian") == Some(type_id) {
+        if particle_type::id("elder_guardian") == Some(type_id) {
             self.elder_guardians_to_add
                 .push_back(super::ElderGuardian::new());
             return true;
