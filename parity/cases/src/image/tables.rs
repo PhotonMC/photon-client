@@ -20,10 +20,7 @@ const METADATA: &[(&str, &str)] = &[
     ("bias", r#"{"alpha_cutoff_bias": 0.25}"#),
     ("bias-negative", r#"{"alpha_cutoff_bias": -0.5}"#),
     ("bias-integer", r#"{"alpha_cutoff_bias": 1}"#),
-    (
-        "all",
-        r#"{"blur": true, "clamp": true, "mipmap_strategy": "dark_cutout", "alpha_cutoff_bias": 0.125}"#,
-    ),
+    ("all", r#"{"blur": true, "clamp": true, "mipmap_strategy": "dark_cutout", "alpha_cutoff_bias": 0.125}"#),
     // Names the enum does not carry, and shapes the codec does not take.
     ("strategy-unknown", r#"{"mipmap_strategy": "smooth"}"#),
     ("strategy-uppercase", r#"{"mipmap_strategy": "MEAN"}"#),
@@ -88,54 +85,31 @@ const MULTIPLY: &[(&str, &str, &str)] = &[
 ];
 
 pub fn texture_metadata() -> Value {
-    let rows: Vec<Value> = METADATA
-        .iter()
-        .map(|(label, text)| json!({"label": label, "json": text}))
-        .collect();
-    case(
-        "image/texture-metadata",
-        "image",
-        "texture_metadata",
-        json!({ "rows": rows }),
-    )
+    let rows: Vec<Value> = METADATA.iter().map(|(label, text)| json!({"label": label, "json": text})).collect();
+    case("image/texture-metadata", "image", "texture_metadata", json!({ "rows": rows }))
 }
 
 pub fn sprite_uv() -> Value {
-    let offsets: Vec<String> = [0.0, 0.25, 0.5, 1.0, -0.5, 1.5]
-        .into_iter()
-        .map(f32_bits)
-        .collect();
+    let offsets: Vec<String> = [0.0, 0.25, 0.5, 1.0, -0.5, 1.5].into_iter().map(f32_bits).collect();
     let rows: Vec<Value> = SPRITE_UVS
         .iter()
-        .map(
-            |(label, width, height, atlas_width, atlas_height, x, y, padding)| {
-                json!({
-                    "label": label, "width": width, "height": height,
-                    "atlas_width": atlas_width, "atlas_height": atlas_height,
-                    "x": x, "y": y, "padding": padding, "offsets": offsets,
-                })
-            },
-        )
+        .map(|(label, width, height, atlas_width, atlas_height, x, y, padding)| {
+            json!({
+                "label": label, "width": width, "height": height,
+                "atlas_width": atlas_width, "atlas_height": atlas_height,
+                "x": x, "y": y, "padding": padding, "offsets": offsets,
+            })
+        })
         .collect();
-    case(
-        "image/sprite-uv",
-        "image",
-        "sprite_uv",
-        json!({ "rows": rows }),
-    )
+    case("image/sprite-uv", "image", "sprite_uv", json!({ "rows": rows }))
 }
 
 /// The biome tints index a 256x256 colour map by temperature and rainfall.
 /// A synthetic map keeps the case self-contained; what is being pinned is
 /// the indexing, not the game's own artwork.
 pub fn colour_map() -> Value {
-    let texels: Vec<Vec<u8>> = (0..=255u8)
-        .map(|y| {
-            (0..=255u8)
-                .flat_map(|x| [x, y, x.wrapping_mul(y), 255])
-                .collect()
-        })
-        .collect();
+    let texels: Vec<Vec<u8>> =
+        (0..=255u8).map(|y| (0..=255u8).flat_map(|x| [x, y, x.wrapping_mul(y), 255]).collect()).collect();
     let rows: Vec<Value> = COLOUR_MAP
         .iter()
         .map(|(label, kind, temperature, rain)| {
@@ -150,14 +124,7 @@ pub fn colour_map() -> Value {
 }
 
 pub fn argb_multiply() -> Value {
-    let rows: Vec<Value> = MULTIPLY
-        .iter()
-        .map(|(label, lhs, rhs)| json!({"label": label, "lhs": lhs, "rhs": rhs}))
-        .collect();
-    case(
-        "image/argb-multiply",
-        "image",
-        "argb_multiply",
-        json!({ "rows": rows }),
-    )
+    let rows: Vec<Value> =
+        MULTIPLY.iter().map(|(label, lhs, rhs)| json!({"label": label, "lhs": lhs, "rhs": rhs})).collect();
+    case("image/argb-multiply", "image", "argb_multiply", json!({ "rows": rows }))
 }

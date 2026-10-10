@@ -12,10 +12,7 @@ struct Rate {
 
 impl Default for Rate {
     fn default() -> Self {
-        Self {
-            tps: 20.0,
-            target: 50.0,
-        }
+        Self { tps: 20.0, target: 50.0 }
     }
 }
 
@@ -41,11 +38,7 @@ fn target(value: f64) -> Value {
 
 /// An integral rate prints as an integer in the label, as written.
 fn rate_label(value: f64) -> String {
-    if value.fract() == 0.0 {
-        format!("{}", value as i64)
-    } else {
-        float_text(value)
-    }
+    if value.fract() == 0.0 { format!("{}", value as i64) } else { float_text(value) }
 }
 
 pub fn cases() -> Vec<Value> {
@@ -58,39 +51,22 @@ pub fn cases() -> Vec<Value> {
     let residual = [17, 34, 49, 50, 51, 99, 100, 100, 101];
     let steps = residual.iter().map(|ms| time("game", *ms)).collect();
     cases.push(trace("residual", steps, 0, &rate));
-    for (tps, target) in [
-        (10.0, 100.0),
-        (20.0, 25.0),
-        (30.0, 1000.0 / 30.0),
-        (60.0, 1000.0 / 60.0),
-    ] {
-        let steps = [1, 17, 33, 50, 100, 1000]
-            .iter()
-            .flat_map(|ms| [time("game", *ms), time("real", *ms)])
-            .collect();
+    for (tps, target) in [(10.0, 100.0), (20.0, 25.0), (30.0, 1000.0 / 30.0), (60.0, 1000.0 / 60.0)] {
+        let steps = [1, 17, 33, 50, 100, 1000].iter().flat_map(|ms| [time("game", *ms), time("real", *ms)]).collect();
         let label = format!("rate-{}-{}", rate_label(tps), rate_label(target));
         cases.push(trace(&label, steps, 0, &Rate { tps, target }));
     }
     cases.extend(state_cases(&rate));
     let start = (1 << 53) + 1;
-    let steps = vec![
-        time("game", start + 49),
-        time("real", start + 50),
-        time("game", start + 50),
-        time("game", start + 51),
-    ];
+    let steps =
+        vec![time("game", start + 49), time("real", start + 50), time("game", start + 50), time("game", start + 51)];
     cases.push(trace("large-clock", steps, start, &rate));
     cases
 }
 
 fn state_cases(rate: &Rate) -> Vec<Value> {
     let mut cases = Vec::new();
-    let steps = vec![
-        time("game", 25),
-        target(100.0),
-        time("game", 100),
-        target(25.0),
-    ];
+    let steps = vec![time("game", 25), target(100.0), time("game", 100), target(25.0)];
     let steps = [steps, vec![time("game", 125), time("real", 125)]].concat();
     cases.push(trace("rate-change", steps, 0, rate));
     let steps = vec![

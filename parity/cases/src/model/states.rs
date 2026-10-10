@@ -74,23 +74,11 @@ pub fn uv_lock() -> Vec<Value> {
     // through untouched.
     for z in [90, 180, 270] {
         for facing in FACINGS {
-            rows.push(locked(
-                format!("z{z}-{facing}"),
-                (0, 0, z),
-                true,
-                facing,
-                0.25,
-            ));
+            rows.push(locked(format!("z{z}-{facing}"), (0, 0, z), true, facing, 0.25));
         }
     }
     for facing in FACINGS {
-        rows.push(locked(
-            format!("unlocked-{facing}"),
-            (90, 180, 0),
-            false,
-            facing,
-            0.25,
-        ));
+        rows.push(locked(format!("unlocked-{facing}"), (90, 180, 0), false, facing, 0.25));
     }
     rows
 }

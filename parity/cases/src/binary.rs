@@ -147,12 +147,7 @@ const FIXED_WRITES: &[(&str, u32, &[u32])] = &[
 fn codec(operation: &str, codec: &str, label: &str, fields: Value) -> Value {
     let kind = codec.replace('_', "-");
     let id = format!("binary/{kind}-{operation}/{label}");
-    let mut case = case(
-        id,
-        "binary",
-        operation,
-        json!({"codec": codec, "prefix_hex": "a55a"}),
-    );
+    let mut case = case(id, "binary", operation, json!({"codec": codec, "prefix_hex": "a55a"}));
     merge(&mut case, fields);
     case
 }
@@ -176,43 +171,21 @@ fn vec3_cases() -> Vec<Value> {
         ("unit-scale", vector_bits(1.0, -2.0, 3.0)),
         ("partial-scale", vector_bits(4.0, -8.0, 12.0)),
         ("sanitize", special()),
-        (
-            "large-clamp",
-            vector_bits(3.4359738366e10, -3.4359738366e10, 0.0),
-        ),
+        ("large-clamp", vector_bits(3.4359738366e10, -3.4359738366e10, 0.0)),
     ];
-    let mut cases: Vec<Value> = lp_writes
-        .into_iter()
-        .map(|(label, values)| codec("write", "lp_vec3", label, values))
-        .collect();
-    cases.extend(
-        LP_VEC3_READS
-            .iter()
-            .map(|(label, hex)| read("lp_vec3", label, hex)),
-    );
+    let mut cases: Vec<Value> =
+        lp_writes.into_iter().map(|(label, values)| codec("write", "lp_vec3", label, values)).collect();
+    cases.extend(LP_VEC3_READS.iter().map(|(label, hex)| read("lp_vec3", label, hex)));
     let sample = vector_bits(1.25, -2.5, 3.75);
     let writes = [
         ("zero", vector_bits(0.0, 0.0, 0.0)),
         ("sample", sample.clone()),
-        (
-            "signed-zero",
-            json!({"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"}),
-        ),
-        (
-            "subnormal-and-large",
-            json!({"x": "0000000000000001", "y": "7fefffffffffffff", "z": "8000000000000001"}),
-        ),
+        ("signed-zero", json!({"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"})),
+        ("subnormal-and-large", json!({"x": "0000000000000001", "y": "7fefffffffffffff", "z": "8000000000000001"})),
         ("special", special()),
     ];
-    cases.extend(
-        writes
-            .into_iter()
-            .map(|(label, values)| codec("write", "vec3", label, values)),
-    );
-    let payload: String = ["x", "y", "z"]
-        .iter()
-        .filter_map(|axis| sample[axis].as_str())
-        .collect();
+    cases.extend(writes.into_iter().map(|(label, values)| codec("write", "vec3", label, values)));
+    let payload: String = ["x", "y", "z"].iter().filter_map(|axis| sample[axis].as_str()).collect();
     for length in [0, 7, 8, 15, 16, 23, 24] {
         let suffix = if length % 8 == 0 { "55aa" } else { "" };
         let framed = format!("{}{suffix}", &payload[..length * 2]);
@@ -252,31 +225,17 @@ fn position_cases() -> Vec<Value> {
         cases.push(read("uuid", &format!("truncated-{length}"), &framed));
     }
     cases.push(read("uuid", "exact", sample));
-    cases.push(read(
-        "uuid",
-        "all-ones",
-        "ffffffffffffffffffffffffffffffff55aa",
-    ));
+    cases.push(read("uuid", "all-ones", "ffffffffffffffffffffffffffffffff55aa"));
     let full = "0011223344556677";
     for (label, x, y, z) in BLOCK_POSITIONS {
-        cases.push(codec(
-            "write",
-            "blockpos",
-            label,
-            coordinates(*x, Some(*y), *z),
-        ));
+        cases.push(codec("write", "blockpos", label, coordinates(*x, Some(*y), *z)));
     }
     for (label, payload) in BLOCK_PAYLOADS {
         cases.push(read("blockpos", label, &format!("{payload}55aa")));
     }
     cases.extend(truncated("blockpos", full));
     for (label, x, y, z) in SECTIONS {
-        cases.push(codec(
-            "write",
-            "sectionpos",
-            label,
-            coordinates(*x, Some(*y), *z),
-        ));
+        cases.push(codec("write", "sectionpos", label, coordinates(*x, Some(*y), *z)));
     }
     for (label, payload) in SECTION_PAYLOADS {
         cases.push(read("sectionpos", label, &format!("{payload}55aa")));
@@ -307,21 +266,12 @@ fn long_arrays() -> Vec<(&'static str, Vec<String>)> {
 fn array_cases() -> Vec<Value> {
     let mut cases = Vec::new();
     for (label, values) in long_arrays() {
-        cases.push(codec(
-            "write",
-            "longarray",
-            label,
-            json!({ "values": values }),
-        ));
+        cases.push(codec("write", "longarray", label, json!({ "values": values })));
     }
     for (label, framed) in LONG_ARRAY_READS {
         cases.push(read("longarray", label, framed));
     }
-    cases.push(read(
-        "longarray",
-        "ascii-127",
-        &format!("7f{}55aa", "00".repeat(127)),
-    ));
+    cases.push(read("longarray", "ascii-127", &format!("7f{}55aa", "00".repeat(127))));
     for count in 0..7 {
         let label = format!("prefix-truncated-{count}");
         cases.push(read("longarray", &label, &"80".repeat(count)));

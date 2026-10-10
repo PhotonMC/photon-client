@@ -53,14 +53,8 @@ fn table(label: &str, operation: &str) -> Value {
 }
 
 pub fn cases() -> Vec<Value> {
-    let mut cases: Vec<Value> = TABLES
-        .iter()
-        .map(|(label, operation)| table(label, operation))
-        .collect();
-    let rows: Vec<Value> = TAG_SEARCHES
-        .iter()
-        .map(|(label, text)| json!({"label": label, "text": text}))
-        .collect();
+    let mut cases: Vec<Value> = TABLES.iter().map(|(label, operation)| table(label, operation)).collect();
+    let rows: Vec<Value> = TAG_SEARCHES.iter().map(|(label, text)| json!({"label": label, "text": text})).collect();
     cases.push(json!({
         "case_id": "block/creative-tag-search", "family": "block",
         "operation": "creative_tag_search", "rows": rows,

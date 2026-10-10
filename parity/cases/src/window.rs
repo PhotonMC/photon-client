@@ -61,10 +61,8 @@ const SCALES: &[(&str, i32, i32, i32, bool)] = &[
 ];
 
 pub fn cases() -> Vec<Value> {
-    let min_sizes: Vec<Value> = MIN_SIZES
-        .iter()
-        .map(|(label, requested)| json!({"label": label, "requested": requested}))
-        .collect();
+    let min_sizes: Vec<Value> =
+        MIN_SIZES.iter().map(|(label, requested)| json!({"label": label, "requested": requested})).collect();
     let scales: Vec<Value> = SCALES
         .iter()
         .map(|(label, width, height, max_scale, unicode)| {

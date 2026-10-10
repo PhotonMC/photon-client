@@ -88,15 +88,8 @@ fn fixed(digits: &str, exponent: i32) -> String {
 }
 
 /// The characters with a short escape.
-const SHORT_ESCAPES: &[(char, &str)] = &[
-    ('"', "\\\""),
-    ('\\', "\\\\"),
-    ('\n', "\\n"),
-    ('\r', "\\r"),
-    ('\t', "\\t"),
-    ('\u{8}', "\\b"),
-    ('\u{c}', "\\f"),
-];
+const SHORT_ESCAPES: &[(char, &str)] =
+    &[('"', "\\\""), ('\\', "\\\\"), ('\n', "\\n"), ('\r', "\\r"), ('\t', "\\t"), ('\u{8}', "\\b"), ('\u{c}', "\\f")];
 
 fn write_string(out: &mut String, text: &str) {
     out.push('"');

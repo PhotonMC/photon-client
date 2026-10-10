@@ -15,10 +15,7 @@ const ACCEPTED: &[(&str, &str)] = &[
     ("empty-array", "[]"),
     ("flat-object", r#"{"a":1,"b":"two","c":true,"d":null}"#),
     ("nested", r#"{"a":{"b":[1,2,{"c":3}]}}"#),
-    (
-        "model-shaped",
-        r#"{"parent":"minecraft:block/cube_all","textures":{"all":"minecraft:block/stone"}}"#,
-    ),
+    ("model-shaped", r#"{"parent":"minecraft:block/cube_all","textures":{"all":"minecraft:block/stone"}}"#),
     ("whitespace", " \t\r\n { \"a\" : [ 1 , 2 ] } \n "),
     // Key order is preserved, and a repeated key keeps the last value.
     ("key-order", r#"{"z":1,"a":2,"m":3}"#),
@@ -145,19 +142,14 @@ const LITERALS: &[&str] = &[
 ];
 
 pub fn cases() -> Vec<Value> {
-    let numbers: Vec<Value> = LITERALS
-        .iter()
-        .map(|literal| json!({"label": literal, "literal": literal}))
-        .collect();
+    let numbers: Vec<Value> = LITERALS.iter().map(|literal| json!({"label": literal, "literal": literal})).collect();
     let deep = format!("{}1{}", "[".repeat(20), "]".repeat(20));
     let mut texts: Vec<(&str, &str)> = ACCEPTED.to_vec();
     texts.push(("deep-nesting", &deep));
     texts.extend(ACCEPTED_TEXT);
     texts.extend(REJECTED);
-    let parses: Vec<Value> = texts
-        .iter()
-        .map(|(label, text)| json!({"label": label, "text": hex(text.as_bytes())}))
-        .collect();
+    let parses: Vec<Value> =
+        texts.iter().map(|(label, text)| json!({"label": label, "text": hex(text.as_bytes())})).collect();
     vec![
         json!({"case_id": "json/number", "family": "json", "operation": "number", "rows": numbers}),
         json!({"case_id": "json/parse", "family": "json", "operation": "parse", "rows": parses}),

@@ -53,8 +53,7 @@ fn code_of_conduct() -> Vec<Value> {
     let mut cases: Vec<Value> = writes
         .iter()
         .map(|(label, value, prefix)| {
-            let fields =
-                json!({"code_of_conduct_utf16_hex": utf16_hex(value), "prefix_hex": prefix});
+            let fields = json!({"code_of_conduct_utf16_hex": utf16_hex(value), "prefix_hex": prefix});
             let id = format!("configuration/code-of-conduct/write/{label}");
             misc(id, "write", "code-of-conduct", fields)
         })
@@ -67,10 +66,7 @@ fn code_of_conduct() -> Vec<Value> {
         ("body-underflow", "01".to_owned()),
         ("malformed-utf8", "01ff".to_owned()),
         ("encoded-too-big", "808080808000".to_owned()),
-        (
-            "decoded-too-long",
-            format!("{}{}", varint_hex(32768), "61".repeat(32768)),
-        ),
+        ("decoded-too-long", format!("{}{}", varint_hex(32768), "61".repeat(32768))),
     ];
     cases.extend(reads.iter().map(|(label, hex)| {
         let id = format!("configuration/code-of-conduct/read/{label}");
@@ -78,12 +74,7 @@ fn code_of_conduct() -> Vec<Value> {
     }));
     for (label, prefix) in PREFIXES {
         let id = format!("configuration/reset-chat/write/{label}");
-        cases.push(misc(
-            id,
-            "write",
-            "reset-chat",
-            json!({ "prefix_hex": prefix }),
-        ));
+        cases.push(misc(id, "write", "reset-chat", json!({ "prefix_hex": prefix })));
     }
     for (label, hex) in UNIT_READS {
         let id = format!("configuration/reset-chat/read/{label}");
@@ -93,8 +84,7 @@ fn code_of_conduct() -> Vec<Value> {
 }
 
 fn protocol_metadata() -> Vec<Value> {
-    let connections = ["HANDSHAKING", "PLAY", "STATUS", "LOGIN", "CONFIGURATION"]
-        .map(|name| ("connection", name));
+    let connections = ["HANDSHAKING", "PLAY", "STATUS", "LOGIN", "CONFIGURATION"].map(|name| ("connection", name));
     let flows = ["SERVERBOUND", "CLIENTBOUND"].map(|name| ("flow", name));
     connections
         .into_iter()
@@ -165,36 +155,12 @@ fn information_writes() -> Vec<(&'static str, Value)> {
     };
     let long = "a".repeat(32768);
     let rows = [
-        (
-            "basic",
-            write("en_us", 2, "full", true, 0),
-            tail("right", false, false, "all", ""),
-        ),
-        (
-            "empty",
-            write("", 0, "hidden", false, 255),
-            tail("left", true, true, "minimal", "aa55"),
-        ),
-        (
-            "unicode",
-            write(LANGUAGE, -1, "system", true, 3),
-            tail("right", true, false, "decreased", ""),
-        ),
-        (
-            "view-overflow",
-            write("en_us", 256, "full", false, 0),
-            tail("left", false, false, "all", ""),
-        ),
-        (
-            "model-overflow",
-            write("en_us", 2, "full", false, 511),
-            tail("right", false, false, "all", ""),
-        ),
-        (
-            "language-encode-limit",
-            write(&long, 2, "full", true, 0),
-            tail("right", false, false, "all", ""),
-        ),
+        ("basic", write("en_us", 2, "full", true, 0), tail("right", false, false, "all", "")),
+        ("empty", write("", 0, "hidden", false, 255), tail("left", true, true, "minimal", "aa55")),
+        ("unicode", write(LANGUAGE, -1, "system", true, 3), tail("right", true, false, "decreased", "")),
+        ("view-overflow", write("en_us", 256, "full", false, 0), tail("left", false, false, "all", "")),
+        ("model-overflow", write("en_us", 2, "full", false, 511), tail("right", false, false, "all", "")),
+        ("language-encode-limit", write(&long, 2, "full", true, 0), tail("right", false, false, "all", "")),
     ];
     rows.into_iter()
         .map(|(label, mut fields, tail)| {
@@ -227,10 +193,7 @@ fn client_information() -> Vec<Value> {
         ("unicode", unicode.hex()),
         ("language-underflow", "01".to_owned()),
         ("language-encoded-too-long", varint_hex(49)),
-        (
-            "language-decoded-too-long",
-            format!("{}{}", varint_hex(17), "61".repeat(17)),
-        ),
+        ("language-decoded-too-long", format!("{}{}", varint_hex(17), "61".repeat(17))),
         ("view-underflow", "00".to_owned()),
         ("chat-prefix-underflow", "000080".to_owned()),
         ("chat-invalid", "000003".to_owned()),
@@ -245,11 +208,7 @@ fn client_information() -> Vec<Value> {
     ];
     cases.extend(reads.iter().map(|(label, hex)| {
         let fields = json!({"direction": "read", "hex": hex});
-        wire(
-            format!("configuration/client-information/read/{label}"),
-            "client_information",
-            fields,
-        )
+        wire(format!("configuration/client-information/read/{label}"), "client_information", fields)
     }));
     cases
 }
@@ -257,40 +216,16 @@ fn client_information() -> Vec<Value> {
 const FEATURE_SETS: &[(&str, &[&str])] = &[
     ("single", &["minecraft:vanilla"]),
     ("default-namespace", &["vanilla"]),
-    (
-        "multiple",
-        &[
-            "minecraft:vanilla",
-            "minecraft:trade_rebalance",
-            "custom:feature/path",
-        ],
-    ),
-    (
-        "reordered",
-        &[
-            "custom:feature/path",
-            "minecraft:trade_rebalance",
-            "minecraft:vanilla",
-        ],
-    ),
-    (
-        "duplicate",
-        &[
-            "minecraft:vanilla",
-            "minecraft:vanilla",
-            "custom:feature/path",
-        ],
-    ),
+    ("multiple", &["minecraft:vanilla", "minecraft:trade_rebalance", "custom:feature/path"]),
+    ("reordered", &["custom:feature/path", "minecraft:trade_rebalance", "minecraft:vanilla"]),
+    ("duplicate", &["minecraft:vanilla", "minecraft:vanilla", "custom:feature/path"]),
 ];
 
 fn feature_writes() -> Vec<(&'static str, Vec<String>, &'static str)> {
     let mut writes: Vec<(&str, Vec<String>, &str)> = vec![("empty", vec![], "deadbeef")];
     for (label, features) in FEATURE_SETS {
         let prefix = if *label == "duplicate" { "aa55" } else { "" };
-        let features = features
-            .iter()
-            .map(|feature| (*feature).to_owned())
-            .collect();
+        let features = features.iter().map(|feature| (*feature).to_owned()).collect();
         writes.push((label, features, prefix));
     }
     let oversized = vec![format!("minecraft:{}", "a".repeat(32768))];
@@ -300,32 +235,16 @@ fn feature_writes() -> Vec<(&'static str, Vec<String>, &'static str)> {
 
 fn feature_reads() -> Vec<(&'static str, String)> {
     let mut reads = vec![("empty", feature_frame(&[]))];
-    reads.extend(
-        FEATURE_SETS
-            .iter()
-            .map(|(label, features)| (*label, feature_frame(features))),
-    );
+    reads.extend(FEATURE_SETS.iter().map(|(label, features)| (*label, feature_frame(features))));
     let oversized = "a".repeat(32768);
     reads.extend([
-        (
-            "trailing",
-            format!("{}aabb", feature_frame(&["minecraft:vanilla"])),
-        ),
+        ("trailing", format!("{}aabb", feature_frame(&["minecraft:vanilla"]))),
         ("feature-prefix-underflow", varint_hex(1)),
-        (
-            "feature-body-underflow",
-            format!("{}{}6162", varint_hex(1), varint_hex(4)),
-        ),
+        ("feature-body-underflow", format!("{}{}6162", varint_hex(1), varint_hex(4))),
         ("invalid-namespace", feature_frame(&["Bad:feature"])),
         ("invalid-path", feature_frame(&["minecraft:bad?feature"])),
-        (
-            "malformed-utf8",
-            format!("{}{}ff", varint_hex(1), varint_hex(1)),
-        ),
-        (
-            "encoded-too-long",
-            format!("{}{}", varint_hex(1), varint_hex(32767 * 3 + 1)),
-        ),
+        ("malformed-utf8", format!("{}{}ff", varint_hex(1), varint_hex(1))),
+        ("encoded-too-long", format!("{}{}", varint_hex(1), varint_hex(32767 * 3 + 1))),
         ("decoded-too-long", feature_frame(&[&oversized])),
         ("negative-count", varint_hex(-1)),
         ("count-too-big", "808080808001".to_owned()),

@@ -27,17 +27,11 @@ const TYPE_IDS: &[&str] = &[
 
 fn type_id(node: &Value) -> usize {
     let name = node["type"].as_str().unwrap_or_default();
-    TYPE_IDS
-        .iter()
-        .position(|known| *known == name)
-        .expect("a known tag type")
+    TYPE_IDS.iter().position(|known| *known == name).expect("a known tag type")
 }
 
 fn number(value: &Value) -> i64 {
-    value
-        .as_str()
-        .and_then(|text| text.parse().ok())
-        .expect("an integer tag value")
+    value.as_str().and_then(|text| text.parse().ok()).expect("an integer tag value")
 }
 
 fn items(node: &Value) -> &[Value] {
@@ -46,10 +40,7 @@ fn items(node: &Value) -> &[Value] {
 
 fn array(node: &Value, width: usize) -> String {
     let values = items(node);
-    let body: String = values
-        .iter()
-        .map(|value| hex(&number(value).to_be_bytes()[8 - width..]))
-        .collect();
+    let body: String = values.iter().map(|value| hex(&number(value).to_be_bytes()[8 - width..])).collect();
     format!("{}{body}", hex(&(values.len() as i32).to_be_bytes()))
 }
 
@@ -72,11 +63,7 @@ fn payload(node: &Value) -> String {
         (_, Some(width)) => hex(&number(&node["value"]).to_be_bytes()[8 - width..]),
         ("string", _) => {
             let text = node["value"].as_str().unwrap_or_default();
-            format!(
-                "{}{}",
-                hex(&(text.len() as u16).to_be_bytes()),
-                hex(text.as_bytes())
-            )
+            format!("{}{}", hex(&(text.len() as u16).to_be_bytes()), hex(text.as_bytes()))
         }
         ("list", _) => list(node),
         ("compound", _) => compound(node),
@@ -89,10 +76,7 @@ fn list(node: &Value) -> String {
     let values = items(node);
     let element = values.first().map_or(0, type_id);
     let body: String = values.iter().map(payload).collect();
-    format!(
-        "{element:02x}{}{body}",
-        hex(&(values.len() as i32).to_be_bytes())
-    )
+    format!("{element:02x}{}{body}", hex(&(values.len() as i32).to_be_bytes()))
 }
 
 fn compound(node: &Value) -> String {
@@ -116,11 +100,7 @@ fn entry(id: &str, data: Value) -> Value {
 }
 
 fn frame(registry: &str, entries: &[Value]) -> String {
-    let mut out = format!(
-        "{}{}",
-        string_frame(registry),
-        varint_hex(entries.len() as i64)
-    );
+    let mut out = format!("{}{}", string_frame(registry), varint_hex(entries.len() as i64));
     for entry in entries {
         out.push_str(&string_frame(entry["id"].as_str().unwrap_or_default()));
         match &entry["data"] {
@@ -132,25 +112,15 @@ fn frame(registry: &str, entries: &[Value]) -> String {
 }
 
 fn entry_sets() -> Vec<(&'static str, Vec<Value>)> {
-    let compound =
-        json!({"type": "compound", "value": {"name": {"type": "string", "value": "overworld"}}});
+    let compound = json!({"type": "compound", "value": {"name": {"type": "string", "value": "overworld"}}});
     let list = json!({"type": "list", "value": [{"type": "int", "value": "1"}, {"type": "int", "value": "-2"}]});
     vec![
         ("empty", vec![]),
         ("absent-data", vec![entry(OVERWORLD, Value::Null)]),
-        (
-            "scalar-data",
-            vec![entry(OVERWORLD, json!({"type": "int", "value": "42"}))],
-        ),
+        ("scalar-data", vec![entry(OVERWORLD, json!({"type": "int", "value": "42"}))]),
         ("compound-data", vec![entry(OVERWORLD, compound.clone())]),
         ("list-data", vec![entry(OVERWORLD, list)]),
-        (
-            "multiple",
-            vec![
-                entry(OVERWORLD, Value::Null),
-                entry("minecraft:the_nether", compound),
-            ],
-        ),
+        ("multiple", vec![entry(OVERWORLD, Value::Null), entry("minecraft:the_nether", compound)]),
     ]
 }
 
@@ -178,26 +148,13 @@ fn writes() -> Vec<Value> {
 }
 
 fn reads() -> Vec<(&'static str, String)> {
-    let mut reads: Vec<(&str, String)> = entry_sets()
-        .into_iter()
-        .map(|(label, entries)| (label, frame(REGISTRY, &entries)))
-        .collect();
-    let one = format!(
-        "{}{}{}",
-        string_frame(REGISTRY),
-        varint_hex(1),
-        string_frame(OVERWORLD)
-    );
+    let mut reads: Vec<(&str, String)> =
+        entry_sets().into_iter().map(|(label, entries)| (label, frame(REGISTRY, &entries))).collect();
+    let one = format!("{}{}{}", string_frame(REGISTRY), varint_hex(1), string_frame(OVERWORLD));
     let head = format!("{}{}", string_frame(REGISTRY), varint_hex(1));
     reads.extend([
         ("trailing", format!("{}aabb", frame(REGISTRY, &[]))),
-        (
-            "noncanonical-present",
-            format!(
-                "{one}02{}",
-                tree_hex(&json!({"type": "int", "value": "42"}))
-            ),
-        ),
+        ("noncanonical-present", format!("{one}02{}", tree_hex(&json!({"type": "int", "value": "42"})))),
         ("registry-prefix-underflow", "80".to_owned()),
         ("registry-body-underflow", "01".to_owned()),
         ("entry-count-underflow", string_frame(REGISTRY)),
@@ -206,22 +163,10 @@ fn reads() -> Vec<(&'static str, String)> {
         ("tag-empty", format!("{one}01")),
         ("tag-end", format!("{one}0100")),
         ("tag-body-underflow", format!("{one}0103")),
-        (
-            "invalid-registry-identifier",
-            format!("{}{}", string_frame("Bad:registry"), varint_hex(0)),
-        ),
-        (
-            "invalid-entry-identifier",
-            format!("{head}{}00", string_frame("Bad:entry")),
-        ),
-        (
-            "negative-entry-count",
-            format!("{}{}", string_frame(REGISTRY), varint_hex(-1)),
-        ),
-        (
-            "entry-count-too-big",
-            format!("{}808080808001", string_frame(REGISTRY)),
-        ),
+        ("invalid-registry-identifier", format!("{}{}", string_frame("Bad:registry"), varint_hex(0))),
+        ("invalid-entry-identifier", format!("{head}{}00", string_frame("Bad:entry"))),
+        ("negative-entry-count", format!("{}{}", string_frame(REGISTRY), varint_hex(-1))),
+        ("entry-count-too-big", format!("{}808080808001", string_frame(REGISTRY))),
     ]);
     reads
 }
@@ -230,12 +175,7 @@ pub fn cases() -> Vec<Value> {
     let mut cases = writes();
     cases.extend(reads().into_iter().map(|(label, hex)| {
         let fields = json!({"direction": "read", "hex": hex});
-        case(
-            format!("configuration/registry-data/read/{label}"),
-            "wire",
-            "registry_data",
-            fields,
-        )
+        case(format!("configuration/registry-data/read/{label}"), "wire", "registry_data", fields)
     }));
     cases
 }

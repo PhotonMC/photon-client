@@ -43,9 +43,7 @@ fn finished_hex(name: &[u8], properties: &[String]) -> String {
 
 fn write_sets() -> Vec<(&'static str, String, Vec<Value>, &'static str)> {
     let numbered = |count: usize, name: &dyn Fn(usize) -> String| -> Vec<Value> {
-        (0..count)
-            .map(|index| property(&name(index), &format!("v{index}"), None))
-            .collect()
+        (0..count).map(|index| property(&name(index), &format!("v{index}"), None)).collect()
     };
     let player = || "Player".to_owned();
     let signed = vec![property("textures", "payload", Some("signature"))];
@@ -53,37 +51,12 @@ fn write_sets() -> Vec<(&'static str, String, Vec<Value>, &'static str)> {
         ("basic", player(), vec![], ""),
         ("empty", String::new(), vec![], "aa55"),
         ("unicode-signed", "\u{1f600}Alex".to_owned(), signed, ""),
-        (
-            "maximum-name",
-            "a".repeat(16),
-            numbered(16, &|_| "p".to_owned()),
-            "",
-        ),
-        (
-            "too-many-properties",
-            player(),
-            numbered(17, &|index| format!("p{index}")),
-            "",
-        ),
+        ("maximum-name", "a".repeat(16), numbered(16, &|_| "p".to_owned()), ""),
+        ("too-many-properties", player(), numbered(17, &|index| format!("p{index}")), ""),
         ("too-long-name", "a".repeat(17), vec![], ""),
-        (
-            "property-name-too-long",
-            player(),
-            vec![property(&"n".repeat(65), "v", None)],
-            "",
-        ),
-        (
-            "property-value-too-long",
-            player(),
-            vec![property("n", &"v".repeat(32768), None)],
-            "",
-        ),
-        (
-            "signature-too-long",
-            player(),
-            vec![property("n", "v", Some(&"s".repeat(1025)))],
-            "",
-        ),
+        ("property-name-too-long", player(), vec![property(&"n".repeat(65), "v", None)], ""),
+        ("property-value-too-long", player(), vec![property("n", &"v".repeat(32768), None)], ""),
+        ("signature-too-long", player(), vec![property("n", "v", Some(&"s".repeat(1025)))], ""),
     ]
 }
 
@@ -96,12 +69,7 @@ fn writes() -> Vec<Value> {
                 "name_utf16_hex": utf16_hex(&name), "properties": properties,
                 "session_most_hex": SESSION.0, "session_least_hex": SESSION.1, "prefix_hex": prefix,
             });
-            case(
-                format!("login/finished/write/{label}"),
-                "wire",
-                "login_finished",
-                fields,
-            )
+            case(format!("login/finished/write/{label}"), "wire", "login_finished", fields)
         })
         .collect()
 }
@@ -114,53 +82,19 @@ fn reads() -> Vec<(&'static str, String)> {
     let unsigned = property_hex(b"n", b"v", None);
     vec![
         ("basic", player.clone()),
-        (
-            "signed-property",
-            finished_hex(
-                b"Player",
-                &[property_hex(b"textures", b"payload", Some(b"signature"))],
-            ),
-        ),
+        ("signed-property", finished_hex(b"Player", &[property_hex(b"textures", b"payload", Some(b"signature"))])),
         ("trailing", format!("{player}aabb")),
         ("profile-first-underflow", "00".repeat(7)),
         ("profile-second-underflow", "00".repeat(15)),
         ("name-underflow", format!("{}{}01", PROFILE.0, PROFILE.1)),
-        (
-            "name-too-long",
-            format!("{}{}{}", PROFILE.0, PROFILE.1, varint_hex(49)),
-        ),
-        (
-            "property-count-too-large",
-            format!("{}{}", &player[..player.len() - 34], varint_hex(17)),
-        ),
-        (
-            "property-count-negative",
-            format!("{head}{}{}{}", varint_hex(-1), SESSION.0, SESSION.1),
-        ),
-        (
-            "property-name-underflow",
-            format!("{head}{}", varint_hex(1)),
-        ),
-        (
-            "property-value-underflow",
-            format!("{head}{}{}{}01", varint_hex(1), varint_hex(1), hex(b"n")),
-        ),
-        (
-            "signature-underflow",
-            format!(
-                "{head}{}{}0101",
-                varint_hex(1),
-                &unsigned[..unsigned.len() - 2]
-            ),
-        ),
-        (
-            "session-first-underflow",
-            format!("{}{}", &empty[..empty.len() - 32], "00".repeat(7)),
-        ),
-        (
-            "session-second-underflow",
-            format!("{}{}", &empty[..empty.len() - 32], "00".repeat(15)),
-        ),
+        ("name-too-long", format!("{}{}{}", PROFILE.0, PROFILE.1, varint_hex(49))),
+        ("property-count-too-large", format!("{}{}", &player[..player.len() - 34], varint_hex(17))),
+        ("property-count-negative", format!("{head}{}{}{}", varint_hex(-1), SESSION.0, SESSION.1)),
+        ("property-name-underflow", format!("{head}{}", varint_hex(1))),
+        ("property-value-underflow", format!("{head}{}{}{}01", varint_hex(1), varint_hex(1), hex(b"n"))),
+        ("signature-underflow", format!("{head}{}{}0101", varint_hex(1), &unsigned[..unsigned.len() - 2])),
+        ("session-first-underflow", format!("{}{}", &empty[..empty.len() - 32], "00".repeat(7))),
+        ("session-second-underflow", format!("{}{}", &empty[..empty.len() - 32], "00".repeat(15))),
     ]
 }
 
@@ -168,12 +102,7 @@ pub fn cases() -> Vec<Value> {
     let mut cases = writes();
     cases.extend(reads().into_iter().map(|(label, hex)| {
         let fields = json!({"direction": "read", "hex": hex});
-        case(
-            format!("login/finished/read/{label}"),
-            "wire",
-            "login_finished",
-            fields,
-        )
+        case(format!("login/finished/read/{label}"), "wire", "login_finished", fields)
     }));
     cases
 }

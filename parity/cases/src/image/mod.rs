@@ -32,21 +32,11 @@ fn item_side_faces() -> Value {
         .iter()
         .map(|name| json!({"label": name, "texture": format!("assets/minecraft/textures/item/{name}.png")}))
         .collect();
-    case(
-        "image/item-side-faces",
-        "image",
-        "item_side_faces",
-        json!({ "rows": rows }),
-    )
+    case("image/item-side-faces", "image", "item_side_faces", json!({ "rows": rows }))
 }
 
 fn single(label: &str, operation: &str, row: &str) -> Value {
-    case(
-        format!("image/{label}"),
-        "image",
-        operation,
-        json!({"rows": [{"label": row}]}),
-    )
+    case(format!("image/{label}"), "image", operation, json!({"rows": [{"label": row}]}))
 }
 
 pub fn cases() -> Vec<Value> {

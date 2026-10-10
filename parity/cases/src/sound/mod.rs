@@ -10,12 +10,7 @@ use crate::case::case;
 
 /// A whole-registry table with a single `all` row.
 fn table(label: &str, operation: &str) -> Value {
-    case(
-        format!("sound/{label}"),
-        "sound",
-        operation,
-        json!({"rows": [{"label": "all"}]}),
-    )
+    case(format!("sound/{label}"), "sound", operation, json!({"rows": [{"label": "all"}]}))
 }
 
 /// Real sound files decoded by the reference's own Ogg/Vorbis stream and

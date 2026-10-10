@@ -34,20 +34,12 @@ fn known_pack() -> Value {
         {"namespace": "Minecraft", "id": "case-sensitive", "version": "26.2"},
         {"namespace": "", "id": "", "version": ""},
     ]);
-    resources(
-        "metadata/known-pack-values",
-        "known_pack",
-        json!({ "probes": probes }),
-    )
+    resources("metadata/known-pack-values", "known_pack", json!({ "probes": probes }))
 }
 
 fn codec(mode: &str, label: &str, fields: Value) -> Value {
     let id = format!("metadata/known-pack-codec/{mode}/{label}");
-    let mut case = resources(
-        &id,
-        "known_pack_codec",
-        json!({"mode": mode, "prefix_hex": "a55a"}),
-    );
+    let mut case = resources(&id, "known_pack_codec", json!({"mode": mode, "prefix_hex": "a55a"}));
     crate::case::merge(&mut case, fields);
     case
 }
@@ -55,36 +47,17 @@ fn codec(mode: &str, label: &str, fields: Value) -> Value {
 fn codec_cases() -> Vec<Value> {
     let long = |ch: &str| ch.repeat(32768);
     let encodes = [
-        (
-            "ascii",
-            "minecraft".to_owned(),
-            "vanilla".to_owned(),
-            "26.2".to_owned(),
-        ),
-        (
-            "unicode",
-            UNICODE.0.to_owned(),
-            UNICODE.1.to_owned(),
-            UNICODE.2.to_owned(),
-        ),
+        ("ascii", "minecraft".to_owned(), "vanilla".to_owned(), "26.2".to_owned()),
+        ("unicode", UNICODE.0.to_owned(), UNICODE.1.to_owned(), UNICODE.2.to_owned()),
         ("empty-fields", String::new(), String::new(), String::new()),
         ("long-namespace", long("a"), "id".to_owned(), "v".to_owned()),
         ("long-id", "minecraft".to_owned(), long("b"), "v".to_owned()),
-        (
-            "long-version",
-            "minecraft".to_owned(),
-            "id".to_owned(),
-            long("c"),
-        ),
+        ("long-version", "minecraft".to_owned(), "id".to_owned(), long("c")),
     ];
     let mut cases: Vec<Value> = encodes
         .iter()
         .map(|(label, namespace, id, version)| {
-            codec(
-                "encode",
-                label,
-                json!({"namespace": namespace, "id": id, "version": version}),
-            )
+            codec("encode", label, json!({"namespace": namespace, "id": id, "version": version}))
         })
         .collect();
     let decodes = [
@@ -100,11 +73,7 @@ fn codec_cases() -> Vec<Value> {
         ("first-prefix-too-big", "808080808000".to_owned()),
         ("first-encoded-limit", "feff05".to_owned()),
     ];
-    cases.extend(
-        decodes
-            .iter()
-            .map(|(label, framed)| codec("decode", label, json!({ "hex": framed }))),
-    );
+    cases.extend(decodes.iter().map(|(label, framed)| codec("decode", label, json!({ "hex": framed }))));
     cases
 }
 
@@ -117,10 +86,7 @@ fn list_codec(mode: &str, label: &str, packet: &str, fields: Value) -> Value {
 }
 
 fn list_cases() -> Vec<Value> {
-    let basic = vec![
-        pack_value("minecraft", "vanilla", "26.2"),
-        pack_value("custom", "example", "v1"),
-    ];
+    let basic = vec![pack_value("minecraft", "vanilla", "26.2"), pack_value("custom", "example", "v1")];
     let small = pack_value("minecraft", "p", "1");
     let encodes = [
         ("clientbound-empty", "clientbound", vec![]),
@@ -128,50 +94,28 @@ fn list_cases() -> Vec<Value> {
         ("serverbound-empty", "serverbound", vec![]),
         ("serverbound-64", "serverbound", vec![small.clone(); 64]),
         ("serverbound-65", "serverbound", vec![small; 65]),
-        (
-            "serverbound-member-partial",
-            "serverbound",
-            vec![pack_value("minecraft", &"a".repeat(32768), "1")],
-        ),
+        ("serverbound-member-partial", "serverbound", vec![pack_value("minecraft", &"a".repeat(32768), "1")]),
     ];
     let mut cases: Vec<Value> = encodes
         .into_iter()
-        .map(|(label, packet, packs)| {
-            list_codec("encode", label, packet, json!({ "packs": packs }))
-        })
+        .map(|(label, packet, packs)| list_codec("encode", label, packet, json!({ "packs": packs })))
         .collect();
-    let basic_frame = format!(
-        "{}{}{}",
-        varint(2),
-        pack_frame("minecraft", "vanilla", "26.2"),
-        pack_frame("custom", "example", "v1")
-    );
+    let basic_frame =
+        format!("{}{}{}", varint(2), pack_frame("minecraft", "vanilla", "26.2"), pack_frame("custom", "example", "v1"));
     let decodes = [
         ("clientbound-basic", "clientbound", basic_frame),
         ("clientbound-trailing", "clientbound", "00aa".to_owned()),
-        (
-            "serverbound-basic",
-            "serverbound",
-            varint(1) + &pack_frame("minecraft", "vanilla", "26.2"),
-        ),
-        (
-            "serverbound-64",
-            "serverbound",
-            varint(64) + &"000000".repeat(64),
-        ),
+        ("serverbound-basic", "serverbound", varint(1) + &pack_frame("minecraft", "vanilla", "26.2")),
+        ("serverbound-64", "serverbound", varint(64) + &"000000".repeat(64)),
         ("serverbound-65", "serverbound", "41".to_owned()),
         ("count-truncated", "serverbound", "80".to_owned()),
         ("negative-count", "serverbound", "ffffffff0f".to_owned()),
-        (
-            "member-malformed-body",
-            "serverbound",
-            "0101ff0000".to_owned(),
-        ),
+        ("member-malformed-body", "serverbound", "0101ff0000".to_owned()),
         ("member-truncated", "serverbound", "0200000000".to_owned()),
     ];
-    cases.extend(decodes.iter().map(|(label, packet, framed)| {
-        list_codec("decode", label, packet, json!({ "hex": framed }))
-    }));
+    cases.extend(
+        decodes.iter().map(|(label, packet, framed)| list_codec("decode", label, packet, json!({ "hex": framed }))),
+    );
     cases
 }
 

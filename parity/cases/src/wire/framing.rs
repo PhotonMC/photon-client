@@ -44,22 +44,17 @@ fn varints(codec: &str, width: u32, limit: usize) -> Vec<Value> {
     .collect();
     for count in 1..=limit + 1 {
         reads.push((format!("truncated-{count}"), "80".repeat(count)));
-        reads.push((
-            format!("terminated-{count}"),
-            format!("{}00aa", "80".repeat(count)),
-        ));
+        reads.push((format!("terminated-{count}"), format!("{}00aa", "80".repeat(count))));
     }
     for last in [0u8, 1, 15, 16, 127, 128, 255] {
         let hex = format!("{}{last:02x}55", "ff".repeat(limit - 1));
         reads.push((format!("last-byte-{last:02x}"), hex));
     }
-    cases.extend(reads.into_iter().map(|(label, hex)| {
-        wire(
-            format!("{codec}/read/{label}"),
-            "read",
-            json!({"codec": codec, "hex": hex}),
-        )
-    }));
+    cases.extend(
+        reads
+            .into_iter()
+            .map(|(label, hex)| wire(format!("{codec}/read/{label}"), "read", json!({"codec": codec, "hex": hex}))),
+    );
     cases
 }
 
@@ -83,32 +78,21 @@ fn frames() -> Vec<Value> {
         .collect();
     let decodes = [
         ("exact", vec!["03aabbcc".to_owned()]),
-        (
-            "fragmented-header",
-            vec!["80".to_owned(), format!("01{}", "aa".repeat(128))],
-        ),
+        ("fragmented-header", vec!["80".to_owned(), format!("01{}", "aa".repeat(128))]),
         ("fragmented-body", vec!["02aa".to_owned(), "bb".to_owned()]),
         ("zero-length", vec!["00".to_owned()]),
         ("wide-length", vec!["808080".to_owned()]),
         ("incomplete-header", vec!["80".to_owned()]),
         ("incomplete-body", vec!["03aabb".to_owned()]),
         ("trailing-frame", vec!["01aa01bb".to_owned()]),
-        (
-            "successive-frames",
-            vec!["01aa".to_owned(), "01bb".to_owned()],
-        ),
-        (
-            "three-byte-length",
-            vec![format!("808001{}", "00".repeat(16384))],
-        ),
+        ("successive-frames", vec!["01aa".to_owned(), "01bb".to_owned()]),
+        ("three-byte-length", vec![format!("808001{}", "00".repeat(16384))]),
     ];
-    cases.extend(decodes.into_iter().map(|(label, chunks)| {
-        wire(
-            format!("frame/decode/{label}"),
-            "frame_decode",
-            json!({ "chunks": chunks }),
-        )
-    }));
+    cases.extend(
+        decodes
+            .into_iter()
+            .map(|(label, chunks)| wire(format!("frame/decode/{label}"), "frame_decode", json!({ "chunks": chunks }))),
+    );
     cases
 }
 
@@ -128,11 +112,7 @@ fn common_packet(packet: &str, width: usize, pattern: i64) -> Vec<Value> {
         .map(|(label, value, prefix)| {
             let mut fields = base("write");
             crate::case::merge(&mut fields, json!({"id": value, "prefix_hex": prefix}));
-            wire(
-                format!("common/{packet}/write/{label}"),
-                "common_packet",
-                fields,
-            )
+            wire(format!("common/{packet}/write/{label}"), "common_packet", fields)
         })
         .collect();
     let reads = [
@@ -140,21 +120,14 @@ fn common_packet(packet: &str, width: usize, pattern: i64) -> Vec<Value> {
         ("negative-one".to_owned(), fixed_hex(-1, width)),
         ("minimum".to_owned(), fixed_hex(minimum as i64, width)),
         ("maximum".to_owned(), fixed_hex(maximum as i64, width)),
-        (
-            "trailing".to_owned(),
-            format!("{}aabb", fixed_hex(pattern, width)),
-        ),
+        ("trailing".to_owned(), format!("{}aabb", fixed_hex(pattern, width))),
         (format!("underflow-{}", width - 1), "00".repeat(width - 1)),
         ("empty".to_owned(), String::new()),
     ];
     cases.extend(reads.iter().map(|(label, hex)| {
         let mut fields = base("read");
         crate::case::merge(&mut fields, json!({ "hex": hex }));
-        wire(
-            format!("common/{packet}/read/{label}"),
-            "common_packet",
-            fields,
-        )
+        wire(format!("common/{packet}/read/{label}"), "common_packet", fields)
     }));
     cases
 }

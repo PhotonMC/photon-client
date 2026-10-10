@@ -1,0 +1,5 @@
+# Case definitions are tables of data: keep each row on one line where it
+# fits instead of breaking every call and literal across lines.
+edition = "2024"
+max_width = 120
+use_small_heuristics = "Max"

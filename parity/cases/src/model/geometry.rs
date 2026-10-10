@@ -44,9 +44,7 @@ pub fn face_geometry() -> Vec<Value> {
 
 /// The angles real models use, plus values the grammar allows but no
 /// vanilla model writes.
-const ANGLES: &[f64] = &[
-    0.0, 22.5, -22.5, 45.0, -45.0, 90.0, 180.0, 270.0, 360.0, 30.0, -7.5,
-];
+const ANGLES: &[f64] = &[0.0, 22.5, -22.5, 45.0, -45.0, 90.0, 180.0, 270.0, 360.0, 30.0, -7.5];
 
 pub fn element_rotation() -> Vec<Value> {
     let mut rows = Vec::new();
@@ -78,115 +76,27 @@ type Quad = [[f64; 3]; 4];
 
 const WINDINGS: &[(&str, Quad)] = &[
     // A full-block face in the reference's own corner order for each side.
-    (
-        "up-ordered",
-        [
-            [0.0, 1.0, 0.0],
-            [0.0, 1.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [1.0, 1.0, 0.0],
-        ],
-    ),
-    (
-        "down-ordered",
-        [
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 0.0, 1.0],
-        ],
-    ),
-    (
-        "north-ordered",
-        [
-            [1.0, 1.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        ],
-    ),
-    (
-        "south-ordered",
-        [
-            [0.0, 1.0, 1.0],
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 1.0],
-            [1.0, 1.0, 1.0],
-        ],
-    ),
-    (
-        "west-ordered",
-        [
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [0.0, 1.0, 1.0],
-        ],
-    ),
-    (
-        "east-ordered",
-        [
-            [1.0, 1.0, 1.0],
-            [1.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-        ],
-    ),
+    ("up-ordered", [[0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.0]]),
+    ("down-ordered", [[0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0]]),
+    ("north-ordered", [[1.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+    ("south-ordered", [[0.0, 1.0, 1.0], [0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 1.0]]),
+    ("west-ordered", [[0.0, 1.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+    ("east-ordered", [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]]),
     // The same face wound backwards: the normal flips and so does the
     // direction the bakery settles on.
-    (
-        "up-reversed",
-        [
-            [1.0, 1.0, 0.0],
-            [1.0, 1.0, 1.0],
-            [0.0, 1.0, 1.0],
-            [0.0, 1.0, 0.0],
-        ],
-    ),
+    ("up-reversed", [[1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0], [0.0, 1.0, 0.0]]),
     // Shuffled corners of a real face, which is what a rotation leaves
     // behind and what the rewind exists to repair.
-    (
-        "up-shuffled",
-        [
-            [1.0, 1.0, 1.0],
-            [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 1.0],
-        ],
-    ),
+    ("up-shuffled", [[1.0, 1.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]]),
     // A partial box rather than the whole block.
-    (
-        "slab-top",
-        [
-            [0.0, 0.5, 0.0],
-            [0.0, 0.5, 1.0],
-            [1.0, 0.5, 1.0],
-            [1.0, 0.5, 0.0],
-        ],
-    ),
+    ("slab-top", [[0.0, 0.5, 0.0], [0.0, 0.5, 1.0], [1.0, 0.5, 1.0], [1.0, 0.5, 0.0]]),
     // Degenerate input: all four corners equal, so the normal is not
     // finite.
     ("degenerate", [[0.5, 0.5, 0.5]; 4]),
     // Collinear corners, another way to lose the normal.
-    (
-        "collinear",
-        [
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [2.0, 0.0, 0.0],
-            [3.0, 0.0, 0.0],
-        ],
-    ),
+    ("collinear", [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]]),
     // A diagonal quad, whose nearest direction is not exact.
-    (
-        "diagonal",
-        [
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 1.0],
-            [0.0, 1.0, 1.0],
-        ],
-    ),
+    ("diagonal", [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0]]),
 ];
 
 pub fn quad_winding() -> Vec<Value> {
@@ -222,13 +132,7 @@ pub fn euler_rotation() -> Vec<Value> {
     let mut rows = Vec::new();
     for [x, y, z] in TRIPLES {
         for rescale in [false, true] {
-            let label = format!(
-                "{}-{}-{}-{}",
-                float_text(*x),
-                float_text(*y),
-                float_text(*z),
-                plain(rescale)
-            );
+            let label = format!("{}-{}-{}-{}", float_text(*x), float_text(*y), float_text(*z), plain(rescale));
             rows.push(json!({
                 "label": label, "x": f32_bits(*x), "y": f32_bits(*y), "z": f32_bits(*z), "rescale": rescale,
             }));
@@ -247,17 +151,13 @@ const UV_SETS: &[(&str, [f64; 4])] = &[
 ];
 
 /// Accepted rotations, values that wrap onto them, and values that do not.
-const DEGREES: &[i32] = &[
-    0, 90, 180, 270, 360, 450, -90, -180, -270, -360, 720, 45, 30, 1, -45, 100,
-];
+const DEGREES: &[i32] = &[0, 90, 180, 270, 360, 450, -90, -180, -270, -360, 720, 45, 30, 1, -45, 100];
 
 pub fn face_uv_rotation() -> Vec<Value> {
     let mut rows = Vec::new();
     for (name, uvs) in UV_SETS {
         for degrees in DEGREES {
-            rows.push(
-                json!({"label": format!("{name}-{degrees}"), "uvs": bits(uvs), "degrees": degrees}),
-            );
+            rows.push(json!({"label": format!("{name}-{degrees}"), "uvs": bits(uvs), "degrees": degrees}));
         }
     }
     rows

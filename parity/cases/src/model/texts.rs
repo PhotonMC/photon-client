@@ -29,9 +29,7 @@ const DISPLAY_CLAMPED: &str = concat!(
 
 /// One full-size element with `element` fields and an `up` face of `face`.
 fn element(element: &str, face: &str) -> String {
-    format!(
-        r#"{{"elements":[{{"from":[0,0,0],"to":[16,16,16],{element}"faces":{{"up":{face}}}}}]}}"#
-    )
+    format!(r#"{{"elements":[{{"from":[0,0,0],"to":[16,16,16],{element}"faces":{{"up":{face}}}}}]}}"#)
 }
 
 fn textured(fields: &str) -> String {

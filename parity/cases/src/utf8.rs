@@ -119,25 +119,15 @@ fn read_cases() -> Vec<Value> {
         ("ascii-127", format!("7f{}55aa", "61".repeat(127))),
         ("ascii-128", format!("8001{}55aa", "61".repeat(128))),
         ("default-limit", format!("ffff01{}55aa", "61".repeat(32767))),
-        (
-            "default-limit-exceeded",
-            format!("808002{}55aa", "61".repeat(32768)),
-        ),
-        (
-            "encoded-default-limit",
-            format!("fdff05{}55aa", "e0a080".repeat(32767)),
-        ),
+        ("default-limit-exceeded", format!("808002{}55aa", "61".repeat(32768))),
+        ("encoded-default-limit", format!("fdff05{}55aa", "e0a080".repeat(32767))),
         ("encoded-default-limit-exceeded", "feff05".to_owned()),
     ];
     for (label, framed) in long {
         cases.push(read(label, 32767, &framed));
     }
     for count in 0..7 {
-        cases.push(read(
-            &format!("prefix-truncated-{count}"),
-            8,
-            &"80".repeat(count),
-        ));
+        cases.push(read(&format!("prefix-truncated-{count}"), 8, &"80".repeat(count)));
     }
     cases.push(read("prefix-too-big-terminated", 8, "80808080800055aa"));
     cases

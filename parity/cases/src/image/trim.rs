@@ -11,22 +11,10 @@ use crate::case::case;
 
 type Pixel = [u8; 4];
 
-const KEYS: [Pixel; 6] = [
-    [200, 10, 10, 255],
-    [10, 200, 10, 255],
-    [10, 10, 200, 255],
-    [90, 90, 90, 255],
-    [250, 250, 250, 255],
-    [1, 2, 3, 0],
-];
-const VALUES: [Pixel; 6] = [
-    [255, 0, 0, 255],
-    [0, 255, 0, 128],
-    [0, 0, 255, 255],
-    [12, 34, 56, 200],
-    [255, 255, 255, 0],
-    [9, 9, 9, 255],
-];
+const KEYS: [Pixel; 6] =
+    [[200, 10, 10, 255], [10, 200, 10, 255], [10, 10, 200, 255], [90, 90, 90, 255], [250, 250, 250, 255], [1, 2, 3, 0]];
+const VALUES: [Pixel; 6] =
+    [[255, 0, 0, 255], [0, 255, 0, 128], [0, 0, 255, 255], [12, 34, 56, 200], [255, 255, 255, 0], [9, 9, 9, 255]];
 const BASE: [Pixel; 16] = [
     KEYS[0],
     KEYS[1],
@@ -76,29 +64,9 @@ const PATTERNS: &[&str] = &[
     "flow",
     "bolt",
 ];
-const MATERIALS: &[&str] = &[
-    "quartz",
-    "iron",
-    "netherite",
-    "redstone",
-    "copper",
-    "gold",
-    "emerald",
-    "diamond",
-    "lapis",
-    "amethyst",
-    "resin",
-];
-const EQUIPMENT: &[&str] = &[
-    "iron",
-    "diamond",
-    "gold",
-    "netherite",
-    "copper",
-    "chainmail",
-    "leather",
-    "turtle_scute",
-];
+const MATERIALS: &[&str] =
+    &["quartz", "iron", "netherite", "redstone", "copper", "gold", "emerald", "diamond", "lapis", "amethyst", "resin"];
+const EQUIPMENT: &[&str] = &["iron", "diamond", "gold", "netherite", "copper", "chainmail", "leather", "turtle_scute"];
 
 fn picture(pixels: &[Pixel], width: usize) -> String {
     let rows: Vec<Vec<u8>> = pixels.chunks(width).map(|row| row.concat()).collect();
@@ -115,12 +83,7 @@ pub fn palette_permutation() -> Value {
             "keys": picture(&KEYS[..1], 1), "values": picture(&VALUES[..1], 1),
         },
     ]);
-    case(
-        "image/palette-permutation",
-        "image",
-        "palette_permutation",
-        json!({ "rows": rows }),
-    )
+    case("image/palette-permutation", "image", "palette_permutation", json!({ "rows": rows }))
 }
 
 pub fn trim_sprite_id() -> Value {
@@ -145,10 +108,5 @@ pub fn trim_sprite_id() -> Value {
             }));
         }
     }
-    case(
-        "image/trim-sprite-id",
-        "image",
-        "trim_sprite_id",
-        json!({ "rows": rows }),
-    )
+    case("image/trim-sprite-id", "image", "trim_sprite_id", json!({ "rows": rows }))
 }

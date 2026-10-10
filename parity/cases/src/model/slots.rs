@@ -31,58 +31,29 @@ fn chains() -> Vec<(&'static str, Value)> {
         ("single-value", json!([[raw("all", STONE)]])),
         ("object-form", json!([[sprite("all", STONE, true)]])),
         // A child naming a sprite wins over the parent's sprite.
-        (
-            "child-overrides-parent",
-            json!([[raw("all", DIRT)], [raw("all", STONE)]]),
-        ),
+        ("child-overrides-parent", json!([[raw("all", DIRT)], [raw("all", STONE)]])),
         // cube_all shape: parent points every face at #all, child fills it in.
         (
             "cube-all",
             json!([
                 [raw("all", STONE)],
-                [
-                    link("top", "all"),
-                    link("bottom", "all"),
-                    link("side", "all"),
-                    link("particle", "all")
-                ],
+                [link("top", "all"), link("bottom", "all"), link("side", "all"), link("particle", "all")],
             ]),
         ),
         // The reference target itself arrives from a grandparent.
         (
             "three-level",
-            json!([
-                [raw("all", OAK)],
-                [link("side", "all")],
-                [link("north", "side"), link("particle", "side")]
-            ]),
+            json!([[raw("all", OAK)], [link("side", "all")], [link("north", "side"), link("particle", "side")]]),
         ),
         // A chain of references collapsing to one sprite.
         (
             "reference-chain",
-            json!([
-                [raw("all", STONE)],
-                [link("top", "all")],
-                [link("side", "top")],
-                [link("north", "side")]
-            ]),
+            json!([[raw("all", STONE)], [link("top", "all")], [link("side", "top")], [link("north", "side")]]),
         ),
         // A child reference replaces an inherited concrete value.
-        (
-            "reference-clears-value",
-            json!([
-                [link("all", "side")],
-                [raw("all", STONE), raw("side", DIRT)]
-            ]),
-        ),
+        ("reference-clears-value", json!([[link("all", "side")], [raw("all", STONE), raw("side", DIRT)]])),
         // A child value replaces an inherited reference.
-        (
-            "value-clears-reference",
-            json!([
-                [raw("all", STONE)],
-                [link("all", "side"), raw("side", DIRT)]
-            ]),
-        ),
+        ("value-clears-reference", json!([[raw("all", STONE)], [link("all", "side"), raw("side", DIRT)]])),
     ]
 }
 
@@ -95,19 +66,9 @@ fn unresolved_chains() -> Vec<(&'static str, Value)> {
         // A cycle next to a resolvable reference: only the good one survives.
         (
             "cycle-plus-resolvable",
-            json!([
-                [raw("all", STONE)],
-                [
-                    link("top", "side"),
-                    link("side", "top"),
-                    link("bottom", "all")
-                ]
-            ]),
+            json!([[raw("all", STONE)], [link("top", "side"), link("side", "top"), link("bottom", "all")]]),
         ),
-        (
-            "force-translucent-inherited",
-            json!([[sprite("all", STONE, true)], [link("side", "all")]]),
-        ),
+        ("force-translucent-inherited", json!([[sprite("all", STONE, true)], [link("side", "all")]])),
         (
             "mixed-levels",
             json!([
@@ -117,10 +78,7 @@ fn unresolved_chains() -> Vec<(&'static str, Value)> {
             ]),
         ),
         // Same slot named at every level: the deepest child still wins.
-        (
-            "deep-override",
-            json!([[raw("all", OAK)], [raw("all", DIRT)], [raw("all", STONE)]]),
-        ),
+        ("deep-override", json!([[raw("all", OAK)], [raw("all", DIRT)], [raw("all", STONE)]])),
     ]
 }
 

@@ -20,23 +20,8 @@ struct Mip {
     transparency: (bool, bool),
 }
 
-fn mip(
-    label: &'static str,
-    width: u32,
-    rows: Vec<Vec<u8>>,
-    levels: u32,
-    strategy: &'static str,
-) -> Mip {
-    Mip {
-        label,
-        width,
-        rows,
-        levels,
-        strategy,
-        bias: 0.0,
-        path: "block/parity",
-        transparency: (false, false),
-    }
+fn mip(label: &'static str, width: u32, rows: Vec<Vec<u8>>, levels: u32, strategy: &'static str) -> Mip {
+    Mip { label, width, rows, levels, strategy, bias: 0.0, path: "block/parity", transparency: (false, false) }
 }
 
 fn mean_rows() -> Vec<Mip> {
@@ -61,17 +46,11 @@ fn cutout_rows() -> Vec<Mip> {
         mip("cutout-32", 32, cutout(32, 32), 4, "CUTOUT"),
         // A stricter reference alpha moves the coverage the search aims at.
         mip("strict-cutout-16", 16, shape(), 4, "STRICT_CUTOUT"),
-        Mip {
-            bias: 0.1,
-            ..mip("cutout-bias", 16, shape(), 4, "CUTOUT")
-        },
+        Mip { bias: 0.1, ..mip("cutout-bias", 16, shape(), 4, "CUTOUT") },
         mip("cutout-soft", 16, soft_alpha(16, 16), 4, "CUTOUT"),
         mip("dark-cutout-16", 16, shape(), 4, "DARK_CUTOUT"),
         // Filling is skipped for item textures, so level zero keeps its holes.
-        Mip {
-            path: "item/parity",
-            ..mip("cutout-item", 16, shape(), 4, "CUTOUT")
-        },
+        Mip { path: "item/parity", ..mip("cutout-item", 16, shape(), 4, "CUTOUT") },
         // Asking for no mips still fills, because that runs before the early
         // exit.
         mip("cutout-no-mips", 16, shape(), 0, "CUTOUT"),
@@ -80,14 +59,8 @@ fn cutout_rows() -> Vec<Mip> {
         mip("dark-cutout-clear", 8, clear(8, 8), 3, "DARK_CUTOUT"),
         // AUTO picks its strategy from the transparency it is told about.
         mip("auto-opaque", 16, shape(), 4, "AUTO"),
-        Mip {
-            transparency: (true, false),
-            ..mip("auto-transparent", 16, shape(), 4, "AUTO")
-        },
-        Mip {
-            transparency: (false, true),
-            ..mip("auto-translucent", 16, shape(), 4, "AUTO")
-        },
+        Mip { transparency: (true, false), ..mip("auto-transparent", 16, shape(), 4, "AUTO") },
+        Mip { transparency: (false, true), ..mip("auto-translucent", 16, shape(), 4, "AUTO") },
     ]
 }
 
@@ -104,21 +77,14 @@ pub fn mip_levels() -> Value {
             })
         })
         .collect();
-    case(
-        "image/mip-levels",
-        "image",
-        "mip_levels",
-        json!({ "rows": rows }),
-    )
+    case("image/mip-levels", "image", "mip_levels", json!({ "rows": rows }))
 }
 
 /// What the atlas measures from a sprite's pixels to resolve AUTO. The scan
 /// separates fully transparent from partly transparent, and a texture can
 /// be both at once.
 pub fn compute_transparency() -> Value {
-    let both: Vec<Vec<u8>> = (0..8)
-        .map(|y| [10, 20, 30, if y % 2 == 1 { 0 } else { 128 }].repeat(8))
-        .collect();
+    let both: Vec<Vec<u8>> = (0..8).map(|y| [10, 20, 30, if y % 2 == 1 { 0 } else { 128 }].repeat(8)).collect();
     let mut hole = solid(8, 8, [10, 20, 30, 255]);
     hole[5][3 * 4 + 3] = 0;
     let images = [
@@ -131,14 +97,7 @@ pub fn compute_transparency() -> Value {
         ("almost-opaque", 8, solid(8, 8, [10, 20, 30, 254])),
         ("single-hole", 8, hole),
     ];
-    let rows: Vec<Value> = images
-        .iter()
-        .map(|(label, width, rows)| json!({"label": label, "png": png::rgba(*width, rows)}))
-        .collect();
-    case(
-        "image/compute-transparency",
-        "image",
-        "compute_transparency",
-        json!({ "rows": rows }),
-    )
+    let rows: Vec<Value> =
+        images.iter().map(|(label, width, rows)| json!({"label": label, "png": png::rgba(*width, rows)})).collect();
+    case("image/compute-transparency", "image", "compute_transparency", json!({ "rows": rows }))
 }

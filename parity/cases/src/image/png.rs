@@ -47,11 +47,7 @@ fn filter(kind: u8, row: &[u8], previous: &[u8], sample: usize) -> Vec<u8> {
     let mut line = Vec::with_capacity(row.len());
     for (index, value) in row.iter().enumerate() {
         let back = |bytes: &[u8]| {
-            if index >= sample {
-                i32::from(bytes[index - sample])
-            } else {
-                0
-            }
+            if index >= sample { i32::from(bytes[index - sample]) } else { 0 }
         };
         let (left, up, up_left) = (back(row), i32::from(previous[index]), back(previous));
         let predicted = match kind {
@@ -109,22 +105,12 @@ impl Png<'_> {
 
 fn compress(raw: &[u8]) -> Vec<u8> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
-    encoder
-        .write_all(raw)
-        .expect("writing to memory cannot fail");
+    encoder.write_all(raw).expect("writing to memory cannot fail");
     encoder.finish().expect("writing to memory cannot fail")
 }
 
 /// An 8-bit RGBA PNG with unfiltered rows, as hex.
 pub fn rgba(width: u32, rows: &[Vec<u8>]) -> String {
-    let png = Png {
-        width,
-        colour_type: 6,
-        bit_depth: 8,
-        rows,
-        palette: None,
-        transparency: None,
-        filters: &[],
-    };
+    let png = Png { width, colour_type: 6, bit_depth: 8, rows, palette: None, transparency: None, filters: &[] };
     crate::bits::hex(&png.encode())
 }

@@ -13,12 +13,7 @@ const REGISTRY: &str = concat!(
     r#""multi": {"sounds": ["x", "y", {"name": "z", "weight": 2}]}, "#,
     r#""gone": {"sounds": ["nothing"]}, "intentionally_empty": {"sounds": ["x"]}}"#,
 );
-const FILES: &[&str] = &[
-    "sounds/x.ogg",
-    "sounds/y.ogg",
-    "sounds/z.ogg",
-    "sounds/mus.ogg",
-];
+const FILES: &[&str] = &["sounds/x.ogg", "sounds/y.ogg", "sounds/z.ogg", "sounds/mus.ogg"];
 
 /// One sound played through the engine; `id: None` takes the next number.
 #[derive(Clone)]
@@ -109,18 +104,11 @@ fn op(name: &str, id: u32) -> Value {
 }
 
 fn with_id(id: u32) -> Play {
-    Play {
-        id: Some(id),
-        ..PLAY
-    }
+    Play { id: Some(id), ..PLAY }
 }
 
 fn streamed(source: &'static str) -> Play {
-    Play {
-        event: "minecraft:s",
-        source,
-        ..PLAY
-    }
+    Play { event: "minecraft:s", source, ..PLAY }
 }
 
 pub fn engine() -> Value {
@@ -142,51 +130,15 @@ fn plain_sounds() -> Value {
     let event = |event| Play { event, ..PLAY };
     let plays = vec![
         PLAY,
-        Play {
-            event: "minecraft:multi",
-            seed: 7,
-            volume: 0.75,
-            pitch: 1.5,
-            ..PLAY
-        },
-        Play {
-            event: "minecraft:wrap",
-            seed: 3,
-            ..PLAY
-        },
-        Play {
-            seed: 9,
-            ..streamed("MUSIC")
-        },
-        Play {
-            looping: true,
-            seed: 9,
-            ..streamed("MUSIC")
-        },
-        Play {
-            looping: true,
-            seed: 2,
-            ..PLAY
-        },
-        Play {
-            attenuation: "none",
-            ..PLAY
-        },
-        Play {
-            relative: true,
-            ..event("minecraft:a")
-        },
-        Play {
-            volume: 3.5,
-            pitch: 9.0,
-            pos: [-100.5, 5.0, 1e6],
-            ..PLAY
-        },
-        Play {
-            volume: 0.1,
-            pitch: 0.01,
-            ..PLAY
-        },
+        Play { event: "minecraft:multi", seed: 7, volume: 0.75, pitch: 1.5, ..PLAY },
+        Play { event: "minecraft:wrap", seed: 3, ..PLAY },
+        Play { seed: 9, ..streamed("MUSIC") },
+        Play { looping: true, seed: 9, ..streamed("MUSIC") },
+        Play { looping: true, seed: 2, ..PLAY },
+        Play { attenuation: "none", ..PLAY },
+        Play { relative: true, ..event("minecraft:a") },
+        Play { volume: 3.5, pitch: 9.0, pos: [-100.5, 5.0, 1e6], ..PLAY },
+        Play { volume: 0.1, pitch: 0.01, ..PLAY },
     ];
     plain("plain-sounds", Counter::default().plays(plays))
 }
@@ -197,32 +149,12 @@ fn refusals() -> Value {
         event("minecraft:unknown"),
         event("minecraft:gone"),
         event("minecraft:intentionally_empty"),
-        Play {
-            can_play: false,
-            ..PLAY
-        },
-        Play {
-            volume: 0.0,
-            ..PLAY
-        },
-        Play {
-            volume: 0.0,
-            start_silent: true,
-            ..PLAY
-        },
-        Play {
-            volume: 0.0,
-            ..streamed("MUSIC")
-        },
-        Play {
-            source: "MASTER",
-            volume: 0.5,
-            ..PLAY
-        },
-        Play {
-            volume: -1.0,
-            ..PLAY
-        },
+        Play { can_play: false, ..PLAY },
+        Play { volume: 0.0, ..PLAY },
+        Play { volume: 0.0, start_silent: true, ..PLAY },
+        Play { volume: 0.0, ..streamed("MUSIC") },
+        Play { source: "MASTER", volume: 0.5, ..PLAY },
+        Play { volume: -1.0, ..PLAY },
     ];
     plain("refusals", Counter::default().plays(plays))
 }
@@ -230,17 +162,10 @@ fn refusals() -> Value {
 fn volume_sliders() -> Value {
     let mut counter = Counter::default();
     let source = |source| Play { source, ..PLAY };
-    let slider =
-        |source: &str, value: f64| json!({"op": "slider", "source": source, "value": value});
-    let category = |source: &str, value: f64| json!({"op": "category_volume", "source": source, "value": f32_bits(value)});
-    let mut steps = counter.plays(vec![
-        Play {
-            volume: 0.9,
-            ..source("MUSIC")
-        },
-        source("HOSTILE"),
-        source("MASTER"),
-    ]);
+    let slider = |source: &str, value: f64| json!({"op": "slider", "source": source, "value": value});
+    let category =
+        |source: &str, value: f64| json!({"op": "category_volume", "source": source, "value": f32_bits(value)});
+    let mut steps = counter.plays(vec![Play { volume: 0.9, ..source("MUSIC") }, source("HOSTILE"), source("MASTER")]);
     steps.extend([
         slider("MUSIC", 0.4),
         slider("MASTER", 0.5),
@@ -257,33 +182,18 @@ fn volume_sliders() -> Value {
 fn pools_run_out() -> Value {
     let mut plays = vec![PLAY; 4];
     plays.extend(vec![streamed("MUSIC"); 3]);
-    scenario(
-        "pools-run-out",
-        Counter::default().plays(plays),
-        json!({}),
-        (3, 2),
-    )
+    scenario("pools-run-out", Counter::default().plays(plays), json!({}), (3, 2))
 }
 
 fn stopping() -> Value {
     let mut counter = Counter::default();
-    let named = |event: Option<&str>, source: Option<&str>| json!({"op": "stop_named", "event": event, "source": source});
+    let named =
+        |event: Option<&str>, source: Option<&str>| json!({"op": "stop_named", "event": event, "source": source});
     let mut steps = counter.plays(vec![
         with_id(1),
-        Play {
-            event: "minecraft:multi",
-            source: "HOSTILE",
-            ..with_id(2)
-        },
-        Play {
-            event: "minecraft:wrap",
-            source: "HOSTILE",
-            ..with_id(3)
-        },
-        Play {
-            id: Some(4),
-            ..streamed("MUSIC")
-        },
+        Play { event: "minecraft:multi", source: "HOSTILE", ..with_id(2) },
+        Play { event: "minecraft:wrap", source: "HOSTILE", ..with_id(3) },
+        Play { id: Some(4), ..streamed("MUSIC") },
     ]);
     steps.extend([
         op("stop", 1),
@@ -302,38 +212,19 @@ fn stopping() -> Value {
 
 fn lifetimes() -> Value {
     let mut counter = Counter::default();
-    let mut steps = vec![
-        counter.play(with_id(1)),
-        op("active", 1),
-        tick(),
-        op("finish", 1),
-    ];
+    let mut steps = vec![counter.play(with_id(1)), op("active", 1), tick(), op("finish", 1)];
     steps.extend([tick(), tick(), op("active", 1)]);
     steps.extend(ticks(20));
-    steps.extend([
-        op("active", 1),
-        counter.play(with_id(2)),
-        op("stop", 2),
-        tick(),
-        tick(),
-    ]);
+    steps.extend([op("active", 1), counter.play(with_id(2)), op("stop", 2), tick(), tick()]);
     scenario("lives-end-after-twenty-ticks", steps, json!({}), (1, 2))
 }
 
 fn delays() -> Value {
     let mut counter = Counter::default();
-    let delayed = Play {
-        op: "play_delayed",
-        delay_ticks: 3,
-        ..with_id(1)
-    };
+    let delayed = Play { op: "play_delayed", delay_ticks: 3, ..with_id(1) };
     let mut steps = vec![counter.play(delayed)];
     steps.extend(ticks(4));
-    steps.push(counter.play(Play {
-        looping: true,
-        delay: 5,
-        ..with_id(2)
-    }));
+    steps.push(counter.play(Play { looping: true, delay: 5, ..with_id(2) }));
     steps.push(op("finish", 2));
     steps.extend(ticks(24));
     steps.extend([op("stop", 2), op("finish", 2)]);
@@ -347,27 +238,14 @@ fn ticking() -> Value {
         "stop_at": 4, "moves": [[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]],
         "volumes": [0.9, 0.8], "pitches": [1.1, 1.2],
     });
-    let queued =
-        json!({"stop_at": 2, "moves": [[0.0, 0.0, 0.0]], "volumes": [0.5], "pitches": [0.5]});
+    let queued = json!({"stop_at": 2, "moves": [[0.0, 0.0, 0.0]], "volumes": [0.5], "pitches": [0.5]});
     let delayed = json!({"stop_at": 9, "moves": [], "volumes": [], "pitches": []});
-    let mut steps = vec![counter.play(Play {
-        tickable: first,
-        ..with_id(1)
-    })];
+    let mut steps = vec![counter.play(Play { tickable: first, ..with_id(1) })];
     steps.extend(ticks(5));
-    steps.push(counter.play(Play {
-        op: "queue_ticking",
-        tickable: queued,
-        ..with_id(2)
-    }));
+    steps.push(counter.play(Play { op: "queue_ticking", tickable: queued, ..with_id(2) }));
     steps.extend(ticks(3));
     steps.push(op("active", 2));
-    let third = Play {
-        op: "play_delayed",
-        delay_ticks: 2,
-        tickable: delayed,
-        ..with_id(3)
-    };
+    let third = Play { op: "play_delayed", delay_ticks: 2, tickable: delayed, ..with_id(3) };
     steps.push(counter.play(third));
     steps.extend(ticks(3));
     plain("ticking-sounds", steps)
@@ -380,14 +258,8 @@ fn pausing() -> Value {
     let paused = json!({"op": "tick", "paused": true});
     let mut steps = counter.plays(vec![
         with_id(1),
-        Play {
-            id: Some(2),
-            ..streamed("MUSIC")
-        },
-        Play {
-            source: "HOSTILE",
-            ..with_id(3)
-        },
+        Play { id: Some(2), ..streamed("MUSIC") },
+        Play { source: "HOSTILE", ..with_id(3) },
     ]);
     steps.extend([
         pause(&["MUSIC"]),
@@ -430,12 +302,7 @@ fn music_row(label: &str, spans: &[Span], frequency: &str, seed: u32) -> Value {
 #[allow(dead_code, reason = "the gui family moves next")]
 pub fn music_manager() -> Value {
     let rows = [music_waits(), music_changes()].concat();
-    case(
-        "gui/music-manager",
-        "gui",
-        "music_manager",
-        json!({ "rows": rows }),
-    )
+    case("gui/music-manager", "gui", "music_manager", json!({ "rows": rows }))
 }
 
 fn music_waits() -> Vec<Value> {
@@ -447,21 +314,12 @@ fn music_waits() -> Vec<Value> {
         music_row("first-song", &[song], "DEFAULT", 7),
         music_row(
             "short-delays-song-ends",
-            &[
-                (&short, 1.0, None, 40),
-                (&short, 1.0, Some(false), 3),
-                (&short, 1.0, None, 30),
-            ],
+            &[(&short, 1.0, None, 40), (&short, 1.0, Some(false), 3), (&short, 1.0, None, 30)],
             "DEFAULT",
             7,
         ),
         music_row("no-music", &[(&none, 1.0, None, 5)], "DEFAULT", 7),
-        music_row(
-            "music-comes-after-none",
-            &[(&none, 1.0, None, 3), song],
-            "DEFAULT",
-            7,
-        ),
+        music_row("music-comes-after-none", &[(&none, 1.0, None, 3), song], "DEFAULT", 7),
     ]
 }
 
@@ -472,37 +330,12 @@ fn music_changes() -> Vec<Value> {
     let none = Value::Null;
     let song: Span = (&game, 1.0, None, 105);
     vec![
-        music_row(
-            "replace-current",
-            &[song, (&end, 1.0, None, 12)],
-            "DEFAULT",
-            11,
-        ),
-        music_row(
-            "creative-does-not-replace",
-            &[song, (&other, 1.0, None, 3)],
-            "DEFAULT",
-            7,
-        ),
-        music_row(
-            "constant",
-            &[song, (&game, 1.0, Some(false), 3), song],
-            "CONSTANT",
-            7,
-        ),
-        music_row(
-            "frequent",
-            &[song, (&game, 1.0, Some(false), 3), (&game, 1.0, None, 3)],
-            "FREQUENT",
-            3,
-        ),
+        music_row("replace-current", &[song, (&end, 1.0, None, 12)], "DEFAULT", 11),
+        music_row("creative-does-not-replace", &[song, (&other, 1.0, None, 3)], "DEFAULT", 7),
+        music_row("constant", &[song, (&game, 1.0, Some(false), 3), song], "CONSTANT", 7),
+        music_row("frequent", &[song, (&game, 1.0, Some(false), 3), (&game, 1.0, None, 3)], "FREQUENT", 3),
         music_row("fade-out", &[song, (&game, 0.0, None, 200)], "DEFAULT", 7),
-        music_row(
-            "fade-down-and-back",
-            &[song, (&game, 0.4, None, 60), (&game, 1.0, None, 400)],
-            "DEFAULT",
-            7,
-        ),
+        music_row("fade-down-and-back", &[song, (&game, 0.4, None, 60), (&game, 1.0, None, 400)], "DEFAULT", 7),
         music_row(
             "silent-biome-after-song",
             &[song, (&none, 1.0, Some(false), 3), (&none, 1.0, None, 3)],

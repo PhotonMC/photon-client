@@ -17,23 +17,16 @@ fn resources(id: &str, operation: &str, fields: Value) -> Value {
 }
 
 fn entries(list: &[(&str, &str)]) -> Vec<Value> {
-    list.iter()
-        .map(|(path, hash)| json!({"path": path, "hash": hash}))
-        .collect()
+    list.iter().map(|(path, hash)| json!({"path": path, "hash": hash})).collect()
 }
 
 fn objects(list: &[(&str, &str)]) -> Vec<Value> {
-    list.iter()
-        .map(|(hash, hex)| json!({"hash": hash, "hex": hex}))
-        .collect()
+    list.iter().map(|(hash, hex)| json!({"hash": hash, "hex": hex})).collect()
 }
 
 /// A pack (or root) of `(resource id, hex contents)`.
 fn pack(id: &str, list: &[(&str, &str)]) -> Value {
-    let resources: Vec<Value> = list
-        .iter()
-        .map(|(id, hex)| json!({"id": id, "hex": hex}))
-        .collect();
+    let resources: Vec<Value> = list.iter().map(|(id, hex)| json!({"id": id, "hex": hex})).collect();
     json!({"id": id, "resources": resources})
 }
 
@@ -101,12 +94,7 @@ fn pack_cases() -> Vec<Value> {
 
 fn reload_cases() -> Vec<Value> {
     let shared = "minecraft:textures/shared.png";
-    let queries = json!([
-        shared,
-        "minecraft:textures/legacy.png",
-        "custom:config/value.json",
-        "other:value.json"
-    ]);
+    let queries = json!([shared, "minecraft:textures/legacy.png", "custom:config/value.json", "other:value.json"]);
     let replaces = json!({
         "initial_queries": [shared, "other:value.json"],
         "rounds": [
@@ -155,11 +143,7 @@ fn compatibility() -> Value {
         json!({"min_major": min_major, "min_minor": min_minor, "max_major": max_major, "max_minor": max_minor})
     })
     .collect();
-    resources(
-        "metadata/compatibility-boundaries",
-        "compatibility",
-        json!({ "probes": probes }),
-    )
+    resources("metadata/compatibility-boundaries", "compatibility", json!({ "probes": probes }))
 }
 
 fn vanilla_cases() -> Vec<Value> {

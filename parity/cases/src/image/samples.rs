@@ -4,19 +4,12 @@ type Rows = Vec<Vec<u8>>;
 
 fn grid(width: u32, height: u32, texel: impl Fn(i64, i64) -> Vec<i64>) -> Rows {
     (0..i64::from(height))
-        .map(|y| {
-            (0..i64::from(width))
-                .flat_map(|x| texel(x, y))
-                .map(|value| value.rem_euclid(256) as u8)
-                .collect()
-        })
+        .map(|y| (0..i64::from(width)).flat_map(|x| texel(x, y)).map(|value| value.rem_euclid(256) as u8).collect())
         .collect()
 }
 
 pub fn rgba(width: u32, height: u32) -> Rows {
-    grid(width, height, |x, y| {
-        vec![x * 17 + y, y * 23 + x, (x + y) * 5, 255 - x * 9]
-    })
+    grid(width, height, |x, y| vec![x * 17 + y, y * 23 + x, (x + y) * 5, 255 - x * 9])
 }
 
 pub fn rgb(width: u32, height: u32) -> Rows {
@@ -37,16 +30,8 @@ pub fn indexed(width: u32, height: u32, count: i64) -> Rows {
 
 pub fn rgba16(width: u32, height: u32) -> Rows {
     grid(width, height, |x, y| {
-        let channels = [
-            (x * 257 + y) % 65536,
-            (y * 999) % 65536,
-            (x * y * 13) % 65536,
-            65535 - (x * 1234) % 65536,
-        ];
-        channels
-            .iter()
-            .flat_map(|channel| [channel >> 8, channel & 0xff])
-            .collect()
+        let channels = [(x * 257 + y) % 65536, (y * 999) % 65536, (x * y * 13) % 65536, 65535 - (x * 1234) % 65536];
+        channels.iter().flat_map(|channel| [channel >> 8, channel & 0xff]).collect()
     })
 }
 
@@ -61,9 +46,7 @@ pub fn packed(width: u32, height: u32, bit_depth: u32, value_at: fn(i64, i64) ->
                 bits.extend((0..bit_depth).map(|bit| (value >> (bit_depth - 1 - bit)) & 1));
             }
             bits.resize(bits.len().div_ceil(8) * 8, 0);
-            bits.chunks(8)
-                .map(|byte| byte.iter().fold(0u8, |acc, bit| (acc << 1) | *bit as u8))
-                .collect()
+            bits.chunks(8).map(|byte| byte.iter().fold(0u8, |acc, bit| (acc << 1) | *bit as u8)).collect()
         })
         .collect()
 }
@@ -79,12 +62,7 @@ pub fn palette() -> Vec<u8> {
 pub fn gradient(width: u32, height: u32) -> Rows {
     let (w, h) = (i64::from(width), i64::from(height));
     grid(width, height, |x, y| {
-        vec![
-            x * 255 / (w - 1).max(1),
-            y * 255 / (h - 1).max(1),
-            (x + y) * 255 / (w + h - 2).max(1),
-            255,
-        ]
+        vec![x * 255 / (w - 1).max(1), y * 255 / (h - 1).max(1), (x + y) * 255 / (w + h - 2).max(1), 255]
     })
 }
 
@@ -95,9 +73,7 @@ pub fn noisy(width: u32, height: u32) -> Rows {
         state = (state * 1103515245 + 12345) & 0x7fff_ffff;
         ((state >> 16) & 0xff) as u8
     };
-    (0..height)
-        .map(|_| (0..width * 4).map(|_| step()).collect())
-        .collect()
+    (0..height).map(|_| (0..width * 4).map(|_| step()).collect()).collect()
 }
 
 /// A shape with hard transparent edges, like a plant or a leaf.
@@ -113,9 +89,7 @@ pub fn cutout(width: u32, height: u32) -> Rows {
 /// converge on a scale instead of reproducing one exactly.
 pub fn soft_alpha(width: u32, height: u32) -> Rows {
     let w = i64::from(width);
-    grid(width, height, |x, _| {
-        vec![200, 120, 60, x * 255 / (w - 1).max(1)]
-    })
+    grid(width, height, |x, _| vec![200, 120, 60, x * 255 / (w - 1).max(1)])
 }
 
 /// No opaque texel at all, which leaves the fill with no colour to spread
