@@ -449,3 +449,45 @@ pub(super) fn nautilus_model_result(request: &Value) -> Result<Value, String> {
     }
     Ok(json!({"rows": out}))
 }
+
+/// `elder_guardian_particle_pose`: where, in what colour and light the elder guardian particle of
+/// an age is drawn over the screen for a camera looking along a yaw and a pitch.
+pub(super) fn elder_guardian_particle_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::entity::elder_guardian_particle::{LIGHT, TEXTURE, place};
+    use photon_render::entity::name_tag::camera_orientation;
+    let bits = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or(key.to_owned())?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let camera = camera_orientation(bits(row, "yaw")?, bits(row, "pitch")?);
+        let age = i32::try_from(row["age"].as_i64().ok_or("age")?).map_err(|e| e.to_string())?;
+        let lifetime = i32::try_from(row["lifetime"].as_i64().ok_or("lifetime")?)
+            .map_err(|e| e.to_string())?;
+        let placed = place(
+            &photon_render::joml::Pose::default(),
+            &camera,
+            (age, lifetime),
+            bits(row, "partial")?,
+        );
+        let matrix: Vec<String> = placed
+            .pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": matrix,
+            "light": LIGHT,
+            "color": placed.color as i32,
+            "texture": TEXTURE,
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}

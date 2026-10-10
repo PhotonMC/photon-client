@@ -246,6 +246,67 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `ElderGuardianParticleGroup` hands the collector for an elder guardian particle
+     * of an age, the camera looking along a yaw and a pitch: the pose, the light, the colour and
+     * the texture. (The model is the elder guardian's own, drawn unposed.)
+     */
+    static JsonObject elderGuardianParticlePose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var group = (net.minecraft.client.particle.ElderGuardianParticleGroup) UNSAFE.allocateInstance(
+            net.minecraft.client.particle.ElderGuardianParticleGroup.class);
+        var queueField = net.minecraft.client.particle.ParticleGroup.class.getDeclaredField("particles");
+        queueField.setAccessible(true);
+        var ageField = net.minecraft.client.particle.Particle.class.getDeclaredField("age");
+        ageField.setAccessible(true);
+        var lifetimeField = net.minecraft.client.particle.Particle.class.getDeclaredField("lifetime");
+        lifetimeField.setAccessible(true);
+        var typeField = net.minecraft.client.particle.ElderGuardianParticle.class.getDeclaredField("renderType");
+        typeField.setAccessible(true);
+        var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class, float.class);
+        setRotation.setAccessible(true);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var particle = (net.minecraft.client.particle.ElderGuardianParticle) UNSAFE.allocateInstance(
+                net.minecraft.client.particle.ElderGuardianParticle.class);
+            ageField.setInt(particle, row.get("age").getAsInt());
+            lifetimeField.setInt(particle, row.get("lifetime").getAsInt());
+            typeField.set(particle, net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucent(
+                net.minecraft.client.renderer.entity.ElderGuardianRenderer.GUARDIAN_ELDER_LOCATION));
+            queueField.set(group, new java.util.ArrayDeque<>(java.util.List.of(particle)));
+            var camera = new net.minecraft.client.Camera();
+            setRotation.invoke(camera, Oracle.f32(row, "yaw"), Oracle.f32(row, "pitch"));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("light", (Integer) args[4]);
+                        out.addProperty("color", (Integer) args[6]);
+                        var found = java.util.regex.Pattern.compile("textures/([a-z0-9_/]+)\\.png")
+                            .matcher(String.valueOf(args[3]));
+                        out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(args[3]));
+                    }
+                    return null;
+                });
+            group.extractRenderState(null, camera, Oracle.f32(row, "partial")).submit(collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `BellRenderer.submit` hands the collector: the model with the bell swung for the
      * ticks and the side it was struck from, the light and the sprite.
      */

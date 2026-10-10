@@ -11,6 +11,11 @@ impl ClientWorld {
         std::mem::take(&mut self.sounds.0)
     }
 
+    /// A sound the level plays at the local player's hearing (`ClientLevel.playSound`).
+    pub fn play_local_sound(&mut self, sound: local_player::LocalSound) {
+        self.sounds.0.push(sound);
+    }
+
     /// The sound a block makes (`SoundType`) at its middle, played now.
     pub(crate) fn block_sound(
         &mut self,

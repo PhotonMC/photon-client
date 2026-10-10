@@ -196,6 +196,10 @@ impl Play {
             models,
         );
         models.extend(hook_sprites);
+        models.extend(
+            self.particles
+                .elder_guardian_vertices(&self.entity_textures, (view.partial as f32, &view)),
+        );
         if !first_person {
             // What the local player holds: the selected hotbar slot and the
             // off hand, the main arm being the right.

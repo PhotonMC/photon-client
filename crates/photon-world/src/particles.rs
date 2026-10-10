@@ -13,6 +13,7 @@ mod attract;
 mod breaking_item;
 mod colour;
 mod drip;
+mod elder_guardian;
 mod engine;
 mod explosion;
 mod falling_dust;
@@ -34,6 +35,7 @@ mod terrain;
 mod vibration;
 mod water;
 
+pub use elder_guardian::ElderGuardian;
 pub use engine::{
     AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, PositionSource,
     Spawn,

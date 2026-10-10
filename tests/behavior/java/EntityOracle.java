@@ -182,6 +182,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("banner_pose")) {
             return bannerPose(request);
         }
+        if (operation.equals("elder_guardian_particle_pose")) {
+            return elderGuardianParticlePose(request);
+        }
         if (operation.equals("skull_block_pose")) {
             return skullBlockPose(request);
         }

@@ -40,9 +40,14 @@ Java gruplarını kimlik hash sırasıyla tikler; oracle her grubu ayrı sayar (
 
 ## Sapmalar (açık)
 
-- `ElderGuardianParticle` ve `Explode` paketi ayrı: paket T76b'de, `ElderGuardianParticle`
-  [T76c2](../tasks/T76c2-elder-gardiyan.md)'de (kameraya bağlı model çizimi, ayrı render grubu
-  gerektiriyor — bu kayıt yalnız dünya-tarafı quad parçacıklarını kapsıyor).
+- `ElderGuardianParticle` (T76c2): bu kayıt dünya-tarafı quad parçacıklarını kapsar; elder gardiyanın
+  ekran çakması ayrı gruptur (`ELDER_GUARDIANS`, yalnız yaş ve ömür; 30 tik). Çizimin kamera
+  göreli pozu, rengi, ışığı ve dokusu Java'nın `ElderGuardianParticleGroup`'una karşı
+  `elder_guardian_particle_pose` satırlarıyla `client-parity`dir (`entity` ailesi); modelin
+  kendisi gardiyan model satırlarındadır. Oyun olayı (`GUARDIAN_ELDER_EFFECT`, oyuncu konumunda
+  parçacık, parametre 1 ise lanet sesi) paket tüketimidir (`server-conformance`); canlı gözlem
+  yapılmadı. Dünya tarafı tiki Java oracle'ında kurulamaz (`ElderGuardianParticle` kurucusu
+  `Minecraft` örneğini ister), Rust birim testi 30 tik canlı kalır, 31.de gider.
 - Çığlığın çizimi (iki döndürülmüş dörtgen, render'da hesaplanan alfa) bağlanmadı; dünya tarafı
   tiki (gecikme, yaş, ömür, ışık, boy) kanıtlı.
 - Sculk yükünün yarı saydamlığı kesik çiziliyor (T75 ile aynı).

@@ -37,4 +37,5 @@ shot`).
 `docs/records/client-particle-hit-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `ElderGuardian` durumu ve motor grubu (`photon-world/particles/elder_guardian.rs`, 30 tik), oyun olayı 10 (`show_elder_guardian`: oyuncu konumunda parçacık, parametre 1 ise `entity.elder_guardian.curse`), poz/renk/ışık/doku (`photon-render/entity/elder_guardian_particle.rs`) Java'nın `ElderGuardianParticleGroup`'una karşı `elder_guardian_particle_pose` oracle'ında (`entity` ailesi, 31 satır), kare çiziminde entity listesine karışık (`Particles::elder_guardian_vertices`, `mob_vertices_blended`).
+Sapma/açık: canlı gözlem yapılmadı (bir sunucu olayı gerek); dünya tikinin Java karşılığı oracle'da kurulamadı (kurucu `Minecraft` ister), Rust birim testi var; puffer fish olayı (9) ve diğer oyun olayları yok.

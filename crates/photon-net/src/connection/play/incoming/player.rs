@@ -147,6 +147,9 @@ impl PlaySession {
         if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
             self.show_death_screen = event.param == 0.0;
         }
+        if event.event_id == GAME_EVENT_ELDER_GUARDIAN_ID {
+            self.show_elder_guardian(event.param as i32);
+        }
         if event.event_id == GAME_EVENT_WIN_GAME_ID {
             self.win_game = true;
         }
@@ -162,6 +165,41 @@ impl PlaySession {
             }
         }
         Ok(())
+    }
+
+    /// `GUARDIAN_ELDER_EFFECT`: the elder guardian flashes over the screen, at the player, and
+    /// with a `param` of 1 the curse is heard.
+    fn show_elder_guardian(&mut self, param: i32) {
+        let (Some(player), Some(type_id)) = (
+            self.player.as_ref(),
+            photon_data::particle_type::id("minecraft:elder_guardian"),
+        ) else {
+            return;
+        };
+        let at = player.position();
+        self.level_particles
+            .push(photon_world::particles::LevelParticles {
+                type_id,
+                data: photon_world::particles::ParticleData::Plain,
+                // `ParticleTypes.ELDER_GUARDIAN` ignores the limiter.
+                override_limiter: true,
+                always_show: false,
+                at: (at.x, at.y, at.z),
+                spread: (0.0, 0.0, 0.0),
+                max_speed: 0.0,
+                count: 0,
+            });
+        if param == 1 {
+            self.trace
+                .world
+                .play_local_sound(photon_world::local_player::LocalSound {
+                    event: "minecraft:entity.elder_guardian.curse",
+                    source: photon_world::local_player::LocalSoundSource::Hostile,
+                    volume: 1.0,
+                    pitch: 1.0,
+                    position: (at.x, at.y, at.z),
+                });
+        }
     }
 
     pub(super) fn on_player_abilities(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {

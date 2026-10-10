@@ -144,6 +144,9 @@ pub struct ParticleEngine {
     /// The `ITEM_PICKUP` group, and the ones waiting to join it.
     pickups: ParticleGroup<super::ItemPickup>,
     pickups_to_add: VecDeque<super::ItemPickup>,
+    /// The `ELDER_GUARDIANS` group, and the ones waiting to join it.
+    elder_guardians: ParticleGroup<super::ElderGuardian>,
+    elder_guardians_to_add: VecDeque<super::ElderGuardian>,
     to_add: VecDeque<Particle>,
     random: RandomSource,
     resources: ParticleResources,
@@ -165,6 +168,8 @@ impl ParticleEngine {
             explosions: Vec::new(),
             pickups: ParticleGroup::default(),
             pickups_to_add: VecDeque::new(),
+            elder_guardians: ParticleGroup::default(),
+            elder_guardians_to_add: VecDeque::new(),
             to_add: VecDeque::new(),
             random,
             resources,
@@ -186,6 +191,12 @@ impl ParticleEngine {
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
         (random, level_random): (impl FnOnce() -> RandomSource, &mut RandomSource),
     ) -> bool {
+        // `ElderGuardianParticle.Provider`: a particle with no picture of the atlas.
+        if particle_type::id("minecraft:elder_guardian") == Some(type_id) {
+            self.elder_guardians_to_add
+                .push_back(super::ElderGuardian::new());
+            return true;
+        }
         match self.resources.create(
             world,
             (type_id, data),
@@ -281,6 +292,10 @@ impl ParticleEngine {
                 }
             }
         }
+        self.elder_guardians.retain_mut(super::ElderGuardian::tick);
+        while let Some(particle) = self.elder_guardians_to_add.pop_front() {
+            self.elder_guardians.add(particle, &mut self.random);
+        }
         while let Some(particle) = self.to_add.pop_front() {
             let limited = particle.is_limited();
             let group = if particle.is_emitter() {
@@ -301,6 +316,8 @@ impl ParticleEngine {
         self.emitters.clear();
         self.pickups.clear();
         self.pickups_to_add.clear();
+        self.elder_guardians.clear();
+        self.elder_guardians_to_add.clear();
         self.explosions.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
@@ -333,6 +350,11 @@ impl ParticleEngine {
         while let Some(pickup) = self.pickups_to_add.pop_front() {
             self.pickups.add(pickup, &mut self.random);
         }
+    }
+
+    /// The elder guardians flashing over the screen, in the order they tick.
+    pub fn elder_guardians(&self) -> impl Iterator<Item = &super::ElderGuardian> {
+        self.elder_guardians.iter()
     }
 
     /// The entities flying to whoever took them.

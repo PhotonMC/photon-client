@@ -49,6 +49,8 @@ pub(crate) struct Particles {
     /// What a scripted run reports: the packets that came, and the most particles alive at once.
     packets_heard: usize,
     most_alive: usize,
+    /// The elder guardian's model the particle draws, baked when the first one flashes.
+    elder_model: Option<photon_render::entity::mob_model::MobModel>,
 }
 
 /// What the flakes of blocks are made with: the models' particle textures and the tint sources.
@@ -145,6 +147,7 @@ impl Particles {
             renderer: None,
             packets_heard: 0,
             most_alive: 0,
+            elder_model: None,
         }
     }
 
@@ -251,6 +254,51 @@ impl Particles {
         for pickup in pickups {
             self.engine.add_pickup(pickup);
         }
+    }
+
+    /// The elder guardians flashing over the screen, as the frame draws them
+    /// (`ElderGuardianParticleGroup`): the model of the elder guardian, unposed, placed against the
+    /// camera and blended by the opacity of the particle's age.
+    pub(crate) fn elder_guardian_vertices(
+        &mut self,
+        textures: &EntityTextures,
+        (partial, view): (f32, &crate::overlays::FrameView),
+    ) -> Vec<photon_render::scene::Vertex> {
+        use photon_render::entity::elder_guardian_particle::{LAYER, LIGHT, TEXTURE, place};
+        let mut vertices = Vec::new();
+        if self.engine.elder_guardians().next().is_none() {
+            return vertices;
+        }
+        let Some(rect) = textures.rect(TEXTURE) else {
+            return vertices;
+        };
+        if self.elder_model.is_none() {
+            self.elder_model = photon_data::entity_model::layer(LAYER)
+                .map(photon_render::entity::mob_model::MobModel::bake);
+        }
+        let Some(model) = self.elder_model.as_ref() else {
+            return vertices;
+        };
+        let orientation =
+            photon_render::entity::name_tag::camera_orientation(view.rotation.0, view.rotation.1);
+        let mut base = photon_render::joml::Pose::default();
+        base.translate(view.camera[0], view.camera[1], view.camera[2]);
+        for particle in self.engine.elder_guardians() {
+            let placed = place(
+                &base,
+                &orientation,
+                (particle.age(), particle.lifetime()),
+                partial,
+            );
+            vertices.extend(photon_render::entity::mob_model::mob_vertices_blended(
+                model,
+                &placed.pose,
+                rect,
+                (LIGHT, (placed.color >> 24) as u8),
+                view.camera,
+            ));
+        }
+        vertices
     }
 
     /// The entities flying to whoever took them.

@@ -57,6 +57,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "bell_pose" => bell_pose_result(request),
         "banner_pose" => banner_pose_result(request),
         "skull_block_pose" => skull_block_pose_result(request),
+        "elder_guardian_particle_pose" => elder_guardian_particle_pose_result(request),
         "shulker_box_pose" => shulker_box_pose_result(request),
         "display_light" => display_light_result(request),
         "arrow_pose" => arrow_pose_result(request),

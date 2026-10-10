@@ -237,6 +237,22 @@ def entity_skull_block_cases():
            "rows": rows}
 
 
+def entity_elder_guardian_particle_cases():
+    """The pose and colour of the elder guardian particle over the whole of its life, the camera
+    looking every way."""
+    rows = []
+    for age in (0, 1, 7, 15, 23, 29, 30):
+        for yaw, pitch in ((0.0, 0.0), (90.0, 0.0), (-135.5, 30.25), (41.0, -77.5)):
+            rows.append({"label": f"age {age} yaw {yaw} pitch {pitch}", "age": age, "lifetime": 30,
+                         "yaw": float_bits(yaw), "pitch": float_bits(pitch),
+                         "partial": float_bits(0.4)})
+    for partial in (0.0, 0.25, 0.999):
+        rows.append({"label": f"partial {partial}", "age": 10, "lifetime": 30,
+                     "yaw": float_bits(12.0), "pitch": float_bits(-3.0), "partial": float_bits(partial)})
+    yield {"case_id": "entity/elder-guardian-particle-pose", "family": "entity",
+           "operation": "elder_guardian_particle_pose", "rows": rows}
+
+
 def entity_banner_cases():
     """Every model the real `BannerRenderer` submits for banners standing at each turn and hanging on
     each wall, of several colours, with no patterns, a few and the most (sixteen), the flag at
