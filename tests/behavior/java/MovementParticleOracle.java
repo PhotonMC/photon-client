@@ -583,6 +583,31 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("data").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("fireworks")) {
+                    var explosions = new java.util.ArrayList<net.minecraft.world.item.component.FireworkExplosion>();
+                    for (var kind : event.getAsJsonArray("explosions")) {
+                        var info = kind.getAsJsonObject();
+                        explosions.add(new net.minecraft.world.item.component.FireworkExplosion(
+                            net.minecraft.world.item.component.FireworkExplosion.Shape.valueOf(info.get("shape").getAsString()),
+                            colorList(info.getAsJsonArray("colors")), colorList(info.getAsJsonArray("fades")),
+                            info.get("trail").getAsBoolean(), info.get("twinkle").getAsBoolean()));
+                    }
+                    double x = Oracle.f64(event, "x");
+                    double y = Oracle.f64(event, "y");
+                    double z = Oracle.f64(event, "z");
+                    double xd = Oracle.f64(event, "xd");
+                    double yd = Oracle.f64(event, "yd");
+                    double zd = Oracle.f64(event, "zd");
+                    if (explosions.isEmpty()) {
+                        level.createFireworks(x, y, z, xd, yd, zd, explosions);
+                    } else {
+                        // The starter is made as `ClientLevel.createFireworks` does, with the next seed.
+                        engine.add(seededParticle(engine.seeds.pollFirst(), () ->
+                            new net.minecraft.client.particle.FireworkParticles.Starter(
+                                level, x, y, z, xd, yd, zd, engine, explosions)));
+                    }
+                    continue;
+                }
                 var options = optionsOf(event.get("particle").getAsString(), event);
                 switch (event.get("type").getAsString()) {
                     case "add" -> level.addParticle(options, event.get("override").getAsBoolean(),
@@ -629,6 +654,15 @@ class MovementParticleOracle extends MovementMenuOracle {
         entry.add("first", first);
         entry.addProperty("digest", Long.toHexString(digest));
         return entry;
+    }
+
+    /** A list of colours of a firework explosion. */
+    private static it.unimi.dsi.fastutil.ints.IntList colorList(com.google.gson.JsonArray colors) {
+        var list = new it.unimi.dsi.fastutil.ints.IntArrayList();
+        for (var color : colors) {
+            list.add(color.getAsInt());
+        }
+        return list;
     }
 
     /** The particles of the engine's quad group, in the order they tick. */

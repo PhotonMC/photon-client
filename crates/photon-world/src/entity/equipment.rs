@@ -11,6 +11,25 @@ impl ClientEntity {
         self.item_stack.as_ref()
     }
 
+    /// `FireworkRocketEntity.getExplosions`: the explosions of the rocket's `fireworks` component;
+    /// none for a stack without it (the rocket's default holds none).
+    pub fn firework_explosions(&self) -> Vec<crate::particles::FireworkExplosion> {
+        let Some(stack) = self.item_stack.as_ref() else {
+            return Vec::new();
+        };
+        let mut input = stack.patch_bytes();
+        crate::item_components::read_patch(&mut input)
+            .ok()
+            .and_then(|patch| {
+                let (_, value) = patch
+                    .added
+                    .iter()
+                    .find(|(id, _)| *id == photon_data::item::component_types::FIREWORKS)?;
+                crate::item_components::fireworks(value)
+            })
+            .unwrap_or_default()
+    }
+
     /// What the entity holds or wears in a slot (`getItemBySlot`); none for
     /// an empty one.
     pub fn equipment(&self, slot: EquipmentSlot) -> Option<&ClientItemStackState> {

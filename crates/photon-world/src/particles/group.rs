@@ -31,11 +31,20 @@ impl<T> Default for ParticleGroup<T> {
 impl ParticleGroup {
     /// `ParticleGroup.tickParticles`: each particle ticks, and the ones that died are dropped;
     /// what they asked the level for, in order, and how many limited ones died.
-    pub(super) fn tick(&mut self, world: &ClientWorld) -> (Vec<Emitted>, i32) {
+    pub(super) fn tick(
+        &mut self,
+        world: &ClientWorld,
+        camera: photon_core::math::Vec3,
+    ) -> (Vec<Emitted>, i32) {
         let mut spawns = Vec::new();
         let mut limited_gone = 0;
         self.particles.retain_mut(|particle| {
-            spawns.extend(particle.tick(world).into_iter().map(Emitted::Particle));
+            let asked = if particle.is_firework_starter() {
+                particle.firework_starter_tick(camera)
+            } else {
+                particle.tick(world)
+            };
+            spawns.extend(asked.into_iter().map(Emitted::Particle));
             if let Some(sound) = particle.take_sound() {
                 spawns.push(Emitted::Sound(sound));
             }

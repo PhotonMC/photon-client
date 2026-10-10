@@ -20,3 +20,4 @@ Java: `client/particle/FireworkParticles.java`, `client/multiplayer/ClientLevel.
 Yeni kayıt.
 
 ## Devir notu
+Yapıldı: `particles/firework.rs` (başlatıcı, kıvılcım, parlama), `fireworks` bileşeni ve olay 17, `LevelEvent::Fireworks`; kayıt [client-particle-firework-parity-conformance.md](../records/client-particle-firework-parity-conformance.md). Oracle `particle-engine` 11 satır (iz hariç). Sapma/açık: mesafe gecikmesi, canlı gözlem, iz yalnız birim testli.

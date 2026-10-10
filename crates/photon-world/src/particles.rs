@@ -17,6 +17,7 @@ mod elder_guardian;
 mod engine;
 mod explosion;
 mod falling_dust;
+mod firework;
 mod flame;
 mod group;
 mod hit;
@@ -41,6 +42,9 @@ pub use engine::{
     Spawn,
 };
 pub use explosion::{Explosion, ExplosionParticle};
+pub use firework::{
+    Explosion as FireworkExplosion, FireworkLaunch, Shape as FireworkShape, SparkOptions,
+};
 pub use level_events::LevelEventContext;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};

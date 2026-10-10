@@ -391,7 +391,7 @@ impl Particles {
         let (mut particles, mut blocks) = (Vec::new(), Vec::new());
         for particle in self.engine.particles() {
             let at = particle.position();
-            if !frustum.is_visible([at.x, at.y, at.z], [at.x, at.y, at.z]) {
+            if !particle.is_drawn() || !frustum.is_visible([at.x, at.y, at.z], [at.x, at.y, at.z]) {
                 continue;
             }
             let (rect, window) = match particle.atlas() {

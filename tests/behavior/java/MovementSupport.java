@@ -56,7 +56,9 @@ class MovementSupport {
             for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
                 chanceSlide |= frame.getMethodName().equals("maybeDoSlideEffects");
             }
-            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT || chanceSlide) {
+            // (A firework's blast is ambient too, and is drawn from a seeded starter: it is kept.)
+            boolean fireworkSound = instance.getIdentifier().toString().startsWith("minecraft:entity.firework_rocket.");
+            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && !fireworkSound || chanceSlide) {
                 return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
             }
             // The swim, splash, hurt and death sounds' pitch is drawn from the entity's own random source, which the scene
@@ -74,7 +76,11 @@ class MovementSupport {
 
         @Override
         public void playDelayed(
-            net.minecraft.client.resources.sounds.SoundInstance instance, int delay) {}
+            net.minecraft.client.resources.sounds.SoundInstance instance, int delay) {
+            // A sound heard from afar is delayed by the distance; here it is kept as asked for, the
+            // delay being the sound engine's.
+            this.play(instance);
+        }
     }
 
     /**

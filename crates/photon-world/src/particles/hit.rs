@@ -12,6 +12,7 @@ use photon_data::particle_type;
 
 use super::super::ClientWorld;
 use super::engine::{ParticleData, Spawn};
+use super::firework::SparkOptions;
 use super::particle::{Kind, Particle};
 use super::sprites::SpriteSet;
 
@@ -36,6 +37,8 @@ pub(super) enum Mark {
     GustEmitterLarge,
     GustEmitterSmall,
     Shriek,
+    Firework,
+    Flash,
 }
 
 impl Mark {
@@ -60,6 +63,8 @@ impl Mark {
             "gust_emitter_large" => Self::GustEmitterLarge,
             "gust_emitter_small" => Self::GustEmitterSmall,
             "shriek" => Self::Shriek,
+            "firework" => Self::Firework,
+            "flash" => Self::Flash,
             _ => return None,
         })
     }
@@ -179,6 +184,15 @@ impl Particle {
                 Self::emitter(mark, random, at, sprites)
             }
             Mark::Shriek => return Self::shriek(random, at, sprites, provider_random, data),
+            Mark::Firework => {
+                let options = match data {
+                    ParticleData::FireworkSpark(options) => options,
+                    ParticleData::Plain => SparkOptions::default(),
+                    _ => return None,
+                };
+                Self::firework_spark(random, (at, push), sprites, options)
+            }
+            Mark::Flash => return Self::firework_flash(random, at, sprites, provider_random, data),
         })
     }
 

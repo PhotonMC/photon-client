@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %82 bitti** (ağırlıklı) · 267/305 madde işaretli, **38 madde kaldı** (tahmini 81 M-görev eşdeğeri iş).
+**Toplam: %82 bitti** (ağırlıklı) · 268/305 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 36/42 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `████████████████░░░░` | 81 | 35/42 |
+| M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 36/42 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64d, T70i, T74c, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64d, T70i, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -312,7 +312,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T73b](T73b-damlama-parcaciklari.md) Damlama parçacıkları (`DripParticle` ailesi) — M · bağımlı: T73 · bitti (b58c9f67)
 - [x] [T74](T74-toz-buyu-parcaciklari.md) Toz, büyü ve renkli parçacıklar — M · bağımlı: T70b · bitti (e82e6d38)
 - [x] [T74b](T74b-dusen-toz-havai-fisek.md) Düşen toz ve havai fişek parçacıkları — M · bağımlı: T74 · bölündü (0eced9d5)
-- [ ] [T74c](T74c-havai-fisek.md) Havai fişek parçacıkları — L · bağımlı: T74b
+- [x] [T74c](T74c-havai-fisek.md) Havai fişek parçacıkları — L · bağımlı: T74b · bitti (HASH)
 - [x] [T75](T75-cekim-parcaciklari.md) Portal, büyü masası ve çeken parçacıklar — M · bağımlı: T70b · bitti (40baea57)
 - [x] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75 · bitti (4e863cc9)
 - [x] [T76](T76-vurus-patlama-parcaciklari.md) Vuruş, patlama ve ifade parçacıkları — M · bağımlı: T70b · bitti (76093776)

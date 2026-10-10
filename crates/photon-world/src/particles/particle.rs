@@ -76,6 +76,12 @@ pub(super) enum Kind {
     /// `BreakingItemParticle` of a picture of the particles' own (the sulfur cube's goo): a quarter
     /// of it, at a place drawn at random.
     Goo { uo: f32, vo: f32 },
+    /// `FireworkParticles.Starter`: bursts the rocket's explosions into sparks.
+    FireworkStarter(super::firework::Starter),
+    /// `FireworkParticles.SparkParticle`: fades, twinkles and leaves trails.
+    FireworkSpark(super::firework::Spark),
+    /// `FireworkParticles.OverlayParticle`: the flash of an explosion.
+    Flash,
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -304,6 +310,7 @@ impl Particle {
                 return Vec::new();
             }
             Kind::Emitter(emitter) => return self.emitter_tick(emitter),
+            Kind::FireworkStarter(_) => return Vec::new(),
             Kind::Drip(drip) => return self.drip_tick(world, drip),
             Kind::FallingLeaves(leaf) => {
                 self.falling_leaves_tick(world, leaf);
@@ -339,6 +346,10 @@ impl Particle {
                 self.alpha += 0.05 * (original_alpha - self.alpha);
             }
             Kind::Totem => self.animated_fade(),
+            Kind::FireworkSpark(spark) => {
+                self.set_sprite_from_age();
+                return self.firework_spark_tick(spark);
+            }
             Kind::EndRod => {
                 self.animated_fade();
                 if self.age > self.lifetime / 2 {
@@ -440,7 +451,7 @@ impl Particle {
 
     /// Whether it is a `NoRenderParticle`, kept in a group of its own and never drawn.
     pub fn is_emitter(&self) -> bool {
-        matches!(self.kind, Kind::Emitter(_))
+        matches!(self.kind, Kind::Emitter(_) | Kind::FireworkStarter(_))
     }
 
     /// Whether it counts against the spore blossom's limit.
@@ -508,6 +519,13 @@ impl Particle {
                 self.g_col,
                 self.b_col,
                 self.lifetime_alpha(alpha, partial),
+            ],
+            // `OverlayParticle.extract`.
+            Kind::Flash => [
+                self.r_col,
+                self.g_col,
+                self.b_col,
+                0.6 - (self.age as f32 + partial - 1.0) * 0.25 * 0.5,
             ],
             _ => self.colour(),
         }

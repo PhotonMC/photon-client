@@ -461,6 +461,39 @@ pub fn firework_colors(value: &[u8]) -> Option<Vec<i32>> {
     Some(colors)
 }
 
+/// `fireworks` (`Fireworks.STREAM_CODEC`): the explosions of a rocket, in order.
+pub fn fireworks(value: &[u8]) -> Option<Vec<crate::particles::FireworkExplosion>> {
+    use crate::particles::{FireworkExplosion, FireworkShape};
+    let mut cursor = Cursor { data: value };
+    // The flight duration.
+    cursor.varint().ok()?;
+    let colors = |cursor: &mut Cursor| -> Option<Vec<i32>> {
+        let mut list = Vec::new();
+        for _ in 0..cursor.count().ok()? {
+            let bytes = cursor.data.get(..4)?;
+            list.push(i32::from_be_bytes(bytes.try_into().ok()?));
+            cursor.skip(4).ok()?;
+        }
+        Some(list)
+    };
+    let mut explosions = Vec::new();
+    for _ in 0..cursor.count().ok()? {
+        let shape = FireworkShape::from_id(cursor.varint().ok()?);
+        let fills = colors(&mut cursor)?;
+        let fades = colors(&mut cursor)?;
+        let trail = cursor.boolean().ok()?;
+        let twinkle = cursor.boolean().ok()?;
+        explosions.push(FireworkExplosion {
+            shape,
+            colors: fills,
+            fade_colors: fades,
+            trail,
+            twinkle,
+        });
+    }
+    Some(explosions)
+}
+
 impl Patch {
     /// The patch as the trusted codec writes it, the way a server sends a
     /// stack.
@@ -495,6 +528,26 @@ impl Patch {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_rockets_explosions_read_in_order() {
+        use crate::particles::FireworkShape;
+        // Flight duration 2; two explosions: a star in red with a fade and a trail, and a burst
+        // with no colours that twinkles.
+        let mut bytes = vec![2, 2, 2, 1];
+        bytes.extend_from_slice(&0x00FF_0000_i32.to_be_bytes());
+        bytes.push(1);
+        bytes.extend_from_slice(&0x0000_00FF_i32.to_be_bytes());
+        bytes.extend_from_slice(&[1, 0, 4, 0, 0, 0, 1]);
+        let explosions = fireworks(&bytes).unwrap();
+        assert_eq!(explosions.len(), 2);
+        assert_eq!(explosions[0].shape, FireworkShape::Star);
+        assert_eq!(explosions[0].colors, vec![0x00FF_0000]);
+        assert_eq!(explosions[0].fade_colors, vec![0xFF]);
+        assert!(explosions[0].trail && !explosions[0].twinkle);
+        assert_eq!(explosions[1].shape, FireworkShape::Burst);
+        assert!(explosions[1].colors.is_empty() && !explosions[1].trail && explosions[1].twinkle);
+    }
 
     #[test]
     fn a_patch_splits_into_its_values_and_writes_them_back() {

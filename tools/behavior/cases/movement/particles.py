@@ -285,6 +285,17 @@ def explode(tick, at, radius, block_count, particle="explosion", kinds=()):
                       for name, scaling, speed, weight in kinds]}
 
 
+def explosion(shape, colors, fades=(), trail=False, twinkle=False):
+    return {"shape": shape, "colors": list(colors), "fades": list(fades), "trail": trail, "twinkle": twinkle}
+
+
+def fireworks(tick, at, explosions, motion=(0.0, 0.0, 0.0)):
+    return {"tick": tick, "type": "fireworks", "x": float_bits(at[0], "f64"), "y": float_bits(at[1], "f64"),
+            "z": float_bits(at[2], "f64"), "xd": float_bits(motion[0], "f64"),
+            "yd": float_bits(motion[1], "f64"), "zd": float_bits(motion[2], "f64"),
+            "explosions": explosions}
+
+
 def level_event(tick, event, pos, data=0):
     return {"tick": tick, "type": "level_event", "event": event, "x": pos[0], "y": pos[1], "z": pos[2],
             "data": data}
@@ -513,6 +524,36 @@ def particle_engine_cases():
         engine_row("level-event-shoot", [level_event(0, 2000, (1, 64, 1), face) for face in range(6)]
                    + [level_event(1, 2010, (-1, 64, -1), 9), level_event(1, 2000, (0, 64, 3), -4)],
                    ticks=4, seeds=80, describe=16),
+        # Fireworks (no trails: the sparks a trail leaves are not made with a seed to compare by): each
+        # shape, the colours and fades, the starter's sounds near and far, the twinkle's wait.
+        engine_row("fireworks-small-ball", [fireworks(0, (0.0, 70.0, 0.0), [explosion("SMALL_BALL", [0xFF0000])])],
+                   ticks=4, seeds=120, describe=8),
+        engine_row("fireworks-large-ball-fade", [fireworks(0, (0.0, 70.0, 0.0), [
+            explosion("LARGE_BALL", [0x2D8FFF, 0xFFD000], [0x00FF00])])], ticks=4, seeds=400, describe=8),
+        engine_row("fireworks-star", [fireworks(0, (2.0, 70.0, 0.0), [explosion("STAR", [0xFFFFFF, 0x888888], [0x0000FF])])],
+                   ticks=4, seeds=140, describe=8),
+        engine_row("fireworks-creeper", [fireworks(0, (0.0, 70.0, 3.0), [explosion("CREEPER", [0x00AA00], [0x004400])])],
+                   ticks=4, seeds=280, describe=8),
+        engine_row("fireworks-burst", [fireworks(0, (0.0, 70.0, 0.0), [explosion("BURST", [0xFF8800])],
+                                                  motion=(0.1, 0.3, -0.05))],
+                   ticks=4, seeds=90, describe=8),
+        engine_row("fireworks-no-colour", [fireworks(0, (0.0, 70.0, 0.0), [explosion("SMALL_BALL", [])])],
+                   ticks=3, seeds=110, describe=4),
+        engine_row("fireworks-two-explosions", [fireworks(0, (0.0, 70.0, 0.0), [
+            explosion("SMALL_BALL", [0xFF0000]), explosion("STAR", [0x00FF00])])],
+                   ticks=6, seeds=260, describe=6),
+        engine_row("fireworks-three-large-blast", [fireworks(0, (0.0, 70.0, 0.0), [
+            explosion("SMALL_BALL", [1]), explosion("SMALL_BALL", [2]), explosion("SMALL_BALL", [3])])],
+                   ticks=8, seeds=330, describe=4),
+        engine_row("fireworks-twinkle-waits", [fireworks(0, (0.0, 70.0, 0.0), [
+            explosion("SMALL_BALL", [0xFF00FF], twinkle=True)])],
+                   ticks=24, seeds=120, describe=6),
+        engine_row("fireworks-far", [fireworks(0, (60.0, 70.0, 0.0), [explosion("LARGE_BALL", [0xFFFFFF])]),
+                                     fireworks(1, (0.0, 64.0, 15.0), [explosion("SMALL_BALL", [0x123456])])],
+                   ticks=5, seeds=520, describe=4),
+        engine_row("fireworks-no-explosion", [fireworks(0, (0.0, 70.0, 0.0), []),
+                                              fireworks(1, (1.0, 70.0, 1.0), [])],
+                   ticks=3, seeds=30, describe=6),
         # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
         engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
                                  packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],

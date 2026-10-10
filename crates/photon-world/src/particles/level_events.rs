@@ -130,6 +130,10 @@ impl ParticleEngine {
                 return vec![self.note_block(context, pos, (sound, note))];
             }
             LevelEvent::Explosion(explosion) => return self.explode(*explosion, context),
+            LevelEvent::Fireworks(launch) => {
+                self.create_fireworks(*launch, context);
+                return Vec::new();
+            }
         };
         let mut sounds = Vec::new();
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));

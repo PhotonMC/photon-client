@@ -62,6 +62,8 @@ pub enum ParticleData {
     },
     /// `ShriekParticleOption`: how many ticks before it starts ageing.
     Shriek { delay: i32 },
+    /// What a firework's starter (or a spark with a trail) makes a `firework` spark with.
+    FireworkSpark(super::firework::SparkOptions),
 }
 
 /// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity
@@ -276,9 +278,9 @@ impl ParticleEngine {
     ) -> Vec<crate::local_player::LocalSound> {
         // The reference ticks its groups in no fixed order; the emitters' particles go through
         // the level after the quads have moved.
-        let (mut emitted, limited_gone) = self.group.tick(world);
+        let (mut emitted, limited_gone) = self.group.tick(world, view.camera);
         self.spore_blossoms -= limited_gone;
-        emitted.append(&mut self.emitters.tick(world).0);
+        emitted.append(&mut self.emitters.tick(world, view.camera).0);
         let mut sounds = Vec::new();
         for request in emitted {
             match request {

@@ -62,6 +62,55 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
         "block_event" => {
             world.apply_note_block_event(pos()?);
         }
+        "fireworks" => {
+            use photon_world::particles::{FireworkExplosion, FireworkLaunch, FireworkShape};
+            let colors = |list: &Value| -> Result<Vec<i32>, String> {
+                list.as_array()
+                    .ok_or("colors must be an array")?
+                    .iter()
+                    .map(|color| {
+                        color
+                            .as_i64()
+                            .and_then(|color| i32::try_from(color).ok())
+                            .ok_or_else(|| "a colour".to_owned())
+                    })
+                    .collect()
+            };
+            let mut explosions = Vec::new();
+            for info in event["explosions"]
+                .as_array()
+                .ok_or("explosions must be an array")?
+            {
+                let shape = match string(info, "shape")? {
+                    "SMALL_BALL" => FireworkShape::SmallBall,
+                    "LARGE_BALL" => FireworkShape::LargeBall,
+                    "STAR" => FireworkShape::Star,
+                    "CREEPER" => FireworkShape::Creeper,
+                    "BURST" => FireworkShape::Burst,
+                    other => return Err(format!("unknown shape {other}")),
+                };
+                explosions.push(FireworkExplosion {
+                    shape,
+                    colors: colors(&info["colors"])?,
+                    fade_colors: colors(&info["fades"])?,
+                    trail: info["trail"].as_bool().ok_or("trail")?,
+                    twinkle: info["twinkle"].as_bool().ok_or("twinkle")?,
+                });
+            }
+            world.create_fireworks(FireworkLaunch {
+                at: (
+                    parsed64(event, "x")?,
+                    parsed64(event, "y")?,
+                    parsed64(event, "z")?,
+                ),
+                motion: (
+                    parsed64(event, "xd")?,
+                    parsed64(event, "yd")?,
+                    parsed64(event, "zd")?,
+                ),
+                explosions,
+            });
+        }
         _ => return Ok(false),
     }
     Ok(true)

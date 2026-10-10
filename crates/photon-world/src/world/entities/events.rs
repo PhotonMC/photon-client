@@ -1,5 +1,8 @@
 use crate::*;
 
+/// `FireworkRocketEntity.handleEntityEvent`'s event for an explosion.
+const FIREWORK_ROCKET_EXPLODE_EVENT: i8 = 17;
+
 impl ClientWorld {
     /// `ClientLevel.shouldTickDeath`: a dying entity falls over only within the
     /// server's simulation distance of the local player's chunk.
@@ -16,6 +19,19 @@ impl ClientWorld {
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
     pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {
+        // `FireworkRocketEntity.handleEntityEvent`: 17 sets it off where it is.
+        if event == FIREWORK_ROCKET_EXPLODE_EVENT
+            && let Some(entity) = self.entities.at(entity_id)
+            && photon_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
+        {
+            let launch = particles::FireworkLaunch {
+                at: entity.position(),
+                motion: entity.motion(),
+                explosions: entity.firework_explosions(),
+            };
+            self.create_fireworks(launch);
+            return true;
+        }
         let game_time = self.game_time;
         let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;

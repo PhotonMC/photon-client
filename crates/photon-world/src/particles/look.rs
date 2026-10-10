@@ -1,6 +1,6 @@
 //! How a particle is drawn: the size of its quad, its light, its layer and its picture.
 
-use photon_core::math::clamp_f32;
+use photon_core::math::{clamp_f32, mth_sin_f64};
 
 use super::super::ClientWorld;
 use super::light::{add_smooth_block_emission, particle_light};
@@ -25,6 +25,12 @@ impl Particle {
             }
             Kind::Attract(super::attract::Attract::Portal { reverse: true, .. }) => {
                 self.quad_size * (1.0 - (self.age as f32 + partial) / (self.lifetime as f32 * 1.5))
+            }
+            // `OverlayParticle.getQuadSize`.
+            Kind::Flash => {
+                7.1 * mth_sin_f64(f64::from(
+                    (self.age as f32 + partial - 1.0) * 0.25 * std::f32::consts::PI,
+                ))
             }
             Kind::Shriek { .. } => {
                 let s = (self.age as f32 + partial) / self.lifetime as f32 * 0.75;
@@ -66,6 +72,7 @@ impl Particle {
             | Kind::Totem
             | Kind::Burst
             | Kind::EndRod
+            | Kind::FireworkSpark(_)
             | Kind::Trail { .. } => 15_728_880,
             _ => light,
         }
@@ -90,6 +97,8 @@ impl Particle {
                 | Kind::Totem
                 | Kind::EndRod
                 | Kind::SculkCharge
+                | Kind::FireworkSpark(_)
+                | Kind::Flash
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }
 
