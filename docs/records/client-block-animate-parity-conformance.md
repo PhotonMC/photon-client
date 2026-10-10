@@ -56,8 +56,14 @@ Satırlar: 31×31 meşale düzlemi (dokuz tür/yön karışık); lav ve su düzl
 (kamp ateşi, fırınlar, mumlar, simya standı); yerde ve tahtalar arasında asılı ateş, ruh ateşi.
 Sıvı altı damlaları `animate-drips` satırındadır (T73b).
 
+T70i: şalter (açıkken çeyrek ihtimalle kırmızı zerre), kızıltaş cevheri (açık yüzlerinde toz),
+tekrarlayıcı, kızıltaş tozu (kolları boyunca gücün rengiyle toz), ıslak sünger (damla), kabarcık
+sütunu (zerre ve ses), ender sandığı (portal zerreleri) ve sculk sensörleri (etkinken kıvılcım)
+`animate-redstone` satırında (31×31 karışık düzlem). `pos.getY() + random.nextFloat()` gibi
+`int + float` toplamları `float` toplanır; Rust'ta da öyle.
+
 ## Sapmalar (açık)
 
 - Biyomun ortam parçacıkları ve yaratıcıdaki işaretçi parçacığı yok.
 - `animate-leaves` özeti JVM `Math.sin/cos/pow` intrinsic'lerinin 1 ulp farkıyla tutmuyor (Q04
-  sınıfı); yaprakların yağmur damlası yok. Öteki blokların `animateTick`'i T70i'de.
+  sınıfı); yaprakların yağmur damlası yok. Öteki blokların `animateTick`'i [T70j](../tasks/T70j-kalan-blok-animasyonlari-2.md)'de.

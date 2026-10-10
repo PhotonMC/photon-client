@@ -22,3 +22,4 @@ Rust: `crates/photon-world/src/particles/animate_misc.rs`.
 `docs/records/client-block-animate-parity-conformance.md`.
 
 ## Devir notu
+Yapıldı: `particles/animate_redstone.rs`: şalter, kızıltaş cevheri, tekrarlayıcı, kızıltaş tozu, ıslak sünger, kabarcık sütunu, ender sandığı, sculk sensörleri (`animate-redstone` oracle satırı eşit). Kalan: T70j.

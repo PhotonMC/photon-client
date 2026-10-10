@@ -9,6 +9,7 @@ mod animate;
 mod animate_blocks;
 mod animate_falling;
 mod animate_misc;
+mod animate_redstone;
 mod attract;
 mod breaking_item;
 mod colour;

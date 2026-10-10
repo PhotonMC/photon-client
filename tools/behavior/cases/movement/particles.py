@@ -363,6 +363,32 @@ def hearth_at(x, z):
     return {"x": x, "y": 64, "z": z, "block": "minecraft:" + name, "properties": properties}
 
 
+def redstone_at(x, z):
+    """Blocks of the redstone and water kinds across the plane, each in a state that varies with its place:
+    levers on each face, lit and unlit ore, repeaters, dust with arms of each kind, wet sponges, bubble columns,
+    ender chests, sculk sensors in each phase."""
+    facing = ["north", "south", "west", "east"][(x * 7 + z) % 4]
+    arms = ["up", "side", "none"]
+    kinds = [
+        ("lever", {"face": ["floor", "wall", "ceiling"][(x + z) % 3], "facing": facing,
+                   "powered": "true" if (x + 2 * z) % 3 else "false"}),
+        ("redstone_ore", {"lit": "true"}), ("deepslate_redstone_ore", {"lit": "true" if (x + z) % 4 else "false"}),
+        ("repeater", {"delay": str(1 + (x + z) % 4), "facing": facing, "locked": "false",
+                      "powered": "true" if (x * 3 + z) % 5 else "false"}),
+        ("redstone_wire", {"power": str(1 + (x * 5 + z * 3) % 15), "north": arms[(x + z) % 3],
+                           "east": arms[(x * 2 + z) % 3], "south": arms[(x + z * 2) % 3], "west": arms[(x * 5 + z) % 3]}),
+        ("redstone_wire", {"power": "0", "north": "side", "east": "none", "south": "none", "west": "none"}),
+        ("wet_sponge", {}), ("bubble_column", {"drag": "true" if (x + z) % 2 else "false"}),
+        ("ender_chest", {"facing": facing, "waterlogged": "false"}),
+        ("sculk_sensor", {"sculk_sensor_phase": ["active", "inactive", "cooldown"][(x + z) % 3],
+                          "power": str((x + z) % 16), "waterlogged": "false"}),
+        ("calibrated_sculk_sensor", {"facing": facing, "sculk_sensor_phase": ["active", "cooldown", "inactive"][(x + 2 * z) % 3],
+                                     "power": str((x * 3 + z) % 16), "waterlogged": "false"}),
+    ]
+    name, properties = kinds[(x * 3 + z * 5) % len(kinds)]
+    return {"x": x, "y": 64, "z": z, "block": "minecraft:" + name, "properties": properties}
+
+
 def plane(y, block, properties=None, size=15):
     return [{"x": x, "y": y, "z": z, "block": block, "properties": properties or {}}
             for x in range(-size, size + 1) for z in range(-size, size + 1)]
@@ -466,6 +492,13 @@ def particle_engine_cases():
                    ticks=3, seeds=400, describe=12),
         # Fire on netherrack rises through itself; fire hung in the air between planks smokes off the burning
         # faces (and off nothing where a face does not burn); soul fire never floats.
+        # The lever's speck, the ore's dust off each open face, the repeater's, redstone dust along its arms in
+        # the colour of its power, the wet sponge's drops, bubble columns (and their sounds), the ender chest's
+        # portal specks, the sculk sensors' sparks while they are active.
+        engine_row("animate-redstone", [animate_tick(0, (0, 64, 0), 300, 150), animate_tick(1, (1, 64, -2), 300, 151)],
+                   blocks=[redstone_at(x, z) for x in range(-15, 16) for z in range(-15, 16)]
+                   + plane(62, "minecraft:stone"),
+                   ticks=3, seeds=1500, describe=16),
         engine_row("animate-fire", [animate_tick(0, (0, 66, 0), 400, 84), animate_tick(1, (0, 70, 0), 400, 85)],
                    blocks=plane(64, "minecraft:netherrack") + plane(65, "minecraft:fire")
                    + [{"x": x, "y": 70, "z": z, "block": "minecraft:fire" if (x + z) % 2 else "minecraft:oak_planks"}

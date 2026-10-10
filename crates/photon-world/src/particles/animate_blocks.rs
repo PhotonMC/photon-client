@@ -94,7 +94,9 @@ impl ParticleEngine {
                 self.candle_wicks(pos, wicks, random, (context, sounds));
             }
             _ => {
-                if !self.misc_animate_tick((state, name), pos, random, (context, sounds)) {
+                if !self.misc_animate_tick((state, name), pos, random, (context, sounds))
+                    && !self.redstone_animate_tick((state, name), pos, random, (context, sounds))
+                {
                     self.torch_animate_tick(state, name, pos, random, context);
                 }
             }
