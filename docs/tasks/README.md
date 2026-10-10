@@ -267,7 +267,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T91](T91-ilerlemeler.md) İlerlemeler (`UpdateAdvancements`, `AdvancementsScreen`) — L · bağımlı: T85
 - [ ] [T91b](T91b-bildirim-kutulari.md) Bildirim kutuları (toast) — M · bağımlı: T91
 - [ ] [T92](T92-istatistikler.md) İstatistikler (`AwardStats`, `StatsScreen`) — M · bağımlı: T85
-- [x] [T93a](T93a-f1-f2.md) F1 arayüzü gizleme ve F2 ekran görüntüsü — S · bitti (HASH)
+- [x] [T93a](T93a-f1-f2.md) F1 arayüzü gizleme ve F2 ekran görüntüsü — S · bitti (d556e139)
 - [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3) — L
 - [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü (d6b5f303)
 - [x] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94 · bitti (01d7e83b)
