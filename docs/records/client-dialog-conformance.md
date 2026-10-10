@@ -19,6 +19,15 @@ ile aynı kayıtla karşılaştırılır. Oyuna bağlama (`controls/dialogs.rs`)
 `ShowDialog`/`ClearDialog`, uyarı ekranı (`DialogScreen.WarningScreen`), bekleme ekranı ve sohbetteki
 `show_dialog`/`custom` tıklamaları.
 
+## Çok eylemli diyalog (T106, `client-parity`)
+
+`MultiButtonDialogScreen` aynı `dialog_screen` oracle'ında karşılaştırılır: düğmeler gövdenin içinde sütunlara
+dizilir (`packControlsIntoColumns`: tam satırlar ızgarada, kısa son satır ortalı ve tüm sütunlara yayılmış),
+gövdeyle birlikte kaydırılır ve kutuyla kırpılır (kırpma yığınının kökü ekran olduğundan ekrandan taşan düğmeler
+kaydedilmez); `exit_action` altbilgideki tek düğmedir, yoksa altbilgi 5 birim kalır. Tab sırası uyarı düğmesi,
+gövde parçaları, listedeki düğmeler, çıkış düğmesidir. Esc çıkış düğmesinin eylemini çalıştırır.
+`dialog_list` (kayıt defteri ve etiket çözümü) ile `server_links` T106b'de, girdiler T106c'dedir.
+
 ## Sapmalar (açık)
 
 - Düğme eylemi `run_command` doğrudan komut paketi olarak gider; Java'nın `sendUnattendedCommand` denetimi

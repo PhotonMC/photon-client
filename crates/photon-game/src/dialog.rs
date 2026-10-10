@@ -1,5 +1,5 @@
 //! Server dialogs (`net.minecraft.server.dialog`): the data the server sends, as far as the
-//! notice and confirmation screens use it. Buttons, lists, links and inputs are T106.
+//! notice, confirmation and multi-action screens use it. Dialog lists, links and inputs are T106.
 
 use photon_core::nbt::{Field, FieldValue};
 
@@ -93,6 +93,13 @@ pub enum Dialog {
         yes: Box<ActionButton>,
         no: Box<ActionButton>,
     },
+    /// `MultiActionDialog`: a grid of buttons and an optional exit button.
+    MultiAction {
+        common: Box<CommonData>,
+        actions: Vec<ActionButton>,
+        exit: Option<Box<ActionButton>>,
+        columns: i32,
+    },
     /// A type whose screen is not built yet.
     Other(Box<CommonData>),
 }
@@ -102,6 +109,7 @@ impl Dialog {
         match self {
             Self::Notice { common, .. }
             | Self::Confirmation { common, .. }
+            | Self::MultiAction { common, .. }
             | Self::Other(common) => common,
         }
     }
@@ -111,16 +119,30 @@ impl Dialog {
         match self {
             Self::Notice { action, .. } => action.action.as_ref(),
             Self::Confirmation { no, .. } => no.action.as_ref(),
+            Self::MultiAction { exit, .. } => exit.as_ref().and_then(|exit| exit.action.as_ref()),
             Self::Other(_) => None,
         }
     }
 
-    /// `SimpleDialog.mainActions`.
+    /// `SimpleDialog.mainActions`, or for a button list its buttons and then the exit button.
     pub fn main_actions(&self) -> Vec<&ActionButton> {
         match self {
             Self::Notice { action, .. } => vec![&**action],
             Self::Confirmation { yes, no, .. } => vec![&**yes, &**no],
+            Self::MultiAction { actions, exit, .. } => {
+                actions.iter().chain(exit.as_deref()).collect()
+            }
             Self::Other(_) => Vec::new(),
+        }
+    }
+
+    /// `ButtonListDialog`: how many of `main_actions` stand in the body, and in how many columns.
+    pub fn button_list(&self) -> Option<(usize, i32)> {
+        match self {
+            Self::MultiAction {
+                actions, columns, ..
+            } => Some((actions.len(), *columns)),
+            _ => None,
         }
     }
 
@@ -148,6 +170,27 @@ impl Dialog {
                 yes: Box::new(ActionButton::from_nbt(get(fields, "yes")?)?),
                 no: Box::new(ActionButton::from_nbt(get(fields, "no")?)?),
             },
+            "multi_action" => {
+                let Some(FieldValue::List(items)) = get(fields, "actions") else {
+                    return None;
+                };
+                // `ExtraCodecs.nonEmptyList`.
+                if items.is_empty() {
+                    return None;
+                }
+                Self::MultiAction {
+                    common,
+                    actions: items
+                        .iter()
+                        .map(ActionButton::from_nbt)
+                        .collect::<Option<_>>()?,
+                    exit: match get(fields, "exit_action") {
+                        Some(value) => Some(Box::new(ActionButton::from_nbt(value)?)),
+                        None => None,
+                    },
+                    columns: columns(fields)?,
+                }
+            }
             _ => Self::Other(common),
         })
     }
@@ -333,6 +376,15 @@ fn strip_namespace(name: &str) -> &str {
     name.strip_prefix("minecraft:").unwrap_or(name)
 }
 
+/// `ExtraCodecs.POSITIVE_INT.optionalFieldOf("columns", 2)`.
+fn columns(fields: &[Field]) -> Option<i32> {
+    match get(fields, "columns") {
+        None => Some(2),
+        Some(FieldValue::Int(value)) if *value >= 1 => Some(*value),
+        _ => None,
+    }
+}
+
 /// An `intRange(1, max)` field with a default.
 fn width(fields: &[Field], key: &str, default: i32, max: i32) -> Option<i32> {
     match get(fields, key) {
@@ -397,6 +449,25 @@ mod tests {
             Some(&Action::Static(ClickEvent::RunCommand("say no".to_owned())))
         );
         assert_eq!(dialog.main_actions().len(), 2);
+    }
+
+    #[test]
+    fn a_multi_action_dialog_lists_its_buttons_then_the_exit_button() {
+        let button = |label: &str| FieldValue::Compound(vec![field("label", string(label))]);
+        let dialog = |actions: Vec<FieldValue>| {
+            FieldValue::Compound(vec![
+                field("type", string("multi_action")),
+                field("title", string("Pick")),
+                field("actions", FieldValue::List(actions)),
+                field("exit_action", button("Back")),
+                field("columns", FieldValue::Int(3)),
+            ])
+        };
+        let dialog_value =
+            Dialog::from_nbt(&dialog(vec![button("A"), button("B")])).expect("multi");
+        assert_eq!(dialog_value.button_list(), Some((2, 3)));
+        assert_eq!(dialog_value.main_actions().len(), 3);
+        assert_eq!(Dialog::from_nbt(&dialog(Vec::new())), None);
     }
 
     #[test]

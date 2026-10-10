@@ -135,12 +135,25 @@ class GuiDialogOracle extends GuiSocialOracle {
                     net.minecraft.server.dialog.DialogAction.valueOf(json.get("after").getAsString()),
                     bodies, java.util.List.of());
                 var buttons = json.getAsJsonArray("buttons");
-                net.minecraft.server.dialog.SimpleDialog dialog = buttons.size() == 2
-                    ? new net.minecraft.server.dialog.ConfirmationDialog(common, button(buttons.get(0).getAsJsonObject()),
-                        button(buttons.get(1).getAsJsonObject()))
-                    : new net.minecraft.server.dialog.NoticeDialog(common, button(buttons.get(0).getAsJsonObject()));
-                shown = new net.minecraft.client.gui.screens.dialog.SimpleDialogScreen<>(new PreviousScreen(), dialog,
-                    new Access(gui));
+                if (json.get("kind").getAsString().equals("multi_action")) {
+                    var actions = new java.util.ArrayList<net.minecraft.server.dialog.ActionButton>();
+                    for (var item : buttons) {
+                        actions.add(button(item.getAsJsonObject()));
+                    }
+                    var list = new net.minecraft.server.dialog.MultiActionDialog(common, actions,
+                        json.has("exit") ? java.util.Optional.of(button(json.getAsJsonObject("exit")))
+                            : java.util.Optional.empty(),
+                        json.get("columns").getAsInt());
+                    shown = new net.minecraft.client.gui.screens.dialog.MultiButtonDialogScreen(new PreviousScreen(), list,
+                        new Access(gui));
+                } else {
+                    net.minecraft.server.dialog.SimpleDialog dialog = buttons.size() == 2
+                        ? new net.minecraft.server.dialog.ConfirmationDialog(common, button(buttons.get(0).getAsJsonObject()),
+                            button(buttons.get(1).getAsJsonObject()))
+                        : new net.minecraft.server.dialog.NoticeDialog(common, button(buttons.get(0).getAsJsonObject()));
+                    shown = new net.minecraft.client.gui.screens.dialog.SimpleDialogScreen<>(new PreviousScreen(), dialog,
+                        new Access(gui));
+                }
             }
             set(shown, "width", width);
             set(shown, "height", height);

@@ -116,4 +116,47 @@ def gui_dialog_screen_cases():
         waiting("waiting-escape-asleep", [ticks(40), key("escape")]),
         waiting("waiting-escape-awake", [ticks(100), key("escape")]),
     ]
+    def listing(label, count=3, columns=2, exit=None, button_width=150, steps=(), mouse=(0, 0), width=427, height=240,
+                body=(message("Pick one."),), after="CLOSE", can_close=True, tooltip_on=None):
+        buttons = [button(f"Option {n}", button_width, action=command(f"say {n}"),
+                          tooltip=f"Tip {n}" if n == tooltip_on else None) for n in range(count)]
+        entry = row(label, width, height, mouse, True, steps, 0, body, buttons, "Choose", can_close, after, "multi_action")
+        entry["dialog"]["columns"] = columns
+        if exit:
+            entry["dialog"]["exit"] = exit
+        return entry
+
+    leave = button("Leave", 200, action=custom("minecraft:leave"))
+    rows += [
+        listing("list"), listing("list-one", 1), listing("list-odd", 3, 2), listing("list-even", 4, 2),
+        listing("list-three-columns", 7, 3), listing("list-one-column", 4, 1), listing("list-wide-columns", 5, 9),
+        listing("list-narrow-buttons", 5, 2, button_width=60), listing("list-exit", 4, 2, leave),
+        listing("list-exit-odd", 3, 2, leave), listing("list-no-body", 4, 2, body=()),
+        listing("list-many", 30, 2), listing("list-many-exit", 30, 3, leave), listing("list-small", 9, 2, width=320, height=180),
+        listing("list-tall", 12, 1, height=480, width=854),
+        listing("list-hover", 4, 2, mouse=(150, 90)), listing("list-hover-tooltip", 4, 2, mouse=(150, 90),
+                                                          steps=[{"do": "frame", "ms": 0}], tooltip_on=0),
+        listing("list-hover-exit", 4, 2, leave, mouse=(213, 224)),
+        listing("list-scroll", 30, 2, steps=[scroll(213, 120, -2)]),
+        listing("list-scroll-hover", 30, 2, steps=[scroll(213, 120, -2)], mouse=(150, 100)),
+        listing("list-scroll-far", 30, 2, steps=[scroll(213, 120, -50)]),
+        listing("list-hover-clipped", 30, 2, mouse=(150, 40)),
+        listing("list-tab", 4, 2, steps=[key("tab")] * 2), listing("list-tab-button", 4, 2, steps=[key("tab")] * 4),
+        listing("list-tab-exit", 4, 2, leave, steps=[key("tab")] * 6),
+        listing("list-tab-into-view", 30, 2, steps=[key("tab")] * 12),
+        listing("list-tab-into-view-end", 30, 2, leave, steps=[key("tab")] * 31),
+        listing("list-shift-tab", 30, 2, steps=[key("shift+tab")] * 2),
+        listing("list-enter", 4, 2, steps=[key("tab")] * 3 + [key("enter")]),
+        listing("list-enter-exit", 4, 2, leave, steps=[key("tab")] * 7 + [key("enter")]),
+        listing("list-click", 4, 2, steps=[click(150, 90)], mouse=(150, 90)),
+        listing("list-click-second", 4, 2, steps=[click(270, 90)], mouse=(270, 90)),
+        listing("list-click-last-row", 3, 2, steps=[click(213, 114)], mouse=(213, 114)),
+        listing("list-click-none", 4, 2, steps=[click(213, 115)], after="NONE"),
+        listing("list-click-wait", 4, 2, steps=[click(150, 90)], after="WAIT_FOR_RESPONSE"),
+        listing("list-click-scrolled", 30, 2, steps=[scroll(213, 120, -3), click(150, 100)], mouse=(150, 100)),
+        listing("list-click-clipped", 30, 2, steps=[click(150, 40)], mouse=(150, 40)),
+        listing("list-click-exit", 4, 2, leave, steps=[click(213, 224)], mouse=(213, 224)),
+        listing("list-escape", 4, 2, steps=[key("escape")]), listing("list-escape-exit", 4, 2, leave, steps=[key("escape")]),
+        listing("list-escape-shut", 4, 2, leave, steps=[key("escape")], can_close=False),
+    ]
     yield {"case_id": "gui/dialog-screen", "family": "gui", "operation": "dialog_screen", "rows": rows}

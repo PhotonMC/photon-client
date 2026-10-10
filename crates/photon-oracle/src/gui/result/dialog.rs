@@ -68,6 +68,14 @@ fn dialog(value: &Value) -> Dialog {
     let buttons: Vec<ActionButton> = value["buttons"]
         .as_array()
         .map_or_else(Vec::new, |items| items.iter().map(button).collect());
+    if value["kind"] == "multi_action" {
+        return Dialog::MultiAction {
+            common,
+            actions: buttons,
+            exit: value.get("exit").map(|exit| Box::new(button(exit))),
+            columns: value["columns"].as_i64().unwrap_or(2) as i32,
+        };
+    }
     let mut buttons = buttons.into_iter().map(Box::new);
     match (buttons.next(), buttons.next()) {
         (Some(yes), Some(no)) => Dialog::Confirmation { common, yes, no },
@@ -94,6 +102,7 @@ fn press_events(dialog: &Dialog, press: Press, events: &mut Vec<String>) {
     let outcome = run_action(action, after);
     let screen = match outcome.next {
         Next::Previous => "PreviousScreen",
+        Next::Same if dialog.button_list().is_some() => "MultiButtonDialogScreen",
         Next::Same => "SimpleDialogScreen",
         Next::Waiting => "WaitingForResponseScreen",
     };

@@ -9,6 +9,7 @@ pub mod connect;
 pub mod credits;
 pub mod death;
 pub mod dialog;
+mod dialog_body;
 pub mod disconnected;
 pub mod game_mode;
 pub mod pause;

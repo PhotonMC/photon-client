@@ -23,4 +23,6 @@ G satırları her ekran için.
 `docs/gui-oracle.md`, kayıt güncellemesi.
 
 ## Devir notu
-(boş)
+- Yapıldı: çok eylemli diyalog (`MultiButtonDialogScreen`) — `Dialog::MultiAction`, `button_list()`, ekranda sütun ızgarası + kaydırılan/kırpılan gövde düğmeleri + çıkış düğmesi/kısa altbilgi; oracle `dialog_screen` +41 satır (65 senaryo hepsi eşit).
+- Bölündü: `DialogListDialogScreen` (kayıt defteri + `#etiket` çözümü, `computeExternalTitle`) → T106b; `ServerLinksDialogScreen` (`ClientboundServerLinksPacket` çözümü, `OpenUrl`) → T106c; girdi denetimleri (metin, onay kutusu, tek seçim, sayı aralığı, `dynamic/*` eylemleri) → T106d.
+- Java'dan sapma: yok (kapsamdaki satırlarda). Canlı Pumpkin denemesi yapılmadı.

@@ -1,15 +1,20 @@
-//! The screen of a notice or confirmation dialog (`SimpleDialogScreen`): the title with the
-//! warning button beside it, the body in a scrolling box, and the dialog's own buttons in a row
-//! at the bottom, over the menu background.
+//! The screen of a notice, confirmation or multi-action dialog (`SimpleDialogScreen`,
+//! `MultiButtonDialogScreen`): the title with the warning button beside it, the body (and for a
+//! button list its grid of buttons) in a scrolling box, and the dialog's own buttons in a row at
+//! the bottom, over the menu background.
 
 use std::cell::Cell;
 
-use photon_game::dialog::{ActionButton, Body, Dialog, PlainMessage};
-use photon_game::text::{Component, Lang, Run, Style};
+use super::dialog_body::{
+    BAR, PADDING, Part, body_layout, centred, middle, outline, pack_into_columns,
+};
 
-use crate::gui::chat::split;
+use photon_game::dialog::{ActionButton, Dialog};
+use photon_game::text::{Component, Lang, Style};
+
 use crate::gui::font::Font;
-use crate::gui::layout::{Arena, Grid, Item, Settings, horizontal, place_in_frame};
+use crate::gui::layout::{Arena, Grid, Item, horizontal, place_in_frame};
+
 use crate::gui::tooltip::{Holder, Pending};
 use crate::gui::widgets::navigation::Rectangle;
 use crate::gui::widgets::scroll_area::{Place, SCROLLBAR_WIDTH};
@@ -17,11 +22,10 @@ use crate::gui::widgets::slider::InputType;
 use crate::gui::widgets::{Kind, Widget};
 use crate::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
-/// `HeaderAndFooterLayout.DEFAULT_HEADER_AND_FOOTER_HEIGHT` and its content margin.
-const BAR: i32 = 33;
+/// `HeaderAndFooterLayout`'s content margin.
+/// `ButtonListDialogScreen.FOOTER_MARGIN`: the footer of a button list with no exit button.
+const SHORT_FOOTER: i32 = 5;
 const CONTENT_MARGIN: i32 = 30;
-/// `FocusableTextWidget.DEFAULT_PADDING`.
-const PADDING: i32 = 4;
 /// `ScrollableLayout`'s space either side of the content: the bar and its gap.
 const RESERVE: i32 = 4 + SCROLLBAR_WIDTH;
 const SCROLL_RATE: f64 = 10.0;
@@ -45,20 +49,6 @@ enum Focus {
     Button(usize),
 }
 
-/// The item an item body shows.
-struct Shown {
-    id: i32,
-    count: i32,
-    decorations: bool,
-}
-
-/// A focusable part of the body: wrapped text, or an item's box.
-struct Part {
-    rect: usize,
-    lines: Option<Vec<Vec<Run>>>,
-    item: Option<Shown>,
-}
-
 /// `ScrollableLayout.Container`: where the box stands.
 #[derive(Debug, Clone, Copy)]
 struct Container {
@@ -77,7 +67,10 @@ pub struct DialogScreen {
     warning: Widget,
     warning_tooltip: Holder,
     parts: Vec<Part>,
+    /// The dialog's buttons in `main_actions` order: the first `listed` stand in the body (and
+    /// scroll with it), the rest in the footer.
     buttons: Vec<(Widget, Holder)>,
+    listed: usize,
     container: Container,
     content_height: i32,
     scroll: f64,
@@ -86,98 +79,44 @@ pub struct DialogScreen {
     input: Cell<InputType>,
 }
 
-/// `FocusableTextWidget`: `message` wrapped to the width less its padding, as tall as its lines.
-fn text_part(
-    arena: &mut Arena,
-    (font, lang): (&Font, &Lang),
-    message: &PlainMessage,
-) -> (usize, Part) {
-    let runs = lang.runs(&message.contents, &Style::default());
-    let lines = if runs.iter().all(|run| run.text.is_empty()) {
-        Vec::new()
-    } else {
-        split(&runs, message.width - 2 * PADDING, font)
-    };
-    let rect = arena.add(message.width, lines.len() as i32 * 9 + 2 * PADDING);
-    (
-        rect,
-        Part {
-            rect,
-            lines: Some(lines),
-            item: None,
-        },
-    )
+/// The header: the title and the warning button, put in the middle of the bar.
+fn place_header(arena: &mut Arena, (title, warning): (&Widget, &Widget), width: i32) {
+    let mut header = Grid::new();
+    header.column_spacing = 10;
+    header.add(Item::Leaf(title.rect), (0, 0), (1, 1), middle());
+    header.add(Item::Leaf(warning.rect), (0, 1), (1, 1), middle());
+    header.arrange(arena);
+    let header_width = width.max(header.width);
+    let header_height = BAR.max(header.height);
+    place_in_frame(
+        arena,
+        Item::Grid(Box::new(header)),
+        (0, 0, header_width, header_height),
+        (0.5, 0.5),
+    );
 }
 
-fn centred() -> Settings {
-    Settings::default().align_horizontally(0.5)
-}
-
-fn middle() -> Settings {
-    Settings {
-        x_align: 0.5,
-        y_align: 0.5,
-        ..Settings::default()
+/// `ScrollableLayout`: the box is as tall as the body, to what the bars leave, and is put at the
+/// top of the content frame.
+fn container_for(
+    (width, height): (i32, i32),
+    footer_height: i32,
+    (body_width, body_height): (i32, i32),
+) -> Container {
+    let box_width = body_width + 2 * RESERVE;
+    let box_height = body_height.min(height - BAR - footer_height);
+    let frame_width = width.max(box_width);
+    Container {
+        x: (0.5 * (frame_width - box_width) as f32) as i32,
+        y: (BAR + CONTENT_MARGIN).min(height - footer_height - box_height),
+        width: box_width,
+        height: box_height,
     }
-}
-
-/// `DialogBodyHandlers.createBodyElement` for each body, in a column spaced by 10.
-fn body_layout(
-    arena: &mut Arena,
-    (font, lang): (&Font, &Lang),
-    bodies: &[Body],
-) -> (Grid, Vec<Part>) {
-    let mut parts = Vec::new();
-    let mut body = Grid::new();
-    body.row_spacing = 10;
-    for (row, element) in bodies.iter().enumerate() {
-        let item = match element {
-            Body::Plain(message) => {
-                let (rect, part) = text_part(arena, (font, lang), message);
-                parts.push(part);
-                Item::Leaf(rect)
-            }
-            Body::Item {
-                id,
-                count,
-                description,
-                show_decorations,
-                width,
-                height,
-                ..
-            } => {
-                let icon = arena.add(*width, *height);
-                parts.push(Part {
-                    rect: icon,
-                    lines: None,
-                    item: photon_game::item::id_of(id).map(|id| Shown {
-                        id,
-                        count: *count,
-                        decorations: *show_decorations,
-                    }),
-                });
-                match description {
-                    Some(message) => {
-                        let (text, part) = text_part(arena, (font, lang), message);
-                        parts.push(part);
-                        let mut pair = Grid::new();
-                        pair.column_spacing = 2;
-                        pair.add(Item::Leaf(icon), (0, 0), (1, 1), middle());
-                        pair.add(Item::Leaf(text), (0, 1), (1, 1), middle());
-                        Item::Grid(Box::new(pair))
-                    }
-                    None => Item::Leaf(icon),
-                }
-            }
-        };
-        body.add(item, (row, 0), (1, 1), centred());
-    }
-    (body, parts)
 }
 
 impl DialogScreen {
-    /// `SimpleDialogScreen.init`: the screen of a notice or confirmation, in a screen of `size`
-    /// units. Any other dialog has no screen yet.
+    /// `SimpleDialogScreen.init` and `ButtonListDialogScreen.init`: the screen of a dialog, in a
+    /// screen of `size` units. A type without a screen yet gives none.
     pub fn new(
         font: &Font,
         lang: &Lang,
@@ -207,50 +146,49 @@ impl DialogScreen {
             },
         };
         let (mut body, parts) = body_layout(&mut arena, (font, lang), &common.body);
-        body.arrange(&mut arena);
-        let (body_width, body_height) = (body.width, body.height);
-        // `ScrollableLayout`: the box is as tall as the body, to what the bars leave.
-        let content_room = height - 2 * BAR;
-        let box_width = body_width + 2 * RESERVE;
-        let box_height = body_height.min(content_room);
-        let frame_width = width.max(box_width);
-        let frame_y = (BAR + CONTENT_MARGIN).min(height - BAR - box_height);
-        let container = Container {
-            x: (0.5 * (frame_width - box_width) as f32) as i32,
-            y: frame_y,
-            width: box_width,
-            height: box_height,
-        };
-        let mut body = Item::Grid(Box::new(body));
-        body.set_x(&mut arena, container.x + RESERVE);
-        body.set_y(&mut arena, container.y);
-        // The header: the title and the warning button, put in the middle of the bar.
-        let mut header = Grid::new();
-        header.column_spacing = 10;
-        header.add(Item::Leaf(title.rect), (0, 0), (1, 1), middle());
-        header.add(Item::Leaf(warning.rect), (0, 1), (1, 1), middle());
-        header.arrange(&mut arena);
-        let header_width = width.max(header.width);
-        let header_height = BAR.max(header.height);
-        place_in_frame(
-            &mut arena,
-            Item::Grid(Box::new(header)),
-            (0, 0, header_width, header_height),
-            (0.5, 0.5),
-        );
         let buttons: Vec<(Widget, Holder)> = dialog
             .main_actions()
             .into_iter()
             .map(|action| Self::button(&mut arena, lang, action))
             .collect();
-        let leaves: Vec<usize> = buttons.iter().map(|(widget, _)| widget.rect).collect();
+        let (listed, columns) = dialog.button_list().unwrap_or((0, 1));
+        if listed > 0 {
+            let leaves: Vec<usize> = buttons[..listed]
+                .iter()
+                .map(|(widget, _)| widget.rect)
+                .collect();
+            let grid = pack_into_columns(&arena, &leaves, columns as usize);
+            body.add(
+                Item::Grid(Box::new(grid)),
+                (common.body.len(), 0),
+                (1, 1),
+                centred(),
+            );
+        }
+        // A button list with no exit button leaves a short footer.
+        let footer_height = if listed > 0 && buttons.len() == listed {
+            SHORT_FOOTER
+        } else {
+            BAR
+        };
+        body.arrange(&mut arena);
+        let (body_width, body_height) = (body.width, body.height);
+        let container = container_for((width, height), footer_height, (body_width, body_height));
+        let mut body = Item::Grid(Box::new(body));
+        body.set_x(&mut arena, container.x + RESERVE);
+        body.set_y(&mut arena, container.y);
+        place_header(&mut arena, (&title, &warning), width);
+        let leaves: Vec<usize> = buttons[listed..]
+            .iter()
+            .map(|(widget, _)| widget.rect)
+            .collect();
         let mut footer = horizontal(&arena, &leaves, 8);
         footer.arrange(&mut arena);
         let footer_width = width.max(footer.width);
         place_in_frame(
             &mut arena,
             Item::Grid(Box::new(footer)),
-            (0, height - BAR, footer_width, BAR),
+            (0, height - footer_height, footer_width, footer_height),
             (0.5, 0.5),
         );
         // `makeSureWarningButtonIsInBounds`.
@@ -271,6 +209,7 @@ impl DialogScreen {
             ),
             parts,
             buttons,
+            listed,
             container,
             content_height: body_height,
             scroll: 0.0,
@@ -331,25 +270,41 @@ impl DialogScreen {
         x >= c.x && y >= c.y && x < c.x + c.width && y < c.y + c.height
     }
 
-    /// The background, the title, the body in its box, the buttons, the warning button, and the
-    /// tooltip of the one the mouse is on (or the keyboard has).
-    pub fn draw(
+    /// Where button `index` is now: the ones in the body scroll with it.
+    fn button_rect(&self, index: usize) -> Rectangle {
+        let rect = self.arena.0[self.buttons[index].0.rect];
+        let shift = if index < self.listed {
+            self.scroll as i32
+        } else {
+            0
+        };
+        Rectangle {
+            x: rect.x,
+            y: rect.y - shift,
+            width: rect.width,
+            height: rect.height,
+        }
+    }
+
+    /// Whether the mouse is on button `index`; the box cuts the ones in the body.
+    fn button_hit(&self, index: usize, mouse: (i32, i32)) -> bool {
+        let rect = self.button_rect(index);
+        let (x, y) = mouse;
+        x >= rect.x
+            && x < rect.x + rect.width
+            && y >= rect.y
+            && y < rect.y + rect.height
+            && (index >= self.listed || self.in_container(mouse))
+    }
+
+    /// The body's text and items, scrolled, with the focus outline on the part that has it.
+    fn draw_parts(
         &self,
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         item: &mut ItemDrawer<'_>,
-        mouse: (i32, i32),
     ) {
-        let background = if self.in_world {
-            "inworld_menu_background"
-        } else {
-            "menu_background"
-        };
-        let (width, height) = self.size;
-        frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
-        self.title.draw(frame, atlas, font, &self.arena, false);
         let c = self.container;
-        let mark = frame.mark();
         for (index, part) in self.parts.iter().enumerate() {
             let rect = self.part_rect(part);
             if let Some(lines) = &part.lines {
@@ -386,7 +341,50 @@ impl DialogScreen {
                 outline(frame, atlas, rect);
             }
         }
-        frame.clip_from(mark, (c.x, c.y, c.x + c.width, c.y + c.height));
+    }
+
+    /// The background, the title, the body in its box, the buttons, the warning button, and the
+    /// tooltip of the one the mouse is on (or the keyboard has).
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        item: &mut ItemDrawer<'_>,
+        mouse: (i32, i32),
+    ) {
+        let background = if self.in_world {
+            "inworld_menu_background"
+        } else {
+            "menu_background"
+        };
+        let (width, height) = self.size;
+        frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
+        self.title.draw(frame, atlas, font, &self.arena, false);
+        let c = self.container;
+        let mark = frame.mark();
+        self.draw_parts(frame, (atlas, font), item);
+        // The body's buttons are drawn where the scrolling puts them, inside the box.
+        let mut shifted = self.arena.clone();
+        for (widget, _) in &self.buttons[..self.listed] {
+            shifted.0[widget.rect].y -= self.scroll as i32;
+        }
+        for index in 0..self.listed {
+            let highlighted =
+                self.button_hit(index, mouse) || self.focus == Some(Focus::Button(index));
+            self.buttons[index]
+                .0
+                .draw(frame, atlas, font, &shifted, highlighted);
+        }
+        // The scissor stack starts as the screen, so a box wider than it is cut there too.
+        frame.clip_from(
+            mark,
+            (
+                c.x.max(0),
+                c.y.max(0),
+                (c.x + c.width).min(width),
+                (c.y + c.height).min(height),
+            ),
+        );
         self.place().draw_scrollbar(
             frame,
             atlas,
@@ -396,14 +394,7 @@ impl DialogScreen {
         );
         let millis = frame.millis;
         let mut pending: Option<Pending> = None;
-        let mut ask = |tooltip: &Holder, rect: usize, hovered: bool, focused: bool| {
-            let rect = self.arena.0[rect];
-            let rectangle = Rectangle {
-                x: rect.x,
-                y: rect.y,
-                width: rect.width,
-                height: rect.height,
-            };
+        let mut ask = |tooltip: &Holder, rectangle: Rectangle, hovered: bool, focused: bool| {
             if let Some(asked) =
                 tooltip.refresh(millis, (hovered, focused), self.input.get(), rectangle)
                 && (pending.is_none() || focused)
@@ -411,18 +402,18 @@ impl DialogScreen {
                 pending = Some(asked);
             }
         };
-        for (index, (widget, tooltip)) in self.buttons.iter().enumerate() {
-            let hovered = widget.contains(&self.arena, mouse);
+        for (index, (_, tooltip)) in self.buttons.iter().enumerate() {
+            let hovered = self.button_hit(index, mouse);
             ask(
                 tooltip,
-                widget.rect,
+                self.button_rect(index),
                 hovered,
                 self.focus == Some(Focus::Button(index)),
             );
         }
-        for (index, (widget, _)) in self.buttons.iter().enumerate() {
+        for (index, (widget, _)) in self.buttons.iter().enumerate().skip(self.listed) {
             let highlighted =
-                widget.contains(&self.arena, mouse) || self.focus == Some(Focus::Button(index));
+                self.button_hit(index, mouse) || self.focus == Some(Focus::Button(index));
             widget.draw(frame, atlas, font, &self.arena, highlighted);
         }
         let warned = self.warning.contains(&self.arena, mouse);
@@ -434,7 +425,13 @@ impl DialogScreen {
         };
         let rect = self.arena.0[self.warning.rect];
         frame.sprite(atlas, sprite, rect.x, rect.y, rect.width, rect.height);
-        ask(&self.warning_tooltip, self.warning.rect, warned, focused);
+        let rectangle = Rectangle {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+        };
+        ask(&self.warning_tooltip, rectangle, warned, focused);
         if let Some(pending) = pending {
             pending.draw(frame, atlas, font, mouse, self.size);
         }
@@ -454,16 +451,15 @@ impl DialogScreen {
             });
             if let Some(index) = hit {
                 self.focus = Some(Focus::Part(index));
+                return None;
             }
-            return None;
         }
-        if let Some(index) = self
-            .buttons
-            .iter()
-            .position(|(widget, _)| widget.contains(&self.arena, mouse))
-        {
+        if let Some(index) = (0..self.buttons.len()).find(|&index| self.button_hit(index, mouse)) {
             self.focus = Some(Focus::Button(index));
             return Some(Press::Button(index));
+        }
+        if self.in_container(mouse) {
+            return None;
         }
         if self.warning.contains(&self.arena, mouse) {
             self.focus = Some(Focus::Warning);
@@ -520,8 +516,12 @@ impl DialogScreen {
             (Some(at), false) => (at + order.len() - 1) % order.len(),
         };
         self.focus = Some(order[next]);
-        if let Some(Focus::Part(index)) = self.focus {
-            let rect = self.part_rect(&self.parts[index]);
+        let shown = match self.focus {
+            Some(Focus::Part(index)) => Some(self.part_rect(&self.parts[index])),
+            Some(Focus::Button(index)) if index < self.listed => Some(self.button_rect(index)),
+            _ => None,
+        };
+        if let Some(rect) = shown {
             let c = self.container;
             let (top, bottom) = (rect.y - c.y, rect.y + rect.height - (c.y + c.height));
             if top < 0 {
@@ -545,23 +545,4 @@ impl DialogScreen {
     pub fn escape(&self) -> Option<Press> {
         self.can_close.then_some(Press::Close)
     }
-}
-
-/// `GuiGraphicsExtractor.outline` in white.
-fn outline(frame: &mut GuiFrame, atlas: &GuiAtlas, rect: Rectangle) {
-    let Rectangle {
-        x,
-        y,
-        width,
-        height,
-    } = rect;
-    let white = 0xFFFF_FFFF;
-    frame.fill(atlas, (x, y, x + width, y + 1), white);
-    frame.fill(atlas, (x, y + height - 1, x + width, y + height), white);
-    frame.fill(atlas, (x, y + 1, x + 1, y + height - 1), white);
-    frame.fill(
-        atlas,
-        (x + width - 1, y + 1, x + width, y + height - 1),
-        white,
-    );
 }
