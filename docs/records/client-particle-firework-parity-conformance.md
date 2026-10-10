@@ -35,5 +35,5 @@ testleriyle kanıtlıdır. `fireworks` bileşeninin ağ okuması birim testlidir
 
 - Uzaktaki seslerin mesafe gecikmesi (`playDelayed`) yok: ses motorunda ertelenmiş çalma yok, ses
   hemen çalar. Oracle da erteli sesi hemen çalmış sayar.
-- Canlıda bir roket gözlenmedi. Parçacık seçeneği (azalt/en az) henüz tutulmadığı için doğrudan
+- Canlıda (sunucu `summon firework_rocket`, `shot`) iki patlamalı roketin kıvılcımları gözlendi; kıpırdayan yıldızın yanıp sönmesi ve izler gözlenmedi. Parçacık seçeneği (azalt/en az) henüz tutulmadığı için doğrudan
   yapım `override_limiter` ile temsil edilir (seçenek `All` iken eşdeğer).

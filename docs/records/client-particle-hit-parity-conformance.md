@@ -46,7 +46,7 @@ Java gruplarını kimlik hash sırasıyla tikler; oracle her grubu ayrı sayar (
   `elder_guardian_particle_pose` satırlarıyla `client-parity`dir (`entity` ailesi); modelin
   kendisi gardiyan model satırlarındadır. Oyun olayı (`GUARDIAN_ELDER_EFFECT`, oyuncu konumunda
   parçacık, parametre 1 ise lanet sesi) paket tüketimidir (`server-conformance`); canlı gözlem
-  yapılmadı. Dünya tarafı tiki Java oracle'ında kurulamaz (`ElderGuardianParticle` kurucusu
+  yalnız `/particle elder_guardian` ile (parçacık paketi, oyun olayı 10 değil) gözlendi: kameraya bağlı yarı saydam model göründü. Dünya tarafı tiki Java oracle'ında kurulamaz (`ElderGuardianParticle` kurucusu
   `Minecraft` örneğini ister), Rust birim testi 30 tik canlı kalır, 31.de gider.
 - Çığlığın çizimi (iki döndürülmüş dörtgen, render'da hesaplanan alfa) bağlanmadı; dünya tarafı
   tiki (gecikme, yaş, ömür, ışık, boy) kanıtlı.
