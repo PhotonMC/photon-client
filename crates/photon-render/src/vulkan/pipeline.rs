@@ -48,6 +48,7 @@ impl VulkanBackend {
         let gui_item = kind == PipelineKind::GuiItem;
         let lines = kind == PipelineKind::Lines;
         let crumbling = kind == PipelineKind::Crumbling;
+        let screen_effect = kind == PipelineKind::ScreenEffect;
         let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
         // SAFETY: live handles; the shader modules are made from the embedded SPIR-V and
         // destroyed once the pipeline is built, and every create-info points at locals that
@@ -351,7 +352,7 @@ impl VulkanBackend {
                 // reversed and equal depth passes, as in the reference, so
                 // a model's later face over an earlier one at the same place
                 // (the grass side overlay) is the one seen.
-                .depth_test_enable(!sky && !gui && !text_see_through)
+                .depth_test_enable(!sky && !gui && !text_see_through && !screen_effect)
                 .depth_write_enable(matches!(
                     kind,
                     PipelineKind::Terrain
@@ -453,6 +454,7 @@ impl VulkanBackend {
                 || gui
                 || gui_item
                 || lines
+                || screen_effect
             {
                 vk::PipelineColorBlendAttachmentState::default()
                     .blend_enable(true)

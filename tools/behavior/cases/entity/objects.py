@@ -527,3 +527,21 @@ def entity_painting_geometry_cases():
             painting("two-by-two", (2, 2), 2), painting("big", (4, 3), 3), painting("backyard", (3, 4), 0),
             painting("far-off", (2, 1), 1, at=(-100.25, 70.5, 33.75))]
     yield {"case_id": "entity/painting-geometry", "family": "entity", "operation": "painting_geometry", "rows": rows}
+
+
+def entity_screen_effect_cases():
+    """The quads the screen effects lay over the view, as the reference's own `ScreenEffectRenderer` builds them:
+    the block the eyes are in and the fire from stand-in sprite corners, and the water from where the player
+    looks and how bright it is at the eyes."""
+    def row(label, kind, **fields):
+        return {"label": label, "kind": kind, **fields}
+    sprite = dict(u0=float_bits(0.25), u1=float_bits(0.3125), v0=float_bits(0.5), v1=float_bits(0.5625))
+    other = dict(u0=float_bits(0.0), u1=float_bits(1.0), v0=float_bits(0.0), v1=float_bits(1.0))
+    rows = [row("block", "block", color=-15132391, **sprite), row("block-whole-texture", "block", color=-15132391, **other),
+            row("fire", "fire", **sprite), row("fire-whole-texture", "fire", **other)]
+    for label, y_rot, x_rot, brightness in (("ahead", 0.0, 0.0, 1.0), ("turned", 123.5, -30.25, 0.75),
+                                            ("looking-down", -200.0, 90.0, 0.2), ("dark", 10.0, 5.0, 0.0)):
+        rows.append(row(f"water-{label}", "water", y_rot=float_bits(y_rot), x_rot=float_bits(x_rot),
+                        brightness=float_bits(brightness)))
+    yield {"case_id": "entity/screen-effect-quads", "family": "entity", "operation": "screen_effect_quads",
+           "rows": rows}

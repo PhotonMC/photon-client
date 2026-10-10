@@ -424,6 +424,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("using_item", player.isUsingItem());
         tick.addProperty("using_off_hand", player.getUsedItemHand() == net.minecraft.world.InteractionHand.OFF_HAND);
         tick.addProperty("ticks_using_item", Oracle.bits(player.getTicksUsingItem(0.5F)));
+        // The block the screen effects cover the view with (`getViewBlockingState`), as a state number.
+        var viewBlock = net.minecraft.client.renderer.ScreenEffectRenderer.class.getDeclaredMethod(
+            "getViewBlockingState", net.minecraft.world.entity.player.Player.class);
+        viewBlock.setAccessible(true);
+        var blocking = (net.minecraft.world.level.block.state.BlockState) viewBlock.invoke(null, player);
+        tick.addProperty("view_block", blocking == null ? -1 : net.minecraft.world.level.block.Block.getId(blocking));
         var packets = new JsonArray();
         for (var packet : sent) {
             var described = new JsonObject();

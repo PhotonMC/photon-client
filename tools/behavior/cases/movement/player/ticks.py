@@ -70,6 +70,9 @@ def cases():
     berries = [{"x": x, "y": 64, "z": z, "block": "minecraft:sweet_berry_bush",
                 "properties": {"age": "1"}} for x in range(-1, 2) for z in range(2, 4)]
 
+    def buried(block):
+        return [put(x, y, z, block) for x in range(-1, 2) for y in range(64, 67) for z in range(-1, 2)]
+
     rows = [
         scene("stand-still", floor(), keys(6)),
         scene("walk-forward", floor(), keys(20, forward=True)),
@@ -167,6 +170,11 @@ def cases():
               border=(0.5, 0.5, 5.0), y_rot=45.0),
         scene("start-outside-border", floor(), keys(10, forward=True), border=(40.5, 40.5, 6.0)),
         scene("crouch-in-border", floor(), keys(20, forward=True, sneak=True), border=(0.5, 0.5, 4.0)),
+        # The block the screen effects cover the view with, for a player buried in it: one that blocks
+        # the view, one that does not, one that is not drawn, and one that is only part of the way round.
+        *[scene(f"buried-in-{name}", floor() + buried(block), keys(4), start=(0.5, 64.0, 0.5))
+          for name, block in (("stone", "minecraft:stone"), ("glass", "minecraft:glass"),
+                              ("barrier", "minecraft:barrier"), ("soul-sand", "minecraft:soul_sand"))],
     ]
 
     yield {

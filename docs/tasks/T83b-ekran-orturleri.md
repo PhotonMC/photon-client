@@ -1,6 +1,6 @@
 # T83b — Ekran örtüleri ve etki sisleri
 
-**Amaç:** T83'ün kalanı: hasar alırken ekranın kırmızı örtüsü, yanma ve su altı örtüleri (`ScreenEffectRenderer`), gece görüşü ve `Darkness` etkisinin ışık/sis etkisi, körlük sisi, `Poof` ekran etkileri (portal/bulantı dönmesi `spinningEffect`).
+**Amaç:** `ScreenEffectRenderer`: gömülü blok, su altı ve yanma örtüleri. Gece görüşü/`Darkness` ışığı, körlük sisi, portal/bulantı dönmesi ve totem animasyonu [T83c](T83c-etki-sisleri.md)'dedir.
 **Bağımlılık:** T83. **Boy:** M.
 
 ## Oku
@@ -14,7 +14,7 @@ Gerçek `ScreenEffectRenderer`/`fog` sayısal çıktısı ve `gui` ailesinde ör
 `tools/photon.py check --capture` → `CHECK OK`.
 
 ## Belgeler
-`docs/records/client-camera-hurt-parity-conformance.md`, `docs/remaining-work.md` §8.
+`docs/records/client-screen-effects-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `view_blocking_state` (movement oracle `view_block` bit bit eşit), `photon-render/screen_effect.rs` (blok/su/ateş dörtgenleri; `entity/screen-effect-quads` eşit), `ScreenEffect` boru hattı ve `underwater.png`, `photon/overlays/screen_effect.rs`. Canlıda ateş ve su görüldü. Sapma: su parlaklığı gökyüzü kararmasını taşımaz, oyuncu ölçeği 1. Açık: T83c.

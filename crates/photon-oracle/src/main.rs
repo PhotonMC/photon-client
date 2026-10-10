@@ -167,6 +167,8 @@ mod display;
 use display::*;
 mod guardian;
 use guardian::*;
+mod screen_effect;
+use screen_effect::*;
 mod animation;
 use animation::*;
 mod strider;

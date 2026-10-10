@@ -111,6 +111,8 @@ impl VulkanBackend {
             let rays_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Rays)?;
             let world_border_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::WorldBorder)?;
+            let screen_effect_pipeline =
+                self.create_pipeline(descriptors.layout, PipelineKind::ScreenEffect)?;
             let gui_invert_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::GuiInvert)?;
             let gui_highlight_pipeline =
@@ -151,6 +153,9 @@ impl VulkanBackend {
                 world_border_pipeline,
                 world_border_texture: None,
                 world_border_set: None,
+                screen_effect_pipeline,
+                underwater_texture: None,
+                underwater_set: None,
                 crack_texture: None,
                 crack_set: None,
                 entity_texture: None,

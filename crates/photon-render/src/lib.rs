@@ -18,6 +18,7 @@ pub mod particles;
 pub mod render_types;
 pub mod resolve;
 pub mod scene;
+pub mod screen_effect;
 pub mod section_workers;
 pub mod sky;
 pub mod texture;

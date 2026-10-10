@@ -264,6 +264,31 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the next frame's screen effects, in the hand's view space and drawn with the
+    /// hand's projection: the block the eyes are in and the fire sample the block atlas, the water
+    /// its own texture.
+    pub fn set_screen_effects(
+        &mut self,
+        (block, water, fire): (&[Vertex], &[Vertex], &[Vertex]),
+        projection: [[f32; 4]; 4],
+    ) -> Result<(), VulkanError> {
+        let mut slot = std::mem::take(&mut self.screen_effect_buffer);
+        // SAFETY: live handles; `fill_dynamic` waits for the frames that may draw the buffer it
+        // replaces.
+        let written = unsafe {
+            self.fill_dynamic(
+                &mut slot,
+                &[as_bytes(block), as_bytes(water), as_bytes(fire)],
+                1 << 12,
+            )
+        };
+        self.screen_effect_buffer = slot;
+        written?;
+        self.screen_effect_counts = [block.len() as u32, water.len() as u32, fire.len() as u32];
+        self.screen_effect_projection = projection;
+        Ok(())
+    }
+
     /// Replace the clouds' faces, placed from the camera's cell corner.
     pub fn set_cloud_faces(
         &mut self,

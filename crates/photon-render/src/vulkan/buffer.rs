@@ -75,6 +75,9 @@ pub(super) enum PipelineKind {
     /// The world border overlay (`WORLD_BORDER`): the forcefield texture, tinted and blended by
     /// `BlendFunction.OVERLAY`, pulled towards the camera by a depth bias.
     WorldBorder,
+    /// A screen effect (`BLOCK_SCREEN_EFFECT`, `FIRE_SCREEN_EFFECT`): the hand's shaders, blended
+    /// and tested against nothing.
+    ScreenEffect,
 }
 
 /// Instance API version the reference asks for.
@@ -204,6 +207,10 @@ pub(super) struct SceneResources {
     /// The forcefield texture, once loaded, with its set.
     pub(super) world_border_texture: Option<Texture>,
     pub(super) world_border_set: Option<vk::DescriptorSet>,
+    pub(super) screen_effect_pipeline: Pipeline,
+    /// The water texture laid over the view under water, once loaded, with its set.
+    pub(super) underwater_texture: Option<Texture>,
+    pub(super) underwater_set: Option<vk::DescriptorSet>,
     pub(super) crack_texture: Option<Texture>,
     pub(super) crack_set: Option<vk::DescriptorSet>,
     /// The skin entities are drawn with.

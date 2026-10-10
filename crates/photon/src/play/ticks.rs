@@ -66,6 +66,7 @@ impl Play {
         )?;
         backend.load_crack_texture(&destroy_stages(&root)?)?;
         backend.load_world_border_texture(&texture(&root, "misc/forcefield", "forcefield")?)?;
+        backend.load_underwater_texture(&texture(&root, "misc/underwater", "underwater")?)?;
         // The player's default skin, picked by its profile id as the
         // reference picks one when the profile has no skin of its own; the
         // others the server adds draw in theirs, and the mobs in their own

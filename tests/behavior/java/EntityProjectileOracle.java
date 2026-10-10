@@ -269,6 +269,77 @@ class EntityProjectileOracle extends EntityPoseOracle {
     }
 
     /**
+     * The quads the reference's screen effects (`ScreenEffectRenderer`) hand the vertex consumer: the block the eyes
+     * are in, the fire and the water, from stand-in sprite corners and the player's look.
+     */
+    static JsonObject screenEffectQuads(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        var renderer = net.minecraft.client.renderer.ScreenEffectRenderer.class;
+        var spriteClass = net.minecraft.client.renderer.texture.TextureAtlasSprite.class;
+        var stackClass = com.mojang.blaze3d.vertex.PoseStack.class;
+        var collectorClass = net.minecraft.client.renderer.SubmitNodeCollector.class;
+        var fire = renderer.getDeclaredMethod("submitFire", stackClass, collectorClass, spriteClass);
+        var block = renderer.getDeclaredMethod("submitBlockSprite", spriteClass, stackClass, collectorClass, int.class);
+        var quad = renderer.getDeclaredMethod("buildQuad", com.mojang.blaze3d.vertex.VertexConsumer.class,
+            org.joml.Matrix4f.class, float.class, float.class, float.class, float.class, float.class, float.class,
+            float.class, float.class, float.class, int.class);
+        fire.setAccessible(true);
+        block.setAccessible(true);
+        quad.setAccessible(true);
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var vertices = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {collectorClass},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var capture = new BeamCapture(vertices);
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), capture);
+                        capture.flush();
+                    }
+                    return null;
+                });
+            var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(spriteClass);
+            for (var corner : new String[] {"u0", "u1", "v0", "v1"}) {
+                var field = spriteClass.getDeclaredField(corner);
+                field.setAccessible(true);
+                if (row.has(corner)) {
+                    field.setFloat(sprite, Oracle.f32(row, corner));
+                }
+            }
+            var atlas = spriteClass.getDeclaredField("atlasLocation");
+            atlas.setAccessible(true);
+            atlas.set(sprite, net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/blocks.png"));
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            switch (row.get("kind").getAsString()) {
+                case "fire" -> fire.invoke(null, stack, collector, sprite);
+                case "block" -> block.invoke(null, sprite, stack, collector, row.get("color").getAsInt());
+                case "water" -> {
+                    // `submitWater`, with the brightness and the look given.
+                    float brightness = Oracle.f32(row, "brightness");
+                    int color = net.minecraft.util.ARGB.colorFromFloat(0.1F, brightness, brightness, brightness);
+                    float u0 = -Oracle.f32(row, "y_rot") / 64.0F;
+                    float v0 = Oracle.f32(row, "x_rot") / 64.0F;
+                    var capture = new BeamCapture(vertices);
+                    quad.invoke(null, capture, stack.last().pose(), -1.0F, -1.0F, 1.0F, 1.0F, -0.5F,
+                        u0 + 4.0F, v0 + 4.0F, u0, v0, color);
+                    capture.flush();
+                }
+                default -> throw new IllegalArgumentException(row.get("kind").getAsString());
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("vertices", vertices);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The vertices the reference's own painting renderer hands the vertex consumer for a size, a facing and
      * the light of each block, with stand-in sprites (their own corners, to see which is used where).
      */

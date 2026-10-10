@@ -209,6 +209,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("small_projectile_pose")) {
             return smallProjectilePose(request);
         }
+        if (operation.equals("screen_effect_quads")) {
+            return screenEffectQuads(request);
+        }
         if (operation.equals("painting_geometry")) {
             return paintingGeometry(request);
         }

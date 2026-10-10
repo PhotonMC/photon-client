@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %83 bitti** (ağırlıklı) · 275/312 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
+**Toplam: %83 bitti** (ağırlıklı) · 276/313 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 36/42 |
 | M7 Ses | `████████████████░░░░` | 82 | 14/16 |
-| M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 86 | 39/45 |
+| M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 40/46 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83c, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -342,7 +342,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T81](T81-isin-ve-portal-blok-entity.md) Işın, portal ve efektli blok entity'ler — M · bağımlı: T79
 - [ ] [T82](T82-spawner-vault-kafes.md) Spawner, vault ve deneme spawner'ı çizimi — M · bağımlı: T79, T24
 - [x] [T83](T83-hasar-ve-etki-orturleri.md) Hasarda kameranın eğilmesi (`bobHurt`) — M · bitti (4641bad8)
-- [ ] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri ve etki sisleri — M · bağımlı: T83
+- [x] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri (gömülü blok, su altı, yanma) — M · bağımlı: T83 · bitti (HASH)
+- [ ] [T83c](T83c-etki-sisleri.md) Etki sisleri, ışık etkileri, dönme ve totem animasyonu — L · bağımlı: T83b
 - [x] [T84](T84-dunya-siniri.md) Dünya sınırı: paketler ve çarpışma — M · bitti (33f8b5f5)
 - [x] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84 · bitti (dcb06eff)
 

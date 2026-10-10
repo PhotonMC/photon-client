@@ -272,10 +272,42 @@ impl VulkanBackend {
         {
             return Ok(());
         }
-        // SAFETY: live handles; this only creates objects and stores them in the scene.
+        let Some((texture, set)) = self.upload_repeating_texture(forcefield)? else {
+            return Ok(());
+        };
+        let scene = self.scene.as_mut().expect("checked above");
+        scene.world_border_texture = Some(texture);
+        scene.world_border_set = Some(set);
+        Ok(())
+    }
+
+    /// Load the texture the water lays over the view under water, sampled like the forcefield.
+    pub fn load_underwater_texture(&mut self, image: &DecodedImage) -> Result<(), VulkanError> {
+        if self
+            .scene
+            .as_ref()
+            .is_none_or(|scene| scene.underwater_set.is_some())
+        {
+            return Ok(());
+        }
+        let Some((texture, set)) = self.upload_repeating_texture(image)? else {
+            return Ok(());
+        };
+        let scene = self.scene.as_mut().expect("checked above");
+        scene.underwater_texture = Some(texture);
+        scene.underwater_set = Some(set);
+        Ok(())
+    }
+
+    /// A plain resource texture in a set of its own, sampled at the nearest texel and repeating.
+    fn upload_repeating_texture(
+        &mut self,
+        image: &DecodedImage,
+    ) -> Result<Option<(Texture, vk::DescriptorSet)>, VulkanError> {
+        // SAFETY: live handles; this only creates objects and hands them back.
         unsafe {
             let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptors.layout) else {
-                return Ok(());
+                return Ok(None);
             };
             let pool = self.scene.as_ref().expect("checked above").descriptors.pool;
             let sampler = self
@@ -293,7 +325,7 @@ impl VulkanBackend {
                 )
                 .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
             let sampler = Sampler::new(&self.device, sampler);
-            let image = self.upload_texture(std::slice::from_ref(forcefield))?;
+            let image = self.upload_texture(std::slice::from_ref(image))?;
             let layouts = [layout];
             let set = self
                 .device
@@ -313,10 +345,7 @@ impl VulkanBackend {
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .image_info(&image_info);
             self.device.update_descriptor_sets(&[write], &[]);
-            let scene = self.scene.as_mut().expect("checked above");
-            scene.world_border_texture = Some(Texture { image, sampler });
-            scene.world_border_set = Some(set);
-            Ok(())
+            Ok(Some((Texture { image, sampler }, set)))
         }
     }
 

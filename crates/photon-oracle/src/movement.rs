@@ -537,6 +537,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 "using_item": player.is_using_item(),
                 "using_off_hand": player.used_item_is_off_hand(),
                 "ticks_using_item": format!("{:08x}", player.ticks_using_item(0.5).to_bits()),
+                "view_block": player.view_blocking_state(&world).unwrap_or(-1),
                 "sent": packets,
             });
             if let Some(vehicle_id) = ridden {

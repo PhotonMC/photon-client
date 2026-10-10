@@ -59,6 +59,11 @@ pub struct VulkanBackend {
     /// The world border overlay's triangles for the next frame.
     pub(super) world_border_buffer: DynamicBuffer,
     pub(super) world_border_count: u32,
+    /// The screen effects' triangles for the next frame: the block the eyes are in, the water, the
+    /// fire, and how many vertices each has.
+    pub(super) screen_effect_buffer: DynamicBuffer,
+    pub(super) screen_effect_counts: [u32; 3],
+    pub(super) screen_effect_projection: [[f32; 4]; 4],
     /// The entities' triangles for the next frame.
     pub(super) entity: DrawList,
     /// The dropped items' triangles, which sample the block atlas.

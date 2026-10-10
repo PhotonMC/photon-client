@@ -7,7 +7,7 @@ from cases.entity.data import entity_data_serializer_cases, entity_map_data_case
 from cases.entity.flyers import entity_airborne_cases, entity_breeze_cases, entity_flier_cases, entity_flier_item_cases, entity_happy_ghast_cases, entity_parrot_cases
 from cases.entity.humanoids import entity_copper_golem_cases, entity_copper_golem_layer_cases, entity_creeper_render_cases, entity_golem_cases, entity_illager_cases, entity_insect_cases, entity_piglin_cases, entity_skeleton_cases, entity_spider_cases, entity_villager_cases, entity_villager_held_cases, entity_zombie_cases
 from cases.entity.items import entity_animation_cases, entity_armor_stand_cases, entity_equipment_layer_cases, entity_equippable_cases, entity_glint_cases, entity_held_item_cases, entity_item_pose_cases, entity_quadruped_cases, entity_xp_orb_cases
-from cases.entity.objects import entity_arrow_cases, entity_banner_cases, entity_bell_cases, entity_boat_cases, entity_charge_cases, entity_chest_cases, entity_display_light_cases, entity_display_pose_cases, entity_elder_guardian_particle_cases, entity_fishing_hook_cases, entity_item_frame_pose_cases, entity_leash_cases, entity_lightning_bolt_cases, entity_map_render_cases, entity_minecart_pose_cases, entity_painting_geometry_cases, entity_primed_tnt_cases, entity_shulker_box_cases, entity_skull_block_cases, entity_small_projectile_cases, entity_text_display_cases, entity_thrown_item_cases
+from cases.entity.objects import entity_arrow_cases, entity_banner_cases, entity_bell_cases, entity_boat_cases, entity_charge_cases, entity_chest_cases, entity_display_light_cases, entity_display_pose_cases, entity_elder_guardian_particle_cases, entity_fishing_hook_cases, entity_item_frame_pose_cases, entity_leash_cases, entity_lightning_bolt_cases, entity_map_render_cases, entity_minecart_pose_cases, entity_painting_geometry_cases, entity_primed_tnt_cases, entity_shulker_box_cases, entity_skull_block_cases, entity_screen_effect_cases, entity_small_projectile_cases, entity_text_display_cases, entity_thrown_item_cases
 from cases.entity.player import entity_avatar_pose_cases, entity_camera_hurt_cases, entity_elytra_cases, entity_living_pose_cases, entity_model_layer_cases, entity_player_model_cases, entity_walk_animation_cases
 
 
@@ -103,6 +103,7 @@ def entity_cases():
     yield from entity_primed_tnt_cases()
     yield from entity_lightning_bolt_cases()
     yield from entity_painting_geometry_cases()
+    yield from entity_screen_effect_cases()
     yield from entity_happy_ghast_cases()
     yield from entity_flier_item_cases()
     yield from entity_boat_cases()

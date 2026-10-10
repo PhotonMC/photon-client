@@ -129,8 +129,19 @@ impl Play {
                 100.0,
             );
             self.backend.set_hand(&hand, &held, hand_projection)?;
+            let effects = overlays::screen_effect::screen_effects(
+                &self.session,
+                player,
+                &self.block_renderer,
+            );
+            self.backend.set_screen_effects(
+                (&effects.block, &effects.water, &effects.fire),
+                hand_projection,
+            )?;
         } else {
             self.backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
+            self.backend
+                .set_screen_effects((&[], &[], &[]), [[0.0; 4]; 4])?;
         }
         let line_width =
             photon_render::block::outline::appropriate_line_width(self.backend.extent().0);

@@ -349,19 +349,60 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
     unsafe fn record_hand(&self, scene: &SceneResources, terrain_push: &[f32; 40]) {
-        if self.hand.buffer.as_ref().is_none() || self.hand.count + self.held_count == 0 {
+        if self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_count != 0 {
+            let mut hand_push = *terrain_push;
+            hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
+                self.hand_projection[i / 4][i % 4]
+            }));
+            hand_push[28..31].copy_from_slice(&[0.0; 3]);
+            // SAFETY: recording (see `# Safety`).
+            unsafe {
+                self.clear_depth();
+                self.draw_run(scene, Run::Hand, &hand_push);
+                self.draw_run(scene, Run::Held, &hand_push);
+            }
+        }
+        // SAFETY: recording (see `# Safety`).
+        unsafe { self.record_screen_effects(scene, terrain_push) };
+    }
+
+    /// What covers the view from inside, over the hand: the block the eyes are in, the water, the
+    /// fire, each blended over what is drawn. Nothing is lit or fogged.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope; `scene` is live.
+    unsafe fn record_screen_effects(&self, scene: &SceneResources, terrain_push: &[f32; 40]) {
+        let Some(buffer) = self.screen_effect_buffer.as_ref() else {
+            return;
+        };
+        let [blocks, water, fire] = self.screen_effect_counts;
+        if blocks + water + fire == 0 {
             return;
         }
-        let mut hand_push = *terrain_push;
-        hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
-            self.hand_projection[i / 4][i % 4]
+        let mut push = [0.0_f32; 41];
+        push[..40].copy_from_slice(terrain_push);
+        push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
+            self.screen_effect_projection[i / 4][i % 4]
         }));
-        hand_push[28..31].copy_from_slice(&[0.0; 3]);
-        // SAFETY: recording (see `# Safety`).
-        unsafe {
-            self.clear_depth();
-            self.draw_run(scene, Run::Hand, &hand_push);
-            self.draw_run(scene, Run::Held, &hand_push);
+        push[28..31].copy_from_slice(&[0.0; 3]);
+        // No fog: the fog colour's alpha is how much of it there is.
+        push[35] = 0.0;
+        push[40] = 1.0;
+        let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..164])];
+        let runs = [
+            (Some(scene.descriptor_set), (0, blocks)),
+            (scene.underwater_set, (blocks, water)),
+            (Some(scene.descriptor_set), (blocks + water, fire)),
+        ];
+        for (set, range) in runs {
+            if set.is_some() {
+                // SAFETY: recording (see `# Safety`); the pipeline, set and buffer belong to `scene`
+                // and `self`.
+                unsafe {
+                    self.draw_vertices(&scene.screen_effect_pipeline, (set, &push), buffer, range);
+                }
+            }
         }
     }
 

@@ -72,6 +72,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "painting_geometry" => painting_geometry_result(request),
         "small_projectile_pose" => small_projectile_pose_result(request),
         "crystal_beam" => crystal_beam_result(request),
+        "screen_effect_quads" => screen_effect_quads_result(request),
         "airborne_model" => airborne_model_result(request),
         "parrot_textures" => parrot_textures_result(request),
         "flier_item_pose" => flier_item_pose_result(request),

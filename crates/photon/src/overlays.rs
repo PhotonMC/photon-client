@@ -2,6 +2,8 @@
 //! and what they hold, the aimed block's outline, the cracks in blocks being
 //! broken, and the player's own model.
 
+pub mod screen_effect;
+
 use photon_core::math::Vec3;
 use photon_game::game_mode::{Aim, MAIN_HAND, OFF_HAND};
 use photon_game::item::in_hand::ItemInHand;
