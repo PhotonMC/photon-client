@@ -290,8 +290,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T64](T64-ses-tetikleri-muzik.md) Oyun ses tetikleri (adım, kırma, hasar, ortam) ve müzik — L · bağımlı: T63 · bölündü (3659d38e)
 - [x] [T64b](T64b-ses-tetikleri-kalan.md) Oyuncunun hareket sesleri ve tetik oracle'ı (adım, yüzme, sıçrama, iniş, kabarcık sütunu) — L · bağımlı: T64 · bitti (323dfa99)
 - [x] [T64c](T64c-ses-tetikleri-son.md) Oyuncunun hasar ve ölüm sesi — M · bağımlı: T64b · bitti (a008d958)
-- [x] [T64d](T64d-ses-tetikleri-ortam-muzik.md) Ortam, olay sesleri ve müzik — L · bağımlı: T64c · bölündü (HASH)
-- [x] [T64e](T64e-muzik.md) Müzik: `MusicManager`, biyom müziği, çalma — M · bağımlı: T64d · bitti (HASH)
+- [x] [T64d](T64d-ses-tetikleri-ortam-muzik.md) Ortam, olay sesleri ve müzik — L · bağımlı: T64c · bölündü (aad24c25)
+- [x] [T64e](T64e-muzik.md) Müzik: `MusicManager`, biyom müziği, çalma — M · bağımlı: T64d · bitti (aad24c25)
 - [ ] [T64f](T64f-ortam-sesleri.md) Mağara ve su altı ortam döngüleri, olay sesleri, eşya kullanım sesleri, ekran müziği — L · bağımlı: T64e
 - [x] [T65](T65-ses-ayarlari-ekrani.md) Ses ayarları ekranı — M · bağımlı: T63, T06 · bitti (a9e6230d)
 - [ ] **K-M7** Altyazılar, duraklatmada süren kategoriler, kalan ses ayarları — M×2
