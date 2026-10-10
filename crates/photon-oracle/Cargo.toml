@@ -16,6 +16,7 @@ photon-game.workspace = true
 photon-net.workspace = true
 photon-render.workspace = true
 glfw.workspace = true
+rayon.workspace = true
 serde_json = "1.0.151"
 
 [lints]

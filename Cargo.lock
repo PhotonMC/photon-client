@@ -834,6 +834,7 @@ dependencies = [
  "photon-net",
  "photon-render",
  "photon-world",
+ "rayon",
  "serde_json",
 ]
 

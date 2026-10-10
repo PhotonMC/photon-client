@@ -220,15 +220,28 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
     Ok(json!({"schema_version": 1, "case_id": case_id, "result": result}))
 }
 
+/// Answers every input line. Cases are independent, so they are answered in
+/// parallel; the output keeps the input order.
 pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input = io::stdin().lock();
+    use rayon::prelude::*;
+    let lines: Vec<String> = io::stdin().lock().lines().collect::<Result<_, _>>()?;
+    let responses: Vec<String> = lines
+        .par_iter()
+        .enumerate()
+        .map(|(index, line)| {
+            let answer = serde_json::from_str(line)
+                .map_err(|error| error.to_string())
+                .and_then(respond)
+                .and_then(|response| {
+                    serde_json::to_string(&response).map_err(|error| error.to_string())
+                });
+            answer.map_err(|message| format!("line {}: {message}", index + 1))
+        })
+        .collect::<Result<_, String>>()
+        .map_err(io::Error::other)?;
     let mut output = io::BufWriter::new(io::stdout().lock());
-    for (index, line) in input.lines().enumerate() {
-        let request = serde_json::from_str(&line?)?;
-        let response = respond(request)
-            .map_err(|message| io::Error::other(format!("line {}: {message}", index + 1)))?;
-        serde_json::to_writer(&mut output, &response)?;
-        writeln!(output)?;
+    for response in responses {
+        writeln!(output, "{response}")?;
     }
     output.flush()?;
     Ok(())
