@@ -8,7 +8,7 @@
 - Rust: T105'in ekranı.
 
 ## Yapılacaklar
-Tarife göre bölün: çok eylemli+liste / girdiler / sunucu bağlantıları.
+`ClientboundServerLinksPacket` çözümü (bileşenli bağlantı türü) T100'den buraya devredildi. Tarife göre bölün: çok eylemli+liste / girdiler / sunucu bağlantıları.
 
 ## Oracle
 G satırları her ekran için.

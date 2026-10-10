@@ -117,6 +117,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T83 — Hasar sırasında kameranın eğilmesi — client-parity](records/client-camera-hurt-parity-conformance.md)
 - [T39d — Rüzgâr yükleri ve ejderha topu — client-parity](records/client-charges-parity-conformance.md)
 - [T79, T80 — Sandık, shulker kutusu, çan, kafa, bayrak ve tabela blok entity çizimi — client-parity](records/client-chest-parity-conformance.md)
+- [Çerez, özel yük ve sorgu paketleri — [server-conformance değil, birim ve sahte sunucu testi]](records/client-cookie-payload-conformance.md)
 - [T34e, T34f — Bakır golem — client-parity](records/client-copper-golem-parity-conformance.md)
 - [T37e — Creaking — client-parity](records/client-creaking-parity-conformance.md)
 - [T37a — Slime ve magma cube — client-parity](records/client-cube-mob-parity-conformance.md)

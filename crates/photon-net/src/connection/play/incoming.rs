@@ -1,4 +1,5 @@
 use super::*;
+use crate::connection::probe::{store_cookie, take_custom_payload, take_report_details};
 
 mod chat;
 mod connection;
@@ -33,6 +34,14 @@ impl PlaySession {
         match packet_id {
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => self.on_login(payload)?,
             PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID => self.reconfigure()?,
+            PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => self.on_cookie_request(payload)?,
+            PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID => store_cookie(&mut self.trace, payload)?,
+            PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {
+                take_custom_payload(&mut self.trace, payload)?;
+            }
+            PLAY_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID => {
+                take_report_details(&mut self.trace, payload)?;
+            }
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => self.on_add_entity(payload)?,
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => self.on_set_entity_motion(payload)?,
             PLAY_CLIENTBOUND_MAP_ITEM_DATA_PACKET_ID => self.on_map_item_data(payload)?,

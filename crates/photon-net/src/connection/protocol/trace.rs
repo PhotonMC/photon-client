@@ -17,6 +17,12 @@ pub struct PlayConnectionTrace {
     /// The profile id the server logged the player in with.
     pub profile_id: Option<photon_core::binary::Uuid>,
     pub configuration_finished: bool,
+    /// What the server asked the client to keep, which stays through a reconfiguration.
+    pub cookies: crate::cookie::CookieStore,
+    /// The server's brand (`minecraft:brand`).
+    pub server_brand: Option<String>,
+    /// `ClientboundCustomReportDetailsPacket`: what the server wants a crash report to carry.
+    pub custom_report_details: Vec<(String, String)>,
     pub enabled_feature_count: usize,
     pub known_pack_count: usize,
     pub selected_known_pack_count: usize,

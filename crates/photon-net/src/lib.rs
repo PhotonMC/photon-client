@@ -3,6 +3,7 @@
 pub mod common;
 pub mod configuration;
 pub mod connection;
+pub mod cookie;
 pub mod frame;
 pub mod handshake;
 pub mod login;

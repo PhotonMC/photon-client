@@ -1,6 +1,6 @@
 # T100 — Çerez, özel yük ve sunucu bağlantıları paketleri
 
-**Amaç:** Yapılandırma ve oyun evresinde `CookieRequest`/`StoreCookie`/`ServerboundCookieResponse`, istemciye gelen `CustomPayload`, `CustomReportDetails`, `ServerLinks` ve (yapılandırmada) `ResetChat` paketleri.
+**Amaç:** Yapılandırma ve oyun evresinde `CookieRequest`/`StoreCookie`/`ServerboundCookieResponse`, istemciye gelen `CustomPayload`, `CustomReportDetails` ve giriş evresinde `CustomQuery` paketleri (`ServerLinks` bileşen çözümü ister, T106'ya devredildi).
 **Bağımlılık:** —. **Boy:** M.
 
 ## Oku
@@ -11,7 +11,7 @@
 1. Paket kodlayıcı/çözücüleri (sınırlar Java'daki gibi: çerez 5120 bayt, anahtar 32767).
 2. Bellekte çerez deposu (kimliğe göre); yoksa boş yanıt.
 3. `CustomPayload` çözülür, bilinmeyen yük yok sayılır; marka (`minecraft:brand`) saklanır.
-4. `ServerLinks` saklanır (`ServerLinksDialogScreen` T106'da kullanır).
+4. Giriş evresinde `CustomQuery` yanıtsız cevaplanır.
 
 ## Oracle
 Paket çözücü/kodlayıcı birim testleri (Java sınırları); canlı: çerez isteyen bir sunucu yok, kayıt bunu açıkça yazar.
@@ -26,4 +26,4 @@ Paket çözücü/kodlayıcı birim testleri (Java sınırları); canlı: çerez 
 `docs/records/` altında yeni `client-cookie-payload-conformance.md`, `docs/index.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `photon-net/src/cookie.rs` (paketler, `CookieStore`), giriş/yapılandırma/oyun evrelerinde bağlama (`probe/open.rs`, `play/incoming.rs`), çerez ve marka yeniden yapılandırmada korunur. Test: birim + sahte sunucu; vanilla oturumu bozulmadı. Açık: `ServerLinks` (T106), çerezin transferde taşınması (T102). Kayıt: [client-cookie-payload-conformance.md](../records/client-cookie-payload-conformance.md).

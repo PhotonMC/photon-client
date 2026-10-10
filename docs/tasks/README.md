@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %82 bitti** (ağırlıklı) · 279/321 madde işaretli, **42 madde kaldı** (tahmini 84 M-görev eşdeğeri iş).
+**Toplam: %82 bitti** (ağırlıklı) · 280/321 madde işaretli, **41 madde kaldı** (tahmini 83 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -42,12 +42,12 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 37/43 |
 | M7 Ses | `████████████████░░░░` | 82 | 14/16 |
 | M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 40/46 |
-| M9 Sunucu uyumluluğu | `██░░░░░░░░░░░░░░░░░░` | 11 | 2/9 |
+| M9 Sunucu uyumluluğu | `████░░░░░░░░░░░░░░░░` | 19 | 3/9 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83c, T100, T103, T105, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83c, T102, T103, T105, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -351,7 +351,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 ### M9 Sunucu uyumluluğu
 
 - [x] **PLAN-M9** Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl — S · bitti (ea4eee6d)
-- [ ] [T100](T100-cerez-ozel-yuk.md) Çerez, özel yük ve sunucu bağlantıları paketleri — M
+- [x] [T100](T100-cerez-ozel-yuk.md) Çerez, özel yük ve sorgu paketleri — M · bitti (HASH)
 - [x] [T101](T101-yeniden-yapilandirma.md) Yeniden yapılandırma (oyun → yapılandırma → oyun) — M · bitti (11e4b2d9)
 - [ ] [T102](T102-transfer.md) Transfer paketi ve çerezlerin taşınması — M · bağımlı: T100, T101
 - [ ] [T103](T103-kaynak-paketi-istemi.md) Sunucu kaynak paketi: paketler ve onay ekranı — M · bağımlı: T101

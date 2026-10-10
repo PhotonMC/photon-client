@@ -12,6 +12,18 @@ use crate::connection::probe::configure_connection;
 const RECONFIGURATION_TIMEOUT: Duration = Duration::from_secs(30);
 
 impl PlaySession {
+    /// `handleRequestCookie`: what is kept under the key goes back, or nothing.
+    pub(super) fn on_cookie_request(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let request = crate::cookie::ClientboundCookieRequestPacket::decode(&mut &payload[..])
+            .map_err(|_| ConnectionError::Codec("cookie request"))?;
+        let answer = self.trace.cookies.answer(&request);
+        self.send(PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID, |output| {
+            answer
+                .encode(output)
+                .map_err(|_| ConnectionError::Codec("cookie response"))
+        })
+    }
+
     /// Acknowledge the server, run the configuration phase on the connection and start over in
     /// the play phase with a world of nothing yet known. The reader thread has stopped by the
     /// terminal packet, so the connection is this call's alone until it ends.
@@ -28,6 +40,9 @@ impl PlaySession {
             compression_threshold: self.compression_threshold,
             login_finished: true,
             profile_id: self.trace.profile_id,
+            cookies: self.trace.cookies.clone(),
+            server_brand: self.trace.server_brand.clone(),
+            custom_report_details: self.trace.custom_report_details.clone(),
             ..PlayConnectionTrace::default()
         };
         configure_connection(
@@ -103,5 +118,54 @@ mod tests {
         session.wait(Duration::from_secs(5)).expect("handled");
         assert!(session.take_level_reset());
         server.join().expect("server");
+    }
+
+    #[test]
+    fn a_cookie_the_server_stored_is_given_back_when_it_asks() {
+        use std::io::Write;
+        let key = photon_core::identifier::Identifier::parse("example:token").expect("key");
+        let mut stored = Vec::new();
+        photon_core::identifier::write_identifier(&key, &mut stored).expect("key");
+        wire::write_varint(2, &mut stored);
+        stored.extend_from_slice(&[7, 9]);
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+        let address = listener.local_addr().expect("address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut with_id = |id: i32, body: &[u8]| {
+                let mut packet = Vec::new();
+                wire::write_varint(id, &mut packet);
+                packet.extend_from_slice(body);
+                let mut framed = Vec::new();
+                wire::write_varint(packet.len() as i32, &mut framed);
+                framed.extend_from_slice(&packet);
+                stream.write_all(&framed).expect("write");
+            };
+            let mut request = Vec::new();
+            photon_core::identifier::write_identifier(
+                &photon_core::identifier::Identifier::parse("example:token").expect("key"),
+                &mut request,
+            )
+            .expect("key");
+            with_id(PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID, &stored);
+            with_id(PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID, &request);
+            let answer = read_packet(&mut stream, None).expect("response");
+            let (id, body) = split_packet(&answer).expect("split");
+            assert_eq!(id, PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID);
+            assert!(body.ends_with(&[1, 2, 7, 9]));
+        });
+        let stream = TcpStream::connect(address).expect("connect");
+        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let mut session = PlaySession::assemble(
+            stream,
+            None,
+            incoming,
+            PlayConnectionTrace::default(),
+            ("Tester", false),
+        );
+        session.wait(Duration::from_secs(5)).expect("store");
+        session.wait(Duration::from_secs(5)).expect("request");
+        server.join().expect("server");
+        assert!(session.trace.cookies.get(&key).is_some());
     }
 }

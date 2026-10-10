@@ -332,3 +332,23 @@ pub(crate) const GAME_EVENT_ELDER_GUARDIAN_ID: u8 = 10;
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
 pub(crate) const VANILLA_STONE_ITEM_REGISTRY_ID: i32 = 1;
+
+/// Login phase: a question the client may answer, a cookie the server asks for and their answers.
+pub(crate) const LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID: i32 = 4;
+pub(crate) const LOGIN_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID: i32 = 5;
+pub(crate) const LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID: i32 = 2;
+pub(crate) const LOGIN_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID: i32 = 4;
+
+/// Configuration phase: the cookie, custom payload and report-detail packets.
+pub(crate) const CONFIG_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID: i32 = 0;
+pub(crate) const CONFIG_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID: i32 = 1;
+pub(crate) const CONFIG_CLIENTBOUND_STORE_COOKIE_PACKET_ID: i32 = 10;
+pub(crate) const CONFIG_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID: i32 = 15;
+pub(crate) const CONFIG_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID: i32 = 1;
+
+/// Play phase: the same packets.
+pub(crate) const PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID: i32 = 21;
+pub(crate) const PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID: i32 = 24;
+pub(crate) const PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID: i32 = 120;
+pub(crate) const PLAY_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID: i32 = 136;
+pub(crate) const PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID: i32 = 21;

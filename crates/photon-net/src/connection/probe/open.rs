@@ -70,6 +70,32 @@ pub(crate) fn open_play_connection(
                 send_configuration_start(&mut stream, information, compression_threshold)?;
                 break;
             }
+            LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID => {
+                // `handleCustomQuery`: nothing to answer with.
+                let query = crate::cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
+                    .map_err(|_| ConnectionError::Codec("login custom query"))?;
+                send_packet(
+                    &mut stream,
+                    ConnectionProtocol::Login,
+                    LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID,
+                    |output| {
+                        crate::cookie::encode_unanswered_query(query.transaction_id, output);
+                        Ok(())
+                    },
+                    compression_threshold,
+                )?;
+            }
+            LOGIN_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
+                answer_cookie_request(
+                    &mut stream,
+                    (
+                        ConnectionProtocol::Login,
+                        LOGIN_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID,
+                    ),
+                    (payload, compression_threshold),
+                    &trace.cookies,
+                )?;
+            }
             0 => return Err(ConnectionError::ServerDisconnected),
             1 => {
                 return Err(ConnectionError::UnsupportedPacket {
@@ -247,6 +273,26 @@ pub(crate) fn configure_connection(
                 trace.configuration_finished = true;
                 break;
             }
+            CONFIG_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
+                answer_cookie_request(
+                    stream,
+                    (
+                        ConnectionProtocol::Configuration,
+                        CONFIG_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID,
+                    ),
+                    (payload, compression_threshold),
+                    &trace.cookies,
+                )?;
+            }
+            CONFIG_CLIENTBOUND_STORE_COOKIE_PACKET_ID => {
+                store_cookie(trace, payload)?;
+            }
+            CONFIG_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {
+                take_custom_payload(trace, payload)?;
+            }
+            CONFIG_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID => {
+                take_report_details(trace, payload)?;
+            }
             2 => return Err(ConnectionError::ServerDisconnected),
             9 | 11 => {
                 return Err(ConnectionError::UnsupportedPacket {
@@ -264,5 +310,63 @@ pub(crate) fn configure_connection(
             )));
         }
     }
+    Ok(())
+}
+
+/// Answer a cookie the server asked for with what the client keeps under that key, or nothing.
+pub(crate) fn answer_cookie_request(
+    stream: &mut TcpStream,
+    (phase, response_id): (ConnectionProtocol, i32),
+    (payload, compression_threshold): (&[u8], Option<usize>),
+    cookies: &crate::cookie::CookieStore,
+) -> Result<(), ConnectionError> {
+    let request = crate::cookie::ClientboundCookieRequestPacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("cookie request"))?;
+    let answer = cookies.answer(&request);
+    send_packet(
+        stream,
+        phase,
+        response_id,
+        |output| {
+            answer
+                .encode(output)
+                .map_err(|_| ConnectionError::Codec("cookie response"))
+        },
+        compression_threshold,
+    )
+}
+
+/// `handleStoreCookie`.
+pub(crate) fn store_cookie(
+    trace: &mut PlayConnectionTrace,
+    payload: &[u8],
+) -> Result<(), ConnectionError> {
+    let packet = crate::cookie::ClientboundStoreCookiePacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("store cookie"))?;
+    trace.cookies.store(&packet.key, packet.payload);
+    Ok(())
+}
+
+/// `handleCustomPayload`: the brand is kept, other payloads are not acted on.
+pub(crate) fn take_custom_payload(
+    trace: &mut PlayConnectionTrace,
+    payload: &[u8],
+) -> Result<(), ConnectionError> {
+    let packet = crate::cookie::ClientboundCustomPayloadPacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("custom payload"))?;
+    if let Some(brand) = packet.brand() {
+        trace.server_brand = Some(brand);
+    }
+    Ok(())
+}
+
+/// `handleCustomReportDetails`.
+pub(crate) fn take_report_details(
+    trace: &mut PlayConnectionTrace,
+    payload: &[u8],
+) -> Result<(), ConnectionError> {
+    let packet = crate::cookie::ClientboundCustomReportDetailsPacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("custom report details"))?;
+    trace.custom_report_details = packet.details;
     Ok(())
 }
