@@ -352,7 +352,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 
 - [x] **PLAN-M9** Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl — S · bitti (ea4eee6d)
 - [ ] [T100](T100-cerez-ozel-yuk.md) Çerez, özel yük ve sunucu bağlantıları paketleri — M
-- [x] [T101](T101-yeniden-yapilandirma.md) Yeniden yapılandırma (oyun → yapılandırma → oyun) — M · bitti (HASH)
+- [x] [T101](T101-yeniden-yapilandirma.md) Yeniden yapılandırma (oyun → yapılandırma → oyun) — M · bitti (11e4b2d9)
 - [ ] [T102](T102-transfer.md) Transfer paketi ve çerezlerin taşınması — M · bağımlı: T100, T101
 - [ ] [T103](T103-kaynak-paketi-istemi.md) Sunucu kaynak paketi: paketler ve onay ekranı — M · bağımlı: T101
 - [ ] [T104](T104-kaynak-paketi-indirme.md) Sunucu kaynak paketi: indirme, doğrulama, yükleme — L · bağımlı: T103 · **kullanıcı kararı**
