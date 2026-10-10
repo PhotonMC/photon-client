@@ -108,7 +108,7 @@ impl LocalPlayer {
         !self.first_tick && self.lava.height > 0.0
     }
 
-    pub(super) fn is_under_water(&self) -> bool {
+    pub fn is_under_water(&self) -> bool {
         self.was_eye_in_water && self.is_in_water()
     }
 

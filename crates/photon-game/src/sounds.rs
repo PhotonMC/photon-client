@@ -2,6 +2,7 @@
 //! can play, and how one is picked by weight (`SoundManager`, `WeighedSoundEvents`, `Sound`).
 
 pub mod engine;
+pub mod music;
 
 use std::collections::HashMap;
 

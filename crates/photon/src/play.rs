@@ -262,6 +262,8 @@ struct Play {
     sounds_heard: usize,
     /// The sound engine, if there is a device to play on.
     sound: Option<SoundSystem>,
+    /// The music of the dimension and its biomes.
+    music: crate::music::GameMusic,
     /// The level's particles.
     particles: crate::particles::Particles,
     frames: u64,

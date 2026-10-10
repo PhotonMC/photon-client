@@ -69,6 +69,8 @@ pub struct SoundSystem {
     _output: Output,
     followed: Followed,
     local_sounds: u32,
+    /// The song the music manager has playing.
+    music: Option<photon_game::sounds::engine::InstanceId>,
 }
 
 impl SoundSystem {
@@ -111,6 +113,7 @@ impl SoundSystem {
             _output: output,
             followed: Arc::new(Mutex::new(HashMap::new())),
             local_sounds: 0,
+            music: None,
         })
     }
 
@@ -216,6 +219,37 @@ impl SoundSystem {
                 self.engine.refresh_category_volume(source);
             }
         }
+    }
+
+    /// `SimpleSoundInstance.forMusic`: a song over everything, not placed anywhere.
+    pub fn play_music(&mut self, event: &str) -> photon_game::sounds::music::Started {
+        use photon_game::sounds::engine::{Attenuation, PlayResult};
+        use photon_game::sounds::music::Started;
+        let mut instance = SoundInstance::new(event, SoundSource::Music, RandomSource::create(0));
+        instance.attenuation = Attenuation::None;
+        instance.relative = true;
+        let id = self.engine.add(instance);
+        self.music = Some(id);
+        log::info!("music: {event}");
+        match self.engine.play(id) {
+            PlayResult::Started => Started::Yes,
+            PlayResult::StartedSilently => Started::Silently,
+            PlayResult::NotStarted => Started::No,
+        }
+    }
+
+    pub fn stop_music(&mut self) {
+        if let Some(id) = self.music.take() {
+            self.engine.stop(id);
+        }
+    }
+
+    pub fn music_active(&self) -> bool {
+        self.music.is_some_and(|id| self.engine.is_active(id))
+    }
+
+    pub fn update_music_volume(&mut self, gain: f32) {
+        self.engine.update_category_volume(SoundSource::Music, gain);
     }
 
     /// One client tick of sound: the entities that sounds follow are looked up, then the engine ticks.

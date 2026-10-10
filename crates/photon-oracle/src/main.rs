@@ -103,6 +103,7 @@ use std::io::{self, BufRead, Write};
 use std::rc::Rc;
 
 mod hex;
+mod music;
 use hex::*;
 mod information;
 use information::*;

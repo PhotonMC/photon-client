@@ -96,6 +96,9 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,
             "credits_screen" => credits_screen_case(&mut ctx, row)?,
+            "music_manager" => crate::music::music_manager_result(&json!({"rows": [row.clone()]}))?
+                ["rows"][0]
+                .clone(),
             "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
             "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
             "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,

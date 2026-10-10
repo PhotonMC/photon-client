@@ -137,6 +137,11 @@ impl Play {
         {
             controls.options.framerate_limit = limit;
         }
+        let music = crate::music::GameMusic::load(
+            &data_root,
+            session.dimension_type().unwrap_or("minecraft:overworld"),
+            session.registry_names("minecraft:worldgen/biome"),
+        );
         let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
         let language = &controls.options.language_code;
         let mut gui = Gui::load(
@@ -197,6 +202,7 @@ impl Play {
             ticks: 0,
             sounds_heard: 0,
             sound,
+            music,
             particles,
             frames: 0,
             profile: FrameProfile::from_env(),
@@ -419,6 +425,8 @@ impl Play {
         if let Some(sound) = self.sound.as_mut() {
             sound.apply_volumes(&self.controls.options);
             sound.tick(self.session.world(), false);
+            self.music
+                .tick(&self.session, sound, self.controls.options.music_frequency);
         }
         if let Some(screen) = self.controls.screen.as_mut() {
             screen.tick(self.session.active_menu());

@@ -197,6 +197,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
                 }
                 json!({"rows": rows})
             }
+            "music_manager" => crate::music::music_manager_result(&request)?,
             "damage_effects" => {
                 let mut rows: Vec<Value> = photon_data::damage_effect::effect_sounds()
                     .map(|(name, sound)| {

@@ -8,6 +8,7 @@ mod hud_input;
 mod logger;
 mod menu;
 mod mobs;
+mod music;
 mod objects;
 mod overlays;
 mod particles;

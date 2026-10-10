@@ -163,4 +163,125 @@ class GuiSocialOracle extends GuiCreditsOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /** A game whose music situation and volume the scenario sets. */
+    static final class MusicGame extends net.minecraft.client.Minecraft {
+        net.minecraft.sounds.Music music;
+        float volume = 1.0F;
+        net.minecraft.client.sounds.SoundManager sounds;
+
+        MusicGame() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.sounds.Music getSituationalMusic() {
+            return music;
+        }
+
+        @Override
+        public float getMusicVolume() {
+            return volume;
+        }
+
+        @Override
+        public net.minecraft.client.sounds.SoundManager getSoundManager() {
+            return sounds;
+        }
+    }
+
+    /** A sound manager that writes down what the music manager asks of it. */
+    static final class MusicSounds extends net.minecraft.client.sounds.SoundManager {
+        final java.util.List<String> calls = new java.util.ArrayList<>();
+        boolean active;
+
+        MusicSounds() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.sounds.SoundEngine.PlayResult play(
+                net.minecraft.client.resources.sounds.SoundInstance instance) {
+            calls.add("play " + instance.getIdentifier());
+            active = true;
+            return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
+        }
+
+        @Override
+        public void stop(net.minecraft.client.resources.sounds.SoundInstance instance) {
+            calls.add("stop " + instance.getIdentifier());
+            active = false;
+        }
+
+        @Override
+        public boolean isActive(net.minecraft.client.resources.sounds.SoundInstance instance) {
+            return active;
+        }
+
+        @Override
+        public void updateCategoryVolume(net.minecraft.sounds.SoundSource source, float gain) {
+            calls.add("volume " + Oracle.bits(gain));
+        }
+    }
+
+    private static net.minecraft.sounds.Music musicOf(JsonObject object) {
+        return new net.minecraft.sounds.Music(
+            net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvent.createVariableRangeEvent(
+                net.minecraft.resources.Identifier.parse(object.get("sound").getAsString()))),
+            object.get("min").getAsInt(), object.get("max").getAsInt(), object.get("replace").getAsBoolean());
+    }
+
+    /**
+     * The reference's own `MusicManager`, ticked with what the scenario says the game wants: its
+     * delay, the song it has and what it asked the sound manager for after each tick.
+     */
+    static JsonObject musicManager(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var game = (MusicGame) unsafe.allocateInstance(MusicGame.class);
+            var sounds = (MusicSounds) unsafe.allocateInstance(MusicSounds.class);
+            set(sounds, "calls", new java.util.ArrayList<String>());
+            game.sounds = sounds;
+            set(game, "gui", unsafe.allocateInstance(net.minecraft.client.gui.Gui.class));
+            var manager = (net.minecraft.client.sounds.MusicManager) unsafe.allocateInstance(
+                net.minecraft.client.sounds.MusicManager.class);
+            var random = net.minecraft.util.RandomSource.create(row.get("seed").getAsLong());
+            set(manager, "random", random);
+            set(manager, "minecraft", game);
+            set(manager, "gameMusicFrequency",
+                net.minecraft.client.sounds.MusicManager.MusicFrequency.valueOf(row.get("frequency").getAsString()));
+            set(manager, "currentGain", 1.0F);
+            set(manager, "nextSongDelay", 100);
+            var ticks = new JsonArray();
+            for (var tickElement : row.getAsJsonArray("ticks")) {
+                var tick = tickElement.getAsJsonObject();
+                game.music = tick.get("music").isJsonNull() ? null : musicOf(tick.get("music").getAsJsonObject());
+                game.volume = Oracle.f32(tick, "volume");
+                if (tick.has("active")) {
+                    sounds.active = tick.get("active").getAsBoolean();
+                }
+                sounds.calls.clear();
+                manager.tick();
+                var out = new JsonObject();
+                out.addProperty("delay", (int) get(manager, "nextSongDelay"));
+                var current = get(manager, "currentMusic");
+                out.addProperty("current", current == null ? ""
+                    : ((net.minecraft.client.resources.sounds.SoundInstance) current).getIdentifier().toString());
+                out.addProperty("gain", Oracle.bits((float) get(manager, "currentGain")));
+                var calls = new JsonArray();
+                sounds.calls.forEach(calls::add);
+                out.add("calls", calls);
+                ticks.add(out);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ticks", ticks);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
 }
