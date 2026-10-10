@@ -292,7 +292,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T64c](T64c-ses-tetikleri-son.md) Oyuncunun hasar ve ölüm sesi — M · bağımlı: T64b · bitti (a008d958)
 - [x] [T64d](T64d-ses-tetikleri-ortam-muzik.md) Ortam, olay sesleri ve müzik — L · bağımlı: T64c · bölündü (aad24c25)
 - [x] [T64e](T64e-muzik.md) Müzik: `MusicManager`, biyom müziği, çalma — M · bağımlı: T64d · bitti (aad24c25)
-- [x] [T64f](T64f-ortam-sesleri.md) Su altı ortam sesleri (giriş/çıkış, döngü, ek sesler) — M · bağımlı: T64e · bitti (HASH)
+- [x] [T64f](T64f-ortam-sesleri.md) Su altı ortam sesleri (giriş/çıkış, döngü, ek sesler) — M · bağımlı: T64e · bitti (2e328f76)
 - [ ] [T64g](T64g-biyom-ortam-sesleri.md) Biyom ve mağara ortam sesleri, olay/eşya kullanım sesleri, ekran ve ejderha müziği — L · bağımlı: T64f
 - [x] [T65](T65-ses-ayarlari-ekrani.md) Ses ayarları ekranı — M · bağımlı: T63, T06 · bitti (a9e6230d)
 - [ ] **K-M7** Altyazılar, duraklatmada süren kategoriler, kalan ses ayarları — M×2
