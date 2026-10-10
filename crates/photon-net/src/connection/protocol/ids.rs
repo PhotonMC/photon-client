@@ -356,3 +356,11 @@ pub(crate) const PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID: i32 = 21;
 /// `ClientboundTransferPacket`.
 pub(crate) const CONFIG_CLIENTBOUND_TRANSFER_PACKET_ID: i32 = 11;
 pub(crate) const PLAY_CLIENTBOUND_TRANSFER_PACKET_ID: i32 = 129;
+
+/// The server resource pack packets: the server's push and pop and the client's answer.
+pub(crate) const CONFIG_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID: i32 = 8;
+pub(crate) const CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID: i32 = 9;
+pub(crate) const CONFIG_SERVERBOUND_RESOURCE_PACK_PACKET_ID: i32 = 6;
+pub(crate) const PLAY_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID: i32 = 80;
+pub(crate) const PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID: i32 = 81;
+pub(crate) const PLAY_SERVERBOUND_RESOURCE_PACK_PACKET_ID: i32 = 49;

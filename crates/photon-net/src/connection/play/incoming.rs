@@ -35,6 +35,11 @@ impl PlaySession {
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => self.on_login(payload)?,
             PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID => self.reconfigure()?,
             PLAY_CLIENTBOUND_TRANSFER_PACKET_ID => self.transfer(payload)?,
+            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID => self.on_resource_pack_push(payload)?,
+            // Nothing was loaded, so there is nothing to take off.
+            PLAY_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {
+                parse_resource_pack_pop(payload)?;
+            }
             PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => self.on_cookie_request(payload)?,
             PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID => store_cookie(&mut self.trace, payload)?,
             PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {

@@ -67,15 +67,27 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
             in_world: row["in_world"].as_bool().unwrap_or(false),
         }
     };
-    let mut screen = match row["link"].as_object() {
-        Some(link) => ConfirmScreen::link(
+    let mut screen = match (row["link"].as_object(), row["pack"].as_object()) {
+        (Some(link), _) => ConfirmScreen::link(
             font,
             &lang,
             size,
             link["url"].as_str().unwrap_or_default(),
             link["trusted"].as_bool().unwrap_or(false),
         ),
-        None => ConfirmScreen::new(
+        (None, Some(pack)) => ConfirmScreen::server_pack(
+            font,
+            &lang,
+            size,
+            pack.get("required")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            pack.get("prompt")
+                .and_then(Value::as_str)
+                .map(photon_game::text::Component::literal)
+                .as_ref(),
+        ),
+        (None, None) => ConfirmScreen::new(
             font,
             &lang,
             size,

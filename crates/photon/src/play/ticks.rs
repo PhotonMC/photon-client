@@ -361,6 +361,11 @@ impl Play {
             .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls.receive_pack_requests(
+            &mut self.session,
+            &mut self.surface,
+            &self.screen_assets,
+        );
         self.controls
             .receive_win_game(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls

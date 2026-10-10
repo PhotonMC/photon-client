@@ -28,6 +28,10 @@ impl Controls {
         session: &mut PlaySession,
         surface: &mut WindowSurface,
     ) -> Result {
+        if self.pack_prompt.is_some() {
+            self.confirm = None;
+            return self.answer_pack_prompt(action == ConfirmAction::Yes, session);
+        }
         match action {
             ConfirmAction::Yes => surface.request_close(),
             ConfirmAction::No => {

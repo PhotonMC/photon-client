@@ -156,6 +156,8 @@ pub struct PlaySession {
     /// The server took the connection through the configuration phase again since the last
     /// [`Self::take_reconfigured`].
     pub(super) reconfigured: bool,
+    /// Resource packs the server asked for that the player is yet to be asked about.
+    pub(super) pack_requests: Vec<PackRequest>,
     /// The hotbar slot the server was last told about.
     pub(super) sent_slot: i32,
     /// Breaking state and the miss wait.

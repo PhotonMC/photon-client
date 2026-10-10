@@ -66,6 +66,8 @@ mod reader;
 pub(crate) use reader::*;
 mod recipe;
 pub(crate) use recipe::*;
+mod resource_pack;
+pub use resource_pack::*;
 mod scoreboard;
 pub(crate) use scoreboard::*;
 mod serverbound;

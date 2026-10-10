@@ -243,6 +243,25 @@ class GuiScreenOracle extends GuiOverlayOracle {
             Component message = Component.literal(row.get("message").getAsString());
             Component yes = Component.literal(row.get("yes").getAsString());
             Component no = Component.literal(row.get("no").getAsString());
+            if (row.has("pack")) {
+                // The wording of ClientCommonPacketListenerImpl.PackConfirmScreen, which is private.
+                var pack = row.getAsJsonObject("pack");
+                boolean required = pack.get("required").getAsBoolean();
+                Component prompt = pack.has("prompt") ? Component.literal(pack.get("prompt").getAsString()) : null;
+                Component header = required
+                    ? Component.translatable("multiplayer.requiredTexturePrompt.line2")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW, net.minecraft.ChatFormatting.BOLD)
+                    : Component.translatable("multiplayer.texturePrompt.line2");
+                title = required
+                    ? Component.translatable("multiplayer.requiredTexturePrompt.line1")
+                    : Component.translatable("multiplayer.texturePrompt.line1");
+                message = prompt == null ? header
+                    : Component.translatable("multiplayer.texturePrompt.serverPrompt", header, prompt);
+                yes = required ? net.minecraft.network.chat.CommonComponents.GUI_PROCEED
+                    : net.minecraft.network.chat.CommonComponents.GUI_YES;
+                no = required ? net.minecraft.network.chat.CommonComponents.GUI_DISCONNECT
+                    : net.minecraft.network.chat.CommonComponents.GUI_NO;
+            }
             net.minecraft.client.gui.screens.ConfirmScreen confirm =
                 row.has("link")
                     ? new net.minecraft.client.gui.screens.ConfirmLinkScreen(callback,

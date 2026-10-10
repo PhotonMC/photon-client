@@ -130,6 +130,8 @@ pub struct Controls {
     pub confirm: Option<ConfirmScreen>,
     /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
     pub link_confirm: Option<(ConfirmScreen, String)>,
+    /// The server resource packs the player is being asked about; the question is `confirm`.
+    pub pack_prompt: Option<pack_prompt::PackPrompt>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
@@ -316,6 +318,7 @@ mod events;
 mod keybinds;
 
 mod options;
+mod pack_prompt;
 
 mod pause;
 
@@ -374,6 +377,7 @@ impl Controls {
             book_edit: None,
             confirm: None,
             link_confirm: None,
+            pack_prompt: None,
             disconnected: None,
             leave: false,
             options_saved: false,

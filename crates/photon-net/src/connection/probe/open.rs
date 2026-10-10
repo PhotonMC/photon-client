@@ -324,12 +324,28 @@ pub(crate) fn configure_connection(
                     port: transfer.port,
                 });
             }
-            9 => {
-                return Err(ConnectionError::UnsupportedPacket {
-                    phase: ConnectionProtocol::Configuration,
-                    id: packet_id,
-                });
+            CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID => {
+                // There is no screen to ask on during configuration and nothing to load a pack
+                // with: a pack is declined (an address that is not one is reported as such).
+                let request = parse_resource_pack_push(payload)?;
+                let action = if request.has_valid_url() {
+                    PackAction::Declined
+                } else {
+                    PackAction::InvalidUrl
+                };
+                send_packet(
+                    stream,
+                    ConnectionProtocol::Configuration,
+                    CONFIG_SERVERBOUND_RESOURCE_PACK_PACKET_ID,
+                    |output| {
+                        encode_resource_pack(request.id, action, output);
+                        Ok(())
+                    },
+                    compression_threshold,
+                )?;
             }
+            // Nothing was loaded, so there is nothing to take off.
+            CONFIG_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {}
             _ => {}
         }
 

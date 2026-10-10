@@ -135,14 +135,31 @@ impl PlaySession {
         self.trace.profile_id
     }
 
-    /// Whether the server replaced the level since the last call, so
-    /// everything drawn from the old one should go.
+    /// The resource packs the server asked for since the last call: the player is asked about them.
+    pub fn take_pack_requests(&mut self) -> Vec<PackRequest> {
+        std::mem::take(&mut self.pack_requests)
+    }
+
+    /// `ServerboundResourcePackPacket`: how the client answers a pack.
+    pub fn answer_resource_pack(
+        &mut self,
+        id: photon_core::binary::Uuid,
+        action: PackAction,
+    ) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_RESOURCE_PACK_PACKET_ID, |output| {
+            encode_resource_pack(id, action, output);
+            Ok(())
+        })
+    }
+
     /// Whether the server took the connection through the configuration phase again: what was
     /// open over the old level is closed (`Minecraft.clearClientLevel`).
     pub fn take_reconfigured(&mut self) -> bool {
         std::mem::take(&mut self.reconfigured)
     }
 
+    /// Whether the server replaced the level since the last call, so
+    /// everything drawn from the old one should go.
     pub fn take_level_reset(&mut self) -> bool {
         std::mem::take(&mut self.level_reset)
     }

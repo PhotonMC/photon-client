@@ -25,4 +25,4 @@ G (`server_pack_confirm_screen`); paket birim testleri.
 `docs/gui-oracle.md`, kayıt `client-resource-pack-prompt-conformance.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: push/pop/yanıt paketleri (yapılandırma ve oyun), `PlaySession::{take_pack_requests,answer_resource_pack,disconnect}`, `ConfirmScreen::server_pack` + `Controls::pack_prompt`, `confirm_screen` oracle'ında `pack-*` satırları (64/64 Java parity). Sapma: indirme yok, kabul `ACCEPTED`+`FAILED_DOWNLOAD`; yapılandırmada paket `DECLINED`. Açık: canlı Pumpkin denemesi yapılmadı. Kayıt: [client-resource-pack-prompt-conformance.md](../records/client-resource-pack-prompt-conformance.md).

@@ -361,12 +361,14 @@ def gui_confirm_screen_cases():
     what the callback was told."""
     def row(label, width=427, height=240, mouse=(0, 0), death=False, title="Are you sure?",
             message="This cannot be undone.", yes="Yes", no="No", delay=0, ticks=0, keys=(), click=False,
-            in_world=False, link=None):
+            in_world=False, link=None, pack=None):
         row = {"label": label, "width": width, "height": height, "mouse": list(mouse), "death": death,
                "title": title, "message": message, "yes": yes, "no": no, "delay": delay, "ticks": ticks,
                "keys": list(keys), "click": click, "in_world": in_world}
         if link:
             row["link"] = link
+        if pack:
+            row["pack"] = pack
         return row
 
     long_message = ("This message is long enough that it has to wrap onto several lines of the screen "
@@ -428,6 +430,19 @@ def gui_confirm_screen_cases():
         row("link-click-yes", mouse=(110, 150), click=True, link=untrusted),
         row("link-click-no", mouse=(320, 150), click=True, link=untrusted),
         row("link-click-gap", mouse=(161, 150), click=True, link=untrusted),
+    ]
+    # The server resource pack question: wording of an optional and a required pack, with and
+    # without the server's own prompt, and the answers' keys.
+    optional, required = {"required": False}, {"required": True}
+    with_prompt = lambda base: {**base, "prompt": "Get the server textures to see custom items."}
+    rows += [
+        row("pack", pack=optional), row("pack-prompt", pack=with_prompt(optional)),
+        row("pack-required", pack=required), row("pack-required-prompt", pack=with_prompt(required)),
+        row("pack-required-small", 320, 240, pack=with_prompt(required)),
+        row("pack-in-world", in_world=True, pack=with_prompt(optional)),
+        row("pack-hover-no", mouse=(300, 145), pack=required),
+        row("pack-click-yes", mouse=(100, 145), click=True, pack=required),
+        row("pack-click-no", mouse=(300, 145), click=True, pack=optional),
     ]
     yield {"case_id": "gui/confirm-screen", "family": "gui", "operation": "confirm_screen", "rows": rows}
 

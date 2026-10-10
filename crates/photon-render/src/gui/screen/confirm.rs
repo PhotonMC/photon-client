@@ -145,6 +145,46 @@ impl ConfirmScreen {
         )
     }
 
+    /// `ClientCommonPacketListenerImpl.PackConfirmScreen`: the question about the server's
+    /// resource packs, in the wording of a pack that is required or not, with the server's own
+    /// prompt under it when it sent one.
+    pub fn server_pack(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        required: bool,
+        prompt: Option<&Component>,
+    ) -> Self {
+        let translated = Component::translatable;
+        let (title, header, yes, no) = if required {
+            (
+                translated("multiplayer.requiredTexturePrompt.line1"),
+                translated("multiplayer.requiredTexturePrompt.line2").with_style(&Style {
+                    colour: photon_game::text::named_colour("yellow"),
+                    bold: Some(true),
+                    ..Style::default()
+                }),
+                translated("gui.proceed"),
+                translated("menu.disconnect"),
+            )
+        } else {
+            (
+                translated("multiplayer.texturePrompt.line1"),
+                translated("multiplayer.texturePrompt.line2"),
+                translated("gui.yes"),
+                translated("gui.no"),
+            )
+        };
+        let message = match prompt {
+            Some(prompt) => Component::translatable_with(
+                "multiplayer.texturePrompt.serverPrompt",
+                vec![header, prompt.clone()],
+            ),
+            None => header,
+        };
+        Self::new(font, lang, size, &title, &message, &yes, &no)
+    }
+
     /// `new ConfirmLinkScreen(callback, url, trusted)`: the link asked
     /// about, with "Copy to Clipboard" between the answers, and a warning
     /// when the link is not trusted.

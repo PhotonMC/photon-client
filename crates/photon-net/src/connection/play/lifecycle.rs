@@ -297,6 +297,7 @@ impl PlaySession {
             health_received: false,
             level_reset: false,
             reconfigured: false,
+            pack_requests: Vec::new(),
             sent_slot: 0,
             game_mode_state: photon_game::game_mode::GameMode::default(),
             container_menu: photon_game::menus::container::ContainerMenu::default(),
@@ -377,6 +378,13 @@ impl PlaySession {
                     ));
                 }
             }
+        }
+    }
+
+    /// `Connection.disconnect`: the client ends the connection, with the reason it shows.
+    pub fn disconnect(&mut self, reason: photon_game::text::Component) {
+        if self.disconnect.is_none() {
+            self.disconnect = Some(reason);
         }
     }
 

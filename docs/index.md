@@ -211,6 +211,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T40c — Yanan TNT — client-parity](records/client-primed-tnt-parity-conformance.md)
 - [T32g — Ravager — client-parity](records/client-ravager-parity-conformance.md)
 - [Yeniden yapılandırma (`StartConfiguration`) — [server-conformance değil, sahte sunucu testi]](records/client-reconfiguration-conformance.md)
+- [Sunucu kaynak paketi isteği ve onay ekranı — [ekran: client-parity; paketler: sahte sunucu testi]](records/client-resource-pack-prompt-conformance.md)
 - [P06–P08 — Ölçülebilir istemci giriş ucu — server-conformance birleşik kayıt](records/client-runtime-conformance.md)
 - [Ekran örtüleri (`ScreenEffectRenderer`) — client-parity](records/client-screen-effects-parity-conformance.md)
 - [T35d — Yunus ve kaplumbağa — client-parity](records/client-sea-animals-parity-conformance.md)
