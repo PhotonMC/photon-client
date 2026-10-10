@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %82 bitti** (ağırlıklı) · 268/305 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
+**Toplam: %82 bitti** (ağırlıklı) · 269/306 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -41,13 +41,13 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 36/42 |
 | M7 Ses | `███████████████░░░░░` | 77 | 10/12 |
-| M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 36/42 |
+| M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 37/43 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64d, T70i, T78e, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64d, T70i, T78f, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -323,7 +323,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T77b](T77b-kirilan-esya-parcaciklari.md) Kırılan eşya parçacıkları ve `ItemParticleOption` — M · bağımlı: T77 · bitti (7e60ee72)
 - [x] [T78](T78-seviye-olaylari.md) `LevelEvent` ve `BlockEvent` işleyicileri — L · bağımlı: T71b, T64b · bölündü (3898df28)
 - [x] [T78b](T78b-kalan-seviye-olaylari.md) Kalan seviye olayları (iksir, kemik tozu, 3000'ler, küresel, jukebox) — L · bağımlı: T78, T77b · bölündü (710bfd9a)
-- [ ] [T78e](T78e-son-seviye-olaylari.md) Son seviye olayları (kemik tozu, ejderha nefesi, 3000'ler, küresel, jukebox) — L · bağımlı: T78b
+- [x] [T78e](T78e-son-seviye-olaylari.md) Son seviye olayları (kemik tozu, ejderha nefesi, 3000'ler, küresel, jukebox) — L · bağımlı: T78b · bölündü (HASH)
+- [ ] [T78f](T78f-kalan-seviye-olaylari.md) Kalan seviye olayları (sarkıt, kemik tozu, deneme spawner'ı, kasa, jukebox) — L · bağımlı: T78e
 - [x] [T78c](T78c-blok-olaylari.md) `BlockEvent` işleyicileri (nota bloğu, piston, çan) — M · bağımlı: T78 · bitti (cdbcfa0c)
 - [ ] [T78d](T78d-kalan-blok-olaylari.md) Kalan blok olayları (piston, saksı, spawner, geçit) — L · bağımlı: T78c
 - [x] [T79](T79-blok-entity-cizici-iskeleti.md) Blok entity çizici iskeleti ve sandık ailesi — L · bitti (864fe2b0)

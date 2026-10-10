@@ -39,6 +39,7 @@ pub(super) enum Mark {
     Shriek,
     Firework,
     Flash,
+    DragonBreath,
 }
 
 impl Mark {
@@ -65,6 +66,7 @@ impl Mark {
             "shriek" => Self::Shriek,
             "firework" => Self::Firework,
             "flash" => Self::Flash,
+            "dragon_breath" => Self::DragonBreath,
             _ => return None,
         })
     }
@@ -193,6 +195,7 @@ impl Particle {
                 Self::firework_spark(random, (at, push), sprites, options)
             }
             Mark::Flash => return Self::firework_flash(random, at, sprites, provider_random, data),
+            Mark::DragonBreath => return Self::dragon_breath(random, (at, push), sprites, data),
         })
     }
 

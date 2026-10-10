@@ -64,6 +64,8 @@ pub enum ParticleData {
     Shriek { delay: i32 },
     /// What a firework's starter (or a spark with a trail) makes a `firework` spark with.
     FireworkSpark(super::firework::SparkOptions),
+    /// `PowerParticleOption`: how hard it is thrown.
+    Power(f32),
 }
 
 /// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity

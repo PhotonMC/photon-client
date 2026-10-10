@@ -80,6 +80,11 @@ impl ClientWorld {
             .push(LevelEvent::Level { event, pos, data });
     }
 
+    /// `ClientLevel.globalLevelEvent`, for the particle engine to play.
+    pub fn apply_global_level_event(&mut self, event: i32, pos: (i32, i32, i32)) {
+        self.level_events.0.push(LevelEvent::Global { event, pos });
+    }
+
     /// A firework rocket's explosions, for the particle engine to burst.
     pub fn create_fireworks(&mut self, launch: crate::particles::FireworkLaunch) {
         self.level_events
@@ -194,6 +199,8 @@ pub enum LevelEvent {
     },
     /// An explosion the server reports (`ClientboundExplodePacket`).
     Explosion(Box<crate::particles::Explosion>),
+    /// A level event every player hears (`LevelEventHandler.globalLevelEvent`).
+    Global { event: i32, pos: (i32, i32, i32) },
     /// A firework rocket went off (`ClientLevel.createFireworks`).
     Fireworks(Box<crate::particles::FireworkLaunch>),
 }

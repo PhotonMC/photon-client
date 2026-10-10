@@ -301,6 +301,11 @@ def level_event(tick, event, pos, data=0):
             "data": data}
 
 
+def global_level_event(tick, event, pos, data=0):
+    return {"tick": tick, "type": "global_level_event", "event": event, "x": pos[0], "y": pos[1], "z": pos[2],
+            "data": data}
+
+
 def block_event(tick, pos, b0=0, b1=0):
     return {"tick": tick, "type": "block_event", "x": pos[0], "y": pos[1], "z": pos[2], "b0": b0, "b1": b1}
 
@@ -554,6 +559,36 @@ def particle_engine_cases():
         engine_row("fireworks-no-explosion", [fireworks(0, (0.0, 70.0, 0.0), []),
                                               fireworks(1, (1.0, 70.0, 1.0), [])],
                    ticks=3, seeds=30, describe=6),
+        # The last level events that need no block entity: the dragon's breath (with and without its
+        # fireball), the gateway and the growl, the sparks on a rod's axis and on the faces, wax and
+        # scrapes, sculk charging (popped in a full and in a thin block, creeping over the faces of a
+        # block and of a vein), the shrieker (dry and under water), an egg, a cobweb.
+        engine_row("level-event-dragon-breath", [level_event(0, 2006, (1, 64, 1), 0), level_event(1, 2006, (-2, 64, 2), 1)],
+                   ticks=5, seeds=420, describe=10),
+        engine_row("level-event-end-sounds", [level_event(0, 3000, (2, 64, 2)), level_event(0, 3001, (-2, 64, -2))],
+                   ticks=10, seeds=60, describe=4),
+        engine_row("level-event-block-faces", [level_event(0, 3002, (1, 64, 1), -1), level_event(0, 3003, (2, 64, 2)),
+                                               level_event(1, 3004, (3, 64, 3)), level_event(1, 3005, (-1, 64, 3)),
+                                               level_event(2, 3009, (-3, 64, 1))],
+                   ticks=5, seeds=300, describe=12),
+        engine_row("level-event-rod-sparks", [level_event(0, 3002, (1, 64, 1), 0), level_event(0, 3002, (2, 64, 2), 1),
+                                              level_event(1, 3002, (-2, 64, 1), 2)],
+                   ticks=4, seeds=90, describe=8),
+        engine_row("level-event-sculk", [level_event(0, 3006, (1, 64, 1), 0), level_event(0, 3006, (-1, 64, 1), 0),
+                                         level_event(1, 3006, (3, 64, 3), (2 << 6) | 0), level_event(1, 3006, (-3, 64, 3), (3 << 6) | 0b101),
+                                         level_event(2, 3006, (3, 64, -3), (1 << 6) | 0b111111)],
+                   blocks=plane(63, "minecraft:stone", size=8)
+                   + [{"x": 1, "y": 64, "z": 1, "block": "minecraft:stone"},
+                      {"x": -1, "y": 64, "z": 1, "block": "minecraft:stone_slab", "properties": {"type": "bottom"}}],
+                   ticks=5, seeds=400, describe=12),
+        engine_row("level-event-shriek-and-web", [level_event(0, 3007, (1, 64, 1)), level_event(0, 3007, (-1, 64, 1)),
+                                                  level_event(1, 3018, (2, 64, 2))],
+                   blocks=[{"x": 1, "y": 64, "z": 1, "block": "minecraft:sculk_shrieker", "properties": {"waterlogged": "false"}},
+                           {"x": -1, "y": 64, "z": 1, "block": "minecraft:sculk_shrieker", "properties": {"waterlogged": "true"}}],
+                   ticks=5, seeds=40, describe=12),
+        engine_row("global-level-events", [global_level_event(0, 1023, (50, 70, 0)), global_level_event(0, 1028, (0, 64, -80)),
+                                           global_level_event(1, 1038, (-30, 100, 30)), global_level_event(1, 1000, (5, 5, 5))],
+                   ticks=3, seeds=2, describe=2),
         # Past the reservoir's start a particle gets in by a falling chance, and a full group lets none in.
         engine_row("reservoir", [packet(0, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000),
                                  packet(1, "smoke", (0.0, 64.0, 0.0), (3.0, 1.0, 3.0), 0.02, 14000)],

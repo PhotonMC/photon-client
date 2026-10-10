@@ -59,6 +59,9 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
                 block_particles,
             });
         }
+        "global_level_event" => {
+            world.apply_global_level_event(i32_field(event, "event")?, pos()?);
+        }
         "block_event" => {
             world.apply_note_block_event(pos()?);
         }

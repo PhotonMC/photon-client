@@ -65,6 +65,7 @@ pub(crate) fn read_particle_options(
                 scale: read_f32(input, NAME)?.clamp(0.01, 4.0),
             },
             "sculk_charge" => ParticleData::Roll(read_f32(input, NAME)?),
+            "dragon_breath" => ParticleData::Power(read_f32(input, NAME)?),
             "dust_color_transition" => ParticleData::DustTransition {
                 from: color(input)?,
                 to: color(input)?,

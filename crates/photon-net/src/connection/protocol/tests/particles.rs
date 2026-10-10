@@ -44,12 +44,16 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
 }
 
 #[test]
-fn a_type_with_options_is_skipped_with_what_follows_its_id() {
+fn the_dragons_breath_reads_its_power() {
     let dragon_breath = photon_data::particle_type::id("dragon_breath").unwrap();
-    let bytes = payload(dragon_breath, &[1, 2, 3, 4, 5]);
+    let bytes = payload(dragon_breath, &1.5_f32.to_be_bytes());
     let mut input = bytes.as_slice();
-    assert_eq!(read_level_particles_packet(&mut input).unwrap(), None);
+    let packet = read_level_particles_packet(&mut input).unwrap().unwrap();
     assert!(input.is_empty());
+    assert_eq!(
+        packet.data,
+        photon_world::particles::ParticleData::Power(1.5)
+    );
 }
 
 #[test]

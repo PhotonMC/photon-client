@@ -21,3 +21,5 @@ Rust: `crates/photon-world/src/particles/level_events_more.rs`.
 `docs/records/client-level-event-parity-conformance.md`.
 
 ## Devir notu
+Yapıldı: `particles/level_events_last.rs`: 2006 (+`dragon_breath` sağlayıcısı ve `PowerParticleOption` paket okuması), 3000–3007, 3009, 3018, küresel olaylar 1023/1028/1038 (`LevelEvent::Global`, paket yönlendirmesi). Oracle `particle-engine` 8 satır eşit. Kalan: T78f.
+Sapma: mesafe gecikmeli ses yok (oracle erteli sesi hemen sayar).

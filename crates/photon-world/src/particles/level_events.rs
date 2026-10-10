@@ -130,6 +130,9 @@ impl ParticleEngine {
                 return vec![self.note_block(context, pos, (sound, note))];
             }
             LevelEvent::Explosion(explosion) => return self.explode(*explosion, context),
+            LevelEvent::Global { event, pos } => {
+                return self.global_level_event((event, pos), context);
+            }
             LevelEvent::Fireworks(launch) => {
                 self.create_fireworks(*launch, context);
                 return Vec::new();
@@ -150,6 +153,9 @@ impl ParticleEngine {
             sounds.push(local_sound(name, source, (volume, pitch), pos, random));
         }
         if self.more_level_event((event, pos, data), context, &mut sounds) {
+            return sounds;
+        }
+        if self.last_level_event((event, pos, data), context, &mut sounds) {
             return sounds;
         }
         match event {

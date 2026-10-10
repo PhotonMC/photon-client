@@ -82,6 +82,8 @@ pub(super) enum Kind {
     FireworkSpark(super::firework::Spark),
     /// `FireworkParticles.OverlayParticle`: the flash of an explosion.
     Flash,
+    /// `DragonBreathParticle`: drifts out, settles to the ground and rises slowly from it.
+    DragonBreath { has_hit_ground: bool },
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
@@ -311,6 +313,10 @@ impl Particle {
             }
             Kind::Emitter(emitter) => return self.emitter_tick(emitter),
             Kind::FireworkStarter(_) => return Vec::new(),
+            Kind::DragonBreath { has_hit_ground } => {
+                self.dragon_breath_tick(world, has_hit_ground);
+                return Vec::new();
+            }
             Kind::Drip(drip) => return self.drip_tick(world, drip),
             Kind::FallingLeaves(leaf) => {
                 self.falling_leaves_tick(world, leaf);

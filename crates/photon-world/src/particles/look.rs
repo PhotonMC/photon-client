@@ -13,6 +13,7 @@ impl Particle {
         match self.kind {
             Kind::AshSmoke { .. }
             | Kind::PlayerCloud
+            | Kind::DragonBreath { .. }
             | Kind::Dust { .. }
             | Kind::Crit
             | Kind::Bobbing

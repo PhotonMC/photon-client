@@ -485,6 +485,8 @@ class MovementParticleOracle extends MovementMenuOracle {
         var camera = new net.minecraft.client.Camera();
         setField(camera, "position", new net.minecraft.world.phys.Vec3(
             Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"), Oracle.f64(row, "camera_z")));
+        // A global event is heard from where the camera is, once it is set up.
+        setField(camera, "initialized", true);
         var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
         setField(renderer, "mainCamera", camera);
         setField(minecraft, "gameRenderer", renderer);
@@ -575,6 +577,12 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt());
                     level.blockEvent(at, level.getBlockState(at).getBlock(), event.get("b0").getAsInt(),
                         event.get("b1").getAsInt());
+                    continue;
+                }
+                if (event.get("type").getAsString().equals("global_level_event")) {
+                    level.globalLevelEvent(event.get("event").getAsInt(), new net.minecraft.core.BlockPos(
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),
+                        event.get("data").getAsInt());
                     continue;
                 }
                 if (event.get("type").getAsString().equals("level_event")) {
