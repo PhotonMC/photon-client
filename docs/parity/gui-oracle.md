@@ -15,7 +15,7 @@ Screen layout and behaviour are verified by running Java's **own GUI code** head
 2. Add an operation in `GuiOracle.java` that drives the real class, and wire it into the dispatch `switch`.
 3. Add a `gui_<name>_cases()` generator under `tools/behavior/cases/gui/` and register it in `gui_generators`.
 4. Add the matching arm in `crates/photon-oracle/src/gui.rs`. The Rust screen is the production type; the adapter only sets it up and calls `draw`.
-5. Run `cargo xtask parity --capture --family gui` until it passes. If it differs, fix the Rust side.
+5. Run `cargo xtask parity --family gui` (new cases are captured automatically) until it passes. If it differs, fix the Rust side.
 
 Screen patterns:
 

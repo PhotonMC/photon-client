@@ -27,23 +27,21 @@ Calling the oracle only to produce constants (registry ids, hashes) is not `clie
 ```sh
 cargo xtask parity                      # compare every family except math
 cargo xtask parity --family gui         # one family (repeatable)
-cargo xtask parity --capture            # recapture Java first (after oracle or case changes)
+cargo xtask parity --recapture          # capture Java again even for known keys
 ```
 
 The pre-push hook runs parity when engine crates or reference sources changed. Requirements: the local reference installed by `python3 tools/photon.py setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
 
 ## How it works today
 
-- **Pins.** `tests/behavior/reference.json` pins the version (26.2, protocol 776, Java 25), the client jar SHA-1 and its libraries.
-- **Cases.** `tools/behavior/cases/` generates cases as JSONL, one generator per family.
-- **Oracle.** `tests/behavior/java/` holds the oracle classes: `Oracle.java` dispatches by family to `<Family>Oracle.run`. They call the game's own classes, built with `Unsafe` and reflection where the game expects a running client.
-- **Runner.** `tools/behavior/run.py`:
-  1. `capture` compiles the oracle, runs it twice, checks the two runs match, and stores the capture under `.data/captures/behavior/<identity>`. The identity hashes the jar and library hashes, JDK, OS/arch, family set, JVM flags, oracle sources, runner and inputs.
-  2. `compare` feeds the same inputs to `target/release/photon-oracle` and reports the first difference.
-- **Retention.** Passing runs leave no files behind; only the two newest captures per family set are kept.
-- **Adapter.** `crates/photon-oracle` reads JSONL from stdin and answers each case through the production Rust code.
-
-Exit codes: `0` passed or reference ready, `1` failed (a difference or an error), `2` blocked (missing reference, capture or adapter).
+- **Pins.** `tests/behavior/reference.json` pins the version (26.2, protocol 776, Java 25), the client jar SHA-1, its libraries, and each family's oracle sources.
+- **Cases.** `tools/behavior/cases/` generates cases as JSONL, one generator per family (moving to Rust, #7).
+- **Oracle.** `tests/behavior/java/` holds the oracle classes: `Oracle.java` dispatches by family to `<Family>Oracle.run`. They call the game's own classes, built with `Unsafe` and reflection where the game expects a running client. All sources are compiled once into `.data/parity/classes/<digest>/`.
+- **Keys.** Every case is keyed by `hash(game jar, libraries, JDK, OS/arch, JVM flags, the family's oracle sources, case input)`. Changing an oracle file or a case invalidates exactly the cases it can affect.
+- **Captures.** Java outputs live in `.data/parity/<version>/<family>.jsonl.gz`. Keys the store lacks are captured automatically: each family in its own JVM, twice, families in parallel; a capture is kept only if both runs agree. Rewriting a family drops keys no case uses any more.
+- **Comparison.** `target/release/photon-oracle` (`crates/photon-oracle`) answers every selected case through the production Rust code, in parallel, and each answer must equal the capture exactly. JSON numbers are parsed exactly (`float_roundtrip`), so a one-ulp difference is never hidden.
+- **Reports.** A passing run writes nothing. A failing run prints the first differences and writes `.data/parity/failures/<time>/failures.json` with the inputs; the newest five reports are kept.
+- **Determinism.** Families sharing one JVM in the past hid timing-dependent fixtures. Anything the oracle cannot seed (clock-seeded random sources, `ThreadLocalRandom`) must be pinned by the fixture; a non-repeatable capture fails the run.
 
 ### Adapter protocol
 
@@ -54,7 +52,7 @@ Exit codes: `0` passed or reference ready, `1` failed (a difference or an error)
 
 ## Families
 
-`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` is captured separately because its NaN bit patterns were recorded on x86-64 Linux.
+`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` is not in the default set: its NaN bit patterns were recorded on x86-64 Linux, and it has known open differences; run it with `--family math`.
 
 The GUI family has its own page: [GUI oracle](gui-oracle.md).
 

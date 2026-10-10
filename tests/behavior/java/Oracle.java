@@ -37,10 +37,13 @@ public final class Oracle {
      * unbound. The bootstrap redirects the standard streams into the game's
      * logger, which would swallow every record, so they are put back.
      */
-    static synchronized net.minecraft.core.RegistryAccess.Frozen vanillaRegistries() {
-        if (vanillaRegistries != null) {
-            return vanillaRegistries;
-        }
+    /**
+     * Bootstraps the game's built-in registries once. A case that touches game
+     * classes calls this itself instead of relying on an earlier case having
+     * done it. The bootstrap redirects the standard streams into the game's
+     * logger, which would swallow every record, so they are put back.
+     */
+    static synchronized void bootstrap() {
         var out = System.out;
         var err = System.err;
         // Another family may already have installed the shared version.
@@ -51,6 +54,13 @@ public final class Oracle {
             System.setOut(out);
             System.setErr(err);
         }
+    }
+
+    static synchronized net.minecraft.core.RegistryAccess.Frozen vanillaRegistries() {
+        if (vanillaRegistries != null) {
+            return vanillaRegistries;
+        }
+        bootstrap();
         var pack = net.minecraft.server.packs.repository.ServerPacksSource.createVanillaPackSource();
         var resources = new net.minecraft.server.packs.resources.MultiPackResourceManager(
             net.minecraft.server.packs.PackType.SERVER_DATA, java.util.List.of(pack));

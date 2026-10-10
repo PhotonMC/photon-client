@@ -56,5 +56,4 @@ The hooks run the same commands. The rules themselves are in the [coding standar
 
 ## Platform notes
 
-- **`math` parity on macOS arm64.** The `math` family does not pass there: its NaN bit patterns were captured on x86-64 Linux, and arm64 Java produces differently signed NaNs in some operations. The other families pass.
-- **Small families.** `binary`, `json`, `nbt`, `timer`, `utf8` and `window` cannot be captured alone with a single `--family`; run them together with another family.
+- **The `math` family** is not in the default set. Its NaN bit patterns were recorded on x86-64 Linux (arm64 Java produces differently signed NaNs), and it currently has known differences after the oracle stopped using HotSpot's `Math` intrinsics. Run it with `cargo xtask parity --family math`.

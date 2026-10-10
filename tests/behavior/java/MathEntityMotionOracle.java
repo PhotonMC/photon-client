@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 
 class MathEntityMotionOracle extends MathProjectileFixtures {
     static JsonObject clientWorldEntityPlayerHeadRotationResult(JsonObject request) {
+        Oracle.bootstrap();
         int entityId = request.get("entity_id").getAsInt();
         JsonObject initialPosition = request.getAsJsonObject("initial_position");
         JsonObject initialRotation = request.getAsJsonObject("initial_rotation");
