@@ -57,6 +57,35 @@ jobs:
       # reference itself.
       - run: cargo test --workspace --lib --bins --tests
 
+  # Java vs Rust parity. The pinned game is downloaded from Mojang's official
+  # servers into the runner's .data/ on every run and checked against its
+  # hashes. It is never cached or uploaded: no original or derived content
+  # leaves the runner, and the log carries only verdicts and differences.
+  parity:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build python3 libasound2-dev libwayland-dev \
+            libxkbcommon-dev xorg-dev
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: parity
+      - name: Fetch the pinned game from Mojang
+        run: python3 tools/photon.py setup
+      - run: cargo xtask parity
+
   deny:
     runs-on: ubuntu-latest
     steps:
