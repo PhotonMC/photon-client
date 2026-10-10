@@ -153,6 +153,40 @@ impl Dialog {
     }
 }
 
+/// Which screen `DialogScreen.runAction` leaves in place once a button has been used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Next {
+    /// The screen the dialog was opened over (`CLOSE`).
+    Previous,
+    /// The dialog itself (`NONE`).
+    Same,
+    /// The "waiting for a response" screen, over the previous one (`WAIT_FOR_RESPONSE`).
+    Waiting,
+}
+
+/// What `DialogScreen.runAction` asks for: the screen to leave, and the click event to run.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Outcome {
+    pub next: Next,
+    pub event: Option<ClickEvent>,
+}
+
+/// `DialogScreen.runAction(closeAction, afterAction)`. A `dynamic_*` action is not read, so it
+/// runs nothing (T106).
+pub fn run_action(action: Option<&Action>, after: AfterAction) -> Outcome {
+    Outcome {
+        next: match after {
+            AfterAction::Close => Next::Previous,
+            AfterAction::None => Next::Same,
+            AfterAction::WaitForResponse => Next::Waiting,
+        },
+        event: match action {
+            Some(Action::Static(event)) => Some(event.clone()),
+            Some(Action::Dynamic) | None => None,
+        },
+    }
+}
+
 /// A dialog a click event shows: one inline, or one the server's registry names.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DialogRef {

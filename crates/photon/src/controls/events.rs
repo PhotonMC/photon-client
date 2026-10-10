@@ -290,6 +290,13 @@ impl Controls {
             self.link_event(event, surface);
             return Ok(());
         }
+        if self.dialog_warning.is_some() && for_screen {
+            self.dialog_warning_event(event, session, surface);
+            return Ok(());
+        }
+        if self.dialog.is_some() && for_screen {
+            return self.dialog_event(event, session, surface, assets);
+        }
         if self.chat.is_some() && for_screen {
             return self.chat_event(event, session, surface, assets);
         }

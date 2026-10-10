@@ -63,6 +63,36 @@ impl Gui {
         )
     }
 
+    /// The link question or the dialog a server put over the game (or the question about it):
+    /// whether one is up.
+    fn draw_server_dialog(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
+    ) -> bool {
+        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        if let Some((link, _)) = controls.link_confirm.as_mut() {
+            if link.size() != gui_size {
+                *link = link.resized(font, lang, gui_size);
+            }
+            link.draw(frame, atlas, font, mouse);
+        } else if let Some(warning) = controls.dialog_warning.as_mut() {
+            if warning.size() != gui_size {
+                *warning = warning.resized(font, lang, gui_size);
+            }
+            warning.draw(frame, atlas, font, mouse);
+        } else if let Some(layer) = controls.dialog.as_mut() {
+            if layer.size() != gui_size {
+                *layer = layer.resized(font, lang, gui_size);
+            }
+            layer.draw(frame, (atlas, font), item, mouse);
+        } else {
+            return false;
+        }
+        true
+    }
+
     /// The boss bars and the titles, which the hidden interface does not show.
     fn draw_announcements(
         (boss_bars, titles): (&mut BossBars, &mut Titles),
@@ -210,12 +240,12 @@ impl Gui {
             &mut frame,
             (hidden, gui_size, now, partial),
         );
-        if let Some((link, _)) = controls.link_confirm.as_mut() {
-            if link.size() != gui_size {
-                *link = link.resized(&self.font, &self.lang, gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            link.draw(&mut frame, &self.atlas, &self.font, mouse);
+        if Self::draw_server_dialog(
+            (&self.atlas, &self.font, &self.lang),
+            controls,
+            &mut frame,
+            (gui_size, &mut draw_item),
+        ) {
         } else if let Some(confirm) = controls.confirm.as_mut() {
             if confirm.size() != gui_size {
                 *confirm = confirm.resized(&self.font, &self.lang, gui_size);

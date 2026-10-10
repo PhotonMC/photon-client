@@ -266,6 +266,8 @@ impl Play {
             if self.session.take_reconfigured() {
                 self.controls.screen = None;
                 self.controls.chat = None;
+                self.controls.dialog = None;
+                self.controls.dialog_warning = None;
             }
             // A respawn or a change of dimension: nothing of the old level stays.
             if self.session.take_level_reset() {
@@ -366,6 +368,8 @@ impl Play {
             &mut self.surface,
             &self.screen_assets,
         );
+        self.controls
+            .receive_dialogs(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .receive_win_game(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
@@ -519,6 +523,10 @@ impl Play {
         self.controls.credits_tick(session, &mut self.surface)?;
         if let Some(confirm) = self.controls.confirm.as_mut() {
             confirm.tick();
+        }
+        if let Some(crate::controls::DialogLayer::Waiting(waiting)) = self.controls.dialog.as_mut()
+        {
+            waiting.tick(&self.screen_assets.lang);
         }
         self.controls.sign_tick(session, &mut self.surface)?;
         self.gui.tick_chat(&mut self.controls.chat_log);

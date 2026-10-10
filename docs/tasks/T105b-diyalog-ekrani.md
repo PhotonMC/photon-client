@@ -20,4 +20,7 @@ G (`dialog_simple_screen`): bildirim, onay, çok satırlı gövde, eşya gövdes
 `docs/gui-oracle.md`, kayıt `client-dialog-conformance.md` (ekran bölümü).
 
 ## Devir notu
-(boş)
+- Yapıldı: `photon-render` `screen/{dialog,waiting}.rs` (bildirim/onay ekranı, bekleme ekranı), `photon_game::dialog::run_action`, `crates/photon/src/controls/dialogs.rs` (ShowDialog/ClearDialog, uyarı ekranı, bekleme, sohbette `show_dialog`/`custom` tıklaması); oracle `dialog_screen` (86 satır, `GuiDialogOracle.java`).
+- Java'dan sapma: `run_command` doğrudan gider (`sendUnattendedCommand` onay penceresi yok); gövde metninin tıklanabilir stili, oklarla odak ve eşya ipucu yok; eşya simgesi parity dışı (Java oracle eşya kaydetmiyor), kutudan taşan simge çizilmez.
+- Ekran yığını yok: her ekran kendi alanında, diyalog üstte çizilir ve girdiyi önce alır.
+- Açık: canlı Pumpkin denemesi yapılmadı (`PHOTON_SCRIPT` ile diyalog gönderen sunucu komutu gerek); T106 çok eylemli/listeli/girdili diyaloglar. `dynamic/*` eylemler hâlâ çalışmaz.

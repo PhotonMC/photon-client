@@ -8,6 +8,7 @@ pub mod confirm;
 pub mod connect;
 pub mod credits;
 pub mod death;
+pub mod dialog;
 pub mod disconnected;
 pub mod game_mode;
 pub mod pause;
@@ -16,6 +17,7 @@ pub mod servers;
 pub mod sign_edit;
 pub mod social;
 pub mod title;
+pub mod waiting;
 
 pub mod book;
 pub mod book_edit;

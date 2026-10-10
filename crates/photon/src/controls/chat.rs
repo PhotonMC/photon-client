@@ -206,7 +206,6 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        use photon_game::text::ClickEvent;
         if insertions {
             if let (Some(insertion), Some(chat)) = (&style.insertion, self.chat.as_mut()) {
                 chat.insert_text(insertion, false);
@@ -216,6 +215,19 @@ impl Controls {
         let Some(event) = style.click.as_deref() else {
             return Ok(());
         };
+        self.click_event(event, session, surface, assets)
+    }
+
+    /// What a click event does (`Screen.handleClickEvent`): a command is sent, a link asked
+    /// about, and the server's own actions answered.
+    pub(super) fn click_event(
+        &mut self,
+        event: &photon_game::text::ClickEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        use photon_game::text::ClickEvent;
         match event {
             // `Commands.trimOptionalPrefix`, then the command as typed.
             ClickEvent::RunCommand(command) => {
@@ -242,9 +254,16 @@ impl Controls {
                 self.link_confirm = Some((screen, url.clone()));
             }
             ClickEvent::OpenFile(path) => open_uri(path),
-            // Changing a page and the server's own actions have no screen
-            // here to act on.
-            ClickEvent::ChangePage(_) | ClickEvent::Custom(..) | ClickEvent::ShowDialog(_) => {}
+            ClickEvent::Custom(id, payload) => {
+                session.send_custom_click_action(id, payload.as_ref())?;
+            }
+            ClickEvent::ShowDialog(dialog) => {
+                if let Some(dialog) = self.resolve_dialog(dialog, session) {
+                    self.show_dialog(dialog, surface, assets);
+                }
+            }
+            // Changing a page has no book here to act on.
+            ClickEvent::ChangePage(_) => {}
         }
         Ok(())
     }

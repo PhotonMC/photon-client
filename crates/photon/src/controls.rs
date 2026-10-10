@@ -130,6 +130,9 @@ pub struct Controls {
     pub confirm: Option<ConfirmScreen>,
     /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
     pub link_confirm: Option<(ConfirmScreen, String)>,
+    /// The screen a server dialog puts over the game, and the question about it.
+    pub dialog: Option<DialogLayer>,
+    pub dialog_warning: Option<ConfirmScreen>,
     /// The server resource packs the player is being asked about; the question is `confirm`.
     pub pack_prompt: Option<pack_prompt::PackPrompt>,
     /// The screen a lost connection leaves, which nothing replaces.
@@ -311,6 +314,7 @@ mod confirm;
 mod credits;
 
 mod death;
+mod dialogs;
 mod game_mode_switcher;
 
 mod events;
@@ -331,6 +335,7 @@ mod sign;
 mod skin;
 
 mod social;
+pub use dialogs::DialogLayer;
 pub use sign::SignEdit;
 
 mod book;
@@ -377,6 +382,8 @@ impl Controls {
             book_edit: None,
             confirm: None,
             link_confirm: None,
+            dialog: None,
+            dialog_warning: None,
             pack_prompt: None,
             disconnected: None,
             leave: false,

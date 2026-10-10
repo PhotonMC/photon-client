@@ -121,7 +121,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T34e, T34f — Bakır golem — client-parity](records/client-copper-golem-parity-conformance.md)
 - [T37e — Creaking — client-parity](records/client-creaking-parity-conformance.md)
 - [T37a — Slime ve magma cube — client-parity](records/client-cube-mob-parity-conformance.md)
-- [Sunucu diyalogları: veri ve paketler — [paketler: sahte sunucu testi; ekran: T105b]](records/client-dialog-conformance.md)
+- [Sunucu diyalogları — [paketler: server-conformance (sahte sunucu testi); ekran (T105b): client-parity]](records/client-dialog-conformance.md)
 - [T40i, T40i2, T40i3 — Display entity'leri — client-parity](records/client-display-parity-conformance.md)
 - [T37h3 — Ender kristali ve kristal ışını — client-parity](records/client-end-crystal-parity-conformance.md)
 - [T37h2 — Ender ejderhasının ölümü — client-parity](records/client-ender-dragon-death-parity-conformance.md)
