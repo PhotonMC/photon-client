@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %83 bitti** (ağırlıklı) · 283/322 madde işaretli, **39 madde kaldı** (tahmini 81 M-görev eşdeğeri iş).
+**Toplam: %83 bitti** (ağırlıklı) · 284/322 madde işaretli, **38 madde kaldı** (tahmini 79 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -42,12 +42,12 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 37/43 |
 | M7 Ses | `████████████████░░░░` | 82 | 14/16 |
 | M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 40/46 |
-| M9 Sunucu uyumluluğu | `████████░░░░░░░░░░░░` | 40 | 6/10 |
+| M9 Sunucu uyumluluğu | `██████████░░░░░░░░░░` | 50 | 7/10 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83c, T104, T105b, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83c, T104, T106, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -357,7 +357,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T103](T103-kaynak-paketi-istemi.md) Sunucu kaynak paketi: paketler ve onay ekranı — M · bağımlı: T101 · bitti (903c01f5)
 - [ ] [T104](T104-kaynak-paketi-indirme.md) Sunucu kaynak paketi: indirme, doğrulama, yükleme — L · bağımlı: T103 · **kullanıcı kararı**
 - [x] [T105](T105-diyalog-temel.md) Diyaloglar 1: `ShowDialog` verisi ve paketleri — L · bölündü (1c250d8c; ekran: T105b)
-- [ ] [T105b](T105b-diyalog-ekrani.md) Diyalog ekranı (`SimpleDialogScreen`, uyarı düğmesi, bekleme) — L · bağımlı: T105
+- [x] [T105b](T105b-diyalog-ekrani.md) Diyalog ekranı (`SimpleDialogScreen`, uyarı düğmesi, bekleme) — L · bağımlı: T105 · bitti (641ae8c5)
 - [ ] [T106](T106-diyalog-kalan.md) Diyaloglar 2: çok eylemli, liste, sunucu bağlantıları, girdiler — L · bağımlı: T105b, T100
 - [ ] [K-M9a](DECISION-M9-online.md) Çevrimiçi kimlik: şifreleme, oturum isteği, hesap girişi — L×3 · **kullanıcı kararı** ([karar belgesi](DECISION-M9-online.md))
 
