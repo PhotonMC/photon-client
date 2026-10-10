@@ -1,67 +1,90 @@
 # Photon
 
-A from-scratch reimplementation of the **Minecraft: Java Edition client in Rust**, built to match the Java client's behavior exactly: mechanics, physics, movement, timing, camera, animation, textures, UI and sound.
+A from-scratch **Minecraft: Java Edition client in Rust**. It matches the Java client's behaviour exactly (mechanics, physics, timing, camera, animation, UI and sound) and is built to be faster.
 
-Photon is a working title. This project is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
+Photon is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
 
-## Why
+## Two products
 
-The goal is parity you cannot feel, not a "better" client. Anything that merely feels nicer, plus Bedrock behavior, is out of scope. The server is not part of this project; the long-term compatibility target is [Pumpkin](https://github.com/Pumpkin-Mc/Pumpkin), a Rust server.
+- **Photon Vanilla.** The Java client's behaviour, bit for bit, on a faster engine.
+- **Photon Enhanced.** Vanilla plus:
+  - mods (data packs, Luau scripts and WebAssembly);
+  - its own UI, cosmetics and a community server list;
+  - friends, invites and spectating;
+  - joining servers of other versions without "Unsupported protocol version" errors.
 
-Parity is checked mechanically instead of by playing the game. For every behavior slice the Java reference is read line by line, run headless as an *oracle*, and its output is captured. The Rust implementation must then reproduce that capture bit for bit on the same input. Expected values are never derived from the Rust output.
+Both share one engine; see [ADR 0008](docs/adr/0008-vanilla-and-enhanced.md).
 
 ## Status
 
-**Pre-alpha, not a playable client.** The pinned reference is Java Edition **26.2**, protocol **776**, Java **25**.
+**Pre-alpha.** The reference is Java Edition **26.2** (protocol **776**). Photon connects to a server, renders the world, most entities, block entities, particles and screens, plays sound, and lets you move, ride, build and use containers. Online-mode login, resource pack downloads, the debug overlay, advancements and statistics are still missing.
 
-The `play` mode connects to a server, receives chunks and entities, and lets you walk around the world with rendered terrain, many entity models, several screens (pause, options, inventories) and sound. It does not yet have, among other things, a main menu or server list, particles, online-mode authentication, resource packs, or complete block-entity and screen-overlay rendering. Do not expect to play survival with it.
+Every behaviour is proven against the real Java client by a headless oracle, never by eye ([parity](docs/parity/README.md)).
 
-Two kinds of evidence are kept apart on purpose:
+## Roadmap
 
-- `client-parity`: the Java client and the Rust code were compared on the same input.
-- `server-conformance`: a live server accepted the packets Rust produced. This shows wire compatibility only, not client parity.
+Open work is tracked in [GitHub issues and milestones](https://github.com/PhotonMC/photon-client/milestones).
 
-Work is tracked as small tasks in [`docs/tasks/`](docs/tasks/README.md); the [roadmap](docs/roadmap.md) and [remaining test plan](docs/remaining-test-plan.md) hold the long-term scope. There is no screenshot in this repository on purpose: every frame contains Mojang's assets, which are never committed.
+| Milestone | State |
+| --- | --- |
+| Foundation: connection, world copy, movement, world rendering, block actions, items, inventories | Done |
+| M3.d Containers opened by the server | Done |
+| M4 Entities | Done; coverage audit open |
+| M5 Text and chat | Font fallbacks, bidi, IME, text selection and chat details open |
+| M6 Screens and settings | Debug overlay, advancements, statistics and the remaining settings open |
+| M7 Sound | Event and item sounds, subtitles open |
+| M8 Particles, effects and block entities | Beacon/portal block entities, spawners, remaining level events open |
+| M9 Server compatibility | Resource pack download, dialog inputs, online login open |
+| M10 Parity closure and distribution | Not started |
+
+Infrastructure phase (feature work paused until it lands):
+
+| Track | State | Decision |
+| --- | --- | --- |
+| Deterministic quality gate (`cargo xtask`) | Done | [Coding standards](docs/development/coding-standards.md) |
+| English repository, `main`, issues | In progress | |
+| Parity v2: Rust runner, per-case cache, affected-only, parallel | Planned | [ADR 0005](docs/adr/0005-parity-v2.md) |
+| Version packs and protocol translation | Planned | [ADR 0004](docs/adr/0004-version-support.md) |
+| ECS world (`bevy_ecs`) and multi-threaded simulation | Planned | [ADR 0003](docs/adr/0003-bevy-ecs.md) |
+| GPU-driven terrain rendering | Planned | [Rendering](docs/architecture/rendering.md) |
+| Mod platform | Planned | [ADR 0006](docs/adr/0006-mod-platform.md) |
+| In-client launcher, Microsoft login, asset download | Planned | [ADR 0007](docs/adr/0007-assets-and-accounts.md) |
+
+What has been built so far is summarised in [history](docs/history.md).
 
 ## Assets and legal
 
-The original game's code and assets are **not included, not downloaded by an installer, and never committed**. They are used locally as test and reference input only, under `.data/`, which is ignored by Git. In the future the client will read an asset folder that you select yourself. Continuous integration never receives the reference or any derived output.
+This repository contains no Mojang code or assets and never will. During development the game is fetched from Mojang's official servers into the git-ignored `.data/` folder and used as a local reference only. Nothing from it is committed, packaged or uploaded. Released builds will download assets from Mojang after the player signs in and ownership is verified ([ADR 0007](docs/adr/0007-assets-and-accounts.md)).
 
 ## Build and run
 
-Requirements:
+You need:
 
-- Rust (the exact toolchain is pinned in `rust-toolchain.toml`), CMake and a C/C++ compiler (GLFW and shaderc are built from source).
-- A Vulkan driver (MoltenVK on macOS).
-- Python 3.9+ and Java 25 for the local tooling and the reference server.
+- Rust (pinned in `rust-toolchain.toml`), CMake and a C/C++ compiler;
+- a Vulkan driver (MoltenVK on macOS);
+- Python 3.9+ and Java 25 for the reference tooling.
 
 ```sh
+cargo xtask install-hooks
 cargo build --workspace
-python3 tools/photon.py setup                      # fetch the pinned game into .data/ from Mojang's servers
+python3 tools/photon.py setup                       # fetch the pinned game into .data/
 python3 tools/photon.py server --accept-eula --background
 python3 tools/photon.py play --user Walker
 ```
 
-`setup` downloads the game from Mojang's official distribution and checks every file against the published hash. You are responsible for accepting the Minecraft EULA. Details are in the [local setup guide](docs/en/local-setup.md).
+Details are in [development setup](docs/development/setup.md).
 
-## Tests
+## Checks
 
 ```sh
-cargo test --workspace --lib --bins --tests   # unit tests, no game files needed
-python3 tools/photon.py check                  # the full commit gate: fmt, build, test, clippy, parity, docs
-python3 tools/photon.py parity --family gui    # Java-vs-Rust comparison for one family
+cargo xtask lint      # repository rules, ~150 ms
+cargo xtask check     # fmt, lint, clippy, tests, cargo-deny, cargo-machete, parity
+cargo xtask parity    # Java vs Rust comparison (needs .data/)
 ```
-
-The full gate and the parity runs need the local `.data/` reference. See [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md).
 
 ## Documentation
 
-The core documents (coding standards, behavior testing, behavior runner, local setup) have English translations under [`docs/en/`](docs/en/); the Turkish originals are authoritative. The slice records and the task files are in Turkish.
-
-- [Document index](docs/index.md), with per-slice contract and parity records under [`docs/records/`](docs/records/).
-- [Coding standards](docs/en/coding-standards.md): crate layers, layout, file size and complexity limits.
-- [`AGENTS.md`](AGENTS.md): the single rule set for every AI coding agent working here.
-- [Önceki Türkçe README](docs/tr/README.md).
+See [docs/](docs/README.md): architecture, decisions, parity, development and history.
 
 ## Contributing and security
 
@@ -69,4 +92,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## License
 
-Licensed under either of [Apache License 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option. This covers this repository's own code only; it grants no rights to Mojang's code or assets.
+Licensed under either the [Apache License 2.0](LICENSE-APACHE) or the [MIT license](LICENSE-MIT), at your option. This covers this repository's own code only and grants no rights to Mojang's code or assets.

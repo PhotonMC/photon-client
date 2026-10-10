@@ -1,6 +1,6 @@
 //! GPU backend. The reference ships an OpenGL and a Vulkan path and defaults to
 //! OpenGL; this client targets the Vulkan one, for the reasons recorded in
-//! `docs/render-backend-decision.md`.
+//! `docs/adr/0001-vulkan-renderer.md`.
 
 pub mod block;
 pub mod block_entity;

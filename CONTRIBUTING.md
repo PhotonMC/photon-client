@@ -1,49 +1,42 @@
 # Contributing
 
-Thanks for looking. This is a parity project: the target is the Java client's exact behavior, so the workflow is stricter than usual. Read [`AGENTS.md`](AGENTS.md) first; it is the single rule set for humans and AI agents alike (in Turkish). The essentials are below.
+Thanks for looking. Photon is a parity project: the target is the Java client's exact behaviour, so the workflow is stricter than usual. [`AGENTS.md`](AGENTS.md) holds the same rules for AI coding agents.
 
 ## Ground rules
 
-- **Never commit Mojang's code or assets**, or anything derived from them (images, sounds, dumps, traces, golden captures). Everything under `.data/` stays local. Do not use `git add -f` to get around `.gitignore`.
-- **Parity first, optimization later.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds.
-- **Expected values come from the Java oracle**, never from Rust output.
-- Keep slices small and reviewable. One slice, one commit.
-- Code follows the [coding standards](docs/en/coding-standards.md): crate layers, naming and complexity limits. Clippy must stay warning-free.
-- **A source file stays under 500–600 lines.** Split by responsibility before a file reaches the limit.
+- **Never commit Mojang's code or assets**, or anything derived from them: images, sounds, dumps, traces or golden captures. Everything under `.data/` stays local. Do not use `git add -f` to get around `.gitignore`.
+- **Expected values come from the Java oracle**, never from Rust output. See [parity](docs/parity/README.md).
+- **Parity first.** Do not "fix" quirks of the Java reference, and do not hide server differences with client-side workarounds. Internal structure is free; observable behaviour is not.
+- **Small, reviewable changes.** One behaviour slice per commit, with its parity cases.
+- **English everywhere:** code, comments, documents and commit messages.
 
-## Build and test
-
-```sh
-cargo build --workspace
-cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --lib --bins --tests
-```
-
-These need no game files and are what CI runs. The full gate additionally compares Rust against the Java reference and needs the local reference data:
+## Setup
 
 ```sh
-python3 tools/photon.py setup        # once: fetch the pinned game into .data/
-python3 tools/photon.py check        # prints CHECK OK or CHECK FAILED
-python3 tools/photon.py parity --family gui
+cargo xtask install-hooks   # once per clone
 ```
 
-See the [local setup guide](docs/en/local-setup.md), [behavior testing](docs/en/behavior-testing.md) and the [behavior runner](docs/en/behavior-runner.md). If you changed the oracle sources or the case generators in `tools/behavior/`, run `check --capture`.
+The hooks enforce the [coding standards](docs/development/coding-standards.md):
 
-## Adding a behavior slice
+- **pre-commit** runs rustfmt, the lint rules and clippy on affected crates, in seconds.
+- **commit-msg** checks the message format.
+- **pre-push** runs the tests of affected crates and parity.
+
+Run `cargo xtask check` for the whole gate. Parity needs the local reference; see [development setup](docs/development/setup.md).
+
+## Adding behaviour
 
 1. Read the relevant Java source line by line.
-2. Write an original scenario and run it through the Java oracle.
-3. Capture the Java result, then implement the Rust side.
-4. Compare, and record the contract and parity in its own file under [`docs/records/`](docs/records/).
+2. Write original scenarios and run them through the Java oracle.
+3. Capture Java's result, then implement the Rust side.
+4. Compare until equal; if it differs, fix Rust, never the expectation.
 
-Open work is listed in [`docs/tasks/`](docs/tasks/README.md); each task file carries the context it needs. Do not open a new slice unless the Java source has a distinct branch or an observed difference; a changed constant is a table row, not a slice.
+A new case set is opened only for a Java branch that runs for the first time or an observed difference; a changed constant is a table row in an existing case.
 
 ## Commits and pull requests
 
-- Conventional Commits prefix (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`), a title of **72 characters or fewer**, and the detail in the body.
-- Commit messages in this repository are written in Turkish; English is fine for outside contributions.
-- No `Co-Authored-By` or other AI attribution footers.
-- Run the relevant checks before you push and say in the pull request what you verified and what you could not.
+- **Format.** [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary` with an English, imperative summary of at most 72 characters and details in the body. Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`, `style`, `revert`.
+- **No tool attribution.** No `Co-Authored-By` or other tool attribution trailers.
+- **Pull requests.** State what you verified and what you could not.
 
-By contributing you agree that your work is licensed under the terms in [README.md](README.md#license) (MIT OR Apache-2.0).
+Open work is in [issues](https://github.com/PhotonMC/photon-client/issues). By contributing you agree that your work is licensed under the terms in [README.md](README.md#license) (MIT OR Apache-2.0).

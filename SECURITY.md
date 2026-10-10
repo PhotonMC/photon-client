@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The project is pre-alpha. Only the latest commit on `master` is supported.
+The project is pre-alpha. Only the latest commit on `main` is supported.
 
 ## Reporting a vulnerability
 

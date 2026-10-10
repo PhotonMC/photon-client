@@ -5,8 +5,6 @@
     python3 tools/photon.py server --accept-eula  # set up and start the test server
     python3 tools/photon.py play                  # build and start the client
     python3 tools/photon.py rcon "time set noon"  # send commands to the test server
-    python3 tools/photon.py check [--capture]     # the commit gate: prints CHECK OK or CHECK FAILED
-    python3 tools/photon.py parity --family gui   # Java/Rust comparison only, one summary line
     python3 tools/photon.py shot NAME "SCRIPT"    # scripted client run, screenshot to .data/runs/shots
     python3 tools/photon.py bench [--repeat N]    # fixed scripted run, frame timing report to .data/runs/bench
 
@@ -14,14 +12,14 @@ Only the Python standard library is used. Everything downloaded goes under
 .data/, which stays on this machine and is never committed. Downloads come
 from Mojang's official distribution (piston-meta, piston-data, the library
 and resource servers) and are checked against the hashes the version file
-gives. Run a subcommand with --help for its options.
+gives. Run a subcommand with --help for its options. The commit gate and the
+parity comparison are `cargo xtask check` and `cargo xtask parity`.
 """
 
 import argparse
 
 from photon_tools.bench import bench
 from photon_tools.common import JAVA_MAJOR, SERVER_DIR
-from photon_tools.gate import check, parity
 from photon_tools.reference import setup
 from photon_tools.server import SERVER_PORT, play, rcon, server
 from photon_tools.shot import shot
@@ -82,17 +80,6 @@ def main():
     rcon_parser = commands.add_parser("rcon", help="send commands to the test server")
     rcon_parser.add_argument("commands", nargs="+")
     rcon_parser.set_defaults(run=rcon)
-
-    check_parser = commands.add_parser("check", help="commit gate: fmt, build, test, clippy, parity, docs")
-    check_parser.add_argument("--capture", action="store_true",
-                              help="capture the Java reference first (needed after oracle source changes)")
-    check_parser.add_argument("--family", action="append", help="repeat to limit the parity families")
-    check_parser.set_defaults(run=check)
-
-    parity_parser = commands.add_parser("parity", help="Java/Rust comparison, one summary line")
-    parity_parser.add_argument("--capture", action="store_true", help="capture the Java reference first")
-    parity_parser.add_argument("--family", action="append", help="repeat to select families")
-    parity_parser.set_defaults(run=parity)
 
     shot_parser = commands.add_parser("shot", help="scripted client run with a screenshot")
     shot_parser.add_argument("name")
