@@ -2,6 +2,7 @@
 
 pub mod chat;
 pub mod commands;
+pub mod dialog;
 pub mod game_mode;
 pub mod item;
 pub use photon_world::item_components;

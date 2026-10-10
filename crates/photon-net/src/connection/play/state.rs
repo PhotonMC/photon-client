@@ -135,6 +135,47 @@ impl PlaySession {
         self.trace.profile_id
     }
 
+    /// `handleShowDialog`: the dialog is opened over whatever screen is up.
+    pub(super) fn on_show_dialog(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let dialog = match parse_show_dialog(payload)? {
+            DialogHolder::Direct(dialog) => *dialog,
+            DialogHolder::Registry(index) => {
+                match self.trace.dialog_registry.get(index).cloned().flatten() {
+                    Some(dialog) => dialog,
+                    // A known pack's entry carries no data, and there is none to look it up in.
+                    None => return Ok(()),
+                }
+            }
+        };
+        self.dialog_events.push(DialogEvent::Show(Box::new(dialog)));
+        Ok(())
+    }
+
+    /// The dialog entry a registry name stands for (`ClickEvent.ShowDialog` by name).
+    pub fn dialog_by_name(&self, name: &str) -> Option<photon_game::dialog::Dialog> {
+        let position = self
+            .registry_names("minecraft:dialog")
+            .iter()
+            .position(|entry| entry == name)?;
+        self.trace.dialog_registry.get(position).cloned().flatten()
+    }
+
+    /// The dialogs the server showed or cleared since the last call.
+    pub fn take_dialog_events(&mut self) -> Vec<DialogEvent> {
+        std::mem::take(&mut self.dialog_events)
+    }
+
+    /// `ServerboundCustomClickActionPacket`: a dialog button's custom action.
+    pub fn send_custom_click_action(
+        &mut self,
+        id: &str,
+        payload: Option<&photon_core::nbt::FieldValue>,
+    ) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_CUSTOM_CLICK_ACTION_PACKET_ID, |output| {
+            encode_custom_click_action(id, payload, output)
+        })
+    }
+
     /// The resource packs the server asked for since the last call: the player is asked about them.
     pub fn take_pack_requests(&mut self) -> Vec<PackRequest> {
         std::mem::take(&mut self.pack_requests)

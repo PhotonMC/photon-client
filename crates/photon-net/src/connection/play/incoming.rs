@@ -40,6 +40,8 @@ impl PlaySession {
             PLAY_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {
                 parse_resource_pack_pop(payload)?;
             }
+            PLAY_CLIENTBOUND_SHOW_DIALOG_PACKET_ID => self.on_show_dialog(payload)?,
+            PLAY_CLIENTBOUND_CLEAR_DIALOG_PACKET_ID => self.dialog_events.push(DialogEvent::Clear),
             PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => self.on_cookie_request(payload)?,
             PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID => store_cookie(&mut self.trace, payload)?,
             PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {

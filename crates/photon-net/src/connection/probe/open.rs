@@ -180,6 +180,16 @@ pub(crate) fn configure_connection(
                     .entry(packet.registry.as_string())
                     .or_default()
                     .extend(packet.entries.iter().map(|entry| entry.id.as_string()));
+                if packet.registry.as_string() == "minecraft:dialog" {
+                    trace
+                        .dialog_registry
+                        .extend(packet.entries.iter().map(|entry| {
+                            entry
+                                .data
+                                .as_ref()
+                                .and_then(photon_game::dialog::Dialog::from_nbt)
+                        }));
+                }
                 if packet.registry.as_string() == "minecraft:dimension_type" {
                     for entry in packet.entries {
                         let bounds = entry

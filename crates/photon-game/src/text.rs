@@ -58,9 +58,8 @@ pub struct Style {
     pub insertion: Option<Box<str>>,
 }
 
-/// `ClickEvent`, as far as the client acts on it. The dialog action, which
-/// needs the registry of dialogs, is not read.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// `ClickEvent`, as far as the client acts on it.
+#[derive(Debug, Clone, PartialEq)]
 pub enum ClickEvent {
     OpenUrl(String),
     OpenFile(String),
@@ -68,8 +67,10 @@ pub enum ClickEvent {
     SuggestCommand(String),
     ChangePage(i32),
     CopyToClipboard(String),
-    /// `custom`: the identifier, for the server's own handling.
-    Custom(String),
+    /// `show_dialog`: a dialog the server asks to be opened.
+    ShowDialog(crate::dialog::DialogRef),
+    /// `custom`: the identifier and payload, for the server's own handling.
+    Custom(String, Option<FieldValue>),
 }
 
 /// `HoverEvent`.
@@ -188,7 +189,7 @@ fn click_from_json(event: &JsonObject) -> Option<ClickEvent> {
         "suggest_command" => ClickEvent::SuggestCommand(event.text("command")?),
         "change_page" => ClickEvent::ChangePage(event.i32("page").filter(|page| *page > 0)?),
         "copy_to_clipboard" => ClickEvent::CopyToClipboard(event.text("value")?),
-        "custom" => ClickEvent::Custom(event.text("id")?),
+        "custom" => ClickEvent::Custom(event.text("id")?, None),
         _ => return None,
     })
 }
@@ -241,29 +242,39 @@ fn uuid_text(parts: &[i32]) -> Option<String> {
 
 /// `ClickEvent.CODEC` from the tag.
 fn click_from_nbt(event: &[photon_core::nbt::Field]) -> Option<ClickEvent> {
-    let get = |key: &str| {
-        event
-            .iter()
-            .find(|field| field.key == key)
-            .map(|f| &f.value)
-    };
-    let text = |key: &str| match get(key) {
-        Some(FieldValue::Str(text)) => Some(text.clone()),
-        _ => None,
-    };
-    Some(match text("action")?.as_str() {
-        "open_url" => ClickEvent::OpenUrl(text("url")?),
-        "open_file" => ClickEvent::OpenFile(text("path")?),
-        "run_command" => ClickEvent::RunCommand(text("command")?),
-        "suggest_command" => ClickEvent::SuggestCommand(text("command")?),
-        "change_page" => match get("page")? {
-            FieldValue::Int(page) if *page > 0 => ClickEvent::ChangePage(*page),
+    ClickEvent::from_nbt_fields(event, "action")
+}
+
+impl ClickEvent {
+    /// A click event from the tag's fields, its kind named by `kind_key` (`action` in a
+    /// component, `type` in a dialog's static action).
+    pub fn from_nbt_fields(event: &[photon_core::nbt::Field], kind_key: &str) -> Option<Self> {
+        let get = |key: &str| {
+            event
+                .iter()
+                .find(|field| field.key == key)
+                .map(|f| &f.value)
+        };
+        let text = |key: &str| match get(key) {
+            Some(FieldValue::Str(text)) => Some(text.clone()),
+            _ => None,
+        };
+        let kind = text(kind_key)?;
+        Some(match kind.strip_prefix("minecraft:").unwrap_or(&kind) {
+            "open_url" => Self::OpenUrl(text("url")?),
+            "open_file" => Self::OpenFile(text("path")?),
+            "run_command" => Self::RunCommand(text("command")?),
+            "suggest_command" => Self::SuggestCommand(text("command")?),
+            "change_page" => match get("page")? {
+                FieldValue::Int(page) if *page > 0 => Self::ChangePage(*page),
+                _ => return None,
+            },
+            "copy_to_clipboard" => Self::CopyToClipboard(text("value")?),
+            "show_dialog" => Self::ShowDialog(crate::dialog::DialogRef::from_nbt(get("dialog")?)?),
+            "custom" => Self::Custom(text("id")?, get("payload").cloned()),
             _ => return None,
-        },
-        "copy_to_clipboard" => ClickEvent::CopyToClipboard(text("value")?),
-        "custom" => ClickEvent::Custom(text("id")?),
-        _ => return None,
-    })
+        })
+    }
 }
 
 /// `HoverEvent.CODEC` from the tag.

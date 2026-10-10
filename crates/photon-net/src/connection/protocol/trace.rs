@@ -35,6 +35,9 @@ pub struct PlayConnectionTrace {
     /// Every synchronised registry's entry names, in the order the server
     /// numbered them.
     pub registry_entry_names: std::collections::BTreeMap<String, Vec<String>>,
+    /// The dialog registry's entries, in network order; one without data (a known pack's own) is
+    /// `None`.
+    pub dialog_registry: Vec<Option<photon_game::dialog::Dialog>>,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
     pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
     pub update_tags_packet_count: usize,

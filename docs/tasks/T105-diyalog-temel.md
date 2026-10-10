@@ -1,6 +1,6 @@
-# T105 — Diyaloglar 1: `ShowDialog`, bildirim ve onay diyalogları
+# T105 — Diyaloglar 1: `ShowDialog`, veri ve paketler
 
-**Amaç:** `ShowDialog`/`ClearDialog`, diyalog kaydı, `SimpleDialogScreen` (bildirim, onay), gövde türleri (düz mesaj, eşya) ve eylem düğmeleri; `CustomClickAction` yanıtı.
+**Amaç:** `ShowDialog`/`ClearDialog`, diyalog kaydı, bildirim/onay verisi, gövde türleri (düz mesaj, eşya), eylemler ve `CustomClickAction` yanıtı. Ekran: [T105b](T105b-diyalog-ekrani.md).
 **Bağımlılık:** —. **Boy:** L.
 
 ## Oku
@@ -25,4 +25,4 @@ G (`dialog_simple_screen`).
 `docs/gui-oracle.md`, kayıt `client-dialog-conformance.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `photon-game::dialog` (bildirim, onay, gövde, eylem), `ClickEvent::{ShowDialog, Custom(id, payload)}`, paketler `139/140/68`, `PlaySession::{take_dialog_events, dialog_by_name, send_custom_click_action}`, kayıt defteri girdileri. Sapma: yapılandırma evresi diyaloğu yok sayılır; bilinen paket girdisi verisiz. Açık: ekran, oracle ve oyuna bağlama T105b. Kayıt: [client-dialog-conformance.md](../records/client-dialog-conformance.md).

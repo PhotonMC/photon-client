@@ -298,6 +298,7 @@ impl PlaySession {
             level_reset: false,
             reconfigured: false,
             pack_requests: Vec::new(),
+            dialog_events: Vec::new(),
             sent_slot: 0,
             game_mode_state: photon_game::game_mode::GameMode::default(),
             container_menu: photon_game::menus::container::ContainerMenu::default(),

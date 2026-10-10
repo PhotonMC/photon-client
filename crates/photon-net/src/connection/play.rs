@@ -158,6 +158,8 @@ pub struct PlaySession {
     pub(super) reconfigured: bool,
     /// Resource packs the server asked for that the player is yet to be asked about.
     pub(super) pack_requests: Vec<PackRequest>,
+    /// Dialogs the server showed or cleared that the client is yet to act on.
+    pub(super) dialog_events: Vec<DialogEvent>,
     /// The hotbar slot the server was last told about.
     pub(super) sent_slot: i32,
     /// Breaking state and the miss wait.

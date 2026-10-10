@@ -244,7 +244,7 @@ impl Controls {
             ClickEvent::OpenFile(path) => open_uri(path),
             // Changing a page and the server's own actions have no screen
             // here to act on.
-            ClickEvent::ChangePage(_) | ClickEvent::Custom(_) => {}
+            ClickEvent::ChangePage(_) | ClickEvent::Custom(..) | ClickEvent::ShowDialog(_) => {}
         }
         Ok(())
     }
