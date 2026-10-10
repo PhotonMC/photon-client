@@ -1,5 +1,7 @@
 # Photon
 
+<img width="1920" height="1080" alt="photon-splash-1920x1080" src="https://github.com/user-attachments/assets/46a67665-d8fa-4fd8-a3b6-4c2161ce6705" />
+
 A from-scratch **Minecraft: Java Edition client in Rust**. It matches the Java client's behaviour exactly (mechanics, physics, timing, camera, animation, UI and sound) and is built to be faster.
 
 Photon is **not affiliated with, endorsed by, or connected to Mojang or Microsoft**. "Minecraft" is a trademark of Mojang Synergies AB.
