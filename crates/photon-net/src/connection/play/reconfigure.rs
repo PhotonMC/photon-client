@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use super::lifecycle::spawn_reader;
+use super::lifecycle::{self, spawn_reader};
 use super::*;
 use crate::connection::probe::configure_connection;
 
@@ -22,6 +22,31 @@ impl PlaySession {
                 .encode(output)
                 .map_err(|_| ConnectionError::Codec("cookie response"))
         })
+    }
+
+    /// `handleTransfer`: the connection is let go and another made to the host the server names,
+    /// as a transfer, with the cookies kept. The new session starts over like a reconfigured one.
+    pub(super) fn transfer(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
+        let packet = crate::cookie::ClientboundTransferPacket::decode(&mut &payload[..])
+            .map_err(|_| ConnectionError::Codec("transfer"))?;
+        let address = lifecycle::resolve_host(&packet.host, packet.port)?;
+        let carried = PlayConnectionTrace {
+            cookies: self.trace.cookies.clone(),
+            transferring: true,
+            ..PlayConnectionTrace::default()
+        };
+        let mut fresh = Self::connect_through(
+            (address, Some(packet.host)),
+            (&self.username, self.auto_jump),
+            RECONFIGURATION_TIMEOUT,
+            self.client_information.clone(),
+            carried,
+        )?;
+        fresh.lang = std::sync::Arc::clone(&self.lang);
+        fresh.level_reset = true;
+        fresh.reconfigured = true;
+        *self = fresh;
+        Ok(())
     }
 
     /// Acknowledge the server, run the configuration phase on the connection and start over in
@@ -167,5 +192,63 @@ mod tests {
         session.wait(Duration::from_secs(5)).expect("request");
         server.join().expect("server");
         assert!(session.trace.cookies.get(&key).is_some());
+    }
+
+    #[test]
+    fn a_transfer_connects_to_the_named_host_with_the_transfer_intention() {
+        use std::io::Write;
+        let target = TcpListener::bind("127.0.0.1:0").expect("target");
+        let target_port = target.local_addr().expect("address").port();
+        let origin = TcpListener::bind("127.0.0.1:0").expect("origin");
+        let origin_address = origin.local_addr().expect("address");
+        let destination = std::thread::spawn(move || {
+            let (mut stream, _) = target.accept().expect("accept");
+            let handshake = read_packet(&mut stream, None).expect("handshake");
+            let (id, mut body) = split_packet(&handshake).expect("split");
+            assert_eq!(id, LOGIN_INTENTION_PACKET_ID);
+            let intention =
+                crate::handshake::ClientIntentionPacket::decode(&mut body).expect("decode");
+            assert_eq!(
+                String::from_utf16(&intention.host_name).expect("host"),
+                "127.0.0.1"
+            );
+            assert_eq!(intention.port, i32::from(target_port));
+            assert_eq!(
+                intention.intention,
+                crate::handshake::ClientIntent::Transfer
+            );
+        });
+        let origin = std::thread::spawn(move || {
+            let (mut stream, _) = origin.accept().expect("accept");
+            let mut body = Vec::new();
+            photon_core::utf8::write_utf8(
+                &mut body,
+                &"127.0.0.1".encode_utf16().collect::<Vec<_>>(),
+                32_767,
+            )
+            .expect("host");
+            wire::write_varint(i32::from(target_port), &mut body);
+            let mut packet = Vec::new();
+            wire::write_varint(PLAY_CLIENTBOUND_TRANSFER_PACKET_ID, &mut packet);
+            packet.extend_from_slice(&body);
+            let mut framed = Vec::new();
+            wire::write_varint(packet.len() as i32, &mut framed);
+            framed.extend_from_slice(&packet);
+            stream.write_all(&framed).expect("transfer");
+            std::thread::sleep(Duration::from_millis(300));
+        });
+        let stream = TcpStream::connect(origin_address).expect("connect");
+        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let mut session = PlaySession::assemble(
+            stream,
+            None,
+            incoming,
+            PlayConnectionTrace::default(),
+            ("Tester", false),
+        );
+        // The destination hangs up before it logs the player in, so the transfer fails there.
+        assert!(session.wait(Duration::from_secs(5)).is_err());
+        destination.join().expect("destination");
+        origin.join().expect("origin");
     }
 }

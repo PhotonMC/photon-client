@@ -167,6 +167,21 @@ pub fn encode_unanswered_query(transaction_id: i32, output: &mut Vec<u8>) {
     output.push(0);
 }
 
+/// `ClientboundTransferPacket`: the server sending the client on to another.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientboundTransferPacket {
+    pub host: String,
+    pub port: i32,
+}
+
+impl ClientboundTransferPacket {
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let host = read_string(input, 32_767)?;
+        let port = wire::read_varint(input).map_err(ReadError::from)?;
+        Ok(Self { host, port })
+    }
+}
+
 /// `ClientboundCustomReportDetailsPacket`: what the server wants a crash report to carry.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClientboundCustomReportDetailsPacket {
@@ -260,6 +275,21 @@ mod tests {
             data: text,
         };
         assert_eq!(other.brand(), None);
+    }
+
+    #[test]
+    fn a_transfer_names_a_host_and_a_port() {
+        let mut bytes = Vec::new();
+        utf8::write_utf8(
+            &mut bytes,
+            &"play.example.org".encode_utf16().collect::<Vec<_>>(),
+            32_767,
+        )
+        .expect("host");
+        wire::write_varint(25_566, &mut bytes);
+        let packet = ClientboundTransferPacket::decode(&mut bytes.as_slice()).expect("transfer");
+        assert_eq!(packet.host, "play.example.org");
+        assert_eq!(packet.port, 25_566);
     }
 
     #[test]

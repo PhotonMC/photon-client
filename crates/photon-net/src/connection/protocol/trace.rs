@@ -19,6 +19,10 @@ pub struct PlayConnectionTrace {
     pub configuration_finished: bool,
     /// What the server asked the client to keep, which stays through a reconfiguration.
     pub cookies: crate::cookie::CookieStore,
+    /// The host name the handshake gives, where it is not the address's own, and whether the
+    /// connection is one a server sent the client on to (`ClientIntent::Transfer`).
+    pub handshake_host: Option<String>,
+    pub transferring: bool,
     /// The server's brand (`minecraft:brand`).
     pub server_brand: Option<String>,
     /// `ClientboundCustomReportDetailsPacket`: what the server wants a crash report to carry.

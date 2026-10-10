@@ -14,11 +14,39 @@ pub(crate) fn open_play_connection(
     trace: &mut PlayConnectionTrace,
 ) -> Result<(TcpStream, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
-    send_handshake_intention(&mut stream, address, ClientIntent::Login)?;
+    let host = trace
+        .handshake_host
+        .clone()
+        .unwrap_or_else(|| address.ip().to_string());
+    let intent = if trace.transferring {
+        ClientIntent::Transfer
+    } else {
+        ClientIntent::Login
+    };
+    send_handshake_to(&mut stream, (&host, address.port()), intent)?;
 
+    let compression_threshold = log_in(&mut stream, (username, timeout), information, trace)?;
+    configure_connection(
+        &mut stream,
+        compression_threshold,
+        (timeout, select_known_packs),
+        trace,
+    )?;
+    Ok((stream, compression_threshold))
+}
+
+/// Send the login hello and run the login exchange up to the server's finish, which is
+/// acknowledged and followed by the client's configuration start. The compression threshold the
+/// server chose is returned.
+fn log_in(
+    stream: &mut TcpStream,
+    (username, timeout): (&str, Duration),
+    information: &crate::configuration::ClientInformation,
+    trace: &mut PlayConnectionTrace,
+) -> Result<Option<usize>, ConnectionError> {
     let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), Uuid::new(0, 1));
     send_packet(
-        &mut stream,
+        stream,
         ConnectionProtocol::Login,
         LOGIN_HELLO_PACKET_ID,
         |payload| {
@@ -33,7 +61,7 @@ pub(crate) fn open_play_connection(
     let mut compression_threshold = None;
 
     loop {
-        let body = read_packet(&mut stream, compression_threshold)?;
+        let body = read_packet(stream, compression_threshold)?;
         let (packet_id, payload) = split_packet(&body)?;
         trace.packets.push(PacketObservation {
             phase: ConnectionProtocol::Login,
@@ -61,13 +89,13 @@ pub(crate) fn open_play_connection(
                 trace.profile_id = Some(finished.game_profile.id);
 
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Login,
                     LOGIN_ACKNOWLEDGED_PACKET_ID,
                     |_payload| Ok(()),
                     compression_threshold,
                 )?;
-                send_configuration_start(&mut stream, information, compression_threshold)?;
+                send_configuration_start(stream, information, compression_threshold)?;
                 break;
             }
             LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID => {
@@ -75,7 +103,7 @@ pub(crate) fn open_play_connection(
                 let query = crate::cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
                     .map_err(|_| ConnectionError::Codec("login custom query"))?;
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Login,
                     LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID,
                     |output| {
@@ -87,7 +115,7 @@ pub(crate) fn open_play_connection(
             }
             LOGIN_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
                 answer_cookie_request(
-                    &mut stream,
+                    stream,
                     (
                         ConnectionProtocol::Login,
                         LOGIN_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID,
@@ -113,14 +141,7 @@ pub(crate) fn open_play_connection(
             )));
         }
     }
-
-    configure_connection(
-        &mut stream,
-        compression_threshold,
-        (timeout, select_known_packs),
-        trace,
-    )?;
-    Ok((stream, compression_threshold))
+    Ok(compression_threshold)
 }
 
 /// Run the configuration exchange up to the server's finish, which is answered: registries, tags
@@ -294,7 +315,16 @@ pub(crate) fn configure_connection(
                 take_report_details(trace, payload)?;
             }
             2 => return Err(ConnectionError::ServerDisconnected),
-            9 | 11 => {
+            CONFIG_CLIENTBOUND_TRANSFER_PACKET_ID => {
+                // `handleTransfer`: the connection is let go and another is made.
+                let transfer = crate::cookie::ClientboundTransferPacket::decode(&mut &payload[..])
+                    .map_err(|_| ConnectionError::Codec("transfer"))?;
+                return Err(ConnectionError::Transfer {
+                    host: transfer.host,
+                    port: transfer.port,
+                });
+            }
+            9 => {
                 return Err(ConnectionError::UnsupportedPacket {
                     phase: ConnectionProtocol::Configuration,
                     id: packet_id,

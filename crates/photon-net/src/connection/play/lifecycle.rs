@@ -1,5 +1,19 @@
 use super::*;
 
+/// How many times in a row the server may send the client on before it is given up on.
+const MAX_TRANSFERS: usize = 5;
+
+/// A host name and port as an address (`ServerAddress` resolved).
+pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, ConnectionError> {
+    use std::net::ToSocketAddrs;
+    let port =
+        u16::try_from(port).map_err(|_| ConnectionError::InvalidArgument("transfer port"))?;
+    (host, port)
+        .to_socket_addrs()?
+        .next()
+        .ok_or(ConnectionError::InvalidArgument("transfer host"))
+}
+
 /// Read play packets off `reader` in the background, one at a time into the channel, until the
 /// connection ends or the server starts the configuration phase (`Packet.isTerminal`): nothing
 /// after that packet is a play packet.
@@ -151,21 +165,63 @@ impl PlaySession {
         auto_jump: bool,
         information: crate::configuration::ClientInformation,
     ) -> Result<Self, ConnectionError> {
-        let mut trace = PlayConnectionTrace::default();
-        let (stream, compression_threshold) =
-            open_play_connection(address, username, timeout, true, &information, &mut trace)?;
-        stream.set_read_timeout(None)?;
-        let reader = stream.try_clone()?;
-        let incoming = spawn_reader(reader, compression_threshold);
-        let mut session = Self::assemble(
-            stream,
-            compression_threshold,
-            incoming,
-            trace,
+        Self::connect_through(
+            (address, None),
             (username, auto_jump),
-        );
-        session.client_information = information;
-        Ok(session)
+            timeout,
+            information,
+            PlayConnectionTrace::default(),
+        )
+    }
+
+    /// Connect to `address` (and the host name a handshake gives, where it is not the address's
+    /// own) with what `first` carries over (`trace.cookies`, `trace.transferring`), following the
+    /// server where it sends the client on to another.
+    pub(super) fn connect_through(
+        (mut address, mut host): (SocketAddr, Option<String>),
+        (username, auto_jump): (&str, bool),
+        timeout: Duration,
+        information: crate::configuration::ClientInformation,
+        first: PlayConnectionTrace,
+    ) -> Result<Self, ConnectionError> {
+        let mut carried = first;
+        for _ in 0..=MAX_TRANSFERS {
+            let mut trace = PlayConnectionTrace {
+                cookies: carried.cookies.clone(),
+                handshake_host: host.clone(),
+                transferring: carried.transferring,
+                ..PlayConnectionTrace::default()
+            };
+            match open_play_connection(address, username, timeout, true, &information, &mut trace) {
+                Err(ConnectionError::Transfer {
+                    host: next_host,
+                    port,
+                }) => {
+                    address = resolve_host(&next_host, port)?;
+                    host = Some(next_host);
+                    carried = PlayConnectionTrace {
+                        cookies: trace.cookies,
+                        transferring: true,
+                        ..PlayConnectionTrace::default()
+                    };
+                }
+                opened => {
+                    let (stream, compression_threshold) = opened?;
+                    stream.set_read_timeout(None)?;
+                    let incoming = spawn_reader(stream.try_clone()?, compression_threshold);
+                    let mut session = Self::assemble(
+                        stream,
+                        compression_threshold,
+                        incoming,
+                        trace,
+                        (username, auto_jump),
+                    );
+                    session.client_information = information;
+                    return Ok(session);
+                }
+            }
+        }
+        Err(ConnectionError::InvalidArgument("too many transfers"))
     }
 
     /// `ClientPacketListener.broadcastClientInformation`: the client's information, sent again

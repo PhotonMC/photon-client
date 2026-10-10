@@ -228,6 +228,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T32h — Strider — client-parity](records/client-strider-parity-conformance.md)
 - [T37b — Sulfur cube — client-parity](records/client-sulfur-cube-parity-conformance.md)
 - [T39c — Fırlatılan eşyalar ve havai fişek — client-parity](records/client-thrown-item-parity-conformance.md)
+- [Transfer (`ClientboundTransferPacket`) — [server-conformance değil, sahte sunucu testi]](records/client-transfer-conformance.md)
 - [T39b — Trident — client-parity](records/client-trident-parity-conformance.md)
 - [T41g — Köylü, tüccar ve cadının tuttuğu ve taktığı eşya — client-parity](records/client-villager-held-parity-conformance.md)
 - [T34 — Köylü ve gezgin tüccar — client-parity](records/client-villager-parity-conformance.md)

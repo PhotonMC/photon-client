@@ -25,4 +25,4 @@ Birim testler (niyet, çerez taşıma).
 Kayıt `client-transfer-conformance.md`, `docs/index.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `ClientboundTransferPacket` (yapılandırma ve oyun), `ConnectionError::Transfer`, `PlaySession::connect_through` (aktarım döngüsü, ad çözümü, `TRANSFER` niyeti ve el sıkışmada sunucu adı), çerezler taşınır. Sahte sunucu testi geçti; gerçek aktarım denenmedi. Sapma: bloklayarak bağlanır, `SRV` yok. Kayıt: [client-transfer-conformance.md](../records/client-transfer-conformance.md).

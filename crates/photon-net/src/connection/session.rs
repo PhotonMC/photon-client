@@ -151,11 +151,20 @@ pub(crate) fn send_handshake_intention(
     address: SocketAddr,
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
-    let host = address.ip().to_string();
+    send_handshake_to(stream, (&address.ip().to_string(), address.port()), intent)
+}
+
+/// The handshake for a host name as given (`ClientIntentionPacket`'s host is what the player typed,
+/// which a proxy may route by) and a port.
+pub(crate) fn send_handshake_to(
+    stream: &mut TcpStream,
+    (host, port): (&str, u16),
+    intent: ClientIntent,
+) -> Result<(), ConnectionError> {
     let intention = ClientIntentionPacket::new(
         PROTOCOL_VERSION,
         host.encode_utf16().collect(),
-        i32::from(address.port()),
+        i32::from(port),
         intent,
     );
     send_packet(

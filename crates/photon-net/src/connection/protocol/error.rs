@@ -8,9 +8,17 @@ pub enum ConnectionError {
     Wire(wire::ReadError),
     Compression(String),
     Codec(&'static str),
-    UnsupportedPacket { phase: ConnectionProtocol, id: i32 },
+    UnsupportedPacket {
+        phase: ConnectionProtocol,
+        id: i32,
+    },
     ServerDisconnected,
     InvalidArgument(&'static str),
+    /// The server sent the client on to another (`ClientboundTransferPacket`).
+    Transfer {
+        host: String,
+        port: i32,
+    },
 }
 
 impl fmt::Display for ConnectionError {
@@ -26,6 +34,7 @@ impl fmt::Display for ConnectionError {
             }
             Self::ServerDisconnected => formatter.write_str("server disconnected"),
             Self::InvalidArgument(name) => write!(formatter, "invalid argument: {name}"),
+            Self::Transfer { host, port } => write!(formatter, "transferred to {host}:{port}"),
         }
     }
 }
