@@ -39,7 +39,7 @@ pub fn check(args: &[String]) -> Result<(), String> {
     }
     if with_parity && parity::reference_present() {
         let families: Vec<String> = parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect();
-        step("parity", parity::compare(false, &families));
+        step("parity", parity::compare(&families, false));
     } else if with_parity {
         println!("parity: no local Java reference (.data/minecraft/runtime), skipped");
     }
@@ -105,7 +105,7 @@ pub fn pre_push() -> Result<(), String> {
         return Ok(());
     }
     let families: Vec<String> = parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect();
-    parity::compare(reference_changed, &families)
+    parity::compare(&families, false)
 }
 
 fn clippy(packages: &[String]) -> Result<(), String> {

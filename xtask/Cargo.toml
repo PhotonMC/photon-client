@@ -7,6 +7,10 @@ publish = false
 description = "Repository automation: lint rules, git hooks, the commit gate."
 
 [dependencies]
+flate2.workspace = true
+serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
+sha1 = "0.10"
+sha2 = "0.10"
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 rayon.workspace = true
 serde = { version = "1.0.229", features = ["derive"] }

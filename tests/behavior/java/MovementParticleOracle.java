@@ -376,8 +376,11 @@ class MovementParticleOracle extends MovementMenuOracle {
                     spell.set(spellSeedBefore);
                     levelSeed.set(levelSeedBefore);
                     var made = super.createParticle(options, x, y, z, xa, ya, za);
-                    if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())) {
-                        queue.remove(made);
+                    if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())
+                        && queue.remove(made)) {
+                        // `add` counted it against its limit: a try that missed must not use up
+                        // room, or how many tries the clock took would change the outcome.
+                        made.getParticleLimit().ifPresent(limit -> updateCount(limit, -1));
                     }
                     return made;
                 });

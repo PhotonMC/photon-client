@@ -23,6 +23,7 @@ class GuiCreditsOracle extends GuiSignOracle {
             boolean[] finished = {false};
             var win = new net.minecraft.client.gui.screens.WinScreen(row.get("poem").getAsBoolean(),
                 () -> finished[0] = true);
+            plainLogo(win);
             set(win, "minecraft", minecraft);
             set(win, "font", minecraft.font);
             set(win, "width", width);

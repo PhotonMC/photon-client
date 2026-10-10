@@ -57,6 +57,15 @@ class GuiFonts {
         throw new NoSuchFieldException(name);
     }
 
+    /**
+     * `LogoRenderer` picks its "Minceraft" easter egg from an unseeded random source, one
+     * logo in ten thousand; a capture holds it off so every run draws the same logo.
+     */
+    static <T> T plainLogo(T screen) throws Exception {
+        set(get(screen, "logoRenderer"), "showEasterEgg", false);
+        return screen;
+    }
+
     /** Loads `font/<id>.json` the way the font manager does, bitmap and space providers only. */
     static void loadFont(net.minecraft.server.packs.resources.ResourceManager manager, Identifier id,
             List<com.mojang.blaze3d.font.GlyphProvider> providers) throws Exception {

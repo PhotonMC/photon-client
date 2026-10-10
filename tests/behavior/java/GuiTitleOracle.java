@@ -23,7 +23,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             var panorama = menu(screen);
-            var title = new net.minecraft.client.gui.screens.TitleScreen(false);
+            var title = plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false));
             panorama.holdSpin();
             var literal = net.minecraft.client.resources.SplashManager.class.getDeclaredMethod("literalSplash", String.class);
             literal.setAccessible(true);
@@ -226,7 +226,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             }
             saved.save();
             var list = new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(
-                new net.minecraft.client.gui.screens.TitleScreen(false));
+                plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false)));
             // The title screen behind starts the panorama turning again.
             panorama.holdSpin();
             list.init(width, height);
@@ -294,7 +294,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var clockBefore = clockField.get(null);
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
             var panorama = menu(screen);
-            var last = new net.minecraft.client.gui.screens.TitleScreen(false);
+            var last = plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false));
             panorama.holdSpin();
             var data = new net.minecraft.client.multiplayer.ServerData(row.get("name").getAsString(),
                 row.get("ip").getAsString(), net.minecraft.client.multiplayer.ServerData.Type.OTHER);
@@ -362,7 +362,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             var panorama = menu(screen);
-            var last = new net.minecraft.client.gui.screens.TitleScreen(false);
+            var last = plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false));
             panorama.holdSpin();
             net.minecraft.client.gui.screens.Screen shown;
             if (row.get("screen").getAsString().equals("loading")) {
