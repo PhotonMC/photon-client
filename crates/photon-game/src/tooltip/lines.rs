@@ -3,11 +3,6 @@ use super::*;
 /// `ItemStack.getTooltipLines`. `player` is whether a player is at hand,
 /// which the attribute lines add its base values for; `maps` is the map data
 /// the client holds.
-#[expect(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub fn lines(
     stack: &Stack,
     player: bool,

@@ -117,11 +117,6 @@ impl ContainerMenu {
     }
 
     /// `AbstractContainerMenu.doClick`.
-    #[expect(
-        clippy::cognitive_complexity,
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn do_click(
         &mut self,
         slot_index: i32,

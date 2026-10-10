@@ -46,10 +46,6 @@ pub fn tint_colour(
 /// into: each layer's front and back, then a thin side face along every
 /// edge between an opaque and a transparent pixel. `layer_alpha` answers a
 /// layer's texture alpha and size.
-#[expect(
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub fn generated_elements(
     textures: &crate::model::TextureSlots,
     layer_alpha: &dyn Fn(&Identifier) -> Option<LayerAlpha>,

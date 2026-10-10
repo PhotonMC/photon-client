@@ -179,10 +179,6 @@ impl VulkanBackend {
         })
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one frame submitted in the order the API requires"
-    )]
     pub(in super::super) fn render_frame(
         &mut self,
         colour: [f32; 4],

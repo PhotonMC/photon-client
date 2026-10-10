@@ -93,10 +93,6 @@ pub struct ChatOptionsScreen {
 
 impl ChatOptionsScreen {
     /// `init`, with the options as they are.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "`addOptions` lists each option of the screen in turn"
-    )]
     pub fn new(
         font: &Font,
         lang: &Lang,

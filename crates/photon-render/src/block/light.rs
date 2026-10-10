@@ -269,10 +269,6 @@ where
     /// `positions` are the quad's corners inside its block. `cull` is the
     /// side the face is hidden behind, if it names one; `smooth` is whether
     /// smooth lighting applies to this block and model.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub fn light_quad(
         &self,
         state: u32,

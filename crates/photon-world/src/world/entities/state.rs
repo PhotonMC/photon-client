@@ -178,11 +178,6 @@ impl Entities {
 }
 
 impl ClientWorld {
-    #[expect(
-        clippy::cognitive_complexity,
-        clippy::too_many_lines,
-        reason = "one step per metadata field the client applies"
-    )]
     pub fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let living_flags = living_flags_from_metadata(metadata);

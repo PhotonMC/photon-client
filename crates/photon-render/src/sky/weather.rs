@@ -53,10 +53,6 @@ fn column_size(x: i32, z: i32) -> (f32, f32) {
 }
 
 /// Build the frame's weather: `extractRenderState` and `renderInstances`.
-#[expect(
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub fn build(
     world: &WeatherWorld,
     camera: [f64; 3],

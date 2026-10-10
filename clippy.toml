@@ -1,6 +1,4 @@
-# Complexity limits for every crate; see docs/coding-standards.md.
-cognitive-complexity-threshold = 25
-too-many-lines-threshold = 100
+# Size and complexity limits live in `cargo xtask lint`.
 too-many-arguments-threshold = 7
 type-complexity-threshold = 250
 allow-unwrap-in-tests = true

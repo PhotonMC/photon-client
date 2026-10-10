@@ -1,0 +1,3 @@
+#!/bin/sh
+# Conventional, English, unattributed commit messages; see `cargo xtask commit-msg`.
+exec cargo xtask commit-msg "$1"

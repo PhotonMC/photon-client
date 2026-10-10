@@ -386,11 +386,6 @@ impl Hud {
     }
 
     /// `Hud.extractPlayerHealth`: armour, hearts, food and air.
-    #[expect(
-        clippy::cognitive_complexity,
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub fn player_health(
         &mut self,
         frame: &mut GuiFrame,

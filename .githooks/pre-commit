@@ -1,0 +1,3 @@
+#!/bin/sh
+# Fast checks on the staged changes; see `cargo xtask pre-commit`.
+exec cargo xtask pre-commit

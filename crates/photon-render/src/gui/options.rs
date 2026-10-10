@@ -83,10 +83,6 @@ fn runs(lang: &Lang, key: &str) -> Vec<Run> {
 impl OptionsScreen {
     /// `OptionsScreen.init`, for a field of view, in a world or not, in a
     /// screen of `width` by `height` units.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "`init` builds each widget and layout in turn"
-    )]
     pub fn new(
         font: &Font,
         lang: &Lang,

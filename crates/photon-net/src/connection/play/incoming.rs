@@ -25,10 +25,6 @@ impl PlaySession {
         }
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one arm per packet id, read like the reference's handler list"
-    )]
     pub(super) fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {

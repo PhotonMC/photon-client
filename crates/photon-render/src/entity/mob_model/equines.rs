@@ -5,10 +5,6 @@ impl MobModel {
     /// overrides): the head eases between its grazing, standing and ordinary
     /// poses, the legs stride or paw the air, the tail lifts with the walk and
     /// swishes; a donkey shows its chests.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub fn setup_equine(&mut self, state: &EquineState) {
         self.root.reset();
         let pi = std::f64::consts::PI as f32;

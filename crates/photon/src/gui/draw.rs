@@ -108,10 +108,6 @@ impl Gui {
 
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one frame's HUD, screen and overlays in drawing order"
-    )]
     pub fn draw(
         &mut self,
         backend: &mut VulkanBackend,

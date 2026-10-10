@@ -1,11 +1,5 @@
 //! `ClientWorld` integration tests shared across the world submodules.
 
-#![expect(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "a scenario test reads as one sequence of steps"
-)]
-
 use super::{
     BlockEntityInput, BoatInput, ClientAttributeModifierState, ClientAttributeState,
     ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityMovementState,

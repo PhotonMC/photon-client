@@ -1,7 +1,6 @@
 use super::*;
 
 /// `getShape` of plants, crops and the things that grow, hang or lie on the ground; `None` for any other class.
-#[expect(clippy::too_many_lines, reason = "one arm per class")]
 pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
     use BlockClass as C;
     Some(match class {

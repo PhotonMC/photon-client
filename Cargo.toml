@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "xtask"]
 resolver = "3"
 
 [workspace.package]
@@ -27,10 +27,9 @@ shaderc = "0.10.1"
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
 
-# Complexity limits (thresholds in clippy.toml); see docs/coding-standards.md.
+# File size, function size and complexity limits are `cargo xtask lint` rules
+# (xtask/src/lint.rs); clippy keeps the remaining limits in clippy.toml.
 [workspace.lints.clippy]
-cognitive_complexity = "warn"
-too_many_lines = "warn"
 undocumented_unsafe_blocks = "warn"
 unwrap_used = "warn"
 
@@ -42,3 +41,14 @@ overflow-checks = true
 
 [profile.release]
 overflow-checks = true
+
+# The lint parses the whole workspace on every commit; an optimized parser
+# keeps the pre-commit hook fast without a release build of everything else.
+[profile.dev.package.xtask]
+opt-level = 2
+
+[profile.dev.package.syn]
+opt-level = 3
+
+[profile.dev.package.proc-macro2]
+opt-level = 3

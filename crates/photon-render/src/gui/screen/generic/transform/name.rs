@@ -3,10 +3,6 @@ use super::*;
 impl GenericScreen {
     /// `EnchantmentScreen.extractBackground`'s three rows, and the tooltip of
     /// the hovered one (`extractRenderState`).
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn enchant_draw(
         &mut self,
         draw: &mut ScreenDraw<'_, '_>,

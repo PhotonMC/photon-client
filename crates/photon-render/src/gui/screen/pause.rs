@@ -53,10 +53,6 @@ fn runs(lang: &Lang, key: &str) -> Vec<Run> {
 impl PauseScreen {
     /// `PauseScreen.init` and `createPauseMenu`, for a server (not a local
     /// one) in a screen of `width` by `height` units.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "`createPauseMenu` builds each button in turn"
-    )]
     pub fn new(font: &Font, lang: &Lang, (width, height): (i32, i32)) -> Self {
         let mut arena = Arena::default();
         let mut widgets: Vec<(Widget, Option<PauseAction>)> = Vec::new();

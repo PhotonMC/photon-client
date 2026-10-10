@@ -1,7 +1,6 @@
 use super::*;
 
 /// `getShape` of redstone parts, rails, fire and the other thin shapes that connect to their neighbours; `None` for any other class.
-#[expect(clippy::too_many_lines, reason = "one arm per class")]
 pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
     use BlockClass as C;
     Some(match class {

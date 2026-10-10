@@ -1,7 +1,6 @@
 use super::*;
 
 /// `getShape` of blocks fixed to a wall, a ceiling or a post: signs, banners, heads, ladders, torches, chains and hanging things; `None` for any other class.
-#[expect(clippy::too_many_lines, reason = "one arm per class")]
 pub(super) fn outline(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelShape> {
     use BlockClass as C;
     Some(match class {

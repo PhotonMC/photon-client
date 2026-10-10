@@ -5,10 +5,6 @@ impl LocalPlayer {
         self.sprinting
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn update_auto_jump(
         &mut self,
         level: &Level<'_>,

@@ -107,10 +107,6 @@ pub fn build_atlas_for(
 
 /// Pack a set of models' textures together with sprites no model names,
 /// such as the fluid sprites the fluid renderer draws with.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the atlas packing steps in the order the stitcher runs them"
-)]
 pub fn build_atlas_with(
     source: &impl AssetSource,
     models: &[&ResolvedModel],
@@ -387,7 +383,7 @@ pub(super) fn crop(
 /// `1 + padding/width`, sampled at the nearest texel with clamping at the
 /// sprite's edge. Working that through, atlas texel `i` of the slot reads
 /// sprite texel `i - padding` clamped into range, so the padding carries the
-/// edge texel repeated — which is the point, since it is what a sampler reads
+/// edge texel repeated -- which is the point, since it is what a sampler reads
 /// when a face lands right on the sprite's border.
 pub(super) fn blit_sprite(
     target: &mut DecodedImage,

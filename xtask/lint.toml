@@ -1,0 +1,42 @@
+# Architecture rules enforced by `cargo xtask lint`.
+
+# Programs whose terminal output is their interface.
+binary_crates = ["photon", "photon-oracle", "xtask"]
+
+# The Vulkan backend is the one place raw FFI is expected.
+unsafe_allowed = ["crates/photon-render/src/vulkan"]
+
+# Translations and text-handling test data.
+non_ascii_allowed = []
+
+# Each package may depend only on the workspace packages listed for it.
+# Dependencies flow one way: core -> data -> world -> game -> net / render -> app.
+# render -> game and audio -> game are known debts (GUI and sound-engine types
+# live in the wrong crate); they stay in the baseline until moved.
+[layers]
+photon-core = []
+photon-data = []
+photon-world = ["photon-core", "photon-data"]
+photon-game = ["photon-core", "photon-data", "photon-world"]
+photon-net = ["photon-core", "photon-data", "photon-world", "photon-game"]
+photon-render = ["photon-core", "photon-data", "photon-world"]
+photon-audio = []
+photon = [
+    "photon-core",
+    "photon-data",
+    "photon-world",
+    "photon-game",
+    "photon-net",
+    "photon-render",
+    "photon-audio",
+]
+photon-oracle = [
+    "photon-core",
+    "photon-data",
+    "photon-world",
+    "photon-game",
+    "photon-net",
+    "photon-render",
+    "photon-audio",
+]
+xtask = []

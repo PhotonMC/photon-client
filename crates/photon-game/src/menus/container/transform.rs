@@ -226,11 +226,6 @@ impl ContainerMenu {
     }
 
     /// `quickMoveStack` of these menus.
-    #[expect(
-        clippy::too_many_lines,
-        clippy::cognitive_complexity,
-        reason = "one arm per menu, read against its Java"
-    )]
     pub(super) fn quick_move_transform(&mut self, index: usize, player: Player) -> Option<Stack> {
         let original = self.slots[index].as_ref()?.clone();
         let clicked = original.copy_with_count(original.item_count());

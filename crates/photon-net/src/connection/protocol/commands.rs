@@ -73,7 +73,6 @@ pub fn parse_commands_packet(
     CommandTree::build(stubs, root).ok_or(ConnectionError::Codec("command tree"))
 }
 
-#[expect(clippy::too_many_lines, reason = "one arm for each argument type id")]
 /// An argument type by registry id with its parameters
 /// (`ArgumentTypeInfo.deserializeFromNetwork`).
 pub(super) fn read_argument_kind(

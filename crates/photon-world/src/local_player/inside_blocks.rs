@@ -266,10 +266,6 @@ pub(super) fn walk_inside_between<B: InsideBody>(
 /// `BlockGetter.forEachBlockIntersectedBetween`, as the blocks it visits and
 /// the iteration each is visited in. The order within one iteration is not
 /// kept: only honey acts here, and it acts at most once a tick.
-#[expect(
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub(super) fn blocks_intersected_between(
     from: Vec3,
     to: Vec3,

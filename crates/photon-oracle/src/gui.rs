@@ -1,10 +1,5 @@
 //! GUI family: the screens' drawing and input, answered with the production widgets.
 
-#![expect(
-    clippy::too_many_lines,
-    reason = "the GUI family answers every screen scenario in one dispatch"
-)]
-
 use super::{Value, json};
 
 /// A clipboard for a test with nothing to copy.

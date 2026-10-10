@@ -147,10 +147,6 @@ fn log_in(
 /// Run the configuration exchange up to the server's finish, which is answered: registries, tags
 /// and features are taken into `trace`, known packs are answered and keep-alives are returned.
 /// The connection is in the play phase after it.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the configuration exchange as one sequence"
-)]
 pub(crate) fn configure_connection(
     stream: &mut TcpStream,
     compression_threshold: Option<usize>,

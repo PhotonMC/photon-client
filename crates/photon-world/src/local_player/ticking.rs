@@ -286,11 +286,6 @@ impl LocalPlayer {
         }
     }
 
-    #[expect(
-        clippy::cognitive_complexity,
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         if self.sprint_trigger_time > 0 {
             self.sprint_trigger_time -= 1;

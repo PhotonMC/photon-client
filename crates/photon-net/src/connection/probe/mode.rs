@@ -1,10 +1,5 @@
 use super::*;
 
-#[expect(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "a live-server probe run as one sequence of scenario steps"
-)]
 pub(super) fn connect_and_probe_with_mode(
     address: SocketAddr,
     username: &str,

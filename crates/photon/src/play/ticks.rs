@@ -2,10 +2,6 @@ use super::*;
 
 impl Play {
     /// Join, open the window, and load everything the frames draw.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "start-up builds each part of the session in turn"
-    )]
     pub(super) fn start(client: Client, mut session: PlaySession) -> Result<Self> {
         let Client {
             mut surface,

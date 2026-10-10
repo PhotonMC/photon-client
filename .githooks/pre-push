@@ -1,0 +1,3 @@
+#!/bin/sh
+# Tests and parity for the pushed commits; see `cargo xtask pre-push`.
+exec cargo xtask pre-push

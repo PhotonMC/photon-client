@@ -76,10 +76,6 @@ pub fn moon_sprites() -> impl Iterator<Item = String> {
 }
 
 /// Build one frame of sky from the blended attributes.
-#[expect(
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub fn build_frame(
     attributes: &Attributes,
     view: &SkyView,

@@ -9,7 +9,6 @@ impl ArgumentKind {
 
     /// `ArgumentType.parse(reader, source)`: the source's permission to use
     /// entity selectors is the one thing a kind reads from it.
-    #[expect(clippy::too_many_lines, reason = "one arm for each kind of argument")]
     pub fn read_as(&self, reader: &mut StringReader, selectors: bool) -> Read {
         match self {
             Self::Bool => reader.read_boolean().map(drop),

@@ -55,10 +55,6 @@ impl VulkanBackend {
 
     /// Rebuild the swapchain, and what is sized by it, for a new window
     /// size. A zero size (a minimised window) is left for later.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
-    )]
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), VulkanError> {
         if width == 0 || height == 0 {
             return Ok(());

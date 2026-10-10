@@ -96,10 +96,6 @@ impl ContainerMenu {
     }
 
     /// `AnvilMenu.createResult`.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn anvil_create_result(&mut self) {
         self.anvil.only_renaming = false;
         let Some(input) = self.slots[0]

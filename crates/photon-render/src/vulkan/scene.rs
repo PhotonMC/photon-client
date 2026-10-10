@@ -17,10 +17,6 @@ impl VulkanBackend {
     }
 
     /// Upload the atlas and build the pipelines, dropping every section.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
-    )]
     pub fn load_atlas(&mut self, texture_levels: &[DecodedImage]) -> Result<(), VulkanError> {
         // SAFETY: live handles; `destroy_scene` makes the device idle before it frees the old
         // scene, so everything made below replaces something unused.

@@ -2,18 +2,44 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
+  # Repository rules (file size, complexity, naming, layering, ASCII) and
+  # formatting: no native dependencies, so it fails fast.
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: xtask
+      - run: cargo fmt --all --check
+      - run: cargo xtask lint
+      - name: Lint baseline is tight
+        # `cargo xtask lint` lowers the baseline when code improves; a changed
+        # file here means the improvement was not committed.
+        run: git diff --exit-code xtask/lint-baseline.toml
+
+  check:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Install system packages
+        if: runner.os == 'Linux'
         # shaderc and glfw build their native code from source; cpal needs ALSA.
         run: |
           sudo apt-get update
@@ -23,13 +49,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.97.1
-          components: rustfmt, clippy
+          components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo build --workspace
-      # No Minecraft assets or Java reference exist in CI (see AGENTS.md).
-      # The unit tests need none; the oracle runs stay local.
+      # No Minecraft assets or Java reference exist in CI; the unit tests need
+      # none and the parity runs stay local until the runner can fetch the
+      # reference itself.
       - run: cargo test --workspace --lib --bins --tests
 
   deny:
@@ -39,3 +64,9 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
+
+  machete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bnjbvr/cargo-machete@v0.9.1

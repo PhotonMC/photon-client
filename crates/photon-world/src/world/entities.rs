@@ -108,10 +108,6 @@ impl ClientWorld {
             })
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "the struct literal names every field of a new entity"
-    )]
     pub fn apply_entity(&mut self, mut entity: EntityInput) -> bool {
         (entity.x, entity.y, entity.z) =
             block_attached_position(entity.type_id, (entity.x, entity.y, entity.z));

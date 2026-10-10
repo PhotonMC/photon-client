@@ -236,10 +236,6 @@ impl BlockRenderer {
 
     /// [`Self::mesh_region`] and [`Self::mesh_moving_block`]: with a seed position, the
     /// blocks are those of a moving block (no fluids, variants picked from that position).
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn mesh_blocks<R, L, T>(
         &self,
         world: &MeshWorld<'_, R, L, T>,

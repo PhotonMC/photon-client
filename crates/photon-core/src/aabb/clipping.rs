@@ -85,10 +85,6 @@ pub(super) struct ClipState {
     pub(super) direction: Option<Direction>,
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "kept whole to read against the reference method line by line"
-)]
 pub(super) fn clip_bounds(min: Vec3, max: Vec3, state: &mut ClipState) {
     if state.dx > 1.0e-7 {
         if clip_point(

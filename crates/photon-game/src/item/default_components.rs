@@ -129,7 +129,6 @@ fn holder(names: impl Iterator<Item = String>, wanted: &str, out: &mut Vec<u8>) 
 
 /// A component's type id and value bytes; `None` when the value names an
 /// entry of a registry that is not known.
-#[expect(clippy::too_many_lines, reason = "one arm per component kind")]
 pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<(i32, Vec<u8>)> {
     let mut out = Vec::new();
     let id = match component {

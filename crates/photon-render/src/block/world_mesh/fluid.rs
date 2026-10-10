@@ -187,10 +187,6 @@ where
         self.atlas.sprites[name]
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "kept whole to read against the reference method line by line"
-    )]
     pub(super) fn tesselate(&self, pos: [i32; 3], mesh: &mut Mesh) {
         let [x, y, z] = pos;
         let Some(fluid) = self.fluid(x, y, z) else {

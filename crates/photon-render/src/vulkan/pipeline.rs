@@ -12,11 +12,6 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// `descriptor_layout` must be a live layout of this device.
-    #[expect(
-        clippy::cognitive_complexity,
-        clippy::too_many_lines,
-        reason = "Vulkan objects created in the order the API requires"
-    )]
     pub(super) unsafe fn create_pipeline(
         &self,
         descriptor_layout: vk::DescriptorSetLayout,

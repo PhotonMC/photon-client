@@ -7,10 +7,6 @@ impl VulkanBackend {
     ///
     /// `display_handle` and `window_handle` must refer to a window that outlives
     /// this backend; the surface borrows them.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "the backend's fields, each given its starting value"
-    )]
     pub unsafe fn create(
         display_handle: raw_window_handle::RawDisplayHandle,
         window_handle: raw_window_handle::RawWindowHandle,

@@ -1,10 +1,5 @@
 //! JSONL test glue. Behavior is delegated to the production library.
 
-#![expect(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "the adapter answers every behaviour family in one dispatch"
-)]
 // `cargo build --all-targets` also builds the binary with the test harness,
 // which has no `main`, so everything `main` reaches looks unused there.
 #![cfg_attr(test, allow(dead_code))]
