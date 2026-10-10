@@ -342,7 +342,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T81](T81-isin-ve-portal-blok-entity.md) Işın, portal ve efektli blok entity'ler — M · bağımlı: T79
 - [ ] [T82](T82-spawner-vault-kafes.md) Spawner, vault ve deneme spawner'ı çizimi — M · bağımlı: T79, T24
 - [x] [T83](T83-hasar-ve-etki-orturleri.md) Hasarda kameranın eğilmesi (`bobHurt`) — M · bitti (4641bad8)
-- [x] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri (gömülü blok, su altı, yanma) — M · bağımlı: T83 · bitti (HASH)
+- [x] [T83b](T83b-ekran-orturleri.md) Ekran örtüleri (gömülü blok, su altı, yanma) — M · bağımlı: T83 · bitti (cc90daed)
 - [ ] [T83c](T83c-etki-sisleri.md) Etki sisleri, ışık etkileri, dönme ve totem animasyonu — L · bağımlı: T83b
 - [x] [T84](T84-dunya-siniri.md) Dünya sınırı: paketler ve çarpışma — M · bitti (33f8b5f5)
 - [x] [T84b](T84b-sinir-cizimi.md) Dünya sınırının çizimi — M · bağımlı: T84 · bitti (dcb06eff)
