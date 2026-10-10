@@ -350,7 +350,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 
 ### M9 Sunucu uyumluluğu
 
-- [x] **PLAN-M9** Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl — S · bitti (HASH)
+- [x] **PLAN-M9** Çevrimiçi kimlik, yeniden yapılandırma, kaynak paketi görevlere böl — S · bitti (ea4eee6d)
 - [ ] [T100](T100-cerez-ozel-yuk.md) Çerez, özel yük ve sunucu bağlantıları paketleri — M
 - [ ] [T101](T101-yeniden-yapilandirma.md) Yeniden yapılandırma (oyun → yapılandırma → oyun) — M
 - [ ] [T102](T102-transfer.md) Transfer paketi ve çerezlerin taşınması — M · bağımlı: T100, T101
