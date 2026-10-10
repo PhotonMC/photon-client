@@ -272,15 +272,18 @@ impl<'a> Reader<'a> {
                 // Strict JSON forbids raw control characters inside a string.
                 0x00..=0x1F => return Err(self.fail("control character in string")),
                 _ => {
+                    // The run up to the next quote, escape or control byte. Those
+                    // are ASCII, so the run ends on a character boundary and is
+                    // decoded once instead of once per character.
                     let rest = &self.bytes[self.offset..];
-                    let text = core::str::from_utf8(rest).map_err(|_| self.fail("invalid text"))?;
-                    let character = text
-                        .chars()
-                        .next()
-                        .ok_or_else(|| self.fail("invalid text"))?;
-                    let mut buffer = [0_u16; 2];
-                    units.extend_from_slice(character.encode_utf16(&mut buffer));
-                    self.offset += character.len_utf8();
+                    let length = rest
+                        .iter()
+                        .position(|byte| matches!(byte, b'"' | b'\\' | 0x00..=0x1F))
+                        .unwrap_or(rest.len());
+                    let text = core::str::from_utf8(&rest[..length])
+                        .map_err(|_| self.fail("invalid text"))?;
+                    units.extend(text.encode_utf16());
+                    self.offset += length;
                 }
             }
         }
