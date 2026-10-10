@@ -1,4 +1,4 @@
-//! `StrictMath.sin`, `cos` and `pow` (fdlibm), which the reference's `Math.*` gives when the JVM
+//! `StrictMath.sin`, `cos`, `asin` and `pow` (fdlibm), which the reference's `Math.*` gives when the JVM
 //! has no stub of its own (the oracle runs with them off). The platform's libm rounds a result
 //! differently in rare cases, which the particle simulations carry into their positions.
 //!
@@ -14,6 +14,9 @@
     clippy::eq_op,
     reason = "fdlibm makes its NaNs and infinities by `x - x` and `0 / 0` style arithmetic"
 )]
+
+mod asin;
+pub use asin::fdlibm_asin;
 
 const S1: f64 = -1.66666666666666324348e-01;
 const S2: f64 = 8.33333333332248946124e-03;

@@ -1,4 +1,6 @@
 use super::*;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// The chat box's reading of commands typed against a tree: where each node
 /// read, what could not be read, the colours and the lines under the text.
@@ -223,28 +225,62 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
 /// Answers every input line. Cases are independent, so they are answered in
 /// parallel; the output keeps the input order.
 pub(super) fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use rayon::prelude::*;
     let lines: Vec<String> = io::stdin().lock().lines().collect::<Result<_, _>>()?;
-    let responses: Vec<String> = lines
-        .par_iter()
-        .enumerate()
-        .map(|(index, line)| {
-            let answer = serde_json::from_str(line)
-                .map_err(|error| error.to_string())
-                .and_then(respond)
-                .and_then(|response| {
-                    serde_json::to_string(&response).map_err(|error| error.to_string())
-                });
-            answer.map_err(|message| format!("line {}: {message}", index + 1))
-        })
-        .collect::<Result<_, String>>()
-        .map_err(io::Error::other)?;
+    let responses = answer_all(&lines).map_err(io::Error::other)?;
     let mut output = io::BufWriter::new(io::stdout().lock());
     for response in responses {
         writeln!(output, "{response}")?;
     }
     output.flush()?;
     Ok(())
+}
+
+/// Answers every line on plain threads pulling the next unanswered line.
+///
+/// Not rayon workers: production code builds shared caches lazily, some with
+/// rayon inside the initializer. Rayon workers blocked on such an
+/// initialization would leave its parallel work nobody to run it.
+fn answer_all(lines: &[String]) -> Result<Vec<String>, String> {
+    let next = AtomicUsize::new(0);
+    let answers: Vec<Slot> = lines.iter().map(|_| Mutex::new(None)).collect();
+    let threads = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| answer_until_done(lines, &next, &answers));
+        }
+    });
+    answers
+        .into_iter()
+        .map(|slot| {
+            slot.into_inner()
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| Err("no answer".to_owned()))
+        })
+        .collect()
+}
+
+/// One line's answer, filled in by whichever worker took the line.
+type Slot = Mutex<Option<Result<String, String>>>;
+
+/// One worker: takes the next unanswered line until none are left.
+fn answer_until_done(lines: &[String], next: &AtomicUsize, answers: &[Slot]) {
+    loop {
+        let index = next.fetch_add(1, Ordering::Relaxed);
+        let Some(line) = lines.get(index) else {
+            return;
+        };
+        let result = answer(line).map_err(|message| format!("line {}: {message}", index + 1));
+        if let Ok(mut slot) = answers[index].lock() {
+            *slot = Some(result);
+        }
+    }
+}
+
+fn answer(line: &str) -> Result<String, String> {
+    let request = serde_json::from_str(line).map_err(|error| error.to_string())?;
+    let response = respond(request)?;
+    serde_json::to_string(&response).map_err(|error| error.to_string())
 }
 
 /// The menu a scenario row describes: its kind, recipe sets, data and XP

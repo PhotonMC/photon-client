@@ -65,9 +65,6 @@ public final class MathOracle extends MathPlayerInputOracle {
         if (operation.equals("client_world_entity_ticking_eligibility")) {
             return clientWorldEntityTickingEligibilityResult(request);
         }
-        if (operation.equals("client_world_entity_transform_history")) {
-            return clientWorldEntityTransformHistoryResult(request);
-        }
         if (operation.equals("client_world_entity_player_interpolation")) {
             return clientWorldEntityPlayerInterpolationResult(request);
         }
@@ -82,9 +79,6 @@ public final class MathOracle extends MathPlayerInputOracle {
         }
         if (operation.equals("client_world_entity_passengers")) {
             return clientWorldEntityPassengersResult(request);
-        }
-        if (operation.equals("client_world_entity_passenger_tick")) {
-            return clientWorldEntityPassengerTickResult(request);
         }
         if (operation.equals("client_world_entity_passenger_position")) {
             return clientWorldEntityPassengerPositionResult(request);

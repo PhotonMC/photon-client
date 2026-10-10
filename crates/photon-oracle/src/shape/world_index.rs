@@ -61,105 +61,7 @@ pub(super) fn client_world_indexed_collision_case(request: &Value) -> Result<Val
                         .unwrap_or(false),
                 );
                 if let Some(context) = entity.get("climbable_context").and_then(Value::as_object) {
-                    let kind = context
-                        .get("kind")
-                        .and_then(Value::as_str)
-                        .ok_or("climbable context kind must be a string")?;
-                    if kind == "trapdoor_ladder" {
-                        world.entities_mut().apply_climbable_trapdoor_state(
-                            entity_id,
-                            context
-                                .get("trapdoor_open")
-                                .and_then(Value::as_bool)
-                                .unwrap_or(false),
-                            context
-                                .get("trapdoor_facing")
-                                .and_then(Value::as_str)
-                                .ok_or("trapdoor_facing must be a string")?,
-                            context
-                                .get("below_is_ladder")
-                                .and_then(Value::as_bool)
-                                .unwrap_or(true),
-                            context
-                                .get("ladder_facing")
-                                .and_then(Value::as_str)
-                                .ok_or("ladder_facing must be a string")?,
-                        );
-                    } else if kind == "climbable_tag" {
-                        let state_id = context
-                            .get("state_id")
-                            .and_then(Value::as_i64)
-                            .ok_or("climbable state_id must be an integer")?
-                            .try_into()
-                            .map_err(|_| "climbable state_id must fit in i32")?;
-                        world.apply_entity_living_climbable_block_state(entity_id, state_id);
-                    } else if kind == "glide_through_tag" {
-                        let state_id = context
-                            .get("state_id")
-                            .and_then(Value::as_i64)
-                            .ok_or("glide-through state_id must be an integer")?
-                            .try_into()
-                            .map_err(|_| "glide-through state_id must fit in i32")?;
-                        let fall_flying = context
-                            .get("fall_flying")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false);
-                        world.apply_entity_living_climbable_glide_through_state(
-                            entity_id,
-                            state_id,
-                            fall_flying,
-                        );
-                    } else if kind == "update_tags_packet" {
-                        let state_id = context
-                            .get("state_id")
-                            .and_then(Value::as_i64)
-                            .ok_or("update-tags state_id must be an integer")?
-                            .try_into()
-                            .map_err(|_| "update-tags state_id must fit in i32")?;
-                        let block_tags = context
-                            .get("block_tags")
-                            .and_then(Value::as_object)
-                            .ok_or("block_tags must be an object")?;
-                        let tags = block_tags
-                            .iter()
-                            .map(|(tag_id, values)| {
-                                let values = values
-                                    .as_array()
-                                    .ok_or("block tag values must be an array")?
-                                    .iter()
-                                    .map(|value| {
-                                        value
-                                            .as_i64()
-                                            .ok_or("block tag value must be an integer")?
-                                            .try_into()
-                                            .map_err(|_| {
-                                                "block tag value must fit in i32".to_owned()
-                                            })
-                                    })
-                                    .collect::<Result<Vec<i32>, String>>()?;
-                                let id = Identifier::parse(tag_id)
-                                    .map_err(|_| "invalid block tag identifier".to_owned())?;
-                                Ok(TagEntry::new(id, values))
-                            })
-                            .collect::<Result<Vec<_>, String>>()?;
-                        let registry = Identifier::parse("minecraft:block")
-                            .map_err(|_| "invalid block registry identifier".to_owned())?;
-                        let packet = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
-                            registry, tags,
-                        )]);
-                        world.apply_update_tags_packet(&packet);
-                        let fall_flying = context
-                            .get("fall_flying")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false);
-                        world.apply_entity_living_climbable_glide_through_state(
-                            entity_id,
-                            state_id,
-                            fall_flying,
-                        );
-                    } else {
-                        return Err("unknown climbable context kind".to_owned());
-                    }
+                    apply_climbable_context(&mut world, entity_id, context)?;
                 }
             }
             let source_entity_id = input
@@ -357,4 +259,126 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
         })
         .collect::<Result<Vec<_>, String>>()?;
     Ok(json!({"tracks": tracks}))
+}
+
+type Context = serde_json::Map<String, Value>;
+
+/// What makes the entity climbing, as the case describes it.
+fn apply_climbable_context(
+    world: &mut ClientWorld,
+    entity_id: i32,
+    context: &Context,
+) -> Result<(), String> {
+    let kind = context
+        .get("kind")
+        .and_then(Value::as_str)
+        .ok_or("climbable context kind must be a string")?;
+    match kind {
+        "trapdoor_ladder" => trapdoor_ladder(world, entity_id, context),
+        "climbable_tag" => {
+            let state_id = state_id(context, "climbable")?;
+            // A client gets `#climbable` from the server; a case without
+            // that packet stands in for it with the vanilla tags.
+            world.apply_update_tags_packet(&crate::vanilla_block_tags()?);
+            world.apply_entity_living_climbable_block_state(entity_id, state_id);
+            Ok(())
+        }
+        "glide_through_tag" => {
+            let state_id = state_id(context, "glide-through")?;
+            world.apply_update_tags_packet(&crate::vanilla_block_tags()?);
+            world.apply_entity_living_climbable_glide_through_state(
+                entity_id,
+                state_id,
+                fall_flying(context),
+            );
+            Ok(())
+        }
+        "update_tags_packet" => {
+            let state_id = state_id(context, "update-tags")?;
+            world.apply_update_tags_packet(&tags_packet(context)?);
+            world.apply_entity_living_climbable_glide_through_state(
+                entity_id,
+                state_id,
+                fall_flying(context),
+            );
+            Ok(())
+        }
+        _ => Err("unknown climbable context kind".to_owned()),
+    }
+}
+
+fn state_id(context: &Context, what: &str) -> Result<i32, String> {
+    context
+        .get("state_id")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| format!("{what} state_id must be an integer"))?
+        .try_into()
+        .map_err(|_| format!("{what} state_id must fit in i32"))
+}
+
+fn fall_flying(context: &Context) -> bool {
+    context
+        .get("fall_flying")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn trapdoor_ladder(
+    world: &mut ClientWorld,
+    entity_id: i32,
+    context: &Context,
+) -> Result<(), String> {
+    let text = |key: &str| {
+        context
+            .get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("{key} must be a string"))
+    };
+    world.entities_mut().apply_climbable_trapdoor_state(
+        entity_id,
+        context
+            .get("trapdoor_open")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        text("trapdoor_facing")?,
+        context
+            .get("below_is_ladder")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        text("ladder_facing")?,
+    );
+    Ok(())
+}
+
+/// The case's own block tags, as an update-tags packet would carry them.
+fn tags_packet(context: &Context) -> Result<ClientboundUpdateTagsPacket, String> {
+    let block_tags = context
+        .get("block_tags")
+        .and_then(Value::as_object)
+        .ok_or("block_tags must be an object")?;
+    let tags = block_tags
+        .iter()
+        .map(|(tag_id, values)| {
+            let values = values
+                .as_array()
+                .ok_or("block tag values must be an array")?
+                .iter()
+                .map(|value| {
+                    value
+                        .as_i64()
+                        .ok_or("block tag value must be an integer")?
+                        .try_into()
+                        .map_err(|_| "block tag value must fit in i32".to_owned())
+                })
+                .collect::<Result<Vec<i32>, String>>()?;
+            let id =
+                Identifier::parse(tag_id).map_err(|_| "invalid block tag identifier".to_owned())?;
+            Ok(TagEntry::new(id, values))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let registry = Identifier::parse("minecraft:block")
+        .map_err(|_| "invalid block registry identifier".to_owned())?;
+    Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
+        registry, tags,
+    )]))
 }

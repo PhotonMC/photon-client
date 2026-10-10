@@ -311,16 +311,11 @@ fn world_border_render_state(entry: &Value) -> Result<Value, String> {
     let max_x = border.max_x(partial_tick);
     let min_z = border.min_z(partial_tick);
     let max_z = border.max_z(partial_tick);
-    let status_color = border.status().color();
 
     let extract = photon_render::border::extract(
-        min_x,
-        max_x,
-        min_z,
-        max_z,
-        status_color,
-        camera_x,
-        camera_z,
+        &border,
+        partial_tick,
+        (camera_x, camera_z),
         render_distance,
     );
 

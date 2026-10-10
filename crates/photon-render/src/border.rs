@@ -12,7 +12,8 @@
 //! already far past the fog, not a different border.
 
 use crate::scene::Vertex;
-use photon_core::math::{ceil_f64, clamp_f64, frac_f64, lfloor_f64};
+use photon_core::math::{ceil_f64, clamp_f64, fdlibm_pow, frac_f64, lfloor_f64};
+use photon_world::ClientWorldBorder;
 
 /// `WorldBorderRenderState`'s `alpha` and `tint` fields, as `extract` fills
 /// them in.
@@ -24,35 +25,25 @@ pub struct BorderExtract {
     pub tint: [f32; 3],
 }
 
-/// `WorldBorder.getDistanceToBorder(double, double)`.
-pub fn distance_to_border(min_x: f64, max_x: f64, min_z: f64, max_z: f64, x: f64, z: f64) -> f64 {
-    (x - min_x).min(max_x - x).min(z - min_z).min(max_z - z)
-}
-
 /// `WorldBorderRenderer.extract`: whether the camera sits close enough to
-/// any edge of the border (within `render_distance`) while still inside its
-/// bounding box widened by that same distance; if so, how transparent the
-/// overlay is (the distance to the nearest edge, normalised and raised to
-/// the fourth power) and which status colour tints it.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "mirrors the reference method's own parameter list"
-)]
+/// any edge of the border (within `render_distance`, against the edges at
+/// `partial_tick`) while still inside its bounding box widened by that same
+/// distance; if so, how transparent the overlay is (the border's own
+/// distance to its nearest edge, normalised and raised to the fourth power)
+/// and which status colour tints it.
 #[expect(
     clippy::neg_cmp_op_on_partial_ord,
     reason = "transcribed from the reference's own `!(a < b)` conditions, whose NaN handling \
               differs from the `a >= b` clippy suggests"
 )]
 pub fn extract(
-    min_x: f64,
-    max_x: f64,
-    min_z: f64,
-    max_z: f64,
-    status_color: i32,
-    camera_x: f64,
-    camera_z: f64,
+    border: &ClientWorldBorder,
+    partial_tick: f32,
+    (camera_x, camera_z): (f64, f64),
     render_distance: f64,
 ) -> BorderExtract {
+    let (min_x, max_x) = (border.min_x(partial_tick), border.max_x(partial_tick));
+    let (min_z, max_z) = (border.min_z(partial_tick), border.max_z(partial_tick));
     let near_an_edge = !(camera_x < max_x - render_distance)
         || !(camera_x > min_x + render_distance)
         || !(camera_z < max_z - render_distance)
@@ -61,21 +52,21 @@ pub fn extract(
         && !(camera_x > max_x + render_distance)
         && !(camera_z < min_z - render_distance)
         && !(camera_z > max_z + render_distance);
-    if near_an_edge && within_bounds {
-        let distance = distance_to_border(min_x, max_x, min_z, max_z, camera_x, camera_z);
-        let alpha = clamp_f64((1.0 - distance / render_distance).powf(4.0), 0.0, 1.0);
-        let tint = [
-            ((status_color >> 16) & 0xFF) as f32 / 255.0,
-            ((status_color >> 8) & 0xFF) as f32 / 255.0,
-            (status_color & 0xFF) as f32 / 255.0,
-        ];
-        BorderExtract { alpha, tint }
-    } else {
-        BorderExtract {
+    if !(near_an_edge && within_bounds) {
+        return BorderExtract {
             alpha: 0.0,
             tint: [0.0, 0.0, 0.0],
-        }
+        };
     }
+    let distance = border.distance_to_border(camera_x, camera_z);
+    let alpha = clamp_f64(fdlibm_pow(1.0 - distance / render_distance, 4.0), 0.0, 1.0);
+    let status_color = border.status().color();
+    let tint = [
+        ((status_color >> 16) & 0xFF) as f32 / 255.0,
+        ((status_color >> 8) & 0xFF) as f32 / 255.0,
+        (status_color & 0xFF) as f32 / 255.0,
+    ];
+    BorderExtract { alpha, tint }
 }
 
 /// `Direction.get2DDataValue()` for the four horizontal directions, the way

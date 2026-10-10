@@ -76,10 +76,12 @@ pub fn mth_atan2(mut y: f64, mut x: f64) -> f64 {
     theta
 }
 
+/// One row of `Mth`'s atan2 tables: `Math.asin` and `Math.cos`, which are
+/// fdlibm's results with the JVM's own math stubs off.
 pub(super) fn mth_atan2_table_entry(index: usize) -> (f64, f64) {
     let value = index as f64 / 256.0;
-    let asin = value.asin();
-    (asin, asin.cos())
+    let asin = super::fdlibm_asin(value);
+    (asin, super::fdlibm_cos(asin))
 }
 
 /// Return JOML-backed Java `Mth.invSqrt(float)` with its f64 sqrt and f32 divide.

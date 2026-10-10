@@ -180,6 +180,17 @@ impl ClientWorldBorder {
         self.edge(self.center_z(), self.effective_size(partial_tick), true)
     }
 
+    /// `WorldBorder.getDistanceToBorder`: the distance to the nearest edge,
+    /// measured against the edges of this tick (no partial-tick lerp).
+    pub fn distance_to_border(&self, x: f64, z: f64) -> f64 {
+        let from_west = x - self.min_x(0.0);
+        let from_east = self.max_x(0.0) - x;
+        let from_north = z - self.min_z(0.0);
+        let from_south = self.max_z(0.0) - z;
+        let min = crate::java_math::min;
+        min(min(min(from_west, from_east), from_north), from_south)
+    }
+
     pub fn collision_shape(&self) -> VoxelShape {
         world_border_collision_shape(
             self.center_x(),

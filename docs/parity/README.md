@@ -25,7 +25,7 @@ Calling the oracle only to produce constants (registry ids, hashes) is not `clie
 ## Running
 
 ```sh
-cargo xtask parity                      # compare every family except math
+cargo xtask parity                      # compare every family
 cargo xtask parity --family gui         # one family (repeatable)
 cargo xtask parity --recapture          # capture Java again even for known keys
 ```
@@ -52,7 +52,7 @@ The pre-push hook runs parity when engine crates or reference sources changed. R
 
 ## Families
 
-`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` is not in the default set: its NaN bit patterns were recorded on x86-64 Linux, and it has known open differences; run it with `--family math`.
+`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` NaN bit patterns were recorded on x86-64 Linux and differ on arm64.
 
 The GUI family has its own page: [GUI oracle](gui-oracle.md).
 

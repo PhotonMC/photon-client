@@ -89,16 +89,7 @@ pub fn world_border(
     let min_z = border.min_z(partial);
     let max_z = border.max_z(partial);
     let render_distance = f64::from(render_distance_chunks * 16);
-    let extract = photon_render::border::extract(
-        min_x,
-        max_x,
-        min_z,
-        max_z,
-        border.status().color(),
-        eye.x,
-        eye.z,
-        render_distance,
-    );
+    let extract = photon_render::border::extract(border, partial, (eye.x, eye.z), render_distance);
     if extract.alpha <= 0.0 {
         return Vec::new();
     }

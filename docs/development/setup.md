@@ -56,4 +56,4 @@ The hooks run the same commands. The rules themselves are in the [coding standar
 
 ## Platform notes
 
-- **The `math` family** is not in the default set. Its NaN bit patterns were recorded on x86-64 Linux (arm64 Java produces differently signed NaNs), and it currently has known differences after the oracle stopped using HotSpot's `Math` intrinsics. Run it with `cargo xtask parity --family math`.
+- **The `math` family** carries NaN bit patterns recorded on x86-64 Linux; arm64 Java produces differently signed NaNs in some operations, so a few `math` cases differ there.

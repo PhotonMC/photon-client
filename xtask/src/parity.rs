@@ -24,8 +24,7 @@ use sha2::{Digest, Sha256};
 use crate::process;
 use cases::Case;
 
-/// Every family except `math`, whose captured NaN patterns only hold on
-/// x86-64 Linux.
+/// Every parity family.
 pub const FAMILIES: &[&str] = &[
     "atlas",
     "binary",
@@ -34,6 +33,7 @@ pub const FAMILIES: &[&str] = &[
     "gui",
     "image",
     "json",
+    "math",
     "model",
     "movement",
     "nbt",

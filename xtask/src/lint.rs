@@ -177,14 +177,16 @@ fn judge<'a>(
             .get(finding.rule.name())
             .and_then(|entries| entries.get(&finding.key))
             .copied();
-        match known {
-            Some(cap) if finding.value <= cap => {
-                tightened
-                    .entry(finding.rule.name().to_owned())
-                    .or_default()
-                    .insert(finding.key.clone(), finding.value);
-            }
-            _ => errors.push(finding),
+        if known.is_none_or(|cap| finding.value > cap) {
+            errors.push(finding);
+        }
+        // A known entry keeps its cap while it is exceeded, so fixing the
+        // code later finds it again; otherwise it drops to the current value.
+        if let Some(cap) = known {
+            tightened
+                .entry(finding.rule.name().to_owned())
+                .or_default()
+                .insert(finding.key.clone(), finding.value.min(cap));
         }
     }
     (errors, tightened)
@@ -224,4 +226,32 @@ fn init_baseline(findings: &[Finding]) -> Result<(), String> {
     baseline::save(&fresh)?;
     println!("lint: baseline written with {} violations", findings.len());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn finding(value: u64) -> Finding {
+        Finding {
+            value,
+            ..Finding::new(Rule::FnLength, "f".to_owned(), "f.rs".to_owned(), 1)
+        }
+    }
+
+    #[test]
+    fn an_exceeded_cap_is_kept_and_a_lower_value_tightens_it() {
+        let mut old = baseline::Baseline::new();
+        old.entry("fn-length".to_owned())
+            .or_default()
+            .insert("f".to_owned(), 80);
+        let over = [finding(90)];
+        let (errors, kept) = judge(&over, &old);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(kept["fn-length"]["f"], 80);
+        let under = [finding(70)];
+        let (errors, tightened) = judge(&under, &old);
+        assert!(errors.is_empty());
+        assert_eq!(tightened["fn-length"]["f"], 70);
+    }
 }

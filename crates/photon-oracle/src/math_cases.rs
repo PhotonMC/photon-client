@@ -53,9 +53,6 @@ pub(super) fn math_result(request: &Value) -> Result<Value, String> {
         "client_world_entity_ticking_eligibility" => {
             client_world_entity_ticking_eligibility_result(request)
         }
-        "client_world_entity_transform_history" => {
-            client_world_entity_transform_history_result(request)
-        }
         "client_world_entity_player_interpolation" => {
             client_world_entity_player_interpolation_result(request)
         }
@@ -63,7 +60,6 @@ pub(super) fn math_result(request: &Value) -> Result<Value, String> {
         "client_world_entity_player_motion" => client_world_entity_player_motion_result(request),
         "client_world_entity_teleport" => client_world_entity_teleport_result(request),
         "client_world_entity_passengers" => client_world_entity_passengers_result(request),
-        "client_world_entity_passenger_tick" => client_world_entity_passenger_tick_result(request),
         "client_world_entity_passenger_position" => {
             client_world_entity_passenger_position_result(request)
         }
