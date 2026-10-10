@@ -63,6 +63,7 @@ public final class GuiOracle extends GuiSocialOracle {
                 case "chat_options_screen" -> settingsScreen(request, "chat");
                 case "mouse_settings_screen" -> settingsScreen(request, "mouse");
                 case "sound_options_screen" -> settingsScreen(request, "sound");
+                case "skin_customization_screen" -> settingsScreen(request, "skin");
                 case "controls_screen" -> settingsScreen(request, "controls");
                 case "key_binds_screen" -> settingsScreen(request, "keybinds");
                 case "key_mappings" -> keyMappings(request);

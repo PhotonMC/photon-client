@@ -89,6 +89,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "chat_options_screen"
             | "mouse_settings_screen"
             | "controls_screen"
+            | "skin_customization_screen"
             | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
             "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
             "lang_text" => lang_text_case(&mut ctx, row)?,

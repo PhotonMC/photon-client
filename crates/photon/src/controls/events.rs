@@ -58,6 +58,61 @@ impl Controls {
         Ok(())
     }
 
+    /// An event for the settings screens (and the social interactions and pause screens), the
+    /// first of them open that takes it; the event comes back when none is open.
+    fn settings_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+        for_screen: bool,
+    ) -> std::result::Result<(), glfw::WindowEvent> {
+        if !for_screen {
+            return Err(event);
+        }
+        if self.language_screen.is_some() && for_screen {
+            self.language_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.key_binds_screen.is_some() && for_screen {
+            self.key_binds_event(event, surface, assets);
+            return Ok(());
+        }
+        if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
+            self.controls_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.sound_screen.is_some() && for_screen {
+            self.sound_options_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.skin_screen.is_some() && for_screen {
+            self.skin_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.chat_options_screen.is_some() && for_screen {
+            self.chat_options_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.video_screen.is_some() && for_screen {
+            self.video_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.options_screen.is_some() && for_screen {
+            self.options_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.social.is_some() && for_screen {
+            self.social_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.pause.is_some() && for_screen {
+            self.pause_event(event, surface, assets);
+            return Ok(());
+        }
+        Err(event)
+    }
+
     /// A key or mouse button, by the mappings it is bound to (`KeyMapping.set` and `click`): the
     /// keys held for moving, the attack, use and pick keys, and the keys that open things.
     fn mapped_input(
@@ -255,42 +310,10 @@ impl Controls {
         if self.book_edit.is_some() && for_screen {
             return self.book_event(event, session, surface, assets);
         }
-        if self.language_screen.is_some() && for_screen {
-            self.language_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.key_binds_screen.is_some() && for_screen {
-            self.key_binds_event(event, surface, assets);
-            return Ok(());
-        }
-        if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
-            self.controls_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.sound_screen.is_some() && for_screen {
-            self.sound_options_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.chat_options_screen.is_some() && for_screen {
-            self.chat_options_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.video_screen.is_some() && for_screen {
-            self.video_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.options_screen.is_some() && for_screen {
-            self.options_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.social.is_some() && for_screen {
-            self.social_event(event, surface, assets);
-            return Ok(());
-        }
-        if self.pause.is_some() && for_screen {
-            self.pause_event(event, surface, assets);
-            return Ok(());
-        }
+        let event = match self.settings_event(event, surface, assets, for_screen) {
+            Ok(()) => return Ok(()),
+            Err(event) => event,
+        };
         if self.screen.is_some() && for_screen {
             let handled = self.screen_event(event, session, surface);
             self.drain_screen_actions(session)?;

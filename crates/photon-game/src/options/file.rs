@@ -60,6 +60,19 @@ impl Options {
         }
     }
 
+    /// `read` for the main hand and the skin's parts.
+    fn read_skin(&mut self, key: Key, json: &Json) {
+        match (key, json) {
+            (Key::MainHand, Json::Text(name)) => {
+                if let Some(value) = MainHand::from_serialized(name) {
+                    self.main_hand = value;
+                }
+            }
+            (Key::ModelPart(bit), Json::Bool(shown)) => self.set_model_part(bit, *shown),
+            _ => {}
+        }
+    }
+
     /// `option.codec().parse` and `set`: a value its codec refuses leaves
     /// the option as it was; one its value set refuses falls to the default.
     pub(super) fn read(&mut self, key: Key, text: &str) {
@@ -156,6 +169,7 @@ impl Options {
             }
             Key::ChatScale => self.chat_scale = unit().unwrap_or(self.chat_scale),
             Key::ChatWidth => self.chat_width = unit().unwrap_or(self.chat_width),
+            Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
             Key::MouseWheelSensitivity => {
                 if let Json::Number(number) = json {
                     let value = double_value(number);
@@ -165,6 +179,20 @@ impl Options {
                     }
                 }
             }
+        }
+    }
+
+    /// `isModelPartEnabled`, by the part's bit.
+    pub fn is_model_part_enabled(&self, bit: usize) -> bool {
+        self.model_parts & (1 << bit) != 0
+    }
+
+    /// `setModelPart`.
+    pub fn set_model_part(&mut self, bit: usize, shown: bool) {
+        if shown {
+            self.model_parts |= 1 << bit;
+        } else {
+            self.model_parts &= !(1 << bit);
         }
     }
 
@@ -191,6 +219,8 @@ impl Options {
             Key::ChatHeightUnfocused => java_double(self.chat_height_unfocused),
             Key::ChatScale => java_double(self.chat_scale),
             Key::ChatWidth => java_double(self.chat_width),
+            Key::MainHand => write_string(self.main_hand.serialized()),
+            Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
             Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
             Key::AttackIndicator => self.attack_indicator.id().to_string(),
             Key::ShowSubtitles => self.show_subtitles.to_string(),
@@ -288,6 +318,20 @@ mod tests {
                 .missing_key_lines()
                 .contains(&("key_key.forward".to_owned(), "key.keyboard.w".to_owned()))
         );
+    }
+
+    #[test]
+    fn the_skin_parts_and_the_main_hand_are_read_and_written() {
+        let options = loaded(
+            "modelPart_cape:false\nmodelPart_hat:false\nmainHand:\"left\"\nmodelPart_jacket:1",
+        );
+        assert_eq!(options.model_parts, 0b011_1110 & !0b100_0000);
+        assert_eq!(options.main_hand, MainHand::Left);
+        assert_eq!(options.write(Key::ModelPart(0)), "false");
+        assert_eq!(options.write(Key::ModelPart(1)), "true");
+        assert_eq!(options.write(Key::MainHand), "\"left\"");
+        // An unknown hand leaves the default.
+        assert_eq!(loaded("mainHand:\"up\"").main_hand, MainHand::Right);
     }
 
     #[test]

@@ -332,6 +332,35 @@ def gui_chat_options_cases():
            "rows": rows}
 
 
+def gui_skin_customization_cases():
+    """The skin customization screen: the seven parts and the main hand in two columns, each part
+    on or off from the options, pressed, with the main hand cycled both ways."""
+    def row(label, framebuffer=(854, 480), gui_scale=2, in_world=True, mouse=(0, 0), steps=(),
+            options=None):
+        row = {"label": label, "framebuffer": list(framebuffer), "gui_scale": gui_scale,
+               "in_world": in_world, "mouse": list(mouse), "steps": list(steps), "ms": 0}
+        if options:
+            row["options"] = options
+        return row
+
+    click = lambda x, y, shift=False: {"do": "click", "x": x, "y": y, "shift": shift}
+    rows = [
+        row("in-world"), row("out-of-world", in_world=False), row("small", (640, 480)),
+        row("short", (854, 200)), row("hover-cape", mouse=(100, 45)),
+        row("none-shown", options={"model_parts": 0}),
+        row("some-shown", options={"model_parts": 0b1010101}),
+        row("left-handed", options={"main_hand": "LEFT"}),
+        row("press-cape", steps=[click(100, 45)]), row("press-hat", steps=[click(100, 120)]),
+        row("press-jacket-twice", steps=[click(250, 45)] * 2),
+        row("press-main-hand", steps=[click(250, 120)]),
+        row("press-main-hand-twice", steps=[click(250, 120)] * 2),
+        row("press-main-hand-shift", steps=[click(250, 120, True)]),
+        row("press-sleeves", steps=[click(100, 70), click(250, 70)]),
+    ]
+    yield {"case_id": "gui/skin-customization-screen", "family": "gui",
+           "operation": "skin_customization_screen", "rows": rows}
+
+
 def gui_mouse_cases():
     """The mouse settings screen and the controls screen it opens from: their
     lists in several sizes, the sensitivity and wheel sliders at their ends

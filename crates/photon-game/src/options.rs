@@ -62,6 +62,9 @@ pub struct Options {
     pub directional_audio: bool,
     pub music_frequency: MusicFrequency,
     pub music_toast: MusicToast,
+    /// `modelParts`: the bits (`PlayerModelPart.getMask`) of the parts of the skin shown.
+    pub model_parts: i32,
+    pub main_hand: MainHand,
     /// The key each mapping is bound to, in `keyMappings` order.
     pub(super) key_bindings: Vec<photon_data::keys::InputKey>,
     /// The file's lines as last read, so what is not known is kept.
@@ -101,6 +104,8 @@ impl Default for Options {
             directional_audio: false,
             music_frequency: MusicFrequency::Default,
             music_toast: MusicToast::Never,
+            model_parts: ALL_MODEL_PARTS,
+            main_hand: MainHand::Right,
             key_bindings: bindings::default_bindings(),
             lines: Vec::new(),
         }

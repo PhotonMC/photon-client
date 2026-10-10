@@ -28,6 +28,15 @@ class GuiChatOracle extends GuiLanguageOracle {
                 }
             }
         }
+        if (values.has("model_parts")) {
+            int mask = values.get("model_parts").getAsInt();
+            for (var part : net.minecraft.world.entity.player.PlayerModelPart.values()) {
+                options.setModelPart(part, (mask & part.getMask()) != 0);
+            }
+        }
+        if (values.has("main_hand")) {
+            options.mainHand().set(net.minecraft.world.entity.HumanoidArm.valueOf(values.get("main_hand").getAsString()));
+        }
         if (values.has("subtitles")) options.showSubtitles().set(values.get("subtitles").getAsBoolean());
         if (values.has("directional")) options.directionalAudio().set(values.get("directional").getAsBoolean());
         if (values.has("music_frequency")) {

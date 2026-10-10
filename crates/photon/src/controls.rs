@@ -95,6 +95,8 @@ pub struct Controls {
     pub video_screen: Option<VideoSettingsScreen>,
     /// The chat settings, opened the same way.
     pub chat_options_screen: Option<ChatOptionsScreen>,
+    /// The skin customization, opened the same way.
+    pub skin_screen: Option<photon_render::gui::options::skin::SkinCustomizationScreen>,
     pub sound_screen: Option<SoundOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,
@@ -229,9 +231,9 @@ pub(crate) fn game_directory() -> std::path::PathBuf {
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
 }
 
-/// `Options.buildPlayerInformation`: what the server is told of the client. The skin's parts are
-/// all shown, the main hand is the right one, and nothing is filtered, as the default options have
-/// them.
+/// `Options.buildPlayerInformation`: what the server is told of the client. The chat is in colour,
+/// nothing is filtered, the player may be listed and every particle is made, as the default
+/// options have them; the skin's parts and the main hand are the options'.
 pub(crate) fn client_information(
     options: &Options,
 ) -> photon_net::configuration::ClientInformation {
@@ -240,8 +242,11 @@ pub(crate) fn client_information(
         options.render_distance,
         options.chat_visibility,
         true,
-        127,
-        photon_net::configuration::MainHand::Right,
+        options.model_parts,
+        match options.main_hand {
+            photon_game::options::MainHand::Left => photon_net::configuration::MainHand::Left,
+            photon_game::options::MainHand::Right => photon_net::configuration::MainHand::Right,
+        },
         false,
         true,
         photon_net::configuration::ParticleStatus::All,
@@ -316,6 +321,8 @@ mod settings;
 
 mod sign;
 
+mod skin;
+
 mod social;
 pub use sign::SignEdit;
 
@@ -345,6 +352,7 @@ impl Controls {
             options_screen: None,
             video_screen: None,
             chat_options_screen: None,
+            skin_screen: None,
             sound_screen: None,
             controls_screen: None,
             language_screen: None,

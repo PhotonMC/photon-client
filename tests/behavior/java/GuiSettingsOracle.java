@@ -123,6 +123,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
                 case "keybinds" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, minecraft.options);
                 case "sound" -> new net.minecraft.client.gui.screens.options.SoundOptionsScreen(null, minecraft.options);
+                case "skin" -> new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 default -> throw new IllegalArgumentException(kind);

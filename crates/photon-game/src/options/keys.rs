@@ -26,6 +26,7 @@ pub(super) enum Key {
     ChatHeightUnfocused,
     ChatScale,
     ChatWidth,
+    MainHand,
     MouseWheelSensitivity,
     SaveChatDrafts,
     AttackIndicator,
@@ -36,9 +37,11 @@ pub(super) enum Key {
     MusicToast,
     MusicFrequency,
     SoundCategory(SoundSource),
+    /// `modelPart_<id>`, by the bit of the part.
+    ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 39] = [
+pub(super) const KEYS: [(&str, Key); 47] = [
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
@@ -58,6 +61,7 @@ pub(super) const KEYS: [(&str, Key); 39] = [
     ("chatHeightUnfocused", Key::ChatHeightUnfocused),
     ("chatScale", Key::ChatScale),
     ("chatWidth", Key::ChatWidth),
+    ("mainHand", Key::MainHand),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
@@ -108,4 +112,11 @@ pub(super) const KEYS: [(&str, Key); 39] = [
         Key::SoundCategory(SoundSource::Voice),
     ),
     ("soundCategory_ui", Key::SoundCategory(SoundSource::Ui)),
+    ("modelPart_cape", Key::ModelPart(0)),
+    ("modelPart_jacket", Key::ModelPart(1)),
+    ("modelPart_left_sleeve", Key::ModelPart(2)),
+    ("modelPart_right_sleeve", Key::ModelPart(3)),
+    ("modelPart_left_pants_leg", Key::ModelPart(4)),
+    ("modelPart_right_pants_leg", Key::ModelPart(5)),
+    ("modelPart_hat", Key::ModelPart(6)),
 ];

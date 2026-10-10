@@ -30,6 +30,8 @@ impl Controls {
         self.options_screen = None;
         self.video_screen = None;
         self.chat_options_screen = None;
+        self.skin_screen = None;
+        self.social = None;
         self.sound_screen = None;
         self.controls_screen = None;
         self.language_screen = None;

@@ -184,6 +184,7 @@ pub(super) fn chat_options_screen_case(
     };
     use photon_render::gui::options::chat::ChatOptionsScreen;
     use photon_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+    use photon_render::gui::options::skin::SkinCustomizationScreen;
     use photon_render::gui::options::sound::SoundOptionsScreen;
     // The settings screens that have the same inputs.
     enum Shell {
@@ -191,6 +192,7 @@ pub(super) fn chat_options_screen_case(
         Mouse(MouseSettingsScreen),
         Controls(ControlsScreen),
         Sound(SoundOptionsScreen),
+        Skin(SkinCustomizationScreen),
     }
     macro_rules! each {
         ($shell:expr, $screen:ident => $body:expr) => {
@@ -199,6 +201,7 @@ pub(super) fn chat_options_screen_case(
                 Shell::Mouse($screen) => $body,
                 Shell::Controls($screen) => $body,
                 Shell::Sound($screen) => $body,
+                Shell::Skin($screen) => $body,
             }
         };
     }
@@ -250,9 +253,19 @@ pub(super) fn chat_options_screen_case(
     {
         options.music_toast = value;
     }
+    if let Some(mask) = row["options"]["model_parts"].as_i64() {
+        options.model_parts = mask as i32;
+    }
+    if let Some(hand) = row["options"]["main_hand"].as_str() {
+        options.main_hand = photon_game::options::MainHand::from_serialized(&hand.to_lowercase())
+            .ok_or("main_hand")?;
+    }
     let size = (window.gui_scaled_width(), window.gui_scaled_height());
     let in_world = row["in_world"].as_bool().unwrap_or(false);
     let mut screen = match operation {
+        "skin_customization_screen" => Shell::Skin(SkinCustomizationScreen::new(
+            font, &lang, size, in_world, &options,
+        )),
         "chat_options_screen" => Shell::Chat(ChatOptionsScreen::new(
             font, &lang, size, in_world, &options,
         )),

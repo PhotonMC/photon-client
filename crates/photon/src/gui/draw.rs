@@ -25,6 +25,7 @@ impl Gui {
         sized!(controls.key_binds_screen);
         sized!(controls.mouse_screen);
         sized!(controls.controls_screen);
+        sized!(controls.skin_screen);
         sized!(controls.chat_options_screen);
         sized!(controls.sound_screen);
         sized!(controls.video_screen);

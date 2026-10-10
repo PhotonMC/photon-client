@@ -174,3 +174,58 @@ impl MusicToast {
         }
     }
 }
+
+/// `HumanoidArm`: the hand the player uses most, which the server is told.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainHand {
+    Left,
+    Right,
+}
+
+impl MainHand {
+    pub const ALL: [Self; 2] = [Self::Left, Self::Right];
+
+    /// `HumanoidArm.id`.
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Left => 0,
+            Self::Right => 1,
+        }
+    }
+
+    /// The codec's name, which is what the file holds.
+    pub const fn serialized(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
+
+    pub fn from_serialized(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|value| value.serialized() == name)
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::Left => "options.mainHand.left",
+            Self::Right => "options.mainHand.right",
+        }
+    }
+}
+
+/// `PlayerModelPart.getId`, by bit: the parts of the skin the player shows.
+pub const MODEL_PART_IDS: [&str; 7] = [
+    "cape",
+    "jacket",
+    "left_sleeve",
+    "right_sleeve",
+    "left_pants_leg",
+    "right_pants_leg",
+    "hat",
+];
+
+/// Every `PlayerModelPart` shown: the mask of the default options.
+pub const ALL_MODEL_PARTS: i32 = (1 << MODEL_PART_IDS.len()) - 1;

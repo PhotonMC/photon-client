@@ -21,6 +21,8 @@ impl Controls {
             self.close_controls();
         } else if self.sound_screen.is_some() {
             self.close_sound_options();
+        } else if self.skin_screen.is_some() {
+            self.close_skin();
         } else if self.chat_options_screen.is_some() {
             self.close_chat_options();
         } else if self.video_screen.is_some() {
