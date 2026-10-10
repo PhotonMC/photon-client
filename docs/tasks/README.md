@@ -271,8 +271,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü (d6b5f303)
 - [x] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94 · bitti (01d7e83b)
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
-- [x] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L · bölündü (HASH)
-- [x] [T95b](T95b-kostum-ekrani.md) Kostüm ekranı ve oyuncu bilgisi (model parçaları, ana el) — M · bağımlı: T95 · bitti (HASH)
+- [x] [T95](T95-kalan-ayar-ekranlari.md) Kalan ayar ekranları ve etkisiz video ayarlarının bağlanması — L · bölündü (5c5e0beb)
+- [x] [T95b](T95b-kostum-ekrani.md) Kostüm ekranı ve oyuncu bilgisi (model parçaları, ana el) — M · bağımlı: T95 · bitti (5c5e0beb)
 - [ ] [T95c](T95c-kalan-ayar-ekranlari.md) Erişilebilirlik, çevrimiçi, yazı tipi ve dünya ayar ekranları; oyuncu bilgisinin kalanı (sohbet renkleri, parçacık durumu, sunucu listesi izni) — L · bağımlı: T95b
 - [x] [T96](T96-kredi-sosyal-oyun-modu.md) Kredi ekranı, sosyal etkileşimler, oyun modu seçici — M · bölündü (0c4fd423)
 - [x] [T96b](T96b-kredi-ekrani.md) Kredi ekranı (`WinScreen`) — M · bağımlı: T85 · bitti (47232984)
