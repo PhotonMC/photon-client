@@ -312,7 +312,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T73b](T73b-damlama-parcaciklari.md) Damlama parçacıkları (`DripParticle` ailesi) — M · bağımlı: T73 · bitti (b58c9f67)
 - [x] [T74](T74-toz-buyu-parcaciklari.md) Toz, büyü ve renkli parçacıklar — M · bağımlı: T70b · bitti (e82e6d38)
 - [x] [T74b](T74b-dusen-toz-havai-fisek.md) Düşen toz ve havai fişek parçacıkları — M · bağımlı: T74 · bölündü (0eced9d5)
-- [x] [T74c](T74c-havai-fisek.md) Havai fişek parçacıkları — L · bağımlı: T74b · bitti (HASH)
+- [x] [T74c](T74c-havai-fisek.md) Havai fişek parçacıkları — L · bağımlı: T74b · bitti (294d4ba4)
 - [x] [T75](T75-cekim-parcaciklari.md) Portal, büyü masası ve çeken parçacıklar — M · bağımlı: T70b · bitti (40baea57)
 - [x] [T75b](T75b-titresim-iz.md) Titreşim ve iz parçacıkları — M · bağımlı: T75 · bitti (4e863cc9)
 - [x] [T76](T76-vurus-patlama-parcaciklari.md) Vuruş, patlama ve ifade parçacıkları — M · bağımlı: T70b · bitti (76093776)
