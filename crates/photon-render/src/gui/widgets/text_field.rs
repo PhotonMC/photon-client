@@ -17,7 +17,7 @@ fn allowed(character: char) -> bool {
     character != '\u{a7}' && character >= ' ' && character != '\u{7f}'
 }
 
-/// `ChatFormatting.stripFormatting`: each `§` and the code after it go.
+/// `ChatFormatting.stripFormatting`: each `\u{a7}` and the code after it go.
 fn strip_formatting(text: &str) -> String {
     let mut out = String::new();
     let mut chars = text.chars().peekable();
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn edits_by_words_and_keeps_only_valid_text() {
         let short = |text: &str| text.chars().count() <= 8;
-        let mut clipboard = Held("§cab\rc".into());
+        let mut clipboard = Held("\u{a7}cab\rc".into());
         let mut text = "one two".to_owned();
         let mut field = TextField::new(&text);
         field.key_pressed(

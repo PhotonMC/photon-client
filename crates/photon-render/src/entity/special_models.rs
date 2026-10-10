@@ -347,7 +347,7 @@ fn decorated_pot() -> Vec<ModelLayer> {
 }
 
 /// `CopperGolemModel.createBodyLayer` as the statue poses it: standing, the
-/// whole model turned over by `zRot = π` at the origin.
+/// whole model turned over by `zRot = pi` at the origin.
 fn copper_golem(texture: &str) -> Vec<ModelLayer> {
     let size = (64.0, 64.0);
     let head = Part::new(

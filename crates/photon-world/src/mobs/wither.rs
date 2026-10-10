@@ -85,7 +85,7 @@ impl WitherState {
     }
 
     /// The head turns of `WitherBoss.aiStep`, after the rest of it: a head with a
-    /// target in the world turns toward its eyes (at most 40° up or down and 10°
+    /// target in the world turns toward its eyes (at most 40 degrees up or down and 10 degrees
     /// sideways a tick), one without turns after the body.
     pub(crate) fn tick_heads(&mut self, place: WitherPlace, targets: [Option<GuardianTarget>; 2]) {
         for (i, target) in targets.into_iter().enumerate() {

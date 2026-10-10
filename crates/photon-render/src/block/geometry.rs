@@ -337,8 +337,8 @@ pub fn face_vertex_uv(uvs: FaceUvs, rotation: Quadrant, vertex: u32) -> (f32, f3
 ///
 /// This is not the same search as [`closest_direction`]. The bar starts at
 /// Java's smallest positive float rather than at zero, and there is no
-/// fallback to nothing: a vector whose every dot product falls below the bar —
-/// the zero vector, or one with a NaN in it — comes back as north, because
+/// fallback to nothing: a vector whose every dot product falls below the bar --
+/// the zero vector, or one with a NaN in it -- comes back as north, because
 /// that is what the search was holding before it began.
 pub fn approximate_nearest_direction(vector: [f32; 3]) -> Direction {
     const CANDIDATES: [Direction; 6] = [

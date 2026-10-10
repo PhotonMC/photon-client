@@ -158,7 +158,7 @@ pub(crate) fn chests_of(
 /// What a chest block is, for drawing it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChestView {
-    /// The block's name (`minecraft:chest`, `minecraft:ender_chest`, a copper one…).
+    /// The block's name (`minecraft:chest`, `minecraft:ender_chest`, a copper one...).
     pub name: &'static str,
     pub facing: Direction,
     /// `ChestType`: 0 single, 1 left, 2 right.
@@ -191,7 +191,7 @@ pub struct BannerView {
 /// What a skull or head block is, for drawing it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkullBlockView {
-    /// The block's name (`minecraft:zombie_head`, `minecraft:dragon_wall_head`…).
+    /// The block's name (`minecraft:zombie_head`, `minecraft:dragon_wall_head`...).
     pub name: &'static str,
     /// The wall a wall skull hangs on's facing, none for a standing one.
     pub wall: Option<Direction>,

@@ -245,7 +245,7 @@ impl Mixer {
         if source.channels() > 1 {
             return (gain, gain);
         }
-        // To the listener's own axes: right is forward × up.
+        // To the listener's own axes: right is forward x up.
         let forward = self.listener.forward;
         let up = self.listener.up;
         let right = [

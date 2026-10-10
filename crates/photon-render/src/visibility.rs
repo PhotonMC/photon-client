@@ -135,7 +135,7 @@ impl VisGraph {
 }
 
 /// JOML's `FrustumIntersection` on a clip matrix: six planes, each
-/// `(x, y, z, w)` with the point inside where `x·p + w >= 0`.
+/// `(x, y, z, w)` with the point inside where `x*p + w >= 0`.
 #[derive(Clone, Copy, Debug)]
 struct FrustumIntersection {
     planes: [[f32; 4]; 6],

@@ -147,7 +147,10 @@ mod tests {
         let Some(source) = source() else { return };
         let languages = source.languages();
         assert_eq!(languages["en_us"].label(), "English (US)");
-        assert_eq!(languages["tr_tr"].label(), "Türkçe (Türkiye)");
+        assert_eq!(
+            languages["tr_tr"].label(),
+            "T\u{fc}rk\u{e7}e (T\u{fc}rkiye)"
+        );
         assert!(languages["ar_sa"].bidirectional);
         let turkish = source.lang("tr_tr");
         let english = source.lang("en_us");

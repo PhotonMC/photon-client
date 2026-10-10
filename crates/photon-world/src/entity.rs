@@ -93,7 +93,7 @@ pub struct ClientEntity {
     /// What the server changed of the attributes the type starts with.
     pub(crate) attributes: Vec<ClientAttributeState>,
     /// What kind of entity this is, with the state that kind keeps (a rabbit's hops, a warden's
-    /// pulses…), made when something first reaches it.
+    /// pulses...), made when something first reaches it.
     pub(crate) kind: crate::entity_kind::EntityKind,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.

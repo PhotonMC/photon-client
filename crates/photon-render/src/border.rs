@@ -8,7 +8,7 @@
 //! renderer has no such cache: it lays the same quads out fresh in world
 //! space every frame from the current camera, which only differs from the
 //! reference when the camera has moved since its last rebuild (crossing a
-//! section) without the border changing — a narrower view of a wall that is
+//! section) without the border changing -- a narrower view of a wall that is
 //! already far past the fog, not a different border.
 
 use crate::scene::Vertex;
@@ -110,7 +110,7 @@ pub fn closest_sides(
 /// `WorldBorderRenderer.rebuildWorldBorderBuffer` and `render`'s per-vertex
 /// math, placed directly in world space (minus the mesh `origin`) and only
 /// for the sides `closest_sides` finds within `render_distance`, nearest
-/// first — the reference draws in that same order, though its blend mode
+/// first -- the reference draws in that same order, though its blend mode
 /// (`BlendFunction.OVERLAY`) makes the order invisible on screen.
 #[expect(
     clippy::too_many_arguments,
@@ -142,7 +142,7 @@ pub fn quads(
     let v0 = -(frac_f64(camera_y * 0.5) as f32);
     let v1 = v0 + half_height_y;
     // The reference's `ModelOffset.y` is `-cameraPos.y`, which cancels the
-    // camera term out of the local `±halfHeightY` vertex: the wall sits at
+    // camera term out of the local `+/-halfHeightY` vertex: the wall sits at
     // the same absolute height (minus the mesh origin) no matter where the
     // camera stands, only its texture (`v0`/`v1`, above) tracks the camera.
     let origin_y = f64::from(origin[1]);

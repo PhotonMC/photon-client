@@ -35,7 +35,7 @@ fn obfuscate_token() -> String {
     format!("{SECTION}f{SECTION}k{SECTION}a{SECTION}b")
 }
 
-/// `StringDecomposer.iterateFormatted` over a plain string: the `§` codes become styles.
+/// `StringDecomposer.iterateFormatted` over a plain string: the `\u{a7}` codes become styles.
 fn legacy_runs(text: &str) -> Vec<Run> {
     const COLOURS: [&str; 16] = [
         "black",
@@ -60,7 +60,7 @@ fn legacy_runs(text: &str) -> Vec<Run> {
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
         if c == SECTION {
-            // A lone `§` at the end is dropped; an unknown code is skipped with its letter.
+            // A lone `\u{a7}` at the end is dropped; an unknown code is skipped with its letter.
             let Some(code) = chars.next() else { break };
             let code = code.to_ascii_lowercase();
             if let Some(index) = code.to_digit(16) {

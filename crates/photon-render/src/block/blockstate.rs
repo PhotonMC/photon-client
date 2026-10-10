@@ -94,7 +94,7 @@ pub struct BlockStateFile {
 /// Read one blockstate file.
 ///
 /// Returns nothing when the file is refused. A file with neither section is
-/// refused, and so is an empty `variants` map or an empty `multipart` list —
+/// refused, and so is an empty `variants` map or an empty `multipart` list --
 /// a file that draws nothing is treated as a mistake rather than as a block
 /// with no appearance.
 pub fn parse_block_state(text: &str) -> Option<BlockStateFile> {
@@ -277,7 +277,7 @@ fn parse_terms(value: &JsonValue) -> Option<Vec<Term>> {
 /// The reference splits on the comma and then on the first equals sign, drops
 /// an empty key, and refuses a key it does not recognise or a value the
 /// property cannot hold. Those two refusals need the block's state
-/// definition, so they are not done here — this is the shape of the
+/// definition, so they are not done here -- this is the shape of the
 /// reference's parse without the part that needs the registry.
 pub fn parse_properties(text: &str) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();

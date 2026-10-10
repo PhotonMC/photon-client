@@ -130,7 +130,7 @@ impl ClientEntity {
     /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
     /// painting's box, centred `0.46875` off the wall it is attached to (`ClientboundAddEntityPacket.
     /// getData()`'s 3D direction value, `this.data`) and sized by that direction's axis; a framed
-    /// map widens an item frame to 1×1, a painting's registry variant gives its own width/height
+    /// map widens an item frame to 1x1, a painting's registry variant gives its own width/height
     /// (shifted along the wall and up for an even size, so it still centres on the block grid).
     /// Nothing for another type.
     fn hanging_bounding_box(&self) -> Option<Aabb> {

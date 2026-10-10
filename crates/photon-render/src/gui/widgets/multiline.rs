@@ -15,7 +15,7 @@ fn advance(font: &Font, character: char) -> f32 {
 
 /// `StringSplitter.splitLines` without the spaces and new lines lines break at: each line of
 /// `text` that fits `width`, broken after the last space that fits or, with none, inside the word.
-/// A formatting code (`§` and the character after it) takes no room.
+/// A formatting code (`\u{a7}` and the character after it) takes no room.
 pub fn split_lines(font: &Font, text: &[char], width: i32) -> Vec<Span> {
     let max = (width as f32).max(1.0);
     let mut lines = Vec::new();

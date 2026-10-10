@@ -111,7 +111,7 @@ pub enum ItemModelDef {
         matrix: Matrix4,
         model: Box<ItemModelDef>,
     },
-    /// A special renderer over a base model (chests, banners, heads…): the
+    /// A special renderer over a base model (chests, banners, heads...): the
     /// base model gives the display transforms and the light. Only chests
     /// are drawn yet.
     Special {

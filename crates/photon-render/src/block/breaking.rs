@@ -15,7 +15,7 @@ use photon_core::direction::Direction;
 /// coordinates are the negated first two components.
 pub fn decal_uv(corner: [f32; 3], facing: Direction) -> [f32; 2] {
     let [x, y, z] = corner;
-    // `rotateY(π)` then `rotateX(-π/2)` send (x, y, z) to (-x, -z, -y);
+    // `rotateY(pi)` then `rotateX(-pi/2)` send (x, y, z) to (-x, -z, -y);
     // `Direction.getRotation` then turns that as below.
     let turned = match facing {
         Direction::Up => [-x, -z],

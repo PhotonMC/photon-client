@@ -2,8 +2,8 @@
 //!
 //! A face carries a tint slot rather than a colour. What the slot resolves to
 //! depends on where the block is: inside a world it is averaged from the
-//! biomes around it, and outside one — in a hand, in an inventory, or in a
-//! probe like ours — it is a fixed value per block.
+//! biomes around it, and outside one -- in a hand, in an inventory, or in a
+//! probe like ours -- it is a fixed value per block.
 
 /// The tint a mangrove's leaves take, which is a fixed value rather than a
 /// colour map reading.
@@ -59,7 +59,7 @@ pub struct ColourMapOutOfBounds;
 /// Rainfall is scaled by temperature first, so the same rainfall reads a
 /// different row in a cold biome than in a warm one. Both axes are inverted
 /// and truncated toward zero, and the two indices are combined with an `or`
-/// rather than an addition — so a temperature outside zero to one does not
+/// rather than an addition -- so a temperature outside zero to one does not
 /// merely walk off the row, it bleeds into the other axis.
 ///
 /// The reference guards the upper bound and returns the map's default, but

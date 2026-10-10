@@ -21,7 +21,7 @@ pub const RECIPES_PER_PAGE: usize = 20;
 /// `RecipeBookType` its settings are kept under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BookKind {
-    /// The 2×2 grid of the inventory or the 3×3 of a crafting table.
+    /// The 2x2 grid of the inventory or the 3x3 of a crafting table.
     Crafting {
         size: i32,
     },

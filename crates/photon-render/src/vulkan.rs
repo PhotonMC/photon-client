@@ -3,7 +3,7 @@
 //!
 //! Nothing here draws world content yet: the backend comes up, acquires a
 //! swapchain image, clears it and presents. That is enough to prove the surface
-//! is live, and it deliberately makes no parity claim about pixels — those
+//! is live, and it deliberately makes no parity claim about pixels -- those
 //! start once the shader pipeline exists and P15.a has measured what the Java
 //! reference's own repeats vary by.
 //!
