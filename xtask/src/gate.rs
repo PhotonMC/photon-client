@@ -77,7 +77,7 @@ pub fn pre_commit() -> Result<(), String> {
 
 /// Tests and parity for the commits about to be pushed.
 pub fn pre_push() -> Result<(), String> {
-    let changed = git::changed_since(&git::push_base()?)?;
+    let changed = git::changed_for_push()?;
     let crates = affected::crates_for(&workspace::packages()?, &changed);
     if !crates.is_empty() {
         let mut args = vec![

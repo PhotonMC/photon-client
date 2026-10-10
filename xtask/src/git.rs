@@ -37,6 +37,15 @@ pub fn push_base() -> Result<String, String> {
     Err("no upstream, origin/main or origin/master to compare the push with".to_owned())
 }
 
+/// Files a push changes. With no shared history to compare against (a new
+/// remote, or history rewritten), every tracked file counts as changed.
+pub fn changed_for_push() -> Result<Vec<String>, String> {
+    match push_base() {
+        Ok(base) => changed_since(&base),
+        Err(_) => lines(&["ls-files"]),
+    }
+}
+
 fn lines(args: &[&str]) -> Result<Vec<String>, String> {
     Ok(process::output("git", args)?
         .lines()
