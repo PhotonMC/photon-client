@@ -1,6 +1,7 @@
 //! The game's sound definitions (`sounds.json`): which sound events there are, which files each
 //! can play, and how one is picked by weight (`SoundManager`, `WeighedSoundEvents`, `Sound`).
 
+pub mod ambient;
 pub mod engine;
 pub mod music;
 

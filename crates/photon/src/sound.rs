@@ -211,6 +211,49 @@ impl SoundSystem {
         }
     }
 
+    /// `BiomeAmbientSoundsHandler.LoopSoundInstance`: a loop over everything that fades by `fade`.
+    pub fn play_ambient_loop(
+        &mut self,
+        event: &str,
+        fade: Arc<photon_game::sounds::ambient::LoopFade>,
+    ) {
+        let mut instance = SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+        instance.relative = true;
+        instance.looping = true;
+        instance.ticker = Some(Box::new(move |state: &mut TickState| {
+            *state.volume = fade.tick();
+            if fade.is_stopped() {
+                *state.stopped = true;
+                *state.looping = false;
+            }
+        }));
+        let id = self.engine.add(instance);
+        self.engine.play(id);
+    }
+
+    /// `SimpleSoundInstance.forAmbientAddition`: not placed anywhere.
+    pub fn play_ambient_addition(&mut self, event: &str) {
+        use photon_game::sounds::engine::Attenuation;
+        let mut instance = SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+        instance.relative = true;
+        instance.attenuation = Attenuation::None;
+        let id = self.engine.add(instance);
+        self.engine.play(id);
+    }
+
+    /// `SimpleSoundInstance.forAmbientMood`: placed in the world.
+    pub fn play_ambient_mood(
+        &mut self,
+        event: &str,
+        position: (f64, f64, f64),
+        random: RandomSource,
+    ) {
+        let mut instance = SoundInstance::new(event, SoundSource::Ambient, random);
+        instance.position = position;
+        let id = self.engine.add(instance);
+        self.engine.play(id);
+    }
+
     /// `EntityBoundSoundInstance`: a sound that goes where an entity does, and ends with it.
     fn follow(&mut self, packet: &SoundEntityPacket, world: &ClientWorld) {
         let event = match &packet.sound {

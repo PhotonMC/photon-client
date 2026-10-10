@@ -142,6 +142,11 @@ impl Play {
             session.dimension_type().unwrap_or("minecraft:overworld"),
             session.registry_names("minecraft:worldgen/biome"),
         );
+        let ambient = crate::ambient::GameAmbient::load(
+            &data_root,
+            session.dimension_type().unwrap_or("minecraft:overworld"),
+            session.registry_names("minecraft:worldgen/biome"),
+        );
         let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
         let language = &controls.options.language_code;
         let mut gui = Gui::load(
@@ -203,6 +208,7 @@ impl Play {
             sounds_heard: 0,
             sound,
             music,
+            ambient,
             particles,
             frames: 0,
             profile: FrameProfile::from_env(),
@@ -471,6 +477,7 @@ impl Play {
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(own_sounds);
             sound.handle_underwater(underwater, under_water);
+            self.ambient.tick(session, sound);
         }
         self.animated_atlas.tick();
         let breaking = session.take_breaking_effects();

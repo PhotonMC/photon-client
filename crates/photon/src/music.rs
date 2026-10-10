@@ -47,7 +47,7 @@ fn read_attributes(file: Option<&JsonObject>) -> Attributes {
     }
 }
 
-fn data_file(root: &Path, folder: &str, name: &str) -> Option<JsonObject> {
+pub(crate) fn data_file(root: &Path, folder: &str, name: &str) -> Option<JsonObject> {
     let name = name.strip_prefix("minecraft:").unwrap_or(name);
     photon_core::json::read_object(
         &root

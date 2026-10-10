@@ -498,6 +498,11 @@ impl JsonObject {
         self.get_str(key)?.as_f32()
     }
 
+    /// A field that must be a number, read as `f64`.
+    pub fn f64(&self, key: &str) -> Option<f64> {
+        self.get_str(key)?.as_f64()
+    }
+
     /// A field that must be a number, read as `i32`.
     pub fn i32(&self, key: &str) -> Option<i32> {
         self.get_str(key)?.as_i32()

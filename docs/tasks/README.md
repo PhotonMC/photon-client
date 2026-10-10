@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %83 bitti** (ağırlıklı) · 274/311 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
+**Toplam: %83 bitti** (ağırlıklı) · 275/312 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -40,14 +40,14 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
 | M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 36/42 |
-| M7 Ses | `████████████████░░░░` | 81 | 13/15 |
+| M7 Ses | `████████████████░░░░` | 82 | 14/16 |
 | M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 86 | 39/45 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
 | M10 Eşitlik ve dağıtım | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/4 |
 | Paralel borçlar | `██░░░░░░░░░░░░░░░░░░` | 10 | 1/4 |
 | Kod kalitesi ve performans | `█████████████░░░░░░░` | 63 | 22/33 |
 
-Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64g, T70j, T78g, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
+Bağımlılıkları bitmiş açık görevler (sıradaki adaylar): T90, T91, T92, T93, T95c, T64h, T70j, T78g, T78d, T81, T82, T83b, PLAN-M9, V05b, A01c, A03, A04, A05b, D02, D03, D04, D05, D06.
 <!-- progress:end -->
 
 ## Görevler
@@ -293,7 +293,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T64d](T64d-ses-tetikleri-ortam-muzik.md) Ortam, olay sesleri ve müzik — L · bağımlı: T64c · bölündü (aad24c25)
 - [x] [T64e](T64e-muzik.md) Müzik: `MusicManager`, biyom müziği, çalma — M · bağımlı: T64d · bitti (aad24c25)
 - [x] [T64f](T64f-ortam-sesleri.md) Su altı ortam sesleri (giriş/çıkış, döngü, ek sesler) — M · bağımlı: T64e · bitti (2e328f76)
-- [ ] [T64g](T64g-biyom-ortam-sesleri.md) Biyom ve mağara ortam sesleri, olay/eşya kullanım sesleri, ekran ve ejderha müziği — L · bağımlı: T64f
+- [x] [T64g](T64g-biyom-ortam-sesleri.md) Biyom ve mağara ortam sesleri (döngü, ek sesler, mood) — M · bağımlı: T64f · bitti (HASH)
+- [ ] [T64h](T64h-olay-sesleri-ekran-muzigi.md) Olay/eşya kullanım sesleri, ekran ve ejderha müziği — L · bağımlı: T64g
 - [x] [T65](T65-ses-ayarlari-ekrani.md) Ses ayarları ekranı — M · bağımlı: T63, T06 · bitti (a9e6230d)
 - [ ] **K-M7** Altyazılar, duraklatmada süren kategoriler, kalan ses ayarları — M×2
 

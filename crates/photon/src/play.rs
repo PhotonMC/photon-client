@@ -264,6 +264,8 @@ struct Play {
     sound: Option<SoundSystem>,
     /// The music of the dimension and its biomes.
     music: crate::music::GameMusic,
+    /// The sounds of the place the player is in.
+    ambient: crate::ambient::GameAmbient,
     /// The level's particles.
     particles: crate::particles::Particles,
     frames: u64,

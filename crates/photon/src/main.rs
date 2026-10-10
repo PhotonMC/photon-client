@@ -1,3 +1,4 @@
+mod ambient;
 mod assets;
 mod bench;
 mod controls;
