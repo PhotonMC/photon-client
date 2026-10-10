@@ -279,6 +279,7 @@ def run_command(args, run_dir, report):
         save(staging / "manifest.json", {"identity": identity, "outputs_sha256": digest(raw.encode())})
         capture.parent.mkdir(parents=True, exist_ok=True)
         staging.rename(capture)
+        prune_captures(capture, identity["families"])
     report.update(status="reference_ready", java_repetitions=2, rust_status="not_compared")
     return 0
 
@@ -308,7 +309,29 @@ def main():
         report.update(status="failed", reason=str(error))
     save(run_dir / "report.json", report)
     print(encode(report))
+    # A passing run leaves nothing worth inspecting; only failures keep their files.
+    if code == 0:
+        shutil.rmtree(run_dir, ignore_errors=True)
     return code
+
+
+KEPT_CAPTURES = 2
+
+
+def prune_captures(newest, families):
+    """Keep only the newest captures of one family selection."""
+    same = []
+    for directory in newest.parent.iterdir():
+        try:
+            manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if manifest["identity"].get("families") == families:
+            same.append(directory)
+    same.sort(key=lambda directory: directory.stat().st_mtime, reverse=True)
+    for stale in same[KEPT_CAPTURES:]:
+        if stale != newest:
+            shutil.rmtree(stale, ignore_errors=True)
 
 
 if __name__ == "__main__":
