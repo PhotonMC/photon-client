@@ -18,6 +18,7 @@ mod sound;
 mod timer;
 mod utf8;
 mod window;
+mod wire;
 
 use serde_json::Value;
 
@@ -37,6 +38,7 @@ const GENERATORS: &[(&str, Generator)] = &[
     ("timer", timer::cases),
     ("utf8", utf8::cases),
     ("window", window::cases),
+    ("wire", wire::cases),
 ];
 
 /// The cases of `family` as JSONL lines, or `None` when its generator is
