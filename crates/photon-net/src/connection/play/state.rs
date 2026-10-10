@@ -137,6 +137,12 @@ impl PlaySession {
 
     /// Whether the server replaced the level since the last call, so
     /// everything drawn from the old one should go.
+    /// Whether the server took the connection through the configuration phase again: what was
+    /// open over the old level is closed (`Minecraft.clearClientLevel`).
+    pub fn take_reconfigured(&mut self) -> bool {
+        std::mem::take(&mut self.reconfigured)
+    }
+
     pub fn take_level_reset(&mut self) -> bool {
         std::mem::take(&mut self.level_reset)
     }

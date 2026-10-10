@@ -37,6 +37,7 @@ mod incoming;
 mod lifecycle;
 mod movement;
 mod recipes;
+mod reconfigure;
 mod signs;
 mod state;
 
@@ -152,6 +153,9 @@ pub struct PlaySession {
     pub(super) health_received: bool,
     /// Set when the server moved the player to a new level.
     pub(super) level_reset: bool,
+    /// The server took the connection through the configuration phase again since the last
+    /// [`Self::take_reconfigured`].
+    pub(super) reconfigured: bool,
     /// The hotbar slot the server was last told about.
     pub(super) sent_slot: i32,
     /// Breaking state and the miss wait.

@@ -5,10 +5,6 @@ use super::*;
 /// Returns the stream and the compression threshold the server chose. The
 /// login and configuration packets are recorded in `trace`, and the world in
 /// it takes the tags the server sends.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the login and configuration exchange as one sequence"
-)]
 pub(crate) fn open_play_connection(
     address: SocketAddr,
     username: &str,
@@ -92,9 +88,31 @@ pub(crate) fn open_play_connection(
         }
     }
 
+    configure_connection(
+        &mut stream,
+        compression_threshold,
+        (timeout, select_known_packs),
+        trace,
+    )?;
+    Ok((stream, compression_threshold))
+}
+
+/// Run the configuration exchange up to the server's finish, which is answered: registries, tags
+/// and features are taken into `trace`, known packs are answered and keep-alives are returned.
+/// The connection is in the play phase after it.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the configuration exchange as one sequence"
+)]
+pub(crate) fn configure_connection(
+    stream: &mut TcpStream,
+    compression_threshold: Option<usize>,
+    (timeout, select_known_packs): (Duration, bool),
+    trace: &mut PlayConnectionTrace,
+) -> Result<(), ConnectionError> {
     let configuration_started = Instant::now();
     loop {
-        let body = read_packet(&mut stream, compression_threshold)?;
+        let body = read_packet(stream, compression_threshold)?;
         let (packet_id, payload) = split_packet(&body)?;
         trace.packets.push(PacketObservation {
             phase: ConnectionProtocol::Configuration,
@@ -162,7 +180,7 @@ pub(crate) fn open_play_connection(
                 trace.selected_known_pack_count = selected_packs.len();
 
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_SERVERBOUND_SELECT_KNOWN_PACKS_PACKET_ID,
                     |output| {
@@ -177,7 +195,7 @@ pub(crate) fn open_play_connection(
                 let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("configuration keep alive"))?;
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_KEEP_ALIVE_PACKET_ID,
                     |output| {
@@ -192,7 +210,7 @@ pub(crate) fn open_play_connection(
                 let packet = crate::common::ClientboundPingPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("configuration ping"))?;
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_PONG_PACKET_ID,
                     |output| {
@@ -207,7 +225,7 @@ pub(crate) fn open_play_connection(
                 crate::configuration::ClientboundCodeOfConductPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("code of conduct"))?;
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_ACCEPT_CODE_OF_CONDUCT_PACKET_ID,
                     |_payload| Ok(()),
@@ -220,7 +238,7 @@ pub(crate) fn open_play_connection(
                 )
                 .map_err(|_| ConnectionError::Codec("finish configuration"))?;
                 send_packet(
-                    &mut stream,
+                    stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_FINISH_PACKET_ID,
                     |_payload| Ok(()),
@@ -246,5 +264,5 @@ pub(crate) fn open_play_connection(
             )));
         }
     }
-    Ok((stream, compression_threshold))
+    Ok(())
 }

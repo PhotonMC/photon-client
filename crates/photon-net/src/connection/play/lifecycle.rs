@@ -1,5 +1,36 @@
 use super::*;
 
+/// Read play packets off `reader` in the background, one at a time into the channel, until the
+/// connection ends or the server starts the configuration phase (`Packet.isTerminal`): nothing
+/// after that packet is a play packet.
+pub(super) fn spawn_reader(
+    mut reader: TcpStream,
+    compression_threshold: Option<usize>,
+) -> Receiver<Result<Incoming, ConnectionError>> {
+    let (sender, incoming) = mpsc::channel();
+    std::thread::spawn(move || {
+        loop {
+            let body = match read_packet(&mut reader, compression_threshold) {
+                Ok(body) => body,
+                Err(error) => {
+                    let _ = sender.send(Err(error));
+                    return;
+                }
+            };
+            let terminal = matches!(
+                split_packet(&body),
+                Ok((PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID, _))
+            );
+            let packet = classify(body);
+            let failed = packet.is_err();
+            if sender.send(packet).is_err() || failed || terminal {
+                return;
+            }
+        }
+    });
+    incoming
+}
+
 impl PlaySession {
     /// One client tick: the local player, its packets, then the tick end.
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
@@ -124,17 +155,8 @@ impl PlaySession {
         let (stream, compression_threshold) =
             open_play_connection(address, username, timeout, true, &information, &mut trace)?;
         stream.set_read_timeout(None)?;
-        let mut reader = stream.try_clone()?;
-        let (sender, incoming) = mpsc::channel();
-        std::thread::spawn(move || {
-            loop {
-                let packet = read_packet(&mut reader, compression_threshold).and_then(classify);
-                let failed = packet.is_err();
-                if sender.send(packet).is_err() || failed {
-                    return;
-                }
-            }
-        });
+        let reader = stream.try_clone()?;
+        let incoming = spawn_reader(reader, compression_threshold);
         let mut session = Self::assemble(
             stream,
             compression_threshold,
@@ -218,6 +240,7 @@ impl PlaySession {
             hardcore: false,
             health_received: false,
             level_reset: false,
+            reconfigured: false,
             sent_slot: 0,
             game_mode_state: photon_game::game_mode::GameMode::default(),
             container_menu: photon_game::menus::container::ContainerMenu::default(),

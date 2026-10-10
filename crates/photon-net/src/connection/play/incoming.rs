@@ -32,6 +32,7 @@ impl PlaySession {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => self.on_login(payload)?,
+            PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID => self.reconfigure()?,
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => self.on_add_entity(payload)?,
             PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => self.on_set_entity_motion(payload)?,
             PLAY_CLIENTBOUND_MAP_ITEM_DATA_PACKET_ID => self.on_map_item_data(payload)?,

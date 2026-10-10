@@ -62,6 +62,12 @@ pub(crate) const PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID: i32 = 42;
 
 pub(crate) const PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID: i32 = 111;
 
+/// `ClientboundStartConfigurationPacket`: the last play packet before the configuration phase.
+pub(crate) const PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID: i32 = 118;
+
+/// `ServerboundConfigurationAcknowledgedPacket`.
+pub(crate) const PLAY_SERVERBOUND_CONFIGURATION_ACKNOWLEDGED_PACKET_ID: i32 = 16;
+
 pub(crate) const PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID: i32 = 35;
 
 pub(crate) const PLAY_CLIENTBOUND_EXPLODE_PACKET_ID: i32 = 36;

@@ -25,4 +25,4 @@ Transfer (T102), kaynak paketi.
 Aynı kayıt veya `docs/records/client-reconfiguration-conformance.md`, `docs/index.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `configure_connection` açılıştan ayrıldı, `spawn_reader` terminal pakette durur, `PlaySession::reconfigure` (onay, yapılandırma, yeni oturum, `take_reconfigured`). Sahte sunucu testi geçti; gerçek sunucuda denenmedi. Sapma: yapılandırma ana iş parçacığında bloklar, sohbet durumu korunmaz. Kayıt: [client-reconfiguration-conformance.md](../records/client-reconfiguration-conformance.md).

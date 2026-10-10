@@ -262,6 +262,11 @@ impl Play {
                 &mut self.surface,
                 &self.screen_assets,
             )?;
+            // The configuration phase again: what was open over the old level is closed.
+            if self.session.take_reconfigured() {
+                self.controls.screen = None;
+                self.controls.chat = None;
+            }
             // A respawn or a change of dimension: nothing of the old level stays.
             if self.session.take_level_reset() {
                 self.backend.clear_sections()?;
