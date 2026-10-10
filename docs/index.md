@@ -152,6 +152,7 @@ Bu dizin `tools/generate-doc-index.py` ile `docs/` ve `docs/records/` içeriğin
 - [T41 — Elde eşya ve kafa eşyası: `SetEquipment`, `ItemInHandLayer`, `CustomHeadLayer` — client-parity](records/client-held-item-parity-conformance.md)
 - [T32d — Hoglin ve zoglin — client-parity](records/client-hoglin-parity-conformance.md)
 - [T31 — At, eşek, katır ve ölü atlar — client-parity](records/client-horse-parity-conformance.md)
+- [F1 arayüzü gizleme ve F2 ekran görüntüsü — [server-conformance değil, kaynak okuması]](records/client-hud-hide-screenshot-conformance.md)
 - [T34b — Illager ve cadı — client-parity](records/client-illager-witch-parity-conformance.md)
 - [T33b — Gümüş balığı, endermite ve arı — client-parity](records/client-insects-parity-conformance.md)
 - [T40g, T40g2 — Eşya çerçevesi ve haritası — client-parity](records/client-item-frame-parity-conformance.md)

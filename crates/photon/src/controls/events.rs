@@ -159,6 +159,8 @@ impl Controls {
                 }
                 "key.togglePerspective" if press => self.camera_type = self.camera_type.next(),
                 "key.fullscreen" if press => surface.toggle_fullscreen(),
+                "key.screenshot" if press => self.screenshot_pending = true,
+                "key.toggleGui" if press && self.captured => self.hud_hidden = !self.hud_hidden,
                 "key.playerlist" => self.tab_held = down && self.captured,
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
                     let slot = hotbar["key.hotbar.".len()..]

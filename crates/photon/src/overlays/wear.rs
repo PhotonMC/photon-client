@@ -158,7 +158,7 @@ pub fn name_tags(
     let viewer = Viewer {
         camera_position: camera.position,
         spectator: camera.spectating,
-        hud_hidden: false,
+        hud_hidden: camera.hud_hidden,
     };
     let orientation = camera_orientation(camera.rotation.0, camera.rotation.1);
     let (mut see_through, mut normal) = (Vec::new(), Vec::new());

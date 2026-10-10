@@ -17,6 +17,7 @@ mod play;
 mod ppm;
 mod profile;
 mod screens;
+mod screenshot;
 mod script;
 mod sound;
 mod view;

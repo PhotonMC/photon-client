@@ -94,6 +94,25 @@ impl Gui {
         );
     }
 
+    /// `ChatComponent.addClientSystemMessage`: a message of the client's own.
+    pub fn client_message(
+        &self,
+        log: &mut ChatLog,
+        content: &photon_game::text::Component,
+        focused: bool,
+    ) {
+        log.add_component(
+            content,
+            &self.lang,
+            (
+                None,
+                Some(photon_render::gui::chat::Tag::SystemSinglePlayer),
+            ),
+            &self.font,
+            focused,
+        );
+    }
+
     /// The chat the server sent, worded and added to the log.
     pub fn receive_chat(
         &mut self,

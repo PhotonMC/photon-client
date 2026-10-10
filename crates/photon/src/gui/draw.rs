@@ -43,6 +43,39 @@ impl Gui {
         }
     }
 
+    /// The chat's messages, the box's and brighter when it is open; the lines of the tooltip
+    /// the mouse is over, if any.
+    fn draw_chat_log(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        frame: &mut photon_render::gui::GuiFrame,
+        controls: &Controls,
+        size: &photon_render::window::WindowScale,
+    ) -> Option<Vec<Vec<photon_game::text::Run>>> {
+        let focused = controls.chat.is_some();
+        controls.chat_log.draw_with(
+            frame,
+            atlas,
+            font,
+            (size.gui_scaled_width(), size.gui_scaled_height()),
+            focused,
+            focused.then_some((controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32)),
+            lang,
+        )
+    }
+
+    /// The boss bars and the titles, which the hidden interface does not show.
+    fn draw_announcements(
+        (boss_bars, titles): (&mut BossBars, &mut Titles),
+        (atlas, font): (&GuiAtlas, &Font),
+        frame: &mut photon_render::gui::GuiFrame,
+        (hidden, gui_size, now, partial): (bool, (i32, i32), u64, f32),
+    ) {
+        if !hidden {
+            boss_bars.draw(frame, atlas, font, gui_size, now);
+            titles.draw(frame, atlas, font, gui_size, partial);
+        }
+    }
+
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
     #[expect(
@@ -98,28 +131,38 @@ impl Gui {
                 let layers = items.get(stack, renderer, tints);
                 photon_render::gui::items::item_vertices(layers, x, y, out);
             };
-        let mut frame = self.hud.build(
-            &self.atlas,
-            &self.font,
-            size.gui_scaled_width(),
-            size.gui_scaled_height(),
-            &photon_render::gui::HudInput {
-                // `getGameTimeDeltaPartialTick(true)`.
-                cooldowns: session
-                    .item_cooldowns()
-                    .percents((self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0)),
-                ..hud_input(
-                    session,
-                    controls.camera_type == CameraType::FirstPerson,
-                    locator_camera,
-                    controls.options.attack_indicator,
-                )
-            },
-            self.started_at.elapsed().as_millis(),
-            &mut draw_item,
-        );
+        // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
+        let hidden = controls.hud_hidden;
+        let hud_input = photon_render::gui::HudInput {
+            // `getGameTimeDeltaPartialTick(true)`.
+            cooldowns: session
+                .item_cooldowns()
+                .percents((self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0)),
+            ..hud_input(
+                session,
+                controls.camera_type == CameraType::FirstPerson,
+                locator_camera,
+                controls.options.attack_indicator,
+            )
+        };
+        let mut frame = if hidden {
+            photon_render::gui::GuiFrame {
+                cooldowns: hud_input.cooldowns.clone(),
+                ..Default::default()
+            }
+        } else {
+            self.hud.build(
+                &self.atlas,
+                &self.font,
+                size.gui_scaled_width(),
+                size.gui_scaled_height(),
+                &hud_input,
+                self.started_at.elapsed().as_millis(),
+                &mut draw_item,
+            )
+        };
         frame.millis = self.started_at.elapsed().as_millis() as u64;
-        if let Some((title, lines)) = &sidebar {
+        if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
             sidebar::draw(
                 &mut frame,
                 &self.atlas,
@@ -130,16 +173,16 @@ impl Gui {
             );
         }
         // The chat, over the hotbar; open, it is the box's and brighter.
-        let focused = controls.chat.is_some();
-        let chat_tooltip = controls.chat_log.draw_with(
-            &mut frame,
-            &self.atlas,
-            &self.font,
-            (size.gui_scaled_width(), size.gui_scaled_height()),
-            focused,
-            focused.then_some((controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32)),
-            &self.lang,
-        );
+        let chat_tooltip = (!hidden)
+            .then(|| {
+                Self::draw_chat_log(
+                    (&self.atlas, &self.font, &self.lang),
+                    &mut frame,
+                    controls,
+                    &size,
+                )
+            })
+            .flatten();
         if let Some(chat) = controls.chat.as_mut() {
             chat.draw(
                 &mut frame,
@@ -161,10 +204,12 @@ impl Gui {
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
         let now = self.started_at.elapsed().as_millis() as u64;
         let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
-        self.boss_bars
-            .draw(&mut frame, &self.atlas, &self.font, gui_size, now);
-        self.titles
-            .draw(&mut frame, &self.atlas, &self.font, gui_size, partial);
+        Self::draw_announcements(
+            (&mut self.boss_bars, &mut self.titles),
+            (&self.atlas, &self.font),
+            &mut frame,
+            (hidden, gui_size, now, partial),
+        );
         if let Some((link, _)) = controls.link_confirm.as_mut() {
             if link.size() != gui_size {
                 *link = link.resized(&self.font, &self.lang, gui_size);
@@ -234,7 +279,7 @@ impl Gui {
             &mut frame,
             gui_size,
         );
-        if let Some((entries, objective)) = tab_entries {
+        if let Some((entries, objective)) = tab_entries.filter(|_| !hidden) {
             tab_list::draw(
                 &mut frame,
                 &self.atlas,

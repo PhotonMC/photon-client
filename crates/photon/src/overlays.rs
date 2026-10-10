@@ -82,6 +82,8 @@ pub struct TagCamera {
     pub rotation: (f32, f32),
     /// The local player watches from the spectator's seat.
     pub spectating: bool,
+    /// The interface is hidden (F1): so are the names over players.
+    pub hud_hidden: bool,
 }
 
 /// The path (under `textures/`) of the experience orbs' texture.

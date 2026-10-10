@@ -32,6 +32,9 @@ pub struct HeldKeys {
     pub escape: bool,
     /// Tab pressed in the chat box.
     pub complete: bool,
+    /// F1 and F2 pressed on this tick.
+    pub toggle_gui: bool,
+    pub screenshot: bool,
     /// A scripted click in the open inventory: slot, button, click type.
     pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
@@ -99,6 +102,8 @@ impl HeldKeys {
                 "enter" => keys.enter = true,
                 "escape" => keys.escape = true,
                 "complete" => keys.complete = true,
+                "toggle_gui" => keys.toggle_gui = true,
+                "screenshot" => keys.screenshot = true,
                 "none" => {}
                 other => {
                     // `click/SLOT/BUTTON/TYPE`, the type by its id.

@@ -290,6 +290,7 @@ impl Play {
             relative: frame.relative,
             rotation: frame.rotation,
             spectating,
+            hud_hidden: self.controls.hud_hidden,
         };
         let (mut see_through, mut normal) =
             overlays::name_tags(&self.session, self.gui.text_assets(), &camera, view);
@@ -435,7 +436,12 @@ impl Play {
             ),
         )?;
         let built = Instant::now();
-        self.backend.draw_scene(colour, frame.view_projection)?;
+        if std::mem::take(&mut self.controls.screenshot_pending) {
+            let captured = self.backend.capture_scene(colour, frame.view_projection)?;
+            self.save_screenshot(&captured);
+        } else {
+            self.backend.draw_scene(colour, frame.view_projection)?;
+        }
         self.frames += 1;
         let parts = profile::take_parts();
         if self.profile.is_some() || self.bench.is_some() {
@@ -449,6 +455,42 @@ impl Play {
             }
         }
         Ok(Flow::Next)
+    }
+
+    /// `Screenshot.grab`: the frame goes to `screenshots/`, and the chat says where.
+    fn save_screenshot(&mut self, frame: &photon_render::CapturedFrame) {
+        use photon_game::text::{ClickEvent, Component, Style};
+        let saved = crate::screenshot::save(
+            &crate::controls::game_directory(),
+            (frame.width, frame.height, &frame.rgba),
+            crate::screenshot::DateTime::now(),
+        );
+        let message = match saved {
+            Ok(file) => {
+                let name = file
+                    .file_name()
+                    .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
+                let absolute = file.canonicalize().unwrap_or(file);
+                let link = Component::literal(name).with_style(&Style {
+                    underlined: Some(true),
+                    click: Some(Box::new(ClickEvent::OpenFile(
+                        absolute.to_string_lossy().into_owned(),
+                    ))),
+                    ..Style::default()
+                });
+                Component::translatable_with("screenshot.success", vec![link])
+            }
+            Err(error) => {
+                log::warn!("Couldn't save screenshot: {error}");
+                Component::translatable_with(
+                    "screenshot.failure",
+                    vec![Component::literal(error.to_string())],
+                )
+            }
+        };
+        let focused = self.controls.chat.is_some();
+        self.gui
+            .client_message(&mut self.controls.chat_log, &message, focused);
     }
 
     /// With a frame count, the frames after the script ends are captured

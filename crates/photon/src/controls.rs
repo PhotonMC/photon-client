@@ -153,6 +153,10 @@ pub struct Controls {
     pub chat_log: ChatLog,
     /// Whether the tab list key is held.
     pub tab_held: bool,
+    /// `Hud.isHidden`: the interface hidden with F1.
+    pub hud_hidden: bool,
+    /// F2 was pressed: the next frame is written to a file.
+    pub screenshot_pending: bool,
     /// The mouse in GUI units.
     pub gui_mouse: (f64, f64),
     /// The button a drag is held with (`MouseHandler.activeButton`).
@@ -381,6 +385,8 @@ impl Controls {
             control_held: false,
             chat_log: ChatLog::with_settings(chat_settings),
             tab_held: false,
+            hud_hidden: false,
+            screenshot_pending: false,
             gui_mouse: (0.0, 0.0),
             active_button: None,
         }

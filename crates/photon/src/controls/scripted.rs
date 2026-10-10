@@ -78,6 +78,8 @@ impl Controls {
         if held.escape {
             self.scripted_escape(session, surface, assets)?;
         }
+        self.hud_hidden ^= held.toggle_gui;
+        self.screenshot_pending |= held.screenshot;
         if held.chat {
             if self.chat.is_some() {
                 self.close_chat(surface, ExitReason::Intentional);

@@ -31,7 +31,7 @@ Rust ekran kalıbı: `photon-render/src/gui/screen/{pause,death,disconnected}.rs
 Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplanır; elle yazılmaz (`photon.py check` bayatsa düşer). Ağırlık S 1, M 2, L 3. `K-` maddeleri henüz görevlere bölünmemiş kapsamdır ve boyutlarındaki `×N` tahmini görev sayısıdır (`M×12` = on iki M görev); bölündükçe yerini görev maddeleri alır, bu yüzden yüzde kapsam büyüdükçe düşebilir. Yüzde ilerlemenin ölçüsüdür, Java eşitliği iddiası değildir: bölümler ancak `client-parity` ile kapanır (M10).
 
 <!-- progress:start -->
-**Toplam: %83 bitti** (ağırlıklı) · 276/313 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
+**Toplam: %83 bitti** (ağırlıklı) · 277/314 madde işaretli, **37 madde kaldı** (tahmini 80 M-görev eşdeğeri iş).
 
 | Grup | İlerleme | % | Madde |
 | --- | --- | ---: | ---: |
@@ -39,7 +39,7 @@ Yüzdeler aşağıdaki kutulardan `python3 tools/task-progress.py` ile hesaplan�
 | M3.d Sunucunun açtığı kaplar | `████████████████████` | 100 | 21/21 |
 | M4 Entity'ler | `████████████████████` | 99 | 130/131 |
 | M5 Metin ve sohbet | `██████████████░░░░░░` | 68 | 5/7 |
-| M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 36/42 |
+| M6 Ekranlar ve ayarlar | `████████████████░░░░` | 82 | 37/43 |
 | M7 Ses | `████████████████░░░░` | 82 | 14/16 |
 | M8 Partikül, efekt ve blok entity | `█████████████████░░░` | 85 | 40/46 |
 | M9 Sunucu uyumluluğu | `░░░░░░░░░░░░░░░░░░░░` | 0 | 0/2 |
@@ -267,7 +267,8 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [ ] [T91](T91-ilerlemeler.md) İlerlemeler (`UpdateAdvancements`, `AdvancementsScreen`) — L · bağımlı: T85
 - [ ] [T91b](T91b-bildirim-kutulari.md) Bildirim kutuları (toast) — M · bağımlı: T91
 - [ ] [T92](T92-istatistikler.md) İstatistikler (`AwardStats`, `StatsScreen`) — M · bağımlı: T85
-- [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3), F1 ve F2 — L
+- [x] [T93a](T93a-f1-f2.md) F1 arayüzü gizleme ve F2 ekran görüntüsü — S · bitti (HASH)
+- [ ] [T93](T93-hata-ayiklama-katmani.md) Hata ayıklama katmanı (F3) — L
 - [x] [T94](T94-tus-atamalari.md) Tuş atamaları ekranı ve atanabilir kontroller — M · bölündü (d6b5f303)
 - [x] [T94b](T94b-tus-atama-ekrani.md) Tuş atamaları ekranı (`KeyBindsScreen`) — M · bağımlı: T94 · bitti (01d7e83b)
 - [x] [T95a](T95a-gorus-mesafesi.md) Görüş mesafesi seçeneği (sunucuya bildirim, çizim sınırı) — S · bitti (c354678d)
