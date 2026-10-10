@@ -356,7 +356,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T102](T102-transfer.md) Transfer paketi ve çerezlerin taşınması — M · bağımlı: T100, T101 · bitti (1804ad5a)
 - [x] [T103](T103-kaynak-paketi-istemi.md) Sunucu kaynak paketi: paketler ve onay ekranı — M · bağımlı: T101 · bitti (903c01f5)
 - [ ] [T104](T104-kaynak-paketi-indirme.md) Sunucu kaynak paketi: indirme, doğrulama, yükleme — L · bağımlı: T103 · **kullanıcı kararı**
-- [x] [T105](T105-diyalog-temel.md) Diyaloglar 1: `ShowDialog` verisi ve paketleri — L · bölündü (ekran: T105b)
+- [x] [T105](T105-diyalog-temel.md) Diyaloglar 1: `ShowDialog` verisi ve paketleri — L · bölündü (1c250d8c; ekran: T105b)
 - [ ] [T105b](T105b-diyalog-ekrani.md) Diyalog ekranı (`SimpleDialogScreen`, uyarı düğmesi, bekleme) — L · bağımlı: T105
 - [ ] [T106](T106-diyalog-kalan.md) Diyaloglar 2: çok eylemli, liste, sunucu bağlantıları, girdiler — L · bağımlı: T105b, T100
 - [ ] [K-M9a](DECISION-M9-online.md) Çevrimiçi kimlik: şifreleme, oturum isteği, hesap girişi — L×3 · **kullanıcı kararı** ([karar belgesi](DECISION-M9-online.md))
