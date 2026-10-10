@@ -22,3 +22,17 @@ pub fn vector_bits(x: f64, y: f64, z: f64) -> Value {
 pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+
+/// `value` as a protocol VarInt (its low 32 bits, unsigned).
+pub fn varint(value: i64) -> Vec<u8> {
+    let mut value = (value as u64) & 0xffff_ffff;
+    let mut out = Vec::new();
+    loop {
+        let part = (value & 0x7f) as u8;
+        value >>= 7;
+        out.push(part | if value != 0 { 0x80 } else { 0 });
+        if value == 0 {
+            return out;
+        }
+    }
+}

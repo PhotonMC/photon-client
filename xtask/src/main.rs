@@ -25,8 +25,12 @@ usage: cargo xtask <command>
   commit-msg <file>         validate a commit message (git hook)
   install-hooks             point git at the tracked hooks in .githooks/
   affected [--base <ref>]   print the crates touched since <ref> and their dependents
-  parity [--recapture] [--compare-generators] [--family <name>]...
-                            compare the Rust adapter with the Java reference";
+  parity [--recapture] [--family <name>]...
+                            compare the Rust adapter with the Java reference
+  parity --print-cases [--family <name>]...
+                            print the case lines (the oracle and adapter input)
+  parity --compare-generators [--family <name>]...
+                            diff ported case generators against Python";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

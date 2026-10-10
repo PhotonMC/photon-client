@@ -2,20 +2,7 @@
 
 use serde_json::{Value, json};
 
-use crate::bits::hex;
-
-fn varint(value: i64) -> Vec<u8> {
-    let mut value = (value as u64) & 0xffff_ffff;
-    let mut out = Vec::new();
-    loop {
-        let part = (value & 0x7f) as u8;
-        value >>= 7;
-        out.push(part | if value != 0 { 0x80 } else { 0 });
-        if value == 0 {
-            return out;
-        }
-    }
-}
+use crate::bits::{hex, varint};
 
 fn identifier(text: &str) -> Vec<u8> {
     [varint(text.len() as i64), text.as_bytes().to_vec()].concat()
