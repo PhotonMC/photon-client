@@ -307,7 +307,7 @@ Görev panosundan önce bitmiş temel; `client-parity` kapanışları M10'da.
 - [x] [T70f](T70f-kalan-blok-animasyonlari.md) Ateş, kamp ateşi, mum ve fırın animasyonları — L · bağımlı: T70e, T73b · bölündü (a751f4fd)
 - [x] [T70g](T70g-doga-portal-animasyonlari.md) Doğa, portal ve kızıltaş blok animasyonları, ortam parçacıkları — L · bağımlı: T70f · bölündü (fb6faf8a)
 - [x] [T70h](T70h-yaprak-kalan-animasyonlar.md) Düşen yapraklar — L · bağımlı: T70g · bölündü (94d54846)
-- [x] [T70i](T70i-kalan-blok-animasyonlari.md) Kızıltaş, su ve sculk blok animasyonları — M · bağımlı: T70h · bölündü (HASH)
+- [x] [T70i](T70i-kalan-blok-animasyonlari.md) Kızıltaş, su ve sculk blok animasyonları — M · bağımlı: T70h · bölündü (eec1bbab)
 - [ ] [T70j](T70j-kalan-blok-animasyonlari-2.md) Kalan blok animasyonları, yaprak yağmur damlası, ortam parçacıkları — L · bağımlı: T70i
 - [x] [T73](T73-su-parcaciklari.md) Su ve kabarcık parçacıkları — M · bağımlı: T70b · bitti (430873ec)
 - [x] [T73b](T73b-damlama-parcaciklari.md) Damlama parçacıkları (`DripParticle` ailesi) — M · bağımlı: T73 · bitti (b58c9f67)
