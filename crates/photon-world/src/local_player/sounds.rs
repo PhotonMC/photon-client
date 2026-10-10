@@ -222,6 +222,7 @@ impl LocalPlayer {
     /// `BubbleColumnAmbientSoundHandler.tick`: the sound of getting into a bubble column (the
     /// first state of one under the player's feet, the box shrunk a little at the top).
     pub(super) fn tick_ambient_sounds(&mut self, level: &Level<'_>) {
+        self.tick_underwater_additions();
         let area = self
             .bounding_box
             .inflate(0.0, -f64::from(0.4_f32), 0.0)
@@ -240,7 +241,8 @@ impl LocalPlayer {
             }
         }
         if let Some(state) = found {
-            if !self.was_in_bubble_column && !self.ambient_first_tick && !self.is_spectator() {
+            if !self.underwater.in_bubble_column && self.underwater.started && !self.is_spectator()
+            {
                 let drag_down = Self::property_of(state, "drag") == Some("true");
                 self.play_player_sound(
                     if drag_down {
@@ -252,11 +254,11 @@ impl LocalPlayer {
                     1.0,
                 );
             }
-            self.was_in_bubble_column = true;
+            self.underwater.in_bubble_column = true;
         } else {
-            self.was_in_bubble_column = false;
+            self.underwater.in_bubble_column = false;
         }
-        self.ambient_first_tick = false;
+        self.underwater.started = true;
     }
 
     /// `(random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F`.

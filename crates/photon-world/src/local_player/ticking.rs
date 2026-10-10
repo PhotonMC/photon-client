@@ -126,7 +126,7 @@ impl LocalPlayer {
             self.on_ground = false;
             self.check_supporting_block(level, false, None)?;
         }
-        // updateIsUnderwater keeps a copy only the server reads.
+        self.update_is_underwater();
         self.living_tick(level)?;
         let clamped_x = self.position.x.clamp(-2.9999999e7, 2.9999999e7);
         let clamped_z = self.position.z.clamp(-2.9999999e7, 2.9999999e7);

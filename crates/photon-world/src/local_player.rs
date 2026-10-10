@@ -41,6 +41,8 @@ use photon_data::block::registry;
 /// The tags and classes movement tests of a block.
 mod sounds;
 pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
+mod underwater;
+pub use underwater::UnderwaterSound;
 
 pub(crate) mod flag {
     pub const CLIMBABLE: u16 = 1 << 0;
@@ -156,10 +158,9 @@ pub struct LocalPlayer {
     /// `Entity.random`: the pitch of the player's sounds is drawn from it. The reference seeds
     /// it from nowhere in particular; this one from the entity's number.
     pub(super) random: photon_core::random::RandomSource,
-    /// `BubbleColumnAmbientSoundHandler`: whether the last tick was in a bubble column, and
-    /// whether it is the first.
-    pub(super) was_in_bubble_column: bool,
-    pub(super) ambient_first_tick: bool,
+    /// `LocalPlayer.wasUnderwater`, the ticks until the next addition may sound
+    /// (`UnderwaterAmbientSoundHandler.tickDelay`) and the under-water sounds waiting for the engine.
+    pub(super) underwater: underwater::State,
     /// `LivingEntity.elytraAnimationState`: the local player never glides in this port.
     pub(super) elytra: crate::elytra::ElytraState,
     /// `Entity.moveDist` and `nextStep`: how far the player has walked, and where the next step sounds.

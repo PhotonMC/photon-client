@@ -464,8 +464,13 @@ impl Play {
             .map(LocalPlayer::take_sounds)
             .unwrap_or_default();
         own_sounds.extend(session.take_world_sounds());
+        let (underwater, under_water) =
+            session.player_mut().map_or((Vec::new(), false), |player| {
+                (player.take_underwater_sounds(), player.is_under_water())
+            });
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(own_sounds);
+            sound.handle_underwater(underwater, under_water);
         }
         self.animated_atlas.tick();
         let breaking = session.take_breaking_effects();

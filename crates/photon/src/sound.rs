@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use photon_audio::channel::{MixerChannels, SoundAssets};
@@ -11,12 +12,12 @@ use photon_audio::mixer::ListenerTransform;
 use photon_audio::output::Output;
 use photon_core::random::RandomSource;
 use photon_game::options::Options;
-use photon_game::sounds::engine::{SoundEngine, SoundInstance};
+use photon_game::sounds::engine::{SoundEngine, SoundInstance, TickState};
 use photon_game::sounds::{
     SoundCommand, SoundEntityPacket, SoundHolder, SoundRegistry, SoundSource,
 };
 use photon_world::ClientWorld;
-use photon_world::local_player::LocalSoundSource;
+use photon_world::local_player::{LocalSoundSource, UnderwaterSound};
 
 /// The asset index's objects: the sound files and `sounds.json` are kept by the hash of their content.
 struct IndexedAssets {
@@ -71,6 +72,8 @@ pub struct SoundSystem {
     local_sounds: u32,
     /// The song the music manager has playing.
     music: Option<photon_game::sounds::engine::InstanceId>,
+    /// Whether the local player is under water, for the sounds that end when the water is left.
+    underwater: Arc<AtomicBool>,
 }
 
 impl SoundSystem {
@@ -114,6 +117,7 @@ impl SoundSystem {
             followed: Arc::new(Mutex::new(HashMap::new())),
             local_sounds: 0,
             music: None,
+            underwater: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -159,6 +163,49 @@ impl SoundSystem {
             instance.volume = sound.volume;
             instance.pitch = sound.pitch;
             instance.position = sound.position;
+            let id = self.engine.add(instance);
+            self.engine.play(id);
+        }
+    }
+
+    /// `UnderwaterAmbientSoundInstance` and `SubSound`: the sounds of being under water, which
+    /// follow whether the player still is.
+    pub fn handle_underwater(&mut self, sounds: Vec<UnderwaterSound>, under_water: bool) {
+        self.underwater.store(under_water, Ordering::Relaxed);
+        for sound in sounds {
+            let event = match sound {
+                UnderwaterSound::Loop => "minecraft:ambient.underwater.loop",
+                UnderwaterSound::Addition(event) => event,
+            };
+            let mut instance =
+                SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+            instance.relative = true;
+            let underwater = Arc::clone(&self.underwater);
+            instance.ticker = Some(match sound {
+                UnderwaterSound::Loop => {
+                    instance.looping = true;
+                    let mut fade = 0_i32;
+                    Box::new(move |state: &mut TickState| {
+                        if fade < 0 {
+                            *state.stopped = true;
+                            *state.looping = false;
+                            return;
+                        }
+                        fade = if underwater.load(Ordering::Relaxed) {
+                            fade + 1
+                        } else {
+                            fade - 2
+                        };
+                        fade = fade.min(40);
+                        *state.volume = (fade as f32 / 40.0).clamp(0.0, 1.0);
+                    })
+                }
+                UnderwaterSound::Addition(_) => Box::new(move |state: &mut TickState| {
+                    if !underwater.load(Ordering::Relaxed) {
+                        *state.stopped = true;
+                    }
+                }),
+            });
             let id = self.engine.add(instance);
             self.engine.play(id);
         }
