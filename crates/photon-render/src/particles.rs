@@ -73,7 +73,17 @@ pub fn extract(
     partial: f32,
     (uvs, light): ([f32; 4], i32),
 ) -> [QuadVertex; 4] {
-    let mut rotation = camera.orientation;
+    // `FacingCameraMode.LOOKAT_Y` keeps only the camera's turn about the vertical.
+    let mut rotation = if particle.faces_camera_about_y_only() {
+        Quaternion {
+            x: 0.0,
+            y: camera.orientation.y,
+            z: 0.0,
+            w: camera.orientation.w,
+        }
+    } else {
+        camera.orientation
+    };
     let (previous_roll, roll) = particle.roll();
     if roll != 0.0 {
         rotation = rotation.rotate_z(previous_roll + partial * (roll - previous_roll));

@@ -40,6 +40,7 @@ pub(super) enum Mark {
     Firework,
     Flash,
     DragonBreath,
+    TrialDetection,
 }
 
 impl Mark {
@@ -67,6 +68,7 @@ impl Mark {
             "firework" => Self::Firework,
             "flash" => Self::Flash,
             "dragon_breath" => Self::DragonBreath,
+            "trial_spawner_detection" | "trial_spawner_detection_ominous" => Self::TrialDetection,
             _ => return None,
         })
     }
@@ -196,6 +198,7 @@ impl Particle {
             }
             Mark::Flash => return Self::firework_flash(random, at, sprites, provider_random, data),
             Mark::DragonBreath => return Self::dragon_breath(random, (at, push), sprites, data),
+            Mark::TrialDetection => Self::trial_detection(random, (at, push), sprites),
         })
     }
 

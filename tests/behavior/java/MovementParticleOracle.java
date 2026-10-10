@@ -191,7 +191,9 @@ class MovementParticleOracle extends MovementMenuOracle {
                 "dripping_honey", "falling_honey", "landing_honey", "falling_nectar",
                 "falling_spore_blossom", "dripping_obsidian_tear", "falling_obsidian_tear",
                 "landing_obsidian_tear", "dripping_dripstone_water", "falling_dripstone_water",
-                "dripping_dripstone_lava", "falling_dripstone_lava", "vibration", "trail", "shriek" -> true;
+                "dripping_dripstone_lava", "falling_dripstone_lava", "vibration", "trail", "shriek",
+                "trial_spawner_detection", "trial_spawner_detection_ominous", "firework", "flash",
+                "dragon_breath" -> true;
             default -> false;
         };
         if (registered) {
@@ -429,6 +431,10 @@ class MovementParticleOracle extends MovementMenuOracle {
                 name.equals("effect") ? net.minecraft.core.particles.ParticleTypes.EFFECT
                     : net.minecraft.core.particles.ParticleTypes.INSTANT_EFFECT, color, floatBits(from, "power"));
             case "sculk_charge" -> new net.minecraft.core.particles.SculkChargeParticleOptions(floatBits(from, "roll"));
+            case "dragon_breath" -> net.minecraft.core.particles.PowerParticleOption.create(
+                net.minecraft.core.particles.ParticleTypes.DRAGON_BREATH, floatBits(from, "power"));
+            case "flash" -> net.minecraft.core.particles.ColorParticleOption.create(
+                net.minecraft.core.particles.ParticleTypes.FLASH, color);
             case "tinted_leaves" -> net.minecraft.core.particles.ColorParticleOption.create(
                 net.minecraft.core.particles.ParticleTypes.TINTED_LEAVES, color);
             case "entity_effect" -> net.minecraft.core.particles.ColorParticleOption.create(

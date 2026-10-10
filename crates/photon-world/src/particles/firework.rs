@@ -535,6 +535,41 @@ impl Particle {
     }
 }
 
+impl Particle {
+    /// `TrialSpawnerDetectionParticle.Provider`: a puff, scaled by one and a half.
+    pub(super) fn trial_detection(
+        random: RandomSource,
+        (at, (xa, ya, za)): ((f64, f64, f64), (f64, f64, f64)),
+        sprites: &Arc<SpriteSet>,
+    ) -> Self {
+        let scale = 1.5_f32;
+        let mut particle = Self::thrown(
+            random,
+            at,
+            (0.0, 0.0, 0.0),
+            (sprites, sprites.first()),
+            Kind::TrialDetection,
+        )
+        .quad();
+        particle.friction = 0.96;
+        particle.gravity = -0.1;
+        particle.speed_up_when_y_motion_is_blocked = true;
+        particle.xd *= 0.0;
+        particle.yd *= 0.9;
+        particle.zd *= 0.0;
+        particle.xd += xa;
+        particle.yd += ya;
+        particle.zd += za;
+        particle.quad_size *= 0.75 * scale;
+        // `Mth.randomBetween(random, 0.5F, 1.0F)`.
+        let between = particle.random.next_float() * (1.0 - 0.5) + 0.5;
+        particle.lifetime = ((8.0 / between * scale) as i32).max(1);
+        particle.set_sprite_from_age();
+        particle.has_physics = true;
+        particle
+    }
+}
+
 /// A rocket that went off: `ClientLevel.createFireworks`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FireworkLaunch {

@@ -225,6 +225,21 @@ def particle_tick_cases():
                  engine_seed=52),
              target_x=float_bits(-3.0, "f64"), target_y=float_bits(69.0, "f64"),
              target_z=float_bits(0.5, "f64"), color=0x33CCFF, duration=6),
+        # A firework's spark with nothing but the provider's, a flash of a colour, the dragon's breath thrown
+        # by its power, and a trial spawner's puff.
+        row("firework-spark", "firework", [], (0.5, 70.0, 0.5), (0.0, 0.1, 0.0), 12345, 70),
+        row("firework-spark-another-seed", "firework", [], (0.5, 70.0, 0.5), (0.02, -0.05, 0.0), 99, 70),
+        dict(row("flash-orange", "flash", [], (0.5, 70.0, 0.5), still, 12345, 6), color=0xFF8800),
+        dict(row("flash-another-seed", "flash", [], (0.5, 70.0, 0.5), still, 7, 6, engine_seed=9), color=0x102030),
+        dict(row("dragon-breath", "dragon_breath", [], (0.5, 70.0, 0.5), (1.5, 0.2, -0.5), 12345, 60),
+             power=float_bits(2.5)),
+        dict(row("dragon-breath-weak", "dragon_breath", [], (0.5, 70.0, 0.5), (0.1, 0.05, 0.3), 31, 60, engine_seed=3),
+             power=float_bits(0.25)),
+        row("trial-spawner-detection", "trial_spawner_detection", [], (0.5, 70.0, 0.5), (0.0, 0.05, 0.0), 12345, 16),
+        row("trial-spawner-detection-ominous", "trial_spawner_detection_ominous", [], (0.5, 70.0, 0.5),
+            (0.01, 0.0, -0.02), 55, 16),
+        row("trial-spawner-detection-under-a-ceiling", "trial_spawner_detection", CEILING, (0.5, 66.0, 0.5),
+            (0.0, 0.2, 0.0), 77, 16),
         # A shriek sits frozen while its delay counts down, then rises and ages normally
         # (its own lifetime of 30 regardless of the row's tick count).
         dict(row("shriek-with-a-delay", "shriek", [], (0.5, 70.0, 0.5), still, 12345, 10), delay=5),
@@ -586,6 +601,12 @@ def particle_engine_cases():
                    blocks=[{"x": 1, "y": 64, "z": 1, "block": "minecraft:sculk_shrieker", "properties": {"waterlogged": "false"}},
                            {"x": -1, "y": 64, "z": 1, "block": "minecraft:sculk_shrieker", "properties": {"waterlogged": "true"}}],
                    ticks=5, seeds=40, describe=12),
+        engine_row("level-event-trial-spawner", [level_event(0, 3011, (1, 64, 1), 0), level_event(0, 3012, (-1, 64, 1), 1),
+                                                 level_event(1, 3013, (2, 64, 2), 3), level_event(1, 3014, (-2, 64, 2)),
+                                                 level_event(2, 3017, (3, 64, 3)), level_event(2, 3019, (-3, 64, 3), 12),
+                                                 level_event(3, 3020, (2, 64, -2), 0), level_event(3, 3020, (-2, 64, -2), 1),
+                                                 level_event(4, 3021, (3, 64, -3), 0), level_event(4, 3011, (4, 64, 4), 7)],
+                   ticks=8, seeds=1200, describe=14),
         engine_row("global-level-events", [global_level_event(0, 1023, (50, 70, 0)), global_level_event(0, 1028, (0, 64, -80)),
                                            global_level_event(1, 1038, (-30, 100, 30)), global_level_event(1, 1000, (5, 5, 5))],
                    ticks=3, seeds=2, describe=2),
@@ -631,6 +652,11 @@ def particle_quad_cases():
         quad_row("flame-turned", "flame", 4242, 5, (-3.0, 69.0, 2.0), (45.0, -20.0), 0.75, sprites=1),
         quad_row("small-flame", "small_flame", 4242, 5, (-3.0, 69.0, 2.0), (45.0, -20.0), 0.75, sprites=1),
         # A turn of the quad about its own axis: the particle's roll, between its last and its new.
+        # A puff turned about the vertical only (`LOOKAT_Y`), the camera looking level, down and up.
+        quad_row("trial-detection-level", "trial_spawner_detection", 31, 3, (0.5, 70.0, 5.5), (0.0, 0.0), 0.5),
+        quad_row("trial-detection-turned", "trial_spawner_detection", 31, 3, (3.25, 71.5, -2.5), (90.0, 30.0), 0.5),
+        quad_row("trial-detection-ominous-above", "trial_spawner_detection_ominous", 8, 5, (-4.0, 80.0, 6.0),
+                 (-135.0, -60.0), 0.37),
         quad_row("smoke-rolled", "smoke", 12345, 4, (3.25, 71.5, -2.5), (90.0, 30.0), 0.5, roll=(0.25, 0.75)),
         quad_row("smoke-rolled-at-the-end", "smoke", 12345, 4, (0.5, 70.0, 5.5), (0.0, 0.0), 1.0,
                  roll=(-1.5, 2.0)),

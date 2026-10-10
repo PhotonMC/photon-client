@@ -1,6 +1,6 @@
 # T78f — Kalan seviye olayları
 
-**Amaç:** [T78e](T78e-son-seviye-olaylari.md)'nin kalanı: 1504 sarkıt damlası (`PointedDripstoneBlock.spawnDripParticle`), 1505 kemik tozu (`BoneMealItem.addGrowthParticles`), 1032 portal yolculuğu (yerel ortam sesi), deneme spawner'ı (3011–3014, 3017, 3019–3021: `TrialSpawner.add*Particles`, alev türünün çözümü) ve kasa (3015, 3016: `VaultBlockEntity.Client`; blok entity'si ister), jukebox 1010/1011 (`playJukeboxSong`, çevredeki varlıklara bildirim).
+**Amaç:** [T78e](T78e-son-seviye-olaylari.md)'nin kalanı: deneme spawner'ının olayları (3011–3014, 3017, 3019–3021: `TrialSpawner.add*Particles`, alev türünün çözümü) ve `trial_spawner_detection` zerresi (`LOOKAT_Y`). Sarkıt, kemik tozu, portal yolculuğu, kasa ve jukebox [T78g](T78g-son-seviye-olaylari.md)'ye devredildi.
 **Bağımlılık:** T78e. **Boy:** L.
 
 ## Oku
@@ -16,4 +16,4 @@ Java: `client/renderer/LevelEventHandler.java` (255–300, 440–700), `world/le
 `docs/records/client-level-event-parity-conformance.md`.
 
 ## Devir notu
-(boş)
+Yapıldı: `level_events_last.rs` deneme spawner'ı olayları, `trial_spawner_detection(_ominous)` sağlayıcısı (`Kind::TrialDetection`, `LOOKAT_Y` çizimi: `photon-render/particles.rs`). Oracle: `particle-engine` `level-event-trial-spawner`, `particle-ticks` (havai fişek kıvılcımı, parlama, ejderha nefesi, deneme zerresi) ve `particle-quads` (LOOKAT_Y) satırları eşit.

@@ -82,6 +82,9 @@ pub(super) enum Kind {
     FireworkSpark(super::firework::Spark),
     /// `FireworkParticles.OverlayParticle`: the flash of an explosion.
     Flash,
+    /// `TrialSpawnerDetectionParticle`: a puff that rises from a trial spawner, turned about the
+    /// vertical only, full of block light.
+    TrialDetection,
     /// `DragonBreathParticle`: drifts out, settles to the ground and rises slowly from it.
     DragonBreath { has_hit_ground: bool },
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
@@ -352,6 +355,7 @@ impl Particle {
                 self.alpha += 0.05 * (original_alpha - self.alpha);
             }
             Kind::Totem => self.animated_fade(),
+            Kind::TrialDetection => self.set_sprite_from_age(),
             Kind::FireworkSpark(spark) => {
                 self.set_sprite_from_age();
                 return self.firework_spark_tick(spark);

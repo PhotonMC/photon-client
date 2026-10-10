@@ -316,7 +316,8 @@ pub(super) fn event_data(event: &Value, name: &str) -> photon_world::particles::
             color,
             power: float("power"),
         },
-        "entity_effect" => ParticleData::Color(color),
+        "entity_effect" | "flash" => ParticleData::Color(color),
+        "dragon_breath" => ParticleData::Power(float("power")),
         "sculk_charge" => ParticleData::Roll(float("roll")),
         "falling_dust" => ParticleData::Block(
             event["block"]

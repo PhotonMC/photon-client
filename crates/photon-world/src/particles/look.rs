@@ -14,6 +14,7 @@ impl Particle {
             Kind::AshSmoke { .. }
             | Kind::PlayerCloud
             | Kind::DragonBreath { .. }
+            | Kind::TrialDetection
             | Kind::Dust { .. }
             | Kind::Crit
             | Kind::Bobbing
@@ -55,6 +56,7 @@ impl Particle {
             | Kind::Drip(super::drip::Drip { glowing: true, .. })
             | Kind::Vibration(_)
             | Kind::Shriek { .. }
+            | Kind::TrialDetection
             | Kind::Attract(
                 super::attract::Attract::FlyTowards { glowing: true, .. }
                 | super::attract::Attract::FlyStraight { .. },
@@ -101,6 +103,12 @@ impl Particle {
                 | Kind::FireworkSpark(_)
                 | Kind::Flash
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
+    }
+
+    /// `SingleQuadParticle.getFacingCameraMode`: whether the quad turns about the vertical only
+    /// (`LOOKAT_Y`) rather than to face the camera.
+    pub fn faces_camera_about_y_only(&self) -> bool {
+        matches!(self.kind, Kind::TrialDetection)
     }
 
     /// The atlas the picture is in.

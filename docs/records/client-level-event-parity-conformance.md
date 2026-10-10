@@ -52,6 +52,10 @@ rastgelesiyle işler.
 - Ses tohumu çekiliyor ama ses motoruna verilmiyor; varyantı motorun kendi rastgelesi seçer.
 - `level-event-more` özeti ender gözü halkasındaki bir `Math.sin`'in 1 ulp farkıyla tutmuyor (JVM
   intrinsic'i, Q04 sınıfı). Topuz darbesi (2013) satırda yok; Java'da model yöneticisi ister.
-- Kalan olaylar (kemik tozu büyümesi 1505, sarkıt 1504, portal yolculuğu 1032, deneme spawner'ı ve
-  kasa 3011–3017 ile 3019–3021, jukebox) [T78f](../tasks/T78f-kalan-seviye-olaylari.md)'de.
+- Kalan olaylar (kemik tozu büyümesi 1505, sarkıt 1504 — çevre öznitelikleri ister —, portal
+  yolculuğu 1032, kasa 3015 ve 3016, jukebox) [T78g](../tasks/T78g-son-seviye-olaylari.md)'de.
+- T78f: deneme spawner'ının olayları (3011–3014, 3017, 3019–3021): kıvılcımlı duman, algılama
+  zerreleri (sayı `30 + min(veri,10)*5`, `LOOKAT_Y` ile yalnız dikey eksende dönen
+  `trial_spawner_detection` zerresi), fırlatma alevi, ominous olma zerreleri; sesler `BLOCKS`,
+  perde `(r−r)*0.2+1`. Bu zerrenin kamera dönüşü `movement/particle-quads` satırlarında eşit.
 - Mesafe gecikmeli ses (`distanceDelay`) yok; oracle erteli sesi hemen çalmış sayar.
