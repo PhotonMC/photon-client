@@ -91,7 +91,7 @@ fn fixed(digits: &str, exponent: i32) -> String {
 const SHORT_ESCAPES: &[(char, &str)] =
     &[('"', "\\\""), ('\\', "\\\\"), ('\n', "\\n"), ('\r', "\\r"), ('\t', "\\t"), ('\u{8}', "\\b"), ('\u{c}', "\\f")];
 
-fn write_string(out: &mut String, text: &str) {
+pub fn write_string(out: &mut String, text: &str) {
     out.push('"');
     for ch in text.chars() {
         if let Some((_, escape)) = SHORT_ESCAPES.iter().find(|(short, _)| *short == ch) {
