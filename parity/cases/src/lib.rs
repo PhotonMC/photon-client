@@ -12,12 +12,14 @@ mod binary;
 mod bits;
 mod block;
 mod case;
+mod components;
 mod entity;
 mod gui;
 mod image;
 mod json;
 mod line;
 mod model;
+mod movement;
 mod nbt;
 mod ordered;
 mod resources;
@@ -41,6 +43,7 @@ const GENERATORS: &[(&str, Generator)] = &[
     ("image", image::cases),
     ("json", json::cases),
     ("model", model::cases),
+    ("movement", movement::cases),
     ("nbt", nbt::cases),
     ("resources", resources::cases),
     ("sound", sound::cases),

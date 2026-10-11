@@ -3,63 +3,10 @@
 use serde_json::{Value, json};
 
 use super::gui;
-use crate::bits::{hex, varint};
-
-// Data component type ids.
-const DAMAGE: i64 = 3;
-const CUSTOM_NAME: i64 = 6;
-const LORE: i64 = 11;
-const MAP_ID: i64 = 46;
-const MAP_POST_PROCESSING: i64 = 48;
-const BUNDLE_CONTENTS: i64 = 50;
-const WRITTEN_BOOK_CONTENT: i64 = 55;
-const BANNER_PATTERNS: i64 = 72;
-const CONTAINER: i64 = 75;
-const LOCK: i64 = 0;
-const SCALE: i64 = 1;
-
-/// Item registry ids of the items a stack holds here.
-fn item_id(item: &str) -> i64 {
-    match item {
-        "stone" => 1,
-        "dirt" => 55,
-        "ender_pearl" => 1144,
-        "iron_sword" => 959,
-        other => panic!("no id for {other}"),
-    }
-}
-
-fn vi(value: i64) -> String {
-    hex(&varint(value))
-}
-
-/// `ByteBufCodecs.STRING_UTF8`.
-fn text(value: &str) -> String {
-    format!("{}{}", vi(value.len() as i64), hex(value.as_bytes()))
-}
-
-/// A network tag of a string.
-fn nbt(value: &str) -> String {
-    format!("08{:04x}{}", value.len(), hex(value.as_bytes()))
-}
-
-/// `DataComponentPatch.STREAM_CODEC`: (type id, value hex) pairs, none
-/// removed.
-fn patch(added: &[(i64, String)]) -> String {
-    let mut out = format!("{}{}", vi(added.len() as i64), vi(0));
-    for (kind, value) in added {
-        out.push_str(&vi(*kind));
-        out.push_str(value);
-    }
-    out
-}
-
-/// A stack in a container or a bundle: its item, count and patch hex.
-type Stack = (&'static str, i64, String);
-
-fn stack(item: &'static str, count: i64) -> Stack {
-    (item, count, patch(&[]))
-}
+use crate::components::{
+    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, LORE, MAP_ID, MAP_POST_PROCESSING, Stack, WRITTEN_BOOK_CONTENT,
+    bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
+};
 
 /// `ItemContainerContents`: an optional stack per slot.
 fn container(items: &[Option<Stack>]) -> String {
@@ -78,12 +25,8 @@ fn book(author: &str, generation: i64) -> String {
     format!("{}00{}{}{}01", text("Title"), text(author), vi(generation), vi(0))
 }
 
-/// A `bundle_contents` patch: a stack per item, first first.
-fn bundle(items: &[Stack]) -> String {
-    let stacks: String =
-        items.iter().map(|(item, count, inner)| format!("{}{}{inner}", vi(item_id(item)), vi(*count))).collect();
-    patch(&[(BUNDLE_CONTENTS, format!("{}{stacks}", vi(items.len() as i64)))])
-}
+const LOCK: i64 = 0;
+const SCALE: i64 = 1;
 
 /// A tooltip scenario: `None` fields are left out of the row.
 struct Tooltip {
