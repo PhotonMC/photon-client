@@ -22,11 +22,10 @@ use photon_world::{
 };
 
 use super::entities;
-use super::probe::{
-    dimension_bounds_for_spawn_info, dimension_environment_for_spawn_info, open_play_connection,
-};
+use super::open::open_play_connection;
+use super::record::NoRecorder;
 use super::session::{read_packet, send_packet};
-use super::trace::*;
+use super::state::ConnectionState;
 use incoming::Incoming;
 use photon_protocol::play::*;
 
@@ -75,7 +74,8 @@ pub struct PlaySession {
     pub(super) writer: TcpStream,
     pub(super) compression_threshold: Option<usize>,
     incoming: Receiver<Result<Incoming, ConnectionError>>,
-    pub(super) trace: PlayConnectionTrace,
+    pub(super) state: ConnectionState,
+    pub(super) world: ClientWorld,
     pub(super) player_id: Option<i32>,
     pub(super) game_mode: ClientPlayerGameMode,
     /// `MultiPlayerGameMode.previousLocalPlayerMode`: the mode played in before this one.
@@ -252,7 +252,7 @@ mod tests {
             stream,
             None,
             incoming,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
             ("test", false),
         );
         (session, far_end)
@@ -351,7 +351,7 @@ mod tests {
     fn a_rider_is_told_how_to_dismount_and_follows_a_vehicle_removed_under_it() {
         let (mut session, _far_end) = detached();
         session.player_id = Some(1);
-        session.trace.world.set_local_player_id(1);
+        session.world.set_local_player_id(1);
         session.player = Some(LocalPlayer::new(
             1,
             Vec3::new(8.0, 64.0, 8.0),

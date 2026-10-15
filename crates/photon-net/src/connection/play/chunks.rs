@@ -4,7 +4,7 @@ impl PlaySession {
     /// `handleLevelChunkWithLight`: the chunk, then its light.
     pub(super) fn apply_chunk(&mut self, chunk: &ChunkPacketObservation) {
         self.mark_columns_around(chunk.x, chunk.z);
-        self.trace.world.replace_chunk(
+        self.world.replace_chunk(
             chunk.x,
             chunk.z,
             chunk
@@ -17,7 +17,7 @@ impl PlaySession {
                     biomes: &section.biome_values,
                 }),
         );
-        self.trace.world.apply_block_entities(
+        self.world.apply_block_entities(
             chunk.x,
             chunk.z,
             chunk.block_entities.iter().map(|entity| BlockEntityInput {
@@ -28,7 +28,7 @@ impl PlaySession {
                 tag: entity.tag.as_deref(),
             }),
         );
-        self.trace.world.apply_chunk_light(
+        self.world.apply_chunk_light(
             chunk.x,
             chunk.z,
             LightUpdateInput {
@@ -49,7 +49,7 @@ impl PlaySession {
     /// `handleLightUpdatePacket`: `readSectionList` redraws the sections
     /// whose light arrived when the queued task runs.
     pub(super) fn apply_light_update(&mut self, update: &LightUpdateObservation) {
-        self.trace.world.apply_light_updates(
+        self.world.apply_light_updates(
             update.x,
             update.z,
             LightUpdateInput {
@@ -86,7 +86,7 @@ impl PlaySession {
     }
 
     pub(super) fn section_range(&self) -> std::ops::Range<i32> {
-        let dimension = self.trace.world.dimension();
+        let dimension = self.world.dimension();
         let low = dimension.min_y.div_euclid(16);
         low..low + dimension.height / 16
     }
@@ -106,7 +106,7 @@ impl PlaySession {
     /// `ClientLevel.update`'s light part, once a frame: queued light tasks
     /// and the engine run, and the sections whose light changed redraw.
     pub fn update_light(&mut self) {
-        for section in self.trace.world.update_light() {
+        for section in self.world.update_light() {
             self.dirty_sections.insert(section);
         }
     }

@@ -232,7 +232,7 @@ impl PlaySession {
         if self.removed_player_vehicle == Some(packet.entity_id) {
             self.removed_player_vehicle = None;
         }
-        entities::add(&mut self.trace.world, &packet);
+        entities::add(&mut self.world, &packet);
         // `handleAddEntity`: a player in the tab list is remembered as seen.
         let id = (packet.uuid.most, packet.uuid.least);
         if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id)
@@ -247,7 +247,7 @@ impl PlaySession {
         &mut self,
         packet: EntityMotionObservation,
     ) -> Result<(), ConnectionError> {
-        entities::motion(&mut self.trace.world, &packet);
+        entities::motion(&mut self.world, &packet);
         Ok(())
     }
 
@@ -255,7 +255,7 @@ impl PlaySession {
         &mut self,
         packet: photon_world::map::MapItemDataInput,
     ) -> Result<(), ConnectionError> {
-        self.trace.world.apply_map_item_data(&packet);
+        self.world.apply_map_item_data(&packet);
         Ok(())
     }
 
@@ -263,15 +263,12 @@ impl PlaySession {
         &mut self,
         (entity_id, steps): (i32, Vec<MinecartStep>),
     ) -> Result<(), ConnectionError> {
-        entities::minecart_steps(&mut self.trace.world, entity_id, &steps);
+        entities::minecart_steps(&mut self.world, entity_id, &steps);
         Ok(())
     }
 
     fn on_set_entity_link(&mut self, (source, holder): (i32, i32)) -> Result<(), ConnectionError> {
-        self.trace
-            .world
-            .entities_mut()
-            .set_leash_holder(source, holder);
+        self.world.entities_mut().set_leash_holder(source, holder);
         Ok(())
     }
 
@@ -279,7 +276,7 @@ impl PlaySession {
         &mut self,
         packet: EntityHeadRotationObservation,
     ) -> Result<(), ConnectionError> {
-        entities::rotate_head(&mut self.trace.world, &packet);
+        entities::rotate_head(&mut self.world, &packet);
         Ok(())
     }
 
@@ -290,11 +287,11 @@ impl PlaySession {
         // `handleRemoveEntities`: a vehicle that goes with its rider aboard is
         // remembered, for a teleport the server may still address to it.
         for &id in &packet.entity_ids {
-            if self.trace.world.has_entity(id) && self.trace.world.entity_carries_local_player(id) {
+            if self.world.has_entity(id) && self.world.entity_carries_local_player(id) {
                 self.removed_player_vehicle = Some(id);
             }
         }
-        entities::remove(&mut self.trace.world, &packet);
+        entities::remove(&mut self.world, &packet);
         Ok(())
     }
 
@@ -302,7 +299,7 @@ impl PlaySession {
         &mut self,
         (item_id, player_id, amount): (i32, i32, i32),
     ) -> Result<(), ConnectionError> {
-        let world = &self.trace.world;
+        let world = &self.world;
         let taker = world
             .entities()
             .at(player_id)
@@ -317,8 +314,7 @@ impl PlaySession {
         };
         if let Some(target_at) = target_at
             && let Some(taken) =
-                self.trace
-                    .world
+                self.world
                     .take_item_entity(item_id, amount, &mut self.listener_random)
         {
             self.item_pickups
@@ -335,8 +331,8 @@ impl PlaySession {
         &mut self,
         packet: EntityPassengersObservation,
     ) -> Result<(), ConnectionError> {
-        let was_aboard = self.trace.world.ridden_vehicle_of_local_player();
-        entities::passengers(&mut self.trace.world, &packet);
+        let was_aboard = self.world.ridden_vehicle_of_local_player();
+        entities::passengers(&mut self.world, &packet);
         if self
             .player_id
             .is_some_and(|id| packet.passenger_ids.contains(&id))
@@ -345,7 +341,7 @@ impl PlaySession {
         }
         // `handleSetEntityPassengersPacket`: boarding tells the rider how to get off.
         if was_aboard != Some(packet.vehicle_id)
-            && self.trace.world.ridden_vehicle_of_local_player() == Some(packet.vehicle_id)
+            && self.world.ridden_vehicle_of_local_player() == Some(packet.vehicle_id)
         {
             self.hud_events.push(HudEvent::ActionBar(
                 photon_game::text::Component::translatable_with(
@@ -358,8 +354,8 @@ impl PlaySession {
         }
         // A player who has just boarded looks the way the boat or the horse faces.
         if was_aboard.is_none()
-            && let Some(vehicle) = self.trace.world.ridden_vehicle_of_local_player()
-            && let Some(view) = self.trace.world.vehicle_view(vehicle)
+            && let Some(vehicle) = self.world.ridden_vehicle_of_local_player()
+            && let Some(view) = self.world.vehicle_view(vehicle)
             && let Some(player) = self.player.as_mut()
         {
             match view.kind {
@@ -378,7 +374,7 @@ impl PlaySession {
         &mut self,
         packet: EntityPositionSyncObservation,
     ) -> Result<(), ConnectionError> {
-        entities::position_sync(&mut self.trace.world, &packet);
+        entities::position_sync(&mut self.world, &packet);
         Ok(())
     }
 
@@ -386,18 +382,18 @@ impl PlaySession {
         &mut self,
         packet: EntityTeleportObservation,
     ) -> Result<(), ConnectionError> {
-        if !self.trace.world.has_entity(packet.entity_id)
+        if !self.world.has_entity(packet.entity_id)
             && self.removed_player_vehicle == Some(packet.entity_id)
         {
             // The vehicle is gone: the teleport meant for it moves the rider.
             self.move_former_rider(&packet)?;
         }
-        entities::teleport(&mut self.trace.world, &packet);
+        entities::teleport(&mut self.world, &packet);
         Ok(())
     }
 
     fn on_move_entity_pos(&mut self, packet: EntityMoveObservation) -> Result<(), ConnectionError> {
-        entities::step(&mut self.trace.world, &packet);
+        entities::step(&mut self.world, &packet);
         Ok(())
     }
 
@@ -405,17 +401,17 @@ impl PlaySession {
         &mut self,
         packet: EntityMoveObservation,
     ) -> Result<(), ConnectionError> {
-        entities::step(&mut self.trace.world, &packet);
+        entities::step(&mut self.world, &packet);
         Ok(())
     }
 
     fn on_move_entity_rot(&mut self, packet: EntityMoveObservation) -> Result<(), ConnectionError> {
-        entities::step(&mut self.trace.world, &packet);
+        entities::step(&mut self.world, &packet);
         Ok(())
     }
 
     fn on_animate(&mut self, (id, action): (i32, u8)) -> Result<(), ConnectionError> {
-        self.trace.world.entities_mut().apply_animate(id, action);
+        self.world.entities_mut().apply_animate(id, action);
         Ok(())
     }
 
@@ -431,9 +427,9 @@ impl PlaySession {
             {
                 player.handle_death_event();
             }
-            self.trace.world.entities_mut().apply_death_event(id);
+            self.world.entities_mut().apply_death_event(id);
         } else {
-            self.trace.world.apply_entity_event(id, event);
+            self.world.apply_entity_event(id, event);
         }
         Ok(())
     }
@@ -442,7 +438,7 @@ impl PlaySession {
         &mut self,
         (id, damage_type): (i32, Option<usize>),
     ) -> Result<(), ConnectionError> {
-        self.trace.world.entities_mut().apply_damage_event(id);
+        self.world.entities_mut().apply_damage_event(id);
         if self.player_id == Some(id) {
             let name = damage_type
                 .and_then(|index| self.registry_names("minecraft:damage_type").get(index))
@@ -456,7 +452,7 @@ impl PlaySession {
     }
 
     fn on_hurt_animation(&mut self, (id, yaw): (i32, f32)) -> Result<(), ConnectionError> {
-        self.trace.world.entities_mut().apply_hurt_animation(id);
+        self.world.entities_mut().apply_hurt_animation(id);
         if self.player_id == Some(id)
             && let Some(player) = self.player.as_mut()
         {
@@ -469,7 +465,7 @@ impl PlaySession {
         &mut self,
         packet: EntityMetadataObservation,
     ) -> Result<(), ConnectionError> {
-        entities::metadata(&mut self.trace.world, &packet);
+        entities::metadata(&mut self.world, &packet);
         Ok(())
     }
 
@@ -477,7 +473,7 @@ impl PlaySession {
         &mut self,
         packet: EntityEquipmentObservation,
     ) -> Result<(), ConnectionError> {
-        entities::equipment(&mut self.trace.world, &packet);
+        entities::equipment(&mut self.world, &packet);
         Ok(())
     }
 
@@ -485,7 +481,7 @@ impl PlaySession {
         &mut self,
         packet: AttributeUpdateObservation,
     ) -> Result<(), ConnectionError> {
-        let world = &mut self.trace.world;
+        let world = &mut self.world;
         if !world.apply_local_player_attributes(packet.entity_id, &packet.attributes) {
             world
                 .entities_mut()
@@ -498,7 +494,7 @@ impl PlaySession {
         &mut self,
         packet: MobEffectUpdateObservation,
     ) -> Result<(), ConnectionError> {
-        self.trace.world.apply_local_player_mob_effect(
+        self.world.apply_local_player_mob_effect(
             packet.entity_id,
             packet.effect_registry_id,
             packet.amplifier,
@@ -512,8 +508,7 @@ impl PlaySession {
         &mut self,
         packet: MobEffectRemoveObservation,
     ) -> Result<(), ConnectionError> {
-        self.trace
-            .world
+        self.world
             .remove_local_player_mob_effect(packet.entity_id, packet.effect_registry_id);
         Ok(())
     }

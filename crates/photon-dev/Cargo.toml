@@ -1,0 +1,18 @@
+[package]
+name = "photon-dev"
+description = "Developer tooling: live-server probes that watch the client against a real server."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+photon-core.workspace = true
+photon-world.workspace = true
+photon-game.workspace = true
+photon-protocol.workspace = true
+photon-net.workspace = true
+
+[lints]
+workspace = true

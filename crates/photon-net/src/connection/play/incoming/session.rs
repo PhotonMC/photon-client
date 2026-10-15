@@ -90,7 +90,7 @@ impl ClientboundPacket for CookieRequest {
 
 impl ClientboundPacket for StoreCookie {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.cookies.store(&self.0.key, self.0.payload);
+        session.state.cookies.store(&self.0.key, self.0.payload);
         Ok(())
     }
 }
@@ -99,7 +99,7 @@ impl ClientboundPacket for StoreCookie {
 impl ClientboundPacket for CustomPayload {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         if let Some(brand) = self.0.brand() {
-            session.trace.server_brand = Some(brand);
+            session.state.server_brand = Some(brand);
         }
         Ok(())
     }
@@ -107,7 +107,7 @@ impl ClientboundPacket for CustomPayload {
 
 impl ClientboundPacket for CustomReportDetails {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.custom_report_details = self.0.details;
+        session.state.custom_report_details = self.0.details;
         Ok(())
     }
 }

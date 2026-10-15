@@ -47,7 +47,7 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 impl ClientboundPacket for ForgetLevelChunk {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (x, z) = self.0;
-        session.trace.world.unload_chunk(x, z);
+        session.world.unload_chunk(x, z);
         session.forgotten_chunks.push((x, z));
         session.mark_columns_around(x, z);
         Ok(())
@@ -59,7 +59,6 @@ impl ClientboundPacket for BlockUpdate {
         let update = self.0;
         session.mark_block(update.x, update.y, update.z);
         session
-            .trace
             .world
             .apply_server_block_state(update.x, update.y, update.z, update.state_id);
         Ok(())
@@ -70,7 +69,7 @@ impl ClientboundPacket for SectionBlocksUpdate {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         for ([x, y, z], state) in self.blocks {
             session.mark_block(x, y, z);
-            session.trace.world.apply_server_block_state(x, y, z, state);
+            session.world.apply_server_block_state(x, y, z, state);
         }
         Ok(())
     }
@@ -78,7 +77,7 @@ impl ClientboundPacket for SectionBlocksUpdate {
 
 impl ClientboundPacket for SetChunkCacheRadius {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.update_chunk_cache_radius(self.0);
+        session.world.update_chunk_cache_radius(self.0);
         // `Options.setServerRenderDistance`.
         session.view_distance = self.0;
         Ok(())
@@ -88,7 +87,7 @@ impl ClientboundPacket for SetChunkCacheRadius {
 impl ClientboundPacket for SetChunkCacheCenter {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (x, z) = self.0;
-        session.trace.world.update_chunk_cache_center(x, z);
+        session.world.update_chunk_cache_center(x, z);
         Ok(())
     }
 }
@@ -106,14 +105,14 @@ impl ClientboundPacket for ChunkBatchFinished {
 
 impl ClientboundPacket for BlockChangedAck {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        for synced in session.trace.world.handle_block_changed_ack(self.0) {
+        for synced in session.world.handle_block_changed_ack(self.0) {
             session.mark_block(synced.x, synced.y, synced.z);
             // `syncBlockState`: a block put back into the player
             // moves it back to where it stood when it predicted.
             let pos = photon_core::binary::BlockPos::new(synced.x, synced.y, synced.z);
             if let Some(position) = synced.player_position
                 && let Some(player) = session.player.as_mut()
-                && player.is_colliding(&session.trace.world, pos, synced.state)
+                && player.is_colliding(&session.world, pos, synced.state)
             {
                 player.abs_snap_to(position);
             }
@@ -125,7 +124,7 @@ impl ClientboundPacket for BlockChangedAck {
 impl ClientboundPacket for BlockDestruction {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let packet = self.0;
-        session.trace.world.destroy_block_progress(
+        session.world.destroy_block_progress(
             packet.entity_id,
             packet.x,
             packet.y,
@@ -139,16 +138,13 @@ impl ClientboundPacket for BlockDestruction {
 impl ClientboundPacket for BlockEntityData {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let entity = self.0;
-        session
-            .trace
-            .world
-            .apply_block_entity_update(BlockEntityInput {
-                x: entity.x,
-                y: entity.y,
-                z: entity.z,
-                type_id: entity.type_id,
-                tag: entity.tag.as_deref(),
-            });
+        session.world.apply_block_entity_update(BlockEntityInput {
+            x: entity.x,
+            y: entity.y,
+            z: entity.z,
+            type_id: entity.type_id,
+            tag: entity.tag.as_deref(),
+        });
         Ok(())
     }
 }
@@ -157,12 +153,8 @@ impl ClientboundPacket for BlockEventPacket {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (pos, event, data) = self.0;
         // `ClientLevel.blockEvent`: the block as it is now takes the event.
-        if !session
-            .trace
-            .world
-            .apply_chest_block_event(pos, event, data)
-        {
-            session.trace.world.apply_note_block_event(pos);
+        if !session.world.apply_chest_block_event(pos, event, data) {
+            session.world.apply_note_block_event(pos);
         }
         Ok(())
     }

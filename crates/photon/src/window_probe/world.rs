@@ -55,24 +55,21 @@ pub(super) fn load_world(
     root: &str,
 ) -> Result<(photon_render::Mesh, Vec<photon_render::DecodedImage>)> {
     let address: SocketAddr = server.parse()?;
-    let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
-    let seconds: u64 = env::var("PHOTON_TIMEOUT")
-        .ok()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(30);
-    let trace = connect_and_probe(address, &username, Duration::from_secs(seconds))?;
+    let session = crate::play::join(address, &crate::play::Status::default())?;
+    let world = session.world();
     println!("server={server}");
-    println!("server_login={}", trace.play_login);
-    println!("server_chunks={}", trace.world.loaded_chunk_count());
-    println!("server_sections={}", trace.world.loaded_section_count());
+    println!("server_login=true");
+    println!("server_chunks={}", world.loaded_chunk_count());
+    println!("server_sections={}", world.loaded_section_count());
 
     // The box hangs around the spawn position the server put the player at,
     // so what is drawn is what the player would be looking at.
-    let centre = trace
-        .world
-        .local_player()
-        .map(|player| player.previous_position())
+    let centre = session
+        .player()
+        .map(|player| {
+            let at = player.position();
+            (at.x, at.y, at.z)
+        })
         .ok_or("the server sent no player position")?;
     let reach: i32 = env::var("PHOTON_REACH")
         .ok()
@@ -111,11 +108,11 @@ pub(super) fn load_world(
         .unwrap_or(4);
     let built = photon_render::build_world_mesh(
         &source,
-        |x, y, z| trace.world.block_state_at(x, y, z),
+        |x, y, z| world.block_state_at(x, y, z),
         |x, y, z| {
             (
-                trace.world.block_brightness(x, y, z),
-                trace.world.sky_brightness(x, y, z),
+                world.block_brightness(x, y, z),
+                world.sky_brightness(x, y, z),
             )
         },
         // This older snapshot path draws every biome as plains.

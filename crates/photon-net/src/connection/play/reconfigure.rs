@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use super::lifecycle::{self, spawn_reader};
 use super::*;
-use crate::connection::probe::configure_connection;
+use crate::connection::open::configure_connection;
+use crate::connection::record::NoRecorder;
 
 /// How long the configuration may take, the same wait the first one has.
 const RECONFIGURATION_TIMEOUT: Duration = Duration::from_secs(30);
@@ -31,7 +32,7 @@ impl PlaySession {
         &mut self,
         request: &photon_protocol::cookie::ClientboundCookieRequestPacket,
     ) -> Result<(), ConnectionError> {
-        let answer = self.trace.cookies.answer(request);
+        let answer = self.state.cookies.answer(request);
         self.send(PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID, |output| {
             answer
                 .encode(output)
@@ -46,10 +47,10 @@ impl PlaySession {
         packet: photon_protocol::cookie::ClientboundTransferPacket,
     ) -> Result<(), ConnectionError> {
         let address = lifecycle::resolve_host(&packet.host, packet.port)?;
-        let carried = PlayConnectionTrace {
-            cookies: self.trace.cookies.clone(),
+        let carried = ConnectionState {
+            cookies: self.state.cookies.clone(),
             transferring: true,
-            ..PlayConnectionTrace::default()
+            ..ConnectionState::default()
         };
         let mut fresh = Self::connect_through(
             (address, Some(packet.host)),
@@ -77,20 +78,18 @@ impl PlaySession {
         stream.set_read_timeout(Some(RECONFIGURATION_TIMEOUT))?;
         // What the connection learned at login stays; the registries, tags and features are the
         // new configuration's.
-        let mut trace = PlayConnectionTrace {
-            compression_threshold: self.compression_threshold,
-            login_finished: true,
-            profile_id: self.trace.profile_id,
-            cookies: self.trace.cookies.clone(),
-            server_brand: self.trace.server_brand.clone(),
-            custom_report_details: self.trace.custom_report_details.clone(),
-            ..PlayConnectionTrace::default()
+        let mut state = ConnectionState {
+            profile_id: self.state.profile_id,
+            cookies: self.state.cookies.clone(),
+            server_brand: self.state.server_brand.clone(),
+            custom_report_details: self.state.custom_report_details.clone(),
+            ..ConnectionState::default()
         };
         configure_connection(
             &mut stream,
             self.compression_threshold,
             (RECONFIGURATION_TIMEOUT, true),
-            &mut trace,
+            (&mut state, &mut NoRecorder),
         )?;
         stream.set_read_timeout(None)?;
         let incoming = spawn_reader(stream, self.compression_threshold);
@@ -98,7 +97,7 @@ impl PlaySession {
             self.writer.try_clone()?,
             self.compression_threshold,
             incoming,
-            trace,
+            state,
             (&self.username, self.auto_jump),
         );
         fresh.client_information = self.client_information.clone();
@@ -153,7 +152,7 @@ mod tests {
             stream,
             None,
             incoming,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
             ("Tester", false),
         );
         session.wait(Duration::from_secs(5)).expect("handled");
@@ -201,13 +200,13 @@ mod tests {
             stream,
             None,
             incoming,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
             ("Tester", false),
         );
         session.wait(Duration::from_secs(5)).expect("store");
         session.wait(Duration::from_secs(5)).expect("request");
         server.join().expect("server");
-        assert!(session.trace.cookies.get(&key).is_some());
+        assert!(session.state.cookies.get(&key).is_some());
     }
 
     #[test]
@@ -259,7 +258,7 @@ mod tests {
             stream,
             None,
             incoming,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
             ("Tester", false),
         );
         // The destination hangs up before it logs the player in, so the transfer fails there.
@@ -314,7 +313,7 @@ mod tests {
             stream,
             None,
             incoming,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
             ("Tester", false),
         );
         session.wait(Duration::from_secs(5)).expect("first push");
@@ -351,12 +350,12 @@ mod tests {
             assert_eq!(body[16], PackAction::Declined as u8);
         });
         let mut stream = TcpStream::connect(address).expect("connect");
-        let mut trace = PlayConnectionTrace::default();
+        let mut state = ConnectionState::default();
         configure_connection(
             &mut stream,
             None,
             (Duration::from_secs(5), true),
-            &mut trace,
+            (&mut state, &mut NoRecorder),
         )
         .expect("configured");
         server.join().expect("server");

@@ -10,95 +10,9 @@ use photon_protocol::frame::{FrameError, MAX_VARINT21_BYTES};
 use photon_protocol::handshake::{ClientIntent, ClientIntentionPacket};
 use photon_protocol::phase::ConnectionProtocol;
 
-use super::trace::*;
 use photon_protocol::play::*;
 
-/// Query a Java-protocol server's status and verify its ping echo.
-pub fn query_status_and_ping(
-    address: SocketAddr,
-    timeout: Duration,
-) -> Result<StatusConnectionTrace, ConnectionError> {
-    if timeout.is_zero() {
-        return Err(ConnectionError::InvalidArgument("timeout"));
-    }
-
-    let mut stream = connect_stream(address, timeout)?;
-    send_handshake_intention(&mut stream, address, ClientIntent::Status)?;
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Status,
-        STATUS_SERVERBOUND_REQUEST_PACKET_ID,
-        |payload| {
-            photon_protocol::status::ServerboundStatusRequestPacket::INSTANCE.encode(payload);
-            Ok(())
-        },
-        None,
-    )?;
-
-    let mut packets = Vec::with_capacity(2);
-    let body = read_packet(&mut stream, None)?;
-    let (packet_id, payload) = split_packet(&body)?;
-    packets.push(PacketObservation {
-        phase: ConnectionProtocol::Status,
-        id: packet_id,
-        body_length: body.len(),
-    });
-    if packet_id != STATUS_CLIENTBOUND_RESPONSE_PACKET_ID {
-        return Err(ConnectionError::UnsupportedPacket {
-            phase: ConnectionProtocol::Status,
-            id: packet_id,
-        });
-    }
-
-    let mut input = payload;
-    let status_units = photon_core::utf8::read_utf8(&mut input, STATUS_RESPONSE_MAX_UTF16_LENGTH)
-        .map_err(|_| ConnectionError::Codec("status response"))?;
-    let status_response = String::from_utf16(&status_units)
-        .map_err(|_| ConnectionError::Codec("status response UTF-16"))?;
-
-    let ping = photon_protocol::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
-    let ping_start = std::time::Instant::now();
-    send_packet(
-        &mut stream,
-        ConnectionProtocol::Status,
-        STATUS_SERVERBOUND_PING_REQUEST_PACKET_ID,
-        |payload| {
-            ping.encode(payload);
-            Ok(())
-        },
-        None,
-    )?;
-
-    let body = read_packet(&mut stream, None)?;
-    let (packet_id, payload) = split_packet(&body)?;
-    packets.push(PacketObservation {
-        phase: ConnectionProtocol::Status,
-        id: packet_id,
-        body_length: body.len(),
-    });
-    if packet_id != STATUS_CLIENTBOUND_PONG_RESPONSE_PACKET_ID {
-        return Err(ConnectionError::UnsupportedPacket {
-            phase: ConnectionProtocol::Status,
-            id: packet_id,
-        });
-    }
-
-    let mut input = payload;
-    let pong = photon_protocol::status::ClientboundPongResponsePacket::decode(&mut input)
-        .map_err(|_| ConnectionError::Codec("status pong"))?;
-    if pong.time != STATUS_PROBE_TIME {
-        return Err(ConnectionError::Codec("status pong echo"));
-    }
-
-    Ok(StatusConnectionTrace {
-        packets,
-        status_response,
-        pong_time: pong.time,
-        round_trip_ms: ping_start.elapsed().as_millis() as i64,
-    })
-}
-
-pub(crate) fn send_configuration_start(
+pub fn send_configuration_start(
     stream: &mut TcpStream,
     information: &ClientInformation,
     compression_threshold: Option<usize>,
@@ -136,7 +50,7 @@ pub(crate) fn send_configuration_start(
     )
 }
 
-pub(crate) fn connect_stream(
+pub fn connect_stream(
     address: SocketAddr,
     timeout: Duration,
 ) -> Result<TcpStream, ConnectionError> {
@@ -147,7 +61,7 @@ pub(crate) fn connect_stream(
     Ok(stream)
 }
 
-pub(crate) fn send_handshake_intention(
+pub fn send_handshake_intention(
     stream: &mut TcpStream,
     address: SocketAddr,
     intent: ClientIntent,
@@ -157,7 +71,7 @@ pub(crate) fn send_handshake_intention(
 
 /// The handshake for a host name as given (`ClientIntentionPacket`'s host is what the player typed,
 /// which a proxy may route by) and a port.
-pub(crate) fn send_handshake_to(
+pub fn send_handshake_to(
     stream: &mut TcpStream,
     (host, port): (&str, u16),
     intent: ClientIntent,
@@ -181,7 +95,7 @@ pub(crate) fn send_handshake_to(
     )
 }
 
-pub(crate) fn send_packet<F>(
+pub fn send_packet<F>(
     stream: &mut TcpStream,
     _phase: ConnectionProtocol,
     packet_id: i32,
@@ -200,7 +114,7 @@ where
     Ok(())
 }
 
-pub(crate) fn read_packet(
+pub fn read_packet(
     stream: &mut TcpStream,
     compression_threshold: Option<usize>,
 ) -> Result<Vec<u8>, ConnectionError> {

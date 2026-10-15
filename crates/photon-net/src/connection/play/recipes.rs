@@ -40,7 +40,7 @@ impl PlaySession {
         open: bool,
         filtering: bool,
     ) -> Result<(), ConnectionError> {
-        let book = self.trace.world.recipe_book_mut();
+        let book = self.world.recipe_book_mut();
         if let Some(settings) = book.settings.get_mut(book_type as usize) {
             settings.open = open;
             settings.filtering = filtering;
@@ -51,13 +51,13 @@ impl PlaySession {
 
     /// `GhostSlots.clear`.
     pub fn clear_recipe_ghost(&mut self) {
-        self.trace.world.recipe_book_mut().ghost = None;
+        self.world.recipe_book_mut().ghost = None;
     }
 
     /// `LocalPlayer.removeRecipeHighlight`: a new recipe that showed on a page
     /// stops being new, and the server is told.
     pub fn mark_recipe_seen(&mut self, recipe: i32) -> Result<(), ConnectionError> {
-        if self.trace.world.recipe_book_mut().highlight.remove(&recipe) {
+        if self.world.recipe_book_mut().highlight.remove(&recipe) {
             self.recipe_seen(recipe)?;
         }
         Ok(())

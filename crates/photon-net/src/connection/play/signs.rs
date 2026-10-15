@@ -5,7 +5,7 @@ impl PlaySession {
     /// ignored with a warning.
     pub(super) fn on_open_sign_editor(&mut self, pos: photon_core::binary::BlockPos, front: bool) {
         let pos = (pos.x, pos.y, pos.z);
-        if self.trace.world.sign_view(pos).is_some() {
+        if self.world.sign_view(pos).is_some() {
             self.sign_editor = Some((pos, front));
         } else {
             self.warn(format!(

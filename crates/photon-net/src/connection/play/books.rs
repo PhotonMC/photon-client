@@ -16,8 +16,7 @@ impl PlaySession {
         } else {
             45
         };
-        self.trace
-            .world
+        self.world
             .local_player()
             .and_then(|state| state.inventory_slot(slot as i16))
             .and_then(|stack| {

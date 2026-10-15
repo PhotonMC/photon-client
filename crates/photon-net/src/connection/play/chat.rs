@@ -77,7 +77,7 @@ impl PlaySession {
     /// entity the crosshair is on.
     pub fn selected_entities(&self) -> Vec<String> {
         self.aimed_entity
-            .and_then(|id| self.trace.world.entities().at(id))
+            .and_then(|id| self.world.entities().at(id))
             .map(|entity| entity.uuid.to_string_java())
             .into_iter()
             .collect()
@@ -153,7 +153,7 @@ impl PlaySession {
         self.signature_cache.push(queue);
         let sender_known = self.player_infos.contains_key(&packet.sender);
         let sender_is_local = self
-            .trace
+            .state
             .profile_id
             .is_some_and(|id| (id.most, id.least) == packet.sender);
         self.chat_events.push(ChatEvent::Player {

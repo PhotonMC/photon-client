@@ -54,7 +54,6 @@ impl PlaySession {
             self.drop_spam = (self.drop_spam - 1).max(0);
         }
         let main_hand = self
-            .trace
             .world
             .local_player()
             .and_then(|state| state.inventory_slot((36 + self.status.selected_slot) as i16))
@@ -71,18 +70,16 @@ impl PlaySession {
             };
             controls.holds_carrot_on_a_stick = holds("minecraft:carrot_on_a_stick");
             controls.holds_warped_fungus_on_a_stick = holds("minecraft:warped_fungus_on_a_stick");
-            self.trace.world.set_rider_controls(controls);
+            self.world.set_rider_controls(controls);
         }
-        let ridden = self.trace.world.ridden_vehicle_of_local_player();
+        let ridden = self.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
             if let Some(player) = self.player.as_ref() {
                 let position = player.position();
-                self.trace
-                    .world
-                    .set_local_player_chunk(position.x, position.z);
+                self.world.set_local_player_chunk(position.x, position.z);
             }
-            self.trace.world.tick_entities();
-            for (left, right) in self.trace.world.take_paddle_packets() {
+            self.world.tick_entities();
+            for (left, right) in self.world.take_paddle_packets() {
                 self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
             }
         }
@@ -91,22 +88,18 @@ impl PlaySession {
         {
             // `Player.tick` counts the item cooldowns down.
             self.item_cooldowns.tick();
-            player.set_hand_state(self.trace.world.local_hand_state(self.status.selected_slot));
-            let ticked = match ridden.and_then(|id| self.trace.world.vehicle_view(id)) {
-                Some(view) => player
-                    .tick_riding(&self.trace.world, keys, &view)
-                    .map(|rode| {
-                        if view.kind == photon_world::VehicleKind::Boat && view.controlled {
-                            self.trace
-                                .world
-                                .set_boat_input(view.vehicle_id, rode.boat_input);
-                        }
-                        if let Some(amount) = rode.jump {
-                            self.trace.world.on_player_jump(view.vehicle_id, amount);
-                        }
-                        rode.sent
-                    }),
-                None => player.tick(&self.trace.world, keys),
+            player.set_hand_state(self.world.local_hand_state(self.status.selected_slot));
+            let ticked = match ridden.and_then(|id| self.world.vehicle_view(id)) {
+                Some(view) => player.tick_riding(&self.world, keys, &view).map(|rode| {
+                    if view.kind == photon_world::VehicleKind::Boat && view.controlled {
+                        self.world.set_boat_input(view.vehicle_id, rode.boat_input);
+                    }
+                    if let Some(amount) = rode.jump {
+                        self.world.on_player_jump(view.vehicle_id, amount);
+                    }
+                    rode.sent
+                }),
+                None => player.tick(&self.world, keys),
             };
             match ticked {
                 Ok(sent) => {
@@ -126,14 +119,12 @@ impl PlaySession {
         // `ClientLevel.tickEntities`: the entities the server added move on.
         if let Some(player) = self.player.as_ref() {
             let position = player.position();
-            self.trace
-                .world
-                .set_local_player_chunk(position.x, position.z);
+            self.world.set_local_player_chunk(position.x, position.z);
         }
         if ridden.is_none() {
-            self.trace.world.tick_entities();
+            self.world.tick_entities();
         }
-        self.trace.world.tick_sky_flash();
+        self.world.tick_sky_flash();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
@@ -170,39 +161,46 @@ impl PlaySession {
             (username, auto_jump),
             timeout,
             information,
-            PlayConnectionTrace::default(),
+            ConnectionState::default(),
         )
     }
 
     /// Connect to `address` (and the host name a handshake gives, where it is not the address's
-    /// own) with what `first` carries over (`trace.cookies`, `trace.transferring`), following the
+    /// own) with what `first` carries over (`cookies`, `transferring`), following the
     /// server where it sends the client on to another.
     pub(super) fn connect_through(
         (mut address, mut host): (SocketAddr, Option<String>),
         (username, auto_jump): (&str, bool),
         timeout: Duration,
         information: photon_protocol::configuration::ClientInformation,
-        first: PlayConnectionTrace,
+        first: ConnectionState,
     ) -> Result<Self, ConnectionError> {
         let mut carried = first;
         for _ in 0..=MAX_TRANSFERS {
-            let mut trace = PlayConnectionTrace {
+            let mut state = ConnectionState {
                 cookies: carried.cookies.clone(),
                 handshake_host: host.clone(),
                 transferring: carried.transferring,
-                ..PlayConnectionTrace::default()
+                ..ConnectionState::default()
             };
-            match open_play_connection(address, username, timeout, true, &information, &mut trace) {
+            let opened = open_play_connection(
+                (address, username),
+                timeout,
+                true,
+                &information,
+                (&mut state, &mut NoRecorder),
+            );
+            match opened {
                 Err(ConnectionError::Transfer {
                     host: next_host,
                     port,
                 }) => {
                     address = resolve_host(&next_host, port)?;
                     host = Some(next_host);
-                    carried = PlayConnectionTrace {
-                        cookies: trace.cookies,
+                    carried = ConnectionState {
+                        cookies: state.cookies,
                         transferring: true,
-                        ..PlayConnectionTrace::default()
+                        ..ConnectionState::default()
                     };
                 }
                 opened => {
@@ -213,7 +211,7 @@ impl PlaySession {
                         stream,
                         compression_threshold,
                         incoming,
-                        trace,
+                        state,
                         (username, auto_jump),
                     );
                     session.client_information = information;
@@ -246,14 +244,15 @@ impl PlaySession {
         writer: TcpStream,
         compression_threshold: Option<usize>,
         incoming: Receiver<Result<Incoming, ConnectionError>>,
-        trace: PlayConnectionTrace,
+        state: ConnectionState,
         (username, auto_jump): (&str, bool),
     ) -> Self {
         Self {
             writer,
             compression_threshold,
             incoming,
-            trace,
+            world: state.new_world(),
+            state,
             player_id: None,
             game_mode: ClientPlayerGameMode::Survival,
             previous_game_mode: None,
@@ -282,16 +281,8 @@ impl PlaySession {
             sounds: Vec::new(),
             level_particles: Vec::new(),
             item_pickups: Vec::new(),
-            listener_random: photon_core::random::RandomSource::create(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_or(0, |elapsed| elapsed.as_nanos() as i64),
-            ),
-            level_random: photon_core::random::RandomSource::create(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_or(0, |elapsed| elapsed.as_nanos() as i64 ^ 0x5DEE_CE66),
-            ),
+            listener_random: clock_seeded_random(0),
+            level_random: clock_seeded_random(0x5DEE_CE66),
             aimed_entity: None,
             hardcore: false,
             health_received: false,
@@ -409,4 +400,13 @@ impl PlaySession {
             self.warned = Some(message);
         }
     }
+}
+
+/// A random source seeded from the clock, mixed with `salt`.
+fn clock_seeded_random(salt: i64) -> photon_core::random::RandomSource {
+    photon_core::random::RandomSource::create(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_nanos() as i64 ^ salt),
+    )
 }

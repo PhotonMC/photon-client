@@ -9,7 +9,6 @@ impl PlaySession {
         enabled: bool,
     ) -> Result<(), ConnectionError> {
         let Some(container_id) = self
-            .trace
             .world
             .local_player()
             .and_then(|player| player.open_container())
@@ -18,8 +17,7 @@ impl PlaySession {
             return Ok(());
         };
         let value = i16::from(!enabled);
-        self.trace
-            .world
+        self.world
             .apply_local_player_container_data(container_id, slot as i16, value);
         if let Some(entry) = self
             .open_menu
@@ -87,12 +85,7 @@ impl PlaySession {
     fn play_bundle_sound(&mut self, event: &'static str) {
         use photon_game::menus::container::BUNDLE_INSERT_FAIL;
         use photon_world::local_player::{LocalSound, LocalSoundSource};
-        let Some(position) = self
-            .trace
-            .world
-            .local_player()
-            .map(|player| player.position())
-        else {
+        let Some(position) = self.world.local_player().map(|player| player.position()) else {
             return;
         };
         let (volume, pitch) = if event == BUNDLE_INSERT_FAIL {
@@ -100,7 +93,7 @@ impl PlaySession {
         } else {
             (0.8, 0.8 + self.level_random.next_float() * 0.4)
         };
-        self.trace.world.push_sound(LocalSound {
+        self.world.push_sound(LocalSound {
             event,
             source: LocalSoundSource::Players,
             volume,
@@ -142,7 +135,6 @@ impl PlaySession {
             infinite_materials: self.game_mode == photon_world::ClientPlayerGameMode::Creative,
         };
         let opened = self
-            .trace
             .world
             .local_player()
             .is_some_and(|player| player.open_container().is_some());
@@ -167,12 +159,10 @@ impl PlaySession {
             let clicked = menu.handle_click(slot, button, kind, player);
             sounds = menu.sounds().to_vec();
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
-            self.trace
-                .world
-                .set_local_player_container_menu(&slots, carried);
+            self.world.set_local_player_container_menu(&slots, carried);
             clicked
         } else {
-            let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
+            let Some((slots, carried, state_id)) = self.world.local_player_menu() else {
                 return Ok(());
             };
             self.container_menu.load(slots, carried, state_id);
@@ -182,8 +172,7 @@ impl PlaySession {
             let clicked = self.container_menu.handle_click(slot, button, kind, player);
             sounds = self.container_menu.sounds().to_vec();
             let menu = &self.container_menu;
-            self.trace
-                .world
+            self.world
                 .set_local_player_menu(&menu.slots, menu.carried.clone());
             clicked
         };
@@ -215,7 +204,7 @@ impl PlaySession {
         click: photon_game::menus::creative::Click,
     ) -> Result<(), ConnectionError> {
         use photon_game::menus::creative::Effect;
-        let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() else {
+        let Some((slots, carried, state_id)) = self.world.local_player_menu() else {
             return Ok(());
         };
         self.container_menu.load(slots, carried, state_id);
@@ -227,8 +216,7 @@ impl PlaySession {
         let can_drop = self.drop_spam < 1280;
         let effects = creative.slot_clicked(click, &mut self.container_menu, player, can_drop);
         let menu = &self.container_menu;
-        self.trace
-            .world
+        self.world
             .set_local_player_menu(&menu.slots, menu.carried.clone());
         if !player.infinite_materials {
             return Ok(());
@@ -273,7 +261,6 @@ impl PlaySession {
     /// then `ContainerMenu.removed`, which empties the result slot.
     pub fn close_inventory(&mut self) -> Result<(), ConnectionError> {
         let opened = self
-            .trace
             .world
             .local_player()
             .and_then(|player| player.open_container())
@@ -285,13 +272,13 @@ impl PlaySession {
         })?;
         if opened.is_some() {
             // `LocalPlayer.clientSideCloseContainer`: back to the player's menu.
-            self.trace.world.apply_local_player_container_close(id);
+            self.world.apply_local_player_container_close(id);
             self.open_menu = None;
             return Ok(());
         }
-        if let Some((mut slots, carried, _)) = self.trace.world.local_player_menu() {
+        if let Some((mut slots, carried, _)) = self.world.local_player_menu() {
             slots[0] = None;
-            self.trace.world.set_local_player_menu(&slots, carried);
+            self.world.set_local_player_menu(&slots, carried);
         }
         Ok(())
     }
@@ -303,8 +290,7 @@ impl PlaySession {
 
     /// Whether the server has opened a container this client has no menu for.
     pub fn open_container_unsupported(&self) -> bool {
-        self.trace
-            .world
+        self.world
             .local_player()
             .and_then(|player| player.open_container())
             .is_some_and(|container| {
@@ -349,7 +335,7 @@ impl PlaySession {
             slots,
             carried,
             state_id,
-        } = self.trace.world.local_player_container_menu()?;
+        } = self.world.local_player_container_menu()?;
         let mount = self
             .mount
             .clone()
@@ -377,27 +363,23 @@ impl PlaySession {
                 .kind
                 .input_sets()
                 .iter()
-                .map(|set| self.trace.world.recipe_property_set(set))
+                .map(|set| self.world.recipe_property_set(set))
                 .collect();
             if menu.kind == photon_game::menus::container::MenuKind::Stonecutter {
-                menu.accepted = vec![std::sync::Arc::new(self.trace.world.stonecutter_inputs())];
+                menu.accepted = vec![std::sync::Arc::new(self.world.stonecutter_inputs())];
                 menu.options = menu
                     .slots
                     .first()
                     .and_then(Option::as_ref)
-                    .map(|input| {
-                        self.trace
-                            .world
-                            .stonecutter_options(input.item_registry_id())
-                    })
+                    .map(|input| self.world.stonecutter_options(input.item_registry_id()))
                     .unwrap_or_default();
             }
             if menu.kind == photon_game::menus::container::MenuKind::Loom {
-                let (patterns, layers) = Self::loom_patterns(&self.trace.world, menu);
+                let (patterns, layers) = Self::loom_patterns(&self.world, menu);
                 menu.patterns = patterns;
                 menu.banner_layers = layers;
             }
-            menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
+            menu.item_tags = self.world.block_state_registry().item_tags().clone();
             menu.enchantments = enchantments;
             menu.enchantment_traits = self.enchantment_traits.clone();
             menu.lang = self.lang.clone();
@@ -418,7 +400,6 @@ impl PlaySession {
                 menu.update_sell_item();
             }
             if let Some(container) = self
-                .trace
                 .world
                 .local_player()
                 .and_then(|player| player.open_container())
@@ -433,7 +414,6 @@ impl PlaySession {
     /// menu (a stonecutter recipe, a loom pattern, an enchantment) pressed.
     pub fn container_button(&mut self, button: i32) -> Result<(), ConnectionError> {
         let Some(container_id) = self
-            .trace
             .world
             .local_player()
             .and_then(|player| player.open_container())
@@ -453,22 +433,18 @@ impl PlaySession {
             .is_some_and(|menu| menu.kind == photon_game::menus::container::MenuKind::Loom);
         if loom {
             // `LoomMenu.clickMenuButton`: the pattern is chosen.
-            self.trace
-                .world
+            self.world
                 .apply_local_player_container_data(container_id, 0, button as i16);
         }
         if stonecutter {
-            self.trace
-                .world
+            self.world
                 .apply_local_player_container_data(container_id, 0, button as i16);
             if let Some(photon_world::OpenContainerMenu {
                 mut slots, carried, ..
-            }) = self.trace.world.local_player_container_menu()
+            }) = self.world.local_player_container_menu()
             {
                 slots[1] = None;
-                self.trace
-                    .world
-                    .set_local_player_container_menu(&slots, carried);
+                self.world.set_local_player_container_menu(&slots, carried);
             }
         }
         self.send(
@@ -483,8 +459,7 @@ impl PlaySession {
 
     /// The open menu's container id; 0 is the player's own.
     pub(super) fn open_container_id(&self) -> i32 {
-        self.trace
-            .world
+        self.world
             .local_player()
             .and_then(|player| player.open_container())
             .map_or(0, |container| container.container_id())
@@ -536,9 +511,7 @@ impl PlaySession {
         menu.update_sell_item();
         menu.try_move_items(index);
         let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
-        self.trace
-            .world
-            .set_local_player_container_menu(&slots, carried);
+        self.world.set_local_player_container_menu(&slots, carried);
         self.send(PLAY_SERVERBOUND_SELECT_TRADE_PACKET_ID, |output| {
             output.extend_from_slice(&encode_select_trade(trade));
             Ok(())
@@ -552,10 +525,10 @@ impl PlaySession {
 
     /// The player's inventory menu as the client holds it now.
     pub fn container_menu(&mut self) -> &photon_game::menus::container::ContainerMenu {
-        if let Some((slots, carried, state_id)) = self.trace.world.local_player_menu() {
+        if let Some((slots, carried, state_id)) = self.world.local_player_menu() {
             self.container_menu.load(slots, carried, state_id);
         }
-        self.container_menu.item_tags = self.trace.world.block_state_registry().item_tags().clone();
+        self.container_menu.item_tags = self.world.block_state_registry().item_tags().clone();
         &self.container_menu
     }
 
@@ -567,7 +540,6 @@ impl PlaySession {
             return Ok(());
         };
         let opened = self
-            .trace
             .world
             .local_player()
             .is_some_and(|player| player.open_container().is_some());
@@ -578,16 +550,14 @@ impl PlaySession {
             let menu = self.open_menu.as_mut().expect("synced above");
             let changed = menu.select_bundle_item(index, selected);
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
-            self.trace
-                .world
-                .set_local_player_container_menu(&slots, carried);
+            self.world.set_local_player_container_menu(&slots, carried);
             changed
         } else {
             self.container_menu();
             let menu = &mut self.container_menu;
             let changed = menu.select_bundle_item(index, selected);
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
-            self.trace.world.set_local_player_menu(&slots, carried);
+            self.world.set_local_player_menu(&slots, carried);
             changed
         };
         if !changed {
@@ -606,10 +576,10 @@ impl PlaySession {
     pub fn open_container_info(
         &self,
     ) -> Option<(i32, photon_game::menus::container::MenuKind, Vec<u8>)> {
-        let container = self.trace.world.local_player()?.open_container()?;
+        let container = self.world.local_player()?.open_container()?;
         let kind = self.menu_kind(container.container_id(), container.menu_type_id())?;
         // A screen opens once the server has sent what is in the container.
-        self.trace.world.local_player_container_menu()?;
+        self.world.local_player_container_menu()?;
         Some((
             container.container_id(),
             kind,

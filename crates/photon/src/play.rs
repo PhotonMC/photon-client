@@ -392,7 +392,7 @@ fn sky_sprites(block_renderer: &BlockRenderer) -> photon_render::sky::SkySprites
 
 /// Join a server and wait until its level has loaded around the player,
 /// then a little longer for the chunks near them.
-fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
+pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
     let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");

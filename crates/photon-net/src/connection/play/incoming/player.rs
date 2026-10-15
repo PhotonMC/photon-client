@@ -120,12 +120,11 @@ impl ClientboundPacket for PlayerInfoRemove {
 impl PlaySession {
     fn on_login(&mut self, login: LoginObservation) -> Result<(), ConnectionError> {
         self.next_chat_index = 0;
-        self.trace
-            .world
+        self.world
             .set_server_simulation_distance(login.simulation_distance);
-        let bounds = dimension_bounds_for_spawn_info(&self.trace, &login.spawn_info);
-        let environment = dimension_environment_for_spawn_info(&self.trace, &login.spawn_info);
-        self.trace.world.replace_dimension_with_environment(
+        let bounds = self.state.dimension_bounds(&login.spawn_info);
+        let environment = self.state.dimension_environment(&login.spawn_info);
+        self.world.replace_dimension_with_environment(
             DimensionInput {
                 key: &login.spawn_info.dimension,
                 dimension_type_id: login.spawn_info.dimension_type_id,
@@ -137,11 +136,11 @@ impl PlaySession {
             bounds,
             environment,
         );
-        self.trace.world.configure_chunk_cache(login.chunk_radius);
+        self.world.configure_chunk_cache(login.chunk_radius);
         self.view_distance = login.chunk_radius;
         self.dimension_type_id = login.spawn_info.dimension_type_id;
         self.hashed_seed = login.spawn_info.seed;
-        self.trace.world.set_local_player_id(login.player_id);
+        self.world.set_local_player_id(login.player_id);
         self.hardcore = login.hardcore;
         self.show_death_screen = login.show_death_screen;
         self.player_id = Some(login.player_id);
@@ -161,10 +160,10 @@ impl PlaySession {
         // A new level starts dry; the server repeats its weather.
         self.rain_level = 0.0;
         self.thunder_level = 0.0;
-        self.trace.world.set_weather(0.0, 0.0);
-        let bounds = dimension_bounds_for_spawn_info(&self.trace, &spawn_info);
-        let environment = dimension_environment_for_spawn_info(&self.trace, &spawn_info);
-        self.trace.world.replace_dimension_with_environment(
+        self.world.set_weather(0.0, 0.0);
+        let bounds = self.state.dimension_bounds(&spawn_info);
+        let environment = self.state.dimension_environment(&spawn_info);
+        self.world.replace_dimension_with_environment(
             DimensionInput {
                 key: &spawn_info.dimension,
                 dimension_type_id: spawn_info.dimension_type_id,
@@ -182,7 +181,7 @@ impl PlaySession {
             .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
         // The new player starts with an empty inventory; the server
         // sends it again.
-        self.trace.world.recreate_local_player(data_to_keep);
+        self.world.recreate_local_player(data_to_keep);
         self.dimension_type_id = spawn_info.dimension_type_id;
         self.hashed_seed = spawn_info.seed;
         // A respawn makes a new player that waits for its position.
@@ -256,9 +255,7 @@ impl PlaySession {
             8 => self.thunder_level = event.param.clamp(0.0, 1.0),
             _ => {}
         }
-        self.trace
-            .world
-            .set_weather(self.rain_level, self.thunder_level);
+        self.world.set_weather(self.rain_level, self.thunder_level);
         if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
             self.show_death_screen = event.param == 0.0;
         }
@@ -304,7 +301,7 @@ impl PlaySession {
     fn on_player_position(&mut self, packet: PlayerPositionPacket) -> Result<(), ConnectionError> {
         self.teleports += 1;
         self.handle_player_position(packet)?;
-        self.trace.world.prediction_teleport();
+        self.world.prediction_teleport();
         Ok(())
     }
 
@@ -331,8 +328,7 @@ impl PlaySession {
                 count: 0,
             });
         if param == 1 {
-            self.trace
-                .world
+            self.world
                 .play_local_sound(photon_world::local_player::LocalSound {
                     event: "minecraft:entity.elder_guardian.curse",
                     source: photon_world::local_player::LocalSoundSource::Hostile,

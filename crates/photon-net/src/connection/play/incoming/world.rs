@@ -95,7 +95,7 @@ impl ClientboundPacket for LightUpdateObservation {
 /// `handleInitializeBorder`.
 impl ClientboundPacket for InitializeBorder {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.apply_world_border_initialize(self.0);
+        session.world.apply_world_border_initialize(self.0);
         Ok(())
     }
 }
@@ -103,10 +103,7 @@ impl ClientboundPacket for InitializeBorder {
 /// `handleSetBorderCenter`.
 impl ClientboundPacket for SetBorderCenter {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session
-            .trace
-            .world
-            .apply_world_border_center(self.x, self.z);
+        session.world.apply_world_border_center(self.x, self.z);
         Ok(())
     }
 }
@@ -115,7 +112,6 @@ impl ClientboundPacket for SetBorderCenter {
 impl ClientboundPacket for SetBorderLerpSize {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session
-            .trace
             .world
             .apply_world_border_lerp_size(self.old_size, self.new_size, self.time);
         Ok(())
@@ -125,7 +121,7 @@ impl ClientboundPacket for SetBorderLerpSize {
 /// `handleSetBorderSize`.
 impl ClientboundPacket for SetBorderSize {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.apply_world_border_size(self.size);
+        session.world.apply_world_border_size(self.size);
         Ok(())
     }
 }
@@ -133,10 +129,7 @@ impl ClientboundPacket for SetBorderSize {
 /// `handleSetBorderWarningDelay`.
 impl ClientboundPacket for SetBorderWarningDelay {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session
-            .trace
-            .world
-            .apply_world_border_warning_time(self.time);
+        session.world.apply_world_border_warning_time(self.time);
         Ok(())
     }
 }
@@ -144,10 +137,7 @@ impl ClientboundPacket for SetBorderWarningDelay {
 /// `handleSetBorderWarningDistance`.
 impl ClientboundPacket for SetBorderWarningDistance {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session
-            .trace
-            .world
-            .apply_world_border_warning_blocks(self.blocks);
+        session.world.apply_world_border_warning_blocks(self.blocks);
         Ok(())
     }
 }
@@ -159,12 +149,10 @@ impl ClientboundPacket for LevelEventPacket {
         let event = self.0;
         if event.global {
             session
-                .trace
                 .world
                 .apply_global_level_event(event.event, event.pos);
         } else {
             session
-                .trace
                 .world
                 .apply_level_event(event.event, event.pos, event.data);
         }
@@ -182,7 +170,7 @@ impl ClientboundPacket for Explode {
         if let (Some((x, y, z)), Some(player)) = (knockback, session.player.as_mut()) {
             player.add_delta_movement(photon_core::math::Vec3::new(x, y, z));
         }
-        session.trace.world.apply_explosion(explosion);
+        session.world.apply_explosion(explosion);
         Ok(())
     }
 }
@@ -209,7 +197,7 @@ impl ClientboundPacket for Sound {
 /// values.
 impl ClientboundPacket for SetTime {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.set_game_time(self.game_time as u64);
+        session.world.set_game_time(self.game_time as u64);
         session.tick_clocks(self.game_time);
         for (clock, total_ticks, partial_tick, rate) in self.clocks {
             session.clocks.insert(

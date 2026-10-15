@@ -1,18 +1,21 @@
-//! Java-protocol connection facade.
-//!
-//! Wire codecs are in `photon-protocol`, the observations in [`trace`], phase transitions are in
-//! [`session`], and local real-server scenarios are isolated in the private
-//! [`probe`] module. The facade re-exports the stable observation and probe
-//! entry points used by the existing tools.
+//! Java-protocol connections: the transport, the login and configuration phases, and the play
+//! session. Wire codecs are in `photon-protocol`; the live probes are in `photon-dev`.
 
-mod entities;
+pub mod entities;
+mod open;
 mod play;
-mod probe;
+mod record;
 mod session;
-mod trace;
+mod state;
+mod status;
 
+pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
 pub use play::PlaySession;
-pub use probe::*;
-pub use session::query_status_and_ping;
-pub use trace::*;
+pub use record::{NoRecorder, Recorder};
+pub use session::{
+    connect_stream, read_packet, send_configuration_start, send_handshake_intention,
+    send_handshake_to, send_packet,
+};
+pub use state::ConnectionState;
+pub use status::{ServerStatus, query_status_and_ping, query_status_and_ping_recorded};

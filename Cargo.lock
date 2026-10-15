@@ -1327,6 +1327,17 @@ name = "photon-data"
 version = "0.1.0"
 
 [[package]]
+name = "photon-dev"
+version = "0.1.0"
+dependencies = [
+ "photon-core",
+ "photon-game",
+ "photon-net",
+ "photon-protocol",
+ "photon-world",
+]
+
+[[package]]
 name = "photon-game"
 version = "0.1.0"
 dependencies = [

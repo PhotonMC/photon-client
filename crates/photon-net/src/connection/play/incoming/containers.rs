@@ -40,7 +40,7 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 
 impl ClientboundPacket for OpenScreen {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.apply_local_player_open_menu(
+        session.world.apply_local_player_open_menu(
             self.0.container_id,
             self.0.menu_type_id,
             &self.0.title_nbt,
@@ -60,7 +60,6 @@ impl ClientboundPacket for MountScreenOpen {
 impl ClientboundPacket for ContainerClose {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session
-            .trace
             .world
             .apply_local_player_container_close(self.0.container_id);
         Ok(())
@@ -70,7 +69,7 @@ impl ClientboundPacket for ContainerClose {
 impl ClientboundPacket for ContainerSetContent {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let packet = self.0;
-        session.trace.world.apply_local_player_container_content(
+        session.world.apply_local_player_container_content(
             packet.container_id,
             packet.state_id,
             &packet.items,
@@ -89,7 +88,7 @@ impl ClientboundPacket for MerchantOffers {
 
 impl ClientboundPacket for ContainerSetData {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.apply_local_player_container_data(
+        session.world.apply_local_player_container_data(
             self.0.container_id,
             self.0.id,
             self.0.value,
@@ -113,7 +112,7 @@ impl ClientboundPacket for Cooldown {
 impl ClientboundPacket for ContainerSetSlot {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let packet = self.0;
-        session.trace.world.apply_local_player_container_slot(
+        session.world.apply_local_player_container_slot(
             packet.container_id,
             packet.state_id,
             packet.slot,
@@ -126,7 +125,6 @@ impl ClientboundPacket for ContainerSetSlot {
 impl ClientboundPacket for SetCursorItem {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session
-            .trace
             .world
             .apply_local_player_carried_item(self.0.item.as_ref());
         Ok(())
@@ -136,7 +134,6 @@ impl ClientboundPacket for SetCursorItem {
 impl ClientboundPacket for SetPlayerInventory {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session
-            .trace
             .world
             .apply_local_player_inventory_slot(self.0.slot, self.0.item.as_ref());
         Ok(())
@@ -152,7 +149,7 @@ impl PlaySession {
             columns,
             entity_id,
         } = *packet;
-        let world = &self.trace.world;
+        let world = &self.world;
         let Some(entity) = world.entities().at(entity_id) else {
             return;
         };
@@ -180,8 +177,7 @@ impl PlaySession {
         let key = format!("entity.minecraft.{}", name.trim_start_matches("minecraft:"));
         let title = photon_game::item::default_components::translatable(&key);
         self.mount = Some((container_id, mount, state));
-        self.trace
-            .world
+        self.world
             .apply_local_player_open_menu(container_id, MOUNT_MENU_TYPE, &title);
     }
 }

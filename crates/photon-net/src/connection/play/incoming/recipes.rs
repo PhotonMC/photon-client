@@ -27,28 +27,28 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 impl ClientboundPacket for RecipeBookAdd {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (entries, replace) = self.0;
-        session.trace.world.recipe_book_mut().add(entries, replace);
+        session.world.recipe_book_mut().add(entries, replace);
         Ok(())
     }
 }
 
 impl ClientboundPacket for RecipeBookRemove {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.recipe_book_mut().remove(&self.0);
+        session.world.recipe_book_mut().remove(&self.0);
         Ok(())
     }
 }
 
 impl ClientboundPacket for RecipeBookSettings {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.recipe_book_mut().set_settings(self.0);
+        session.world.recipe_book_mut().set_settings(self.0);
         Ok(())
     }
 }
 
 impl ClientboundPacket for PlaceGhostRecipe {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.recipe_book_mut().ghost = Some(self.0);
+        session.world.recipe_book_mut().ghost = Some(self.0);
         Ok(())
     }
 }
@@ -56,11 +56,8 @@ impl ClientboundPacket for PlaceGhostRecipe {
 impl ClientboundPacket for UpdateRecipes {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let update = self.0;
-        session.trace.world.apply_recipe_property_sets(update.sets);
-        session
-            .trace
-            .world
-            .apply_stonecutter_recipes(update.stonecutter);
+        session.world.apply_recipe_property_sets(update.sets);
+        session.world.apply_stonecutter_recipes(update.stonecutter);
         Ok(())
     }
 }

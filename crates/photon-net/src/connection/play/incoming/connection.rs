@@ -21,7 +21,7 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 /// `handleSetChunkCacheRadius`'s sibling: the simulation distance the server runs with.
 impl ClientboundPacket for SetSimulationDistance {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.set_server_simulation_distance(self.0);
+        session.world.set_server_simulation_distance(self.0);
         Ok(())
     }
 }
@@ -51,7 +51,7 @@ impl ClientboundPacket for photon_protocol::common::ClientboundPingPacket {
 /// `handleUpdateTags`.
 impl ClientboundPacket for UpdateTags {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.trace.world.apply_update_tags_packet(&self.0);
+        session.world.apply_update_tags_packet(&self.0);
         Ok(())
     }
 }

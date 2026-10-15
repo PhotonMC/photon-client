@@ -17,7 +17,7 @@ use photon_protocol::play::{
 };
 
 /// `ClientPacketListener.handleAddEntity`.
-pub(crate) fn add(world: &mut ClientWorld, packet: &AddEntityObservation) -> bool {
+pub fn add(world: &mut ClientWorld, packet: &AddEntityObservation) -> bool {
     world.apply_entity(EntityInput {
         entity_id: packet.entity_id,
         uuid: packet.uuid,
@@ -32,7 +32,7 @@ pub(crate) fn add(world: &mut ClientWorld, packet: &AddEntityObservation) -> boo
 }
 
 /// `handleSetEntityMotion`.
-pub(crate) fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) -> bool {
+pub fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) -> bool {
     world.entities_mut().apply_motion(EntityMotionInput {
         entity_id: packet.entity_id,
         x: packet.x,
@@ -42,16 +42,12 @@ pub(crate) fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) 
 }
 
 /// `handleMinecartAlongTrack`.
-pub(crate) fn minecart_steps(
-    world: &mut ClientWorld,
-    entity_id: i32,
-    steps: &[MinecartStep],
-) -> bool {
+pub fn minecart_steps(world: &mut ClientWorld, entity_id: i32, steps: &[MinecartStep]) -> bool {
     world.apply_minecart_steps(entity_id, steps)
 }
 
 /// `handleRotateMob`: only the head turns.
-pub(crate) fn rotate_head(world: &mut ClientWorld, packet: &EntityHeadRotationObservation) -> bool {
+pub fn rotate_head(world: &mut ClientWorld, packet: &EntityHeadRotationObservation) -> bool {
     world.apply_entity_rotation(EntityRotationInput {
         entity_id: packet.entity_id,
         y_rot: None,
@@ -64,7 +60,7 @@ pub(crate) fn rotate_head(world: &mut ClientWorld, packet: &EntityHeadRotationOb
 
 /// `handleSetEquipment`: each slot the packet names, in order; a slot the
 /// game has no name for is left alone.
-pub(crate) fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObservation) -> bool {
+pub fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObservation) -> bool {
     let mut applied = false;
     for (ordinal, stack) in &packet.slots {
         if let Some(slot) = EquipmentSlot::from_ordinal(*ordinal) {
@@ -77,12 +73,12 @@ pub(crate) fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObserva
 }
 
 /// `handleRemoveEntities`: how many were there to remove.
-pub(crate) fn remove(world: &mut ClientWorld, packet: &RemoveEntitiesObservation) -> usize {
+pub fn remove(world: &mut ClientWorld, packet: &RemoveEntitiesObservation) -> usize {
     world.remove_entities(&packet.entity_ids)
 }
 
 /// `handleSetEntityPassengersPacket`.
-pub(crate) fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObservation) -> bool {
+pub fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObservation) -> bool {
     world.apply_entity_passengers(packet.vehicle_id, &packet.passenger_ids)
 }
 
@@ -92,7 +88,7 @@ const ITEM_STACK_SERIALIZER_ID: i32 = 7;
 const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 /// `handleSetEntityData`, and for a dropped item the stack it holds.
-pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
+pub fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
     let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
     // A dropped item, a thrown item or a firework rocket keeps its stack in the same data.
     let is_item = world.entities().at(packet.entity_id).is_some_and(|entity| {
@@ -134,10 +130,7 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
 
 /// `handleEntityPositionSync`: the entity is put where the server says, and
 /// told whether it stands on the ground.
-pub(crate) fn position_sync(
-    world: &mut ClientWorld,
-    packet: &EntityPositionSyncObservation,
-) -> bool {
+pub fn position_sync(world: &mut ClientWorld, packet: &EntityPositionSyncObservation) -> bool {
     let applied = world.apply_entity_position_and_rotation(
         EntityPositionInput {
             entity_id: packet.entity_id,
@@ -163,7 +156,7 @@ pub(crate) fn position_sync(
 }
 
 /// `handleTeleportEntity`.
-pub(crate) fn teleport(world: &mut ClientWorld, packet: &EntityTeleportObservation) -> bool {
+pub fn teleport(world: &mut ClientWorld, packet: &EntityTeleportObservation) -> bool {
     let applied = world.apply_entity_teleport(EntityTeleportInput {
         entity_id: packet.entity_id,
         x: packet.x,
@@ -183,7 +176,7 @@ pub(crate) fn teleport(world: &mut ClientWorld, packet: &EntityTeleportObservati
 }
 
 /// `handleMoveEntity`: a step, a turn or both.
-pub(crate) fn step(world: &mut ClientWorld, packet: &EntityMoveObservation) -> bool {
+pub fn step(world: &mut ClientWorld, packet: &EntityMoveObservation) -> bool {
     let applied = world.apply_entity_move(EntityMoveInput {
         entity_id: packet.entity_id,
         delta_x: packet.delta_x,

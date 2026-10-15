@@ -13,7 +13,8 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `photon-world` | The client's copy of the world: chunks, block states, light, entities, the local player, movement and particles |
 | `photon-game` | Game rules: items and components, menus and inventories, tooltips, options, sound selection, text |
 | `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`) |
-| `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), local probes |
+| `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), a `Recorder` hook that production leaves empty |
+| `photon-dev` | Developer tooling, not shipped: live-server probes that watch the client against a real server |
 | `photon-render` | Vulkan backend, models, atlases and meshes, sky and weather, GUI drawing |
 | `photon-audio` | Ogg/Vorbis decoding, mixer, `cpal` output |
 | `photon` | The application: menu and play loops, input, wiring |
@@ -30,7 +31,7 @@ core -> data -> world -> game -> protocol -> net --> photon
 
 - `photon-render` depends on `photon-game`, because GUI screen logic lives in the render crate. Target: a `photon-gui` crate for screen logic and layout, with the renderer only drawing the resulting draw list.
 - `photon-audio` depends on `photon-game` for the sound-engine `Channel`/`Pool` types, which belong in the audio crate.
-- Live-server probe code (`photon-net/src/connection/probe/`, `crates/photon/examples/`) ships inside library and application crates. Target: a `photon-dev` crate.
+- `photon-dev` holds the probes as they were: one 2,200-line function (`probe/mode.rs`) and 121 examples under `crates/photon-dev/examples/` whose size and naming violations are still in the lint baseline. Target: stages and scenario-driven binaries that meet the limits.
 
 These edges are recorded in the lint baseline and must disappear, not grow.
 

@@ -2,17 +2,17 @@ use super::*;
 
 impl PlaySession {
     pub fn world(&self) -> &ClientWorld {
-        &self.trace.world
+        &self.world
     }
 
     /// Set which entities the frames leave out as wholly outside the view.
     pub fn set_entities_out_of_view(&mut self, ids: std::collections::BTreeSet<i32>) {
-        self.trace.world.entities_mut().set_out_of_view(ids);
+        self.world.entities_mut().set_out_of_view(ids);
     }
 
     /// The sounds the world's events and the player's own blocks made since the last call.
     pub fn take_world_sounds(&mut self) -> Vec<photon_world::local_player::LocalSound> {
-        self.trace.world.take_sounds()
+        self.world.take_sounds()
     }
 
     /// The particle packets that arrived since the last call, for the particle engine.
@@ -27,14 +27,14 @@ impl PlaySession {
 
     /// The level events since the last call, in the order they came.
     pub fn take_level_events(&mut self) -> Vec<photon_world::LevelEvent> {
-        self.trace.world.take_level_events()
+        self.world.take_level_events()
     }
 
     /// The blocks the player swung at breaking, with the face aimed at, since the last call.
     pub fn take_breaking_effects(
         &mut self,
     ) -> Vec<((i32, i32, i32), photon_core::direction::Direction)> {
-        self.trace.world.take_breaking_effects()
+        self.world.take_breaking_effects()
     }
 
     /// Where an entity is drawn between two ticks.
@@ -43,13 +43,12 @@ impl PlaySession {
         entity_id: i32,
         partial_tick: f32,
     ) -> Option<photon_world::EntitySnapshot> {
-        self.trace.world.entity_snapshot(entity_id, partial_tick)
+        self.world.entity_snapshot(entity_id, partial_tick)
     }
 
     /// How many of the entities tick (those in a loaded chunk).
     pub fn ticking_entity_count(&self) -> usize {
-        self.trace
-            .world
+        self.world
             .entities()
             .all()
             .filter(|entity| entity.is_ticking())
@@ -58,7 +57,7 @@ impl PlaySession {
 
     /// How many entities the world holds besides the player.
     pub fn entity_count(&self) -> usize {
-        self.trace.world.entities().all().count()
+        self.world.entities().all().count()
     }
 
     pub fn player(&self) -> Option<&LocalPlayer> {
@@ -93,7 +92,7 @@ impl PlaySession {
 
     /// The entry names of one synchronised registry, in network order.
     pub fn registry_names(&self, registry: &str) -> &[String] {
-        self.trace
+        self.state
             .registry_entry_names
             .get(registry)
             .map_or(&[], Vec::as_slice)
@@ -132,7 +131,7 @@ impl PlaySession {
 
     /// The player's profile id, as the server logged it in.
     pub fn profile_id(&self) -> Option<photon_core::binary::Uuid> {
-        self.trace.profile_id
+        self.state.profile_id
     }
 
     /// `handleShowDialog`: the dialog is opened over whatever screen is up.
@@ -140,7 +139,7 @@ impl PlaySession {
         let dialog = match holder {
             DialogHolder::Direct(dialog) => *dialog,
             DialogHolder::Registry(index) => {
-                match self.trace.dialog_registry.get(index).cloned().flatten() {
+                match self.state.dialog_registry.get(index).cloned().flatten() {
                     Some(dialog) => dialog,
                     // A known pack's entry carries no data, and there is none to look it up in.
                     None => return,
@@ -156,7 +155,7 @@ impl PlaySession {
             .registry_names("minecraft:dialog")
             .iter()
             .position(|entry| entry == name)?;
-        self.trace.dialog_registry.get(position).cloned().flatten()
+        self.state.dialog_registry.get(position).cloned().flatten()
     }
 
     /// The dialogs the server showed or cleared since the last call.

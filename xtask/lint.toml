@@ -48,5 +48,13 @@ photon-oracle = [
     "photon-render",
     "photon-audio",
 ]
+photon-dev = [
+    "photon-core",
+    "photon-data",
+    "photon-world",
+    "photon-game",
+    "photon-protocol",
+    "photon-net",
+]
 parity-cases = []
 xtask = ["parity-cases"]

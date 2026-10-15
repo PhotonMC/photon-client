@@ -3,9 +3,7 @@
 
 use std::env;
 use std::net::SocketAddr;
-use std::time::Duration;
 
-use photon_net::connection::connect_and_probe;
 use photon_render::VulkanBackend;
 use photon_render::window::{DisplayData, WindowSurface};
 
