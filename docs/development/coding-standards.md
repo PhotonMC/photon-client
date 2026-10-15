@@ -41,6 +41,7 @@ Violations that existed when a rule was introduced are listed in `xtask/lint-bas
 - **Tests.** Inline tests go at the end of a file as `#[cfg(test)] mod tests`; larger test sets go in a `tests/` folder split by topic.
 - **Module docs.** The module doc (`//!`) says what the module is and names the Java class it mirrors, if any.
 - **Look first.** Before writing a helper, search for an existing one. Examples: `photon_core::wire::take` for fixed-size reads, `photon_core::json::read_object` for JSON objects, `photon_core::math` and `java_math` for Java float rules.
+- **Typed ids.** Entity, entity type and item ids are newtypes in `photon_core::ids`, built once where a number enters (a wire read, a file, a fixture) and never converted with `From<i32>`. Raw registry tables stay `i32` and are compared through `.0`.
 
 ## Following the reference without copying its flaws
 
