@@ -5,14 +5,14 @@ impl PlaySession {
     /// `handleOpenBook`, once: the pages of the book in the hand the server opened, if it holds
     /// a written book or a book and quill (`BookAccess.fromItem`).
     pub fn take_open_book(&mut self) -> Option<Vec<photon_game::text::Component>> {
-        let hand = self.opened_book.take()?;
+        let hand = self.menus.opened_book.take()?;
         self.hand_book_pages(hand)
     }
 
     /// The pages of the book in a hand.
     fn hand_book_pages(&self, hand: u8) -> Option<Vec<photon_game::text::Component>> {
         let slot = if hand == 0 {
-            36 + self.status.selected_slot
+            36 + self.local.status.selected_slot
         } else {
             45
         };
@@ -31,7 +31,7 @@ impl PlaySession {
     /// The hand whose book and quill was used and the book's pages, once: its screen is to open
     /// (`LocalPlayer.openItemGui`).
     pub fn take_opened_book(&mut self) -> Option<(u8, Vec<photon_game::text::Component>)> {
-        let hand = self.game_mode_state.take_opened_book()?;
+        let hand = self.local.game_mode_state.take_opened_book()?;
         Some((hand, self.hand_book_pages(hand).unwrap_or_default()))
     }
 
@@ -44,7 +44,7 @@ impl PlaySession {
         title: Option<&str>,
     ) -> Result<(), ConnectionError> {
         let slot = if hand == 0 {
-            self.status.selected_slot
+            self.local.status.selected_slot
         } else {
             40
         };

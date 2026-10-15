@@ -77,7 +77,7 @@ impl ClientboundPacket for ShowDialog {
 
 impl ClientboundPacket for ClearDialog {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.dialog_events.push(DialogEvent::Clear);
+        session.social.dialog_events.push(DialogEvent::Clear);
         Ok(())
     }
 }
@@ -121,7 +121,7 @@ impl ClientboundPacket for OpenSignEditor {
 
 impl ClientboundPacket for OpenBook {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.opened_book = Some(u8::from(self.0 != 0));
+        session.menus.opened_book = Some(u8::from(self.0 != 0));
         Ok(())
     }
 }

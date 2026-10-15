@@ -26,6 +26,7 @@ use super::record::NoRecorder;
 use super::session::{frame_packet, read_packet};
 use super::state::ConnectionState;
 use super::writer::PacketWriter;
+use groups::*;
 use incoming::Incoming;
 use photon_protocol::play::*;
 
@@ -33,8 +34,10 @@ mod books;
 mod chat;
 mod chunks;
 mod containers;
+mod groups;
 mod incoming;
 mod lifecycle;
+mod menu_sync;
 mod movement;
 mod recipes;
 mod reconfigure;
@@ -71,121 +74,14 @@ pub(super) const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 
 /// A connection in the play phase with its world and local player.
 pub struct PlaySession {
-    pub(super) writer: PacketWriter,
-    pub(super) compression_threshold: Option<usize>,
-    incoming: Receiver<Result<Incoming, ConnectionError>>,
     pub(super) state: ConnectionState,
     pub(super) world: ClientWorld,
-    pub(super) player_id: Option<i32>,
-    pub(super) game_mode: ClientPlayerGameMode,
-    /// `MultiPlayerGameMode.previousLocalPlayerMode`: the mode played in before this one.
-    pub(super) previous_game_mode: Option<ClientPlayerGameMode>,
-    pub(super) abilities: Option<ClientPlayerAbilities>,
-    pub(super) player: Option<LocalPlayer>,
-    pub(super) loaded: bool,
-    pub(super) auto_jump: bool,
-    pub(super) warned: Option<String>,
-    pub(super) teleports: u32,
-    pub(super) view_distance: i32,
-    /// What the server was last told of the client (`remoteClientInformation`).
-    pub(super) client_information: photon_protocol::configuration::ClientInformation,
-    pub(super) dimension_type_id: i32,
-    pub(super) hashed_seed: i64,
-    /// `Player.getCooldowns`.
-    pub(super) item_cooldowns: photon_game::item::cooldowns::ItemCooldowns,
-    /// What menus read of the enchantments, from the data pack.
-    pub(super) enchantment_traits:
-        std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,
-    /// The language item names are compared in.
-    pub(super) lang: std::sync::Arc<photon_game::text::Lang>,
-    pub(super) game_time: i64,
-    pub(super) rain_level: f32,
-    pub(super) thunder_level: f32,
-    pub(super) status: PlayerStatus,
-    /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
-    pub(super) show_death_screen: bool,
-    /// Why the connection is over, once it is: the server's word or what
-    /// the connection said (`onDisconnect`).
-    pub(super) disconnect: Option<photon_game::text::Component>,
-    /// The message of a death the death screen is yet to show.
-    pub(super) death: Option<photon_game::text::Component>,
-    /// A `WIN_GAME` event the credits screen is yet to show.
-    pub(super) win_game: bool,
-    /// Swing packets sent, for scripted runs to report.
-    pub(super) swings: u32,
-    /// The sound packets since the last [`Self::take_sounds`].
-    pub(super) sounds: Vec<photon_game::sounds::SoundCommand>,
-    /// The particle packets since the last [`Self::take_level_particles`].
-    pub(super) level_particles: Vec<photon_world::particles::LevelParticles>,
-    /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
-    pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
-    /// `ClientPacketListener.random`: the pitch of a pickup's sound.
-    pub(super) listener_random: photon_core::random::RandomSource,
-    /// `ClientLevel.random`, unseeded as the reference's is.
-    pub(super) level_random: photon_core::random::RandomSource,
-    /// The entity the crosshair last landed on (`Minecraft.hitResult`).
-    pub(super) aimed_entity: Option<i32>,
-    /// Whether the level is hardcore, as the login said.
-    pub(super) hardcore: bool,
-    /// Whether a health update has arrived since the player last respawned.
-    pub(super) health_received: bool,
-    /// Set when the server moved the player to a new level.
-    pub(super) level_reset: bool,
-    /// The server took the connection through the configuration phase again since the last
-    /// [`Self::take_reconfigured`].
-    pub(super) reconfigured: bool,
-    /// Resource packs the server asked for that the player is yet to be asked about.
-    pub(super) pack_requests: Vec<PackRequest>,
-    /// Dialogs the server showed or cleared that the client is yet to act on.
-    pub(super) dialog_events: Vec<DialogEvent>,
-    /// The hotbar slot the server was last told about.
-    pub(super) sent_slot: i32,
-    /// Breaking state and the miss wait.
-    pub(super) game_mode_state: photon_game::game_mode::GameMode,
-    /// The player's inventory menu, whose drag state lasts between clicks.
-    pub(super) container_menu: photon_game::menus::container::ContainerMenu,
-    /// The menu of the container the server opened, likewise.
-    pub(super) open_menu: Option<photon_game::menus::container::ContainerMenu>,
-    /// The sign the server last asked the player to write on, and whether its front, until the
-    /// client opens its screen.
-    pub(super) sign_editor: Option<((i32, i32, i32), bool)>,
-    /// The hand whose book the server last opened, until the client shows it.
-    pub(super) opened_book: Option<u8>,
-    /// What the server last said of the merchant whose menu is open, by container.
-    pub(super) merchant: Option<(i32, photon_game::menus::merchant::MerchantState)>,
-    /// The mount whose screen the server opened, by container: what its menu reads of it.
-    pub(super) mount: Option<(
-        i32,
-        photon_game::menus::container::Mount,
-        photon_game::menus::container::MountEntity,
-    )>,
-    /// Chat the server sent that the client has not shown yet, and the
-    /// `nextChatIndex` its player chat must come in.
-    pub(super) chat_events: Vec<ChatEvent>,
-    pub(super) signature_cache: SignatureCache,
-    /// Title, action bar and tab list packets not yet shown, and the players
-    /// the tab list names.
-    pub(super) hud_events: Vec<HudEvent>,
-    /// The vehicle the server removed with the local player aboard (`removedPlayerVehicleId`).
-    pub(super) removed_player_vehicle: Option<i32>,
-    pub(super) scoreboard: photon_game::scoreboard::Scoreboard,
-    pub(super) waypoints: photon_game::waypoint::WaypointManager,
-    /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`), which
-    /// the server tells by entity events 24 to 28.
-    pub(super) permission_level: i32,
-    pub(super) commands: Option<std::sync::Arc<photon_game::commands::CommandTree>>,
-    pub(super) username: String,
-    pub(super) suggestions: Option<CommandSuggestions>,
-    pub(super) player_infos: std::collections::BTreeMap<(u64, u64), PlayerInfo>,
-    /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,
-    /// kept when they leave the tab list.
-    pub(super) seen_players: std::collections::BTreeMap<(u64, u64), String>,
-    pub(super) next_chat_index: i32,
-    /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
-    pub(super) drop_spam: i32,
-    pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
-    pub(super) forgotten_chunks: Vec<(i32, i32)>,
-    pub(super) clocks: std::collections::BTreeMap<i32, ClockState>,
+    link: Link,
+    local: LocalState,
+    menus: Menus,
+    social: Social,
+    effects: Effects,
+    level_info: LevelInfo,
 }
 
 /// `ClientClockManager`'s state for one world clock.
@@ -350,15 +246,15 @@ mod tests {
     #[test]
     fn a_rider_is_told_how_to_dismount_and_follows_a_vehicle_removed_under_it() {
         let (mut session, _far_end) = detached();
-        session.player_id = Some(1);
+        session.local.player_id = Some(1);
         session.world.set_local_player_id(1);
-        session.player = Some(LocalPlayer::new(
+        session.local.player = Some(LocalPlayer::new(
             1,
             Vec3::new(8.0, 64.0, 8.0),
             0.0,
             0.0,
-            session.game_mode,
-            session.auto_jump,
+            session.local.game_mode,
+            session.link.auto_jump,
         ));
         let minecart = photon_data::entity_type::id("minecraft:minecart").unwrap() as u32;
         session
@@ -385,7 +281,7 @@ mod tests {
         remove.extend(varint(1));
         remove.extend(varint(7));
         session.handle_bytes(&remove).unwrap();
-        assert_eq!(session.removed_player_vehicle, Some(7));
+        assert_eq!(session.local.removed_player_vehicle, Some(7));
         let mut teleport = varint(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID as u32);
         teleport.extend(varint(7));
         for value in [20.0_f64, 70.0, -4.0, 0.0, 0.0, 0.0] {
@@ -397,13 +293,13 @@ mod tests {
         teleport.extend(0_i32.to_be_bytes());
         teleport.push(0);
         session.handle_bytes(&teleport).unwrap();
-        let player = session.player.as_ref().unwrap();
+        let player = session.local.player.as_ref().unwrap();
         let at = player.position();
         assert_eq!((at.x, at.y, at.z), (20.0, 70.0, -4.0));
         // Boarding again forgets the minecart that went.
         session
             .handle_bytes(&add_entity_of_type(7, minecart, 8.0))
             .unwrap();
-        assert_eq!(session.removed_player_vehicle, None);
+        assert_eq!(session.local.removed_player_vehicle, None);
     }
 }

@@ -48,7 +48,7 @@ impl ClientboundPacket for ForgetLevelChunk {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (x, z) = self.0;
         session.world.unload_chunk(x, z);
-        session.forgotten_chunks.push((x, z));
+        session.effects.forgotten_chunks.push((x, z));
         session.mark_columns_around(x, z);
         Ok(())
     }
@@ -79,7 +79,7 @@ impl ClientboundPacket for SetChunkCacheRadius {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.world.update_chunk_cache_radius(self.0);
         // `Options.setServerRenderDistance`.
-        session.view_distance = self.0;
+        session.level_info.view_distance = self.0;
         Ok(())
     }
 }
@@ -111,7 +111,7 @@ impl ClientboundPacket for BlockChangedAck {
             // moves it back to where it stood when it predicted.
             let pos = photon_core::binary::BlockPos::new(synced.x, synced.y, synced.z);
             if let Some(position) = synced.player_position
-                && let Some(player) = session.player.as_mut()
+                && let Some(player) = session.local.player.as_mut()
                 && player.is_colliding(&session.world, pos, synced.state)
             {
                 player.abs_snap_to(position);

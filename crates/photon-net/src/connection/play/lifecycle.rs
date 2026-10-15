@@ -50,18 +50,18 @@ impl PlaySession {
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
         // The game mode's tick runs before the player moves.
         self.ensure_has_sent_carried_item()?;
-        if self.loaded {
-            self.drop_spam = (self.drop_spam - 1).max(0);
+        if self.local.loaded {
+            self.local.drop_spam = (self.local.drop_spam - 1).max(0);
         }
         let main_hand = self
             .world
             .local_player()
-            .and_then(|state| state.inventory_slot((36 + self.status.selected_slot) as i16))
+            .and_then(|state| state.inventory_slot((36 + self.local.status.selected_slot) as i16))
             .map_or(0, |stack| stack.item_registry_id());
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
         // What the rider steers with: its input, its look, and the stick in its hands.
-        if let Some(player) = self.player.as_ref() {
+        if let Some(player) = self.local.player.as_ref() {
             let mut controls = player.controller();
             let holds = |name: &str| {
                 [main_hand, self.off_hand_item()].into_iter().any(|item| {
@@ -74,7 +74,7 @@ impl PlaySession {
         }
         let ridden = self.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
-            if let Some(player) = self.player.as_ref() {
+            if let Some(player) = self.local.player.as_ref() {
                 let position = player.position();
                 self.world.set_local_player_chunk(position.x, position.z);
             }
@@ -83,12 +83,12 @@ impl PlaySession {
                 self.send_movement(ServerboundMovement::PaddleBoat { left, right })?;
             }
         }
-        if self.loaded
-            && let Some(player) = self.player.as_mut()
+        if self.local.loaded
+            && let Some(player) = self.local.player.as_mut()
         {
             // `Player.tick` counts the item cooldowns down.
-            self.item_cooldowns.tick();
-            player.set_hand_state(self.world.local_hand_state(self.status.selected_slot));
+            self.local.item_cooldowns.tick();
+            player.set_hand_state(self.world.local_hand_state(self.local.status.selected_slot));
             let ticked = match ridden.and_then(|id| self.world.vehicle_view(id)) {
                 Some(view) => player.tick_riding(&self.world, keys, &view).map(|rode| {
                     if view.kind == photon_world::VehicleKind::Boat && view.controlled {
@@ -109,15 +109,15 @@ impl PlaySession {
                 }
                 Err(unsupported) => {
                     let message = unsupported.to_string();
-                    if self.warned.as_deref() != Some(message.as_str()) {
+                    if self.link.warned.as_deref() != Some(message.as_str()) {
                         log::warn!("movement: {message}");
-                        self.warned = Some(message);
+                        self.link.warned = Some(message);
                     }
                 }
             }
         }
         // `ClientLevel.tickEntities`: the entities the server added move on.
-        if let Some(player) = self.player.as_ref() {
+        if let Some(player) = self.local.player.as_ref() {
             let position = player.position();
             self.world.set_local_player_chunk(position.x, position.z);
         }
@@ -126,7 +126,7 @@ impl PlaySession {
         }
         self.world.tick_sky_flash();
         // ClientLevel.tickTime: the game time and the clocks move on.
-        self.tick_clocks(self.game_time + 1);
+        self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
     }
 
@@ -135,11 +135,12 @@ impl PlaySession {
         F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
     {
         // Nothing is sent over a connection that is over.
-        if self.disconnect.is_some() {
+        if self.link.disconnect.is_some() {
             return Ok(());
         }
-        self.writer
-            .send(frame_packet(id, body, self.compression_threshold)?)
+        self.link
+            .writer
+            .send(frame_packet(id, body, self.link.compression_threshold)?)
     }
 
     /// Log in, configure, and start reading play packets in the background.
@@ -209,7 +210,7 @@ impl PlaySession {
                         state,
                         (username, auto_jump),
                     );
-                    session.client_information = information;
+                    session.link.client_information = information;
                     return Ok(session);
                 }
             }
@@ -223,10 +224,10 @@ impl PlaySession {
         &mut self,
         information: photon_protocol::configuration::ClientInformation,
     ) -> Result<(), ConnectionError> {
-        if information == self.client_information {
+        if information == self.link.client_information {
             return Ok(());
         }
-        self.client_information = information.clone();
+        self.link.client_information = information.clone();
         self.send(PLAY_SERVERBOUND_CLIENT_INFORMATION_PACKET_ID, |output| {
             photon_protocol::configuration::ServerboundClientInformationPacket::new(information)
                 .encode(output)
@@ -240,76 +241,18 @@ impl PlaySession {
         compression_threshold: Option<usize>,
         incoming: Receiver<Result<Incoming, ConnectionError>>,
         state: ConnectionState,
-        (username, auto_jump): (&str, bool),
+        login: (&str, bool),
     ) -> Self {
+        let writer = PacketWriter::start(writer).expect("a thread to write on");
         Self {
-            writer: PacketWriter::start(writer).expect("a thread to write on"),
-            compression_threshold,
-            incoming,
+            link: Link::new(writer, compression_threshold, incoming, login),
             world: state.new_world(),
             state,
-            player_id: None,
-            game_mode: ClientPlayerGameMode::Survival,
-            previous_game_mode: None,
-            abilities: None,
-            player: None,
-            loaded: false,
-            auto_jump,
-            warned: None,
-            teleports: 0,
-            view_distance: 0,
-            client_information: photon_protocol::configuration::ClientInformation::default(),
-            dimension_type_id: 0,
-            hashed_seed: 0,
-            enchantment_traits: std::sync::Arc::default(),
-            lang: std::sync::Arc::default(),
-            item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
-            game_time: 0,
-            rain_level: 0.0,
-            thunder_level: 0.0,
-            status: PlayerStatus::default(),
-            show_death_screen: true,
-            disconnect: None,
-            death: None,
-            win_game: false,
-            swings: 0,
-            sounds: Vec::new(),
-            level_particles: Vec::new(),
-            item_pickups: Vec::new(),
-            listener_random: clock_seeded_random(0),
-            level_random: clock_seeded_random(0x5DEE_CE66),
-            aimed_entity: None,
-            hardcore: false,
-            health_received: false,
-            level_reset: false,
-            reconfigured: false,
-            pack_requests: Vec::new(),
-            dialog_events: Vec::new(),
-            sent_slot: 0,
-            game_mode_state: photon_game::game_mode::GameMode::default(),
-            container_menu: photon_game::menus::container::ContainerMenu::default(),
-            open_menu: None,
-            sign_editor: None,
-            opened_book: None,
-            merchant: None,
-            mount: None,
-            chat_events: Vec::new(),
-            signature_cache: SignatureCache::default(),
-            hud_events: Vec::new(),
-            removed_player_vehicle: None,
-            scoreboard: photon_game::scoreboard::Scoreboard::default(),
-            waypoints: photon_game::waypoint::WaypointManager::default(),
-            permission_level: 0,
-            commands: None,
-            username: username.to_owned(),
-            suggestions: None,
-            player_infos: std::collections::BTreeMap::new(),
-            seen_players: std::collections::BTreeMap::new(),
-            next_chat_index: 0,
-            drop_spam: 0,
-            dirty_sections: std::collections::BTreeSet::new(),
-            forgotten_chunks: Vec::new(),
-            clocks: std::collections::BTreeMap::new(),
+            local: LocalState::default(),
+            menus: Menus::default(),
+            social: Social::default(),
+            effects: Effects::default(),
+            level_info: LevelInfo::default(),
         }
     }
 
@@ -319,14 +262,17 @@ impl PlaySession {
             .registry_names("minecraft:world_clock")
             .iter()
             .position(|name| name == clock)?;
-        self.clocks.get(&(id as i32)).map(|state| state.total_ticks)
+        self.level_info
+            .clocks
+            .get(&(id as i32))
+            .map(|state| state.total_ticks)
     }
 
     /// `ClientClockManager.tick`: every clock runs at its own rate.
     pub(super) fn tick_clocks(&mut self, game_time: i64) {
-        let delta = game_time - self.game_time;
-        self.game_time = game_time;
-        for state in self.clocks.values_mut() {
+        let delta = game_time - self.level_info.game_time;
+        self.level_info.game_time = game_time;
+        for state in self.level_info.clocks.values_mut() {
             let ticks = f64::from(state.partial_tick) + delta as f64 * f64::from(state.rate);
             let whole = ticks.floor();
             state.partial_tick = (ticks - whole) as f32;
@@ -336,21 +282,21 @@ impl PlaySession {
 
     /// The first unported movement branch the player reached, if any.
     pub fn warning(&self) -> Option<&str> {
-        self.warned.as_deref()
+        self.link.warned.as_deref()
     }
 
     /// Handle every packet that has arrived, without waiting for more.
     pub fn drain(&mut self) -> Result<(), ConnectionError> {
         loop {
-            if self.disconnect.is_some() {
+            if self.link.disconnect.is_some() {
                 return Ok(());
             }
-            match self.incoming.try_recv() {
+            match self.link.incoming.try_recv() {
                 Ok(Ok(packet)) => self.handle_incoming(packet)?,
                 // `ClientCommonPacketListenerImpl.onDisconnect`: a failure to
                 // read ends the connection with what went wrong.
                 Ok(Err(ConnectionError::Io(error))) => {
-                    self.disconnect = Some(photon_game::text::Component::translatable_with(
+                    self.link.disconnect = Some(photon_game::text::Component::translatable_with(
                         "disconnect.genericReason",
                         vec![photon_game::text::Component::literal(format!(
                             "Internal Exception: {error}"
@@ -360,7 +306,7 @@ impl PlaySession {
                 Ok(Err(error)) => return Err(error),
                 Err(TryRecvError::Empty) => return Ok(()),
                 Err(TryRecvError::Disconnected) => {
-                    self.disconnect = Some(photon_game::text::Component::translatable(
+                    self.link.disconnect = Some(photon_game::text::Component::translatable(
                         "disconnect.endOfStream",
                     ));
                 }
@@ -370,19 +316,19 @@ impl PlaySession {
 
     /// `Connection.disconnect`: the client ends the connection, with the reason it shows.
     pub fn disconnect(&mut self, reason: photon_game::text::Component) {
-        if self.disconnect.is_none() {
-            self.disconnect = Some(reason);
+        if self.link.disconnect.is_none() {
+            self.link.disconnect = Some(reason);
         }
     }
 
     /// Why the connection is over, once it is.
     pub fn disconnected(&self) -> Option<&photon_game::text::Component> {
-        self.disconnect.as_ref()
+        self.link.disconnect.as_ref()
     }
 
     /// Wait up to `limit` for the next packet and handle it.
     pub fn wait(&mut self, limit: Duration) -> Result<(), ConnectionError> {
-        match self.incoming.recv_timeout(limit) {
+        match self.link.incoming.recv_timeout(limit) {
             Ok(packet) => self.handle_incoming(packet?),
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),
             Err(mpsc::RecvTimeoutError::Disconnected) => Err(ConnectionError::ServerDisconnected),
@@ -390,18 +336,9 @@ impl PlaySession {
     }
 
     pub(super) fn warn(&mut self, message: String) {
-        if self.warned.as_deref() != Some(message.as_str()) {
+        if self.link.warned.as_deref() != Some(message.as_str()) {
             log::warn!("{message}");
-            self.warned = Some(message);
+            self.link.warned = Some(message);
         }
     }
-}
-
-/// A random source seeded from the clock, mixed with `salt`.
-fn clock_seeded_random(salt: i64) -> photon_core::random::RandomSource {
-    photon_core::random::RandomSource::create(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |elapsed| elapsed.as_nanos() as i64 ^ salt),
-    )
 }

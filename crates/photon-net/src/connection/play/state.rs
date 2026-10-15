@@ -17,12 +17,12 @@ impl PlaySession {
 
     /// The particle packets that arrived since the last call, for the particle engine.
     pub fn take_level_particles(&mut self) -> Vec<photon_world::particles::LevelParticles> {
-        std::mem::take(&mut self.level_particles)
+        std::mem::take(&mut self.effects.level_particles)
     }
 
     /// The entities taken since the last call, each flying to whoever took it.
     pub fn take_item_pickups(&mut self) -> Vec<photon_world::particles::ItemPickup> {
-        std::mem::take(&mut self.item_pickups)
+        std::mem::take(&mut self.effects.item_pickups)
     }
 
     /// The level events since the last call, in the order they came.
@@ -61,33 +61,33 @@ impl PlaySession {
     }
 
     pub fn player(&self) -> Option<&LocalPlayer> {
-        self.player.as_ref()
+        self.local.player.as_ref()
     }
 
     pub fn player_mut(&mut self) -> Option<&mut LocalPlayer> {
-        self.player.as_mut()
+        self.local.player.as_mut()
     }
 
     /// The server's view distance in chunks, from the login packet.
     pub fn view_distance(&self) -> i32 {
-        self.view_distance
+        self.level_info.view_distance
     }
 
     /// The hashed world seed the biome zoom is jittered with.
     pub fn hashed_seed(&self) -> i64 {
-        self.hashed_seed
+        self.level_info.hashed_seed
     }
 
     /// The current dimension type's registry name.
     pub fn dimension_type(&self) -> Option<&str> {
         self.registry_names("minecraft:dimension_type")
-            .get(usize::try_from(self.dimension_type_id).ok()?)
+            .get(usize::try_from(self.level_info.dimension_type_id).ok()?)
             .map(String::as_str)
     }
 
     /// `Player.getCooldowns`: the item groups waiting to be usable again.
     pub fn item_cooldowns(&self) -> &photon_game::item::cooldowns::ItemCooldowns {
-        &self.item_cooldowns
+        &self.local.item_cooldowns
     }
 
     /// The entry names of one synchronised registry, in network order.
@@ -100,33 +100,33 @@ impl PlaySession {
 
     /// The level's game time, as the server last set it and the ticks since.
     pub fn game_time(&self) -> i64 {
-        self.game_time
+        self.level_info.game_time
     }
 
     /// Whether the level is hardcore.
     pub fn hardcore(&self) -> bool {
-        self.hardcore
+        self.local.hardcore
     }
 
     /// The player's game mode, as the server last set it.
     /// `MultiPlayerGameMode.getPreviousPlayerMode`.
     pub fn previous_game_mode(&self) -> Option<ClientPlayerGameMode> {
-        self.previous_game_mode
+        self.local.previous_game_mode
     }
 
     /// Whether the player may run `/gamemode` (`GameModeCommand.PERMISSION_CHECK`: game master).
     pub fn may_change_game_mode(&self) -> bool {
-        self.permission_level >= 2
+        self.local.permission_level >= 2
     }
 
     pub fn game_mode(&self) -> ClientPlayerGameMode {
-        self.game_mode
+        self.local.game_mode
     }
 
     /// The sound packets that arrived since the last call, in order (`handleSoundEvent`,
     /// `handleSoundEntityEvent`, `handleStopSoundEvent`): the sound engine's to carry out.
     pub fn take_sounds(&mut self) -> Vec<photon_game::sounds::SoundCommand> {
-        std::mem::take(&mut self.sounds)
+        std::mem::take(&mut self.effects.sounds)
     }
 
     /// The player's profile id, as the server logged it in.
@@ -146,7 +146,9 @@ impl PlaySession {
                 }
             }
         };
-        self.dialog_events.push(DialogEvent::Show(Box::new(dialog)));
+        self.social
+            .dialog_events
+            .push(DialogEvent::Show(Box::new(dialog)));
     }
 
     /// The dialog entry a registry name stands for (`ClickEvent.ShowDialog` by name).
@@ -160,7 +162,7 @@ impl PlaySession {
 
     /// The dialogs the server showed or cleared since the last call.
     pub fn take_dialog_events(&mut self) -> Vec<DialogEvent> {
-        std::mem::take(&mut self.dialog_events)
+        std::mem::take(&mut self.social.dialog_events)
     }
 
     /// `ServerboundCustomClickActionPacket`: a dialog button's custom action.
@@ -176,7 +178,7 @@ impl PlaySession {
 
     /// The resource packs the server asked for since the last call: the player is asked about them.
     pub fn take_pack_requests(&mut self) -> Vec<PackRequest> {
-        std::mem::take(&mut self.pack_requests)
+        std::mem::take(&mut self.social.pack_requests)
     }
 
     /// `ServerboundResourcePackPacket`: how the client answers a pack.
@@ -194,27 +196,27 @@ impl PlaySession {
     /// Whether the server took the connection through the configuration phase again: what was
     /// open over the old level is closed (`Minecraft.clearClientLevel`).
     pub fn take_reconfigured(&mut self) -> bool {
-        std::mem::take(&mut self.reconfigured)
+        std::mem::take(&mut self.level_info.reconfigured)
     }
 
     /// Whether the server replaced the level since the last call, so
     /// everything drawn from the old one should go.
     pub fn take_level_reset(&mut self) -> bool {
-        std::mem::take(&mut self.level_reset)
+        std::mem::take(&mut self.level_info.level_reset)
     }
 
     /// What the HUD shows of the player.
     pub fn status(&self) -> &PlayerStatus {
-        &self.status
+        &self.local.status
     }
 
     /// `Level.getRainLevel`: how hard it rains, 0 to 1.
     pub fn rain_level(&self) -> f32 {
-        self.rain_level
+        self.level_info.rain_level
     }
 
     /// `Level.getThunderLevel`: the thunder level scaled by the rain.
     pub fn thunder_level(&self) -> f32 {
-        self.thunder_level * self.rain_level
+        self.level_info.thunder_level * self.level_info.rain_level
     }
 }

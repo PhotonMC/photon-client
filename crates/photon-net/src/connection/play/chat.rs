@@ -7,13 +7,16 @@ impl PlaySession {
     pub(super) fn apply_player_info(&mut self, id: (u64, u64), actions: Vec<InfoAction>) {
         for action in actions {
             if let InfoAction::Add { name } = action {
-                self.player_infos.entry(id).or_insert_with(|| PlayerInfo {
-                    name,
-                    ..PlayerInfo::default()
-                });
+                self.social
+                    .player_infos
+                    .entry(id)
+                    .or_insert_with(|| PlayerInfo {
+                        name,
+                        ..PlayerInfo::default()
+                    });
                 continue;
             }
-            let Some(info) = self.player_infos.get_mut(&id) else {
+            let Some(info) = self.social.player_infos.get_mut(&id) else {
                 continue;
             };
             match action {
@@ -39,44 +42,45 @@ impl PlaySession {
 
     /// The answer to the last request, if one came.
     pub fn take_suggestions(&mut self) -> Option<CommandSuggestions> {
-        self.suggestions.take()
+        self.social.suggestions.take()
     }
 
     /// The title, action bar and tab list packets since the last call.
     pub fn drain_hud(&mut self) -> Vec<HudEvent> {
-        std::mem::take(&mut self.hud_events)
+        std::mem::take(&mut self.social.hud_events)
     }
 
     /// Whether the player may use entity selectors
     /// (`Permissions.COMMANDS_ENTITY_SELECTORS`: game master and above).
     pub fn can_use_selectors(&self) -> bool {
-        self.permission_level >= 2
+        self.local.permission_level >= 2
     }
 
     /// The waypoints the server has the client track.
     pub fn waypoints(&self) -> &photon_game::waypoint::WaypointManager {
-        &self.waypoints
+        &self.social.waypoints
     }
 
     /// What the server's scoreboard packets built.
     pub fn scoreboard(&self) -> &photon_game::scoreboard::Scoreboard {
-        &self.scoreboard
+        &self.social.scoreboard
     }
 
     /// The command tree the server sent, once it has.
     pub fn commands(&self) -> Option<&std::sync::Arc<photon_game::commands::CommandTree>> {
-        self.commands.as_ref()
+        self.social.commands.as_ref()
     }
 
     /// The local player's name, which scoreboard teams and scores go by.
     pub fn local_name(&self) -> &str {
-        &self.username
+        &self.link.username
     }
 
     /// `ClientSuggestionProvider.getSelectedEntities`: the string UUID of the
     /// entity the crosshair is on.
     pub fn selected_entities(&self) -> Vec<String> {
-        self.aimed_entity
+        self.local
+            .aimed_entity
             .and_then(|id| self.world.entities().at(id))
             .map(|entity| entity.uuid.to_string_java())
             .into_iter()
@@ -85,7 +89,8 @@ impl PlaySession {
 
     /// `getOnlinePlayers`: the names of every player the server told of.
     pub fn online_player_names(&self) -> Vec<String> {
-        self.player_infos
+        self.social
+            .player_infos
             .values()
             .map(|info| info.name.clone())
             .collect()
@@ -94,7 +99,8 @@ impl PlaySession {
     /// `ClientPacketListener.getPlayerInfo(uuid)`'s profile name: what a
     /// remote player is called, if the server told of them.
     pub fn player_name(&self, uuid: photon_core::binary::Uuid) -> Option<&str> {
-        self.player_infos
+        self.social
+            .player_infos
             .get(&(uuid.most, uuid.least))
             .map(|info| info.name.as_str())
     }
@@ -104,14 +110,16 @@ impl PlaySession {
     pub fn social_players(&self) -> SocialPlayers {
         let id = |(most, least): (u64, u64)| photon_core::binary::Uuid::new(most, least);
         let online: Vec<_> = self
+            .social
             .player_infos
             .iter()
             .map(|(key, info)| (id(*key), info.name.clone()))
             .collect();
         let gone = self
+            .social
             .seen_players
             .iter()
-            .filter(|(key, _)| !self.player_infos.contains_key(*key))
+            .filter(|(key, _)| !self.social.player_infos.contains_key(*key))
             .map(|(key, name)| (id(*key), name.clone()))
             .collect();
         SocialPlayers { online, gone }
@@ -119,7 +127,8 @@ impl PlaySession {
 
     /// The players the tab list names (`getOnlinePlayers`, listed ones).
     pub fn listed_players(&self) -> Vec<&PlayerInfo> {
-        self.player_infos
+        self.social
+            .player_infos
             .values()
             .filter(|info| info.listed)
             .collect()
@@ -130,16 +139,16 @@ impl PlaySession {
     pub(super) fn receive_player_chat(&mut self, packet: PlayerChatPacket) {
         // The reference drops the connection when the count skips; this
         // client counts on from what it saw.
-        if packet.global_index != self.next_chat_index {
+        if packet.global_index != self.social.next_chat_index {
             self.warn(format!(
                 "chat index {}, expected {}",
-                packet.global_index, self.next_chat_index
+                packet.global_index, self.social.next_chat_index
             ));
         }
-        self.next_chat_index = packet.global_index + 1;
+        self.social.next_chat_index = packet.global_index + 1;
         let mut queue = std::collections::VecDeque::new();
         for seen in &packet.last_seen {
-            match self.signature_cache.unpack(seen) {
+            match self.social.signature_cache.unpack(seen) {
                 Some(signature) => queue.push_back(signature),
                 None => {
                     self.warn("player chat: unknown signature".to_owned());
@@ -150,13 +159,13 @@ impl PlaySession {
         if let Some(signature) = &packet.signature {
             queue.push_back(signature.clone());
         }
-        self.signature_cache.push(queue);
-        let sender_known = self.player_infos.contains_key(&packet.sender);
+        self.social.signature_cache.push(queue);
+        let sender_known = self.social.player_infos.contains_key(&packet.sender);
         let sender_is_local = self
             .state
             .profile_id
             .is_some_and(|id| (id.most, id.least) == packet.sender);
-        self.chat_events.push(ChatEvent::Player {
+        self.social.chat_events.push(ChatEvent::Player {
             packet,
             sender_known,
             sender_is_local,
@@ -165,7 +174,7 @@ impl PlaySession {
 
     /// The chat the server sent since the last call.
     pub fn drain_chat(&mut self) -> Vec<ChatEvent> {
-        std::mem::take(&mut self.chat_events)
+        std::mem::take(&mut self.social.chat_events)
     }
 
     /// `ClientPacketListener.sendChat` and `sendCommand`: a line typed into

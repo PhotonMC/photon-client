@@ -6,7 +6,7 @@ impl PlaySession {
     pub(super) fn on_open_sign_editor(&mut self, pos: photon_core::binary::BlockPos, front: bool) {
         let pos = (pos.x, pos.y, pos.z);
         if self.world.sign_view(pos).is_some() {
-            self.sign_editor = Some((pos, front));
+            self.menus.sign_editor = Some((pos, front));
         } else {
             self.warn(format!(
                 "ignoring openTextEdit on a block that is no sign at {pos:?}"
@@ -16,7 +16,7 @@ impl PlaySession {
 
     /// The sign whose screen the server asked to open, once.
     pub fn take_sign_editor(&mut self) -> Option<((i32, i32, i32), bool)> {
-        self.sign_editor.take()
+        self.menus.sign_editor.take()
     }
 
     /// `ServerboundSignUpdatePacket`: the lines the sign's screen closed with.

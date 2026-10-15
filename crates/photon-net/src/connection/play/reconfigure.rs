@@ -20,7 +20,7 @@ impl PlaySession {
         request: PackRequest,
     ) -> Result<(), ConnectionError> {
         if request.has_valid_url() {
-            self.pack_requests.push(request);
+            self.social.pack_requests.push(request);
             Ok(())
         } else {
             self.answer_resource_pack(request.id, PackAction::InvalidUrl)
@@ -54,14 +54,14 @@ impl PlaySession {
         };
         let mut fresh = Self::connect_through(
             (address, Some(packet.host)),
-            (&self.username, self.auto_jump),
+            (&self.link.username, self.link.auto_jump),
             RECONFIGURATION_TIMEOUT,
-            self.client_information.clone(),
+            self.link.client_information.clone(),
             carried,
         )?;
-        fresh.lang = std::sync::Arc::clone(&self.lang);
-        fresh.level_reset = true;
-        fresh.reconfigured = true;
+        fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
+        fresh.level_info.level_reset = true;
+        fresh.level_info.reconfigured = true;
         *self = fresh;
         Ok(())
     }
@@ -75,8 +75,8 @@ impl PlaySession {
             |_| Ok(()),
         )?;
         // The acknowledgement is on the wire before the connection is used directly.
-        self.writer.flush()?;
-        let mut stream = self.writer.stream()?;
+        self.link.writer.flush()?;
+        let mut stream = self.link.writer.stream()?;
         stream.set_read_timeout(Some(RECONFIGURATION_TIMEOUT))?;
         // What the connection learned at login stays; the registries, tags and features are the
         // new configuration's.
@@ -89,24 +89,24 @@ impl PlaySession {
         };
         configure_connection(
             &mut stream,
-            self.compression_threshold,
+            self.link.compression_threshold,
             (RECONFIGURATION_TIMEOUT, true),
             (&mut state, &mut NoRecorder),
         )?;
         stream.set_read_timeout(None)?;
-        let incoming = spawn_reader(stream, self.compression_threshold);
+        let incoming = spawn_reader(stream, self.link.compression_threshold);
         let mut fresh = Self::assemble(
-            self.writer.stream()?,
-            self.compression_threshold,
+            self.link.writer.stream()?,
+            self.link.compression_threshold,
             incoming,
             state,
-            (&self.username, self.auto_jump),
+            (&self.link.username, self.link.auto_jump),
         );
-        fresh.client_information = self.client_information.clone();
-        fresh.lang = std::sync::Arc::clone(&self.lang);
+        fresh.link.client_information = self.link.client_information.clone();
+        fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
         // Nothing of the old level stays.
-        fresh.level_reset = true;
-        fresh.reconfigured = true;
+        fresh.level_info.level_reset = true;
+        fresh.level_info.reconfigured = true;
         *self = fresh;
         Ok(())
     }

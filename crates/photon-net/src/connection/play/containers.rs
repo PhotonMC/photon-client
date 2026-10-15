@@ -20,6 +20,7 @@ impl PlaySession {
         self.world
             .apply_local_player_container_data(container_id, slot as i16, value);
         if let Some(entry) = self
+            .menus
             .open_menu
             .as_mut()
             .and_then(|menu| menu.data.get_mut(slot as usize))
@@ -47,39 +48,6 @@ impl PlaySession {
         })
     }
 
-    /// `LoomMenu.slotsChanged`'s list of patterns: with a banner and a dye in,
-    /// those that need no item, or those the pattern item in the loom gives.
-    /// Nothing once the banner has six layers.
-    pub(super) fn loom_patterns(
-        world: &photon_world::ClientWorld,
-        menu: &photon_game::menus::container::ContainerMenu,
-    ) -> (Vec<i32>, usize) {
-        let stack = |slot: usize| menu.slots.get(slot).and_then(Option::as_ref);
-        let (Some(banner), Some(_dye)) = (stack(0), stack(1)) else {
-            return (Vec::new(), 0);
-        };
-        let layers =
-            photon_game::item::values::Values::new(banner.item_registry_id(), banner.patch_bytes())
-                .banner_layers()
-                .len();
-        let tags = world.block_state_registry().banner_pattern_tags();
-        let tag = match stack(2) {
-            None => "minecraft:no_item_required".to_owned(),
-            Some(pattern) => {
-                // `provides_banner_patterns` names `pattern_item/<name>`.
-                let name = usize::try_from(pattern.item_registry_id())
-                    .ok()
-                    .and_then(|id| photon_data::item::registry::ITEMS.get(id))
-                    .map_or("", |item| item.name);
-                let short = name
-                    .trim_start_matches("minecraft:")
-                    .trim_end_matches("_banner_pattern");
-                format!("minecraft:pattern_item/{short}")
-            }
-        };
-        (tags.members(&tag).collect(), layers)
-    }
-
     /// `BundleItem.playInsertSound` and the like: `LocalPlayer.playSound`
     /// where the player is, pitched by the level's random but for a failure.
     fn play_bundle_sound(&mut self, event: &'static str) {
@@ -91,7 +59,7 @@ impl PlaySession {
         let (volume, pitch) = if event == BUNDLE_INSERT_FAIL {
             (1.0, 1.0)
         } else {
-            (0.8, 0.8 + self.level_random.next_float() * 0.4)
+            (0.8, 0.8 + self.effects.level_random.next_float() * 0.4)
         };
         self.world.push_sound(LocalSound {
             event,
@@ -104,7 +72,7 @@ impl PlaySession {
 
     /// The language the anvil compares item names in.
     pub fn set_lang(&mut self, lang: std::sync::Arc<photon_game::text::Lang>) {
-        self.lang = lang;
+        self.social.lang = lang;
     }
 
     /// What menus read of the enchantments (curses, armour locks), which
@@ -113,12 +81,29 @@ impl PlaySession {
         &mut self,
         traits: Vec<photon_game::menus::container::EnchantmentTraits>,
     ) {
-        self.enchantment_traits = std::sync::Arc::new(traits);
+        self.menus.enchantment_traits = std::sync::Arc::new(traits);
     }
 
-    /// The enchantment registry's entries, which a click's component hashes name.
-    fn enchantment_names(&self) -> std::sync::Arc<Vec<String>> {
-        std::sync::Arc::new(self.registry_names("minecraft:enchantment").to_vec())
+    /// What a click reads of the player: the selected hotbar slot, and whether materials are
+    /// infinite.
+    fn click_player(&self) -> photon_game::menus::container::Player {
+        photon_game::menus::container::Player {
+            selected: self.local.status.selected_slot.clamp(0, 8) as usize,
+            infinite_materials: self.local.game_mode
+                == photon_world::ClientPlayerGameMode::Creative,
+        }
+    }
+
+    /// `LocalPlayer.swing`: the arm, then the packet.
+    fn swing_hand(&mut self) -> Result<(), ConnectionError> {
+        if let Some(player) = self.local.player.as_mut() {
+            player.swing();
+        }
+        self.local.swings += 1;
+        self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
+            output.push(0);
+            Ok(())
+        })
     }
 
     /// `AbstractContainerScreen.slotClicked` into the open menu: the player's
@@ -130,10 +115,7 @@ impl PlaySession {
         button: i32,
         kind: photon_game::menus::container::ClickType,
     ) -> Result<(), ConnectionError> {
-        let player = photon_game::menus::container::Player {
-            selected: self.status.selected_slot.clamp(0, 8) as usize,
-            infinite_materials: self.game_mode == photon_world::ClientPlayerGameMode::Creative,
-        };
+        let player = self.click_player();
         let opened = self
             .world
             .local_player()
@@ -155,7 +137,7 @@ impl PlaySession {
             if self.open_container_menu().is_none() {
                 return Ok(());
             }
-            let menu = self.open_menu.as_mut().expect("synced above");
+            let menu = self.menus.open_menu.as_mut().expect("synced above");
             let clicked = menu.handle_click(slot, button, kind, player);
             sounds = menu.sounds().to_vec();
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
@@ -165,13 +147,16 @@ impl PlaySession {
             let Some((slots, carried, state_id)) = self.world.local_player_menu() else {
                 return Ok(());
             };
-            self.container_menu.load(slots, carried, state_id);
-            self.container_menu.enchantments = self.enchantment_names();
-            self.container_menu.enchantment_traits = self.enchantment_traits.clone();
-            self.container_menu.lang = self.lang.clone();
-            let clicked = self.container_menu.handle_click(slot, button, kind, player);
-            sounds = self.container_menu.sounds().to_vec();
-            let menu = &self.container_menu;
+            self.menus.container_menu.load(slots, carried, state_id);
+            self.menus.container_menu.enchantments = self.enchantment_names();
+            self.menus.container_menu.enchantment_traits = self.menus.enchantment_traits.clone();
+            self.menus.container_menu.lang = self.social.lang.clone();
+            let clicked = self
+                .menus
+                .container_menu
+                .handle_click(slot, button, kind, player);
+            sounds = self.menus.container_menu.sounds().to_vec();
+            let menu = &self.menus.container_menu;
             self.world
                 .set_local_player_menu(&menu.slots, menu.carried.clone());
             clicked
@@ -180,15 +165,7 @@ impl PlaySession {
             self.play_bundle_sound(event);
         }
         for _ in 0..swings {
-            // `LocalPlayer.swing`: the arm, then the packet.
-            if let Some(player) = self.player.as_mut() {
-                player.swing();
-            }
-            self.swings += 1;
-            self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
-                output.push(0);
-                Ok(())
-            })?;
+            self.swing_hand()?;
         }
         self.send(PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID, |output| {
             output.extend_from_slice(&body);
@@ -207,15 +184,13 @@ impl PlaySession {
         let Some((slots, carried, state_id)) = self.world.local_player_menu() else {
             return Ok(());
         };
-        self.container_menu.load(slots, carried, state_id);
-        let player = photon_game::menus::container::Player {
-            selected: self.status.selected_slot.clamp(0, 8) as usize,
-            infinite_materials: self.game_mode == photon_world::ClientPlayerGameMode::Creative,
-        };
+        self.menus.container_menu.load(slots, carried, state_id);
+        let player = self.click_player();
         // `Player.canDropItems`: under the throttler's threshold.
-        let can_drop = self.drop_spam < 1280;
-        let effects = creative.slot_clicked(click, &mut self.container_menu, player, can_drop);
-        let menu = &self.container_menu;
+        let can_drop = self.local.drop_spam < 1280;
+        let effects =
+            creative.slot_clicked(click, &mut self.menus.container_menu, player, can_drop);
+        let menu = &self.menus.container_menu;
         self.world
             .set_local_player_menu(&menu.slots, menu.carried.clone());
         if !player.infinite_materials {
@@ -223,16 +198,7 @@ impl PlaySession {
         }
         for effect in effects {
             match effect {
-                Effect::Swing => {
-                    if let Some(player) = self.player.as_mut() {
-                        player.swing();
-                    }
-                    self.swings += 1;
-                    self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
-                        output.push(0);
-                        Ok(())
-                    })?;
-                }
+                Effect::Swing => self.swing_hand()?,
                 Effect::SetSlot(slot, stack) => {
                     self.send(
                         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
@@ -250,7 +216,7 @@ impl PlaySession {
                             Ok(())
                         },
                     )?;
-                    self.drop_spam += 20;
+                    self.local.drop_spam += 20;
                 }
             }
         }
@@ -273,7 +239,7 @@ impl PlaySession {
         if opened.is_some() {
             // `LocalPlayer.clientSideCloseContainer`: back to the player's menu.
             self.world.apply_local_player_container_close(id);
-            self.open_menu = None;
+            self.menus.open_menu = None;
             return Ok(());
         }
         if let Some((mut slots, carried, _)) = self.world.local_player_menu() {
@@ -285,7 +251,7 @@ impl PlaySession {
 
     /// The hands whose stack a use spent since the last call.
     pub fn take_items_used(&mut self) -> Vec<u8> {
-        self.game_mode_state.take_items_used()
+        self.local.game_mode_state.take_items_used()
     }
 
     /// Whether the server has opened a container this client has no menu for.
@@ -297,117 +263,6 @@ impl PlaySession {
                 self.menu_kind(container.container_id(), container.menu_type_id())
                     .is_none()
             })
-    }
-
-    /// The menu a container the server opened is: its type's, or the mount screen the server
-    /// opened for this container.
-    fn menu_kind(
-        &self,
-        container_id: i32,
-        menu_type_id: i32,
-    ) -> Option<photon_game::menus::container::MenuKind> {
-        use photon_game::menus::container::{MOUNT_MENU_TYPE, MenuKind};
-        if menu_type_id == MOUNT_MENU_TYPE {
-            return self
-                .mount
-                .as_ref()
-                .filter(|(id, ..)| *id == container_id)
-                .map(|(_, mount, _)| MenuKind::Mount(*mount));
-        }
-        MenuKind::from_menu_type(menu_type_id)
-    }
-
-    /// The menu an open screen is over: the container the server opened, or
-    /// the player's own.
-    pub fn active_menu(&mut self) -> &photon_game::menus::container::ContainerMenu {
-        if self.open_container_menu().is_some() {
-            return self.open_menu.as_ref().expect("synced above");
-        }
-        self.container_menu()
-    }
-
-    /// The menu of the container the server opened, as the client holds it
-    /// now; `None` until its contents have come.
-    pub fn open_container_menu(&mut self) -> Option<&photon_game::menus::container::ContainerMenu> {
-        let photon_world::OpenContainerMenu {
-            container_id,
-            menu_type_id,
-            slots,
-            carried,
-            state_id,
-        } = self.world.local_player_container_menu()?;
-        let mount = self
-            .mount
-            .clone()
-            .filter(|(id, ..)| *id == container_id)
-            .filter(|_| menu_type_id == photon_game::menus::container::MOUNT_MENU_TYPE);
-        let kind = self.menu_kind(container_id, menu_type_id)?;
-        match self.open_menu.as_mut() {
-            Some(menu) if menu.container_id == container_id && menu.kind == kind => {
-                menu.load(slots, carried, state_id);
-            }
-            _ => {
-                self.open_menu = Some(photon_game::menus::container::ContainerMenu::for_menu(
-                    kind,
-                    container_id,
-                    slots,
-                    carried,
-                    state_id,
-                ));
-            }
-        }
-        // What a furnace menu reads besides its slots.
-        let enchantments = self.enchantment_names();
-        if let Some(menu) = self.open_menu.as_mut() {
-            menu.accepted = menu
-                .kind
-                .input_sets()
-                .iter()
-                .map(|set| self.world.recipe_property_set(set))
-                .collect();
-            if menu.kind == photon_game::menus::container::MenuKind::Stonecutter {
-                menu.accepted = vec![std::sync::Arc::new(self.world.stonecutter_inputs())];
-                menu.options = menu
-                    .slots
-                    .first()
-                    .and_then(Option::as_ref)
-                    .map(|input| self.world.stonecutter_options(input.item_registry_id()))
-                    .unwrap_or_default();
-            }
-            if menu.kind == photon_game::menus::container::MenuKind::Loom {
-                let (patterns, layers) = Self::loom_patterns(&self.world, menu);
-                menu.patterns = patterns;
-                menu.banner_layers = layers;
-            }
-            menu.item_tags = self.world.block_state_registry().item_tags().clone();
-            menu.enchantments = enchantments;
-            menu.enchantment_traits = self.enchantment_traits.clone();
-            menu.lang = self.lang.clone();
-            if let Some((_, _, entity)) = &mount {
-                menu.mount = entity.clone();
-            }
-            menu.xp_level = self.status.experience_level;
-            if menu.kind == photon_game::menus::container::MenuKind::Merchant {
-                // The merchant's offers; the result is the client's own to make.
-                if let Some((_, state)) = self
-                    .merchant
-                    .as_ref()
-                    .filter(|(id, _)| *id == menu.container_id)
-                {
-                    menu.offers = std::sync::Arc::new(state.offers.clone());
-                    menu.trader = state.trader;
-                }
-                menu.update_sell_item();
-            }
-            if let Some(container) = self
-                .world
-                .local_player()
-                .and_then(|player| player.open_container())
-            {
-                menu.data = (0..10).map(|index| container.data(index)).collect();
-            }
-        }
-        self.open_menu.as_ref()
     }
 
     /// `MultiPlayerGameMode.handleInventoryButtonClick`: a button of the open
@@ -423,11 +278,12 @@ impl PlaySession {
         };
         // `StonecutterMenu.clickMenuButton`: the entry is chosen, and the
         // result, which only the server can make, is emptied.
-        let stonecutter = self
-            .open_menu
-            .as_ref()
-            .is_some_and(|menu| menu.kind == photon_game::menus::container::MenuKind::Stonecutter);
+        let stonecutter =
+            self.menus.open_menu.as_ref().is_some_and(|menu| {
+                menu.kind == photon_game::menus::container::MenuKind::Stonecutter
+            });
         let loom = self
+            .menus
             .open_menu
             .as_ref()
             .is_some_and(|menu| menu.kind == photon_game::menus::container::MenuKind::Loom);
@@ -483,6 +339,7 @@ impl PlaySession {
     pub fn rename_item(&mut self, name: &str) -> Result<(), ConnectionError> {
         // `AnvilScreen.onNameChanged`: the menu works its result out again.
         if let Some(menu) = self
+            .menus
             .open_menu
             .as_mut()
             .filter(|menu| menu.kind == photon_game::menus::container::MenuKind::Anvil)
@@ -500,6 +357,7 @@ impl PlaySession {
     /// in, and the server is told.
     pub fn select_trade(&mut self, trade: i32) -> Result<(), ConnectionError> {
         let Some(menu) = self
+            .menus
             .open_menu
             .as_mut()
             .filter(|menu| menu.kind == photon_game::menus::container::MenuKind::Merchant)
@@ -520,16 +378,16 @@ impl PlaySession {
 
     /// The breaking state, for drawing the crack and reporting.
     pub fn game_mode_state(&self) -> &photon_game::game_mode::GameMode {
-        &self.game_mode_state
+        &self.local.game_mode_state
     }
 
     /// The player's inventory menu as the client holds it now.
     pub fn container_menu(&mut self) -> &photon_game::menus::container::ContainerMenu {
         if let Some((slots, carried, state_id)) = self.world.local_player_menu() {
-            self.container_menu.load(slots, carried, state_id);
+            self.menus.container_menu.load(slots, carried, state_id);
         }
-        self.container_menu.item_tags = self.world.block_state_registry().item_tags().clone();
-        &self.container_menu
+        self.menus.container_menu.item_tags = self.world.block_state_registry().item_tags().clone();
+        &self.menus.container_menu
     }
 
     /// `BundleMouseActions.toggleSelectedBundleItem`: the bundle in a slot of the open menu
@@ -547,14 +405,14 @@ impl PlaySession {
             if self.open_container_menu().is_none() {
                 return Ok(());
             }
-            let menu = self.open_menu.as_mut().expect("synced above");
+            let menu = self.menus.open_menu.as_mut().expect("synced above");
             let changed = menu.select_bundle_item(index, selected);
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
             self.world.set_local_player_container_menu(&slots, carried);
             changed
         } else {
             self.container_menu();
-            let menu = &mut self.container_menu;
+            let menu = &mut self.menus.container_menu;
             let changed = menu.select_bundle_item(index, selected);
             let (slots, carried) = (menu.slots.clone(), menu.carried.clone());
             self.world.set_local_player_menu(&slots, carried);

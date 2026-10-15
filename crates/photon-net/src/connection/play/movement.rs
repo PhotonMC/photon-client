@@ -10,28 +10,28 @@ impl PlaySession {
         aim: photon_game::game_mode::Aim,
     ) -> Result<(), ConnectionError> {
         use photon_game::game_mode::{Context, Miner, Outgoing};
-        self.aimed_entity = match aim {
+        self.local.aimed_entity = match aim {
             photon_game::game_mode::Aim::Entity { id, .. } => Some(id),
             _ => None,
         };
         self.ensure_has_sent_carried_item()?;
-        let Some(player) = self.player.as_mut() else {
+        let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
-        let miner = Miner::of(&self.world, self.status.selected_slot);
+        let miner = Miner::of(&self.world, self.local.status.selected_slot);
         let mut ctx = Context {
             world: &mut self.world,
             player,
             miner: &miner,
-            mode: self.game_mode,
-            selected_slot: self.status.selected_slot,
-            cooldowns: &self.item_cooldowns,
+            mode: self.local.game_mode,
+            selected_slot: self.local.status.selected_slot,
+            cooldowns: &self.local.item_cooldowns,
         };
-        let sent = self.game_mode_state.keys_tick(&mut ctx, keys, aim);
+        let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {
             let id = match packet {
                 Outgoing::Swing { .. } => {
-                    self.swings += 1;
+                    self.local.swings += 1;
                     PLAY_SERVERBOUND_SWING_PACKET_ID
                 }
                 Outgoing::PlayerAction { x, y, z, .. } => {
@@ -134,7 +134,7 @@ impl PlaySession {
 
     /// The `PosRot` the player sends after a teleport: where it is now, in the air, free of walls.
     pub(super) fn send_player_pos_rot(&mut self) -> Result<(), ConnectionError> {
-        let Some(player) = self.player.as_ref() else {
+        let Some(player) = self.local.player.as_ref() else {
             return Ok(());
         };
         let position = player.position();
@@ -148,10 +148,10 @@ impl PlaySession {
     /// The level counts as loaded once the player has a position and the
     /// chunk under it has arrived; then the client says so and starts ticking.
     pub(super) fn maybe_finish_loading(&mut self) -> Result<(), ConnectionError> {
-        if self.loaded {
+        if self.local.loaded {
             return Ok(());
         }
-        let Some(player) = self.player.as_ref() else {
+        let Some(player) = self.local.player.as_ref() else {
             return Ok(());
         };
         let position = player.position();
@@ -161,7 +161,7 @@ impl PlaySession {
             return Ok(());
         }
         self.send(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, |_| Ok(()))?;
-        self.loaded = true;
+        self.local.loaded = true;
         Ok(())
     }
 
@@ -169,22 +169,25 @@ impl PlaySession {
     /// `setValuesFromPositionPacket` for the local player: a rider stays where its vehicle puts it.
     pub(super) fn place_player(&mut self, packet: &PlayerPositionPacket) {
         let passenger = self.world.local_player_is_passenger();
-        let current = self.player.as_ref().map(|player| {
+        let current = self.local.player.as_ref().map(|player| {
             let position = player.position();
             let (y_rot, x_rot) = player.rotation();
             (position.x, position.y, position.z, y_rot, x_rot)
         });
         let absolute = resolve_player_position(*packet, current);
         let position = Vec3::new(absolute.0, absolute.1, absolute.2);
-        let known_health = self.health_received.then_some(self.status.health);
-        let player = self.player.get_or_insert_with(|| {
+        let known_health = self
+            .local
+            .health_received
+            .then_some(self.local.status.health);
+        let player = self.local.player.get_or_insert_with(|| {
             let mut player = LocalPlayer::new(
-                self.player_id.unwrap_or(0),
+                self.local.player_id.unwrap_or(0),
                 position,
                 absolute.3,
                 absolute.4,
-                self.game_mode,
-                self.auto_jump,
+                self.local.game_mode,
+                self.link.auto_jump,
             );
             // A health update that came before the player did is its first.
             if let Some(health) = known_health {
@@ -192,7 +195,7 @@ impl PlaySession {
             }
             player
         });
-        if let Some(abilities) = self.abilities {
+        if let Some(abilities) = self.local.abilities {
             player.set_abilities(abilities);
         }
         let current_delta = player.delta_movement();
@@ -223,13 +226,13 @@ impl PlaySession {
 
     /// A death the death screen is yet to show: the server's message.
     pub fn take_death(&mut self) -> Option<photon_game::text::Component> {
-        self.death.take()
+        self.local.death.take()
     }
 
     /// Whether the server ended the game (`WIN_GAME`) since this was last asked: the credits are
     /// yet to be shown.
     pub fn take_win_game(&mut self) -> bool {
-        std::mem::take(&mut self.win_game)
+        std::mem::take(&mut self.local.win_game)
     }
 
     /// `LocalPlayer.respawn`: ask the server to bring the player back.
@@ -257,7 +260,7 @@ impl PlaySession {
             .and_then(|id| self.world.vehicle_view(id))
             .filter(|view| view.kind == photon_world::VehicleKind::Boat)
             .map(|view| view.y_rot);
-        if let Some(player) = self.player.as_mut() {
+        if let Some(player) = self.local.player.as_mut() {
             player.turn(y_rot_delta, x_rot_delta);
             if let Some(y_rot) = boat_y_rot {
                 player.clamp_in_boat(y_rot);
@@ -268,17 +271,17 @@ impl PlaySession {
     /// How many times the server has placed the player: once on joining,
     /// and once more for every movement it refused.
     pub fn teleports(&self) -> u32 {
-        self.teleports
+        self.local.teleports
     }
 
     /// `LocalPlayer.swing` with the main hand: the arm swings, and the
     /// server hears of it.
     pub fn swing(&mut self) -> Result<(), ConnectionError> {
-        let Some(player) = self.player.as_mut() else {
+        let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
         player.swing();
-        self.swings += 1;
+        self.local.swings += 1;
         self.send(PLAY_SERVERBOUND_SWING_PACKET_ID, |output| {
             wire::write_varint(0, output);
             Ok(())
@@ -287,22 +290,22 @@ impl PlaySession {
 
     /// How many swings the session has sent.
     pub fn swings(&self) -> u32 {
-        self.swings
+        self.local.swings
     }
 
     /// Select a hotbar slot, 0 to 8; the server hears of it next tick.
     pub fn select_slot(&mut self, slot: i32) {
         if (0..9).contains(&slot) {
-            self.status.selected_slot = slot;
+            self.local.status.selected_slot = slot;
         }
     }
 
     /// `MultiPlayerGameMode.ensureHasSentCarriedItem`: the server hears of
     /// a new hotbar slot before anything the slot's item does.
     pub(super) fn ensure_has_sent_carried_item(&mut self) -> Result<(), ConnectionError> {
-        if self.status.selected_slot != self.sent_slot {
-            self.sent_slot = self.status.selected_slot;
-            let slot = self.sent_slot as i16;
+        if self.local.status.selected_slot != self.local.sent_slot {
+            self.local.sent_slot = self.local.status.selected_slot;
+            let slot = self.local.sent_slot as i16;
             self.send(PLAY_SERVERBOUND_SET_CARRIED_ITEM_PACKET_ID, |output| {
                 output.extend_from_slice(&slot.to_be_bytes());
                 Ok(())

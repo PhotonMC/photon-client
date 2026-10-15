@@ -69,20 +69,20 @@ impl PlaySession {
 
     /// Whether the level is ready and the player is being ticked.
     pub fn is_loaded(&self) -> bool {
-        self.loaded
+        self.local.loaded
     }
 
     /// Sections whose drawing may have changed since the last call: their
     /// blocks, their light, or a neighbour they cull or shade against.
     pub fn take_dirty_sections(&mut self) -> Vec<(i32, i32, i32)> {
-        std::mem::take(&mut self.dirty_sections)
+        std::mem::take(&mut self.effects.dirty_sections)
             .into_iter()
             .collect()
     }
 
     /// Chunks the server unloaded since the last call.
     pub fn take_forgotten_chunks(&mut self) -> Vec<(i32, i32)> {
-        std::mem::take(&mut self.forgotten_chunks)
+        std::mem::take(&mut self.effects.forgotten_chunks)
     }
 
     pub(super) fn section_range(&self) -> std::ops::Range<i32> {
@@ -96,7 +96,8 @@ impl PlaySession {
         for section_y in self.section_range() {
             for dx in -1..=1 {
                 for dz in -1..=1 {
-                    self.dirty_sections
+                    self.effects
+                        .dirty_sections
                         .insert((chunk_x + dx, section_y, chunk_z + dz));
                 }
             }
@@ -107,7 +108,7 @@ impl PlaySession {
     /// and the engine run, and the sections whose light changed redraw.
     pub fn update_light(&mut self) {
         for section in self.world.update_light() {
-            self.dirty_sections.insert(section);
+            self.effects.dirty_sections.insert(section);
         }
     }
 
@@ -116,7 +117,7 @@ impl PlaySession {
         for dx in [-1, 0, 1] {
             for dy in [-1, 0, 1] {
                 for dz in [-1, 0, 1] {
-                    self.dirty_sections.insert((
+                    self.effects.dirty_sections.insert((
                         (x + dx).div_euclid(16),
                         (y + dy).div_euclid(16),
                         (z + dz).div_euclid(16),

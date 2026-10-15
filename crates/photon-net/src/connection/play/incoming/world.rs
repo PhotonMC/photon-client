@@ -167,7 +167,7 @@ impl ClientboundPacket for Explode {
         let Some((explosion, knockback)) = self.0 else {
             return Ok(());
         };
-        if let (Some((x, y, z)), Some(player)) = (knockback, session.player.as_mut()) {
+        if let (Some((x, y, z)), Some(player)) = (knockback, session.local.player.as_mut()) {
             player.add_delta_movement(photon_core::math::Vec3::new(x, y, z));
         }
         session.world.apply_explosion(explosion);
@@ -177,7 +177,7 @@ impl ClientboundPacket for Explode {
 
 impl ClientboundPacket for LevelParticlesPacket {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.level_particles.extend(self.0);
+        session.effects.level_particles.extend(self.0);
         Ok(())
     }
 }
@@ -188,7 +188,7 @@ fn decode_sound(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionEr
 
 impl ClientboundPacket for Sound {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.sounds.push(self.0);
+        session.effects.sounds.push(self.0);
         Ok(())
     }
 }
@@ -200,7 +200,7 @@ impl ClientboundPacket for SetTime {
         session.world.set_game_time(self.game_time as u64);
         session.tick_clocks(self.game_time);
         for (clock, total_ticks, partial_tick, rate) in self.clocks {
-            session.clocks.insert(
+            session.level_info.clocks.insert(
                 clock,
                 ClockState {
                     total_ticks,
@@ -226,7 +226,7 @@ fn decode_hud(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionErro
 
 impl ClientboundPacket for Hud {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.hud_events.push(self.0);
+        session.social.hud_events.push(self.0);
         Ok(())
     }
 }
@@ -246,7 +246,7 @@ fn decode_scoreboard(packet_id: i32, payload: &[u8]) -> Result<Incoming, Connect
 
 impl ClientboundPacket for Scoreboard {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.scoreboard.apply(self.0);
+        session.social.scoreboard.apply(self.0);
         Ok(())
     }
 }

@@ -111,7 +111,7 @@ impl ClientboundPacket for PlayerInfoUpdate {
 impl ClientboundPacket for PlayerInfoRemove {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         for id in self.0 {
-            session.player_infos.remove(&id);
+            session.social.player_infos.remove(&id);
         }
         Ok(())
     }
@@ -119,7 +119,7 @@ impl ClientboundPacket for PlayerInfoRemove {
 
 impl PlaySession {
     fn on_login(&mut self, login: LoginObservation) -> Result<(), ConnectionError> {
-        self.next_chat_index = 0;
+        self.social.next_chat_index = 0;
         self.world
             .set_server_simulation_distance(login.simulation_distance);
         let bounds = self.state.dimension_bounds(&login.spawn_info);
@@ -137,16 +137,16 @@ impl PlaySession {
             environment,
         );
         self.world.configure_chunk_cache(login.chunk_radius);
-        self.view_distance = login.chunk_radius;
-        self.dimension_type_id = login.spawn_info.dimension_type_id;
-        self.hashed_seed = login.spawn_info.seed;
+        self.level_info.view_distance = login.chunk_radius;
+        self.level_info.dimension_type_id = login.spawn_info.dimension_type_id;
+        self.level_info.hashed_seed = login.spawn_info.seed;
         self.world.set_local_player_id(login.player_id);
-        self.hardcore = login.hardcore;
-        self.show_death_screen = login.show_death_screen;
-        self.player_id = Some(login.player_id);
-        self.permission_level = 0;
-        self.game_mode = ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
-        self.previous_game_mode = login
+        self.local.hardcore = login.hardcore;
+        self.local.show_death_screen = login.show_death_screen;
+        self.local.player_id = Some(login.player_id);
+        self.local.permission_level = 0;
+        self.local.game_mode = ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
+        self.local.previous_game_mode = login
             .spawn_info
             .previous_game_type
             .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
@@ -158,8 +158,8 @@ impl PlaySession {
         (spawn_info, data_to_keep): (SpawnInfoObservation, u8),
     ) -> Result<(), ConnectionError> {
         // A new level starts dry; the server repeats its weather.
-        self.rain_level = 0.0;
-        self.thunder_level = 0.0;
+        self.level_info.rain_level = 0.0;
+        self.level_info.thunder_level = 0.0;
         self.world.set_weather(0.0, 0.0);
         let bounds = self.state.dimension_bounds(&spawn_info);
         let environment = self.state.dimension_environment(&spawn_info);
@@ -175,32 +175,32 @@ impl PlaySession {
             bounds,
             environment,
         );
-        self.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
-        self.previous_game_mode = spawn_info
+        self.local.game_mode = ClientPlayerGameMode::from_id(i32::from(spawn_info.game_type));
+        self.local.previous_game_mode = spawn_info
             .previous_game_type
             .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
         // The new player starts with an empty inventory; the server
         // sends it again.
         self.world.recreate_local_player(data_to_keep);
-        self.dimension_type_id = spawn_info.dimension_type_id;
-        self.hashed_seed = spawn_info.seed;
+        self.level_info.dimension_type_id = spawn_info.dimension_type_id;
+        self.level_info.hashed_seed = spawn_info.seed;
         // A respawn makes a new player that waits for its position.
-        self.player = None;
-        self.permission_level = 0;
-        self.loaded = false;
-        self.level_reset = true;
-        self.health_received = false;
+        self.local.player = None;
+        self.local.permission_level = 0;
+        self.local.loaded = false;
+        self.level_info.level_reset = true;
+        self.local.health_received = false;
         Ok(())
     }
 
     fn on_set_health(&mut self, packet: HealthObservation) -> Result<(), ConnectionError> {
-        self.health_received = true;
-        if let Some(player) = self.player.as_mut() {
+        self.local.health_received = true;
+        if let Some(player) = self.local.player.as_mut() {
             player.hurt_to(packet.health);
         }
-        self.status.health = packet.health;
-        self.status.food = packet.food;
-        self.status.saturation = packet.saturation;
+        self.local.status.health = packet.health;
+        self.local.status.food = packet.food;
+        self.local.status.saturation = packet.saturation;
         Ok(())
     }
 
@@ -208,9 +208,9 @@ impl PlaySession {
         &mut self,
         (id, message): (i32, photon_game::text::Component),
     ) -> Result<(), ConnectionError> {
-        if self.player_id == Some(id) {
-            if self.show_death_screen {
-                self.death = Some(message);
+        if self.local.player_id == Some(id) {
+            if self.local.show_death_screen {
+                self.local.death = Some(message);
             } else {
                 self.respawn()?;
             }
@@ -220,27 +220,31 @@ impl PlaySession {
 
     fn on_set_experience(&mut self, packet: SetExperience) -> Result<(), ConnectionError> {
         let progress = packet.progress;
-        if progress != self.status.experience_progress {
+        if progress != self.local.status.experience_progress {
             // `setExperienceDisplayStartTickToTickCount`: the first
             // change, the one a login brings, never shows.
-            let tick_count = self.player.as_ref().map_or(0, LocalPlayer::tick_count);
-            self.status.experience_display_start_tick =
-                if self.status.experience_display_start_tick == i32::MIN {
+            let tick_count = self
+                .local
+                .player
+                .as_ref()
+                .map_or(0, LocalPlayer::tick_count);
+            self.local.status.experience_display_start_tick =
+                if self.local.status.experience_display_start_tick == i32::MIN {
                     -i32::MAX
                 } else {
                     tick_count
                 };
         }
-        self.status.experience_progress = progress;
-        self.status.experience_level = packet.level;
-        self.status.total_experience = packet.total;
+        self.local.status.experience_progress = progress;
+        self.local.status.experience_level = packet.level;
+        self.local.status.total_experience = packet.total;
         Ok(())
     }
 
     fn on_set_held_slot(&mut self, slot: i32) -> Result<(), ConnectionError> {
         // `Inventory.isHotbarSlot`: anything else is ignored.
         if (0..9).contains(&slot) {
-            self.status.selected_slot = slot;
+            self.local.status.selected_slot = slot;
         }
         Ok(())
     }
@@ -249,31 +253,32 @@ impl PlaySession {
         // The weather events set the level's rain and thunder, both
         // the current and the previous tick's value, clamped.
         match event.event_id {
-            1 => self.rain_level = 0.0,
-            2 => self.rain_level = 1.0,
-            7 => self.rain_level = event.param.clamp(0.0, 1.0),
-            8 => self.thunder_level = event.param.clamp(0.0, 1.0),
+            1 => self.level_info.rain_level = 0.0,
+            2 => self.level_info.rain_level = 1.0,
+            7 => self.level_info.rain_level = event.param.clamp(0.0, 1.0),
+            8 => self.level_info.thunder_level = event.param.clamp(0.0, 1.0),
             _ => {}
         }
-        self.world.set_weather(self.rain_level, self.thunder_level);
+        self.world
+            .set_weather(self.level_info.rain_level, self.level_info.thunder_level);
         if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
-            self.show_death_screen = event.param == 0.0;
+            self.local.show_death_screen = event.param == 0.0;
         }
         if event.event_id == GAME_EVENT_ELDER_GUARDIAN_ID {
             self.show_elder_guardian(event.param as i32);
         }
         if event.event_id == GAME_EVENT_WIN_GAME_ID {
-            self.win_game = true;
+            self.local.win_game = true;
         }
         if event.event_id == GAME_EVENT_CHANGE_GAME_MODE_ID {
             // `MultiPlayerGameMode.setLocalMode`: a change keeps the mode left as the previous.
             let mode = ClientPlayerGameMode::from_game_event_param(event.param);
-            if mode != self.game_mode {
-                self.previous_game_mode = Some(self.game_mode);
+            if mode != self.local.game_mode {
+                self.local.previous_game_mode = Some(self.local.game_mode);
             }
-            self.game_mode = mode;
-            if let Some(player) = self.player.as_mut() {
-                player.set_game_mode(self.game_mode);
+            self.local.game_mode = mode;
+            if let Some(player) = self.local.player.as_mut() {
+                player.set_game_mode(self.local.game_mode);
             }
         }
         Ok(())
@@ -291,15 +296,15 @@ impl PlaySession {
             packet.flying_speed,
             packet.walking_speed,
         );
-        self.abilities = Some(abilities);
-        if let Some(player) = self.player.as_mut() {
+        self.local.abilities = Some(abilities);
+        if let Some(player) = self.local.player.as_mut() {
             player.set_abilities(abilities);
         }
         Ok(())
     }
 
     fn on_player_position(&mut self, packet: PlayerPositionPacket) -> Result<(), ConnectionError> {
-        self.teleports += 1;
+        self.local.teleports += 1;
         self.handle_player_position(packet)?;
         self.world.prediction_teleport();
         Ok(())
@@ -309,13 +314,14 @@ impl PlaySession {
     /// with a `param` of 1 the curse is heard.
     fn show_elder_guardian(&mut self, param: i32) {
         let (Some(player), Some(type_id)) = (
-            self.player.as_ref(),
+            self.local.player.as_ref(),
             photon_data::particle_type::id("elder_guardian"),
         ) else {
             return;
         };
         let at = player.position();
-        self.level_particles
+        self.effects
+            .level_particles
             .push(photon_world::particles::LevelParticles {
                 type_id,
                 data: photon_world::particles::ParticleData::Plain,

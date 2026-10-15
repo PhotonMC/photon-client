@@ -229,16 +229,16 @@ impl ClientboundPacket for RemoveMobEffect {
 
 impl PlaySession {
     fn on_add_entity(&mut self, packet: AddEntityObservation) -> Result<(), ConnectionError> {
-        if self.removed_player_vehicle == Some(packet.entity_id) {
-            self.removed_player_vehicle = None;
+        if self.local.removed_player_vehicle == Some(packet.entity_id) {
+            self.local.removed_player_vehicle = None;
         }
         entities::add(&mut self.world, &packet);
         // `handleAddEntity`: a player in the tab list is remembered as seen.
         let id = (packet.uuid.most, packet.uuid.least);
         if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id)
-            && let Some(info) = self.player_infos.get(&id)
+            && let Some(info) = self.social.player_infos.get(&id)
         {
-            self.seen_players.insert(id, info.name.clone());
+            self.social.seen_players.insert(id, info.name.clone());
         }
         Ok(())
     }
@@ -288,7 +288,7 @@ impl PlaySession {
         // remembered, for a teleport the server may still address to it.
         for &id in &packet.entity_ids {
             if self.world.has_entity(id) && self.world.entity_carries_local_player(id) {
-                self.removed_player_vehicle = Some(id);
+                self.local.removed_player_vehicle = Some(id);
             }
         }
         entities::remove(&mut self.world, &packet);
@@ -303,11 +303,11 @@ impl PlaySession {
         let taker = world
             .entities()
             .at(player_id)
-            .filter(|entity| Some(player_id) != self.player_id && entity.is_living_entity())
+            .filter(|entity| Some(player_id) != self.local.player_id && entity.is_living_entity())
             .map(|entity| (player_id, entity.position(), entity.eye_height()));
         let target_at = match taker {
             Some((_, position, eye_height)) => Some(pickup_target(position, eye_height)),
-            None => self.player.as_ref().map(|player| {
+            None => self.local.player.as_ref().map(|player| {
                 let at = player.position();
                 pickup_target((at.x, at.y, at.z), player.eye_height())
             }),
@@ -315,9 +315,10 @@ impl PlaySession {
         if let Some(target_at) = target_at
             && let Some(taken) =
                 self.world
-                    .take_item_entity(item_id, amount, &mut self.listener_random)
+                    .take_item_entity(item_id, amount, &mut self.effects.listener_random)
         {
-            self.item_pickups
+            self.effects
+                .item_pickups
                 .push(photon_world::particles::ItemPickup::new(
                     taken,
                     taker.map(|(id, ..)| id),
@@ -334,16 +335,17 @@ impl PlaySession {
         let was_aboard = self.world.ridden_vehicle_of_local_player();
         entities::passengers(&mut self.world, &packet);
         if self
+            .local
             .player_id
             .is_some_and(|id| packet.passenger_ids.contains(&id))
         {
-            self.removed_player_vehicle = None;
+            self.local.removed_player_vehicle = None;
         }
         // `handleSetEntityPassengersPacket`: boarding tells the rider how to get off.
         if was_aboard != Some(packet.vehicle_id)
             && self.world.ridden_vehicle_of_local_player() == Some(packet.vehicle_id)
         {
-            self.hud_events.push(HudEvent::ActionBar(
+            self.social.hud_events.push(HudEvent::ActionBar(
                 photon_game::text::Component::translatable_with(
                     "mount.onboard",
                     vec![photon_game::text::Component::translatable(
@@ -356,7 +358,7 @@ impl PlaySession {
         if was_aboard.is_none()
             && let Some(vehicle) = self.world.ridden_vehicle_of_local_player()
             && let Some(view) = self.world.vehicle_view(vehicle)
-            && let Some(player) = self.player.as_mut()
+            && let Some(player) = self.local.player.as_mut()
         {
             match view.kind {
                 photon_world::VehicleKind::Boat => player.face_boat(view.y_rot),
@@ -383,7 +385,7 @@ impl PlaySession {
         packet: EntityTeleportObservation,
     ) -> Result<(), ConnectionError> {
         if !self.world.has_entity(packet.entity_id)
-            && self.removed_player_vehicle == Some(packet.entity_id)
+            && self.local.removed_player_vehicle == Some(packet.entity_id)
         {
             // The vehicle is gone: the teleport meant for it moves the rider.
             self.move_former_rider(&packet)?;
@@ -417,13 +419,13 @@ impl PlaySession {
 
     fn on_entity_event(&mut self, (id, event): (i32, i8)) -> Result<(), ConnectionError> {
         // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
-        if self.player_id == Some(id) && (24..=28).contains(&event) {
-            self.permission_level = i32::from(event) - 24;
+        if self.local.player_id == Some(id) && (24..=28).contains(&event) {
+            self.local.permission_level = i32::from(event) - 24;
         }
         // `LivingEntity.handleEntityEvent`: 3 is a death.
         if event == 3 {
-            if self.player_id == Some(id)
-                && let Some(player) = self.player.as_mut()
+            if self.local.player_id == Some(id)
+                && let Some(player) = self.local.player.as_mut()
             {
                 player.handle_death_event();
             }
@@ -439,12 +441,12 @@ impl PlaySession {
         (id, damage_type): (i32, Option<usize>),
     ) -> Result<(), ConnectionError> {
         self.world.entities_mut().apply_damage_event(id);
-        if self.player_id == Some(id) {
+        if self.local.player_id == Some(id) {
             let name = damage_type
                 .and_then(|index| self.registry_names("minecraft:damage_type").get(index))
                 .cloned()
                 .unwrap_or_default();
-            if let Some(player) = self.player.as_mut() {
+            if let Some(player) = self.local.player.as_mut() {
                 player.handle_damage_event(&name);
             }
         }
@@ -453,8 +455,8 @@ impl PlaySession {
 
     fn on_hurt_animation(&mut self, (id, yaw): (i32, f32)) -> Result<(), ConnectionError> {
         self.world.entities_mut().apply_hurt_animation(id);
-        if self.player_id == Some(id)
-            && let Some(player) = self.player.as_mut()
+        if self.local.player_id == Some(id)
+            && let Some(player) = self.local.player.as_mut()
         {
             player.animate_hurt(yaw);
         }

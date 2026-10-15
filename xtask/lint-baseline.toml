@@ -4,7 +4,6 @@
 
 [file-lines]
 "crates/photon-dev/src/probe/mode.rs" = 2246
-"crates/photon-net/src/connection/play/containers.rs" = 508
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
@@ -235,7 +234,6 @@
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 16
 "crates/photon-net/src/connection/open.rs::configure_connection" = 24
-"crates/photon-net/src/connection/play/containers.rs::PlaySession::open_container_menu" = 11
 "crates/photon-net/src/connection/play/incoming/player.rs::PlaySession::on_game_event" = 11
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 17
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 12
@@ -686,10 +684,8 @@
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 69
 "crates/photon-net/src/connection/open.rs::configure_connection" = 198
 "crates/photon-net/src/connection/open.rs::log_in" = 94
-"crates/photon-net/src/connection/play/containers.rs::PlaySession::container_click" = 66
-"crates/photon-net/src/connection/play/containers.rs::PlaySession::open_container_menu" = 79
-"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::assemble" = 77
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 75
+"crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 61
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182

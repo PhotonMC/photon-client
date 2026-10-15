@@ -59,7 +59,7 @@ impl ClientboundPacket for UpdateTags {
 /// `handleDisconnect`.
 impl ClientboundPacket for Disconnect {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.disconnect = Some(self.0);
+        session.link.disconnect = Some(self.0);
         Ok(())
     }
 }

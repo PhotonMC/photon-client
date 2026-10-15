@@ -19,14 +19,14 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 
 impl ClientboundPacket for SystemChat {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.chat_events.push(self.0);
+        session.social.chat_events.push(self.0);
         Ok(())
     }
 }
 
 impl ClientboundPacket for DisguisedChat {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.chat_events.push(self.0);
+        session.social.chat_events.push(self.0);
         Ok(())
     }
 }
@@ -40,8 +40,11 @@ impl ClientboundPacket for PlayerChat {
 
 impl ClientboundPacket for DeleteChat {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        match session.signature_cache.unpack(&self.0) {
-            Some(signature) => session.chat_events.push(ChatEvent::Delete(signature)),
+        match session.social.signature_cache.unpack(&self.0) {
+            Some(signature) => session
+                .social
+                .chat_events
+                .push(ChatEvent::Delete(signature)),
             // The reference drops the connection over a number it does not know.
             None => session.warn("delete chat: unknown signature".to_owned()),
         }
@@ -51,7 +54,7 @@ impl ClientboundPacket for DeleteChat {
 
 impl ClientboundPacket for Suggestions {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.suggestions = Some(self.0);
+        session.social.suggestions = Some(self.0);
         Ok(())
     }
 }
@@ -59,14 +62,14 @@ impl ClientboundPacket for Suggestions {
 impl ClientboundPacket for Waypoint {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (operation, waypoint) = self.0;
-        session.waypoints.apply(operation, waypoint);
+        session.social.waypoints.apply(operation, waypoint);
         Ok(())
     }
 }
 
 impl ClientboundPacket for Commands {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.commands = Some(std::sync::Arc::new(self.0));
+        session.social.commands = Some(std::sync::Arc::new(self.0));
         Ok(())
     }
 }

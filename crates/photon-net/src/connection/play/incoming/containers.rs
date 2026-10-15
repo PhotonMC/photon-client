@@ -81,7 +81,7 @@ impl ClientboundPacket for ContainerSetContent {
 
 impl ClientboundPacket for MerchantOffers {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.merchant = Some(self.0);
+        session.menus.merchant = Some(self.0);
         Ok(())
     }
 }
@@ -101,9 +101,9 @@ impl ClientboundPacket for ContainerSetData {
 impl ClientboundPacket for Cooldown {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         if self.duration == 0 {
-            session.item_cooldowns.remove(&self.group);
+            session.local.item_cooldowns.remove(&self.group);
         } else {
-            session.item_cooldowns.add(self.group, self.duration);
+            session.local.item_cooldowns.add(self.group, self.duration);
         }
         Ok(())
     }
@@ -176,7 +176,7 @@ impl PlaySession {
         // The screen's title is the entity's name, which the packet does not carry.
         let key = format!("entity.minecraft.{}", name.trim_start_matches("minecraft:"));
         let title = photon_game::item::default_components::translatable(&key);
-        self.mount = Some((container_id, mount, state));
+        self.menus.mount = Some((container_id, mount, state));
         self.world
             .apply_local_player_open_menu(container_id, MOUNT_MENU_TYPE, &title);
     }
