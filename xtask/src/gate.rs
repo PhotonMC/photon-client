@@ -32,7 +32,7 @@ pub fn check(args: &[String]) -> Result<(), String> {
         ("cargo-machete", &["machete"][..]),
     ] {
         if process::available(tool) {
-            step(tool, process::run("cargo", args));
+            step(tool, process::run_outside_cargo("cargo", args));
         } else {
             println!("{tool}: not installed, skipped");
         }

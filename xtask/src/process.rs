@@ -32,6 +32,35 @@ pub fn run_with(program: &str, args: &[&str], env: &[(&str, String)]) -> Result<
     }
 }
 
+/// Like [`run`], without the variables `cargo run` sets for the running
+/// package: cargo plugins such as `cargo machete` read them as their own
+/// context and look at the wrong place.
+pub fn run_outside_cargo(program: &str, args: &[&str]) -> Result<(), String> {
+    const OWN: [&str; 5] = [
+        "CARGO_PKG_",
+        "CARGO_MANIFEST_",
+        "CARGO_BIN_",
+        "CARGO_CRATE_",
+        "CARGO_PRIMARY_",
+    ];
+    println!("$ {program} {}", args.join(" "));
+    let mut command = Command::new(program);
+    command.args(args).current_dir(root());
+    for (key, _) in std::env::vars() {
+        if OWN.iter().any(|prefix| key.starts_with(prefix)) {
+            command.env_remove(key);
+        }
+    }
+    let status = command
+        .status()
+        .map_err(|error| format!("cannot start `{program}`: {error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("`{program} {}` failed ({status})", args.join(" ")))
+    }
+}
+
 /// Runs a command in the repository root and returns its standard output.
 pub fn output(program: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new(program)
