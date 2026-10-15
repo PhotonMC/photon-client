@@ -28,6 +28,8 @@ mod border;
 pub(crate) use border::*;
 mod chat;
 pub use chat::*;
+mod clientbound;
+pub(crate) use clientbound::*;
 mod chunk;
 pub use chunk::*;
 mod commands;

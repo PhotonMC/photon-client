@@ -40,3 +40,58 @@ pub(crate) fn parse_set_border_lerp_size_packet(
     let time = photon_core::wire::read_varlong(input).map_err(|_| ConnectionError::Codec(NAME))?;
     Ok((old_size, new_size, time))
 }
+
+/// `ClientboundSetBorderCenterPacket`.
+pub(crate) struct SetBorderCenter {
+    pub x: f64,
+    pub z: f64,
+}
+
+impl Decode for SetBorderCenter {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        const NAME: &str = "set border center";
+        let mut input = payload;
+        let x = read_f64(&mut input, NAME)?;
+        let z = read_f64(&mut input, NAME)?;
+        Ok(Self { x, z })
+    }
+}
+
+/// `ClientboundSetBorderSizePacket`.
+pub(crate) struct SetBorderSize {
+    pub size: f64,
+}
+
+impl Decode for SetBorderSize {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let size = read_f64(&mut input, "set border size")?;
+        Ok(Self { size })
+    }
+}
+
+/// `ClientboundSetBorderWarningDelayPacket`: the warning's time, in seconds.
+pub(crate) struct SetBorderWarningDelay {
+    pub time: i32,
+}
+
+impl Decode for SetBorderWarningDelay {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let time = read_varint(&mut input, "set border warning delay")?;
+        Ok(Self { time })
+    }
+}
+
+/// `ClientboundSetBorderWarningDistancePacket`: the warning's distance, in blocks.
+pub(crate) struct SetBorderWarningDistance {
+    pub blocks: i32,
+}
+
+impl Decode for SetBorderWarningDistance {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let blocks = read_varint(&mut input, "set border warning distance")?;
+        Ok(Self { blocks })
+    }
+}

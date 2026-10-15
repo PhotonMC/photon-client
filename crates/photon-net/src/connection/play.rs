@@ -69,34 +69,11 @@ pub(super) const PLAY_SERVERBOUND_PLAYER_COMMAND_PACKET_ID: i32 = 42;
 
 pub(super) const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 
-/// A packet as the reader thread hands it over. Chunk and light packets,
-/// which are the heavy ones to parse, arrive already parsed; the order the
-/// packets came in is kept, so an error surfaces where it always did.
-pub(super) enum Incoming {
-    Raw(Vec<u8>),
-    Chunk(Box<ChunkPacketObservation>),
-    Light(Box<LightUpdateObservation>),
-}
-
-/// Parse the packets worth parsing off the game's thread.
-pub(super) fn classify(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
-    let (packet_id, payload) = split_packet(&body)?;
-    match packet_id {
-        PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-            Ok(Incoming::Chunk(Box::new(parse_chunk_packet(payload)?)))
-        }
-        PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => Ok(Incoming::Light(Box::new(
-            parse_light_update_packet(payload)?,
-        ))),
-        _ => Ok(Incoming::Raw(body)),
-    }
-}
-
 /// A connection in the play phase with its world and local player.
 pub struct PlaySession {
     pub(super) writer: TcpStream,
     pub(super) compression_threshold: Option<usize>,
-    pub(super) incoming: Receiver<Result<Incoming, ConnectionError>>,
+    pub(super) incoming: Receiver<Result<ClientboundPlay, ConnectionError>>,
     pub(super) trace: PlayConnectionTrace,
     pub(super) player_id: Option<i32>,
     pub(super) game_mode: ClientPlayerGameMode,
@@ -338,8 +315,8 @@ mod tests {
     fn the_session_keeps_the_entities_the_server_adds_moves_and_removes() {
         let (mut session, _far_end) = detached();
         assert_eq!(session.entity_count(), 0);
-        session.handle(&add_entity(7, 8.0)).unwrap();
-        session.handle(&add_entity(8, 9.0)).unwrap();
+        session.handle_bytes(&add_entity(7, 8.0)).unwrap();
+        session.handle_bytes(&add_entity(8, 9.0)).unwrap();
         assert_eq!(session.entity_count(), 2);
         // A step of an entity that is there moves it; of one that is not, nothing.
         let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
@@ -348,17 +325,17 @@ mod tests {
             step.extend(delta.to_be_bytes());
         }
         step.push(1);
-        session.handle(&step).unwrap();
+        session.handle_bytes(&step).unwrap();
         let moved = session.world().entities().at(7).unwrap().position();
         assert!((moved.0 - 9.0).abs() < 1e-9, "{moved:?}");
         // An entity packet that does not parse leaves the session alone.
         let mut broken = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
         broken.push(7);
-        session.handle(&broken).unwrap();
+        session.handle_bytes(&broken).unwrap();
         let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
         remove.extend(varint(1));
         remove.extend(varint(7));
-        session.handle(&remove).unwrap();
+        session.handle_bytes(&remove).unwrap();
         assert_eq!(session.entity_count(), 1);
         assert!(session.world().entities().at(7).is_none());
     }
@@ -367,14 +344,16 @@ mod tests {
     fn a_client_tick_moves_the_entities_on() {
         let (mut session, _far_end) = detached();
         // A player entity ticks wherever it is; others wait for their chunk.
-        session.handle(&add_entity_of_type(7, 156, 8.0)).unwrap();
+        session
+            .handle_bytes(&add_entity_of_type(7, 156, 8.0))
+            .unwrap();
         let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
         step.extend(varint(7));
         for delta in [4096_i16, 0, 0] {
             step.extend(delta.to_be_bytes());
         }
         step.push(1);
-        session.handle(&step).unwrap();
+        session.handle_bytes(&step).unwrap();
         let before = session.world().entities().at(7).unwrap().tick_count();
         session.tick(Input::EMPTY).unwrap();
         session.tick(Input::EMPTY).unwrap();
@@ -404,15 +383,17 @@ mod tests {
             session.auto_jump,
         ));
         let minecart = photon_data::entity_type::id("minecraft:minecart").unwrap() as u32;
-        session.handle(&add_entity_of_type(1, 156, 8.0)).unwrap();
         session
-            .handle(&add_entity_of_type(7, minecart, 8.0))
+            .handle_bytes(&add_entity_of_type(1, 156, 8.0))
+            .unwrap();
+        session
+            .handle_bytes(&add_entity_of_type(7, minecart, 8.0))
             .unwrap();
         let mut passengers = varint(PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID as u32);
         passengers.extend(varint(7));
         passengers.extend(varint(1));
         passengers.extend(varint(1));
-        session.handle(&passengers).unwrap();
+        session.handle_bytes(&passengers).unwrap();
         assert_eq!(session.world().ridden_vehicle_of_local_player(), Some(7));
         assert!(matches!(
             session.drain_hud().as_slice(),
@@ -425,7 +406,7 @@ mod tests {
         let mut remove = varint(PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID as u32);
         remove.extend(varint(1));
         remove.extend(varint(7));
-        session.handle(&remove).unwrap();
+        session.handle_bytes(&remove).unwrap();
         assert_eq!(session.removed_player_vehicle, Some(7));
         let mut teleport = varint(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID as u32);
         teleport.extend(varint(7));
@@ -437,13 +418,13 @@ mod tests {
         }
         teleport.extend(0_i32.to_be_bytes());
         teleport.push(0);
-        session.handle(&teleport).unwrap();
+        session.handle_bytes(&teleport).unwrap();
         let player = session.player.as_ref().unwrap();
         let at = player.position();
         assert_eq!((at.x, at.y, at.z), (20.0, 70.0, -4.0));
         // Boarding again forgets the minecart that went.
         session
-            .handle(&add_entity_of_type(7, minecart, 8.0))
+            .handle_bytes(&add_entity_of_type(7, minecart, 8.0))
             .unwrap();
         assert_eq!(session.removed_player_vehicle, None);
     }

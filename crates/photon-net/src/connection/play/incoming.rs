@@ -10,21 +10,63 @@ mod recipes;
 mod world;
 
 impl PlaySession {
-    /// A packet from the reader thread: the heavy ones arrive parsed.
-    pub(super) fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
+    /// A packet from the reader thread, applied to the client's state.
+    pub(super) fn handle_incoming(
+        &mut self,
+        packet: ClientboundPlay,
+    ) -> Result<(), ConnectionError> {
         match packet {
-            Incoming::Raw(body) => self.handle(&body),
-            Incoming::Chunk(chunk) => {
+            ClientboundPlay::Raw(body) => return self.handle(&body),
+            // These two never ended a packet by checking whether loading is done.
+            ClientboundPlay::Chunk(chunk) => {
                 self.apply_chunk(&chunk);
-                Ok(())
+                return Ok(());
             }
-            Incoming::Light(update) => {
+            ClientboundPlay::Light(update) => {
                 self.apply_light_update(&update);
-                Ok(())
+                return Ok(());
+            }
+            ClientboundPlay::InitializeBorder(packet) => {
+                self.trace.world.apply_world_border_initialize(packet);
+            }
+            ClientboundPlay::SetBorderCenter(packet) => {
+                self.trace
+                    .world
+                    .apply_world_border_center(packet.x, packet.z);
+            }
+            ClientboundPlay::SetBorderLerpSize {
+                old_size,
+                new_size,
+                time,
+            } => {
+                self.trace
+                    .world
+                    .apply_world_border_lerp_size(old_size, new_size, time);
+            }
+            ClientboundPlay::SetBorderSize(packet) => {
+                self.trace.world.apply_world_border_size(packet.size);
+            }
+            ClientboundPlay::SetBorderWarningDelay(packet) => {
+                self.trace
+                    .world
+                    .apply_world_border_warning_time(packet.time);
+            }
+            ClientboundPlay::SetBorderWarningDistance(packet) => {
+                self.trace
+                    .world
+                    .apply_world_border_warning_blocks(packet.blocks);
             }
         }
+        self.maybe_finish_loading()
     }
 
+    /// A packet's bytes, parsed and applied: the way a test hands one over.
+    #[cfg(test)]
+    pub(super) fn handle_bytes(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
+        self.handle_incoming(ClientboundPlay::decode(body.to_vec())?)
+    }
+
+    /// A packet of a family that is not typed yet, parsed where it is handled.
     pub(super) fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {
@@ -121,18 +163,6 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => self.on_block_entity_data(payload)?,
             PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => self.on_block_event(payload)?,
-            PLAY_CLIENTBOUND_INITIALIZE_BORDER_PACKET_ID => self.on_initialize_border(payload)?,
-            PLAY_CLIENTBOUND_SET_BORDER_CENTER_PACKET_ID => self.on_set_border_center(payload)?,
-            PLAY_CLIENTBOUND_SET_BORDER_LERP_SIZE_PACKET_ID => {
-                self.on_set_border_lerp_size(payload)?
-            }
-            PLAY_CLIENTBOUND_SET_BORDER_SIZE_PACKET_ID => self.on_set_border_size(payload)?,
-            PLAY_CLIENTBOUND_SET_BORDER_WARNING_DELAY_PACKET_ID => {
-                self.on_set_border_warning_delay(payload)?
-            }
-            PLAY_CLIENTBOUND_SET_BORDER_WARNING_DISTANCE_PACKET_ID => {
-                self.on_set_border_warning_distance(payload)?
-            }
             PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID => self.on_merchant_offers(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID => self.on_container_set_data(payload)?,
             PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => self.on_system_chat(payload)?,

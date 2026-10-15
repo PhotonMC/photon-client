@@ -237,58 +237,6 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_initialize_border(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = parse_initialize_border_packet(payload)?;
-        self.trace.world.apply_world_border_initialize(packet);
-        Ok(())
-    }
-
-    pub(super) fn on_set_border_center(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let x = read_f64(&mut input, "set border center")?;
-        let z = read_f64(&mut input, "set border center")?;
-        self.trace.world.apply_world_border_center(x, z);
-        Ok(())
-    }
-
-    pub(super) fn on_set_border_lerp_size(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let (old_size, new_size, time) = parse_set_border_lerp_size_packet(payload)?;
-        self.trace
-            .world
-            .apply_world_border_lerp_size(old_size, new_size, time);
-        Ok(())
-    }
-
-    pub(super) fn on_set_border_size(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let size = read_f64(&mut input, "set border size")?;
-        self.trace.world.apply_world_border_size(size);
-        Ok(())
-    }
-
-    pub(super) fn on_set_border_warning_delay(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let time = read_varint(&mut input, "set border warning delay")?;
-        self.trace.world.apply_world_border_warning_time(time);
-        Ok(())
-    }
-
-    pub(super) fn on_set_border_warning_distance(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let blocks = read_varint(&mut input, "set border warning distance")?;
-        self.trace.world.apply_world_border_warning_blocks(blocks);
-        Ok(())
-    }
-
     pub(super) fn on_hud(&mut self, payload: &[u8], packet_id: i32) -> Result<(), ConnectionError> {
         match parse_hud_packet(packet_id, payload) {
             Ok(Some(event)) => self.hud_events.push(event),
