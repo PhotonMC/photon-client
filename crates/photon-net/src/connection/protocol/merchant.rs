@@ -90,3 +90,8 @@ pub(crate) fn parse_merchant_offers_packet(
         },
     ))
 }
+
+wrapped_packet!(
+    /// `ClientboundMerchantOffersPacket`: the container, and what the trader offers.
+    MerchantOffers((i32, photon_game::menus::merchant::MerchantState)) = parse_merchant_offers_packet
+);

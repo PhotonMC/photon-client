@@ -103,3 +103,14 @@ pub enum InfoAction {
 
 /// A player's id and what a player info packet does to it.
 pub type PlayerActions = ((u64, u64), Vec<InfoAction>);
+
+wrapped_packet!(
+    /// `ClientboundPlayerInfoUpdatePacket`.
+    PlayerInfoUpdate(Vec<PlayerActions>) = parse_player_info_update,
+    OnError::Warn("player info")
+);
+wrapped_packet!(
+    /// `ClientboundPlayerInfoRemovePacket`: the profile ids that leave the tab list.
+    PlayerInfoRemove(Vec<(u64, u64)>) = parse_player_info_remove,
+    OnError::Warn("player info remove")
+);

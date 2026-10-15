@@ -304,3 +304,60 @@ pub(super) fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation
         sea_level,
     })
 }
+
+wrapped_packet!(
+    /// `ClientboundLoginPacket`.
+    Login(LoginObservation) = parse_login_packet
+);
+wrapped_packet!(
+    /// `ClientboundRespawnPacket`: where the player respawns, and what it keeps.
+    Respawn((SpawnInfoObservation, u8)) = parse_respawn_packet
+);
+wrapped_packet!(
+    /// `ClientboundSetHealthPacket`.
+    SetHealth(HealthObservation) = parse_set_health_packet
+);
+wrapped_packet!(
+    /// `ClientboundPlayerCombatKillPacket`: who died, and the message of the death.
+    PlayerCombatKill((i32, photon_game::text::Component)) = parse_player_combat_kill_packet
+);
+wrapped_packet!(
+    /// `ClientboundGameEventPacket`.
+    GameEvent(GameEventPacket) = parse_game_event_packet
+);
+wrapped_packet!(
+    /// `ClientboundPlayerAbilitiesPacket`.
+    PlayerAbilities(PlayerAbilitiesPacket) = parse_player_abilities_packet
+);
+wrapped_packet!(
+    /// `ClientboundPlayerPositionPacket`.
+    PlayerPosition(PlayerPositionPacket) = parse_player_position_packet
+);
+
+/// `ClientboundSetExperiencePacket`.
+pub(crate) struct SetExperience {
+    pub progress: f32,
+    pub level: i32,
+    pub total: i32,
+}
+
+impl Decode for SetExperience {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        Ok(Self {
+            progress: read_f32(&mut input, "float")?,
+            level: read_varint(&mut input, "experience level")?,
+            total: read_varint(&mut input, "total experience")?,
+        })
+    }
+}
+
+/// `ClientboundSetHeldSlotPacket`.
+pub(crate) struct SetHeldSlot(pub i32);
+
+impl Decode for SetHeldSlot {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        read_varint(&mut input, "held slot").map(Self)
+    }
+}

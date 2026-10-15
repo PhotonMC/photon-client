@@ -1,8 +1,124 @@
 use super::*;
 
+/// The packets of this family, by packet id.
+pub(super) const DECODERS: &[(i32, Decoder)] = &[
+    (PLAY_CLIENTBOUND_LOGIN_PACKET_ID, typed::<Login>),
+    (PLAY_CLIENTBOUND_RESPAWN_PACKET_ID, typed::<Respawn>),
+    (PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID, typed::<SetHealth>),
+    (
+        PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID,
+        typed::<PlayerCombatKill>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID,
+        typed::<SetExperience>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID,
+        typed::<SetHeldSlot>,
+    ),
+    (PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID, typed::<GameEvent>),
+    (
+        PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID,
+        typed::<PlayerAbilities>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID,
+        typed::<PlayerPosition>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID,
+        typed::<PlayerInfoUpdate>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID,
+        typed::<PlayerInfoRemove>,
+    ),
+];
+
+/// `handleLogin`.
+impl ClientboundPacket for Login {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_login(self.0)
+    }
+}
+
+/// `handleRespawn`.
+impl ClientboundPacket for Respawn {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_respawn(self.0)
+    }
+}
+
+/// `handleSetHealth`.
+impl ClientboundPacket for SetHealth {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_set_health(self.0)
+    }
+}
+
+/// `handlePlayerCombatKill`.
+impl ClientboundPacket for PlayerCombatKill {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_player_combat_kill(self.0)
+    }
+}
+
+/// `handleSetExperience`.
+impl ClientboundPacket for SetExperience {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_set_experience(*self)
+    }
+}
+
+/// `handleSetHeldSlot`.
+impl ClientboundPacket for SetHeldSlot {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_set_held_slot(self.0)
+    }
+}
+
+/// `handleGameEvent`.
+impl ClientboundPacket for GameEvent {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_game_event(self.0)
+    }
+}
+
+/// `handlePlayerAbilities`.
+impl ClientboundPacket for PlayerAbilities {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_player_abilities(self.0)
+    }
+}
+
+/// `handleMovePlayer`.
+impl ClientboundPacket for PlayerPosition {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_player_position(self.0)
+    }
+}
+
+impl ClientboundPacket for PlayerInfoUpdate {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        for (id, actions) in self.0 {
+            session.apply_player_info(id, actions);
+        }
+        Ok(())
+    }
+}
+
+impl ClientboundPacket for PlayerInfoRemove {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        for id in self.0 {
+            session.player_infos.remove(&id);
+        }
+        Ok(())
+    }
+}
+
 impl PlaySession {
-    pub(super) fn on_login(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let login = parse_login_packet(payload)?;
+    fn on_login(&mut self, login: LoginObservation) -> Result<(), ConnectionError> {
         self.next_chat_index = 0;
         self.trace
             .world
@@ -38,8 +154,10 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_respawn(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let (spawn_info, data_to_keep) = parse_respawn_packet(payload)?;
+    fn on_respawn(
+        &mut self,
+        (spawn_info, data_to_keep): (SpawnInfoObservation, u8),
+    ) -> Result<(), ConnectionError> {
         // A new level starts dry; the server repeats its weather.
         self.rain_level = 0.0;
         self.thunder_level = 0.0;
@@ -76,8 +194,7 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_set_health(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = parse_set_health_packet(payload)?;
+    fn on_set_health(&mut self, packet: HealthObservation) -> Result<(), ConnectionError> {
         self.health_received = true;
         if let Some(player) = self.player.as_mut() {
             player.hurt_to(packet.health);
@@ -88,8 +205,10 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_player_combat_kill(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let (id, message) = parse_player_combat_kill_packet(payload)?;
+    fn on_player_combat_kill(
+        &mut self,
+        (id, message): (i32, photon_game::text::Component),
+    ) -> Result<(), ConnectionError> {
         if self.player_id == Some(id) {
             if self.show_death_screen {
                 self.death = Some(message);
@@ -100,9 +219,8 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_set_experience(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let progress = read_f32(&mut input)?;
+    fn on_set_experience(&mut self, packet: SetExperience) -> Result<(), ConnectionError> {
+        let progress = packet.progress;
         if progress != self.status.experience_progress {
             // `setExperienceDisplayStartTickToTickCount`: the first
             // change, the one a login brings, never shows.
@@ -115,14 +233,12 @@ impl PlaySession {
                 };
         }
         self.status.experience_progress = progress;
-        self.status.experience_level = read_varint(&mut input, "experience level")?;
-        self.status.total_experience = read_varint(&mut input, "total experience")?;
+        self.status.experience_level = packet.level;
+        self.status.total_experience = packet.total;
         Ok(())
     }
 
-    pub(super) fn on_set_held_slot(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let slot = read_varint(&mut input, "held slot")?;
+    fn on_set_held_slot(&mut self, slot: i32) -> Result<(), ConnectionError> {
         // `Inventory.isHotbarSlot`: anything else is ignored.
         if (0..9).contains(&slot) {
             self.status.selected_slot = slot;
@@ -130,8 +246,7 @@ impl PlaySession {
         Ok(())
     }
 
-    pub(super) fn on_game_event(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let event = parse_game_event_packet(payload)?;
+    fn on_game_event(&mut self, event: GameEventPacket) -> Result<(), ConnectionError> {
         // The weather events set the level's rain and thunder, both
         // the current and the previous tick's value, clamped.
         match event.event_id {
@@ -164,6 +279,32 @@ impl PlaySession {
                 player.set_game_mode(self.game_mode);
             }
         }
+        Ok(())
+    }
+
+    fn on_player_abilities(
+        &mut self,
+        packet: PlayerAbilitiesPacket,
+    ) -> Result<(), ConnectionError> {
+        let abilities = ClientPlayerAbilities::new(
+            packet.invulnerable,
+            packet.flying,
+            packet.can_fly,
+            packet.can_instabuild,
+            packet.flying_speed,
+            packet.walking_speed,
+        );
+        self.abilities = Some(abilities);
+        if let Some(player) = self.player.as_mut() {
+            player.set_abilities(abilities);
+        }
+        Ok(())
+    }
+
+    fn on_player_position(&mut self, packet: PlayerPositionPacket) -> Result<(), ConnectionError> {
+        self.teleports += 1;
+        self.handle_player_position(packet)?;
+        self.trace.world.prediction_teleport();
         Ok(())
     }
 
@@ -200,54 +341,5 @@ impl PlaySession {
                     position: (at.x, at.y, at.z),
                 });
         }
-    }
-
-    pub(super) fn on_player_abilities(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = parse_player_abilities_packet(payload)?;
-        let abilities = ClientPlayerAbilities::new(
-            packet.invulnerable,
-            packet.flying,
-            packet.can_fly,
-            packet.can_instabuild,
-            packet.flying_speed,
-            packet.walking_speed,
-        );
-        self.abilities = Some(abilities);
-        if let Some(player) = self.player.as_mut() {
-            player.set_abilities(abilities);
-        }
-        Ok(())
-    }
-
-    pub(super) fn on_player_position(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = parse_player_position_packet(payload)?;
-        self.teleports += 1;
-        self.handle_player_position(packet)?;
-        self.trace.world.prediction_teleport();
-        Ok(())
-    }
-
-    pub(super) fn on_player_info_update(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_player_info_update(payload) {
-            Ok(entries) => {
-                for (id, actions) in entries {
-                    self.apply_player_info(id, actions);
-                }
-            }
-            Err(error) => self.warn(format!("player info: {error:?}")),
-        }
-        Ok(())
-    }
-
-    pub(super) fn on_player_info_remove(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_player_info_remove(payload) {
-            Ok(ids) => {
-                for id in ids {
-                    self.player_infos.remove(&id);
-                }
-            }
-            Err(error) => self.warn(format!("player info remove: {error:?}")),
-        }
-        Ok(())
     }
 }

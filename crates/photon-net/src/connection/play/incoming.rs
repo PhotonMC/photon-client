@@ -39,6 +39,8 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             connection::DECODERS,
             chat::DECODERS,
             recipes::DECODERS,
+            player::DECODERS,
+            containers::DECODERS,
         ]
         .concat()
         .into_iter()
@@ -128,7 +130,6 @@ impl PlaySession {
     pub(super) fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
         let (packet_id, payload) = split_packet(body)?;
         match packet_id {
-            PLAY_CLIENTBOUND_LOGIN_PACKET_ID => self.on_login(payload)?,
             PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID => self.reconfigure()?,
             PLAY_CLIENTBOUND_TRANSFER_PACKET_ID => self.transfer(payload)?,
             PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID => self.on_resource_pack_push(payload)?,
@@ -168,7 +169,6 @@ impl PlaySession {
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => self.on_entity_event(payload)?,
             PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => self.on_damage_event(payload)?,
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => self.on_hurt_animation(payload)?,
-            PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => self.on_respawn(payload)?,
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => self.on_forget_level_chunk(payload)?,
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => self.on_block_update(payload)?,
             PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID => {
@@ -188,34 +188,19 @@ impl PlaySession {
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => self.on_update_attributes(payload)?,
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => self.on_update_mob_effect(payload)?,
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => self.on_remove_mob_effect(payload)?,
-            PLAY_CLIENTBOUND_SET_HEALTH_PACKET_ID => self.on_set_health(payload)?,
             PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID => self.on_level_event(payload)?,
             PLAY_CLIENTBOUND_EXPLODE_PACKET_ID => self.on_explode(payload)?,
             PLAY_CLIENTBOUND_LEVEL_PARTICLES_PACKET_ID => self.on_level_particles(payload)?,
             PLAY_CLIENTBOUND_SOUND_PACKET_ID
             | PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID
             | PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID => self.on_sound(payload, packet_id)?,
-            PLAY_CLIENTBOUND_PLAYER_COMBAT_KILL_PACKET_ID => self.on_player_combat_kill(payload)?,
-            PLAY_CLIENTBOUND_SET_EXPERIENCE_PACKET_ID => self.on_set_experience(payload)?,
-            PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID => self.on_set_held_slot(payload)?,
-            PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID => self.on_game_event(payload)?,
-            PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID => self.on_player_abilities(payload)?,
-            PLAY_CLIENTBOUND_PLAYER_POSITION_PACKET_ID => self.on_player_position(payload)?,
             PLAY_CLIENTBOUND_SET_TIME_PACKET_ID => self.on_set_time(payload)?,
             PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => self.on_block_changed_ack(payload)?,
             PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => self.on_block_destruction(payload)?,
-            PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => self.on_open_screen(payload)?,
-            PLAY_CLIENTBOUND_MOUNT_SCREEN_OPEN_PACKET_ID => self.on_mount_screen_open(payload)?,
             PLAY_CLIENTBOUND_OPEN_SIGN_EDITOR_PACKET_ID => self.on_open_sign_editor(payload)?,
             PLAY_CLIENTBOUND_OPEN_BOOK_PACKET_ID => self.on_open_book(payload)?,
-            PLAY_CLIENTBOUND_CONTAINER_CLOSE_PACKET_ID => self.on_container_close(payload)?,
-            PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
-                self.on_container_set_content(payload)?
-            }
             PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => self.on_block_entity_data(payload)?,
             PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => self.on_block_event(payload)?,
-            PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID => self.on_merchant_offers(payload)?,
-            PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID => self.on_container_set_data(payload)?,
             PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID
@@ -229,14 +214,6 @@ impl PlaySession {
             | PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID
             | PLAY_CLIENTBOUND_SET_PLAYER_TEAM_PACKET_ID => {
                 self.on_scoreboard(payload, packet_id)?
-            }
-            PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID => self.on_player_info_update(payload)?,
-            PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID => self.on_player_info_remove(payload)?,
-            PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => self.on_container_set_slot(payload)?,
-            PLAY_CLIENTBOUND_COOLDOWN_PACKET_ID => self.on_cooldown(payload)?,
-            PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => self.on_set_cursor_item(payload)?,
-            PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
-                self.on_set_player_inventory(payload)?
             }
             _ => {}
         }

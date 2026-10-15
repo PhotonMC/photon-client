@@ -327,3 +327,78 @@ impl ParsedItemStackObservation {
         )
     }
 }
+
+wrapped_packet!(
+    /// `ClientboundOpenScreenPacket`.
+    OpenScreen(OpenScreenObservation) = parse_open_screen_packet
+);
+wrapped_packet!(
+    /// `ClientboundContainerClosePacket`.
+    ContainerClose(ContainerCloseObservation) = parse_container_close_packet
+);
+wrapped_packet!(
+    /// `ClientboundContainerSetContentPacket`. An item with a component the parser does not know
+    /// leaves that stack unknown rather than the session.
+    ContainerSetContent(ContainerSetContentObservation) = parse_container_set_content_packet,
+    OnError::Warn("inventory")
+);
+wrapped_packet!(
+    /// `ClientboundContainerSetDataPacket`.
+    ContainerSetData(ContainerDataObservation) = parse_container_set_data_packet
+);
+wrapped_packet!(
+    /// `ClientboundContainerSetSlotPacket`.
+    ContainerSetSlot(ContainerSetSlotObservation) = parse_container_set_slot_packet,
+    OnError::Warn("inventory")
+);
+wrapped_packet!(
+    /// `ClientboundSetCursorItemPacket`.
+    SetCursorItem(CursorItemObservation) = parse_cursor_item_packet,
+    OnError::Warn("inventory")
+);
+wrapped_packet!(
+    /// `ClientboundSetPlayerInventoryPacket`.
+    SetPlayerInventory(SetPlayerInventoryObservation) = parse_set_player_inventory_packet,
+    OnError::Warn("inventory")
+);
+
+/// `ClientboundMountScreenOpenPacket`: the container of the horse or nautilus, and its columns.
+pub(crate) struct MountScreenOpen {
+    pub container_id: i32,
+    pub columns: i32,
+    pub entity_id: i32,
+}
+
+impl Decode for MountScreenOpen {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let container_id = read_varint(&mut input, "mount screen container id")?;
+        let columns = read_varint(&mut input, "mount screen columns")?;
+        let Ok(entity_id) = <[u8; 4]>::try_from(input).map(i32::from_be_bytes) else {
+            return Err(ConnectionError::Codec("mount screen entity id"));
+        };
+        Ok(Self {
+            container_id,
+            columns,
+            entity_id,
+        })
+    }
+}
+
+/// `ClientboundCooldownPacket`: an item group's cooldown, in ticks.
+pub(crate) struct Cooldown {
+    pub group: String,
+    pub duration: i32,
+}
+
+impl Decode for Cooldown {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let group = photon_core::identifier::read_identifier(&mut input)
+            .map_err(|_| ConnectionError::Codec("cooldown group"))?
+            .as_string();
+        let duration = photon_core::wire::read_varint(&mut input)
+            .map_err(|_| ConnectionError::Codec("cooldown duration"))?;
+        Ok(Self { group, duration })
+    }
+}
