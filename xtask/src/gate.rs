@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use crate::{affected, git, lint, parity, process, workspace};
 
 /// Sources whose change invalidates the saved Java reference outputs.
-const REFERENCE_SOURCES: &[&str] = &["tests/behavior/", "tools/behavior/"];
+const REFERENCE_SOURCES: &[&str] = &["tests/behavior/", "parity/cases/"];
 
 /// `cargo xtask check [--no-parity]`: everything CI runs, plus parity.
 pub fn check(args: &[String]) -> Result<(), String> {

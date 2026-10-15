@@ -28,9 +28,7 @@ usage: cargo xtask <command>
   parity [--recapture] [--family <name>]...
                             compare the Rust adapter with the Java reference
   parity --print-cases [--family <name>]...
-                            print the case lines (the oracle and adapter input)
-  parity --compare-generators [--family <name>]...
-                            diff ported case generators against Python";
+                            print the case lines (the oracle and adapter input)";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

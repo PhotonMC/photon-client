@@ -54,14 +54,12 @@ pub fn digest(bytes: &[u8]) -> String {
 /// `cargo xtask parity [--family <name>]... [--recapture]`
 pub fn run(args: &[String]) -> Result<(), String> {
     let mut recapture = false;
-    let mut compare_generators = false;
     let mut print_cases = false;
     let mut families = Vec::new();
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
             "--recapture" => recapture = true,
-            "--compare-generators" => compare_generators = true,
             "--print-cases" => print_cases = true,
             "--family" => families.push(rest.next().ok_or("--family needs a name")?.clone()),
             other => return Err(format!("unknown parity option `{other}`")),
@@ -69,9 +67,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
     if families.is_empty() {
         families = FAMILIES.iter().map(|family| (*family).to_owned()).collect();
-    }
-    if compare_generators {
-        return cases::compare_generators(&families);
     }
     if print_cases {
         for case in cases::generate(&families, "", &|_| Ok(String::new()))? {

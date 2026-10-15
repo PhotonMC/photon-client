@@ -35,7 +35,7 @@ The pre-push hook runs parity when engine crates or reference sources changed. R
 ## How it works today
 
 - **Pins.** `tests/behavior/reference.json` pins the version (26.2, protocol 776, Java 25), the client jar SHA-1, its libraries, and each family's oracle sources.
-- **Cases.** `tools/behavior/cases/` generates cases as JSONL, one generator per family (moving to Rust, #7).
+- **Cases.** The `parity-cases` crate (`parity/cases/`) generates the cases as JSONL, one generator per family.
 - **Oracle.** `tests/behavior/java/` holds the oracle classes: `Oracle.java` dispatches by family to `<Family>Oracle.run`. They call the game's own classes, built with `Unsafe` and reflection where the game expects a running client. All sources are compiled once into `.data/parity/classes/<digest>/`.
 - **Keys.** Every case is keyed by `hash(game jar, libraries, JDK, OS/arch, JVM flags, the family's oracle sources, case input)`. Changing an oracle file or a case invalidates exactly the cases it can affect.
 - **Captures.** Java outputs live in `.data/parity/<version>/<family>.jsonl.gz`. Keys the store lacks are captured automatically: each family in its own JVM, twice, families in parallel; a capture is kept only if both runs agree. Rewriting a family drops keys no case uses any more.
