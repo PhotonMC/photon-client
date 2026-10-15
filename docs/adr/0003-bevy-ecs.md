@@ -1,6 +1,6 @@
 # ADR 0003: `bevy_ecs` for world and entity state
 
-- Status: accepted (2026-10-10), step 1 in progress: the play loop runs as `bevy_ecs` schedules (`crates/photon/src/play/schedule.rs`); its state is still one `Play` held as a non-send resource. Step 2 has begun: `ClientWorld` owns a `bevy_ecs::World` in which every entity is an ECS entity holding a `ClientEntity` component, with an ordered index by network id (id order is tick order, which parity observes, so nothing walks entities with a query where order matters). This inner World is meant to become the simulation World, so the chunk, weather and level resources of step 3 go there too
+- Status: accepted (2026-10-10), step 1 in progress: the play loop runs as `bevy_ecs` schedules (`crates/photon/src/play/schedule.rs`); its state is still one `Play` held as a non-send resource. Step 2 has begun: `ClientWorld` owns a `bevy_ecs::World` in which every entity is an ECS entity holding a `ClientEntity` component, with an ordered index by network id (id order is tick order, which parity observes, so nothing walks entities with a query where order matters). This inner World is meant to become the simulation World, so the chunk, weather and level resources of step 3 go there too. Step 3 has begun: chunks live in a `Chunks` store that is the Java client's chunk cache itself (a ring of slots, indexed by position) and each chunk holds its sections in a dense array, instead of two ordered maps
 
 ## Context
 

@@ -26,6 +26,7 @@ pub use ride::mount::{Controller, MountKind, MountState};
 pub use ride::vehicle::{VehicleKind, VehicleView};
 mod border;
 mod chunk;
+mod chunk_store;
 mod collision;
 mod constants;
 mod container;
@@ -59,6 +60,7 @@ pub use block::entity::*;
 pub use block::registry::*;
 pub use border::*;
 pub use chunk::*;
+pub(crate) use chunk_store::*;
 pub use collision::*;
 pub use constants::*;
 pub use container::*;
@@ -98,8 +100,7 @@ pub struct ClientWorld {
     stonecutter: Arc<Vec<StonecutterEntry>>,
     /// The recipe book the server keeps the client in step with.
     recipe_book: RecipeBook,
-    chunks: BTreeMap<(i32, i32), ClientChunk>,
-    chunk_cache: Option<ClientChunkCacheState>,
+    chunks: Chunks,
     /// The client level's light engine and the light tasks waiting for a
     /// frame, as `ClientLevel.queueLightUpdate` keeps them.
     light: light::LevelLightEngine,
@@ -372,19 +373,12 @@ fn new_light_engine(dimension: DimensionBounds, has_sky_light: bool) -> light::L
 /// The level as the light engine reads it: `getChunkForLighting` finds only
 /// a chunk the cache holds.
 struct LightView<'a> {
-    chunks: &'a BTreeMap<(i32, i32), ClientChunk>,
-    cache: Option<&'a ClientChunkCacheState>,
+    chunks: &'a Chunks,
 }
 
 impl LightView<'_> {
     fn chunk(&self, chunk_x: i32, chunk_z: i32) -> Option<&ClientChunk> {
-        if let Some(cache) = self.cache
-            && !(cache.in_range(chunk_x, chunk_z)
-                && cache.slots.get(&cache.index(chunk_x, chunk_z)) == Some(&(chunk_x, chunk_z)))
-        {
-            return None;
-        }
-        self.chunks.get(&(chunk_x, chunk_z))
+        self.chunks.get(chunk_x, chunk_z)
     }
 }
 

@@ -135,10 +135,10 @@ pub(crate) fn is_drawn_state(state_id: i32) -> bool {
 pub(crate) fn chests_of(
     chunk_x: i32,
     chunk_z: i32,
-    sections: &std::collections::BTreeMap<i32, crate::chunk::ClientSection>,
+    sections: &crate::chunk::Sections,
 ) -> std::collections::BTreeSet<(i32, i32, i32)> {
     let mut found = std::collections::BTreeSet::new();
-    for (&section_y, section) in sections {
+    for (section_y, section) in sections.iter() {
         if section.has_only_air() {
             continue;
         }

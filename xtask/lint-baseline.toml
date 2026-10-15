@@ -536,8 +536,7 @@
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 13
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 12
 "crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 11
-"crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 14
-"crates/photon-world/src/world/chunks.rs::ClientWorld::unload_chunk" = 11
+"crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 13
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 14
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 31
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13
@@ -1023,15 +1022,13 @@
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 93
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 83
 "crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 71
-"crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 63
-"crates/photon-world/src/world/chunks.rs::ClientWorld::replace_chunk" = 81
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 61
 "crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 138
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 95
 "crates/photon-world/src/world/entities/passengers.rs::ClientWorld::boat_rider_position" = 70
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 299
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 101
-"crates/photon-world/src/world/lighting.rs::ClientWorld::run_light_task" = 79
+"crates/photon-world/src/world/lighting.rs::ClientWorld::run_light_task" = 77
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 100
 "crates/photon/src/controls/book.rs::Controls::book_event" = 67

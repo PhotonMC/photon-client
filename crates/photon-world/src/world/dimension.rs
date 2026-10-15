@@ -23,8 +23,7 @@ impl ClientWorld {
             minecart_improvements: false,
             stonecutter: Arc::default(),
             recipe_book: RecipeBook::default(),
-            chunks: BTreeMap::new(),
-            chunk_cache: None,
+            chunks: Chunks::default(),
             light: new_light_engine(dimension, true),
             light_tasks: VecDeque::new(),
             light_dirty: Vec::new(),
@@ -120,12 +119,8 @@ impl ClientWorld {
         self.sea_level = input.sea_level;
         self.dimension_environment = environment;
         if changed {
-            let server_view_radius = self
-                .chunk_cache
-                .as_ref()
-                .map(|cache| cache.server_view_radius);
-            self.chunks.clear();
-            self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
+            let server_view_radius = self.chunks.cache().map(|cache| cache.server_view_radius);
+            self.chunks.reset(server_view_radius);
             self.entities.clear();
             self.maps.clear();
             if let Some(player) = self.local_player.as_mut() {

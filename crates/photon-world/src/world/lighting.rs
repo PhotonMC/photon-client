@@ -117,7 +117,6 @@ impl ClientWorld {
     pub(crate) fn unload_chunk_light(&mut self, chunk_x: i32, chunk_z: i32) {
         let view = LightView {
             chunks: &self.chunks,
-            cache: self.chunk_cache.as_ref(),
         };
         self.light
             .set_light_enabled(&view, (chunk_x, chunk_z), false);
@@ -139,7 +138,7 @@ impl ClientWorld {
         let statuses: Vec<(i32, bool)> = chunk
             .sections
             .iter()
-            .map(|(y, section)| (*y, section.has_only_air()))
+            .map(|(y, section)| (y, section.has_only_air()))
             .collect();
         for (section_y, empty) in statuses {
             self.light
@@ -191,7 +190,6 @@ impl ClientWorld {
     pub fn run_light_updates(&mut self) -> Vec<light::SectionKey> {
         let view = LightView {
             chunks: &self.chunks,
-            cache: self.chunk_cache.as_ref(),
         };
         self.light.run_light_updates(&view)
     }
@@ -201,14 +199,20 @@ impl ClientWorld {
     /// is switched on and the sources spread. Not what the client does with
     /// a server's light; it measures the engine on its own.
     pub fn light_from_sources(&mut self) {
-        let chunks: Vec<(i32, i32)> = self.chunks.keys().copied().collect();
+        let chunks: Vec<(i32, i32)> = self.chunks.positions();
         for &(chunk_x, chunk_z) in &chunks {
-            let filled: Vec<i32> = self.chunks[&(chunk_x, chunk_z)]
-                .sections
-                .iter()
-                .filter(|(_, section)| !section.has_only_air())
-                .map(|(y, _)| *y)
-                .collect();
+            let filled: Vec<i32> = self
+                .chunks
+                .get_stored(chunk_x, chunk_z)
+                .map(|chunk| {
+                    chunk
+                        .sections
+                        .iter()
+                        .filter(|(_, section)| !section.has_only_air())
+                        .map(|(y, _)| y)
+                        .collect()
+                })
+                .unwrap_or_default();
             for section_y in filled {
                 self.light
                     .update_section_status((chunk_x, section_y, chunk_z), false);
@@ -216,7 +220,6 @@ impl ClientWorld {
         }
         let view = LightView {
             chunks: &self.chunks,
-            cache: self.chunk_cache.as_ref(),
         };
         for &chunk in &chunks {
             self.light.set_light_enabled(&view, chunk, true);
@@ -277,7 +280,6 @@ impl ClientWorld {
                 }
                 let view = LightView {
                     chunks: &self.chunks,
-                    cache: self.chunk_cache.as_ref(),
                 };
                 self.light
                     .set_light_enabled(&view, (chunk_x, chunk_z), true);
@@ -288,7 +290,6 @@ impl ClientWorld {
             LightTask::Removal { chunk_x, chunk_z } => {
                 let view = LightView {
                     chunks: &self.chunks,
-                    cache: self.chunk_cache.as_ref(),
                 };
                 self.light
                     .set_light_enabled(&view, (chunk_x, chunk_z), false);

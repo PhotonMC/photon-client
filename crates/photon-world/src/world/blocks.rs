@@ -18,7 +18,7 @@ impl ClientWorld {
     /// Apply a server-verified block-state update to an already loaded section.
     pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
+        let Some(chunk) = self.chunks.get_mut(chunk_key.0, chunk_key.1) else {
             return false;
         };
         let section_y = y.div_euclid(16);
@@ -46,26 +46,23 @@ impl ClientWorld {
         let is_empty = section.has_only_air();
         // A chest block has its own block entity on the client, and a lid that goes with it.
         self.block_animations.remove(&(x, y, z));
-        if let Some(chunk) = self.chunks.get_mut(&chunk_key) {
-            // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
-            // entity.
-            if block::state_or_air(i64::from(previous_state_id)).block
-                != block::state_or_air(i64::from(state_id)).block
-            {
-                chunk.block_entities.remove(&(x, y, z));
-            }
-            if block::chest::is_drawn_state(state_id) {
-                chunk.chests.insert((x, y, z));
-            } else {
-                chunk.chests.remove(&(x, y, z));
-            }
+        // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
+        // entity.
+        if block::state_or_air(i64::from(previous_state_id)).block
+            != block::state_or_air(i64::from(state_id)).block
+        {
+            chunk.block_entities.remove(&(x, y, z));
+        }
+        if block::chest::is_drawn_state(state_id) {
+            chunk.chests.insert((x, y, z));
+        } else {
+            chunk.chests.remove(&(x, y, z));
         }
         if was_empty != is_empty {
             self.light
                 .update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);
         }
         if light::has_different_light_properties(previous_state_id, state_id) {
-            let chunk = self.chunks.get_mut(&chunk_key).expect("updated above");
             let sections = &chunk.sections;
             let read = |lx: i32, y: i32, lz: i32| {
                 sections

@@ -31,7 +31,6 @@ pub(crate) struct ClientChunkCacheState {
     pub(crate) view_range: i32,
     pub(crate) view_center_x: i32,
     pub(crate) view_center_z: i32,
-    pub(crate) slots: BTreeMap<usize, (i32, i32)>,
     pub(crate) updating_sets_index: usize,
     pub(crate) added_empty_sections: [BTreeSet<i64>; 2],
     pub(crate) removed_empty_sections: [BTreeSet<i64>; 2],
@@ -49,7 +48,6 @@ impl ClientChunkCacheState {
             view_range,
             view_center_x: 0,
             view_center_z: 0,
-            slots: BTreeMap::new(),
             updating_sets_index: 0,
             added_empty_sections: std::array::from_fn(|_| BTreeSet::new()),
             removed_empty_sections: std::array::from_fn(|_| BTreeSet::new()),
@@ -154,12 +152,66 @@ impl ClientChunkCacheState {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ClientChunk {
-    pub(crate) sections: BTreeMap<i32, ClientSection>,
+    pub(crate) sections: Sections,
     /// `ChunkSkyLightSources`, from the sections the chunk arrived with.
     pub(crate) sky_sources: Option<super::light::ChunkSkyLightSources>,
     pub(crate) block_entities: BTreeMap<(i32, i32, i32), ClientBlockEntity>,
     /// The blocks of the chunk that are chests, which the client gives a block entity of its own.
     pub(crate) chests: std::collections::BTreeSet<(i32, i32, i32)>,
+}
+
+/// The sections of a chunk from the lowest up, by section number: one slot for each, so a lookup
+/// is an index.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct Sections {
+    first: i32,
+    slots: Vec<Option<ClientSection>>,
+}
+
+impl Sections {
+    /// The sections of a chunk, the first of them at section number `first`.
+    pub(crate) fn new(first: i32, sections: impl IntoIterator<Item = ClientSection>) -> Self {
+        Self {
+            first,
+            slots: sections.into_iter().map(Some).collect(),
+        }
+    }
+
+    fn slot(&self, section_y: i32) -> Option<usize> {
+        usize::try_from(i64::from(section_y) - i64::from(self.first))
+            .ok()
+            .filter(|&index| index < self.slots.len())
+    }
+
+    pub(crate) fn get(&self, section_y: &i32) -> Option<&ClientSection> {
+        self.slots.get(self.slot(*section_y)?)?.as_ref()
+    }
+
+    pub(crate) fn get_mut(&mut self, section_y: &i32) -> Option<&mut ClientSection> {
+        let index = self.slot(*section_y)?;
+        self.slots.get_mut(index)?.as_mut()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.slots.iter().flatten().count()
+    }
+
+    /// The sections with their numbers, lowest first.
+    pub(crate) fn iter(&self) -> impl DoubleEndedIterator<Item = (i32, &ClientSection)> {
+        let first = self.first;
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, section)| Some((first + index as i32, section.as_ref()?)))
+    }
+
+    pub(crate) fn keys(&self) -> impl Iterator<Item = i32> {
+        self.iter().map(|(section_y, _)| section_y)
+    }
+
+    pub(crate) fn values(&self) -> impl Iterator<Item = &ClientSection> {
+        self.slots.iter().flatten()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
