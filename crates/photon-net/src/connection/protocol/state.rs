@@ -249,3 +249,30 @@ impl Decode for UpdateTags {
             .map_err(|_| ConnectionError::Codec("update tags"))
     }
 }
+
+/// `ClientboundSetTimePacket`: the game time, and the world clocks as (clock, total ticks,
+/// partial tick, rate).
+pub(crate) struct SetTime {
+    pub game_time: i64,
+    pub clocks: Vec<(i32, i64, f32, f32)>,
+}
+
+impl Decode for SetTime {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let game_time = read_section_position(&mut input)?;
+        let count =
+            wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("set time"))?;
+        let mut clocks = Vec::new();
+        for _ in 0..count {
+            let clock = wire::read_varint(&mut input)
+                .map_err(|_| ConnectionError::Codec("set time clock"))?;
+            let total_ticks = wire::read_varlong(&mut input)
+                .map_err(|_| ConnectionError::Codec("set time ticks"))?;
+            let partial_tick = read_f32(&mut input, "float")?;
+            let rate = read_f32(&mut input, "float")?;
+            clocks.push((clock, total_ticks, partial_tick, rate));
+        }
+        Ok(Self { game_time, clocks })
+    }
+}

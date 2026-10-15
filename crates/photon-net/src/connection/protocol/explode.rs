@@ -63,3 +63,9 @@ pub(crate) fn parse_explode_packet(
     };
     Ok(Some((explosion, knockback)))
 }
+
+wrapped_packet!(
+    /// `ClientboundExplodePacket`: nothing for a particle the client does not know.
+    Explode(Option<ExplodeObservation>) = parse_explode_packet,
+    OnError::Ignore("explode")
+);

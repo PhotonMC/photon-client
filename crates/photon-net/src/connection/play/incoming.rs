@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 use super::*;
 use crate::connection::probe::{store_cookie, take_custom_payload, take_report_details};
 
+mod blocks;
 mod chat;
 mod connection;
 mod containers;
@@ -41,6 +42,7 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             recipes::DECODERS,
             player::DECODERS,
             containers::DECODERS,
+            blocks::DECODERS,
         ]
         .concat()
         .into_iter()
@@ -169,52 +171,13 @@ impl PlaySession {
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => self.on_entity_event(payload)?,
             PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => self.on_damage_event(payload)?,
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => self.on_hurt_animation(payload)?,
-            PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => self.on_forget_level_chunk(payload)?,
-            PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => self.on_block_update(payload)?,
-            PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID => {
-                self.on_section_blocks_update(payload)?
-            }
-            PLAY_CLIENTBOUND_SET_CHUNK_CACHE_RADIUS_PACKET_ID => {
-                self.on_set_chunk_cache_radius(payload)?
-            }
-            PLAY_CLIENTBOUND_SET_CHUNK_CACHE_CENTER_PACKET_ID => {
-                self.on_set_chunk_cache_center(payload)?
-            }
-            PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID => {
-                self.on_chunk_batch_finished(payload)?
-            }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => self.on_set_entity_data(payload)?,
             PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID => self.on_set_equipment(payload)?,
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => self.on_update_attributes(payload)?,
             PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => self.on_update_mob_effect(payload)?,
             PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => self.on_remove_mob_effect(payload)?,
-            PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID => self.on_level_event(payload)?,
-            PLAY_CLIENTBOUND_EXPLODE_PACKET_ID => self.on_explode(payload)?,
-            PLAY_CLIENTBOUND_LEVEL_PARTICLES_PACKET_ID => self.on_level_particles(payload)?,
-            PLAY_CLIENTBOUND_SOUND_PACKET_ID
-            | PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID
-            | PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID => self.on_sound(payload, packet_id)?,
-            PLAY_CLIENTBOUND_SET_TIME_PACKET_ID => self.on_set_time(payload)?,
-            PLAY_CLIENTBOUND_BLOCK_CHANGED_ACK_PACKET_ID => self.on_block_changed_ack(payload)?,
-            PLAY_CLIENTBOUND_BLOCK_DESTRUCTION_PACKET_ID => self.on_block_destruction(payload)?,
             PLAY_CLIENTBOUND_OPEN_SIGN_EDITOR_PACKET_ID => self.on_open_sign_editor(payload)?,
             PLAY_CLIENTBOUND_OPEN_BOOK_PACKET_ID => self.on_open_book(payload)?,
-            PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => self.on_block_entity_data(payload)?,
-            PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => self.on_block_event(payload)?,
-            PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID
-            | PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID
-            | PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID
-            | PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID => self.on_hud(payload, packet_id)?,
-            PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_SCORE_PACKET_ID
-            | PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID
-            | PLAY_CLIENTBOUND_SET_PLAYER_TEAM_PACKET_ID => {
-                self.on_scoreboard(payload, packet_id)?
-            }
             _ => {}
         }
         self.maybe_finish_loading()

@@ -216,7 +216,7 @@
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 16
 "crates/photon-net/src/connection/play/containers.rs::PlaySession::open_container_menu" = 11
-"crates/photon-net/src/connection/play/incoming.rs::PlaySession::handle" = 53
+"crates/photon-net/src/connection/play/incoming.rs::PlaySession::handle" = 36
 "crates/photon-net/src/connection/play/incoming/entity.rs::PlaySession::on_set_passengers" = 11
 "crates/photon-net/src/connection/play/incoming/player.rs::PlaySession::on_game_event" = 11
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 17
@@ -640,7 +640,6 @@
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 69
 "crates/photon-net/src/connection/play/containers.rs::PlaySession::container_click" = 70
 "crates/photon-net/src/connection/play/containers.rs::PlaySession::open_container_menu" = 84
-"crates/photon-net/src/connection/play/incoming.rs::PlaySession::handle" = 91
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::assemble" = 84
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 84
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 61

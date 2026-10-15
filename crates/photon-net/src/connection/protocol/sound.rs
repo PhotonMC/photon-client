@@ -90,3 +90,25 @@ pub fn read_stop_sound_packet(
     };
     Ok(photon_game::sounds::StopSoundPacket { name, source })
 }
+
+/// A `ClientboundSoundPacket`, `ClientboundSoundEntityPacket` or `ClientboundStopSoundPacket`.
+pub(crate) struct Sound(pub photon_game::sounds::SoundCommand);
+
+impl Sound {
+    /// The sound packet with this id, parsed.
+    pub(crate) fn decode_packet(packet_id: i32, payload: &[u8]) -> Result<Self, ConnectionError> {
+        use photon_game::sounds::SoundCommand;
+        let mut input = payload;
+        let command = match packet_id {
+            PLAY_CLIENTBOUND_SOUND_PACKET_ID => SoundCommand::At(read_sound_packet(&mut input)?),
+            PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID => {
+                SoundCommand::FollowingEntity(read_sound_entity_packet(&mut input)?)
+            }
+            _ => SoundCommand::Stop(read_stop_sound_packet(&mut input)?),
+        };
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("sound packet trailing payload"));
+        }
+        Ok(Self(command))
+    }
+}

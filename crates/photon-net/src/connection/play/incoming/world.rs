@@ -34,6 +34,37 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         PLAY_CLIENTBOUND_SET_BORDER_WARNING_DISTANCE_PACKET_ID,
         typed::<SetBorderWarningDistance>,
     ),
+    (
+        PLAY_CLIENTBOUND_LEVEL_EVENT_PACKET_ID,
+        typed::<LevelEventPacket>,
+    ),
+    (PLAY_CLIENTBOUND_EXPLODE_PACKET_ID, typed::<Explode>),
+    (
+        PLAY_CLIENTBOUND_LEVEL_PARTICLES_PACKET_ID,
+        typed::<LevelParticlesPacket>,
+    ),
+    (PLAY_CLIENTBOUND_SOUND_PACKET_ID, decode_sound),
+    (PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID, decode_sound),
+    (PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID, decode_sound),
+    (PLAY_CLIENTBOUND_SET_TIME_PACKET_ID, typed::<SetTime>),
+    (PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_SET_TITLES_ANIMATION_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID, decode_hud),
+    (PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID, decode_scoreboard),
+    (PLAY_CLIENTBOUND_SET_SCORE_PACKET_ID, decode_scoreboard),
+    (PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID, decode_scoreboard),
+    (
+        PLAY_CLIENTBOUND_SET_DISPLAY_OBJECTIVE_PACKET_ID,
+        decode_scoreboard,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_PLAYER_TEAM_PACKET_ID,
+        decode_scoreboard,
+    ),
 ];
 
 /// `handleLevelChunkWithLight`: the chunk, then its light.
@@ -121,170 +152,67 @@ impl ClientboundPacket for SetBorderWarningDistance {
     }
 }
 
-impl PlaySession {
-    pub(super) fn on_forget_level_chunk(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let (x, z) = parse_forget_level_chunk_packet(payload)?;
-        self.trace.world.unload_chunk(x, z);
-        self.forgotten_chunks.push((x, z));
-        self.mark_columns_around(x, z);
-        Ok(())
-    }
-
-    pub(super) fn on_block_update(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let update = parse_block_update_packet(payload)?;
-        self.mark_block(update.x, update.y, update.z);
-        self.trace
-            .world
-            .apply_server_block_state(update.x, update.y, update.z, update.state_id);
-        Ok(())
-    }
-
-    pub(super) fn on_section_blocks_update(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let section = read_i64(&mut input)?;
-        let section_x = (section >> 42) as i32;
-        let section_y = ((section << 44) >> 44) as i32;
-        let section_z = ((section << 22) >> 42) as i32;
-        let count = wire::read_varint(&mut input)
-            .map_err(|_| ConnectionError::Codec("section blocks update"))?;
-        for _ in 0..count {
-            let packed = wire::read_varlong(&mut input)
-                .map_err(|_| ConnectionError::Codec("section blocks update"))?;
-            let state = (packed as u64 >> 12) as i32;
-            let local = (packed & 0xfff) as i32;
-            let (bx, by, bz) = (
-                section_x * 16 + ((local >> 8) & 15),
-                section_y * 16 + (local & 15),
-                section_z * 16 + ((local >> 4) & 15),
-            );
-            self.mark_block(bx, by, bz);
-            self.trace.world.apply_server_block_state(bx, by, bz, state);
-        }
-        Ok(())
-    }
-
-    pub(super) fn on_set_chunk_cache_radius(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let radius = parse_set_chunk_cache_radius_packet(payload)?;
-        self.trace.world.update_chunk_cache_radius(radius);
-        // `Options.setServerRenderDistance`.
-        self.view_distance = radius;
-        Ok(())
-    }
-
-    pub(super) fn on_set_chunk_cache_center(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        let (x, z) = parse_set_chunk_cache_center_packet(payload)?;
-        self.trace.world.update_chunk_cache_center(x, z);
-        Ok(())
-    }
-
-    pub(super) fn on_chunk_batch_finished(
-        &mut self,
-        _payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        self.send(PLAY_SERVERBOUND_CHUNK_BATCH_RECEIVED_PACKET_ID, |output| {
-            // The chunk batch calculator's starting estimate.
-            output.extend_from_slice(&3.5_f32.to_be_bytes());
-            Ok(())
-        })?;
-        Ok(())
-    }
-
-    pub(super) fn on_level_event(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let event = read_level_event_packet(&mut input)?;
-        if !input.is_empty() {
-            return Err(ConnectionError::Codec("level event trailing payload"));
-        }
-        // `handleLevelEvent`: a global event (a wither's or a dragon's, heard from afar) is heard
-        // two blocks from the camera.
+/// `handleLevelEvent`: a global event (a wither's or a dragon's, heard from afar) is heard two
+/// blocks from the camera.
+impl ClientboundPacket for LevelEventPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let event = self.0;
         if event.global {
-            self.trace
+            session
+                .trace
                 .world
                 .apply_global_level_event(event.event, event.pos);
         } else {
-            self.trace
+            session
+                .trace
                 .world
                 .apply_level_event(event.event, event.pos, event.data);
         }
         Ok(())
     }
+}
 
-    /// `handleExplosion`: the local player is pushed now; the sound and particles wait for the
-    /// particle engine, in order with the level events.
-    pub(super) fn on_explode(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let Some(read) = parsed(parse_explode_packet(payload), "explode") else {
+/// `handleExplosion`: the local player is pushed now; the sound and particles wait for the
+/// particle engine, in order with the level events.
+impl ClientboundPacket for Explode {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let Some((explosion, knockback)) = self.0 else {
             return Ok(());
         };
-        let Some((explosion, knockback)) = read else {
-            return Ok(());
-        };
-        if let (Some((x, y, z)), Some(player)) = (knockback, self.player.as_mut()) {
+        if let (Some((x, y, z)), Some(player)) = (knockback, session.player.as_mut()) {
             player.add_delta_movement(photon_core::math::Vec3::new(x, y, z));
         }
-        self.trace.world.apply_explosion(explosion);
+        session.trace.world.apply_explosion(explosion);
         Ok(())
     }
+}
 
-    pub(super) fn on_level_particles(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let packet = read_level_particles_packet(&mut input)?;
-        if !input.is_empty() {
-            return Err(ConnectionError::Codec("level particles trailing payload"));
-        }
-        self.level_particles.extend(packet);
+impl ClientboundPacket for LevelParticlesPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.level_particles.extend(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_sound(
-        &mut self,
-        payload: &[u8],
-        packet_id: i32,
-    ) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let command = match packet_id {
-            PLAY_CLIENTBOUND_SOUND_PACKET_ID => {
-                photon_game::sounds::SoundCommand::At(read_sound_packet(&mut input)?)
-            }
-            PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID => {
-                photon_game::sounds::SoundCommand::FollowingEntity(read_sound_entity_packet(
-                    &mut input,
-                )?)
-            }
-            _ => photon_game::sounds::SoundCommand::Stop(read_stop_sound_packet(&mut input)?),
-        };
-        if !input.is_empty() {
-            return Err(ConnectionError::Codec("sound packet trailing payload"));
-        }
-        self.sounds.push(command);
+fn decode_sound(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+    Ok(Box::new(Sound::decode_packet(packet_id, payload)?))
+}
+
+impl ClientboundPacket for Sound {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.sounds.push(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_set_time(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let game_time = read_i64(&mut input)?;
-        let count =
-            wire::read_varint(&mut input).map_err(|_| ConnectionError::Codec("set time"))?;
-        self.trace.world.set_game_time(game_time as u64);
-        // handleUpdates: the clocks catch up first, then take the
-        // server's values.
-        self.tick_clocks(game_time);
-        for _ in 0..count {
-            let clock = wire::read_varint(&mut input)
-                .map_err(|_| ConnectionError::Codec("set time clock"))?;
-            let total_ticks = wire::read_varlong(&mut input)
-                .map_err(|_| ConnectionError::Codec("set time ticks"))?;
-            let partial_tick = read_f32(&mut input)?;
-            let rate = read_f32(&mut input)?;
-            self.clocks.insert(
+/// `handleUpdates` of the clock manager: the clocks catch up first, then take the server's
+/// values.
+impl ClientboundPacket for SetTime {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.set_game_time(self.game_time as u64);
+        session.tick_clocks(self.game_time);
+        for (clock, total_ticks, partial_tick, rate) in self.clocks {
+            session.clocks.insert(
                 clock,
                 ClockState {
                     total_ticks,
@@ -295,78 +223,42 @@ impl PlaySession {
         }
         Ok(())
     }
+}
 
-    pub(super) fn on_block_changed_ack(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let sequence = read_varint(&mut &payload[..], "block changed ack sequence")?;
-        for synced in self.trace.world.handle_block_changed_ack(sequence) {
-            self.mark_block(synced.x, synced.y, synced.z);
-            // `syncBlockState`: a block put back into the player
-            // moves it back to where it stood when it predicted.
-            let pos = photon_core::binary::BlockPos::new(synced.x, synced.y, synced.z);
-            if let Some(position) = synced.player_position
-                && let Some(player) = self.player.as_mut()
-                && player.is_colliding(&self.trace.world, pos, synced.state)
-            {
-                player.abs_snap_to(position);
-            }
-        }
+/// A title, a bar, a boss bar or the tab list: what the HUD shows.
+struct Hud(HudEvent);
+
+fn decode_hud(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+    Ok(match parse_hud_packet(packet_id, payload) {
+        Ok(Some(event)) => Box::new(Hud(event)),
+        Ok(None) => Box::new(Ignored),
+        Err(error) => Box::new(Malformed(format!("hud packet {packet_id}: {error:?}"))),
+    })
+}
+
+impl ClientboundPacket for Hud {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.hud_events.push(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_block_destruction(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = parse_block_destruction_packet(payload)?;
-        self.trace.world.destroy_block_progress(
-            packet.entity_id,
-            packet.x,
-            packet.y,
-            packet.z,
-            i32::from(packet.progress),
-        );
-        Ok(())
-    }
+/// An objective, a score or a team.
+struct Scoreboard(photon_game::scoreboard::ScoreboardEvent);
 
-    pub(super) fn on_block_entity_data(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let entity = parse_block_entity_data_packet(payload)?;
-        self.trace
-            .world
-            .apply_block_entity_update(BlockEntityInput {
-                x: entity.x,
-                y: entity.y,
-                z: entity.z,
-                type_id: entity.type_id,
-                tag: entity.tag.as_deref(),
-            });
-        Ok(())
-    }
+fn decode_scoreboard(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+    Ok(match parse_scoreboard_packet(packet_id, payload) {
+        Ok(Some(event)) => Box::new(Scoreboard(event)),
+        Ok(None) => Box::new(Ignored),
+        Err(error) => Box::new(Malformed(format!(
+            "scoreboard packet {packet_id}: {error:?}"
+        ))),
+    })
+}
 
-    pub(super) fn on_block_event(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let (pos, event, data) = parse_block_event_packet(payload)?;
-        // `ClientLevel.blockEvent`: the block as it is now takes the event.
-        if !self.trace.world.apply_chest_block_event(pos, event, data) {
-            self.trace.world.apply_note_block_event(pos);
-        }
-        Ok(())
-    }
-
-    pub(super) fn on_hud(&mut self, payload: &[u8], packet_id: i32) -> Result<(), ConnectionError> {
-        match parse_hud_packet(packet_id, payload) {
-            Ok(Some(event)) => self.hud_events.push(event),
-            Ok(None) => {}
-            Err(error) => self.warn(format!("hud packet {packet_id}: {error:?}")),
-        };
-        Ok(())
-    }
-
-    pub(super) fn on_scoreboard(
-        &mut self,
-        payload: &[u8],
-        packet_id: i32,
-    ) -> Result<(), ConnectionError> {
-        match parse_scoreboard_packet(packet_id, payload) {
-            Ok(Some(event)) => self.scoreboard.apply(event),
-            Ok(None) => {}
-            Err(error) => self.warn(format!("scoreboard packet {packet_id}: {error:?}")),
-        }
+impl ClientboundPacket for Scoreboard {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.scoreboard.apply(self.0);
         Ok(())
     }
 }

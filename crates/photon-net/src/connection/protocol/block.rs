@@ -136,3 +136,77 @@ pub struct LevelEvent {
 
 /// Position, event id and event data of a block event.
 pub(crate) type BlockEvent = ((i32, i32, i32), u8, u8);
+
+wrapped_packet!(
+    /// `ClientboundBlockUpdatePacket`.
+    BlockUpdate(BlockUpdateObservation) = parse_block_update_packet
+);
+wrapped_packet!(
+    /// `ClientboundBlockDestructionPacket`.
+    BlockDestruction(BlockDestructionObservation) = parse_block_destruction_packet
+);
+wrapped_packet!(
+    /// `ClientboundBlockEntityDataPacket`.
+    BlockEntityData(BlockEntityObservation) = parse_block_entity_data_packet
+);
+wrapped_packet!(
+    /// `ClientboundBlockEventPacket`.
+    BlockEventPacket(BlockEvent) = parse_block_event_packet
+);
+
+/// `ClientboundLevelEventPacket`.
+pub(crate) struct LevelEventPacket(pub LevelEvent);
+
+impl Decode for LevelEventPacket {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let event = read_level_event_packet(&mut input)?;
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("level event trailing payload"));
+        }
+        Ok(Self(event))
+    }
+}
+
+/// `ClientboundBlockChangedAckPacket`: the sequence number it answers.
+pub(crate) struct BlockChangedAck(pub i32);
+
+impl Decode for BlockChangedAck {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        read_varint(&mut &payload[..], "block changed ack sequence").map(Self)
+    }
+}
+
+/// `ClientboundSectionBlocksUpdatePacket`: the blocks of one section that changed, each with its
+/// position in the level and its new state.
+pub(crate) struct SectionBlocksUpdate {
+    pub blocks: Vec<([i32; 3], i32)>,
+}
+
+impl Decode for SectionBlocksUpdate {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let section = read_section_position(&mut input)?;
+        let section_x = (section >> 42) as i32;
+        let section_y = ((section << 44) >> 44) as i32;
+        let section_z = ((section << 22) >> 42) as i32;
+        let count = wire::read_varint(&mut input)
+            .map_err(|_| ConnectionError::Codec("section blocks update"))?;
+        let mut blocks = Vec::new();
+        for _ in 0..count {
+            let packed = wire::read_varlong(&mut input)
+                .map_err(|_| ConnectionError::Codec("section blocks update"))?;
+            let state = (packed as u64 >> 12) as i32;
+            let local = (packed & 0xfff) as i32;
+            blocks.push((
+                [
+                    section_x * 16 + ((local >> 8) & 15),
+                    section_y * 16 + (local & 15),
+                    section_z * 16 + ((local >> 4) & 15),
+                ],
+                state,
+            ));
+        }
+        Ok(Self { blocks })
+    }
+}

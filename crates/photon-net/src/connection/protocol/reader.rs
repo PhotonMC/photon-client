@@ -122,3 +122,14 @@ pub(crate) fn read_f64(input: &mut &[u8], name: &'static str) -> Result<f64, Con
         .map(f64::from_be_bytes)
         .ok_or(ConnectionError::Codec(name))
 }
+
+/// A big-endian long whose absence is an unexpected end of the stream, as the packets that
+/// begin with a section position or a game time report it.
+pub(crate) fn read_section_position(input: &mut &[u8]) -> Result<i64, ConnectionError> {
+    wire::take(input).map(i64::from_be_bytes).ok_or_else(|| {
+        ConnectionError::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "section position",
+        ))
+    })
+}

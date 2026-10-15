@@ -507,3 +507,25 @@ impl Decode for LightUpdateObservation {
         parse_light_update_packet(payload)
     }
 }
+
+wrapped_packet!(
+    /// `ClientboundForgetLevelChunkPacket`: the chunk's position.
+    ForgetLevelChunk((i32, i32)) = parse_forget_level_chunk_packet
+);
+wrapped_packet!(
+    /// `ClientboundSetChunkCacheRadiusPacket`.
+    SetChunkCacheRadius(i32) = parse_set_chunk_cache_radius_packet
+);
+wrapped_packet!(
+    /// `ClientboundSetChunkCacheCenterPacket`.
+    SetChunkCacheCenter((i32, i32)) = parse_set_chunk_cache_center_packet
+);
+
+/// `ClientboundChunkBatchFinishedPacket`: the batch size it carries is not read.
+pub(crate) struct ChunkBatchFinished;
+
+impl Decode for ChunkBatchFinished {
+    fn decode(_payload: &[u8]) -> Result<Self, ConnectionError> {
+        Ok(Self)
+    }
+}

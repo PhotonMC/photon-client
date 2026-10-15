@@ -204,10 +204,6 @@ pub(super) fn parsed<T, E: std::fmt::Display>(result: Result<T, E>, packet: &str
         .ok()
 }
 
-pub(super) fn read_f32(input: &mut &[u8]) -> Result<f32, ConnectionError> {
-    super::protocol::read_f32(input, "float")
-}
-
 pub(super) fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
     photon_core::wire::take(input)
         .map(i64::from_be_bytes)

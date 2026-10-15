@@ -114,3 +114,17 @@ pub(crate) fn read_particle_options(
     };
     Ok(Some((type_id, data)))
 }
+
+/// `ClientboundLevelParticlesPacket`: nothing for a particle the client does not know.
+pub(crate) struct LevelParticlesPacket(pub Option<photon_world::particles::LevelParticles>);
+
+impl Decode for LevelParticlesPacket {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        let packet = read_level_particles_packet(&mut input)?;
+        if !input.is_empty() {
+            return Err(ConnectionError::Codec("level particles trailing payload"));
+        }
+        Ok(Self(packet))
+    }
+}
