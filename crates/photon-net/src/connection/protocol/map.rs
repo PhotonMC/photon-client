@@ -70,3 +70,9 @@ pub(crate) fn parse_map_item_data_packet(
         patch,
     })
 }
+
+wrapped_packet!(
+    /// `ClientboundMapItemDataPacket`.
+    MapItemData(photon_world::map::MapItemDataInput) = parse_map_item_data_packet,
+    OnError::Ignore("map_item_data")
+);

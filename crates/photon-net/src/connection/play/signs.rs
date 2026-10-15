@@ -3,10 +3,7 @@ use super::*;
 impl PlaySession {
     /// `handleOpenSignEditor`: the screen opens over a sign the client has; any other block is
     /// ignored with a warning.
-    pub(super) fn on_open_sign_editor(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let pos = photon_core::binary::BlockPos::unpack(read_i64(&mut input)? as u64);
-        let front = read_bool(&mut input, "open sign editor")?;
+    pub(super) fn on_open_sign_editor(&mut self, pos: photon_core::binary::BlockPos, front: bool) {
         let pos = (pos.x, pos.y, pos.z);
         if self.trace.world.sign_view(pos).is_some() {
             self.sign_editor = Some((pos, front));
@@ -15,7 +12,6 @@ impl PlaySession {
                 "ignoring openTextEdit on a block that is no sign at {pos:?}"
             ));
         }
-        Ok(())
     }
 
     /// The sign whose screen the server asked to open, once.

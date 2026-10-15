@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use super::*;
-use crate::connection::probe::{store_cookie, take_custom_payload, take_report_details};
 
 mod blocks;
 mod chat;
@@ -11,6 +10,7 @@ mod containers;
 mod entity;
 mod player;
 mod recipes;
+mod session;
 mod world;
 
 /// A clientbound play packet, parsed (the reference's `Packet`): what it does to the client is
@@ -43,6 +43,8 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             player::DECODERS,
             containers::DECODERS,
             blocks::DECODERS,
+            entity::DECODERS,
+            session::DECODERS,
         ]
         .concat()
         .into_iter()
@@ -50,13 +52,13 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
     })
 }
 
-/// Parse the packet in `body` (its id, then its payload). A family that is not typed yet stays
-/// bytes, parsed where it is handled.
-pub(super) fn decode_packet(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
-    let (packet_id, payload) = split_packet(&body)?;
+/// Parse the packet in `body` (its id, then its payload). A packet the client has no use for is
+/// dropped, as the reference drops one it does not know.
+pub(super) fn decode_packet(body: &[u8]) -> Result<Incoming, ConnectionError> {
+    let (packet_id, payload) = split_packet(body)?;
     match decoders().get(&packet_id) {
         Some(decode) => decode(packet_id, payload),
-        None => Ok(Box::new(RawPacket(body))),
+        None => Ok(Box::new(Ignored)),
     }
 }
 
@@ -75,20 +77,6 @@ where
             }
             OnError::Warn(label) => Ok(Box::new(Malformed(format!("{label}: {error:?}")))),
         },
-    }
-}
-
-/// A packet of a family that is not typed yet: its whole body.
-struct RawPacket(Vec<u8>);
-
-impl ClientboundPacket for RawPacket {
-    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.handle(&self.0)
-    }
-
-    /// `handle` ends with the check itself.
-    fn checks_loading(&self) -> bool {
-        false
     }
 }
 
@@ -125,61 +113,6 @@ impl PlaySession {
     /// A packet's bytes, parsed and applied: the way a test hands one over.
     #[cfg(test)]
     pub(super) fn handle_bytes(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
-        self.handle_incoming(decode_packet(body.to_vec())?)
-    }
-
-    /// A packet of a family that is not typed yet, parsed where it is handled.
-    pub(super) fn handle(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
-        let (packet_id, payload) = split_packet(body)?;
-        match packet_id {
-            PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID => self.reconfigure()?,
-            PLAY_CLIENTBOUND_TRANSFER_PACKET_ID => self.transfer(payload)?,
-            PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID => self.on_resource_pack_push(payload)?,
-            // Nothing was loaded, so there is nothing to take off.
-            PLAY_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {
-                parse_resource_pack_pop(payload)?;
-            }
-            PLAY_CLIENTBOUND_SHOW_DIALOG_PACKET_ID => self.on_show_dialog(payload)?,
-            PLAY_CLIENTBOUND_CLEAR_DIALOG_PACKET_ID => self.dialog_events.push(DialogEvent::Clear),
-            PLAY_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => self.on_cookie_request(payload)?,
-            PLAY_CLIENTBOUND_STORE_COOKIE_PACKET_ID => store_cookie(&mut self.trace, payload)?,
-            PLAY_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {
-                take_custom_payload(&mut self.trace, payload)?;
-            }
-            PLAY_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID => {
-                take_report_details(&mut self.trace, payload)?;
-            }
-            PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => self.on_add_entity(payload)?,
-            PLAY_CLIENTBOUND_SET_ENTITY_MOTION_PACKET_ID => self.on_set_entity_motion(payload)?,
-            PLAY_CLIENTBOUND_MAP_ITEM_DATA_PACKET_ID => self.on_map_item_data(payload)?,
-            PLAY_CLIENTBOUND_MOVE_MINECART_PACKET_ID => self.on_move_minecart(payload)?,
-            PLAY_CLIENTBOUND_SET_ENTITY_LINK_PACKET_ID => self.on_set_entity_link(payload)?,
-            PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID => self.on_rotate_head(payload)?,
-            PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID => self.on_remove_entities(payload)?,
-            PLAY_CLIENTBOUND_SET_PASSENGERS_PACKET_ID => self.on_set_passengers(payload)?,
-            PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
-                self.on_entity_position_sync(payload)?
-            }
-            PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID => self.on_teleport_entity(payload)?,
-            PLAY_CLIENTBOUND_TAKE_ITEM_ENTITY_PACKET_ID => self.on_take_item_entity(payload)?,
-            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID => self.on_move_entity_pos(payload)?,
-            PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID => {
-                self.on_move_entity_pos_rot(payload)?
-            }
-            PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => self.on_move_entity_rot(payload)?,
-            PLAY_CLIENTBOUND_ANIMATE_PACKET_ID => self.on_animate(payload)?,
-            PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => self.on_entity_event(payload)?,
-            PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => self.on_damage_event(payload)?,
-            PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => self.on_hurt_animation(payload)?,
-            PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => self.on_set_entity_data(payload)?,
-            PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID => self.on_set_equipment(payload)?,
-            PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => self.on_update_attributes(payload)?,
-            PLAY_CLIENTBOUND_UPDATE_MOB_EFFECT_PACKET_ID => self.on_update_mob_effect(payload)?,
-            PLAY_CLIENTBOUND_REMOVE_MOB_EFFECT_PACKET_ID => self.on_remove_mob_effect(payload)?,
-            PLAY_CLIENTBOUND_OPEN_SIGN_EDITOR_PACKET_ID => self.on_open_sign_editor(payload)?,
-            PLAY_CLIENTBOUND_OPEN_BOOK_PACKET_ID => self.on_open_book(payload)?,
-            _ => {}
-        }
-        self.maybe_finish_loading()
+        self.handle_incoming(decode_packet(body)?)
     }
 }

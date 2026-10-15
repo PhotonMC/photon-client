@@ -136,19 +136,18 @@ impl PlaySession {
     }
 
     /// `handleShowDialog`: the dialog is opened over whatever screen is up.
-    pub(super) fn on_show_dialog(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let dialog = match parse_show_dialog(payload)? {
+    pub(super) fn on_show_dialog(&mut self, holder: DialogHolder) {
+        let dialog = match holder {
             DialogHolder::Direct(dialog) => *dialog,
             DialogHolder::Registry(index) => {
                 match self.trace.dialog_registry.get(index).cloned().flatten() {
                     Some(dialog) => dialog,
                     // A known pack's entry carries no data, and there is none to look it up in.
-                    None => return Ok(()),
+                    None => return,
                 }
             }
         };
         self.dialog_events.push(DialogEvent::Show(Box::new(dialog)));
-        Ok(())
     }
 
     /// The dialog entry a registry name stands for (`ClickEvent.ShowDialog` by name).

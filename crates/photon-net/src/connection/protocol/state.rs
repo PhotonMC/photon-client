@@ -276,3 +276,59 @@ impl Decode for SetTime {
         Ok(Self { game_time, clocks })
     }
 }
+
+wrapped_packet!(
+    /// `ClientboundSetEntityLinkPacket`.
+    SetEntityLink((i32, i32)) = parse_set_entity_link_packet,
+    OnError::Ignore("set_entity_link")
+);
+
+wrapped_packet!(
+    /// `ClientboundAnimatePacket`.
+    Animate((i32, u8)) = parse_animate_packet,
+    OnError::Ignore("animate")
+);
+
+wrapped_packet!(
+    /// `ClientboundEntityEventPacket`.
+    EntityEvent((i32, i8)) = parse_entity_event_packet
+);
+
+wrapped_packet!(
+    /// `ClientboundDamageEventPacket`.
+    DamageEvent((i32, Option<usize>)) = parse_damage_event_packet,
+    OnError::Ignore("damage_event")
+);
+
+wrapped_packet!(
+    /// `ClientboundHurtAnimationPacket`.
+    HurtAnimation((i32, f32)) = parse_hurt_animation_packet,
+    OnError::Ignore("hurt_animation")
+);
+
+wrapped_packet!(
+    /// `ClientboundSetEntityDataPacket`.
+    SetEntityData(EntityMetadataObservation) = parse_entity_metadata_packet,
+    OnError::Ignore("entity_metadata")
+);
+
+wrapped_packet!(
+    /// `ClientboundSetEquipmentPacket`.
+    SetEquipment(EntityEquipmentObservation) = parse_entity_equipment_packet,
+    OnError::Ignore("entity_equipment")
+);
+
+wrapped_packet!(
+    /// `ClientboundUpdateAttributesPacket`.
+    UpdateAttributes(AttributeUpdateObservation) = parse_update_attributes_packet
+);
+
+wrapped_packet!(
+    /// `ClientboundUpdateMobEffectPacket`.
+    UpdateMobEffect(MobEffectUpdateObservation) = parse_update_mob_effect_packet
+);
+
+wrapped_packet!(
+    /// `ClientboundRemoveMobEffectPacket`.
+    RemoveMobEffect(MobEffectRemoveObservation) = parse_remove_mob_effect_packet
+);

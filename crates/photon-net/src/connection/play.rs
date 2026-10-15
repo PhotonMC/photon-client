@@ -7,7 +7,6 @@
 //! local player and sends what the tick asked for, then the tick-end marker,
 //! as `Minecraft.tick` does.
 
-use std::io;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::Duration;
@@ -194,25 +193,6 @@ pub(super) struct ClockState {
     pub(super) total_ticks: i64,
     pub(super) partial_tick: f32,
     pub(super) rate: f32,
-}
-
-/// The packet a parser made, or nothing after logging why it could not: the
-/// reference ignores a packet it cannot place, and the log keeps the reason.
-pub(super) fn parsed<T, E: std::fmt::Display>(result: Result<T, E>, packet: &str) -> Option<T> {
-    result
-        .map_err(|error| log::debug!("ignored {packet} packet: {error}"))
-        .ok()
-}
-
-pub(super) fn read_i64(input: &mut &[u8]) -> Result<i64, ConnectionError> {
-    photon_core::wire::take(input)
-        .map(i64::from_be_bytes)
-        .ok_or_else(|| {
-            ConnectionError::Io(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "section position",
-            ))
-        })
 }
 
 /// The player's health, food, experience and selected hotbar slot, as the

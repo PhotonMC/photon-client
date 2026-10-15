@@ -82,6 +82,20 @@ pub(crate) fn encode_resource_pack(id: Uuid, action: PackAction, output: &mut Ve
     photon_core::wire::write_varint(action as i32, output);
 }
 
+wrapped_packet!(
+    /// `ClientboundResourcePackPushPacket`.
+    ResourcePackPush(PackRequest) = parse_resource_pack_push
+);
+/// `ClientboundResourcePackPopPacket`: the pack to take off, or all of them. The client never
+/// loads one, so the packet is only checked.
+pub(crate) struct ResourcePackPop;
+
+impl Decode for ResourcePackPop {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        parse_resource_pack_pop(payload).map(|_| Self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

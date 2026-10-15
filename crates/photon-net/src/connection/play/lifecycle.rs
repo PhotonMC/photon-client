@@ -35,7 +35,7 @@ pub(super) fn spawn_reader(
                 split_packet(&body),
                 Ok((PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID, _))
             );
-            let packet = incoming::decode_packet(body);
+            let packet = incoming::decode_packet(&body);
             let failed = packet.is_err();
             if sender.send(packet).is_err() || failed || terminal {
                 return;

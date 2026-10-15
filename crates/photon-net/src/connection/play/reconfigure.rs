@@ -14,8 +14,10 @@ const RECONFIGURATION_TIMEOUT: Duration = Duration::from_secs(30);
 impl PlaySession {
     /// `handleResourcePackPush`: an address that is not a web one is answered at once; the rest
     /// wait to be asked about.
-    pub(super) fn on_resource_pack_push(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let request = parse_resource_pack_push(payload)?;
+    pub(super) fn on_resource_pack_push(
+        &mut self,
+        request: PackRequest,
+    ) -> Result<(), ConnectionError> {
         if request.has_valid_url() {
             self.pack_requests.push(request);
             Ok(())
@@ -25,10 +27,11 @@ impl PlaySession {
     }
 
     /// `handleRequestCookie`: what is kept under the key goes back, or nothing.
-    pub(super) fn on_cookie_request(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let request = crate::cookie::ClientboundCookieRequestPacket::decode(&mut &payload[..])
-            .map_err(|_| ConnectionError::Codec("cookie request"))?;
-        let answer = self.trace.cookies.answer(&request);
+    pub(super) fn on_cookie_request(
+        &mut self,
+        request: &crate::cookie::ClientboundCookieRequestPacket,
+    ) -> Result<(), ConnectionError> {
+        let answer = self.trace.cookies.answer(request);
         self.send(PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID, |output| {
             answer
                 .encode(output)
@@ -38,9 +41,10 @@ impl PlaySession {
 
     /// `handleTransfer`: the connection is let go and another made to the host the server names,
     /// as a transfer, with the cookies kept. The new session starts over like a reconfigured one.
-    pub(super) fn transfer(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let packet = crate::cookie::ClientboundTransferPacket::decode(&mut &payload[..])
-            .map_err(|_| ConnectionError::Codec("transfer"))?;
+    pub(super) fn transfer(
+        &mut self,
+        packet: crate::cookie::ClientboundTransferPacket,
+    ) -> Result<(), ConnectionError> {
         let address = lifecycle::resolve_host(&packet.host, packet.port)?;
         let carried = PlayConnectionTrace {
             cookies: self.trace.cookies.clone(),

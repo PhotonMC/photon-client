@@ -197,3 +197,27 @@ pub(crate) fn parse_set_passengers_packet(
         applied_passenger_vehicles: Vec::new(),
     })
 }
+
+wrapped_packet!(
+    /// `ClientboundAddEntityPacket`.
+    AddEntity(AddEntityObservation) = parse_add_entity_packet,
+    OnError::Ignore("add_entity")
+);
+
+wrapped_packet!(
+    /// `ClientboundRemoveEntitiesPacket`.
+    RemoveEntities(RemoveEntitiesObservation) = parse_remove_entities_packet,
+    OnError::Ignore("remove_entities")
+);
+
+wrapped_packet!(
+    /// `ClientboundTakeItemEntityPacket`.
+    TakeItemEntity((i32, i32, i32)) = parse_take_item_entity_packet,
+    OnError::Ignore("take_item_entity")
+);
+
+wrapped_packet!(
+    /// `ClientboundSetPassengersPacket`.
+    SetPassengers(EntityPassengersObservation) = parse_set_passengers_packet,
+    OnError::Ignore("set_passengers")
+);

@@ -2,13 +2,6 @@ use super::*;
 
 impl PlaySession {
     /// `ClientboundOpenBookPacket`: the book in a hand is to be shown.
-    pub(super) fn on_open_book(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let hand = read_varint(&mut input, "open book")?;
-        self.opened_book = Some(u8::from(hand != 0));
-        Ok(())
-    }
-
     /// `handleOpenBook`, once: the pages of the book in the hand the server opened, if it holds
     /// a written book or a book and quill (`BookAccess.fromItem`).
     pub fn take_open_book(&mut self) -> Option<Vec<photon_game::text::Component>> {

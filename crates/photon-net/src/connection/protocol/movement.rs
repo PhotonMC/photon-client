@@ -340,3 +340,51 @@ pub(super) fn parse_move_entity_packet(
         applied_rotation: None,
     })
 }
+
+wrapped_packet!(
+    /// `ClientboundSetEntityMotionPacket`.
+    SetEntityMotion(EntityMotionObservation) = parse_set_entity_motion_packet,
+    OnError::Ignore("set_entity_motion")
+);
+
+wrapped_packet!(
+    /// `ClientboundMoveMinecartPacket`.
+    MoveMinecart((i32, Vec<MinecartStep>)) = parse_move_minecart_packet,
+    OnError::Ignore("move_minecart")
+);
+
+wrapped_packet!(
+    /// `ClientboundRotateHeadPacket`.
+    RotateHead(EntityHeadRotationObservation) = parse_rotate_head_packet,
+    OnError::Ignore("rotate_head")
+);
+
+wrapped_packet!(
+    /// `ClientboundEntityPositionSyncPacket`.
+    EntityPositionSync(EntityPositionSyncObservation) = parse_entity_position_sync_packet,
+    OnError::Ignore("entity_position_sync")
+);
+
+wrapped_packet!(
+    /// `ClientboundTeleportEntityPacket`.
+    TeleportEntity(EntityTeleportObservation) = parse_entity_teleport_packet,
+    OnError::Ignore("entity_teleport")
+);
+
+wrapped_packet!(
+    /// `ClientboundMoveEntityPosPacket`.
+    MoveEntityPos(EntityMoveObservation) = parse_move_entity_pos_packet,
+    OnError::Ignore("move_entity_pos")
+);
+
+wrapped_packet!(
+    /// `ClientboundMoveEntityPosRotPacket`.
+    MoveEntityPosRot(EntityMoveObservation) = parse_move_entity_pos_rot_packet,
+    OnError::Ignore("move_entity_pos_rot")
+);
+
+wrapped_packet!(
+    /// `ClientboundMoveEntityRotPacket`.
+    MoveEntityRot(EntityMoveObservation) = parse_move_entity_rot_packet,
+    OnError::Ignore("move_entity_rot")
+);

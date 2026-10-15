@@ -81,3 +81,17 @@ mod tests {
         assert!(parse_show_dialog(&[0, 0]).is_err());
     }
 }
+
+wrapped_packet!(
+    /// `ClientboundShowDialogPacket`.
+    ShowDialog(DialogHolder) = parse_show_dialog
+);
+
+/// `ClientboundClearDialogPacket`.
+pub(crate) struct ClearDialog;
+
+impl Decode for ClearDialog {
+    fn decode(_payload: &[u8]) -> Result<Self, ConnectionError> {
+        Ok(Self)
+    }
+}
