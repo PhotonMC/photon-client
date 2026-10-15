@@ -80,6 +80,21 @@ where
     }
 }
 
+/// A packet that did not parse and ends the connection, with its error, when its turn comes: what
+/// went before it has been applied, as it always was.
+struct Failed(ConnectionError);
+
+impl ClientboundPacket for Failed {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Err(self.0)
+    }
+}
+
+/// The packet that stands for a failure to parse one.
+pub(super) fn failed(error: ConnectionError) -> Incoming {
+    Box::new(Failed(error))
+}
+
 /// A packet that did not parse and is dropped.
 struct Ignored;
 
