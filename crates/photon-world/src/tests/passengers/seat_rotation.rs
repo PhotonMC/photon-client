@@ -1,5 +1,5 @@
 use super::super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
 fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() {
@@ -18,13 +18,13 @@ fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() 
         );
         for (entity_id, type_id, rotation) in [
             (37, 89, (0.0, 0.0, 0.0)),
-            (animal_id, VANILLA_COW_ENTITY_TYPE_ID, (170.0, 0.0, 170.0)),
-            (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID, (0.0, 0.0, 0.0)),
+            (animal_id, VANILLA_COW_ENTITY_TYPE_ID.0, (170.0, 0.0, 170.0)),
+            (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (0.0, 0.0, 0.0)),
         ] {
             assert!(world.apply_entity(EntityInput {
                 entity_id: EntityId(entity_id),
                 uuid: Uuid::new(entity_id as u64, 0),
-                type_id,
+                type_id: EntityTypeId(type_id),
                 x: 2.0,
                 y: 2.0,
                 z: 2.0,
@@ -64,13 +64,13 @@ fn passenger_tick_positions_animal_on_full_boat_seat_offset() {
     );
     for (entity_id, type_id, position) in [
         (37, 89, (2.0, 2.0, 2.0)),
-        (38, VANILLA_COW_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
-        (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
+        (38, VANILLA_COW_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
+        (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: position.0,
             y: position.1,
             z: position.2,

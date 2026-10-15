@@ -1,3 +1,5 @@
+use photon_core::ids::EntityTypeId;
+
 /// `(float) (Math.PI / 180.0)`.
 pub(super) const DEG_TO_RAD: f32 = (std::f64::consts::PI / 180.0) as f32;
 
@@ -88,7 +90,7 @@ pub(crate) struct Attributes {
 
 /// Whether an entity type is one of the horses a saddle makes rideable (`AbstractHorse` that is
 /// not a llama).
-pub(crate) fn is_horse_type(type_id: i32) -> bool {
+pub(crate) fn is_horse_type(type_id: EntityTypeId) -> bool {
     [
         "minecraft:horse",
         "minecraft:donkey",
@@ -137,6 +139,7 @@ pub(super) fn mount_attributes(
 mod tests {
 
     use crate::{ClientWorld, DimensionBounds, EntityInput};
+
     use photon_core::binary::Uuid;
     use photon_core::ids::EntityId;
 

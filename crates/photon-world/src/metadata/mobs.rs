@@ -3,7 +3,7 @@ use super::*;
 /// A copper golem's action and weathering (`COPPER_GOLEM_STATE`,
 /// `DATA_WEATHER_STATE`: each a varint id), each when the data holds it.
 pub(crate) fn copper_golem_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<(Option<i32>, Option<i32>)> {
     if photon_data::entity_type::name(type_id)? != "minecraft:copper_golem" {
@@ -28,7 +28,10 @@ pub(crate) fn copper_golem_data_from_metadata(
 
 /// A glow squid's dark ticks (`GlowSquid.DATA_DARK_TICKS_REMAINING`), when the
 /// data holds them.
-pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn glow_squid_dark_ticks_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:glow_squid" {
         return None;
     }
@@ -37,7 +40,7 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(type_id: i32, metadata: &[u8])
 
 /// Whether a ghast is charging a fireball (`Ghast.DATA_IS_CHARGING`), when the
 /// data holds it.
-pub(crate) fn ghast_charging_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn ghast_charging_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:ghast" {
         return None;
     }
@@ -45,7 +48,10 @@ pub(crate) fn ghast_charging_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
 }
 
 /// Whether a wither skull is the blue one (`WitherSkull.DATA_DANGEROUS`), when the data holds it.
-pub(crate) fn wither_skull_dangerous_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn wither_skull_dangerous_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:wither_skull" {
         return None;
     }
@@ -56,7 +62,7 @@ pub(crate) fn wither_skull_dangerous_from_metadata(type_id: i32, metadata: &[u8]
 /// charging) and whether an allay dances (`Allay.DATA_DANCING`), each when the
 /// data holds it.
 pub(crate) fn flier_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<u8>, Option<u8>, Option<bool>) {
     match photon_data::entity_type::name(type_id) {
@@ -72,7 +78,7 @@ pub(crate) fn flier_data_from_metadata(
 }
 
 /// A parrot's variant id (`Parrot.DATA_VARIANT_ID`), when the data holds it.
-pub(crate) fn parrot_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn parrot_variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:parrot" {
         return None;
     }
@@ -80,7 +86,7 @@ pub(crate) fn parrot_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
 }
 
 /// A slime's or a magma cube's size (`AbstractCubeMob.ID_SIZE`), when the data holds it.
-pub(crate) fn cube_mob_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn cube_mob_size_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if !is_cube_mob_type(type_id) {
         return None;
     }
@@ -88,7 +94,7 @@ pub(crate) fn cube_mob_size_from_metadata(type_id: i32, metadata: &[u8]) -> Opti
 }
 
 /// Whether the type is a slime or a magma cube.
-pub(crate) fn is_cube_mob_type(type_id: i32) -> bool {
+pub(crate) fn is_cube_mob_type(type_id: EntityTypeId) -> bool {
     matches!(
         photon_data::entity_type::name(type_id),
         Some("minecraft:slime" | "minecraft:magma_cube" | "minecraft:sulfur_cube")
@@ -96,7 +102,10 @@ pub(crate) fn is_cube_mob_type(type_id: i32) -> bool {
 }
 
 /// A sulfur cube's fuse (`SulfurCube.MAX_FUSE`), when the data holds it.
-pub(crate) fn sulfur_cube_fuse_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn sulfur_cube_fuse_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:sulfur_cube" {
         return None;
     }
@@ -106,7 +115,7 @@ pub(crate) fn sulfur_cube_fuse_from_metadata(type_id: i32, metadata: &[u8]) -> O
 /// A shulker's attach face (a direction's data value), raw peek and colour, each
 /// when the data holds it.
 pub(crate) fn shulker_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<u8>, Option<u8>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:shulker") {
@@ -123,7 +132,7 @@ pub(crate) fn shulker_data_from_metadata(
 }
 
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
-pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn phantom_size_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:phantom" {
         return None;
     }
@@ -131,7 +140,7 @@ pub(crate) fn phantom_size_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
 }
 
 /// A warden's client anger level (`Warden.CLIENT_ANGER_LEVEL`), when the data holds it.
-pub(crate) fn warden_anger_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn warden_anger_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:warden" {
         return None;
     }
@@ -152,7 +161,7 @@ pub(crate) fn wither_data_from_metadata(metadata: &[u8]) -> WitherData {
 
 /// A sniffer's synced state (`Sniffer.DATA_STATE`), when the data holds it.
 pub(crate) fn sniffer_state_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<crate::mobs::sniffer::SnifferMode> {
     /// `EntityDataSerializers.SNIFFER_STATE`'s place in the registry of serializers.
@@ -174,7 +183,7 @@ pub(crate) fn sniffer_state_from_metadata(
 
 /// An armadillo's synced state (`Armadillo.ARMADILLO_STATE`), when the data holds it.
 pub(crate) fn armadillo_state_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<crate::mobs::armadillo::ArmadilloMode> {
     /// `EntityDataSerializers.ARMADILLO_STATE`'s place in the registry of serializers.
@@ -216,7 +225,7 @@ pub(crate) fn creaking_data_from_metadata(metadata: &[u8]) -> CreakingData {
 /// Whether a guardian moves and the id of what its beam aims at
 /// (`Guardian.DATA_ID_MOVING`, `DATA_ID_ATTACK_TARGET`), each when the data holds it.
 pub(crate) fn guardian_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<i32>) {
     if !matches!(
@@ -234,7 +243,7 @@ pub(crate) fn guardian_data_from_metadata(
 /// What a salmon, a tropical fish or a pufferfish keeps of its looks in one int
 /// (`Salmon.DATA_TYPE`, `TropicalFish.DATA_ID_TYPE_VARIANT`, `Pufferfish.PUFF_STATE`),
 /// when the data holds it.
-pub(crate) fn fish_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn fish_variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     let data_id = match photon_data::entity_type::name(type_id)? {
         "minecraft:salmon" => SALMON_TYPE_DATA_ID,
         "minecraft:tropical_fish" => TROPICAL_FISH_VARIANT_DATA_ID,
@@ -247,7 +256,7 @@ pub(crate) fn fish_variant_from_metadata(type_id: i32, metadata: &[u8]) -> Optio
 /// An axolotl's variant and whether it plays dead (`Axolotl.DATA_VARIANT`,
 /// `Axolotl.DATA_PLAYING_DEAD`), each when the data holds it.
 pub(crate) fn axolotl_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:axolotl") {
@@ -262,7 +271,7 @@ pub(crate) fn axolotl_data_from_metadata(
 /// Whether a turtle carries an egg and is laying it (`Turtle.HAS_EGG`,
 /// `Turtle.LAYING_EGG`), each when the data holds it.
 pub(crate) fn turtle_eggs_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:turtle") {
@@ -276,7 +285,7 @@ pub(crate) fn turtle_eggs_from_metadata(
 
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
-pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn hoglin_immune_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:hoglin" {
         return None;
     }
@@ -285,7 +294,7 @@ pub(crate) fn hoglin_immune_from_metadata(type_id: i32, metadata: &[u8]) -> Opti
 
 /// What a panda's data holds, each when it is there.
 pub(crate) fn panda_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> crate::mobs::panda::PandaData {
     if photon_data::entity_type::name(type_id) != Some("minecraft:panda") {
@@ -302,7 +311,10 @@ pub(crate) fn panda_data_from_metadata(
 }
 
 /// A polar bear's standing flag (`PolarBear.DATA_STANDING_ID`), when the data holds it.
-pub(crate) fn polar_bear_standing_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn polar_bear_standing_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:polar_bear" {
         return None;
     }
@@ -310,7 +322,7 @@ pub(crate) fn polar_bear_standing_from_metadata(type_id: i32, metadata: &[u8]) -
 }
 
 /// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
-pub(crate) fn rabbit_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn rabbit_type_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:rabbit" {
         return None;
     }
@@ -318,7 +330,7 @@ pub(crate) fn rabbit_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option
 }
 
 /// A mooshroom's variant (`MushroomCow.DATA_TYPE`), when the data holds it.
-pub(crate) fn mooshroom_type_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn mooshroom_type_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:mooshroom" {
         return None;
     }
@@ -327,7 +339,10 @@ pub(crate) fn mooshroom_type_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
 
 /// Whether a snow golem wears its pumpkin (`SnowGolem.DATA_PUMPKIN_ID`, bit
 /// sixteen), when the data holds it.
-pub(crate) fn snow_golem_pumpkin_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn snow_golem_pumpkin_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:snow_golem" {
         return None;
     }
@@ -337,7 +352,7 @@ pub(crate) fn snow_golem_pumpkin_from_metadata(type_id: i32, metadata: &[u8]) ->
 /// A piglin's baby, dancing and crossbow-charging flags (`Piglin.DATA_BABY_ID`,
 /// `DATA_IS_DANCING`, `DATA_IS_CHARGING_CROSSBOW`), when the data holds them.
 pub(crate) fn piglin_flags_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:piglin") {
@@ -351,7 +366,7 @@ pub(crate) fn piglin_flags_from_metadata(
 }
 
 /// A sheep's wool byte (`Sheep.DATA_WOOL_ID`), when the data holds it.
-pub(crate) fn sheep_wool_from_metadata(type_id: i32, metadata: &[u8]) -> Option<u8> {
+pub(crate) fn sheep_wool_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<u8> {
     if photon_data::entity_type::name(type_id)? != "minecraft:sheep" {
         return None;
     }
@@ -361,7 +376,7 @@ pub(crate) fn sheep_wool_from_metadata(type_id: i32, metadata: &[u8]) -> Option<
 /// A creeper's fuse direction and ignited flag (`Creeper.DATA_SWELL_DIR`,
 /// `DATA_IS_IGNITED`), when the data holds them.
 pub(crate) fn creeper_fuse_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:creeper") {
@@ -375,7 +390,10 @@ pub(crate) fn creeper_fuse_from_metadata(
 
 /// Whether a creeper is charged (`Creeper.DATA_IS_POWERED`), when the data
 /// holds it.
-pub(crate) fn creeper_powered_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn creeper_powered_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:creeper" {
         return None;
     }
@@ -384,7 +402,10 @@ pub(crate) fn creeper_powered_from_metadata(type_id: i32, metadata: &[u8]) -> Op
 
 /// A villager's or zombie villager's type, profession and level
 /// (`Villager.DATA_VILLAGER_DATA`), when the data holds them.
-pub(crate) fn villager_data_from_metadata(type_id: i32, metadata: &[u8]) -> Option<[i32; 3]> {
+pub(crate) fn villager_data_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<[i32; 3]> {
     let data_id = match photon_data::entity_type::name(type_id)? {
         "minecraft:villager" => VILLAGER_DATA_DATA_ID,
         "minecraft:zombie_villager" => ZOMBIE_VILLAGER_DATA_DATA_ID,
@@ -402,7 +423,7 @@ pub(crate) fn villager_data_from_metadata(type_id: i32, metadata: &[u8]) -> Opti
 
 /// A villager's or wandering trader's unhappy counter
 /// (`AbstractVillager.DATA_UNHAPPY_COUNTER`), when the data holds it.
-pub(crate) fn unhappy_counter_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn unhappy_counter_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     matches!(
         photon_data::entity_type::name(type_id)?,
         "minecraft:villager" | "minecraft:wandering_trader"
@@ -414,7 +435,7 @@ pub(crate) fn unhappy_counter_from_metadata(type_id: i32, metadata: &[u8]) -> Op
 /// casting byte (`SpellcasterIllager.DATA_SPELL_CASTING_ID`, above zero while
 /// casting), when the data holds them.
 pub(crate) fn illager_flags_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>) {
     let Some(name) = photon_data::entity_type::name(type_id) else {
@@ -435,7 +456,7 @@ pub(crate) fn illager_flags_from_metadata(
 /// The block state an enderman carries (`DATA_CARRY_STATE`, zero for none)
 /// and whether it is creepy (`DATA_CREEPY`), when the data holds them.
 pub(crate) fn enderman_flags_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:enderman") {
@@ -453,7 +474,7 @@ pub(crate) fn enderman_flags_from_metadata(
 /// Whether a goat has its left and its right horn (`Goat.DATA_HAS_LEFT_HORN`,
 /// `DATA_HAS_RIGHT_HORN`), when the data holds them.
 pub(crate) fn goat_horns_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:goat") {
@@ -467,7 +488,10 @@ pub(crate) fn goat_horns_from_metadata(
 
 /// A bee's flags (`Bee.DATA_FLAGS_ID`) and the game time its anger ends
 /// (`DATA_ANGER_END_TIME`), when the data holds them.
-pub(crate) fn bee_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u8>, Option<i64>) {
+pub(crate) fn bee_data_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> (Option<u8>, Option<i64>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:bee") {
         return (None, None);
     }
@@ -480,7 +504,7 @@ pub(crate) fn bee_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u
     (metadata_byte_value(metadata, BEE_FLAGS_DATA_ID), anger)
 }
 
-pub(crate) fn wolf_data_from_metadata(type_id: i32, metadata: &[u8]) -> WolfData {
+pub(crate) fn wolf_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> WolfData {
     if photon_data::entity_type::name(type_id) != Some("minecraft:wolf") {
         return WolfData::default();
     }
@@ -499,7 +523,7 @@ pub(crate) fn wolf_data_from_metadata(type_id: i32, metadata: &[u8]) -> WolfData
 }
 
 /// A nautilus's `TamableAnimal` flags, when the data holds them.
-pub(crate) fn nautilus_flags_from_metadata(type_id: i32, metadata: &[u8]) -> Option<u8> {
+pub(crate) fn nautilus_flags_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<u8> {
     matches!(
         photon_data::entity_type::name(type_id),
         Some("minecraft:nautilus" | "minecraft:zombie_nautilus")
@@ -508,7 +532,7 @@ pub(crate) fn nautilus_flags_from_metadata(type_id: i32, metadata: &[u8]) -> Opt
     .flatten()
 }
 
-pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
+pub(crate) fn cat_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> CatData {
     if photon_data::entity_type::name(type_id) != Some("minecraft:cat") {
         return CatData::default();
     }
@@ -522,7 +546,10 @@ pub(crate) fn cat_data_from_metadata(type_id: i32, metadata: &[u8]) -> CatData {
 
 /// A fox's flags and variant (`Fox.DATA_FLAGS_ID`, `DATA_TYPE_ID`), each when
 /// the data holds it.
-pub(crate) fn fox_data_from_metadata(type_id: i32, metadata: &[u8]) -> (Option<u8>, Option<i32>) {
+pub(crate) fn fox_data_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> (Option<u8>, Option<i32>) {
     if photon_data::entity_type::name(type_id) != Some("minecraft:fox") {
         return (None, None);
     }

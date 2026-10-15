@@ -177,6 +177,6 @@ pub fn quad_holder_offsets(name: &str, size: Size) -> [[f64; 3]; 4] {
 }
 
 /// The leash `entity_type::pick` says the type with this id takes, if any.
-pub fn leash_of(type_id: i32) -> Option<entity_type::Leash> {
+pub fn leash_of(type_id: photon_core::ids::EntityTypeId) -> Option<entity_type::Leash> {
     entity_type::pick(type_id).and_then(|pick| pick.leash)
 }

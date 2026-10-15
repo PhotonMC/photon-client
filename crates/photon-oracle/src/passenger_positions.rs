@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 pub(super) fn client_world_entity_passengers_state(
     label: &str,
@@ -43,7 +44,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-            type_id,
+            type_id: photon_core::ids::EntityTypeId(type_id),
             x: 0.0,
             y: 0.0,
             z: 0.0,
@@ -169,7 +170,7 @@ pub(super) fn client_world_entity_passenger_position_result(
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
             uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-            type_id: 120,
+            type_id: photon_core::ids::EntityTypeId(120),
             x: position.x,
             y: position.y,
             z: position.z,
@@ -184,7 +185,7 @@ pub(super) fn client_world_entity_passenger_position_result(
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
         uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-        type_id: 89,
+        type_id: photon_core::ids::EntityTypeId(89),
         x: vehicle_position.x,
         y: vehicle_position.y,
         z: vehicle_position.z,
@@ -301,7 +302,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
         uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-        type_id: 89,
+        type_id: photon_core::ids::EntityTypeId(89),
         x: vehicle_position.x,
         y: vehicle_position.y,
         z: vehicle_position.z,
@@ -346,7 +347,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     if !world.apply_entity(EntityInput {
         entity_id: passenger_id,
         uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-        type_id: 156,
+        type_id: photon_core::ids::EntityTypeId(156),
         x: passenger_position.x,
         y: passenger_position.y,
         z: passenger_position.z,

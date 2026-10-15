@@ -292,7 +292,7 @@ pub(super) fn gravity_step(
 }
 
 /// Map a pinned entity type id onto its ballistic tick, if it has one.
-pub(crate) fn vanilla_projectile_kind(type_id: i32) -> Option<VanillaProjectileKind> {
+pub(crate) fn vanilla_projectile_kind(type_id: EntityTypeId) -> Option<VanillaProjectileKind> {
     match type_id {
         VANILLA_SNOWBALL_ENTITY_TYPE_ID
         | VANILLA_EGG_ENTITY_TYPE_ID

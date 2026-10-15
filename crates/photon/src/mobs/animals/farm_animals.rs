@@ -445,7 +445,7 @@ fn mushrooms(
 }
 
 /// The animals this module draws, by entity type id.
-fn animal_kinds() -> Vec<(i32, Animal)> {
+fn animal_kinds() -> Vec<(photon_core::ids::EntityTypeId, Animal)> {
     [
         ("minecraft:goat", Animal::Goat),
         ("minecraft:mooshroom", Animal::Mooshroom),

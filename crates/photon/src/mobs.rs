@@ -6,6 +6,7 @@ pub(crate) mod aquatic;
 pub(crate) mod humanoids;
 pub(crate) mod monsters;
 
+use photon_core::ids::EntityTypeId;
 use std::collections::HashMap;
 
 use photon_core::math::Vec3;
@@ -261,8 +262,8 @@ const DEFAULT_VARIANT: &str = "minecraft:temperate";
 
 /// The baked models of the mobs, which are posed anew for each one drawn.
 pub struct MobModels {
-    kinds: HashMap<i32, &'static MobKind>,
-    humanoids: HashMap<i32, &'static HumanoidKind>,
+    kinds: HashMap<EntityTypeId, &'static MobKind>,
+    humanoids: HashMap<EntityTypeId, &'static HumanoidKind>,
     models: HashMap<String, MobModel>,
     /// What the glowing layers drew this frame (eyes), for the frame to hand
     /// to the renderer after the mobs.

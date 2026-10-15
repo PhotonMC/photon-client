@@ -1,5 +1,5 @@
 use super::super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
 fn entity_collision_collection_follows_java_filter_and_epsilon() {
@@ -76,7 +76,7 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 0.0,
             z: 0.5,
@@ -89,7 +89,11 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
     for &minecart_type_id in VANILLA_MINECART_ENTITY_TYPE_IDS {
         let mut minecart_source_world = ClientWorld::default();
         add_entity(&mut minecart_source_world, 7, minecart_type_id);
-        add_entity(&mut minecart_source_world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
+        add_entity(
+            &mut minecart_source_world,
+            8,
+            VANILLA_PLAYER_ENTITY_TYPE_ID.0,
+        );
         assert!(
             !minecart_source_world.no_entity_collision_for_entity(
                 Some(EntityId(7)),
@@ -117,7 +121,7 @@ fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 0.0,
             z: 0.5,
@@ -129,7 +133,7 @@ fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
 
     let mut world = ClientWorld::default();
     add_entity(&mut world, 7, 0);
-    add_entity(&mut world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
+    add_entity(&mut world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID.0);
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
@@ -155,11 +159,11 @@ fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
 #[test]
 fn indexed_player_collision_respects_living_climbable_gate() {
     let mut world = ClientWorld::default();
-    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 0.0,
             z: 0.5,
@@ -188,11 +192,11 @@ fn indexed_player_collision_respects_living_climbable_gate() {
 #[test]
 fn indexed_player_collision_respects_flying_ability_gate() {
     let mut world = ClientWorld::default();
-    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 0.0,
             z: 0.5,
@@ -225,11 +229,11 @@ fn indexed_player_collision_respects_flying_ability_gate() {
 #[test]
 fn indexed_player_collision_respects_trapdoor_ladder_context() {
     let mut world = ClientWorld::default();
-    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 1.0,
             z: 0.5,
@@ -283,11 +287,11 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
 fn indexed_player_collision_respects_climbable_block_state_tag() {
     let mut world = ClientWorld::default();
     world.apply_update_tags_packet(&climbing_tags());
-    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 1.0,
             z: 0.5,
@@ -319,11 +323,11 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
 fn indexed_player_collision_respects_glide_through_tag() {
     let mut world = ClientWorld::default();
     world.apply_update_tags_packet(&climbing_tags());
-    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 0.5,
             y: 1.0,
             z: 0.5,

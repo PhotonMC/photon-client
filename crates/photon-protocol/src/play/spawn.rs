@@ -1,12 +1,13 @@
 use super::*;
 use photon_core::ids::EntityId;
+use photon_core::ids::EntityTypeId;
 
 /// Wire-level fields decoded from one clientbound add-entity packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AddEntityObservation {
     pub entity_id: EntityId,
     pub uuid: Uuid,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -23,7 +24,7 @@ pub struct AddEntityObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorldEntityTickObservation {
     pub entity_id: EntityId,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub before_position: (f64, f64, f64),
     pub after_position: (f64, f64, f64),
     pub before_motion: (f64, f64, f64),
@@ -37,7 +38,7 @@ pub struct WorldEntityTickObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExperienceOrbTickObservation {
     pub entity_id: EntityId,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub before_position: (f64, f64, f64),
     pub after_first_tick_position: (f64, f64, f64),
     pub after_second_tick_position: (f64, f64, f64),
@@ -69,7 +70,7 @@ pub struct EntityPassengersObservation {
 pub struct EntityPassengerTickObservation {
     pub vehicle_id: EntityId,
     pub passenger_id: EntityId,
-    pub passenger_type_id: i32,
+    pub passenger_type_id: EntityTypeId,
     pub before_vehicle_tick_count: i32,
     pub after_vehicle_tick_count: i32,
     pub before_passenger_tick_count: i32,
@@ -89,7 +90,7 @@ pub fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Con
     let entity_id = read_varint(&mut input, "add entity id")?;
     let uuid = photon_core::binary::read_uuid(&mut input)
         .map_err(|_| ConnectionError::Codec("add entity uuid"))?;
-    let entity_type_id = read_varint(&mut input, "add entity type")?;
+    let entity_type_id = EntityTypeId(read_varint(&mut input, "add entity type")?);
     let x = read_f64(&mut input, "add entity x")?;
     let y = read_f64(&mut input, "add entity y")?;
     let z = read_f64(&mut input, "add entity z")?;

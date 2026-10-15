@@ -55,7 +55,7 @@ fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(9),
         uuid: Uuid::new(5, 6),
-        type_id: 71,
+        type_id: photon_core::ids::EntityTypeId(71),
         x: 0.0,
         y: 64.0,
         z: 0.0,

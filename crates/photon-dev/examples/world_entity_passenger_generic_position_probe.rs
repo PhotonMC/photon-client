@@ -1,11 +1,12 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
 use photon_dev::connect_and_world_entity_passenger_tick_probe;
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
-const VANILLA_ZOMBIE_ENTITY_TYPE_ID: i32 = 151;
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
+const VANILLA_ZOMBIE_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(151);
 const VANILLA_OAK_BOAT_PASSENGER_RIDE_HEIGHT: f64 = 0.1875;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

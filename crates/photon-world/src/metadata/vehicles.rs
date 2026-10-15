@@ -58,7 +58,7 @@ pub(crate) fn end_crystal_data_from_metadata(
 /// variant data (`Horse.DATA_ID_TYPE_VARIANT`) and a chested horse's chest
 /// (`AbstractChestedHorse.DATA_ID_CHEST`), when the data holds them.
 pub(crate) fn horse_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<u8>, Option<i32>, Option<bool>) {
     let Some(name) = photon_data::entity_type::name(type_id) else {
@@ -102,7 +102,7 @@ pub(crate) fn horse_data_from_metadata(
 /// A camel's dash flag (`Camel.DASH`) and the tick its pose last changed
 /// (`LAST_POSE_CHANGE_TICK`), when the data holds them.
 pub(crate) fn camel_data_from_metadata(
-    type_id: i32,
+    type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<i64>) {
     if !matches!(
@@ -125,7 +125,10 @@ pub(crate) fn camel_data_from_metadata(
 
 /// A strider's suffocating flag (`Strider.DATA_SUFFOCATING`), when the data
 /// holds it.
-pub(crate) fn strider_suffocating_from_metadata(type_id: i32, metadata: &[u8]) -> Option<bool> {
+pub(crate) fn strider_suffocating_from_metadata(
+    type_id: EntityTypeId,
+    metadata: &[u8],
+) -> Option<bool> {
     if photon_data::entity_type::name(type_id)? != "minecraft:strider" {
         return None;
     }

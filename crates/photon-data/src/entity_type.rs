@@ -1,23 +1,25 @@
 //! The entity type registry: each type's name, and its id (its place in the
 //! list, which is what the wire carries).
 
+use photon_core::ids::EntityTypeId;
+
 use crate::generated::entity_picks::ENTITY_PICKS;
 use crate::generated::entity_types::ENTITY_TYPES;
 
 /// The name of the type with this id (`minecraft:pig`).
-pub fn name(id: i32) -> Option<&'static str> {
-    usize::try_from(id)
+pub fn name(id: EntityTypeId) -> Option<&'static str> {
+    usize::try_from(id.0)
         .ok()
         .and_then(|index| ENTITY_TYPES.get(index))
         .copied()
 }
 
 /// The id of the type with this name.
-pub fn id(name: &str) -> Option<i32> {
+pub fn id(name: &str) -> Option<EntityTypeId> {
     ENTITY_TYPES
         .iter()
         .position(|candidate| *candidate == name)
-        .map(|index| index as i32)
+        .map(|index| EntityTypeId(index as i32))
 }
 
 /// A pig or cow variant of the data pack: the textures (`entity/pig/pig_cold`
@@ -257,8 +259,8 @@ pub struct Leash {
 }
 
 /// The crosshair's answers for the type with this id; the player has none.
-pub fn pick(id: i32) -> Option<&'static EntityPick> {
-    usize::try_from(id)
+pub fn pick(id: EntityTypeId) -> Option<&'static EntityPick> {
+    usize::try_from(id.0)
         .ok()
         .and_then(|index| ENTITY_PICKS.get(index))
         .and_then(Option::as_ref)
@@ -270,11 +272,11 @@ mod tests {
 
     #[test]
     fn names_and_ids_go_both_ways() {
-        assert_eq!(name(156), Some("minecraft:player"));
-        assert_eq!(id("minecraft:player"), Some(156));
-        assert_eq!(id("minecraft:cow"), Some(30));
-        assert_eq!(name(-1), None);
-        assert_eq!(name(100_000), None);
+        assert_eq!(name(EntityTypeId(156)), Some("minecraft:player"));
+        assert_eq!(id("minecraft:player"), Some(EntityTypeId(156)));
+        assert_eq!(id("minecraft:cow"), Some(EntityTypeId(30)));
+        assert_eq!(name(EntityTypeId(-1)), None);
+        assert_eq!(name(EntityTypeId(100_000)), None);
         assert_eq!(id("minecraft:nope"), None);
     }
 }

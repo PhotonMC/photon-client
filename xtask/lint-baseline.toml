@@ -1205,22 +1205,8 @@
 "crates/photon-dev/examples/world_block_entity_spawner_state_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_environment_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_always_ticking_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_arrow_count_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_custom_name_presence_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_custom_name_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_effect_ambience_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_effect_particles_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_living_flags_probe.rs" = 1
-"crates/photon-dev/examples/world_entity_mob_flags_probe.rs" = 1
 "crates/photon-dev/examples/world_player_container_menu_map_probe.rs" = 3
 "crates/photon-dev/examples/world_player_container_probe.rs" = 3
-"crates/photon-dev/examples/world_remote_player_head_rotation_probe.rs" = 1
-"crates/photon-dev/examples/world_remote_player_interpolation_probe.rs" = 1
-"crates/photon-dev/examples/world_remote_player_motion_probe.rs" = 1
-"crates/photon-dev/examples/world_remote_player_position_snap_probe.rs" = 1
-"crates/photon-dev/src/probe/mode.rs" = 6
-"crates/photon-dev/src/probe/observe.rs" = 3
 "crates/photon-oracle/src/shape/world_collision.rs" = 1
 "crates/photon-world/src/block/entity.rs" = 1
 

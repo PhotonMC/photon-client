@@ -1,10 +1,11 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
 use photon_dev::connect_and_world_entity_passenger_tick_probe;
 
-const VANILLA_SNOWBALL_ENTITY_TYPE_ID: i32 = 120;
+const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(120);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
@@ -42,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .find(|entity| entity.entity_id == observation.vehicle_id)
         .ok_or("vanilla did not add the passenger vehicle")?;
-    if vehicle.entity_type_id != expected_vehicle_type_id {
+    if vehicle.entity_type_id != photon_core::ids::EntityTypeId(expected_vehicle_type_id) {
         return Err(format!(
             "passenger vehicle type changed: expected {}, got {}",
             expected_vehicle_type_id, vehicle.entity_type_id

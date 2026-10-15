@@ -396,7 +396,7 @@ pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags,
 /// The entity type tags of the data pack, as a tag packet would carry them.
 pub(super) fn vanilla_entity_type_tags() -> Result<photon_world::block::tags::ItemTags, String> {
     let packet = vanilla_tags_of("entity_type", "minecraft:entity_type", &|name| {
-        photon_data::entity_type::id(name)
+        photon_data::entity_type::id(name).map(|id| id.0)
     })?;
     photon_world::block::tags::ItemTags::of_registry(&packet.registries, "minecraft:entity_type")
         .ok_or_else(|| "no entity type tags".to_owned())

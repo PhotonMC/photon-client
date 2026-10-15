@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl ClientEntity {
     pub fn id(&self) -> EntityId {
@@ -8,7 +9,7 @@ impl ClientEntity {
     pub(crate) fn collision_candidate(
         &self,
         source_entity_id: Option<EntityId>,
-        source_type_id: Option<i32>,
+        source_type_id: Option<EntityTypeId>,
         source_position: Option<Vec3>,
         same_vehicle: bool,
     ) -> Option<ClientEntityCollisionCandidate> {
@@ -130,17 +131,17 @@ impl ClientEntity {
     }
 }
 
-pub(crate) fn is_vanilla_player_entity_type(entity_type_id: i32) -> bool {
+pub(crate) fn is_vanilla_player_entity_type(entity_type_id: EntityTypeId) -> bool {
     entity_type_id == VANILLA_PLAYER_ENTITY_TYPE_ID
 }
 
-pub(crate) fn is_vanilla_pushable_entity_type(entity_type_id: i32) -> bool {
+pub(crate) fn is_vanilla_pushable_entity_type(entity_type_id: EntityTypeId) -> bool {
     is_vanilla_boat_entity_type(entity_type_id)
         || is_vanilla_shulker_entity_type(entity_type_id)
         || is_vanilla_minecart_entity_type(entity_type_id)
         || is_vanilla_player_entity_type(entity_type_id)
 }
 
-pub(crate) fn source_accepts_pushable_entities(entity_type_id: i32) -> bool {
+pub(crate) fn source_accepts_pushable_entities(entity_type_id: EntityTypeId) -> bool {
     is_vanilla_boat_entity_type(entity_type_id) || is_vanilla_minecart_entity_type(entity_type_id)
 }

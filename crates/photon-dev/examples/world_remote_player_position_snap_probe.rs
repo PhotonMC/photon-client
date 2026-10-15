@@ -114,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn validate_snap(
     observation: &EntityPositionSnapObservation,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if observation.entity_type_id != 156 {
+    if observation.entity_type_id != photon_core::ids::EntityTypeId(156) {
         return Err(format!(
             "snap observation used unexpected entity type {}",
             observation.entity_type_id

@@ -110,9 +110,11 @@ mod tests {
                         count => Allowed::Types(
                             (1..count)
                                 .map(|_| {
-                                    photon_data::entity_type::name(varint(&mut input))
-                                        .expect("an entity type")
-                                        .to_owned()
+                                    photon_data::entity_type::name(photon_core::ids::EntityTypeId(
+                                        varint(&mut input),
+                                    ))
+                                    .expect("an entity type")
+                                    .to_owned()
                                 })
                                 .collect(),
                         ),

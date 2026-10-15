@@ -42,7 +42,7 @@ pub(crate) struct EntityTargets {
 pub struct EntityInput {
     pub entity_id: EntityId,
     pub uuid: photon_core::binary::Uuid,
-    pub type_id: i32,
+    pub type_id: EntityTypeId,
     pub x: f64,
     pub y: f64,
     pub z: f64,

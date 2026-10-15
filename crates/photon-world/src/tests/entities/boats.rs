@@ -22,7 +22,7 @@ fn air_boat_float_applies_java_drag_gravity_and_position_step() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(37),
             uuid: Uuid::new(1, 37),
-            type_id: 89,
+            type_id: photon_core::ids::EntityTypeId(89),
             x: 12.5,
             y: 8.0,
             z: -4.25,
@@ -75,7 +75,7 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: 89,
+        type_id: photon_core::ids::EntityTypeId(89),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -86,7 +86,7 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(1, 38),
-        type_id: 151,
+        type_id: photon_core::ids::EntityTypeId(151),
         x: 2.0,
         y: 12.0,
         z: 2.0,

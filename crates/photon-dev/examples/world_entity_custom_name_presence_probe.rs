@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -18,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .world
         .entities()
         .all()
-        .find(|entity| entity.type_id == 85 && entity.has_custom_name())
+        .find(|entity| entity.type_id == EntityTypeId(85) && entity.has_custom_name())
     else {
         return Err("vanilla named minecart was not applied to ClientWorld".into());
     };

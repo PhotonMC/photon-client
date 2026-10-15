@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 pub(super) fn client_world_indexed_collision_case(request: &Value) -> Result<Value, String> {
     let inputs = request
@@ -33,7 +34,7 @@ pub(super) fn client_world_indexed_collision_case(request: &Value) -> Result<Val
                 world.apply_entity(EntityInput {
                     entity_id,
                     uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-                    type_id: i32_field(entity_value, "type_id")?,
+                    type_id: entity_type_id_field(entity_value, "type_id")?,
                     x: position.x,
                     y: position.y,
                     z: position.z,
@@ -138,7 +139,7 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                 world.apply_entity(EntityInput {
                     entity_id: EntityId(i32_field(entity_value, "entity_id")?),
                     uuid: Uuid::new(0, u64::from(i32_field(entity_value, "entity_id")? as u32)),
-                    type_id: i32_field(entity_value, "type_id")?,
+                    type_id: entity_type_id_field(entity_value, "type_id")?,
                     x: position.x,
                     y: position.y,
                     z: position.z,
@@ -213,7 +214,7 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                         world.apply_entity(EntityInput {
                             entity_id,
                             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-                            type_id: i32_field(entity_value, "type_id")?,
+                            type_id: entity_type_id_field(entity_value, "type_id")?,
                             x: position.x,
                             y: position.y,
                             z: position.z,

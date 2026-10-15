@@ -32,7 +32,7 @@ pub(super) fn client_world_entity_tick_result(
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-            type_id: entity_type_id,
+            type_id: photon_core::ids::EntityTypeId(entity_type_id),
             x: position.x,
             y: position.y,
             z: position.z,
@@ -158,7 +158,7 @@ pub(super) fn client_world_entity_ticking_eligibility_result(
     if !world.apply_entity(EntityInput {
         entity_id: remote_entity_id,
         uuid: Uuid::new(0, u64::from(remote_entity_id.0 as u32)),
-        type_id: remote_type_id,
+        type_id: photon_core::ids::EntityTypeId(remote_type_id),
         x: remote_position.x,
         y: remote_position.y,
         z: remote_position.z,

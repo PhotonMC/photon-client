@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// `name_tags`: a remote player's name tag, whether it shows and what is
 /// submitted for it, with the viewer the scene names.
@@ -37,7 +38,7 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
             if !world.apply_entity(EntityInput {
                 entity_id: id,
                 uuid: Uuid::new(0, id.0 as u64),
-                type_id: 156,
+                type_id: photon_core::ids::EntityTypeId(156),
                 x: at.0,
                 y: at.1,
                 z: at.2,

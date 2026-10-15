@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityTypeId;
 
 impl ClientEntity {
     /// `Piglin.isChargingCrossbow`.
@@ -58,8 +59,8 @@ impl ClientEntity {
     }
 }
 
-pub(super) fn armor_stand_type_id() -> i32 {
-    photon_data::entity_type::id("minecraft:armor_stand").unwrap_or(-1)
+pub(super) fn armor_stand_type_id() -> EntityTypeId {
+    photon_data::entity_type::id("minecraft:armor_stand").unwrap_or(EntityTypeId(-1))
 }
 
 /// `EquipmentSlot`, in the order the wire counts them.

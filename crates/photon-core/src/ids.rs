@@ -5,21 +5,38 @@
 
 use std::fmt;
 
-/// An entity's id on the server's wire (`Entity.getId`), which is also the local player's.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct EntityId(pub i32);
+/// Defines an id type: a newtype of the wire's `i32` with the number's own order, `Debug` and
+/// `Display`.
+macro_rules! id_type {
+    ($(#[$meta:meta])* $name:ident) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub struct $name(pub i32);
 
-impl fmt::Debug for EntityId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, f)
-    }
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.0, f)
+            }
+        }
+    };
 }
 
-impl fmt::Display for EntityId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
+id_type!(
+    /// An entity's id on the server's wire (`Entity.getId`), which is also the local player's.
+    EntityId
+);
+
+id_type!(
+    /// An entity type's id in the `minecraft:entity_type` registry (`EntityType`), the number
+    /// the server sends with an added entity.
+    EntityTypeId
+);
 
 #[cfg(test)]
 mod tests {
@@ -29,5 +46,9 @@ mod tests {
     fn an_entity_id_orders_and_prints_as_its_number() {
         assert!(EntityId(-3) < EntityId(2));
         assert_eq!(format!("{:?} {}", EntityId(7), EntityId(7)), "7 7");
+        assert_eq!(
+            format!("{:?} {}", EntityTypeId(156), EntityTypeId(156)),
+            "156 156"
+        );
     }
 }

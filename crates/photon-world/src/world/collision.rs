@@ -28,7 +28,7 @@ impl ClientWorld {
     pub(crate) fn indexed_entity_collision_candidates(
         &self,
         source_entity_id: Option<EntityId>,
-        source_type_id: Option<i32>,
+        source_type_id: Option<EntityTypeId>,
         source_position: Option<Vec3>,
         bounding_box: Aabb,
     ) -> Vec<ClientEntityCollisionCandidate> {

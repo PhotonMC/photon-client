@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::thread;
@@ -36,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .world
         .entities()
         .all()
-        .find(|entity| entity.type_id == 156)
+        .find(|entity| entity.type_id == EntityTypeId(156))
     else {
         return Err("vanilla did not send the second player as entity type 156".into());
     };

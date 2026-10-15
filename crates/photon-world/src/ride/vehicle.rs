@@ -2,6 +2,7 @@
 //! carries its rider and what it lets the rider do.
 
 use photon_core::ids::EntityId;
+use photon_core::ids::EntityTypeId;
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 
 use crate::ClientWorld;
@@ -28,7 +29,7 @@ pub struct VehicleView {
     pub kind: VehicleKind,
     /// Whether the local player is the vehicle's authority (it drives it).
     pub controlled: bool,
-    pub type_id: i32,
+    pub type_id: EntityTypeId,
     pub position: Vec3,
     pub y_rot: f32,
     pub x_rot: f32,

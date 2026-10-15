@@ -163,7 +163,7 @@ pub fn collect_entity_collision_shapes(
 
 /// Collect entity shapes with the source type's Java collision dispatch.
 pub fn collect_entity_collision_shapes_for_source(
-    source_type_id: Option<i32>,
+    source_type_id: Option<EntityTypeId>,
     source_present: bool,
     test_area: Aabb,
     candidates: &[ClientEntityCollisionCandidate],

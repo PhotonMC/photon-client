@@ -57,7 +57,7 @@ impl ClientWorld {
             })?;
         let (ride_height, single_passenger_z_offset) = VANILLA_BOAT_PASSENGER_GEOMETRY
             .iter()
-            .find(|&&(type_id, _, _)| type_id == vehicle_type_id)
+            .find(|&&(type_id, _, _)| type_id == vehicle_type_id.0)
             .map(|&(_, ride_height, single_passenger_z_offset)| {
                 (f64::from(ride_height), f64::from(single_passenger_z_offset))
             })?;
@@ -373,7 +373,7 @@ impl ClientWorld {
         let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
             VANILLA_BOAT_PASSENGER_GEOMETRY
                 .iter()
-                .any(|&(type_id, _, _)| type_id == vehicle.type_id)
+                .any(|&(type_id, _, _)| type_id == vehicle.type_id.0)
                 .then(|| vehicle.y_rot.get())
         }) else {
             return;

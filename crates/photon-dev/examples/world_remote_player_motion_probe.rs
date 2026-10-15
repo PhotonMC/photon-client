@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .entity_motion_interpolation_observations
         .first()
         .ok_or("vanilla did not produce a remote Player motion observation")?;
-    if observation.entity_type_id != 156 {
+    if observation.entity_type_id != photon_core::ids::EntityTypeId(156) {
         return Err(format!(
             "motion observation used unexpected entity type {}",
             observation.entity_type_id

@@ -8,6 +8,7 @@ use super::equippable_allowed::Allowed;
 use crate::item_components::{self, Cursor, Patch, PotionContents, ids};
 use crate::registries::Registries;
 use crate::text::Component;
+use photon_core::ids::EntityTypeId;
 
 /// The components of a stack: `ItemStack.get`.
 pub struct Values {
@@ -238,7 +239,7 @@ impl Values {
                     let mut types = Vec::new();
                     for _ in 1..count {
                         let id = cursor.varint().ok()?;
-                        types.push(photon_data::entity_type::name(id)?.to_owned());
+                        types.push(photon_data::entity_type::name(EntityTypeId(id))?.to_owned());
                     }
                     Some(Allowed::Types(types))
                 }

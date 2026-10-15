@@ -1325,6 +1325,9 @@ version = "0.1.0"
 [[package]]
 name = "photon-data"
 version = "0.1.0"
+dependencies = [
+ "photon-core",
+]
 
 [[package]]
 name = "photon-dev"

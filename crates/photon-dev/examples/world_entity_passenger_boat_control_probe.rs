@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -5,7 +6,7 @@ use std::time::Duration;
 use photon_dev::connect_and_world_entity_passenger_boat_control_probe;
 use photon_world::BoatInput;
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);

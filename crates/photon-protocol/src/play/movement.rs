@@ -5,7 +5,7 @@ use photon_core::ids::EntityId;
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityInterpolationObservation {
     pub entity_id: EntityId,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub before_position: (f64, f64, f64),
     pub target_position: (f64, f64, f64),
     pub before_rotation: (f32, f32),
@@ -20,7 +20,7 @@ pub struct EntityInterpolationObservation {
 pub struct EntityPositionSnapObservation {
     pub packet_kind: &'static str,
     pub entity_id: EntityId,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub before_position: (f64, f64, f64),
     pub target_position: (f64, f64, f64),
     pub before_rotation: (f32, f32),
@@ -47,7 +47,7 @@ pub struct EntityMotionObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityMotionInterpolationObservation {
     pub entity_id: EntityId,
-    pub entity_type_id: i32,
+    pub entity_type_id: EntityTypeId,
     pub before_motion: (f64, f64, f64),
     pub target_motion: (f64, f64, f64),
     pub applied_motion: (f64, f64, f64),

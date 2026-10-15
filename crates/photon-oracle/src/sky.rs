@@ -44,10 +44,15 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
         .flatten()
         .map(|row| {
             let types: Vec<Value> = (0..)
-                .map_while(|id| photon_data::entity_type::name(id).map(|name| (id, name)))
+                .map_while(|id| {
+                    photon_data::entity_type::name(photon_core::ids::EntityTypeId(id))
+                        .map(|name| (id, name))
+                })
                 .map(|(id, name)| {
                     let mut out = json!({"label": name, "id": id});
-                    let Some(pick) = photon_data::entity_type::pick(id) else {
+                    let Some(pick) =
+                        photon_data::entity_type::pick(photon_core::ids::EntityTypeId(id))
+                    else {
                         out["created"] = json!(false);
                         return out;
                     };

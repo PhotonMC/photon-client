@@ -19,7 +19,7 @@ fn add_entity_parser_matches_java_spawn_field_order() {
         super::super::AddEntityObservation {
             entity_id: EntityId(37),
             uuid: photon_core::binary::Uuid::new(0, 0),
-            entity_type_id: 120,
+            entity_type_id: photon_core::ids::EntityTypeId(120),
             x: 1.25,
             y: 80.0,
             z: -35.5,

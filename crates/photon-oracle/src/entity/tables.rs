@@ -479,7 +479,10 @@ pub(super) fn entity_data_serializers_case() -> Result<Value, String> {
 
 pub(super) fn entity_types_case() -> Result<Value, String> {
     let rows: Vec<Value> = (0..)
-        .map_while(|id| photon_data::entity_type::name(id).map(|name| (id, name)))
+        .map_while(|id| {
+            photon_data::entity_type::name(photon_core::ids::EntityTypeId(id))
+                .map(|name| (id, name))
+        })
         .map(|(id, name)| json!({"label": name, "id": id}))
         .collect();
     Ok(json!({"rows": rows}))

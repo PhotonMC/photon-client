@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::thread;
@@ -47,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_entity_observations
         .iter()
         .find(|observation| {
-            observation.entity_type_id == 156
+            observation.entity_type_id == EntityTypeId(156)
                 && observation.entity_id != observer_id
                 && observation.applied_to_world
         })

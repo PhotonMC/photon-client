@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -5,7 +6,7 @@ use std::time::Duration;
 use photon_core::math::{mth_atan2, mth_rot_lerp_f32};
 use photon_dev::connect_and_world_firework_tick_probe;
 
-const FIREWORK_ENTITY_TYPE_ID: i32 = 53;
+const FIREWORK_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(53);
 const FIREWORK_HORIZONTAL_ACCELERATION: f64 = 1.15;
 const FIREWORK_VERTICAL_ACCELERATION: f64 = 0.04;
 const PI_F32: f32 = f32::from_bits(0x4049_0fdb);

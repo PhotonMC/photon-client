@@ -291,7 +291,9 @@ mod tests {
             session.local.game_mode,
             session.link.auto_jump,
         ));
-        let minecart = photon_data::entity_type::id("minecraft:minecart").unwrap() as u32;
+        let minecart = photon_data::entity_type::id("minecraft:minecart")
+            .unwrap()
+            .0 as u32;
         session
             .handle_bytes(&add_entity_of_type(1, 156, 8.0))
             .unwrap();

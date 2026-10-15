@@ -1,5 +1,5 @@
 use super::super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
 fn passenger_tick_uses_ride_tick_motion_reset_before_projectile_tick() {
@@ -17,12 +17,12 @@ fn passenger_tick_uses_ride_tick_motion_reset_before_projectile_tick() {
     );
     for (entity_id, type_id, motion) in [
         (37, 71, (0.0, 0.0, 0.0)),
-        (38, VANILLA_SNOWBALL_ENTITY_TYPE_ID, (0.125, 0.0, 0.0)),
+        (38, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (0.125, 0.0, 0.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -74,7 +74,7 @@ fn passenger_tick_positions_snowball_on_regular_boat_seat() {
         (37, 89, (2.0, 2.0, 2.0), (0.0, 0.0, 0.0)),
         (
             38,
-            VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+            VANILLA_SNOWBALL_ENTITY_TYPE_ID.0,
             (2.0, 12.0, 2.0),
             (0.125, 0.0, 0.0),
         ),
@@ -82,7 +82,7 @@ fn passenger_tick_positions_snowball_on_regular_boat_seat() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: position.0,
             y: position.1,
             z: position.2,
@@ -126,13 +126,13 @@ fn passenger_tick_positions_multiple_snowballs_by_boat_order() {
         (37, 89, (2.0, 2.0, 2.0), (90.0, 0.0, 0.0)),
         (
             38,
-            VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+            VANILLA_SNOWBALL_ENTITY_TYPE_ID.0,
             (2.0, 12.0, 2.0),
             (0.0, 0.0, 0.0),
         ),
         (
             39,
-            VANILLA_SNOWBALL_ENTITY_TYPE_ID,
+            VANILLA_SNOWBALL_ENTITY_TYPE_ID.0,
             (2.0, 12.0, 2.0),
             (0.0, 0.0, 0.0),
         ),
@@ -140,7 +140,7 @@ fn passenger_tick_positions_multiple_snowballs_by_boat_order() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: position.0,
             y: position.1,
             z: position.2,
@@ -215,7 +215,7 @@ fn passenger_tick_positions_all_vanilla_boat_geometry_rows() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(vehicle_id),
             uuid: Uuid::new(vehicle_id as u64, 0),
-            type_id: vehicle_type_id,
+            type_id: EntityTypeId(vehicle_type_id),
             x: 2.0,
             y: 10.0,
             z: 2.0,
@@ -265,12 +265,12 @@ fn passenger_tick_positions_remote_player_from_vehicle_attachment() {
     );
     for (entity_id, type_id, position) in [
         (37, 89, (2.0, 2.0, 2.0)),
-        (38, VANILLA_PLAYER_ENTITY_TYPE_ID, (2.0, 12.0, 2.0)),
+        (38, VANILLA_PLAYER_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: position.0,
             y: position.1,
             z: position.2,
@@ -313,7 +313,7 @@ fn passenger_tick_positions_generic_entity_vehicle_attachment() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(37),
             uuid: Uuid::new(37, 0),
-            type_id: 89,
+            type_id: EntityTypeId(89),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -324,7 +324,7 @@ fn passenger_tick_positions_generic_entity_vehicle_attachment() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(passenger_id),
             uuid: Uuid::new(passenger_id as u64, 0),
-            type_id: passenger_type_id,
+            type_id: EntityTypeId(passenger_type_id),
             x: 2.0,
             y: 12.0,
             z: 2.0,
@@ -362,7 +362,7 @@ fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: 89,
+        type_id: EntityTypeId(89),
         x: 2.0,
         y: 2.0,
         z: 2.0,
@@ -373,7 +373,7 @@ fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(38, 0),
-        type_id: 151,
+        type_id: EntityTypeId(151),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -426,7 +426,7 @@ fn passenger_tick_positions_local_player_from_vehicle_attachment() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: 89,
+        type_id: EntityTypeId(89),
         x: 2.0,
         y: 2.0,
         z: 2.0,

@@ -107,7 +107,7 @@ pub(super) fn client_world_entity_boat_tick_result(
     if !world.apply_entity(EntityInput {
         entity_id: boat_entity_id,
         uuid: Uuid::new(0, u64::from(boat_entity_id.0 as u32)),
-        type_id: 89,
+        type_id: photon_core::ids::EntityTypeId(89),
         x: position.x,
         y: position.y,
         z: position.z,
@@ -120,7 +120,7 @@ pub(super) fn client_world_entity_boat_tick_result(
     if !world.apply_entity(EntityInput {
         entity_id: photon_core::ids::EntityId(passenger_id),
         uuid: Uuid::new(0, u64::from(passenger_id as u32)),
-        type_id: passenger_type_id,
+        type_id: photon_core::ids::EntityTypeId(passenger_type_id),
         x: position.x,
         y: position.y,
         z: position.z,
@@ -231,7 +231,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
             uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-            type_id: vehicle_type_id,
+            type_id: photon_core::ids::EntityTypeId(vehicle_type_id),
             x: vehicle_position.x,
             y: vehicle_position.y,
             z: vehicle_position.z,
@@ -277,7 +277,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
             uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-            type_id: 120,
+            type_id: photon_core::ids::EntityTypeId(120),
             x: passenger_position.x,
             y: passenger_position.y,
             z: passenger_position.z,

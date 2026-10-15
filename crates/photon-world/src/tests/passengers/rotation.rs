@@ -1,5 +1,5 @@
 use super::super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
 fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
@@ -18,7 +18,7 @@ fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: 89,
+        type_id: EntityTypeId(89),
         x: 2.0,
         y: 2.0,
         z: 2.0,
@@ -67,12 +67,12 @@ fn passenger_tick_leaves_breeze_rotation_unclamped() {
     );
     for (entity_id, type_id, rotation) in [
         (37, 89, (0.0, 0.0, 0.0)),
-        (38, VANILLA_BREEZE_ENTITY_TYPE_ID, (170.0, 0.0, 170.0)),
+        (38, VANILLA_BREEZE_ENTITY_TYPE_ID.0, (170.0, 0.0, 170.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -109,7 +109,7 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -150,12 +150,12 @@ fn passenger_tick_applies_animal_living_rotation_before_capacity_offset() {
         );
         for (entity_id, type_id, rotation) in [
             (37, vehicle_type_id, (0.0, 0.0, 0.0)),
-            (38, VANILLA_COW_ENTITY_TYPE_ID, (170.0, 0.0, 170.0)),
+            (38, VANILLA_COW_ENTITY_TYPE_ID.0, (170.0, 0.0, 170.0)),
         ] {
             assert!(world.apply_entity(EntityInput {
                 entity_id: EntityId(entity_id),
                 uuid: Uuid::new(entity_id as u64, 0),
-                type_id,
+                type_id: EntityTypeId(type_id),
                 x: 2.0,
                 y: 2.0,
                 z: 2.0,
@@ -192,12 +192,12 @@ fn passenger_turn_calls_boat_on_passenger_turned() {
     );
     for (entity_id, type_id, rotation) in [
         (37, 89, (0.0, 0.0, 0.0)),
-        (38, VANILLA_PLAYER_ENTITY_TYPE_ID, (168.75, 0.0, 168.75)),
+        (38, VANILLA_PLAYER_ENTITY_TYPE_ID.0, (168.75, 0.0, 168.75)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -234,12 +234,12 @@ fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
     );
     for (entity_id, type_id, rotation) in [
         (37, 89, (0.0, 0.0, 0.0)),
-        (38, VANILLA_BREEZE_ENTITY_TYPE_ID, (168.75, 0.0, 168.75)),
+        (38, VANILLA_BREEZE_ENTITY_TYPE_ID.0, (168.75, 0.0, 168.75)),
     ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -274,11 +274,11 @@ fn boat_control_delta_rotation_reaches_passenger_tick() {
             biomes: &biomes,
         }],
     );
-    for (entity_id, type_id) in [(37, 89), (38, 151), (39, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
+    for (entity_id, type_id) in [(37, 89), (38, 151), (39, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(1, entity_id as u64),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 12.0,
             z: 2.0,
@@ -330,7 +330,7 @@ fn boat_authority_uses_first_passenger_only() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: 89,
+        type_id: EntityTypeId(89),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -341,7 +341,7 @@ fn boat_authority_uses_first_passenger_only() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(1, 38),
-        type_id: 151,
+        type_id: EntityTypeId(151),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -391,7 +391,7 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: 89,
+        type_id: EntityTypeId(89),
         x: 2.0,
         y: 2.0,
         z: 2.0,
@@ -404,7 +404,7 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id,
+            type_id: EntityTypeId(type_id),
             x: 2.0,
             y: 2.0,
             z: 2.0,

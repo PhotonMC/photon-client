@@ -11,7 +11,7 @@ use crate::input::{
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterParameters,
     LocalPlayerUpdateFallFlyingMovementParameters, advance_local_player_sprint_trigger,
 };
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 use photon_core::java_float::{DVec3, JavaF32, JavaF64};
 use photon_core::math::{Vec2, Vec3, abs_max_f64, mth_cos_f64, mth_sin_f64};
 use photon_core::{
@@ -395,7 +395,7 @@ impl light::LightChunks for LightView<'_> {
 /// packet carries the block, and the entity stands where its kind puts it (a leash knot,
 /// above the middle of a fence). The others (paintings, item frames) depend on their size and
 /// turn, and are placed where they are drawn.
-fn block_attached_position(type_id: i32, (x, y, z): (f64, f64, f64)) -> (f64, f64, f64) {
+fn block_attached_position(type_id: EntityTypeId, (x, y, z): (f64, f64, f64)) -> (f64, f64, f64) {
     if photon_data::entity_type::name(type_id) == Some("minecraft:leash_knot") {
         (
             photon_core::math::floor_f64(x) as f64 + 0.5,

@@ -1,6 +1,7 @@
 //! The illagers the frame draws: the vindicator, pillager, evoker and
 //! illusioner (`IllagerRenderer` and its subclasses).
 
+use photon_core::ids::EntityTypeId;
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
     IllagerArmPose, IllagerState, QuadrupedState, mob_vertices,
@@ -122,7 +123,7 @@ pub fn remote_illagers(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    let ids: Vec<(i32, &Illager)> = ILLAGERS
+    let ids: Vec<(EntityTypeId, &Illager)> = ILLAGERS
         .iter()
         .filter_map(|illager| Some((photon_data::entity_type::id(illager.type_name)?, illager)))
         .collect();

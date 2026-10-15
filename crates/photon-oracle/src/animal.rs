@@ -41,7 +41,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
             uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-            type_id: 89,
+            type_id: photon_core::ids::EntityTypeId(89),
             x: vehicle_position.x,
             y: vehicle_position.y,
             z: vehicle_position.z,
@@ -87,7 +87,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
         if !world.apply_entity(EntityInput {
             entity_id: animal_id,
             uuid: Uuid::new(0, u64::from(animal_id.0 as u32)),
-            type_id: 30,
+            type_id: photon_core::ids::EntityTypeId(30),
             x: animal_position.x,
             y: animal_position.y,
             z: animal_position.z,
@@ -133,7 +133,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
         if !world.apply_entity(EntityInput {
             entity_id: filler_id,
             uuid: Uuid::new(0, u64::from(filler_id.0 as u32)),
-            type_id: 120,
+            type_id: photon_core::ids::EntityTypeId(120),
             x: filler_position.x,
             y: filler_position.y,
             z: filler_position.z,
@@ -224,7 +224,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
         uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-        type_id: 89,
+        type_id: photon_core::ids::EntityTypeId(89),
         x: vehicle_position.x,
         y: vehicle_position.y,
         z: vehicle_position.z,
@@ -269,7 +269,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
     if !world.apply_entity(EntityInput {
         entity_id: animal_id,
         uuid: Uuid::new(0, u64::from(animal_id.0 as u32)),
-        type_id: 30,
+        type_id: photon_core::ids::EntityTypeId(30),
         x: animal_position.x,
         y: animal_position.y,
         z: animal_position.z,

@@ -1,7 +1,7 @@
 use super::*;
 
 /// An experience orb's value (`ExperienceOrb.DATA_VALUE`).
-pub(crate) fn orb_value_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn orb_value_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     if photon_data::entity_type::name(type_id)? != "minecraft:experience_orb" {
         return None;
     }
@@ -169,7 +169,7 @@ pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> O
 
 /// The registry id of the variant a pig, cow, frog or other of this type wears, if the
 /// data holds one (the default is not sent).
-pub(crate) fn variant_from_metadata(type_id: i32, metadata: &[u8]) -> Option<i32> {
+pub(crate) fn variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
     let (data_id, serializer) = match photon_data::entity_type::name(type_id)? {
         // A painting's variant is a holder: its registry id plus one, or zero for one sent whole.
         "minecraft:painting" => {

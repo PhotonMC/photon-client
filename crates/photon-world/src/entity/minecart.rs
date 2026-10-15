@@ -102,6 +102,6 @@ impl ClientEntity {
     }
 }
 
-pub(crate) fn is_vanilla_minecart_entity_type(entity_type_id: i32) -> bool {
-    VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id)
+pub(crate) fn is_vanilla_minecart_entity_type(entity_type_id: EntityTypeId) -> bool {
+    VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id.0)
 }

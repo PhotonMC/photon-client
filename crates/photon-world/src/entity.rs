@@ -13,7 +13,7 @@ use photon_core::math::{
 pub struct ClientEntity {
     pub(crate) id: EntityId,
     pub uuid: photon_core::binary::Uuid,
-    pub type_id: i32,
+    pub type_id: EntityTypeId,
     pub(crate) tick_count: i32,
     pub(crate) first_tick: bool,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.

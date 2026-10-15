@@ -116,7 +116,7 @@ use blockpos::*;
 mod chunkpos;
 mod entity_ids;
 use chunkpos::*;
-use entity_ids::entity_id_field;
+use entity_ids::{entity_id_field, entity_type_id_field};
 mod snapshot;
 use snapshot::*;
 mod shape;

@@ -7,7 +7,7 @@ fn entity_shared_flags_follow_java_byte_metadata_and_preserve_unspecified_values
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 120,
+        type_id: photon_core::ids::EntityTypeId(120),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -68,7 +68,7 @@ fn entity_no_gravity_follows_java_boolean_metadata_and_preserves_air_supply() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 78,
+        type_id: photon_core::ids::EntityTypeId(78),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -126,7 +126,7 @@ fn entity_silent_follows_java_boolean_metadata_and_preserves_other_state() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 5,
+        type_id: photon_core::ids::EntityTypeId(5),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -169,7 +169,7 @@ fn entity_custom_name_visibility_follows_java_boolean_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 5,
+        type_id: photon_core::ids::EntityTypeId(5),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -232,7 +232,7 @@ fn entity_custom_name_presence_follows_java_optional_component_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 5,
+        type_id: photon_core::ids::EntityTypeId(5),
         x: 1.25,
         y: 80.0,
         z: -35.5,

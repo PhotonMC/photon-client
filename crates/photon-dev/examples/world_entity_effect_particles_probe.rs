@@ -1,3 +1,4 @@
+use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -16,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
     let Some(entity) = trace.world.entities().all().find(|entity| {
         let (x, _, z) = entity.position();
-        entity.type_id == 70
+        entity.type_id == EntityTypeId(70)
             && x == 67.5
             && z == -35.5
             && !entity.effect_particle_type_ids().is_empty()

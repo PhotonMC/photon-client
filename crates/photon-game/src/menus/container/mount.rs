@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::item::equippable_allowed::Allowed;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, EntityTypeId};
 
 /// Which screen and rules a mount has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +49,7 @@ pub struct Mount {
 pub struct MountEntity {
     /// The entity's id and its type's registry id.
     pub entity_id: EntityId,
-    pub entity_type: i32,
+    pub entity_type: EntityTypeId,
     /// `canUseSlot(SADDLE)` and `canUseSlot(BODY)`.
     pub can_use: [bool; 2],
     /// The entity type tags the server sent.
@@ -61,7 +61,7 @@ impl Default for MountEntity {
     fn default() -> Self {
         Self {
             entity_id: EntityId(0),
-            entity_type: 0,
+            entity_type: EntityTypeId(0),
             can_use: [false; 2],
             entity_tags: std::sync::Arc::default(),
         }
@@ -91,7 +91,7 @@ impl MountEntity {
     /// `Slot.isActive` of the saddle and the armour slot, which the screen also draws by:
     /// the entity can use the slot and is of a kind that wears it.
     pub fn active(&self, family: MountFamily) -> [bool; 2] {
-        let tag = |name: &str| self.entity_tags.contains(self.entity_type, name);
+        let tag = |name: &str| self.entity_tags.contains(self.entity_type.0, name);
         match family {
             MountFamily::Nautilus => self.can_use,
             MountFamily::Horse | MountFamily::Llama => [
@@ -106,7 +106,7 @@ impl MountEntity {
     fn allows(&self, allowed: Option<&Allowed>) -> bool {
         match allowed {
             None => true,
-            Some(Allowed::Tag(tag)) => self.entity_tags.contains(self.entity_type, tag),
+            Some(Allowed::Tag(tag)) => self.entity_tags.contains(self.entity_type.0, tag),
             Some(Allowed::Types(types)) => photon_data::entity_type::name(self.entity_type)
                 .is_some_and(|name| types.iter().any(|other| other == name)),
         }

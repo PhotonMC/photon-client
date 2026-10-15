@@ -172,7 +172,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: 1,
+        type_id: photon_core::ids::EntityTypeId(1),
         x: 10.0,
         y: 64.0,
         z: 20.0,
@@ -211,7 +211,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(3, 4),
-        type_id: 1,
+        type_id: photon_core::ids::EntityTypeId(1),
         x: 10.0,
         y: 64.0,
         z: 20.0,
@@ -248,7 +248,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(39),
         uuid: Uuid::new(5, 6),
-        type_id: 1,
+        type_id: photon_core::ids::EntityTypeId(1),
         x: 10.0,
         y: 64.0,
         z: 20.0,

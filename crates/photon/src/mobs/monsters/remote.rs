@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityTypeId;
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
 /// pose (a swelling creeper's scale).
@@ -119,7 +120,7 @@ pub fn remote_monsters(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    let ids: Vec<(i32, &Monster)> = MONSTERS
+    let ids: Vec<(EntityTypeId, &Monster)> = MONSTERS
         .iter()
         .filter_map(|monster| Some((photon_data::entity_type::id(monster.type_name)?, monster)))
         .collect();
