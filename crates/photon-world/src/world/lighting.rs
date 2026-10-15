@@ -76,7 +76,7 @@ impl ClientWorld {
         schedule_rebuild: bool,
         enable_chunk: bool,
     ) -> LightApplication {
-        let light_section_count = self.dimension.section_count().saturating_add(2);
+        let light_section_count = self.level.dimension.section_count().saturating_add(2);
         let invalid_sky_updates =
             count_invalid_light_updates(light_section_count, updates.sky.mask, updates.sky.updates);
         let invalid_block_updates = count_invalid_light_updates(
@@ -144,8 +144,8 @@ impl ClientWorld {
             self.light
                 .update_section_status((chunk_x, section_y, chunk_z), empty);
         }
-        let min_section = self.dimension.min_section_y();
-        let max_section = min_section + self.dimension.section_count() as i32 - 1;
+        let min_section = self.level.dimension.min_section_y();
+        let max_section = min_section + self.level.dimension.section_count() as i32 - 1;
         for x in chunk_x - 1..=chunk_x + 1 {
             for z in chunk_z - 1..=chunk_z + 1 {
                 for y in min_section..=max_section {
@@ -235,77 +235,97 @@ impl ClientWorld {
                 update,
                 schedule_rebuild,
                 enable_chunk,
-            } => {
-                // `applyLightData`.
-                let (chunk_x, chunk_z) = (update.chunk_x, update.chunk_z);
-                let min = self.light.min_light_section();
-                let count = self.light.light_section_count();
-                for (layer, input) in [
-                    (light::LightLayer::Sky, &update.sky),
-                    (light::LightLayer::Block, &update.block),
-                ] {
-                    let mut updates = input.updates.iter();
-                    for index in 0..count {
-                        let bit = index as u64;
-                        let have_data = input.mask.contains(bit);
-                        if !have_data && !input.empty_mask.contains(bit) {
-                            continue;
-                        }
-                        let data = if have_data {
-                            light::DataLayer::from_bytes(updates.next().expect("counted"))
-                        } else {
-                            light::DataLayer::new(0)
-                        };
-                        let section_y = min + index;
-                        self.light.queue_section_data(
-                            layer,
-                            (chunk_x, section_y, chunk_z),
-                            Some(data),
-                        );
-                        if schedule_rebuild {
-                            // `setSectionDirtyWithNeighbors`.
-                            for dx in -1..=1 {
-                                for dy in -1..=1 {
-                                    for dz in -1..=1 {
-                                        self.light_dirty.push((
-                                            chunk_x + dx,
-                                            section_y + dy,
-                                            chunk_z + dz,
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                let view = LightView {
-                    chunks: &self.chunks,
-                };
-                self.light
-                    .set_light_enabled(&view, (chunk_x, chunk_z), true);
-                if enable_chunk {
-                    self.enable_chunk_light(chunk_x, chunk_z);
+            } => self.apply_light_data(&update, schedule_rebuild, enable_chunk),
+            LightTask::Removal { chunk_x, chunk_z } => self.remove_light_column(chunk_x, chunk_z),
+        }
+    }
+
+    /// `applyLightData`: the sections the packet carries take their light, and the column is
+    /// switched on.
+    fn apply_light_data(
+        &mut self,
+        update: &PendingLightUpdate,
+        schedule_rebuild: bool,
+        enable_chunk: bool,
+    ) {
+        let (chunk_x, chunk_z) = (update.chunk_x, update.chunk_z);
+        for (layer, input) in [
+            (light::LightLayer::Sky, &update.sky),
+            (light::LightLayer::Block, &update.block),
+        ] {
+            self.queue_layer_data(layer, input, (chunk_x, chunk_z), schedule_rebuild);
+        }
+        let view = LightView {
+            chunks: &self.chunks,
+        };
+        self.light
+            .set_light_enabled(&view, (chunk_x, chunk_z), true);
+        if enable_chunk {
+            self.enable_chunk_light(chunk_x, chunk_z);
+        }
+    }
+
+    /// One layer of a column's light data, queued section by section.
+    fn queue_layer_data(
+        &mut self,
+        layer: light::LightLayer,
+        input: &OwnedLightLayerInput,
+        (chunk_x, chunk_z): (i32, i32),
+        schedule_rebuild: bool,
+    ) {
+        let min = self.light.min_light_section();
+        let mut updates = input.updates.iter();
+        for index in 0..self.light.light_section_count() {
+            let bit = index as u64;
+            let have_data = input.mask.contains(bit);
+            if !have_data && !input.empty_mask.contains(bit) {
+                continue;
+            }
+            let data = if have_data {
+                light::DataLayer::from_bytes(updates.next().expect("counted"))
+            } else {
+                light::DataLayer::new(0)
+            };
+            let section_y = min + index;
+            self.light
+                .queue_section_data(layer, (chunk_x, section_y, chunk_z), Some(data));
+            if schedule_rebuild {
+                self.mark_section_and_neighbours_dirty(chunk_x, section_y, chunk_z);
+            }
+        }
+    }
+
+    /// `setSectionDirtyWithNeighbors`.
+    fn mark_section_and_neighbours_dirty(&mut self, chunk_x: i32, section_y: i32, chunk_z: i32) {
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                for dz in -1..=1 {
+                    self.light_dirty
+                        .push((chunk_x + dx, section_y + dy, chunk_z + dz));
                 }
             }
-            LightTask::Removal { chunk_x, chunk_z } => {
-                let view = LightView {
-                    chunks: &self.chunks,
-                };
+        }
+    }
+
+    /// A column's light goes: the column is switched off, its sections lose their data and count
+    /// as empty again.
+    fn remove_light_column(&mut self, chunk_x: i32, chunk_z: i32) {
+        let view = LightView {
+            chunks: &self.chunks,
+        };
+        self.light
+            .set_light_enabled(&view, (chunk_x, chunk_z), false);
+        let min = self.light.min_light_section();
+        for section_y in min..min + self.light.light_section_count() {
+            for layer in [light::LightLayer::Block, light::LightLayer::Sky] {
                 self.light
-                    .set_light_enabled(&view, (chunk_x, chunk_z), false);
-                let min = self.light.min_light_section();
-                for section_y in min..min + self.light.light_section_count() {
-                    for layer in [light::LightLayer::Block, light::LightLayer::Sky] {
-                        self.light
-                            .queue_section_data(layer, (chunk_x, section_y, chunk_z), None);
-                    }
-                }
-                let min_section = self.dimension.min_section_y();
-                for section_y in min_section..min_section + self.dimension.section_count() as i32 {
-                    self.light
-                        .update_section_status((chunk_x, section_y, chunk_z), true);
-                }
+                    .queue_section_data(layer, (chunk_x, section_y, chunk_z), None);
             }
+        }
+        let min_section = self.level.dimension.min_section_y();
+        for section_y in min_section..min_section + self.level.dimension.section_count() as i32 {
+            self.light
+                .update_section_status((chunk_x, section_y, chunk_z), true);
         }
     }
 

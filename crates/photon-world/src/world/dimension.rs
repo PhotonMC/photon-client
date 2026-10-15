@@ -8,16 +8,8 @@ impl ClientWorld {
 
     pub fn new(dimension: DimensionBounds) -> Self {
         Self {
-            dimension,
-            dimension_key: "minecraft:overworld".to_owned(),
-            dimension_type_id: 0,
-            seed: 0,
-            is_debug: false,
-            is_flat: false,
-            sea_level: 63,
-            dimension_environment: DimensionEnvironment::for_builtin_dimension(
-                "minecraft:overworld",
-            ),
+            level: Level::new(dimension),
+            weather: Weather::default(),
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
             minecart_improvements: false,
@@ -35,49 +27,44 @@ impl ClientWorld {
             breaking_effects: Vec::new(),
             world_border: ClientWorldBorder::default(),
             block_animations: block::chest::BlockAnimations::default(),
-            server_simulation_distance: 3,
             local_chunk: None,
-            game_time: 0,
             paddle_packets: Vec::new(),
             rider_controls: ride::mount::Controller::default(),
-            sky_flash_time: 0,
-            rain_level: JavaF32::new(0.0),
-            thunder_level: JavaF32::new(0.0),
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
         }
     }
 
     pub fn dimension(&self) -> DimensionBounds {
-        self.dimension
+        self.level.dimension
     }
 
     pub fn dimension_key(&self) -> &str {
-        &self.dimension_key
+        &self.level.dimension_key
     }
 
     pub fn dimension_type_id(&self) -> i32 {
-        self.dimension_type_id
+        self.level.dimension_type_id
     }
 
     pub fn seed(&self) -> i64 {
-        self.seed
+        self.level.seed
     }
 
     pub fn is_debug(&self) -> bool {
-        self.is_debug
+        self.level.is_debug
     }
 
     pub fn is_flat(&self) -> bool {
-        self.is_flat
+        self.level.is_flat
     }
 
     pub fn sea_level(&self) -> i32 {
-        self.sea_level
+        self.level.sea_level
     }
 
     pub fn dimension_environment(&self) -> &DimensionEnvironment {
-        &self.dimension_environment
+        &self.level.dimension_environment
     }
 
     pub fn block_state_registry(&self) -> &ClientBlockStateRegistry {
@@ -99,25 +86,25 @@ impl ClientWorld {
         bounds: DimensionBounds,
         environment: DimensionEnvironment,
     ) -> bool {
-        let changed = self.dimension_key != input.key;
+        let changed = self.level.dimension_key != input.key;
         // A new level has its own light engine.
         if changed
-            || self.dimension.min_y != bounds.min_y
-            || self.dimension.height != bounds.height
-            || self.dimension_environment.has_skylight != environment.has_skylight
+            || self.level.dimension.min_y != bounds.min_y
+            || self.level.dimension.height != bounds.height
+            || self.level.dimension_environment.has_skylight != environment.has_skylight
         {
             self.light = new_light_engine(bounds, environment.has_skylight);
             self.light_tasks.clear();
             self.light_dirty.clear();
         }
-        self.dimension = bounds;
-        self.dimension_key = input.key.to_owned();
-        self.dimension_type_id = input.dimension_type_id;
-        self.seed = input.seed;
-        self.is_debug = input.is_debug;
-        self.is_flat = input.is_flat;
-        self.sea_level = input.sea_level;
-        self.dimension_environment = environment;
+        self.level.dimension = bounds;
+        self.level.dimension_key = input.key.to_owned();
+        self.level.dimension_type_id = input.dimension_type_id;
+        self.level.seed = input.seed;
+        self.level.is_debug = input.is_debug;
+        self.level.is_flat = input.is_flat;
+        self.level.sea_level = input.sea_level;
+        self.level.dimension_environment = environment;
         if changed {
             let server_view_radius = self.chunks.cache().map(|cache| cache.server_view_radius);
             self.chunks.reset(server_view_radius);
@@ -128,7 +115,7 @@ impl ClientWorld {
                 player.passenger_ids.clear();
             }
             self.world_border = ClientWorldBorder::default();
-            self.game_time = 0;
+            self.level.game_time = 0;
             // A new level starts with no predictions and no cracks.
             self.predictions = prediction::BlockPredictions::new();
             self.destroying_blocks.clear();

@@ -20,7 +20,7 @@ impl ClientWorld {
             .values()
             .any(|entity| entity.ticking && entity.lightning().is_some_and(|bolt| bolt.is_lit()))
         {
-            self.sky_flash_time = 2;
+            self.weather.sky_flash_time = 2;
         }
     }
 
@@ -128,7 +128,7 @@ impl ClientWorld {
                 entity.tick_motion_interpolation();
             }
             if let Some(kind) = living {
-                entity.tick_living(kind, tick_death, self.game_time);
+                entity.tick_living(kind, tick_death, self.level.game_time);
             }
             entity.tick_species(surroundings);
             if boat_is_non_authoritative {

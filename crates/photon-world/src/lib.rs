@@ -39,6 +39,7 @@ mod fluid;
 pub mod item_components;
 mod item_physics;
 mod java_math;
+mod level;
 pub mod light;
 pub mod living;
 pub mod map;
@@ -66,6 +67,7 @@ pub use constants::*;
 pub use container::*;
 pub use dimension::*;
 pub use entity::*;
+pub(crate) use level::*;
 pub use metadata::find_metadata_field as entity_metadata_field;
 pub(crate) use metadata::*;
 pub use pick::EntityHit;
@@ -82,14 +84,8 @@ pub use world::{Entities, LevelEvent, block_sound_of};
 /// The client-side copy of the currently loaded world.
 #[derive(Debug)]
 pub struct ClientWorld {
-    dimension: DimensionBounds,
-    dimension_key: String,
-    dimension_type_id: i32,
-    seed: i64,
-    is_debug: bool,
-    is_flat: bool,
-    sea_level: i32,
-    dimension_environment: DimensionEnvironment,
+    level: Level,
+    weather: Weather,
     block_state_registry: ClientBlockStateRegistry,
     /// The items each recipe property set accepts, as the server sent them.
     recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,
@@ -120,22 +116,13 @@ pub struct ClientWorld {
     breaking_effects: Vec<((i32, i32, i32), photon_core::direction::Direction)>,
     world_border: ClientWorldBorder,
     block_animations: block::chest::BlockAnimations,
-    /// `ClientLevel.serverSimulationDistance`, in chunks.
-    server_simulation_distance: i32,
     /// The chunk the client's own player stands in, as the session last said
     /// (`Minecraft.player.chunkPosition()`); unknown until it does.
     local_chunk: Option<(i32, i32)>,
-    game_time: u64,
     /// The paddles each ridden boat's tick told the server of, until the session sends them.
     paddle_packets: Vec<(bool, bool)>,
     /// What the player on a mount steers it with, as of its last tick.
     rider_controls: ride::mount::Controller,
-    /// `ClientLevel.skyFlashTime`: ticks the sky still flashes for.
-    sky_flash_time: i32,
-    /// The level's rain and thunder (`Level.rainLevel`, `thunderLevel`), as
-    /// the bits of the floats.
-    rain_level: JavaF32,
-    thunder_level: JavaF32,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<i32, DestroyProgress>,
 }

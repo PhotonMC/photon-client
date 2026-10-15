@@ -42,7 +42,7 @@ impl ClientWorld {
             // while the off hand swings.
             attack_arm_left: entity.main_arm_is_left() != entity.living.swing.is_off_hand(),
             age_in_ticks: entity.tick_count as f32 + partial_tick,
-            shaking: entity.is_shaking(self.dimension_environment.piglins_zombify),
+            shaking: entity.is_shaking(self.level.dimension_environment.piglins_zombify),
         })
     }
 
