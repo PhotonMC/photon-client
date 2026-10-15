@@ -56,7 +56,7 @@ Target ([ADR 0003](../adr/0003-bevy-ecs.md)):
 
 ## Main loop
 
-`crates/photon/src/play/ticks.rs` (`Play::run`) does, per frame:
+`crates/photon/src/play/schedule.rs` runs the `Frame` schedule (single-threaded, systems chained in this order), and its `run_ticks` system runs the `Tick` schedule once per owed tick. Per frame:
 
 1. Poll window events.
 2. Fit the swapchain.

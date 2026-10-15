@@ -16,6 +16,7 @@ photon-audio.workspace = true
 photon-game.workspace = true
 photon-net.workspace = true
 photon-render.workspace = true
+bevy_ecs.workspace = true
 flate2.workspace = true
 glfw.workspace = true
 

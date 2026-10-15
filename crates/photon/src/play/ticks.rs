@@ -216,95 +216,21 @@ impl Play {
 
     /// Frames until the window closes, the player leaves the server or a script ends; the window
     /// and what was loaded for it are handed back, with whether to quit.
-    pub(super) fn run(mut self) -> Result<(Client, Exit)> {
-        while !self.surface.should_close() && !self.controls.leave {
-            let frame_start = Instant::now();
-            // A frame that ended early (nothing to draw yet) leaves its parts behind.
-            profile::take_parts();
-            for event in self.surface.poll() {
-                if is_input(&event) {
-                    self.limiter.input_received(frame_start);
-                }
-                self.controls.handle(
-                    event,
-                    &mut self.session,
-                    &mut self.surface,
-                    &self.screen_assets,
-                )?;
-            }
-            if std::mem::take(&mut self.controls.options_saved) {
-                let information = crate::controls::client_information(&self.controls.options);
-                self.session.send_client_information(information)?;
-            }
-            // `LanguageSelectScreen.onDone`: the texts are read again, and the
-            // screens that are open are made again in them.
-            if let Some(code) = self.controls.take_language_request() {
-                self.gui.set_language(&code);
-                self.session.set_lang(self.gui.lang_shared());
-                self.screen_assets = self.gui.screen_assets();
-                self.gui.reword_chat(&mut self.controls.chat_log);
-                self.controls
-                    .rebuild_menus(&self.surface, &self.screen_assets);
-            }
-            self.backend.set_vsync(self.controls.options.enable_vsync);
-            self.fit_swapchain()?;
-            let now = Instant::now();
-            let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
-            self.accumulated += now - self.last_frame;
-            self.last_frame = now;
-            self.receive_session()?;
-            self.controls.container_tick(
-                &mut self.session,
-                &mut self.surface,
-                &self.screen_assets,
-            )?;
-            // The configuration phase again: what was open over the old level is closed.
-            if self.session.take_reconfigured() {
-                self.controls.screen = None;
-                self.controls.chat = None;
-                self.controls.dialog = None;
-                self.controls.dialog_warning = None;
-            }
-            // A respawn or a change of dimension: nothing of the old level stays.
-            if self.session.take_level_reset() {
-                self.backend.clear_sections()?;
-                self.sections.clear();
-                self.sky.reset();
-                self.particles.clear();
-            }
-            // The particles option is not kept yet: all of them.
-            let level_particles = self.session.take_level_particles();
-            let pickups = self.session.take_item_pickups();
-            self.particles.add_pickups(pickups);
-            let events = self.session.take_level_events();
-            let event_sounds = self.particles.level_events(self.session.world(), events);
-            if let Some(sound) = self.sound.as_mut() {
-                sound.handle_local(event_sounds);
-            }
-            self.particles.receive(
-                level_particles,
-                self.session.world(),
-                photon_world::particles::ParticleStatus::All,
-            );
-            let commands = self.session.take_sounds();
-            self.sounds_heard += commands.len();
-            if let Some(sound) = self.sound.as_mut() {
-                sound.handle(commands, self.session.world());
-            }
-            let script_done = self.run_ticks()?;
-            let ticked = Instant::now();
-            if let Flow::Stop = self.draw([frame_start, ticked], frame_ticks, script_done)? {
-                break;
-            }
-            let options = &self.controls.options;
-            let limit = self.limiter.limit(
-                options.framerate_limit,
-                options.inactivity_fps_limit,
-                self.surface.is_iconified(),
-                Instant::now(),
-            );
-            self.limiter.wait(limit);
+    pub(super) fn run(self) -> Result<(Client, Exit)> {
+        let mut world = schedule::world(self);
+        while schedule::continues(&world) {
+            world.run_schedule(schedule::Frame);
         }
+        if let Some(error) = schedule::take_failure(&mut world) {
+            return Err(error);
+        }
+        let play = schedule::take_play(&mut world);
+        play.report();
+        play.into_client()
+    }
+
+    /// What the game counted, for the line a run ends with.
+    fn report(&self) {
         println!(
             "play_frames={} play_ticks={} entities={} ticking={} sounds={} own_sounds={} particle_packets={} most_particles={} chunks={}",
             self.frames,
@@ -319,7 +245,107 @@ impl Play {
             self.particles.report().1,
             self.session.world().loaded_chunk_count()
         );
-        self.into_client()
+    }
+
+    /// The window's events, as `Controls` takes them.
+    pub(super) fn poll_events(&mut self, frame_start: Instant) -> Result<()> {
+        for event in self.surface.poll() {
+            if is_input(&event) {
+                self.limiter.input_received(frame_start);
+            }
+            self.controls.handle(
+                event,
+                &mut self.session,
+                &mut self.surface,
+                &self.screen_assets,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Saved options tell the server what the client is now.
+    pub(super) fn send_client_information(&mut self) -> Result<()> {
+        if std::mem::take(&mut self.controls.options_saved) {
+            let information = crate::controls::client_information(&self.controls.options);
+            self.session.send_client_information(information)?;
+        }
+        Ok(())
+    }
+
+    /// `LanguageSelectScreen.onDone`: the texts are read again, and the screens that are open are
+    /// made again in them.
+    pub(super) fn reload_language(&mut self) {
+        if let Some(code) = self.controls.take_language_request() {
+            self.gui.set_language(&code);
+            self.session.set_lang(self.gui.lang_shared());
+            self.screen_assets = self.gui.screen_assets();
+            self.gui.reword_chat(&mut self.controls.chat_log);
+            self.controls
+                .rebuild_menus(&self.surface, &self.screen_assets);
+        }
+    }
+
+    /// The time since the last frame, which the ticks and the partial tick are made of; the frame's
+    /// length in ticks.
+    pub(super) fn advance_clock(&mut self) -> f32 {
+        let now = Instant::now();
+        let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
+        self.accumulated += now - self.last_frame;
+        self.last_frame = now;
+        frame_ticks
+    }
+
+    /// The configuration phase again, a respawn or a change of dimension: what was open over the
+    /// old level is closed, and nothing of the old level stays.
+    pub(super) fn reset_level(&mut self) -> Result<()> {
+        if self.session.take_reconfigured() {
+            self.controls.screen = None;
+            self.controls.chat = None;
+            self.controls.dialog = None;
+            self.controls.dialog_warning = None;
+        }
+        if self.session.take_level_reset() {
+            self.backend.clear_sections()?;
+            self.sections.clear();
+            self.sky.reset();
+            self.particles.clear();
+        }
+        Ok(())
+    }
+
+    /// The level's particles, events and sounds the packets brought since the last frame.
+    pub(super) fn route_effects(&mut self) {
+        // The particles option is not kept yet: all of them.
+        let level_particles = self.session.take_level_particles();
+        let pickups = self.session.take_item_pickups();
+        self.particles.add_pickups(pickups);
+        let events = self.session.take_level_events();
+        let event_sounds = self.particles.level_events(self.session.world(), events);
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle_local(event_sounds);
+        }
+        self.particles.receive(
+            level_particles,
+            self.session.world(),
+            photon_world::particles::ParticleStatus::All,
+        );
+        let commands = self.session.take_sounds();
+        self.sounds_heard += commands.len();
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle(commands, self.session.world());
+        }
+    }
+
+    /// The frame limiter holds the frame for what the options ask.
+    pub(super) fn limit_frame(&mut self) {
+        let options = &self.controls.options;
+        let limit = self.limiter.limit(
+            options.framerate_limit,
+            options.inactivity_fps_limit,
+            self.surface.is_iconified(),
+            Instant::now(),
+        );
+        self.limiter.wait(limit);
     }
 
     /// The window and what was loaded for it, back from an ended game, with whether to quit.
@@ -352,7 +378,7 @@ impl Play {
 
     /// What the server sent since the last frame: suggestions, a disconnection, a death, the HUD's
     /// packets and chat.
-    fn receive_session(&mut self) -> Result<()> {
+    pub(super) fn receive_session(&mut self) -> Result<()> {
         profile::timed(Span::Drain, || self.session.drain())?;
         self.controls.receive_suggestions(&mut self.session);
         self.controls
@@ -391,6 +417,7 @@ impl Play {
 
     /// A resized or fullscreen window gets a swapchain of its new size.
     pub(super) fn fit_swapchain(&mut self) -> Result<()> {
+        self.backend.set_vsync(self.controls.options.enable_vsync);
         if resize_to_window(&self.surface, &mut self.backend, &mut self.sized_for)? {
             let (width, height) = self.backend.extent();
             self.aspect = width as f32 / height as f32;
@@ -398,43 +425,42 @@ impl Play {
         Ok(())
     }
 
-    /// The ticks the time since the last frame owes, each with the keys a
-    /// person or the script holds. Whether the script has ended.
-    pub(super) fn run_ticks(&mut self) -> Result<bool> {
-        let mut script_done = false;
-        while self.accumulated >= TICK_LENGTH {
-            self.accumulated -= TICK_LENGTH;
-            let held = match self.script.as_mut() {
-                Some(script) => match script.next() {
-                    Some((held, turn, pitch)) => {
-                        if (turn != 0.0 || pitch != 0.0)
-                            && let Some(player) = self.session.player_mut()
-                        {
-                            let (y_rot, x_rot) = player.rotation();
-                            player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
-                        }
-                        held
-                    }
-                    None => {
-                        script_done = true;
-                        HeldKeys::default()
-                    }
-                },
-                None => self.controls.keys,
-            };
-            // Once the script ends the keys stay as its last step left them,
-            // so a capture can show a block mid-break.
-            if self.script.is_some() && !script_done {
-                self.controls.script_step(
-                    held,
-                    &mut self.session,
-                    &mut self.surface,
-                    &self.screen_assets,
-                )?;
-            }
-            self.tick(held)?;
+    /// The next tick the time since the last frame owes, with the keys a person or the script
+    /// holds; none once the time is spent. `script_done` is set once the script has ended.
+    pub(super) fn begin_tick(&mut self, script_done: &mut bool) -> Result<Option<HeldKeys>> {
+        if self.accumulated < TICK_LENGTH {
+            return Ok(None);
         }
-        Ok(script_done)
+        self.accumulated -= TICK_LENGTH;
+        let held = match self.script.as_mut() {
+            Some(script) => match script.next() {
+                Some((held, turn, pitch)) => {
+                    if (turn != 0.0 || pitch != 0.0)
+                        && let Some(player) = self.session.player_mut()
+                    {
+                        let (y_rot, x_rot) = player.rotation();
+                        player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
+                    }
+                    held
+                }
+                None => {
+                    *script_done = true;
+                    HeldKeys::default()
+                }
+            },
+            None => self.controls.keys,
+        };
+        // Once the script ends the keys stay as its last step left them,
+        // so a capture can show a block mid-break.
+        if self.script.is_some() && !*script_done {
+            self.controls.script_step(
+                held,
+                &mut self.session,
+                &mut self.surface,
+                &self.screen_assets,
+            )?;
+        }
+        Ok(Some(held))
     }
 
     /// One client tick.

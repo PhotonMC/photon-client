@@ -17,6 +17,7 @@ photon-render = { path = "crates/photon-render" }
 photon-audio = { path = "crates/photon-audio" }
 parity-cases = { path = "parity/cases" }
 ash = "0.38.0"
+bevy_ecs = { version = "0.20.0", default-features = false, features = ["std"] }
 ash-window = "0.13.0"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 log = { version = "0.4.34", features = ["std"] }

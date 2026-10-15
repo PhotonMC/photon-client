@@ -598,7 +598,6 @@
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 18
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
-"crates/photon/src/play/ticks.rs::Play::run" = 12
 "crates/photon/src/play/ticks.rs::Play::tick" = 12
 "crates/photon/src/screens.rs::run_actions" = 16
 "crates/photon/src/script.rs::HeldKeys::parse" = 28
@@ -1096,7 +1095,6 @@
 "crates/photon/src/play/draw.rs::Play::draw_overlays" = 80
 "crates/photon/src/play/draw.rs::Play::frame_camera" = 79
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::run" = 99
 "crates/photon/src/play/ticks.rs::Play::start" = 194
 "crates/photon/src/play/ticks.rs::Play::tick" = 89
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63

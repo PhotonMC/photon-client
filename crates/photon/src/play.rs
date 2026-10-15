@@ -497,4 +497,5 @@ fn set_moving_blocks(
 
 mod cull;
 mod draw;
+mod schedule;
 mod ticks;

@@ -1,6 +1,6 @@
 # ADR 0003: `bevy_ecs` for world and entity state
 
-- Status: accepted (2026-10-10), not yet implemented
+- Status: accepted (2026-10-10), step 1 in progress: the play loop runs as `bevy_ecs` schedules (`crates/photon/src/play/schedule.rs`); its state is still one `Play` held as a non-send resource
 
 ## Context
 
