@@ -5,7 +5,6 @@
 [file-lines]
 "crates/photon-net/src/connection/play/containers.rs" = 538
 "crates/photon-net/src/connection/probe/mode.rs" = 2249
-"crates/photon-net/src/connection/protocol/tests/inventory.rs" = 558
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
@@ -14,6 +13,7 @@
 "crates/photon-oracle/src/particles.rs" = 557
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
+"crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-render/src/gui/frame/texture.rs" = 559
 "crates/photon-render/src/gui/screen/container.rs" = 509
 "crates/photon-render/src/gui/screen/servers.rs" = 516
@@ -25,7 +25,7 @@
 "crates/photon/src/mobs/animals/farm_animals.rs" = 515
 
 [file-name]
-"crates/photon-net/src/common.rs" = 1
+"crates/photon-protocol/src/common.rs" = 1
 "crates/photon/examples/block_break_rejection_probe.rs" = 1
 "crates/photon/examples/creative_snowball_use_probe.rs" = 1
 "crates/photon/examples/survival_break_abort_probe.rs" = 1
@@ -222,15 +222,6 @@
 "crates/photon-net/src/connection/probe/mode.rs::connect_and_probe_with_mode" = 332
 "crates/photon-net/src/connection/probe/observe.rs::observe_player_interpolation" = 11
 "crates/photon-net/src/connection/probe/open.rs::configure_connection" = 24
-"crates/photon-net/src/connection/protocol/chunk.rs::parse_palette_container" = 21
-"crates/photon-net/src/connection/protocol/commands.rs::read_argument_kind" = 41
-"crates/photon-net/src/connection/protocol/particles.rs::read_particle_options" = 16
-"crates/photon-net/src/connection/protocol/player_info.rs::parse_player_info_update" = 16
-"crates/photon-net/src/connection/protocol/recipe.rs::read_slot_display" = 15
-"crates/photon-net/src/connection/protocol/scoreboard.rs::parse_scoreboard_packet" = 15
-"crates/photon-net/src/connection/protocol/tests.rs::write_component_fixture" = 13
-"crates/photon-net/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 11
-"crates/photon-net/src/registry_data.rs::piglins_zombify" = 17
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 19
 "crates/photon-oracle/src/block.rs::block_result" = 43
@@ -301,6 +292,15 @@
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 11
 "crates/photon-oracle/src/travel.rs::aabb_result" = 49
 "crates/photon-oracle/src/vanilla.rs::image_result" = 17
+"crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 21
+"crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 41
+"crates/photon-protocol/src/play/particles.rs::read_particle_options" = 16
+"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 16
+"crates/photon-protocol/src/play/recipe.rs::read_slot_display" = 15
+"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 15
+"crates/photon-protocol/src/play/tests.rs::write_component_fixture" = 13
+"crates/photon-protocol/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 11
+"crates/photon-protocol/src/registry_data.rs::piglins_zombify" = 17
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::biome_at" = 13
 "crates/photon-render/src/block/blockstate.rs::parse_block_state" = 13
 "crates/photon-render/src/block/blockstate.rs::parse_condition" = 11
@@ -642,19 +642,9 @@
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 84
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 61
 "crates/photon-net/src/connection/probe/mode.rs::connect_and_probe_with_mode" = 2248
-"crates/photon-net/src/connection/probe/open.rs::configure_connection" = 210
+"crates/photon-net/src/connection/probe/open.rs::configure_connection" = 206
 "crates/photon-net/src/connection/probe/open.rs::log_in" = 99
-"crates/photon-net/src/connection/protocol/chunk.rs::parse_chunk_packet" = 79
-"crates/photon-net/src/connection/protocol/chunk.rs::parse_palette_container" = 102
-"crates/photon-net/src/connection/protocol/commands.rs::read_argument_kind" = 113
-"crates/photon-net/src/connection/protocol/map.rs::parse_map_item_data_packet" = 68
-"crates/photon-net/src/connection/protocol/merchant.rs::parse_merchant_offers_packet" = 61
-"crates/photon-net/src/connection/protocol/particles.rs::read_particle_options" = 72
-"crates/photon-net/src/connection/protocol/player_info.rs::parse_player_info_update" = 61
-"crates/photon-net/src/connection/protocol/recipe.rs::read_recipe_display" = 61
-"crates/photon-net/src/connection/protocol/scoreboard.rs::parse_scoreboard_packet" = 97
 "crates/photon-net/src/connection/session.rs::query_status_and_ping" = 76
-"crates/photon-net/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 70
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
@@ -790,6 +780,15 @@
 "crates/photon-oracle/src/travel.rs::local_player_travel_dispatch_parameters" = 86
 "crates/photon-oracle/src/vanilla.rs::image_result" = 95
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 81
+"crates/photon-protocol/src/play/chunk.rs::parse_chunk_packet" = 77
+"crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 102
+"crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 113
+"crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68
+"crates/photon-protocol/src/play/merchant.rs::parse_merchant_offers_packet" = 61
+"crates/photon-protocol/src/play/particles.rs::read_particle_options" = 72
+"crates/photon-protocol/src/play/recipe.rs::read_recipe_display" = 61
+"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 97
+"crates/photon-protocol/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 68
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::biome_at" = 64
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::load" = 76
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 136
@@ -1117,7 +1116,6 @@
 "crates/photon-game/src/menus/container/clicks.rs::ContainerMenu::do_click" = 7
 "crates/photon-net/src/connection/probe/mode.rs::connect_and_probe_with_mode" = 6
 "crates/photon-net/src/connection/probe/open.rs::configure_connection" = 5
-"crates/photon-net/src/connection/protocol/player_info.rs::parse_player_info_update" = 5
 "crates/photon-oracle/src/block.rs::block_result" = 6
 "crates/photon-oracle/src/blockstate.rs::model_blockstate_result" = 5
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 6
@@ -1132,6 +1130,7 @@
 "crates/photon-oracle/src/ticks.rs::light_changes_result" = 5
 "crates/photon-oracle/src/ticks.rs::movement_world" = 8
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 5
+"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 5
 "crates/photon-render/src/block/uv_lock.rs::all" = 5
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::flow" = 5
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 5
@@ -1171,9 +1170,9 @@
 "crates/photon-core/src/shape/grid.rs::is_xz_rectangle_full" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 7
-"crates/photon-net/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-oracle/src/chunkpos.rs::sectionpos_as_long_snapshot" = 7
 "crates/photon-oracle/src/pack.rs::key_mapping_properties" = 7
+"crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/block/world_mesh/mesh.rs::add_face" = 7
 "crates/photon-render/src/block/world_mesh/mesh.rs::build_world_mesh" = 7
 "crates/photon-render/src/border.rs::quads" = 11

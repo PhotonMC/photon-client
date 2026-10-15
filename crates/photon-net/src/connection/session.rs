@@ -4,13 +4,14 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 
-use crate::configuration::{ClientInformation, ServerboundClientInformationPacket};
-use crate::frame::{FrameError, MAX_VARINT21_BYTES};
-use crate::handshake::{ClientIntent, ClientIntentionPacket};
-use crate::protocol::ConnectionProtocol;
 use photon_core::wire;
+use photon_protocol::configuration::{ClientInformation, ServerboundClientInformationPacket};
+use photon_protocol::frame::{FrameError, MAX_VARINT21_BYTES};
+use photon_protocol::handshake::{ClientIntent, ClientIntentionPacket};
+use photon_protocol::phase::ConnectionProtocol;
 
-use super::protocol::*;
+use super::trace::*;
+use photon_protocol::play::*;
 
 /// Query a Java-protocol server's status and verify its ping echo.
 pub fn query_status_and_ping(
@@ -28,7 +29,7 @@ pub fn query_status_and_ping(
         ConnectionProtocol::Status,
         STATUS_SERVERBOUND_REQUEST_PACKET_ID,
         |payload| {
-            crate::status::ServerboundStatusRequestPacket::INSTANCE.encode(payload);
+            photon_protocol::status::ServerboundStatusRequestPacket::INSTANCE.encode(payload);
             Ok(())
         },
         None,
@@ -55,7 +56,7 @@ pub fn query_status_and_ping(
     let status_response = String::from_utf16(&status_units)
         .map_err(|_| ConnectionError::Codec("status response UTF-16"))?;
 
-    let ping = crate::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
+    let ping = photon_protocol::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);
     let ping_start = std::time::Instant::now();
     send_packet(
         &mut stream,
@@ -83,7 +84,7 @@ pub fn query_status_and_ping(
     }
 
     let mut input = payload;
-    let pong = crate::status::ClientboundPongResponsePacket::decode(&mut input)
+    let pong = photon_protocol::status::ClientboundPongResponsePacket::decode(&mut input)
         .map_err(|_| ConnectionError::Codec("status pong"))?;
     if pong.time != STATUS_PROBE_TIME {
         return Err(ConnectionError::Codec("status pong echo"));

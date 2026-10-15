@@ -11,9 +11,9 @@ use std::net::{SocketAddr, TcpStream};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::Duration;
 
-use crate::protocol::ConnectionProtocol;
 use photon_core::math::Vec3;
 use photon_core::wire;
+use photon_protocol::phase::ConnectionProtocol;
 use photon_world::input::Input;
 use photon_world::local_player::{LocalPlayer, ServerboundMovement};
 use photon_world::{
@@ -25,9 +25,10 @@ use super::entities;
 use super::probe::{
     dimension_bounds_for_spawn_info, dimension_environment_for_spawn_info, open_play_connection,
 };
-use super::protocol::*;
 use super::session::{read_packet, send_packet};
+use super::trace::*;
 use incoming::Incoming;
+use photon_protocol::play::*;
 
 mod books;
 mod chat;
@@ -87,7 +88,7 @@ pub struct PlaySession {
     pub(super) teleports: u32,
     pub(super) view_distance: i32,
     /// What the server was last told of the client (`remoteClientInformation`).
-    pub(super) client_information: crate::configuration::ClientInformation,
+    pub(super) client_information: photon_protocol::configuration::ClientInformation,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
     /// `Player.getCooldowns`.

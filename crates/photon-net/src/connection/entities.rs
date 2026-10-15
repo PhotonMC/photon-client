@@ -9,7 +9,7 @@ use photon_world::{
 
 use photon_world::objects::minecart_track::MinecartStep;
 
-use super::protocol::{
+use photon_protocol::play::{
     AddEntityObservation, EntityEquipmentObservation, EntityHeadRotationObservation,
     EntityMetadataObservation, EntityMotionObservation, EntityMoveObservation,
     EntityPassengersObservation, EntityPositionSyncObservation, EntityTeleportObservation,
@@ -126,7 +126,7 @@ pub(crate) fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservati
     {
         world.entities_mut().apply_item_stack(
             packet.entity_id,
-            super::protocol::parse_entity_item_stack(value),
+            photon_protocol::play::parse_entity_item_stack(value),
         );
     }
     applied

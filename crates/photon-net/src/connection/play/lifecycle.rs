@@ -163,7 +163,7 @@ impl PlaySession {
         username: &str,
         timeout: Duration,
         auto_jump: bool,
-        information: crate::configuration::ClientInformation,
+        information: photon_protocol::configuration::ClientInformation,
     ) -> Result<Self, ConnectionError> {
         Self::connect_through(
             (address, None),
@@ -181,7 +181,7 @@ impl PlaySession {
         (mut address, mut host): (SocketAddr, Option<String>),
         (username, auto_jump): (&str, bool),
         timeout: Duration,
-        information: crate::configuration::ClientInformation,
+        information: photon_protocol::configuration::ClientInformation,
         first: PlayConnectionTrace,
     ) -> Result<Self, ConnectionError> {
         let mut carried = first;
@@ -228,14 +228,14 @@ impl PlaySession {
     /// only when it is not what the server was last told.
     pub fn send_client_information(
         &mut self,
-        information: crate::configuration::ClientInformation,
+        information: photon_protocol::configuration::ClientInformation,
     ) -> Result<(), ConnectionError> {
         if information == self.client_information {
             return Ok(());
         }
         self.client_information = information.clone();
         self.send(PLAY_SERVERBOUND_CLIENT_INFORMATION_PACKET_ID, |output| {
-            crate::configuration::ServerboundClientInformationPacket::new(information)
+            photon_protocol::configuration::ServerboundClientInformationPacket::new(information)
                 .encode(output)
                 .map_err(|_| ConnectionError::Codec("client information"))
         })
@@ -264,7 +264,7 @@ impl PlaySession {
             warned: None,
             teleports: 0,
             view_distance: 0,
-            client_information: crate::configuration::ClientInformation::default(),
+            client_information: photon_protocol::configuration::ClientInformation::default(),
             dimension_type_id: 0,
             hashed_seed: 0,
             enchantment_traits: std::sync::Arc::default(),

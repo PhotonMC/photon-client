@@ -1339,11 +1339,11 @@ dependencies = [
 name = "photon-net"
 version = "0.1.0"
 dependencies = [
- "flate2",
  "log",
  "photon-core",
  "photon-data",
  "photon-game",
+ "photon-protocol",
  "photon-world",
 ]
 
@@ -1360,6 +1360,17 @@ dependencies = [
  "photon-render",
  "photon-world",
  "serde_json",
+]
+
+[[package]]
+name = "photon-protocol"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-world",
 ]
 
 [[package]]

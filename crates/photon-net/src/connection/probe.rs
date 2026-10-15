@@ -7,12 +7,12 @@ use std::io;
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
-use crate::handshake::ClientIntent;
-use crate::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
-use crate::protocol::ConnectionProtocol;
-use crate::resources::KnownPack;
 use photon_core::binary::Uuid;
 use photon_core::wire;
+use photon_protocol::handshake::ClientIntent;
+use photon_protocol::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
+use photon_protocol::phase::ConnectionProtocol;
+use photon_protocol::resources::KnownPack;
 use photon_world::{
     BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, DimensionBounds,
     DimensionEnvironment, DimensionInput, LightLayerInput, LightUpdateInput,
@@ -24,8 +24,10 @@ use photon_world::{
 };
 
 use super::entities;
-use super::protocol::*;
 use super::session::*;
+use super::trace::*;
+use photon_protocol::play::*;
+use photon_protocol::{common, configuration, cookie, login, registry_data};
 
 mod observe;
 pub(crate) use observe::*;

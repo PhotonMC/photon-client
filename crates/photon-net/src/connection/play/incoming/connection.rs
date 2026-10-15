@@ -8,11 +8,11 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     ),
     (
         PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
-        typed::<crate::common::ClientboundKeepAlivePacket>,
+        typed::<photon_protocol::common::ClientboundKeepAlivePacket>,
     ),
     (
         PLAY_CLIENTBOUND_PING_PACKET_ID,
-        typed::<crate::common::ClientboundPingPacket>,
+        typed::<photon_protocol::common::ClientboundPingPacket>,
     ),
     (PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID, typed::<UpdateTags>),
     (PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID, typed::<Disconnect>),
@@ -27,10 +27,10 @@ impl ClientboundPacket for SetSimulationDistance {
 }
 
 /// `handleKeepAlive`: answered at once with the same number.
-impl ClientboundPacket for crate::common::ClientboundKeepAlivePacket {
+impl ClientboundPacket for photon_protocol::common::ClientboundKeepAlivePacket {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.send(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, |output| {
-            crate::common::ServerboundKeepAlivePacket::new(self.id).encode(output);
+            photon_protocol::common::ServerboundKeepAlivePacket::new(self.id).encode(output);
             Ok(())
         })?;
         Ok(())
@@ -38,10 +38,10 @@ impl ClientboundPacket for crate::common::ClientboundKeepAlivePacket {
 }
 
 /// `handlePing`: answered at once with the same number.
-impl ClientboundPacket for crate::common::ClientboundPingPacket {
+impl ClientboundPacket for photon_protocol::common::ClientboundPingPacket {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.send(PLAY_SERVERBOUND_PONG_PACKET_ID, |output| {
-            crate::common::ServerboundPongPacket::new(self.id).encode(output);
+            photon_protocol::common::ServerboundPongPacket::new(self.id).encode(output);
             Ok(())
         })?;
         Ok(())

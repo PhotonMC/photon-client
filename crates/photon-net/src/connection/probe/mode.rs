@@ -6,7 +6,7 @@ pub(super) fn connect_and_probe_with_mode(
     timeout: Duration,
     probe: PlayProbeConfig,
 ) -> Result<PlayConnectionTrace, ConnectionError> {
-    if username.is_empty() || username.encode_utf16().count() > crate::login::MAX_NAME_LENGTH {
+    if username.is_empty() || username.encode_utf16().count() > login::MAX_NAME_LENGTH {
         return Err(ConnectionError::InvalidArgument("username"));
     }
     if timeout.is_zero() {
@@ -28,7 +28,7 @@ pub(super) fn connect_and_probe_with_mode(
         username,
         timeout,
         probe.select_known_packs,
-        &crate::configuration::ClientInformation::default(),
+        &configuration::ClientInformation::default(),
         &mut trace,
     )?;
 
@@ -981,14 +981,14 @@ pub(super) fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID => {
                 let mut input = payload;
-                let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
+                let packet = common::ClientboundKeepAlivePacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("play keep alive"))?;
                 send_packet(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID,
                     |output| {
-                        crate::common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
+                        common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
                         Ok(())
                     },
                     compression_threshold,

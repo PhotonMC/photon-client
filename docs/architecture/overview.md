@@ -12,7 +12,8 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `photon-data` | Tables generated from the reference, plus typed lookups over them |
 | `photon-world` | The client's copy of the world: chunks, block states, light, entities, the local player, movement and particles |
 | `photon-game` | Game rules: items and components, menus and inventories, tooltips, options, sound selection, text |
-| `photon-net` | Protocol, packet codecs, connection and the play session |
+| `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`) |
+| `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), local probes |
 | `photon-render` | Vulkan backend, models, atlases and meshes, sky and weather, GUI drawing |
 | `photon-audio` | Ogg/Vorbis decoding, mixer, `cpal` output |
 | `photon` | The application: menu and play loops, input, wiring |
@@ -20,7 +21,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `xtask` | Lint rules, git hooks, commit gate, parity entry point |
 
 ```
-core -> data -> world -> game -> net ------------> photon
+core -> data -> world -> game -> protocol -> net --> photon
                     \            \-> render -----^
                      \-> audio ------------------^
 ```
@@ -30,7 +31,6 @@ core -> data -> world -> game -> net ------------> photon
 - `photon-render` depends on `photon-game`, because GUI screen logic lives in the render crate. Target: a `photon-gui` crate for screen logic and layout, with the renderer only drawing the resulting draw list.
 - `photon-audio` depends on `photon-game` for the sound-engine `Channel`/`Pool` types, which belong in the audio crate.
 - Live-server probe code (`photon-net/src/connection/probe/`, `crates/photon/examples/`) ships inside library and application crates. Target: a `photon-dev` crate.
-- The protocol layer mixes pure codecs with connection IO. Target: `photon-protocol` (pure codecs and version tables) under `photon-net` (IO and session).
 
 These edges are recorded in the lint baseline and must disappear, not grow.
 
@@ -38,8 +38,8 @@ These edges are recorded in the lint baseline and must disappear, not grow.
 
 | Work | Thread today |
 | --- | --- |
-| Socket reads, framing, chunk and light packet parsing | One reader thread per session |
-| Packet handling, socket writes | Main thread |
+| Socket reads, framing, parsing of every clientbound play packet | One reader thread per session |
+| Packet handling (`handle`), socket writes | Main thread |
 | Section meshing | `rayon` pool (`available_parallelism - 2`, 1..8 workers), nearest first within a 1 ms copy budget |
 | Occlusion graph flood | Dedicated thread |
 | Startup baking (models, atlases, block shapes) | Global `rayon` pool |

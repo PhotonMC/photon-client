@@ -1,13 +1,10 @@
-//! The Java protocol: connection phases, packet codecs and the live play session.
+//! The live connection: phases driven over sockets, the play session and the local probes.
+//! The wire format is in `photon-protocol`; its modules are re-exported here for the existing
+//! callers.
 
-pub mod common;
-pub mod configuration;
 pub mod connection;
-pub mod cookie;
-pub mod frame;
-pub mod handshake;
-pub mod login;
-pub mod protocol;
-pub mod registry_data;
-pub mod resources;
-pub mod status;
+
+pub use photon_protocol::phase as protocol;
+pub use photon_protocol::{
+    common, configuration, cookie, frame, handshake, login, registry_data, resources, status,
+};

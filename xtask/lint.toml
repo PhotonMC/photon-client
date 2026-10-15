@@ -18,7 +18,14 @@ photon-core = []
 photon-data = []
 photon-world = ["photon-core", "photon-data"]
 photon-game = ["photon-core", "photon-data", "photon-world"]
-photon-net = ["photon-core", "photon-data", "photon-world", "photon-game"]
+photon-protocol = ["photon-core", "photon-data", "photon-world", "photon-game"]
+photon-net = [
+    "photon-core",
+    "photon-data",
+    "photon-world",
+    "photon-game",
+    "photon-protocol",
+]
 photon-render = ["photon-core", "photon-data", "photon-world"]
 photon-audio = []
 photon = [
@@ -26,6 +33,7 @@ photon = [
     "photon-data",
     "photon-world",
     "photon-game",
+    "photon-protocol",
     "photon-net",
     "photon-render",
     "photon-audio",
@@ -35,6 +43,7 @@ photon-oracle = [
     "photon-data",
     "photon-world",
     "photon-game",
+    "photon-protocol",
     "photon-net",
     "photon-render",
     "photon-audio",

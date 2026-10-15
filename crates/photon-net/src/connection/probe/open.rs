@@ -10,7 +10,7 @@ pub(crate) fn open_play_connection(
     username: &str,
     timeout: Duration,
     select_known_packs: bool,
-    information: &crate::configuration::ClientInformation,
+    information: &configuration::ClientInformation,
     trace: &mut PlayConnectionTrace,
 ) -> Result<(TcpStream, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
@@ -41,7 +41,7 @@ pub(crate) fn open_play_connection(
 fn log_in(
     stream: &mut TcpStream,
     (username, timeout): (&str, Duration),
-    information: &crate::configuration::ClientInformation,
+    information: &configuration::ClientInformation,
     trace: &mut PlayConnectionTrace,
 ) -> Result<Option<usize>, ConnectionError> {
     let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), Uuid::new(0, 1));
@@ -72,7 +72,7 @@ fn log_in(
         match packet_id {
             LOGIN_COMPRESSION_PACKET_ID => {
                 let mut input = payload;
-                let packet = crate::login::ClientboundLoginCompressionPacket::decode(&mut input)
+                let packet = login::ClientboundLoginCompressionPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("login compression"))?;
                 compression_threshold = if packet.threshold < 0 {
                     None
@@ -100,14 +100,14 @@ fn log_in(
             }
             LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID => {
                 // `handleCustomQuery`: nothing to answer with.
-                let query = crate::cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
+                let query = cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
                     .map_err(|_| ConnectionError::Codec("login custom query"))?;
                 send_packet(
                     stream,
                     ConnectionProtocol::Login,
                     LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID,
                     |output| {
-                        crate::cookie::encode_unanswered_query(query.transaction_id, output);
+                        cookie::encode_unanswered_query(query.transaction_id, output);
                         Ok(())
                     },
                     compression_threshold,
@@ -166,9 +166,8 @@ pub(crate) fn configure_connection(
         match packet_id {
             CONFIG_REGISTRY_DATA_PACKET_ID => {
                 let mut input = payload;
-                let packet =
-                    crate::registry_data::ClientboundRegistryDataPacket::decode(&mut input)
-                        .map_err(|_| ConnectionError::Codec("registry data"))?;
+                let packet = registry_data::ClientboundRegistryDataPacket::decode(&mut input)
+                    .map_err(|_| ConnectionError::Codec("registry data"))?;
                 trace.registry_packet_count += 1;
                 trace.registry_entry_count += packet.entries.len();
                 trace
@@ -208,10 +207,9 @@ pub(crate) fn configure_connection(
             }
             CONFIG_ENABLED_FEATURES_PACKET_ID => {
                 let mut input = payload;
-                let packet = crate::configuration::ClientboundUpdateEnabledFeaturesPacket::decode(
-                    &mut input,
-                )
-                .map_err(|_| ConnectionError::Codec("enabled features"))?;
+                let packet =
+                    configuration::ClientboundUpdateEnabledFeaturesPacket::decode(&mut input)
+                        .map_err(|_| ConnectionError::Codec("enabled features"))?;
                 trace.enabled_feature_count = packet.features.len();
                 trace
                     .world
@@ -245,14 +243,14 @@ pub(crate) fn configure_connection(
             }
             CONFIG_KEEP_ALIVE_PACKET_ID => {
                 let mut input = payload;
-                let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
+                let packet = common::ClientboundKeepAlivePacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("configuration keep alive"))?;
                 send_packet(
                     stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_KEEP_ALIVE_PACKET_ID,
                     |output| {
-                        crate::common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
+                        common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
                         Ok(())
                     },
                     compression_threshold,
@@ -260,14 +258,14 @@ pub(crate) fn configure_connection(
             }
             CONFIG_PONG_PACKET_ID => {
                 let mut input = payload;
-                let packet = crate::common::ClientboundPingPacket::decode(&mut input)
+                let packet = common::ClientboundPingPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("configuration ping"))?;
                 send_packet(
                     stream,
                     ConnectionProtocol::Configuration,
                     CONFIG_PONG_PACKET_ID,
                     |output| {
-                        crate::common::ServerboundPongPacket::new(packet.id).encode(output);
+                        common::ServerboundPongPacket::new(packet.id).encode(output);
                         Ok(())
                     },
                     compression_threshold,
@@ -275,7 +273,7 @@ pub(crate) fn configure_connection(
             }
             CONFIG_CODE_OF_CONDUCT_PACKET_ID => {
                 let mut input = payload;
-                crate::configuration::ClientboundCodeOfConductPacket::decode(&mut input)
+                configuration::ClientboundCodeOfConductPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("code of conduct"))?;
                 send_packet(
                     stream,
@@ -286,10 +284,8 @@ pub(crate) fn configure_connection(
                 )?;
             }
             CONFIG_FINISH_PACKET_ID => {
-                crate::configuration::ClientboundFinishConfigurationPacket::decode(
-                    &mut &payload[..],
-                )
-                .map_err(|_| ConnectionError::Codec("finish configuration"))?;
+                configuration::ClientboundFinishConfigurationPacket::decode(&mut &payload[..])
+                    .map_err(|_| ConnectionError::Codec("finish configuration"))?;
                 send_packet(
                     stream,
                     ConnectionProtocol::Configuration,
@@ -323,7 +319,7 @@ pub(crate) fn configure_connection(
             2 => return Err(ConnectionError::ServerDisconnected),
             CONFIG_CLIENTBOUND_TRANSFER_PACKET_ID => {
                 // `handleTransfer`: the connection is let go and another is made.
-                let transfer = crate::cookie::ClientboundTransferPacket::decode(&mut &payload[..])
+                let transfer = cookie::ClientboundTransferPacket::decode(&mut &payload[..])
                     .map_err(|_| ConnectionError::Codec("transfer"))?;
                 return Err(ConnectionError::Transfer {
                     host: transfer.host,
@@ -370,9 +366,9 @@ pub(crate) fn answer_cookie_request(
     stream: &mut TcpStream,
     (phase, response_id): (ConnectionProtocol, i32),
     (payload, compression_threshold): (&[u8], Option<usize>),
-    cookies: &crate::cookie::CookieStore,
+    cookies: &cookie::CookieStore,
 ) -> Result<(), ConnectionError> {
-    let request = crate::cookie::ClientboundCookieRequestPacket::decode(&mut &payload[..])
+    let request = cookie::ClientboundCookieRequestPacket::decode(&mut &payload[..])
         .map_err(|_| ConnectionError::Codec("cookie request"))?;
     let answer = cookies.answer(&request);
     send_packet(
@@ -393,7 +389,7 @@ pub(crate) fn store_cookie(
     trace: &mut PlayConnectionTrace,
     payload: &[u8],
 ) -> Result<(), ConnectionError> {
-    let packet = crate::cookie::ClientboundStoreCookiePacket::decode(&mut &payload[..])
+    let packet = cookie::ClientboundStoreCookiePacket::decode(&mut &payload[..])
         .map_err(|_| ConnectionError::Codec("store cookie"))?;
     trace.cookies.store(&packet.key, packet.payload);
     Ok(())
@@ -404,7 +400,7 @@ pub(crate) fn take_custom_payload(
     trace: &mut PlayConnectionTrace,
     payload: &[u8],
 ) -> Result<(), ConnectionError> {
-    let packet = crate::cookie::ClientboundCustomPayloadPacket::decode(&mut &payload[..])
+    let packet = cookie::ClientboundCustomPayloadPacket::decode(&mut &payload[..])
         .map_err(|_| ConnectionError::Codec("custom payload"))?;
     if let Some(brand) = packet.brand() {
         trace.server_brand = Some(brand);
@@ -417,7 +413,7 @@ pub(crate) fn take_report_details(
     trace: &mut PlayConnectionTrace,
     payload: &[u8],
 ) -> Result<(), ConnectionError> {
-    let packet = crate::cookie::ClientboundCustomReportDetailsPacket::decode(&mut &payload[..])
+    let packet = cookie::ClientboundCustomReportDetailsPacket::decode(&mut &payload[..])
         .map_err(|_| ConnectionError::Codec("custom report details"))?;
     trace.custom_report_details = packet.details;
     Ok(())

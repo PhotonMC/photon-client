@@ -12,6 +12,7 @@ photon-core = { path = "crates/photon-core" }
 photon-data = { path = "crates/photon-data" }
 photon-world = { path = "crates/photon-world" }
 photon-game = { path = "crates/photon-game" }
+photon-protocol = { path = "crates/photon-protocol" }
 photon-net = { path = "crates/photon-net" }
 photon-render = { path = "crates/photon-render" }
 photon-audio = { path = "crates/photon-audio" }

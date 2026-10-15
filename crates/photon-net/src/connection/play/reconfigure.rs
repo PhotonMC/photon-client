@@ -29,7 +29,7 @@ impl PlaySession {
     /// `handleRequestCookie`: what is kept under the key goes back, or nothing.
     pub(super) fn on_cookie_request(
         &mut self,
-        request: &crate::cookie::ClientboundCookieRequestPacket,
+        request: &photon_protocol::cookie::ClientboundCookieRequestPacket,
     ) -> Result<(), ConnectionError> {
         let answer = self.trace.cookies.answer(request);
         self.send(PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID, |output| {
@@ -43,7 +43,7 @@ impl PlaySession {
     /// as a transfer, with the cookies kept. The new session starts over like a reconfigured one.
     pub(super) fn transfer(
         &mut self,
-        packet: crate::cookie::ClientboundTransferPacket,
+        packet: photon_protocol::cookie::ClientboundTransferPacket,
     ) -> Result<(), ConnectionError> {
         let address = lifecycle::resolve_host(&packet.host, packet.port)?;
         let carried = PlayConnectionTrace {
@@ -222,8 +222,8 @@ mod tests {
             let handshake = read_packet(&mut stream, None).expect("handshake");
             let (id, mut body) = split_packet(&handshake).expect("split");
             assert_eq!(id, LOGIN_INTENTION_PACKET_ID);
-            let intention =
-                crate::handshake::ClientIntentionPacket::decode(&mut body).expect("decode");
+            let intention = photon_protocol::handshake::ClientIntentionPacket::decode(&mut body)
+                .expect("decode");
             assert_eq!(
                 String::from_utf16(&intention.host_name).expect("host"),
                 "127.0.0.1"
@@ -231,7 +231,7 @@ mod tests {
             assert_eq!(intention.port, i32::from(target_port));
             assert_eq!(
                 intention.intention,
-                crate::handshake::ClientIntent::Transfer
+                photon_protocol::handshake::ClientIntent::Transfer
             );
         });
         let origin = std::thread::spawn(move || {

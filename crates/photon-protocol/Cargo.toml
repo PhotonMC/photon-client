@@ -1,0 +1,18 @@
+[package]
+name = "photon-protocol"
+description = "The Java protocol's wire format: phases, framing and packet codecs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+photon-core.workspace = true
+photon-data.workspace = true
+photon-world.workspace = true
+photon-game.workspace = true
+flate2.workspace = true
+
+[lints]
+workspace = true
