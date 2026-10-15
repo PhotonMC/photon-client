@@ -18,6 +18,7 @@ mod gui;
 mod image;
 mod json;
 mod line;
+mod math;
 mod model;
 mod movement;
 mod nbt;
@@ -42,6 +43,7 @@ const GENERATORS: &[(&str, Generator)] = &[
     ("gui", gui::cases),
     ("image", image::cases),
     ("json", json::cases),
+    ("math", math::cases),
     ("model", model::cases),
     ("movement", movement::cases),
     ("nbt", nbt::cases),

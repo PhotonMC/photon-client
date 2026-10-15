@@ -4,13 +4,13 @@
 use serde_json::{Value, json};
 
 /// The big-endian hex bits of `value` rounded to `f32`.
-pub fn f32_bits(value: f64) -> String {
-    format!("{:08x}", (value as f32).to_bits())
+pub fn f32_bits(value: impl Into<f64>) -> String {
+    format!("{:08x}", (value.into() as f32).to_bits())
 }
 
 /// The big-endian hex bits of `value`.
-pub fn f64_bits(value: f64) -> String {
-    format!("{:016x}", value.to_bits())
+pub fn f64_bits(value: impl Into<f64>) -> String {
+    format!("{:016x}", value.into().to_bits())
 }
 
 /// An `{x, y, z}` vector of `f64` bit patterns.
