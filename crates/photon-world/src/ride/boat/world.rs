@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// Whether a paddle at this turn makes its stroke sound this tick (`AbstractBoat.tick`'s test of
 /// the paddle's position against the start of its sweep).
@@ -12,7 +13,7 @@ pub(super) fn paddle_makes_sound(position: f32) -> bool {
 impl ClientWorld {
     /// `AbstractBoat.tick` for the boat the local player rides, between this tick's start and its
     /// movement. Its paddles are queued to be told to the server.
-    pub(crate) fn tick_ridden_boat(&mut self, entity_id: i32) {
+    pub(crate) fn tick_ridden_boat(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };

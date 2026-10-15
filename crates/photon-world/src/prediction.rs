@@ -9,6 +9,7 @@
 //! time of the prediction moves the player back to where it stood then,
 //! unless a teleport came after the prediction started.
 
+use photon_core::ids::EntityId;
 use std::collections::BTreeMap;
 
 use photon_core::math::Vec3;
@@ -234,7 +235,14 @@ impl ClientWorld {
 
     /// `ClientLevel.destroyBlockProgress`: a stage from 0 to 9 sets an
     /// entity's crack, anything else clears it.
-    pub fn destroy_block_progress(&mut self, entity_id: i32, x: i32, y: i32, z: i32, stage: i32) {
+    pub fn destroy_block_progress(
+        &mut self,
+        entity_id: EntityId,
+        x: i32,
+        y: i32,
+        z: i32,
+        stage: i32,
+    ) {
         if (0..10).contains(&stage) {
             self.destroying_blocks
                 .insert(entity_id, DestroyProgress { x, y, z, stage });
@@ -244,7 +252,7 @@ impl ClientWorld {
     }
 
     /// Each entity's crack, by entity id.
-    pub fn destroying_blocks(&self) -> &BTreeMap<i32, DestroyProgress> {
+    pub fn destroying_blocks(&self) -> &BTreeMap<EntityId, DestroyProgress> {
         &self.destroying_blocks
     }
 }

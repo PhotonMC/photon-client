@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 use photon_world::objects::minecart_track::MinecartStep;
 use photon_world::particles::pickup_target;
 
@@ -261,13 +262,16 @@ impl PlaySession {
 
     fn on_move_minecart(
         &mut self,
-        (entity_id, steps): (i32, Vec<MinecartStep>),
+        (entity_id, steps): (EntityId, Vec<MinecartStep>),
     ) -> Result<(), ConnectionError> {
         entities::minecart_steps(&mut self.world, entity_id, &steps);
         Ok(())
     }
 
-    fn on_set_entity_link(&mut self, (source, holder): (i32, i32)) -> Result<(), ConnectionError> {
+    fn on_set_entity_link(
+        &mut self,
+        (source, holder): (EntityId, EntityId),
+    ) -> Result<(), ConnectionError> {
         self.world.entities_mut().set_leash_holder(source, holder);
         Ok(())
     }
@@ -297,7 +301,7 @@ impl PlaySession {
 
     fn on_take_item_entity(
         &mut self,
-        (item_id, player_id, amount): (i32, i32, i32),
+        (item_id, player_id, amount): (EntityId, EntityId, i32),
     ) -> Result<(), ConnectionError> {
         let world = &self.world;
         let taker = world
@@ -412,12 +416,12 @@ impl PlaySession {
         Ok(())
     }
 
-    fn on_animate(&mut self, (id, action): (i32, u8)) -> Result<(), ConnectionError> {
+    fn on_animate(&mut self, (id, action): (EntityId, u8)) -> Result<(), ConnectionError> {
         self.world.entities_mut().apply_animate(id, action);
         Ok(())
     }
 
-    fn on_entity_event(&mut self, (id, event): (i32, i8)) -> Result<(), ConnectionError> {
+    fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
         // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
         if self.local.player_id == Some(id) && (24..=28).contains(&event) {
             self.local.permission_level = i32::from(event) - 24;
@@ -438,7 +442,7 @@ impl PlaySession {
 
     fn on_damage_event(
         &mut self,
-        (id, damage_type): (i32, Option<usize>),
+        (id, damage_type): (EntityId, Option<usize>),
     ) -> Result<(), ConnectionError> {
         self.world.entities_mut().apply_damage_event(id);
         if self.local.player_id == Some(id) {
@@ -453,7 +457,7 @@ impl PlaySession {
         Ok(())
     }
 
-    fn on_hurt_animation(&mut self, (id, yaw): (i32, f32)) -> Result<(), ConnectionError> {
+    fn on_hurt_animation(&mut self, (id, yaw): (EntityId, f32)) -> Result<(), ConnectionError> {
         self.world.entities_mut().apply_hurt_animation(id);
         if self.local.player_id == Some(id)
             && let Some(player) = self.local.player.as_mut()

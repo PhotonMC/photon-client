@@ -4,7 +4,7 @@ pub(super) fn client_world_entity_passengers_state(
     label: &str,
     accepted: bool,
     world: &ClientWorld,
-    entity_ids: &[i32],
+    entity_ids: &[EntityId],
 ) -> Result<Value, String> {
     let mut entities = Vec::with_capacity(entity_ids.len());
     for &entity_id in entity_ids {
@@ -13,11 +13,11 @@ pub(super) fn client_world_entity_passengers_state(
             .at(entity_id)
             .ok_or("passenger relation fixture entity disappeared")?;
         let mut state = json!({
-            "entity_id": entity_id,
-            "passenger_ids": entity.passenger_ids(),
+            "entity_id": entity_id.0,
+            "passenger_ids": entity.passenger_ids().iter().map(|id| id.0).collect::<Vec<_>>(),
         });
         if let Some(vehicle_id) = entity.vehicle_id() {
-            state["vehicle_id"] = json!(vehicle_id);
+            state["vehicle_id"] = json!(vehicle_id.0);
         }
         entities.push(state);
     }
@@ -32,17 +32,17 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
     let entity_entries = request["entities"]
         .as_array()
         .ok_or("entities must be an array")?;
-    let entity_ids: Vec<i32> = entity_entries
+    let entity_ids: Vec<EntityId> = entity_entries
         .iter()
-        .map(|entity| i32_field(entity, "entity_id"))
+        .map(|entity| entity_id_field(entity, "entity_id"))
         .collect::<Result<_, _>>()?;
     let mut world = ClientWorld::new(DimensionBounds::default());
     for entity in entity_entries {
-        let entity_id = i32_field(entity, "entity_id")?;
+        let entity_id = entity_id_field(entity, "entity_id")?;
         let type_id = i32_field(entity, "type_id")?;
         if !world.apply_entity(EntityInput {
             entity_id,
-            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
             type_id,
             x: 0.0,
             y: 0.0,
@@ -59,7 +59,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
         .as_array()
         .ok_or("initial_links must be an array")?
     {
-        let vehicle_id = i32_field(link, "vehicle_id")?;
+        let vehicle_id = entity_id_field(link, "vehicle_id")?;
         let passenger_ids = link["passenger_ids"]
             .as_array()
             .ok_or("initial passenger_ids must be an array")?
@@ -71,7 +71,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
                     .ok_or("initial passenger ID must be a 32-bit integer".to_owned())
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+        if !world.apply_entity_passengers(vehicle_id, &typed_entity_ids(&passenger_ids)) {
             return Err("initial passenger relation was rejected".into());
         }
     }
@@ -86,7 +86,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
         .as_array()
         .ok_or("operations must be an array")?
     {
-        let vehicle_id = i32_field(operation, "vehicle_id")?;
+        let vehicle_id = entity_id_field(operation, "vehicle_id")?;
         let passenger_ids = operation["passenger_ids"]
             .as_array()
             .ok_or("passenger_ids must be an array")?
@@ -98,7 +98,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
                     .ok_or("passenger ID must be a 32-bit integer".to_owned())
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let accepted = world.apply_entity_passengers(vehicle_id, &passenger_ids);
+        let accepted = world.apply_entity_passengers(vehicle_id, &typed_entity_ids(&passenger_ids));
         states.push(client_world_entity_passengers_state(
             string(operation, "label")?,
             accepted,
@@ -134,7 +134,7 @@ pub(super) fn client_world_entity_passenger_position_result(
     if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
         return Err("passenger position fixture requires an oak boat".into());
     }
-    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
             .get("position")
@@ -149,7 +149,7 @@ pub(super) fn client_world_entity_passenger_position_result(
         .as_array()
         .ok_or("passengers must be an array")?
     {
-        let passenger_id = i32_field(passenger, "entity_id")?;
+        let passenger_id = entity_id_field(passenger, "entity_id")?;
         if i32_field(passenger, "type_id")? != 120 {
             return Err("passenger position fixture requires snowball passengers".into());
         }
@@ -168,7 +168,7 @@ pub(super) fn client_world_entity_passenger_position_result(
             .ok_or("passenger rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
-            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
             type_id: 120,
             x: position.x,
             y: position.y,
@@ -183,7 +183,7 @@ pub(super) fn client_world_entity_passenger_position_result(
     }
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
-        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
         type_id: 89,
         x: vehicle_position.x,
         y: vehicle_position.y,
@@ -210,7 +210,7 @@ pub(super) fn client_world_entity_passenger_position_result(
                 })
         })
         .collect::<Result<Vec<i32>, _>>()?;
-    if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+    if !world.apply_entity_passengers(vehicle_id, &typed_entity_ids(&passenger_ids)) {
         return Err("passenger position fixture relation was rejected".into());
     }
 
@@ -242,7 +242,7 @@ pub(super) fn client_world_entity_passenger_position_result(
                             })
                     })
                     .collect::<Result<Vec<i32>, _>>()?;
-                if !world.apply_entity_passengers(vehicle_id, &passenger_ids) {
+                if !world.apply_entity_passengers(vehicle_id, &typed_entity_ids(&passenger_ids)) {
                     return Err("passenger position fixture relation was rejected".into());
                 }
             }
@@ -289,7 +289,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
         return Err("passenger player position fixture requires an oak boat".into());
     }
-    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
             .get("position")
@@ -300,7 +300,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
         .ok_or("passenger player position vehicle rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
-        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
         type_id: 89,
         x: vehicle_position.x,
         y: vehicle_position.y,
@@ -329,7 +329,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
     if i32_field(&Value::Object(passenger.clone()), "type_id")? != 156 {
         return Err("passenger player position fixture requires a Player passenger".into());
     }
-    let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+    let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
     let passenger_position = f64_vec3(
         passenger
             .get("position")
@@ -345,7 +345,7 @@ pub(super) fn client_world_entity_passenger_player_position_result(
         .ok_or("passenger player rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: passenger_id,
-        uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+        uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
         type_id: 156,
         x: passenger_position.x,
         y: passenger_position.y,
@@ -403,4 +403,9 @@ pub(super) fn client_world_entity_passenger_player_position_result(
         )?);
     }
     Ok(json!({"states": states}))
+}
+
+/// The ids a fixture gives, as the entity ids the world takes.
+fn typed_entity_ids(ids: &[i32]) -> Vec<EntityId> {
+    ids.iter().map(|&id| EntityId(id)).collect()
 }

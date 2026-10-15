@@ -1,5 +1,6 @@
 //! `ParticleEngine`: the particles of the level, and how they get in.
 
+use photon_core::ids::EntityId;
 use std::collections::VecDeque;
 
 use photon_core::binary::BlockPos;
@@ -74,7 +75,7 @@ pub enum ParticleData {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PositionSource {
     Block(BlockPos),
-    Entity { id: i32, y_offset: f32 },
+    Entity { id: EntityId, y_offset: f32 },
 }
 
 impl PositionSource {
@@ -345,7 +346,7 @@ impl ParticleEngine {
     /// The `ITEM_PICKUP` group's part of `ParticleEngine.tick`: each follows where its taker is
     /// now (`target`, by who took it; one gone is followed where it was last), then the ones
     /// added meanwhile join.
-    pub fn tick_pickups(&mut self, target: impl Fn(Option<i32>) -> Option<(f64, f64, f64)>) {
+    pub fn tick_pickups(&mut self, target: impl Fn(Option<EntityId>) -> Option<(f64, f64, f64)>) {
         self.pickups.retain_mut(|pickup| {
             let at = target(pickup.target).unwrap_or_else(|| pickup.target_at());
             pickup.tick(at);

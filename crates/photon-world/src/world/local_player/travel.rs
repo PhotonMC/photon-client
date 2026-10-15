@@ -203,7 +203,7 @@ impl ClientWorld {
     }
 
     /// Apply Java LivingEntity.setSprinting to the local player state.
-    pub fn apply_local_player_sprinting(&mut self, player_id: i32, sprinting: bool) -> bool {
+    pub fn apply_local_player_sprinting(&mut self, player_id: EntityId, sprinting: bool) -> bool {
         let Some(player) = self
             .local_player
             .as_mut()

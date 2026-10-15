@@ -15,6 +15,7 @@ use photon_core::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
 use photon_core::identifier::Identifier;
+use photon_core::ids::EntityId;
 use photon_core::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use photon_core::nbt::{self, Field, FieldValue};
 use photon_core::random::RandomSource;
@@ -113,7 +114,9 @@ use pack::*;
 mod blockpos;
 use blockpos::*;
 mod chunkpos;
+mod entity_ids;
 use chunkpos::*;
+use entity_ids::entity_id_field;
 mod snapshot;
 use snapshot::*;
 mod shape;

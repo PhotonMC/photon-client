@@ -418,7 +418,7 @@ mod tests {
         let mut out = Vec::new();
         GameMode::pick_block_or_entity(
             Aim::Entity {
-                id: 20,
+                id: photon_core::ids::EntityId(20),
                 location: [0.0; 3],
                 position: [0.0; 3],
                 bounds: [0.0; 6],

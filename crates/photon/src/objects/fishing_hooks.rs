@@ -2,6 +2,7 @@
 //! line from it to the hand of the player who cast it. A bobber whose owner is not a player
 //! known to this client is not drawn.
 
+use photon_core::ids::EntityId;
 use photon_core::math::{Vec3, mth_lerp_f32, mth_sin_f64};
 use photon_data::item::classes::ItemClass;
 use photon_net::connection::PlaySession;
@@ -88,17 +89,17 @@ pub fn fishing_hooks(
         let owner_id = entity.data;
         let (x, y, z) = snapshot.position;
         let hook = (x, y, z);
-        let hand = if owner_id == player.entity_id() {
+        let hand = if EntityId(owner_id) == player.entity_id() {
             local_hand(player, hook_view)
         } else {
             let Some(owner) = world
                 .entities()
                 .all()
-                .find(|owner| owner.id() == owner_id && owner.is_player())
+                .find(|owner| owner.id() == EntityId(owner_id) && owner.is_player())
             else {
                 continue;
             };
-            let Some(owner_snapshot) = world.entity_snapshot(owner_id, partial) else {
+            let Some(owner_snapshot) = world.entity_snapshot(EntityId(owner_id), partial) else {
                 continue;
             };
             let rod = is_rod(owner.equipment(EquipmentSlot::MainHand));

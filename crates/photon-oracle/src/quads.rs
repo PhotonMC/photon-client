@@ -1,7 +1,7 @@
 use super::*;
 
 /// What the world keeps of a vehicle the player rides, after a tick.
-pub(super) fn vehicle_report(world: &ClientWorld, vehicle_id: i32) -> Result<Value, String> {
+pub(super) fn vehicle_report(world: &ClientWorld, vehicle_id: EntityId) -> Result<Value, String> {
     use photon_world::Status;
     let vehicle = world
         .entities()

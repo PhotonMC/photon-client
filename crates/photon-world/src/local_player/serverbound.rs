@@ -17,7 +17,7 @@ impl std::error::Error for Unsupported {}
 pub enum ServerboundMovement {
     PlayerInput(Input),
     PlayerCommand {
-        entity_id: i32,
+        entity_id: EntityId,
         action: PlayerCommandAction,
         /// The action's datum: a riding jump's charge, in hundredths.
         data: i32,
@@ -109,7 +109,7 @@ impl ServerboundMovement {
                 action,
                 data,
             } => {
-                var_int(&mut output, entity_id);
+                var_int(&mut output, entity_id.0);
                 var_int(&mut output, action as i32);
                 var_int(&mut output, data);
             }

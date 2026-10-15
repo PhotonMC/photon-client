@@ -2,6 +2,7 @@
 //! session alike: the parsed packet goes in, whether the world took it comes
 //! out. The probes add their own observations around these calls.
 
+use photon_core::ids::EntityId;
 use photon_world::{
     ClientWorld, EntityInput, EntityMotionInput, EntityMoveInput, EntityPositionInput,
     EntityPositionUpdateMode, EntityRotationInput, EntityTeleportInput, EquipmentSlot,
@@ -42,7 +43,11 @@ pub fn motion(world: &mut ClientWorld, packet: &EntityMotionObservation) -> bool
 }
 
 /// `handleMinecartAlongTrack`.
-pub fn minecart_steps(world: &mut ClientWorld, entity_id: i32, steps: &[MinecartStep]) -> bool {
+pub fn minecart_steps(
+    world: &mut ClientWorld,
+    entity_id: EntityId,
+    steps: &[MinecartStep],
+) -> bool {
     world.apply_minecart_steps(entity_id, steps)
 }
 

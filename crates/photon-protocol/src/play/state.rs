@@ -1,11 +1,12 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// `ClientboundEntityEventPacket.STREAM_CODEC`: the entity's id and the
 /// event (a byte).
 /// `ClientboundAnimatePacket`: the entity and the action.
-pub fn parse_animate_packet(input: &[u8]) -> Result<(i32, u8), ConnectionError> {
+pub fn parse_animate_packet(input: &[u8]) -> Result<(EntityId, u8), ConnectionError> {
     let mut input = input;
-    let id = read_varint(&mut input, "animate entity id")?;
+    let id = EntityId(read_varint(&mut input, "animate entity id")?);
     let action = read_byte(&mut input, "animate action")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("animate trailing payload"));
@@ -13,9 +14,9 @@ pub fn parse_animate_packet(input: &[u8]) -> Result<(i32, u8), ConnectionError> 
     Ok((id, action))
 }
 
-pub fn parse_entity_event_packet(input: &[u8]) -> Result<(i32, i8), ConnectionError> {
+pub fn parse_entity_event_packet(input: &[u8]) -> Result<(EntityId, i8), ConnectionError> {
     let mut input = input;
-    let id = read_i32(&mut input, "entity event id")?;
+    let id = EntityId(read_i32(&mut input, "entity event id")?);
     let event = *input
         .first()
         .ok_or(ConnectionError::Codec("entity event"))? as i8;
@@ -33,9 +34,11 @@ pub fn parse_entity_id_prefix(input: &[u8]) -> Result<i32, ConnectionError> {
 /// `ClientboundDamageEventPacket`: the entity hurt, and the registry id of the damage type that
 /// hurt it (`None` when the packet carries the type itself instead of naming one, which a server
 /// that syncs its registries does not do). The rest (the causes, the place) is not read.
-pub fn parse_damage_event_packet(input: &[u8]) -> Result<(i32, Option<usize>), ConnectionError> {
+pub fn parse_damage_event_packet(
+    input: &[u8],
+) -> Result<(EntityId, Option<usize>), ConnectionError> {
     let mut input = input;
-    let id = read_varint(&mut input, "damage event entity id")?;
+    let id = EntityId(read_varint(&mut input, "damage event entity id")?);
     // `ByteBufCodecs.holder`: the registry id plus one, or zero for a type written out.
     let holder = read_varint(&mut input, "damage event type")?;
     Ok((
@@ -47,9 +50,9 @@ pub fn parse_damage_event_packet(input: &[u8]) -> Result<(i32, Option<usize>), C
 }
 
 /// `ClientboundHurtAnimationPacket`: the entity and the yaw the blow came from.
-pub fn parse_hurt_animation_packet(input: &[u8]) -> Result<(i32, f32), ConnectionError> {
+pub fn parse_hurt_animation_packet(input: &[u8]) -> Result<(EntityId, f32), ConnectionError> {
     let mut input = input;
-    let id = read_varint(&mut input, "hurt animation entity")?;
+    let id = EntityId(read_varint(&mut input, "hurt animation entity")?);
     let yaw = f32::from_bits(read_i32(&mut input, "hurt animation yaw")? as u32);
     Ok((id, yaw))
 }
@@ -57,7 +60,7 @@ pub fn parse_hurt_animation_packet(input: &[u8]) -> Result<(i32, f32), Connectio
 /// Wire-level fields decoded from one clientbound attribute update.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttributeUpdateObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub attributes: Vec<ClientAttributeState>,
     pub applied_to_world: bool,
 }
@@ -65,7 +68,7 @@ pub struct AttributeUpdateObservation {
 /// Wire-level fields decoded from one clientbound entity-metadata packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntityMetadataObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub metadata_length: usize,
     pub applied_to_world: bool,
     pub metadata: Vec<u8>,
@@ -75,7 +78,7 @@ pub struct EntityMetadataObservation {
 /// `EquipmentSlot` ordinal; an empty stack clears its slot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntityEquipmentObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub slots: Vec<(usize, Option<ClientItemStackState>)>,
 }
 
@@ -112,7 +115,7 @@ pub fn parse_update_attributes_packet(
         return Err(ConnectionError::Codec("update attributes trailing payload"));
     }
     Ok(AttributeUpdateObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         attributes,
         applied_to_world: false,
     })
@@ -121,7 +124,7 @@ pub fn parse_update_attributes_packet(
 /// Wire-level fields decoded from one clientbound mob-effect removal packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MobEffectRemoveObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub effect_registry_id: i32,
     pub applied_to_world: bool,
 }
@@ -129,7 +132,7 @@ pub struct MobEffectRemoveObservation {
 /// Wire-level fields decoded from one clientbound mob-effect update packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MobEffectUpdateObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub effect_registry_id: i32,
     pub amplifier: i32,
     pub duration_ticks: i32,
@@ -147,7 +150,7 @@ pub fn parse_entity_metadata_packet(
     }
     let metadata = input.to_vec();
     Ok(EntityMetadataObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         metadata_length: metadata.len(),
         applied_to_world: false,
         metadata,
@@ -173,7 +176,10 @@ pub fn parse_entity_equipment_packet(
     if !input.is_empty() {
         return Err(ConnectionError::Codec("set equipment trailing payload"));
     }
-    Ok(EntityEquipmentObservation { entity_id, slots })
+    Ok(EntityEquipmentObservation {
+        entity_id: EntityId(entity_id),
+        slots,
+    })
 }
 
 pub fn parse_remove_mob_effect_packet(
@@ -186,7 +192,7 @@ pub fn parse_remove_mob_effect_packet(
         return Err(ConnectionError::Codec("remove mob effect trailing payload"));
     }
     Ok(MobEffectRemoveObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         effect_registry_id,
         applied_to_world: false,
     })
@@ -205,7 +211,7 @@ pub fn parse_update_mob_effect_packet(
         return Err(ConnectionError::Codec("update mob effect trailing payload"));
     }
     Ok(MobEffectUpdateObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         effect_registry_id,
         amplifier,
         duration_ticks,
@@ -277,30 +283,30 @@ impl Decode for SetTime {
 
 wrapped_packet!(
     /// `ClientboundSetEntityLinkPacket`.
-    SetEntityLink((i32, i32)) = parse_set_entity_link_packet,
+    SetEntityLink((EntityId, EntityId)) = parse_set_entity_link_packet,
     OnError::Ignore("set_entity_link")
 );
 
 wrapped_packet!(
     /// `ClientboundAnimatePacket`.
-    Animate((i32, u8)) = parse_animate_packet,
+    Animate((EntityId, u8)) = parse_animate_packet,
     OnError::Ignore("animate")
 );
 
 wrapped_packet!(
     /// `ClientboundEntityEventPacket`.
-    EntityEvent((i32, i8)) = parse_entity_event_packet
+    EntityEvent((EntityId, i8)) = parse_entity_event_packet
 );
 
 wrapped_packet!(
     /// `ClientboundDamageEventPacket`.
-    DamageEvent((i32, Option<usize>)) = parse_damage_event_packet,
+    DamageEvent((EntityId, Option<usize>)) = parse_damage_event_packet,
     OnError::Ignore("damage_event")
 );
 
 wrapped_packet!(
     /// `ClientboundHurtAnimationPacket`.
-    HurtAnimation((i32, f32)) = parse_hurt_animation_packet,
+    HurtAnimation((EntityId, f32)) = parse_hurt_animation_packet,
     OnError::Ignore("hurt_animation")
 );
 

@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl ClientWorld {
     /// Which mount the local player drives this entity as, if it does: a saddled horse it sits
@@ -30,7 +31,7 @@ impl ClientWorld {
     }
 
     /// `AbstractHorse.onPlayerJump`: the rider let go of the jump key after charging a jump.
-    pub fn on_player_jump(&mut self, vehicle_id: i32, jump_amount: i32) {
+    pub fn on_player_jump(&mut self, vehicle_id: EntityId, jump_amount: i32) {
         let Some(horse) = self
             .entities
             .at_mut(vehicle_id)
@@ -66,7 +67,7 @@ impl ClientWorld {
     }
 
     /// `LivingEntity.tick` for the saddled horse the local player rides.
-    pub(crate) fn tick_ridden_mount(&mut self, entity_id: i32) {
+    pub(crate) fn tick_ridden_mount(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };

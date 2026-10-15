@@ -5,7 +5,7 @@ impl ClientWorld {
     /// ticking moves on a tick, its passengers after it (the local player,
     /// who has a tick of its own, is not among them unless it rides one).
     pub fn tick_entities(&mut self) {
-        let ticking_entity_ids: Vec<i32> = self
+        let ticking_entity_ids: Vec<EntityId> = self
             .entities
             .iter()
             .filter(|(_, entity)| entity.ticking && entity.vehicle_id.is_none())
@@ -24,7 +24,7 @@ impl ClientWorld {
         }
     }
 
-    pub(crate) fn tick_entity_tree(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
+    pub(crate) fn tick_entity_tree(&mut self, entity_id: EntityId, vehicle_id: Option<EntityId>) {
         if vehicle_id.is_some()
             && let Some(entity) = self.entities.at_mut(entity_id)
         {
@@ -38,14 +38,14 @@ impl ClientWorld {
         }
         let passenger_ids = self
             .entity_passengers(entity_id)
-            .map(<[i32]>::to_vec)
+            .map(<[EntityId]>::to_vec)
             .unwrap_or_default();
         for passenger_id in passenger_ids {
             self.tick_entity_passenger_tree(entity_id, passenger_id);
         }
     }
 
-    pub(crate) fn tick_entity_once(&mut self, entity_id: i32) {
+    pub(crate) fn tick_entity_once(&mut self, entity_id: EntityId) {
         // One read of the entity decides every branch below; the reference
         // evaluates these conditions against the pre-tick state, so they are
         // resolved before the mutable tick borrow is taken.
@@ -158,7 +158,7 @@ impl ClientWorld {
 
     /// A living entity that eased into a chunk that is not loaded stops
     /// ticking there (`ClientLevel`'s entity callbacks on a move).
-    pub(crate) fn update_ticking_flag(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+    pub(crate) fn update_ticking_flag(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let in_loaded_chunk = self.contains_chunk(chunk_x, chunk_z);
         if let Some(entity) = self.entities.at_mut(entity_id)

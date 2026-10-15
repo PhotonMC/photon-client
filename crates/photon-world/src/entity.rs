@@ -11,7 +11,7 @@ use photon_core::math::{
 
 #[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct ClientEntity {
-    pub(crate) id: i32,
+    pub(crate) id: EntityId,
     pub uuid: photon_core::binary::Uuid,
     pub type_id: i32,
     pub(crate) tick_count: i32,
@@ -88,8 +88,8 @@ pub struct ClientEntity {
     pub(crate) happy_ghast_still_timeout: bool,
     pub(crate) happy_ghast_is_vehicle: bool,
     pub(crate) ticks_frozen: i32,
-    pub(crate) vehicle_id: Option<i32>,
-    pub(crate) passenger_ids: Vec<i32>,
+    pub(crate) vehicle_id: Option<EntityId>,
+    pub(crate) passenger_ids: Vec<EntityId>,
     /// What the server changed of the attributes the type starts with.
     pub(crate) attributes: Vec<ClientAttributeState>,
     /// What kind of entity this is, with the state that kind keeps (a rabbit's hops, a warden's
@@ -99,7 +99,7 @@ pub struct ClientEntity {
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
     pub(crate) item_frame_rotation: i32,
     /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
-    pub(crate) leash_holder_id: i32,
+    pub(crate) leash_holder_id: EntityId,
     /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
     pub(crate) lightning_done: bool,
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.

@@ -9,7 +9,7 @@ impl ClientWorld {
     /// the server to remove). Nothing for an entity that is not here.
     pub fn take_item_entity(
         &mut self,
-        item_id: i32,
+        item_id: EntityId,
         amount: i32,
         random: &mut RandomSource,
     ) -> Option<(PickedUp, (f64, f64, f64))> {

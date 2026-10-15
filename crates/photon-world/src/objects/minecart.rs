@@ -299,6 +299,7 @@ pub fn rail_pos_offset(
 mod tests {
     use crate::{DimensionBounds, EntityInput};
     use photon_core::binary::Uuid;
+    use photon_core::ids::EntityId;
 
     /// A teleport eases a minecart to its target over three ticks, as an entity with an
     /// interpolation handler does, instead of setting it at once.
@@ -307,7 +308,7 @@ mod tests {
         let mut world = crate::ClientWorld::new(DimensionBounds::default());
         let kind = photon_data::entity_type::id("minecraft:minecart").expect("a minecart");
         assert!(world.apply_entity(EntityInput {
-            entity_id: 5,
+            entity_id: EntityId(5),
             uuid: Uuid::new(0, 5),
             type_id: kind,
             x: 0.5,
@@ -317,14 +318,29 @@ mod tests {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        world.entities.at_mut(5).expect("the minecart").ticking = true;
-        assert!(world.apply_entity_position_sync(5, (5.5, 65.0, -2.5), (0.0, 0.0)));
+        world
+            .entities
+            .at_mut(EntityId(5))
+            .expect("the minecart")
+            .ticking = true;
+        assert!(world.apply_entity_position_sync(EntityId(5), (5.5, 65.0, -2.5), (0.0, 0.0)));
         // The target's chunk is not loaded here, which stops an entity ticking: tick it all the same.
-        world.entities.at_mut(5).expect("the minecart").ticking = true;
+        world
+            .entities
+            .at_mut(EntityId(5))
+            .expect("the minecart")
+            .ticking = true;
         let mut seen = Vec::new();
         for _ in 0..4 {
             world.tick_entities();
-            seen.push(world.entities().at(5).expect("the minecart").position().0);
+            seen.push(
+                world
+                    .entities()
+                    .at(EntityId(5))
+                    .expect("the minecart")
+                    .position()
+                    .0,
+            );
         }
         assert!((seen[0] - 2.1666666).abs() < 1e-6, "{seen:?}");
         assert!(

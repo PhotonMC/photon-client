@@ -3,6 +3,7 @@
 //! animations of its tail and spikes, its eye turned toward what it looks at:
 //! what it aims at, or else the player the camera follows.
 
+use photon_core::ids::EntityId;
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{GuardianLook, GuardianState, mob_vertices};
 use photon_render::entity::textures::EntityTextures;
@@ -48,11 +49,11 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
     let Some(id) = target else {
         return Some(local_eye());
     };
-    if id == player.entity_id() {
+    if EntityId(id) == player.entity_id() {
         return Some(local_eye());
     }
-    let entity = world.entities().at(id)?;
-    let snapshot = world.entity_snapshot(id, partial)?;
+    let entity = world.entities().at(EntityId(id))?;
+    let snapshot = world.entity_snapshot(EntityId(id), partial)?;
     let (_, _, eye) = photon_data::entity_type::pick(entity.type_id)?.size;
     let (x, y, z) = snapshot.position;
     Some([x, y + f64::from(eye * entity.scale()), z])
@@ -63,7 +64,7 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
 fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64; 3]> {
     let world = session.world();
     let player = session.player()?;
-    if id == player.entity_id() {
+    if EntityId(id) == player.entity_id() {
         let position = player.interpolated_position(f64::from(partial));
         let box_ = player.bounding_box();
         return Some([
@@ -72,8 +73,8 @@ fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64;
             position.z,
         ]);
     }
-    let entity = world.entities().at(id)?;
-    let snapshot = world.entity_snapshot(id, partial)?;
+    let entity = world.entities().at(EntityId(id))?;
+    let snapshot = world.entity_snapshot(EntityId(id), partial)?;
     let pick = photon_data::entity_type::pick(entity.type_id)?;
     let (_, height, _) = match pick.baby {
         Some(baby) if entity.is_baby() => baby,

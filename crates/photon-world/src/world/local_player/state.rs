@@ -7,7 +7,7 @@ impl ClientWorld {
     }
 
     /// Create or replace the local player state for a clientbound player ID.
-    pub fn set_local_player_id(&mut self, player_id: i32) {
+    pub fn set_local_player_id(&mut self, player_id: EntityId) {
         let mut player = ClientPlayerState::new(player_id);
         if let Some(entity) = self.entities.at(player_id) {
             player.y_head_rot = entity.y_head_rot;
@@ -187,7 +187,7 @@ impl ClientWorld {
     /// Apply a clientbound attribute snapshot to the matching local player.
     pub fn apply_local_player_attributes(
         &mut self,
-        player_id: i32,
+        player_id: EntityId,
         attributes: &[ClientAttributeState],
     ) -> bool {
         let Some(player) = self
@@ -213,7 +213,7 @@ impl ClientWorld {
 
     pub fn apply_local_player_mob_effect(
         &mut self,
-        player_id: i32,
+        player_id: EntityId,
         effect_id: i32,
         amplifier: i32,
         duration_ticks: i32,
@@ -255,7 +255,7 @@ impl ClientWorld {
         true
     }
 
-    pub fn remove_local_player_mob_effect(&mut self, player_id: i32, effect_id: i32) -> bool {
+    pub fn remove_local_player_mob_effect(&mut self, player_id: EntityId, effect_id: i32) -> bool {
         let Some(player) = self
             .local_player
             .as_mut()
@@ -270,7 +270,7 @@ impl ClientWorld {
     }
 
     /// Copy local player movement flags into a client-authoritative boat.
-    pub fn set_boat_input(&mut self, vehicle_id: i32, input: BoatInput) -> bool {
+    pub fn set_boat_input(&mut self, vehicle_id: EntityId, input: BoatInput) -> bool {
         let Some(boat) = self.entities.at_mut(vehicle_id) else {
             return false;
         };
@@ -281,7 +281,7 @@ impl ClientWorld {
         true
     }
 
-    pub(crate) fn tick_local_player(&mut self, vehicle_id: Option<i32>) {
+    pub(crate) fn tick_local_player(&mut self, vehicle_id: Option<EntityId>) {
         let passenger_ids = {
             let Some(player) = self.local_player.as_mut() else {
                 return;
@@ -336,7 +336,7 @@ impl ClientWorld {
     /// packet for it says.
     pub(crate) fn snap_local_player_turn(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         head_rotation: JavaF32,
         body_yaw: f32,
     ) {

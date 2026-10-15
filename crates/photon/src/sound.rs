@@ -2,6 +2,7 @@
 //! engine over the device, the sounds the server asks for played, and the listener put where the
 //! camera is. With no device, or no `sounds.json`, the game goes on in silence.
 
+use photon_core::ids::EntityId;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -272,7 +273,7 @@ impl SoundSystem {
         let Some(position) = world
             .entities()
             .all()
-            .find(|found| found.id() == entity)
+            .find(|found| found.id() == EntityId(entity))
             .map(|found| found.position())
         else {
             return;
@@ -349,7 +350,7 @@ impl SoundSystem {
                 *position = world
                     .entities()
                     .all()
-                    .find(|entity| entity.id() == *id)
+                    .find(|entity| entity.id() == EntityId(*id))
                     .map(|entity| entity.position());
             }
         }

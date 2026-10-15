@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type whose
 /// options are not read yet (the packet ends with them).
@@ -79,7 +80,7 @@ pub fn read_particle_options(
                         photon_core::binary::BlockPos::unpack(read_i64(input, NAME)? as u64),
                     ),
                     1 => photon_world::particles::PositionSource::Entity {
-                        id: read_varint(input, NAME)?,
+                        id: EntityId(read_varint(input, NAME)?),
                         y_offset: read_f32(input, NAME)?,
                     },
                     _ => return Err(ConnectionError::Codec("unknown position source type")),

@@ -101,13 +101,13 @@ pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result
                 let entity = entity_value
                     .as_object()
                     .ok_or("indexed entity must be an object")?;
-                let entity_id = i32_field(entity_value, "entity_id")?;
+                let entity_id = entity_id_field(entity_value, "entity_id")?;
                 let type_id = i32_field(entity_value, "type_id")?;
                 let position =
                     f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
                 world.apply_entity(EntityInput {
                     entity_id,
-                    uuid: Uuid::new(0, u64::from(entity_id as u32)),
+                    uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
                     type_id,
                     x: position.x,
                     y: position.y,
@@ -140,8 +140,8 @@ pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result
                         .as_i64()
                         .ok_or_else(|| "source_entity_id must be an integer".to_owned())
                         .and_then(|value| {
-                            value
-                                .try_into()
+                            i32::try_from(value)
+                                .map(EntityId)
                                 .map_err(|_| "source_entity_id must fit in i32".to_owned())
                         })
                 })

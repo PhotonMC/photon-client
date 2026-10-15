@@ -27,7 +27,7 @@ impl ClientWorld {
 
     pub(crate) fn indexed_entity_collision_candidates(
         &self,
-        source_entity_id: Option<i32>,
+        source_entity_id: Option<EntityId>,
         source_type_id: Option<i32>,
         source_position: Option<Vec3>,
         bounding_box: Aabb,
@@ -228,7 +228,7 @@ impl ClientWorld {
     /// behavior produce no candidate until their dedicated type branch lands.
     pub fn no_entity_collision_for_entity(
         &self,
-        source_entity_id: Option<i32>,
+        source_entity_id: Option<EntityId>,
         bounding_box: Aabb,
     ) -> bool {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
@@ -254,7 +254,7 @@ impl ClientWorld {
     /// Return whether a query has no collision in the loaded world state.
     pub fn no_collision_for_entity(
         &self,
-        source_entity_id: Option<i32>,
+        source_entity_id: Option<EntityId>,
         bounding_box: Aabb,
         shapes_by_state: &BTreeMap<i32, VoxelShape>,
     ) -> bool {

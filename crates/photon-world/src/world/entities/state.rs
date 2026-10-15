@@ -5,7 +5,7 @@ impl ClientWorld {
     /// Apply a pinned block-state's BlockTags.CLIMBABLE membership to a living entity.
     pub fn apply_entity_living_climbable_block_state(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         state_id: i32,
     ) -> bool {
         let on_climbable = self.block_state_registry.is_climbable_state(state_id);
@@ -19,7 +19,7 @@ impl ClientWorld {
     /// Apply the LivingEntity.onClimbable tag and fall-flying context.
     pub fn apply_entity_living_climbable_glide_through_state(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         state_id: i32,
         fall_flying: bool,
     ) -> bool {
@@ -49,7 +49,7 @@ impl Entities {
     /// value and modifiers; one it does not have is ignored.
     pub fn apply_attributes(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         attributes: &[ClientAttributeState],
     ) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
@@ -82,7 +82,7 @@ impl Entities {
     /// `ItemEntity.setItem` from the entity data: what a dropped item holds.
     pub fn apply_item_stack(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         stack: Option<ClientItemStackState>,
     ) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
@@ -98,7 +98,7 @@ impl Entities {
     /// `handleSetEquipment`: what the entity holds or wears in a slot.
     pub fn apply_equipment(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         slot: EquipmentSlot,
         stack: Option<ClientItemStackState>,
     ) -> bool {
@@ -112,7 +112,7 @@ impl Entities {
     /// Apply the trapdoor and ladder block context used by LivingEntity.onClimbable.
     pub fn apply_climbable_trapdoor_state(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         trapdoor_open: bool,
         trapdoor_facing: &str,
         below_is_ladder: bool,
@@ -128,7 +128,7 @@ impl Entities {
     /// Apply the collision-relevant Happy Ghast state used by the client query.
     pub fn apply_happy_ghast_collision_state(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         baby: bool,
         alive: bool,
         still_timeout: bool,
@@ -150,7 +150,7 @@ impl Entities {
     /// Apply the collision-relevant alive and spectator state of a living entity.
     pub fn apply_living_collision_state(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         alive: bool,
         spectator: bool,
         on_climbable: bool,
@@ -165,7 +165,7 @@ impl Entities {
     }
 
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
-    pub fn apply_player_flying_state(&mut self, entity_id: i32, flying: bool) -> bool {
+    pub fn apply_player_flying_state(&mut self, entity_id: EntityId, flying: bool) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -178,7 +178,7 @@ impl Entities {
 }
 
 impl ClientWorld {
-    pub fn apply_entity_metadata(&mut self, entity_id: i32, metadata: &[u8]) -> bool {
+    pub fn apply_entity_metadata(&mut self, entity_id: EntityId, metadata: &[u8]) -> bool {
         let shared_flags = shared_flags_from_metadata(metadata);
         let living_flags = living_flags_from_metadata(metadata);
         let mob_flags = mob_flags_from_metadata(metadata);

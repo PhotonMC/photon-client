@@ -1,7 +1,11 @@
 use crate::*;
 
 impl ClientWorld {
-    pub(crate) fn tick_entity_passenger_tree(&mut self, vehicle_id: i32, passenger_id: i32) {
+    pub(crate) fn tick_entity_passenger_tree(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) {
         if self.entity_vehicle_id(passenger_id) != Some(vehicle_id) {
             return;
         }
@@ -24,8 +28,8 @@ impl ClientWorld {
     /// where the boat stands and faces and how many ride with it.
     pub(crate) fn boat_rider_position(
         &self,
-        vehicle_id: i32,
-        passenger_id: i32,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
     ) -> Option<photon_core::math::Vec3> {
         let passenger_type_id = self
             .entities
@@ -94,7 +98,11 @@ impl ClientWorld {
         ))
     }
 
-    pub(crate) fn position_entity_passenger(&mut self, vehicle_id: i32, passenger_id: i32) {
+    pub(crate) fn position_entity_passenger(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) {
         let Some(target) = self.boat_rider_position(vehicle_id, passenger_id) else {
             return;
         };
@@ -115,7 +123,11 @@ impl ClientWorld {
         self.clamp_entity_passenger_rotation(vehicle_id, passenger_id);
     }
 
-    pub(crate) fn clamp_entity_passenger_rotation(&mut self, vehicle_id: i32, passenger_id: i32) {
+    pub(crate) fn clamp_entity_passenger_rotation(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) {
         let Some((vehicle_type_id, vehicle_y_rot, delta_rotation, passenger_count)) =
             self.entities.at(vehicle_id).map(|vehicle| {
                 (
@@ -150,7 +162,7 @@ impl ClientWorld {
         let animal_rotation_offset = (vanilla_passenger_is_animal(passenger_type_id)
             && passenger_count == max_passenger_count)
             .then_some({
-                if passenger_id % 2 == 0 {
+                if passenger_id.0 % 2 == 0 {
                     90.0_f32
                 } else {
                     270.0_f32
@@ -178,7 +190,7 @@ impl ClientWorld {
     /// `AbstractBoat.isUnderwater`'s answer (the status is under (flowing) water):
     /// whether the water reaches a thousandth above the top of the boat's box.
     /// Whether a boat (and only a boat) is under water, as its tick reads it.
-    pub(crate) fn boat_under_water_of(&self, entity_id: i32) -> Option<bool> {
+    pub(crate) fn boat_under_water_of(&self, entity_id: EntityId) -> Option<bool> {
         let entity = self
             .entities
             .get(&entity_id)
@@ -222,7 +234,7 @@ impl ClientWorld {
             .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id))
     }
 
-    pub(crate) fn root_vehicle_id(&self, entity_id: i32) -> i32 {
+    pub(crate) fn root_vehicle_id(&self, entity_id: EntityId) -> EntityId {
         let mut current = entity_id;
         let mut visited = BTreeSet::new();
         while visited.insert(current) {
@@ -235,7 +247,11 @@ impl ClientWorld {
     }
 
     /// Apply a clientbound vehicle and ordered passenger relationship.
-    pub fn apply_entity_passengers(&mut self, vehicle_id: i32, passenger_ids: &[i32]) -> bool {
+    pub fn apply_entity_passengers(
+        &mut self,
+        vehicle_id: EntityId,
+        passenger_ids: &[EntityId],
+    ) -> bool {
         if !self.entity_exists(vehicle_id) {
             return false;
         }
@@ -263,7 +279,7 @@ impl ClientWorld {
         true
     }
 
-    pub fn entity_vehicle_id(&self, entity_id: i32) -> Option<i32> {
+    pub fn entity_vehicle_id(&self, entity_id: EntityId) -> Option<EntityId> {
         if let Some(entity) = self.entities.at(entity_id) {
             return entity.vehicle_id;
         }
@@ -273,7 +289,7 @@ impl ClientWorld {
             .and_then(|player| player.vehicle_id)
     }
 
-    pub fn entity_passengers(&self, entity_id: i32) -> Option<&[i32]> {
+    pub fn entity_passengers(&self, entity_id: EntityId) -> Option<&[EntityId]> {
         if let Some(entity) = self.entities.at(entity_id) {
             return Some(&entity.passenger_ids);
         }
@@ -283,7 +299,7 @@ impl ClientWorld {
             .map(|player| player.passenger_ids.as_slice())
     }
 
-    pub(crate) fn detach_entity_from_vehicle(&mut self, entity_id: i32) {
+    pub(crate) fn detach_entity_from_vehicle(&mut self, entity_id: EntityId) {
         let Some(vehicle_id) = self.entity_vehicle_id(entity_id) else {
             return;
         };
@@ -303,7 +319,7 @@ impl ClientWorld {
         self.set_entity_vehicle_id(entity_id, None);
     }
 
-    pub(crate) fn eject_entity_passengers(&mut self, vehicle_id: i32) {
+    pub(crate) fn eject_entity_passengers(&mut self, vehicle_id: EntityId) {
         let passengers = if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
             Some(std::mem::take(&mut vehicle.passenger_ids))
         } else if let Some(player) = self
@@ -325,7 +341,11 @@ impl ClientWorld {
         }
     }
 
-    pub(crate) fn would_create_passenger_cycle(&self, passenger_id: i32, vehicle_id: i32) -> bool {
+    pub(crate) fn would_create_passenger_cycle(
+        &self,
+        passenger_id: EntityId,
+        vehicle_id: EntityId,
+    ) -> bool {
         if passenger_id == vehicle_id {
             return true;
         }
@@ -347,8 +367,8 @@ impl ClientWorld {
 impl ClientWorld {
     pub(crate) fn clamp_entity_passenger_rotation_after_turn(
         &mut self,
-        vehicle_id: i32,
-        passenger_id: i32,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
     ) {
         let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
             VANILLA_BOAT_PASSENGER_GEOMETRY
@@ -369,7 +389,7 @@ impl ClientWorld {
         }
     }
 
-    pub(crate) fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
+    pub(crate) fn mob_in_water(&self, entity_id: EntityId) -> Option<bool> {
         let entity = self.entities.get(&entity_id)?;
         if !entity.tracks_water() {
             return None;
@@ -398,7 +418,11 @@ impl ClientWorld {
         Some(found.water.height > 0.0)
     }
 
-    pub(crate) fn set_entity_vehicle_id(&mut self, entity_id: i32, vehicle_id: Option<i32>) {
+    pub(crate) fn set_entity_vehicle_id(
+        &mut self,
+        entity_id: EntityId,
+        vehicle_id: Option<EntityId>,
+    ) {
         if let Some(entity) = self.entities.at_mut(entity_id) {
             if entity.is_shulker() && entity.vehicle_id != vehicle_id {
                 if vehicle_id.is_some() {

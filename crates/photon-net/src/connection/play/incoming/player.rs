@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// The packets of this family, by packet id.
 pub(super) const DECODERS: &[(i32, Decoder)] = &[
@@ -206,7 +207,7 @@ impl PlaySession {
 
     fn on_player_combat_kill(
         &mut self,
-        (id, message): (i32, photon_game::text::Component),
+        (id, message): (EntityId, photon_game::text::Component),
     ) -> Result<(), ConnectionError> {
         if self.local.player_id == Some(id) {
             if self.local.show_death_screen {

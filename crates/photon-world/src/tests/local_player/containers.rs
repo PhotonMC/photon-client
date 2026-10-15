@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_inventory_state_applies_slot_cursor_and_respawn_reset() {
@@ -9,7 +10,7 @@ fn local_player_inventory_state_applies_slot_cursor_and_respawn_reset() {
     items[36] = Some(stone.clone());
 
     assert!(!world.apply_local_player_container_content(0, 1, &items, Some(&stone),));
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_container_content(0, 2, &items, Some(&stone),));
     let player = world.local_player().expect("local player inventory");
     assert_eq!(player.inventory_state_id(), 2);
@@ -73,7 +74,7 @@ fn local_player_container_state_applies_open_content_slot_cursor_close_and_reset
     items[27] = Some(bottle.clone());
 
     assert!(!world.apply_local_player_open_menu(7, 2, &title));
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_open_menu(7, 2, &title));
     assert!(world.apply_local_player_container_content(7, 4, &items, None));
     let container = world

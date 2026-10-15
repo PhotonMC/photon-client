@@ -64,7 +64,7 @@ pub(super) fn client_world_player_attribute_queries(
 }
 
 pub(super) fn client_world_player_attributes_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -82,8 +82,8 @@ pub(super) fn client_world_player_attributes_result(request: &Value) -> Result<V
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let accepted =
-            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        let accepted = world
+            .apply_local_player_attributes(entity_id_field(operation, "player_id")?, &attributes);
         events.push(json!({
             "action": string(operation, "action")?,
             "label": string(operation, "label")?,
@@ -98,7 +98,7 @@ pub(super) fn client_world_player_attributes_result(request: &Value) -> Result<V
 }
 
 pub(super) fn client_world_player_movement_speed_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -113,8 +113,8 @@ pub(super) fn client_world_player_movement_speed_result(request: &Value) -> Resu
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let accepted =
-            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        let accepted = world
+            .apply_local_player_attributes(entity_id_field(operation, "player_id")?, &attributes);
         if !world.apply_local_player_friction_influenced_speed_from_attributes(
             operation["on_ground"]
                 .as_bool()
@@ -140,7 +140,7 @@ pub(super) fn client_world_player_movement_speed_result(request: &Value) -> Resu
 }
 
 pub(super) fn client_world_player_attribute_water_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -155,8 +155,8 @@ pub(super) fn client_world_player_attribute_water_result(request: &Value) -> Res
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let accepted =
-            world.apply_local_player_attributes(i32_field(operation, "player_id")?, &attributes);
+        let accepted = world
+            .apply_local_player_attributes(entity_id_field(operation, "player_id")?, &attributes);
         let delta = f64_vec3(operation.get("delta").ok_or("delta must be a vector")?)?;
         let y_rot = f32_field(operation, "y_rot")?;
         if !world.apply_local_player_position(

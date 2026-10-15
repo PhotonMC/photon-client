@@ -115,7 +115,7 @@ impl ClientEntity {
             self.primed_tnt_mut().tick();
         }
         if self.is_lightning_bolt() {
-            let seed = i64::from(self.id);
+            let seed = i64::from(self.id.0);
             self.lightning_done = self
                 .kind
                 .lightning_or_insert_with(|| {

@@ -191,7 +191,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
-    let mut entity = |_: i32, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
+    let mut entity = |_: EntityId, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
     let mut tooltip = |_: &photon_world::ClientItemStackState, _: bool| Vec::new();

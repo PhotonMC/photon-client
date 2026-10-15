@@ -4,6 +4,7 @@
 
 use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
+use photon_core::ids::EntityId;
 use photon_core::java_float::JavaF64;
 use photon_core::math::{Vec3, floor_f64};
 
@@ -34,7 +35,7 @@ struct ItemStep {
 
 /// The item's state going into the tick.
 struct ItemState {
-    id: i32,
+    id: EntityId,
     tick_count: i32,
     position: Vec3,
     delta: Vec3,
@@ -117,7 +118,7 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
 
     let resting = on_ground
         && delta.x * delta.x + delta.z * delta.z <= f64::from(1.0e-5_f32)
-        && (state.tick_count.wrapping_add(state.id)) % 4 != 0;
+        && (state.tick_count.wrapping_add(state.id.0)) % 4 != 0;
     if resting {
         delta = step_on(level, (position, main_supporting_block), on_ground, delta);
     } else {
@@ -182,7 +183,7 @@ fn item_step(level: &Level<'_>, state: &ItemState) -> Option<ItemStep> {
 
 impl ClientWorld {
     /// One client tick of a dropped item's movement.
-    pub(crate) fn tick_item_entity(&mut self, entity_id: i32) {
+    pub(crate) fn tick_item_entity(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
@@ -221,7 +222,7 @@ impl ClientWorld {
 
     /// `Entity.setOnGround`'s `checkSupportingBlock`, for an item whose
     /// ground state a packet just set.
-    pub(crate) fn check_item_supporting_block(&mut self, entity_id: i32) {
+    pub(crate) fn check_item_supporting_block(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };

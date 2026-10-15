@@ -2,7 +2,7 @@ use super::super::*;
 
 pub(crate) fn boat_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -27,7 +27,7 @@ pub(crate) fn boat_data_event(
 
 pub(crate) fn arrow_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `AbstractArrow.IN_GROUND` (a boolean), `Arrow.ID_EFFECT_COLOR` (an int).
@@ -50,7 +50,7 @@ pub(crate) fn arrow_data_event(
 
 pub(crate) fn minecart_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `VehicleEntity`'s hit and `AbstractMinecart`'s block, its offset, a furnace's fuel.
@@ -99,7 +99,7 @@ pub(crate) fn minecart_data_event(
 
 pub(crate) fn crystal_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `EndCrystal`'s data: the beam's block (optional) and whether the base shows.
@@ -141,7 +141,7 @@ pub(crate) fn crystal_data_event(
 
 pub(crate) fn dragon_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `EnderDragon.DATA_PHASE`, an int.
@@ -154,7 +154,7 @@ pub(crate) fn dragon_data_event(
 
 pub(crate) fn display_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // A display's data in the wire's own form (data id, serializer, value).
@@ -304,7 +304,7 @@ pub(crate) fn display_data_event(
 
 pub(crate) fn minecart_steps_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // The steps along the track, with the turns the wire packs in a byte of 256ths.
@@ -334,7 +334,7 @@ pub(crate) fn minecart_steps_event(
 
 pub(crate) fn wither_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `WitherBoss`'s int data: the side heads' targets and the invulnerable ticks.

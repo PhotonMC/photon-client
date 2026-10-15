@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_fluid_falling_adjustment_updates_motion_and_honors_sprint() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.25, 0.01, -0.5), (0.0, 0.0),));
     assert!(world.apply_local_player_fluid_falling_adjustment(0.16, true));
     assert_eq!(
@@ -37,7 +38,7 @@ fn local_player_fluid_falling_adjustment_updates_motion_and_honors_sprint() {
 #[test]
 fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(
         world.apply_local_player_travel_in_water(crate::LocalPlayerTravelInWaterParameters {
@@ -96,7 +97,7 @@ fn local_player_travel_in_water_applies_drag_and_fluid_jump_state() {
 #[test]
 fn local_player_travel_in_water_reads_movement_speed_attribute() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let attribute = ClientAttributeState::from_wire(
         crate::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID,
         0.25,
@@ -106,7 +107,7 @@ fn local_player_travel_in_water_reads_movement_speed_attribute() {
             ClientAttributeModifierState::from_wire("test:total".to_owned(), 0.5, 2),
         ],
     );
-    assert!(world.apply_local_player_attributes(42, &[attribute]));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[attribute]));
     assert_eq!(
         world
             .local_player()
@@ -145,7 +146,7 @@ fn local_player_travel_in_water_reads_movement_speed_attribute() {
 #[test]
 fn local_player_travel_in_lava_applies_shallow_drag_and_jump_state() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(
         world.apply_local_player_travel_in_lava(crate::LocalPlayerTravelInLavaParameters {

@@ -159,7 +159,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         // height) and the turns, as the reference's `GuiEntityRenderState` reports them.
         let mut entities = Vec::new();
         let mut entity =
-            |_: i32, area: (i32, i32, i32, i32), size: f32, offset: f32, mouse: (f32, f32)| {
+            |_: EntityId, area: (i32, i32, i32, i32), size: f32, offset: f32, mouse: (f32, f32)| {
                 let height = mount_height(row);
                 let view = photon_render::entity::player_renderer::GuiEntityView::new(
                     area, size, offset, mouse, height,

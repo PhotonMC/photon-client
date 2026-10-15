@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn entity_collision_collection_follows_java_filter_and_epsilon() {
@@ -73,7 +74,7 @@ fn entity_collision_collection_follows_java_filter_and_epsilon() {
 fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
     let add_entity = |world: &mut ClientWorld, entity_id: i32, type_id: i32| {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -90,8 +91,10 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
         add_entity(&mut minecart_source_world, 7, minecart_type_id);
         add_entity(&mut minecart_source_world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
         assert!(
-            !minecart_source_world
-                .no_entity_collision_for_entity(Some(7), Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0),),
+            !minecart_source_world.no_entity_collision_for_entity(
+                Some(EntityId(7)),
+                Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0),
+            ),
             "minecart source type {minecart_type_id} should accept pushable Player"
         );
 
@@ -99,8 +102,10 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
         add_entity(&mut boat_source_world, 7, 0);
         add_entity(&mut boat_source_world, 8, minecart_type_id);
         assert!(
-            !boat_source_world
-                .no_entity_collision_for_entity(Some(7), Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),),
+            !boat_source_world.no_entity_collision_for_entity(
+                Some(EntityId(7)),
+                Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            ),
             "boat source should accept minecart type {minecart_type_id}"
         );
     }
@@ -110,7 +115,7 @@ fn indexed_minecart_collision_uses_vehicle_dispatch_for_all_registry_types() {
 fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
     let add_entity = |world: &mut ClientWorld, entity_id: i32, type_id: i32| {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -127,23 +132,23 @@ fn indexed_player_collision_respects_living_alive_and_spectator_gates() {
     add_entity(&mut world, 8, VANILLA_PLAYER_ENTITY_TYPE_ID);
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, false, false, false)
+            .apply_living_collision_state(EntityId(8), false, false, false)
     );
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, true, false)
+            .apply_living_collision_state(EntityId(8), true, true, false)
     );
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         !world
             .entities_mut()
-            .apply_living_collision_state(999, true, false, false)
+            .apply_living_collision_state(EntityId(999), true, false, false)
     );
 }
 
@@ -152,7 +157,7 @@ fn indexed_player_collision_respects_living_climbable_gate() {
     let mut world = ClientWorld::default();
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -165,19 +170,19 @@ fn indexed_player_collision_respects_living_climbable_gate() {
     }
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
 
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, true)
+            .apply_living_collision_state(EntityId(8), true, false, true)
     );
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, false)
+            .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
 }
 
 #[test]
@@ -185,7 +190,7 @@ fn indexed_player_collision_respects_flying_ability_gate() {
     let mut world = ClientWorld::default();
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -201,12 +206,20 @@ fn indexed_player_collision_respects_flying_ability_gate() {
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, true)
+            .apply_living_collision_state(EntityId(8), true, false, true)
     );
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.entities_mut().apply_player_flying_state(8, true));
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(!world.entities_mut().apply_player_flying_state(7, true));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(
+        world
+            .entities_mut()
+            .apply_player_flying_state(EntityId(8), true)
+    );
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(
+        !world
+            .entities_mut()
+            .apply_player_flying_state(EntityId(7), true)
+    );
 }
 
 #[test]
@@ -214,7 +227,7 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
     let mut world = ClientWorld::default();
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -230,32 +243,40 @@ fn indexed_player_collision_respects_trapdoor_ladder_context() {
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, false)
+            .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(
-        world
-            .entities_mut()
-            .apply_climbable_trapdoor_state(8, true, "north", true, "north")
-    );
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world
-            .entities_mut()
-            .apply_climbable_trapdoor_state(8, false, "north", true, "north")
-    );
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world
-            .entities_mut()
-            .apply_climbable_trapdoor_state(8, true, "north", true, "south")
-    );
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(
-        world
-            .entities_mut()
-            .apply_climbable_trapdoor_state(8, true, "north", false, "north")
-    );
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.entities_mut().apply_climbable_trapdoor_state(
+        EntityId(8),
+        true,
+        "north",
+        true,
+        "north"
+    ));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(world.entities_mut().apply_climbable_trapdoor_state(
+        EntityId(8),
+        false,
+        "north",
+        true,
+        "north"
+    ));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(world.entities_mut().apply_climbable_trapdoor_state(
+        EntityId(8),
+        true,
+        "north",
+        true,
+        "south"
+    ));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(world.entities_mut().apply_climbable_trapdoor_state(
+        EntityId(8),
+        true,
+        "north",
+        false,
+        "north"
+    ));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
 }
 
 #[test]
@@ -264,7 +285,7 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
     world.apply_update_tags_packet(&climbing_tags());
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -284,14 +305,14 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, false)
+            .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(world.apply_entity_living_climbable_block_state(8, 5720));
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_climbable_block_state(8, 1));
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
-    assert!(world.apply_entity_living_climbable_block_state(8, 0));
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 5720));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 1));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 0));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
 }
 
 #[test]
@@ -300,7 +321,7 @@ fn indexed_player_collision_respects_glide_through_tag() {
     world.apply_update_tags_packet(&climbing_tags());
     for (entity_id, type_id) in [(7, 0), (8, VANILLA_PLAYER_ENTITY_TYPE_ID)] {
         assert!(world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, type_id as u64),
             type_id,
             x: 0.5,
@@ -319,44 +340,44 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(
         world
             .entities_mut()
-            .apply_living_collision_state(8, true, false, false)
+            .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, false));
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, false));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         !world
             .entities()
-            .at(8)
+            .at(EntityId(8))
             .expect("player entity must exist")
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, true));
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, true));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities()
-            .at(8)
+            .at(EntityId(8))
             .expect("player entity must exist")
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(8, 1, true));
-    assert!(!world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 1, true));
+    assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
             .entities()
-            .at(8)
+            .at(EntityId(8))
             .expect("player entity must exist")
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(8, 8389, false));
-    assert!(world.no_entity_collision_for_entity(Some(7), test_area));
+    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, false));
+    assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         !world
             .entities()
-            .at(8)
+            .at(EntityId(8))
             .expect("player entity must exist")
             .is_fall_flying()
     );

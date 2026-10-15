@@ -1,5 +1,6 @@
 use super::*;
 
+use photon_core::ids::EntityId;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 

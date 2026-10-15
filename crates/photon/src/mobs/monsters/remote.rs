@@ -90,7 +90,7 @@ pub(super) fn pose_monster(
         }
         Pose::Phantom => {
             let age_in_ticks = entity.tick_count() as f32 + partial;
-            model.setup_phantom((entity.id() * 3) as f32 + age_in_ticks);
+            model.setup_phantom((entity.id().0 * 3) as f32 + age_in_ticks);
             // `PhantomRenderer.scale` and `setupRotations`: it grows with its size,
             // is lifted, and tips with its pitch.
             let scale = 1.0 + 0.15 * entity.phantom_size() as f32;

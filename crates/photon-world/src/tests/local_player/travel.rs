@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_minor_horizontal_collision_follows_java_angle_gate() {
@@ -32,7 +33,7 @@ fn local_player_minor_horizontal_collision_follows_java_angle_gate() {
 #[test]
 fn local_player_travel_flying_rotates_input_and_applies_environment_drag() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(
         world.apply_local_player_travel_flying(crate::LocalPlayerTravelFlyingParameters {
@@ -79,7 +80,7 @@ fn local_player_travel_flying_rotates_input_and_applies_environment_drag() {
 #[test]
 fn local_player_travel_in_air_applies_gravity_drag_and_client_fallbacks() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let base = crate::LocalPlayerTravelInAirParameters {
         input: Vec3::new(0.3, -0.4, 0.8),
         y_rot: 37.5,
@@ -203,7 +204,7 @@ fn local_player_travel_in_air_applies_gravity_drag_and_client_fallbacks() {
 #[test]
 fn local_player_update_fall_flying_movement_applies_lift_and_alignment() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let base = crate::LocalPlayerUpdateFallFlyingMovementParameters {
         look_angle: Vec3::new(0.0, 0.0, 1.0),
         x_rot: 0.0,
@@ -279,7 +280,7 @@ fn local_player_update_fall_flying_movement_applies_lift_and_alignment() {
 #[test]
 fn local_player_travel_dispatch_selects_branch_and_updates_motion() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let base = crate::LocalPlayerTravelDispatchParameters {
         input: Vec3::new(0.3, -0.4, 0.8),
         y_rot: 37.5,

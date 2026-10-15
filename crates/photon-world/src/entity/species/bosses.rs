@@ -11,7 +11,7 @@ impl ClientEntity {
     }
 
     pub(crate) fn end_crystal_mut(&mut self) -> &mut crate::objects::end_crystal::EndCrystalState {
-        let seed = i64::from(self.id);
+        let seed = i64::from(self.id.0);
         self.kind.end_crystal_or_insert_with(|| {
             Box::new(crate::objects::end_crystal::EndCrystalState::new(seed))
         })
@@ -27,7 +27,7 @@ impl ClientEntity {
     }
 
     pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::mobs::ender_dragon::EnderDragonState {
-        let seed = i64::from(self.id);
+        let seed = i64::from(self.id.0);
         self.kind.ender_dragon_or_insert_with(|| {
             Box::new(crate::mobs::ender_dragon::EnderDragonState::new(seed))
         })
@@ -158,7 +158,7 @@ impl ClientEntity {
 
     /// The creaking's state, made if it has none yet.
     pub(crate) fn creaking_mut(&mut self) -> &mut crate::mobs::creaking::CreakingState {
-        let seed = i64::from(self.id);
+        let seed = i64::from(self.id.0);
         self.kind
             .creaking_or_insert_with(|| Box::new(crate::mobs::creaking::CreakingState::new(seed)))
     }

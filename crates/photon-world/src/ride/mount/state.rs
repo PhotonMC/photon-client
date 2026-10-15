@@ -138,13 +138,14 @@ mod tests {
 
     use crate::{ClientWorld, DimensionBounds, EntityInput};
     use photon_core::binary::Uuid;
+    use photon_core::ids::EntityId;
 
     #[test]
     fn a_horse_has_the_attributes_its_riding_reads() {
         let mut world = ClientWorld::new(DimensionBounds::new(-64, 384));
         let id = photon_data::entity_type::id("minecraft:horse").expect("horse");
         assert!(world.apply_entity(EntityInput {
-            entity_id: 5,
+            entity_id: EntityId(5),
             uuid: Uuid::new(0, 5),
             type_id: id,
             x: 0.0,
@@ -157,7 +158,7 @@ mod tests {
         let horse = world
             .entities()
             .all()
-            .find(|entity| entity.id() == 5)
+            .find(|entity| entity.id() == EntityId(5))
             .unwrap();
         // The values a saddled horse's riding reads, as the type starts with them.
         for (name, value) in [

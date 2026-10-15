@@ -1,11 +1,12 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_mob_effects_replace_remove_and_clear_on_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
-    assert!(world.apply_local_player_mob_effect(42, 18, 0, 1_200, 0b1000));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 18, 0, 1_200, 0b1000));
     let player = world.local_player().expect("initial local player");
     assert_eq!(player.effects().len(), 1);
     assert_eq!(player.effects()[0].effect_id(), 18);
@@ -13,15 +14,15 @@ fn local_player_mob_effects_replace_remove_and_clear_on_respawn() {
     assert_eq!(player.effects()[0].duration_ticks(), 1_200);
     assert_eq!(player.effects()[0].flags(), 0b1000);
 
-    assert!(world.apply_local_player_mob_effect(42, 18, 1, 60, 0b1111));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 18, 1, 60, 0b1111));
     let player = world.local_player().expect("updated local player");
     assert_eq!(player.effects().len(), 1);
     assert_eq!(player.effects()[0].amplifier(), 1);
     assert_eq!(player.effects()[0].duration_ticks(), 60);
     assert_eq!(player.effects()[0].flags(), 0b1111);
 
-    assert!(!world.apply_local_player_mob_effect(7, 19, 0, 20, 0));
-    assert!(world.remove_local_player_mob_effect(42, 18));
+    assert!(!world.apply_local_player_mob_effect(EntityId(7), 19, 0, 20, 0));
+    assert!(world.remove_local_player_mob_effect(EntityId(42), 18));
     assert!(
         world
             .local_player()
@@ -29,7 +30,7 @@ fn local_player_mob_effects_replace_remove_and_clear_on_respawn() {
             .effects()
             .is_empty()
     );
-    assert!(world.apply_local_player_mob_effect(42, 18, 0, 1_200, 0b1000));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 18, 0, 1_200, 0b1000));
     assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS));
     assert!(
         world
@@ -43,11 +44,11 @@ fn local_player_mob_effects_replace_remove_and_clear_on_respawn() {
 #[test]
 fn local_player_mob_effect_durations_tick_without_removing_expired_entries() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
-    assert!(world.apply_local_player_mob_effect(42, 18, 0, 2, 0));
-    assert!(world.apply_local_player_mob_effect(42, 19, 0, -1, 0));
-    assert!(world.apply_local_player_mob_effect(42, 20, 0, 0, 0));
-    assert!(world.apply_local_player_mob_effect(42, 21, 0, -2, 0));
+    world.set_local_player_id(EntityId(42));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 18, 0, 2, 0));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 19, 0, -1, 0));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 20, 0, 0, 0));
+    assert!(world.apply_local_player_mob_effect(EntityId(42), 21, 0, -2, 0));
 
     let player = world.local_player().expect("local player effects");
     assert!(

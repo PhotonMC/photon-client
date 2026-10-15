@@ -1,12 +1,13 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
-    assert!(!world.apply_local_player_sprinting(99, true));
-    assert!(world.apply_local_player_sprinting(42, true));
+    assert!(!world.apply_local_player_sprinting(EntityId(99), true));
+    assert!(world.apply_local_player_sprinting(EntityId(42), true));
     {
         let player = world.local_player().expect("default sprint player");
         assert!(player.is_sprinting());
@@ -30,7 +31,7 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
         assert_eq!(attribute.modifiers()[0].operation(), 2);
     }
 
-    assert!(world.apply_local_player_sprinting(42, true));
+    assert!(world.apply_local_player_sprinting(EntityId(42), true));
     assert_eq!(
         world
             .local_player()
@@ -50,8 +51,8 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
             2,
         )],
     );
-    assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
-    assert!(world.apply_local_player_sprinting(42, true));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[custom_attribute]));
+    assert!(world.apply_local_player_sprinting(EntityId(42), true));
     {
         let player = world.local_player().expect("custom sprint player");
         assert!(player.is_sprinting());
@@ -74,7 +75,7 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
         );
     }
 
-    assert!(world.apply_local_player_sprinting(42, false));
+    assert!(world.apply_local_player_sprinting(EntityId(42), false));
     let player = world.local_player().expect("stopped sprint player");
     assert!(!player.is_sprinting());
     assert_eq!(player.movement_speed(), 0.3_f32);
@@ -84,7 +85,7 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
             .iter()
             .all(|modifier| modifier.id() != crate::VANILLA_PLAYER_SPRINTING_MODIFIER_ID)
     );
-    assert!(!world.apply_local_player_sprinting(99, true));
+    assert!(!world.apply_local_player_sprinting(EntityId(99), true));
     assert!(
         !world
             .local_player()
@@ -96,7 +97,7 @@ fn local_player_sprinting_updates_shared_flag_and_movement_speed_modifier() {
 #[test]
 fn local_player_sprint_trigger_tracks_previous_input_and_window() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let conditions = LocalPlayerSprintTriggerConditions {
         mobility_restricted: false,
         enough_food: true,

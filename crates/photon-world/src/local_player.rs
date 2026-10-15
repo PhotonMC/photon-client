@@ -22,6 +22,7 @@ use crate::java_math;
 use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
 use photon_core::direction::{Axis, Direction};
+use photon_core::ids::EntityId;
 use photon_core::math::{
     MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_sin_f64,
 };
@@ -73,7 +74,7 @@ pub(super) struct Riding {
 /// The client's own player, ticked as the reference ticks it.
 #[derive(Debug, Clone)]
 pub struct LocalPlayer {
-    pub(super) entity_id: i32,
+    pub(super) entity_id: EntityId,
     pub(super) position: Vec3,
     pub(super) old_position: Vec3,
     pub(super) delta: Vec3,

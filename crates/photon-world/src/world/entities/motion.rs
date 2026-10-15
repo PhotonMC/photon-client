@@ -2,7 +2,7 @@ use crate::*;
 
 impl ClientWorld {
     /// Apply Java's `Entity.turn` deltas and notify a boat passenger's vehicle.
-    pub fn turn_entity(&mut self, entity_id: i32, mouse_x: f64, mouse_y: f64) -> bool {
+    pub fn turn_entity(&mut self, entity_id: EntityId, mouse_x: f64, mouse_y: f64) -> bool {
         let vehicle_id = self.entity_vehicle_id(entity_id);
         if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.turn(mouse_x, mouse_y);
@@ -180,7 +180,7 @@ impl ClientWorld {
     /// Apply Java's absolute entity position-sync path for a remote entity.
     pub fn apply_entity_position_sync(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         position: (f64, f64, f64),
         rotation: (f32, f32),
     ) -> bool {
@@ -206,7 +206,7 @@ impl ClientWorld {
 
     pub(crate) fn apply_entity_position_target(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         current_position: (f64, f64, f64),
         target_position: (f64, f64, f64),
         ticking: bool,
@@ -262,7 +262,7 @@ impl ClientWorld {
         true
     }
 
-    pub fn apply_entity_ground_state(&mut self, entity_id: i32, on_ground: bool) -> bool {
+    pub fn apply_entity_ground_state(&mut self, entity_id: EntityId, on_ground: bool) -> bool {
         let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
@@ -362,7 +362,7 @@ impl Entities {
 impl ClientWorld {
     /// Apply the three-tick head rotation interpolation target from a
     /// clientbound RotateHead packet to an entity in the client world.
-    pub fn apply_entity_head_rotation(&mut self, entity_id: i32, y_head_rot: f32) -> bool {
+    pub fn apply_entity_head_rotation(&mut self, entity_id: EntityId, y_head_rot: f32) -> bool {
         let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };

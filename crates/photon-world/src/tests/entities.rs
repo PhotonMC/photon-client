@@ -5,6 +5,7 @@ mod dimension_change;
 mod dimensions;
 mod entity_collision;
 mod flags;
+mod living_flags;
 mod lookup;
 mod menus;
 mod movement_collision;

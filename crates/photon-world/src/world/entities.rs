@@ -3,7 +3,7 @@ use crate::*;
 impl ClientWorld {
     /// `PrimedTnt.tick` and `LightningBolt.tick`: a spent fuse, or a bolt with no flashes left,
     /// discards the entity.
-    pub(crate) fn discard_spent_entity(&mut self, entity_id: i32) -> bool {
+    pub(crate) fn discard_spent_entity(&mut self, entity_id: EntityId) -> bool {
         let spent = self.entities.at(entity_id).is_some_and(|entity| {
             entity
                 .primed_tnt()
@@ -18,7 +18,11 @@ impl ClientWorld {
 
     /// Where an entity is drawn between two ticks: its position
     /// (`getPosition(partialTick)`), its turn and its head's.
-    pub fn entity_snapshot(&self, entity_id: i32, partial_tick: f32) -> Option<EntitySnapshot> {
+    pub fn entity_snapshot(
+        &self,
+        entity_id: EntityId,
+        partial_tick: f32,
+    ) -> Option<EntitySnapshot> {
         let entity = self.entities.at(entity_id)?;
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
         Some(EntitySnapshot {
@@ -56,7 +60,7 @@ impl ClientWorld {
         &mut self.entities
     }
 
-    pub fn remove_entity(&mut self, entity_id: i32) -> bool {
+    pub fn remove_entity(&mut self, entity_id: EntityId) -> bool {
         let Some(position) = self.entities.at(entity_id).map(ClientEntity::position) else {
             return false;
         };
@@ -67,7 +71,11 @@ impl ClientWorld {
     }
 
     /// Update one live entity position and its persistent section membership.
-    pub fn update_entity_position(&mut self, entity_id: i32, position: (f64, f64, f64)) -> bool {
+    pub fn update_entity_position(
+        &mut self,
+        entity_id: EntityId,
+        position: (f64, f64, f64),
+    ) -> bool {
         let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
         else {
             return false;
@@ -87,14 +95,14 @@ impl ClientWorld {
         true
     }
 
-    pub fn remove_entities(&mut self, entity_ids: &[i32]) -> usize {
+    pub fn remove_entities(&mut self, entity_ids: &[EntityId]) -> usize {
         entity_ids
             .iter()
             .filter(|&&entity_id| self.remove_entity(entity_id))
             .count()
     }
 
-    pub(crate) fn entity_position(&self, entity_id: i32) -> Option<Vec3> {
+    pub(crate) fn entity_position(&self, entity_id: EntityId) -> Option<Vec3> {
         if let Some(entity) = self.entities.at(entity_id) {
             let (x, y, z) = entity.position();
             return Some(Vec3::new(x, y, z));
@@ -119,7 +127,7 @@ impl ClientWorld {
             self.minecart_improvements && entity::is_vanilla_minecart_entity_type(entity.type_id);
         let head_rotation = JavaF32::new(entity.rotation.2);
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
-        let owner = self.entity_exists(entity.data).then_some(entity.data);
+        let owner = Some(EntityId(entity.data)).filter(|&id| self.entity_exists(id));
         // An entity is one kind for as long as it lives; a display or a minecart of the new
         // behaviour is known from its type, the rest make their state when it first comes.
         let initial_kind = if let Some(display_kind) = entity::display_kind_of(entity.type_id) {
@@ -220,7 +228,7 @@ impl ClientWorld {
                 attributes: Vec::new(),
                 kind: initial_kind,
                 item_frame_rotation: 0,
-                leash_holder_id: 0,
+                leash_holder_id: EntityId(0),
                 lightning_done: false,
                 shot_at_angle: false,
                 attached_to_entity: false,
@@ -255,7 +263,7 @@ impl ClientWorld {
 
     pub(crate) fn update_entity_section(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         previous_position: (f64, f64, f64),
         position: (f64, f64, f64),
     ) {
@@ -326,22 +334,22 @@ impl Entities {
         self.sections.len()
     }
 
-    pub fn at(&self, entity_id: i32) -> Option<&ClientEntity> {
+    pub fn at(&self, entity_id: EntityId) -> Option<&ClientEntity> {
         self.get(&entity_id)
     }
 
-    pub fn metadata(&self, entity_id: i32) -> Option<&[u8]> {
+    pub fn metadata(&self, entity_id: EntityId) -> Option<&[u8]> {
         self.get(&entity_id).and_then(|entity| entity.metadata())
     }
 
-    pub(crate) fn add_to_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+    pub(crate) fn add_to_section(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
         self.sections
             .entry(entity_section_key(position))
             .or_default()
             .insert(entity_id);
     }
 
-    pub(crate) fn remove_from_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
+    pub(crate) fn remove_from_section(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
         let key = entity_section_key(position);
         let Some(entity_ids) = self.sections.get_mut(&key) else {
             return;
@@ -354,7 +362,7 @@ impl Entities {
 }
 
 impl ClientWorld {
-    pub(crate) fn entity_exists(&self, entity_id: i32) -> bool {
+    pub(crate) fn entity_exists(&self, entity_id: EntityId) -> bool {
         self.entities.contains_key(&entity_id)
             || self
                 .local_player

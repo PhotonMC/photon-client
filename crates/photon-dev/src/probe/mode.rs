@@ -190,7 +190,7 @@ pub(super) fn connect_and_probe_with_mode(
                     observation.applied_vehicle_passengers = trace
                         .world
                         .entity_passengers(observation.vehicle_id)
-                        .map(<[i32]>::to_vec);
+                        .map(<[photon_core::ids::EntityId]>::to_vec);
                     observation.applied_passenger_vehicles = observation
                         .passenger_ids
                         .iter()

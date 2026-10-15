@@ -5,6 +5,7 @@
 //! movement and the current of a fluid.
 
 use photon_core::aabb::Aabb;
+use photon_core::ids::EntityId;
 use photon_core::java_float::{JavaF32, JavaF64};
 use photon_core::math::{Vec3, mth_atan2, mth_lerp_f32};
 
@@ -18,7 +19,7 @@ use crate::local_player::Level;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FlightState {
     /// `Projectile.getOwner`, as the add packet named it.
-    pub(crate) owner: Option<i32>,
+    pub(crate) owner: Option<EntityId>,
     /// `Projectile.leftOwner`: it has been clear of its owner's boxes once.
     pub(crate) left_owner: bool,
 }
@@ -131,7 +132,7 @@ fn vec3(position: (f64, f64, f64)) -> Vec3 {
 impl ClientWorld {
     /// One tick of a flying projectile, after its old position and turn were kept and its tick
     /// counted.
-    pub(crate) fn tick_flying_projectile(&mut self, entity_id: i32, flight: Flight) {
+    pub(crate) fn tick_flying_projectile(&mut self, entity_id: EntityId, flight: Flight) {
         match flight {
             Flight::Hurting {
                 acceleration,
@@ -146,7 +147,7 @@ impl ClientWorld {
     /// `AbstractHurtingProjectile.tick`.
     fn tick_hurting_projectile(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         acceleration: f64,
         inertia: f32,
         liquid_inertia: f32,
@@ -199,7 +200,7 @@ impl ClientWorld {
 
     /// `ShulkerBullet.tick` where the level is a client's: no target and no hit are known, so the
     /// bullet goes on by the motion it has and turns half the way towards it.
-    fn tick_shulker_bullet(&mut self, entity_id: i32) {
+    fn tick_shulker_bullet(&mut self, entity_id: EntityId) {
         self.check_left_owner_of(entity_id);
         self.tick_projectile_fluids(entity_id);
         let Some(entity) = self.entities.at_mut(entity_id) else {
@@ -212,7 +213,7 @@ impl ClientWorld {
     }
 
     /// `LlamaSpit.tick`.
-    fn tick_llama_spit(&mut self, entity_id: i32) {
+    fn tick_llama_spit(&mut self, entity_id: EntityId) {
         self.check_left_owner_of(entity_id);
         self.tick_projectile_fluids(entity_id);
         let Some(entity) = self.entities.at(entity_id) else {
@@ -267,7 +268,7 @@ impl ClientWorld {
     }
 
     /// `Projectile.checkLeftOwner` with the movement the entity has.
-    fn check_left_owner_of(&mut self, entity_id: i32) {
+    fn check_left_owner_of(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
@@ -277,7 +278,7 @@ impl ClientWorld {
 
     /// `Projectile.checkLeftOwner`: once the projectile and its owner's boxes no longer meet, the
     /// owner can be hit.
-    fn check_left_owner(&mut self, entity_id: i32, movement: Vec3) {
+    fn check_left_owner(&mut self, entity_id: EntityId, movement: Vec3) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
@@ -304,12 +305,12 @@ impl ClientWorld {
     }
 
     /// `Entity.getSelfAndPassengers`: the entity and every passenger below it.
-    fn family_of(&self, entity_id: i32) -> Vec<i32> {
+    fn family_of(&self, entity_id: EntityId) -> Vec<EntityId> {
         let mut family = vec![entity_id];
         let mut index = 0;
         while let Some(&id) = family.get(index) {
             if let Some(passengers) = self.entity_passengers(id) {
-                let new: Vec<i32> = passengers
+                let new: Vec<EntityId> = passengers
                     .iter()
                     .copied()
                     .filter(|p| !family.contains(p))
@@ -323,7 +324,7 @@ impl ClientWorld {
 
     /// `Entity.updateFluidInteraction` of a projectile: whether it is in water for the next tick,
     /// and what a current adds to its movement.
-    fn tick_projectile_fluids(&mut self, entity_id: i32) {
+    fn tick_projectile_fluids(&mut self, entity_id: EntityId) {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
@@ -359,7 +360,7 @@ impl ClientWorld {
     /// entity the step crosses is hit, if the projectile can hit one.
     fn projectile_entity_hit(
         &self,
-        source: i32,
+        source: EntityId,
         from: Vec3,
         to: Vec3,
         search: Aabb,

@@ -221,7 +221,7 @@ pub(crate) fn ender_dragon_extra(
     // Which crystal and when it is found rests on the entity's own random
     // source (a tick in ten): only the last tick says, by then it is found.
     described["nearest_crystal"] = json!(if tick + 1 == i32_field(row, "tick_count")? {
-        state.nearest_crystal().unwrap_or(0)
+        state.nearest_crystal().map_or(0, |id| id.0)
     } else {
         -1
     });

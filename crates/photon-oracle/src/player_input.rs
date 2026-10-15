@@ -53,7 +53,7 @@ pub(super) fn client_world_player_sprint_trigger_state(
 }
 
 pub(super) fn client_world_player_sprint_trigger_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let sprint_window = i32_field(request, "sprint_window")?;
     let conditions = sprint_trigger_conditions(
         request
@@ -113,7 +113,7 @@ pub(super) fn client_world_player_sprint_trigger_result(request: &Value) -> Resu
     }
 
     Ok(json!({
-        "player_id": player_id,
+        "player_id": player_id.0,
         "sequences": sequence_states,
     }))
 }
@@ -152,7 +152,7 @@ pub(super) fn client_world_player_sprint_attribute_state(
 pub(super) fn client_world_player_sprint_attribute_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -170,7 +170,7 @@ pub(super) fn client_world_player_sprint_attribute_result(
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let operation_player_id = i32_field(operation, "player_id")?;
+        let operation_player_id = entity_id_field(operation, "player_id")?;
         let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
         if accepted
             && !world.apply_local_player_sprinting(
@@ -215,7 +215,7 @@ pub(super) fn client_world_player_sneaking_input_state(
 }
 
 pub(super) fn client_world_player_sneaking_input_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -233,7 +233,7 @@ pub(super) fn client_world_player_sneaking_input_result(request: &Value) -> Resu
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let operation_player_id = i32_field(operation, "player_id")?;
+        let operation_player_id = entity_id_field(operation, "player_id")?;
         let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
         let modifiers = LocalPlayerInputModifiers {
             using_item: operation["using_item"]
@@ -298,7 +298,7 @@ pub(super) fn client_world_player_keyboard_input_state(
 }
 
 pub(super) fn client_world_player_keyboard_input_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
@@ -316,7 +316,7 @@ pub(super) fn client_world_player_keyboard_input_result(request: &Value) -> Resu
             .iter()
             .map(client_attribute_state)
             .collect::<Result<Vec<_>, _>>()?;
-        let operation_player_id = i32_field(operation, "player_id")?;
+        let operation_player_id = entity_id_field(operation, "player_id")?;
         let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
         let keys = Input::new(
             operation["up"].as_bool().ok_or("up must be a boolean")?,
@@ -416,7 +416,7 @@ pub(super) fn client_world_player_tick_state(
 }
 
 pub(super) fn client_world_player_tick_result(request: &Value) -> Result<Value, String> {
-    let player_id = i32_field(request, "player_id")?;
+    let player_id = entity_id_field(request, "player_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -433,7 +433,7 @@ pub(super) fn client_world_player_tick_result(request: &Value) -> Result<Value, 
     world.set_local_player_id(player_id);
     if !world.apply_entity(EntityInput {
         entity_id: player_id,
-        uuid: Uuid::new(0, u64::from(player_id as u32)),
+        uuid: Uuid::new(0, u64::from(player_id.0 as u32)),
         type_id: 156,
         x: 0.0,
         y: 0.0,
@@ -542,5 +542,5 @@ pub(super) fn client_world_player_tick_result(request: &Value) -> Result<Value, 
             player,
         ));
     }
-    Ok(json!({"player_id": player_id, "states": states}))
+    Ok(json!({"player_id": player_id.0, "states": states}))
 }

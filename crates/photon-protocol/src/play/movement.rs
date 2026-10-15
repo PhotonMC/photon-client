@@ -1,9 +1,10 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// One Java LivingEntity interpolation target and its three world-tick steps.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityInterpolationObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type_id: i32,
     pub before_position: (f64, f64, f64),
     pub target_position: (f64, f64, f64),
@@ -18,7 +19,7 @@ pub struct EntityInterpolationObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityPositionSnapObservation {
     pub packet_kind: &'static str,
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type_id: i32,
     pub before_position: (f64, f64, f64),
     pub target_position: (f64, f64, f64),
@@ -34,7 +35,7 @@ pub struct EntityPositionSnapObservation {
 /// Wire-level fields decoded from one clientbound entity-motion packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityMotionObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -45,7 +46,7 @@ pub struct EntityMotionObservation {
 /// One remote Player motion target and its three world-tick interpolation steps.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityMotionInterpolationObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type_id: i32,
     pub before_motion: (f64, f64, f64),
     pub target_motion: (f64, f64, f64),
@@ -57,7 +58,7 @@ pub struct EntityMotionInterpolationObservation {
 /// Wire-level fields decoded from one clientbound head-rotation packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityHeadRotationObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub y_head_rot: f32,
     pub applied_to_world: bool,
     pub applied_head_rotation: Option<f32>,
@@ -67,9 +68,9 @@ pub struct EntityHeadRotationObservation {
 /// position and a movement (doubles), two turns (a byte each), and a weight (a float).
 pub fn parse_move_minecart_packet(
     input: &[u8],
-) -> Result<(i32, Vec<MinecartStep>), ConnectionError> {
+) -> Result<(EntityId, Vec<MinecartStep>), ConnectionError> {
     let mut input = input;
-    let entity_id = read_varint(&mut input, "minecart entity id")?;
+    let entity_id = EntityId(read_varint(&mut input, "minecart entity id")?);
     let count = read_varint(&mut input, "minecart step count")?;
     let mut steps = Vec::new();
     for _ in 0..count {
@@ -109,7 +110,7 @@ pub fn parse_set_entity_motion_packet(
         return Err(ConnectionError::Codec("entity motion trailing payload"));
     }
     Ok(EntityMotionObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         x: movement.0,
         y: movement.1,
         z: movement.2,
@@ -130,7 +131,7 @@ pub fn parse_rotate_head_packet(
         ));
     }
     Ok(EntityHeadRotationObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         y_head_rot,
         applied_to_world: false,
         applied_head_rotation: None,
@@ -140,7 +141,7 @@ pub fn parse_rotate_head_packet(
 /// Wire-level fields decoded from one clientbound entity-position-sync packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityPositionSyncObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -159,7 +160,7 @@ pub struct EntityPositionSyncObservation {
 /// Wire-level fields decoded from one clientbound entity-teleport packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityTeleportObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -181,7 +182,7 @@ pub struct EntityTeleportObservation {
 /// Wire-level fields decoded from one clientbound relative entity-move packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityMoveObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub delta_x: i16,
     pub delta_y: i16,
     pub delta_z: i16,
@@ -216,7 +217,7 @@ pub fn parse_entity_position_sync_packet(
         ));
     }
     Ok(EntityPositionSyncObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         x,
         y,
         z,
@@ -252,7 +253,7 @@ pub fn parse_entity_teleport_packet(
         return Err(ConnectionError::Codec("entity teleport trailing payload"));
     }
     Ok(EntityTeleportObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         x,
         y,
         z,
@@ -325,7 +326,7 @@ pub(super) fn parse_move_entity_packet(
         return Err(ConnectionError::Codec("move entity trailing payload"));
     }
     Ok(EntityMoveObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         delta_x,
         delta_y,
         delta_z,
@@ -349,7 +350,7 @@ wrapped_packet!(
 
 wrapped_packet!(
     /// `ClientboundMoveMinecartPacket`.
-    MoveMinecart((i32, Vec<MinecartStep>)) = parse_move_minecart_packet,
+    MoveMinecart((EntityId, Vec<MinecartStep>)) = parse_move_minecart_packet,
     OnError::Ignore("move_minecart")
 );
 

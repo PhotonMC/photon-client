@@ -29,7 +29,7 @@ use photon_core::math::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientPlayerState {
-    pub(crate) id: i32,
+    pub(crate) id: EntityId,
     pub(crate) generation: u64,
     pub(crate) tick_count: i32,
     pub(crate) position: DVec3,
@@ -93,8 +93,8 @@ pub struct ClientPlayerState {
     pub(crate) inventory_slots: BTreeMap<i16, Option<ClientItemStackState>>,
     pub(crate) carried_item: Option<ClientItemStackState>,
     pub(crate) open_container: Option<ClientContainerState>,
-    pub(crate) vehicle_id: Option<i32>,
-    pub(crate) passenger_ids: Vec<i32>,
+    pub(crate) vehicle_id: Option<EntityId>,
+    pub(crate) passenger_ids: Vec<EntityId>,
 }
 
 mod game_mode;

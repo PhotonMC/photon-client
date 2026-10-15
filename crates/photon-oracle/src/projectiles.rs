@@ -41,11 +41,11 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let mut world = movement_world(row)?;
-        let entity_id = i32_field(row, "entity_id")?;
+        let entity_id = entity_id_field(row, "entity_id")?;
         let item_type = photon_data::entity_type::id("minecraft:item").ok_or("no item type")?;
         if !world.apply_entity(EntityInput {
             entity_id,
-            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
             type_id: item_type,
             x: bits64(row, "x")?,
             y: bits64(row, "y")?,
@@ -151,12 +151,12 @@ pub(super) fn projectile_ticks_result(request: &Value) -> Result<Value, String> 
     for row in rows {
         let mut world = movement_world(row)?;
         for other in row["others"].as_array().ok_or("others must be an array")? {
-            let id = i32_field(other, "id")?;
+            let id = entity_id_field(other, "id")?;
             let name = string(other, "type")?;
             let type_id = photon_data::entity_type::id(name).ok_or_else(|| format!("no {name}"))?;
             if !world.apply_entity(EntityInput {
                 entity_id: id,
-                uuid: Uuid::new(0, u64::from(id as u32)),
+                uuid: Uuid::new(0, u64::from(id.0 as u32)),
                 type_id,
                 x: bits64(other, "x")?,
                 y: bits64(other, "y")?,
@@ -168,12 +168,12 @@ pub(super) fn projectile_ticks_result(request: &Value) -> Result<Value, String> 
                 return Err(format!("{name} was rejected"));
             }
         }
-        let entity_id = i32_field(row, "entity_id")?;
+        let entity_id = entity_id_field(row, "entity_id")?;
         let name = string(row, "type")?;
         let type_id = photon_data::entity_type::id(name).ok_or_else(|| format!("no {name}"))?;
         if !world.apply_entity(EntityInput {
             entity_id,
-            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
             type_id,
             x: bits64(row, "x")?,
             y: bits64(row, "y")?,

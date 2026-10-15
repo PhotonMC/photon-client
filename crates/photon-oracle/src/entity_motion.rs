@@ -37,7 +37,7 @@ pub(super) fn client_world_entity_player_interpolation_state(
 pub(super) fn client_world_entity_player_interpolation_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let entity_id = i32_field(request, "entity_id")?;
+    let entity_id = entity_id_field(request, "entity_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -49,7 +49,7 @@ pub(super) fn client_world_entity_player_interpolation_result(
     let mut world = ClientWorld::new(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
-        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
         type_id: 156,
         x: initial_position.x,
         y: initial_position.y,
@@ -119,11 +119,11 @@ pub(super) fn client_world_entity_player_interpolation_result(
                 .ok_or("remote player interpolation fixture disappeared")?,
         ));
     }
-    Ok(json!({"entity_id": entity_id, "states": states}))
+    Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
 pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<Value, String> {
-    let entity_id = i32_field(request, "entity_id")?;
+    let entity_id = entity_id_field(request, "entity_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -151,7 +151,7 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
     }
     if !world.apply_entity(EntityInput {
         entity_id,
-        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
         type_id: 156,
         x: initial_position.x,
         y: initial_position.y,
@@ -214,7 +214,7 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
                 .ok_or("remote player snap fixture disappeared")?,
         ));
     }
-    Ok(json!({"entity_id": entity_id, "states": states}))
+    Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
 pub(super) fn client_world_entity_player_motion_state(label: &str, entity: &ClientEntity) -> Value {
@@ -237,7 +237,7 @@ pub(super) fn client_world_entity_player_motion_state(label: &str, entity: &Clie
 }
 
 pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Result<Value, String> {
-    let entity_id = i32_field(request, "entity_id")?;
+    let entity_id = entity_id_field(request, "entity_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -254,7 +254,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
     let mut world = ClientWorld::new(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
-        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
         type_id: 156,
         x: initial_position.x,
         y: initial_position.y,
@@ -315,7 +315,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
                 .ok_or("remote player motion fixture disappeared")?,
         ));
     }
-    Ok(json!({"entity_id": entity_id, "states": states}))
+    Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
 pub(super) fn client_world_entity_teleport_state(label: &str, entity: &ClientEntity) -> Value {
@@ -325,7 +325,7 @@ pub(super) fn client_world_entity_teleport_state(label: &str, entity: &ClientEnt
 }
 
 pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Value, String> {
-    let entity_id = i32_field(request, "entity_id")?;
+    let entity_id = entity_id_field(request, "entity_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -342,7 +342,7 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
     let mut world = ClientWorld::new(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
-        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
         type_id: 156,
         x: initial_position.x,
         y: initial_position.y,
@@ -417,7 +417,7 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
                 .ok_or("remote entity teleport fixture disappeared")?,
         ));
     }
-    Ok(json!({"entity_id": entity_id, "states": states}))
+    Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
 pub(super) fn client_world_entity_player_head_rotation_state(
@@ -441,7 +441,7 @@ pub(super) fn client_world_entity_player_head_rotation_state(
 pub(super) fn client_world_entity_player_head_rotation_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let entity_id = i32_field(request, "entity_id")?;
+    let entity_id = entity_id_field(request, "entity_id")?;
     let initial_position = f64_vec3(
         request
             .get("initial_position")
@@ -454,7 +454,7 @@ pub(super) fn client_world_entity_player_head_rotation_result(
     let mut world = ClientWorld::new(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
-        uuid: Uuid::new(0, u64::from(entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
         type_id: i32_field(request, "entity_type_id")?,
         x: initial_position.x,
         y: initial_position.y,
@@ -507,7 +507,7 @@ pub(super) fn client_world_entity_player_head_rotation_result(
             entity,
         ));
     }
-    Ok(json!({"entity_id": entity_id, "states": states}))
+    Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
 pub(super) fn client_world_entity_tick_vector(vector: (f64, f64, f64)) -> Value {
@@ -521,7 +521,7 @@ pub(super) fn client_world_entity_tick_vector(vector: (f64, f64, f64)) -> Value 
 pub(super) fn client_world_entity_tick_state(
     label: &str,
     accepted: bool,
-    entity_ids: &[i32],
+    entity_ids: &[EntityId],
     world: &ClientWorld,
 ) -> Result<Value, String> {
     let entities = entity_ids
@@ -534,7 +534,7 @@ pub(super) fn client_world_entity_tick_state(
             let rotation = entity.rotation();
             let previous_rotation = entity.previous_rotation();
             Ok(json!({
-                "entity_id": entity.id(),
+                "entity_id": entity.id().0,
                 "tick_count": entity.tick_count(),
                 "position": client_world_entity_tick_vector(entity.position()),
                 "previous_position": client_world_entity_tick_vector(

@@ -11,6 +11,7 @@ use crate::input::{
     LocalPlayerTravelInLavaParameters, LocalPlayerTravelInWaterParameters,
     LocalPlayerUpdateFallFlyingMovementParameters, advance_local_player_sprint_trigger,
 };
+use photon_core::ids::EntityId;
 use photon_core::java_float::{DVec3, JavaF32, JavaF64};
 use photon_core::math::{Vec2, Vec3, abs_max_f64, mth_cos_f64, mth_sin_f64};
 use photon_core::{
@@ -124,7 +125,7 @@ pub struct ClientWorld {
     /// What the player on a mount steers it with, as of its last tick.
     rider_controls: ride::mount::Controller,
     predictions: prediction::BlockPredictions,
-    destroying_blocks: BTreeMap<i32, DestroyProgress>,
+    destroying_blocks: BTreeMap<EntityId, DestroyProgress>,
 }
 
 impl Default for ClientWorld {

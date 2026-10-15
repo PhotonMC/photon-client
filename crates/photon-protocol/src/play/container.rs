@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 pub fn parse_open_screen_packet(input: &[u8]) -> Result<OpenScreenObservation, ConnectionError> {
     let mut input = input;
@@ -362,7 +363,7 @@ wrapped_packet!(
 pub struct MountScreenOpen {
     pub container_id: i32,
     pub columns: i32,
-    pub entity_id: i32,
+    pub entity_id: EntityId,
 }
 
 impl Decode for MountScreenOpen {
@@ -376,7 +377,7 @@ impl Decode for MountScreenOpen {
         Ok(Self {
             container_id,
             columns,
-            entity_id,
+            entity_id: EntityId(entity_id),
         })
     }
 }

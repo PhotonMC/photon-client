@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let (blocks, biomes) = section(0, 0);
     world.replace_chunk(
         0,
@@ -16,7 +17,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: 120,
         x: 1.25,
@@ -31,7 +32,10 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(0)
     );
     assert_eq!(
-        world.entities().at(37).map(crate::ClientEntity::tick_count),
+        world
+            .entities()
+            .at(EntityId(37))
+            .map(crate::ClientEntity::tick_count),
         Some(0)
     );
 
@@ -41,7 +45,10 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(1)
     );
     assert_eq!(
-        world.entities().at(37).map(crate::ClientEntity::tick_count),
+        world
+            .entities()
+            .at(EntityId(37))
+            .map(crate::ClientEntity::tick_count),
         Some(1)
     );
 
@@ -52,7 +59,10 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(2)
     );
     assert_eq!(
-        world.entities().at(37).map(crate::ClientEntity::tick_count),
+        world
+            .entities()
+            .at(EntityId(37))
+            .map(crate::ClientEntity::tick_count),
         Some(1)
     );
 
@@ -72,7 +82,10 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         Some(3)
     );
     assert_eq!(
-        world.entities().at(37).map(crate::ClientEntity::tick_count),
+        world
+            .entities()
+            .at(EntityId(37))
+            .map(crate::ClientEntity::tick_count),
         Some(2)
     );
 
@@ -90,7 +103,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
 #[test]
 fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(
         world.apply_local_player_position((10.0, 64.0, -2.0), (0.0, 0.0, 0.0), (350.0, -20.0),)
     );
@@ -119,7 +132,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: 120,
         x: 1.25,
@@ -140,7 +153,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     assert_eq!(
         world
             .entities()
-            .at(37)
+            .at(EntityId(37))
             .map(crate::ClientEntity::previous_position),
         Some((1.25, 80.0, -35.5))
     );
@@ -154,21 +167,24 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     assert_eq!(player.interpolated_rotation(1.0), (10.0, 20.0));
 
     assert!(world.apply_entity_position(EntityPositionInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         x: 3.0,
         y: 82.0,
         z: -34.5,
         relative_flags: 0,
     }));
     assert!(world.apply_entity_rotation(EntityRotationInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         y_rot: Some(10.0),
         x_rot: Some(20.0),
         y_head_rot: Some(10.0),
         relative_y_rot: false,
         relative_x_rot: false,
     }));
-    let entity = world.entities().at(37).expect("remote entity transform");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("remote entity transform");
     assert_eq!(entity.previous_position(), (1.25, 80.0, -35.5));
     assert_eq!(entity.interpolated_position(0.5), (2.125, 81.0, -35.0));
     assert_eq!(entity.previous_rotation(), (350.0, -20.0, 350.0));
@@ -176,7 +192,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
 
     assert!(world.unload_chunk(0, -3));
     assert!(world.apply_entity_position(EntityPositionInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         x: 4.0,
         y: 82.0,
         z: -34.5,
@@ -186,7 +202,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     assert_eq!(
         world
             .entities()
-            .at(37)
+            .at(EntityId(37))
             .map(crate::ClientEntity::previous_position),
         Some((1.25, 80.0, -35.5))
     );
@@ -205,7 +221,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     assert_eq!(
         world
             .entities()
-            .at(37)
+            .at(EntityId(37))
             .map(crate::ClientEntity::previous_position),
         Some((4.0, 82.0, -34.5))
     );

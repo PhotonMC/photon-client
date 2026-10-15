@@ -9,7 +9,7 @@ fn entity_motion_parser_matches_java_id_and_packed_vector_order() {
     assert_eq!(
         parse_set_entity_motion_packet(&payload).expect("entity motion"),
         super::super::EntityMotionObservation {
-            entity_id: 37,
+            entity_id: photon_core::ids::EntityId(37),
             x: 0.0,
             y: 0.0,
             z: 0.0,
@@ -31,7 +31,7 @@ fn entity_head_rotation_parser_matches_java_packed_degrees() {
     assert_eq!(
         parse_rotate_head_packet(&payload).expect("rotate head"),
         super::super::EntityHeadRotationObservation {
-            entity_id: 37,
+            entity_id: photon_core::ids::EntityId(37),
             y_head_rot: 90.0,
             applied_to_world: false,
             applied_head_rotation: None,
@@ -57,7 +57,7 @@ fn entity_teleport_parser_matches_java_position_move_rotation_order() {
     assert_eq!(
         parse_entity_teleport_packet(&payload).expect("entity teleport"),
         super::super::EntityTeleportObservation {
-            entity_id: 42,
+            entity_id: photon_core::ids::EntityId(42),
             x: 10.5,
             y: 20.25,
             z: -30.75,
@@ -95,7 +95,7 @@ fn entity_position_sync_parser_matches_java_position_move_rotation_without_mask(
     assert_eq!(
         parse_entity_position_sync_packet(&payload).expect("entity position sync"),
         super::super::EntityPositionSyncObservation {
-            entity_id: -7,
+            entity_id: photon_core::ids::EntityId(-7),
             x: 1.5,
             y: 2.25,
             z: -3.75,
@@ -127,7 +127,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
     assert_eq!(
         parse_move_entity_pos_packet(&pos_payload).expect("move entity position"),
         super::super::EntityMoveObservation {
-            entity_id: 42,
+            entity_id: photon_core::ids::EntityId(42),
             delta_x: 256,
             delta_y: -512,
             delta_z: 1024,
@@ -149,7 +149,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
     assert_eq!(
         parse_move_entity_pos_rot_packet(&pos_rot_payload).expect("move entity position rotation"),
         super::super::EntityMoveObservation {
-            entity_id: 42,
+            entity_id: photon_core::ids::EntityId(42),
             delta_x: 256,
             delta_y: -512,
             delta_z: 1024,
@@ -171,7 +171,7 @@ fn move_entity_parsers_match_java_position_and_rotation_variants() {
     assert_eq!(
         parse_move_entity_rot_packet(&rot_payload).expect("move entity rotation"),
         super::super::EntityMoveObservation {
-            entity_id: 42,
+            entity_id: photon_core::ids::EntityId(42),
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -203,7 +203,7 @@ fn minecart_steps_parser_reads_doubles_packed_turns_and_a_float_weight() {
     payload.extend(0.75_f32.to_be_bytes());
 
     let (entity_id, steps) = parse_move_minecart_packet(&payload).expect("minecart steps");
-    assert_eq!(entity_id, 9);
+    assert_eq!(entity_id, photon_core::ids::EntityId(9));
     assert_eq!(steps.len(), 1);
     assert_eq!(steps[0].position, (1.5, 64.1, -2.0));
     assert_eq!(steps[0].movement, (0.25, 0.0, -0.5));

@@ -1,6 +1,7 @@
 //! The vehicle the local player rides, as the player's own tick reads it: where it is, where it
 //! carries its rider and what it lets the rider do.
 
+use photon_core::ids::EntityId;
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 
 use crate::ClientWorld;
@@ -23,7 +24,7 @@ pub enum VehicleKind {
 /// What the local player's tick reads of the vehicle it rides.
 #[derive(Debug, Clone, Copy)]
 pub struct VehicleView {
-    pub vehicle_id: i32,
+    pub vehicle_id: EntityId,
     pub kind: VehicleKind,
     /// Whether the local player is the vehicle's authority (it drives it).
     pub controlled: bool,
@@ -58,7 +59,7 @@ pub(crate) fn rotate_y(point: Vec3, radians: f32) -> Vec3 {
 
 impl ClientWorld {
     /// The vehicle the local player sits in, whether it drives it or not.
-    pub fn ridden_vehicle_of_local_player(&self) -> Option<i32> {
+    pub fn ridden_vehicle_of_local_player(&self) -> Option<EntityId> {
         let player_id = self.local_player.as_ref()?.id;
         let vehicle_id = self.entity_vehicle_id(player_id)?;
         let vehicle = self.entities.at(vehicle_id)?;
@@ -70,7 +71,7 @@ impl ClientWorld {
 
     /// `Entity.hasIndirectPassenger(player)`: whether the local player sits in this entity, or in
     /// something that sits in it.
-    pub fn entity_carries_local_player(&self, entity_id: i32) -> bool {
+    pub fn entity_carries_local_player(&self, entity_id: EntityId) -> bool {
         let Some(player_id) = self.local_player.as_ref().map(|player| player.id) else {
             return false;
         };
@@ -94,12 +95,12 @@ impl ClientWorld {
     }
 
     /// Whether the level has an entity of this id.
-    pub fn has_entity(&self, entity_id: i32) -> bool {
+    pub fn has_entity(&self, entity_id: EntityId) -> bool {
         self.entities.contains_key(&entity_id)
     }
 
     /// What the local player's tick reads of the vehicle it rides.
-    pub fn vehicle_view(&self, vehicle_id: i32) -> Option<VehicleView> {
+    pub fn vehicle_view(&self, vehicle_id: EntityId) -> Option<VehicleView> {
         let player = self.local_player.as_ref()?;
         let vehicle = self.entities.at(vehicle_id)?;
         let (x, y, z) = vehicle.position();
@@ -223,7 +224,7 @@ impl ClientWorld {
     /// What the local player's tick reads of a boat it rides.
     fn boat_view(
         &self,
-        vehicle_id: i32,
+        vehicle_id: EntityId,
         vehicle: &crate::entity::ClientEntity,
         position: Vec3,
     ) -> Option<VehicleView> {

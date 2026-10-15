@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn ticking_firework_rockets_accelerates_and_rotates_from_free_flight_motion() {
@@ -15,7 +16,7 @@ fn ticking_firework_rockets_accelerates_and_rotates_from_free_flight_motion() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID,
         x: 2.0,
@@ -43,7 +44,10 @@ fn ticking_firework_rockets_accelerates_and_rotates_from_free_flight_motion() {
         projectile_lerp_rotation_f32(20.0, target_x_rotation),
         30.0,
     );
-    let entity = world.entities().at(37).expect("firework rocket after tick");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("firework rocket after tick");
     assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
     assert_eq!(
         entity.position(),
@@ -69,7 +73,7 @@ fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_SNOWBALL_ENTITY_TYPE_ID,
         x: 2.0,
@@ -80,7 +84,7 @@ fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
         data: 0,
     }));
     assert!(world.apply_entity(EntityInput {
-        entity_id: 38,
+        entity_id: EntityId(38),
         uuid: Uuid::new(3, 4),
         type_id: VANILLA_SNOWBALL_ENTITY_TYPE_ID,
         x: 4.0,
@@ -91,7 +95,7 @@ fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
         data: 0,
     }));
     assert!(world.apply_entity_metadata(
-        38,
+        EntityId(38),
         &[
             ENTITY_NO_GRAVITY_DATA_ID,
             ENTITY_DATA_SERIALIZER_BOOLEAN_ID as u8,
@@ -108,7 +112,7 @@ fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
         (0.5 - SNOWBALL_GRAVITY) * air_drag,
         0.25 * air_drag,
     );
-    let entity = world.entities().at(37).expect("gravity snowball");
+    let entity = world.entities().at(EntityId(37)).expect("gravity snowball");
     assert_eq!(entity.previous_position(), (2.0, 1.0, 2.0));
     assert_eq!(entity.motion(), expected_motion);
     assert_eq!(
@@ -121,7 +125,10 @@ fn ticking_snowballs_applies_java_free_flight_gravity_drag_and_history() {
     );
     assert_eq!(entity.tick_count(), 1);
 
-    let entity = world.entities().at(38).expect("no-gravity snowball");
+    let entity = world
+        .entities()
+        .at(EntityId(38))
+        .expect("no-gravity snowball");
     assert_eq!(entity.motion(), (0.0, 0.0, air_drag));
     assert_eq!(entity.position(), (4.0, 1.0, 2.0 + air_drag));
     assert_eq!(entity.previous_position(), (4.0, 1.0, 2.0));
@@ -143,7 +150,7 @@ fn ticking_arrows_applies_java_free_flight_inertia_gravity_and_history() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_ARROW_ENTITY_TYPE_ID,
         x: 2.0,
@@ -154,7 +161,7 @@ fn ticking_arrows_applies_java_free_flight_inertia_gravity_and_history() {
         data: 0,
     }));
     assert!(world.apply_entity(EntityInput {
-        entity_id: 38,
+        entity_id: EntityId(38),
         uuid: Uuid::new(3, 4),
         type_id: VANILLA_ARROW_ENTITY_TYPE_ID,
         x: 4.0,
@@ -165,7 +172,7 @@ fn ticking_arrows_applies_java_free_flight_inertia_gravity_and_history() {
         data: 0,
     }));
     assert!(world.apply_entity_metadata(
-        38,
+        EntityId(38),
         &[
             ENTITY_NO_GRAVITY_DATA_ID,
             ENTITY_DATA_SERIALIZER_BOOLEAN_ID as u8,
@@ -178,13 +185,13 @@ fn ticking_arrows_applies_java_free_flight_inertia_gravity_and_history() {
 
     let air_drag = f64::from(0.99_f32);
     let expected_motion = (0.25 * air_drag, 0.5 * air_drag - 0.05, 0.25 * air_drag);
-    let entity = world.entities().at(37).expect("gravity arrow");
+    let entity = world.entities().at(EntityId(37)).expect("gravity arrow");
     assert_eq!(entity.previous_position(), (2.0, 1.0, 2.0));
     assert_eq!(entity.motion(), expected_motion);
     assert_eq!(entity.position(), (2.0 + 0.25, 1.0 + 0.5, 2.0 + 0.25));
     assert_eq!(entity.tick_count(), 1);
 
-    let entity = world.entities().at(38).expect("no-gravity arrow");
+    let entity = world.entities().at(EntityId(38)).expect("no-gravity arrow");
     assert_eq!(entity.motion(), (0.0, 0.0, air_drag));
     assert_eq!(entity.position(), (4.0, 1.0, 3.0));
     assert_eq!(entity.previous_position(), (4.0, 1.0, 2.0));
@@ -206,7 +213,7 @@ fn experience_orb_first_client_tick_then_applies_gravity_drag_and_motion() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID,
         x: 2.0,
@@ -221,7 +228,7 @@ fn experience_orb_first_client_tick_then_applies_gravity_drag_and_motion() {
 
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("experience orb after first tick");
     assert_eq!(entity.position(), (2.0, 10.0, 2.0));
     assert_eq!(entity.motion(), (0.125, 0.25, -0.125));
@@ -234,7 +241,7 @@ fn experience_orb_first_client_tick_then_applies_gravity_drag_and_motion() {
     let air_drag = f64::from(0.98_f32);
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("experience orb after second tick");
     assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
     assert_eq!(
@@ -271,7 +278,7 @@ fn ticking_primed_tnt_applies_gravity_move_and_air_drag_in_order() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_PRIMED_TNT_ENTITY_TYPE_ID,
         x: 2.0,
@@ -286,7 +293,10 @@ fn ticking_primed_tnt_applies_gravity_move_and_air_drag_in_order() {
 
     let gravity_motion = (0.25, 0.5 - VANILLA_PRIMED_TNT_GRAVITY, -0.125);
     let air_drag = f64::from(VANILLA_PRIMED_TNT_AIR_FRICTION);
-    let entity = world.entities().at(37).expect("primed TNT after tick");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("primed TNT after tick");
     assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
     assert_eq!(
         entity.position(),
@@ -323,7 +333,7 @@ fn ticking_falling_blocks_applies_gravity_and_air_drag_after_move() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID,
         x: 2.0,
@@ -337,7 +347,10 @@ fn ticking_falling_blocks_applies_gravity_and_air_drag_after_move() {
     world.tick();
 
     let gravity_motion = (0.25, 0.5 - VANILLA_FALLING_BLOCK_GRAVITY, -0.125);
-    let entity = world.entities().at(37).expect("falling block after tick");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("falling block after tick");
     assert_eq!(entity.previous_position(), (2.0, 10.0, 2.0));
     assert_eq!(
         entity.position(),

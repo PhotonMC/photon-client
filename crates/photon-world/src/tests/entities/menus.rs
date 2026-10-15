@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn an_open_containers_last_slots_are_the_players_inventory() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let stone = ClientItemStackState::from_wire(7, 1, vec![], vec![]);
     let dirt = ClientItemStackState::from_wire(3, 10, vec![], vec![]);
     let mut items = vec![None; 63];

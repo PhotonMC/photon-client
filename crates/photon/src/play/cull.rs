@@ -2,6 +2,7 @@
 //! camera for their type, those whose renderer's box is wholly outside the view cone, and those
 //! standing in a section that has not shown yet.
 
+use photon_core::ids::EntityId;
 use std::collections::BTreeSet;
 
 use photon_core::aabb::Aabb;
@@ -31,7 +32,7 @@ pub fn out_of_view(
     world: &ClientWorld,
     sections: &SectionMeshes,
     view: &CullView,
-) -> BTreeSet<i32> {
+) -> BTreeSet<EntityId> {
     let scale = view_scale(view.render_distance);
     let bounds = world.dimension();
     world
@@ -105,10 +106,12 @@ fn visible(frustum: &Frustum, aabb: Aabb) -> bool {
 
 /// `GuardianRenderer.shouldRender`: the line from its eyes to the middle of what it attacks.
 fn guardian_beam_visible(world: &ClientWorld, guardian: &ClientEntity, frustum: &Frustum) -> bool {
-    let Some(target) = guardian
-        .guardian_attack_target()
-        .and_then(|id| world.entities().all().find(|target| target.id() == id))
-    else {
+    let Some(target) = guardian.guardian_attack_target().and_then(|id| {
+        world
+            .entities()
+            .all()
+            .find(|target| target.id() == EntityId(id))
+    }) else {
         return false;
     };
     let (tx, ty, tz) = target.interpolated_position(1.0);

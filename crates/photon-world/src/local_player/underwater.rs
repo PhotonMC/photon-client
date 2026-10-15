@@ -86,11 +86,12 @@ impl LocalPlayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use photon_core::ids::EntityId;
 
     #[test]
     fn getting_in_the_water_plays_the_sound_and_starts_the_loop() {
         let mut player = LocalPlayer::new(
-            1,
+            EntityId(1),
             photon_core::math::Vec3::ZERO,
             0.0,
             0.0,

@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl PlaySession {
     pub fn world(&self) -> &ClientWorld {
@@ -6,7 +7,7 @@ impl PlaySession {
     }
 
     /// Set which entities the frames leave out as wholly outside the view.
-    pub fn set_entities_out_of_view(&mut self, ids: std::collections::BTreeSet<i32>) {
+    pub fn set_entities_out_of_view(&mut self, ids: std::collections::BTreeSet<EntityId>) {
         self.world.entities_mut().set_out_of_view(ids);
     }
 
@@ -40,7 +41,7 @@ impl PlaySession {
     /// Where an entity is drawn between two ticks.
     pub fn entity_snapshot(
         &self,
-        entity_id: i32,
+        entity_id: EntityId,
         partial_tick: f32,
     ) -> Option<photon_world::EntitySnapshot> {
         self.world.entity_snapshot(entity_id, partial_tick)

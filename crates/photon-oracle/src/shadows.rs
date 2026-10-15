@@ -31,12 +31,12 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let mut world = movement_world(row)?;
-        let (entity_id, rider_id) = (2, 3);
+        let (entity_id, rider_id) = (EntityId(2), EntityId(3));
         let (x, y, z) = (bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?);
         for (id, at) in [(entity_id, (x, y, z)), (rider_id, (x, y, z))] {
             if !world.apply_entity(EntityInput {
                 entity_id: id,
-                uuid: Uuid::new(0, id as u64),
+                uuid: Uuid::new(0, id.0 as u64),
                 type_id: 156,
                 x: at.0,
                 y: at.1,

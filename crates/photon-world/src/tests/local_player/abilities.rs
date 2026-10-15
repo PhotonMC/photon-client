@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_abilities_apply_packet_values_and_reset_on_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let abilities =
         ClientPlayerAbilities::new(true, true, true, true, -0.0, f32::from_bits(0x7fc0_0001));
     assert!(world.apply_local_player_abilities(abilities));
@@ -22,7 +23,7 @@ fn local_player_abilities_apply_packet_values_and_reset_on_respawn() {
 #[test]
 fn local_player_game_mode_updates_java_abilities_and_build_permission() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let initial = ClientPlayerAbilities::new(false, true, false, false, 0.5, 0.25);
     assert!(world.apply_local_player_abilities(initial));
 

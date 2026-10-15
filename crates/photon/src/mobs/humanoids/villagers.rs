@@ -206,7 +206,7 @@ pub fn remote_witches(
                 walk_speed: snapshot.walk_speed,
             },
             age_in_ticks: entity.tick_count() as f32 + partial,
-            entity_id: entity.id(),
+            entity_id: entity.id().0,
             holding_item: entity.equipment(EquipmentSlot::MainHand).is_some(),
         });
         let placed = placement(world, &snapshot, view, entity.scale());

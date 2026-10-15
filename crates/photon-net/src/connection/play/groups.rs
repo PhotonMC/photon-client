@@ -2,6 +2,7 @@
 //! as a resource of the ECS world.
 
 use super::*;
+use photon_core::ids::EntityId;
 
 /// The connection itself: the socket, how it is framed and who is on it.
 pub(super) struct Link {
@@ -20,7 +21,7 @@ pub(super) struct Link {
 
 /// The local player and what the server last said of it.
 pub(super) struct LocalState {
-    pub(super) player_id: Option<i32>,
+    pub(super) player_id: Option<EntityId>,
     pub(super) game_mode: ClientPlayerGameMode,
     /// `MultiPlayerGameMode.previousLocalPlayerMode`: the mode played in before this one.
     pub(super) previous_game_mode: Option<ClientPlayerGameMode>,
@@ -41,7 +42,7 @@ pub(super) struct LocalState {
     /// Whether a health update has arrived since the player last respawned.
     pub(super) health_received: bool,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
-    pub(super) aimed_entity: Option<i32>,
+    pub(super) aimed_entity: Option<EntityId>,
     /// The hotbar slot the server was last told about.
     pub(super) sent_slot: i32,
     /// Breaking state and the miss wait.
@@ -49,7 +50,7 @@ pub(super) struct LocalState {
     /// `LocalPlayer.dropSpamThrottler`: what creative drops have added up.
     pub(super) drop_spam: i32,
     /// The vehicle the server removed with the local player aboard (`removedPlayerVehicleId`).
-    pub(super) removed_player_vehicle: Option<i32>,
+    pub(super) removed_player_vehicle: Option<EntityId>,
     pub(super) teleports: u32,
     /// Swing packets sent, for scripted runs to report.
     pub(super) swings: u32,

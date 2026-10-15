@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// `ClientboundBlockEventPacket`: the block, the event and its data (the block's registry id
 /// is left unread).
@@ -51,7 +52,7 @@ pub struct BlockEntityObservation {
 /// Wire-level fields decoded from one clientbound block-destruction progress packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockDestructionObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: i32,
     pub y: i32,
     pub z: i32,
@@ -115,7 +116,7 @@ pub fn parse_block_destruction_packet(
         return Err(ConnectionError::Codec("block destruction trailing payload"));
     }
     Ok(BlockDestructionObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         x: position.x,
         y: position.y,
         z: position.z,

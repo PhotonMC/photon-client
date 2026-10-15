@@ -27,12 +27,12 @@ pub(super) fn client_world_indexed_collision_case(request: &Value) -> Result<Val
                 let entity = entity_value
                     .as_object()
                     .ok_or("indexed entity must be an object")?;
-                let entity_id = i32_field(entity_value, "entity_id")?;
+                let entity_id = entity_id_field(entity_value, "entity_id")?;
                 let position =
                     f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
                 world.apply_entity(EntityInput {
                     entity_id,
-                    uuid: Uuid::new(0, u64::from(entity_id as u32)),
+                    uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
                     type_id: i32_field(entity_value, "type_id")?,
                     x: position.x,
                     y: position.y,
@@ -72,8 +72,8 @@ pub(super) fn client_world_indexed_collision_case(request: &Value) -> Result<Val
                         .as_i64()
                         .ok_or_else(|| "source_entity_id must be an integer".to_owned())
                         .and_then(|value| {
-                            value
-                                .try_into()
+                            i32::try_from(value)
+                                .map(EntityId)
                                 .map_err(|_| "source_entity_id must fit in i32".to_owned())
                         })
                 })
@@ -136,7 +136,7 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                 let position =
                     f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
                 world.apply_entity(EntityInput {
-                    entity_id: i32_field(entity_value, "entity_id")?,
+                    entity_id: EntityId(i32_field(entity_value, "entity_id")?),
                     uuid: Uuid::new(0, u64::from(i32_field(entity_value, "entity_id")? as u32)),
                     type_id: i32_field(entity_value, "type_id")?,
                     x: position.x,
@@ -155,8 +155,8 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                         .as_i64()
                         .ok_or_else(|| "source_entity_id must be an integer".to_owned())
                         .and_then(|value| {
-                            value
-                                .try_into()
+                            i32::try_from(value)
+                                .map(EntityId)
                                 .map_err(|_| "source_entity_id must fit in i32".to_owned())
                         })
                 })
@@ -191,7 +191,7 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                     "move" => {
                         let position =
                             f64_vec3(event.get("position").ok_or("position must be an object")?)?;
-                        let entity_id = i32_field(event_value, "entity_id")?;
+                        let entity_id = entity_id_field(event_value, "entity_id")?;
                         if !world
                             .update_entity_position(entity_id, (position.x, position.y, position.z))
                         {
@@ -199,7 +199,7 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                         }
                     }
                     "remove" => {
-                        world.remove_entity(i32_field(event_value, "entity_id")?);
+                        world.remove_entity(EntityId(i32_field(event_value, "entity_id")?));
                     }
                     "add" => {
                         let entity_value =
@@ -209,10 +209,10 @@ pub(super) fn client_world_entity_section_index_case(request: &Value) -> Result<
                             .ok_or("add entity must be an object")?;
                         let position =
                             f64_vec3(entity.get("position").ok_or("position must be an object")?)?;
-                        let entity_id = i32_field(entity_value, "entity_id")?;
+                        let entity_id = entity_id_field(entity_value, "entity_id")?;
                         world.apply_entity(EntityInput {
                             entity_id,
-                            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+                            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
                             type_id: i32_field(entity_value, "type_id")?,
                             x: position.x,
                             y: position.y,
@@ -266,7 +266,7 @@ type Context = serde_json::Map<String, Value>;
 /// What makes the entity climbing, as the case describes it.
 fn apply_climbable_context(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     context: &Context,
 ) -> Result<(), String> {
     let kind = context
@@ -325,7 +325,7 @@ fn fall_flying(context: &Context) -> bool {
 
 fn trapdoor_ladder(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     context: &Context,
 ) -> Result<(), String> {
     let text = |key: &str| {

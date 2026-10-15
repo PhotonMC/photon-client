@@ -31,6 +31,7 @@ pub mod generic;
 pub mod inventory;
 pub mod recipe_book;
 
+use photon_core::ids::EntityId;
 use photon_game::menus::container::{ClickType, ContainerMenu};
 use photon_game::menus::creative::Click;
 
@@ -49,7 +50,7 @@ pub type PlayerDrawer<'a> =
 /// turned towards the mouse (`InventoryScreen.extractEntityInInventoryFollowsMouse`), as
 /// triangles for [`GuiFrame::entity`]; none when it is not drawn.
 pub type EntityDrawer<'a> =
-    dyn FnMut(i32, (i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
+    dyn FnMut(EntityId, (i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
 
 /// An item's tooltip as lines of styled text: for a stack, and whether it is
 /// on one of the creative inventory's own slots.

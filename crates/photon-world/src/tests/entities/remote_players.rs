@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn remote_player_position_interpolation_follows_java_three_step_handler() {
@@ -15,7 +16,7 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
         x: 1.0,
@@ -27,25 +28,28 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
     }));
 
     assert!(world.apply_entity_position(EntityPositionInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         x: 4.0,
         y: 82.0,
         z: -34.5,
         relative_flags: 0,
     }));
     assert_eq!(
-        world.entities().at(37).map(crate::ClientEntity::position),
+        world
+            .entities()
+            .at(EntityId(37))
+            .map(crate::ClientEntity::position),
         Some((1.0, 80.0, -35.5))
     );
     assert_eq!(
         world
             .entities()
-            .at(37)
+            .at(EntityId(37))
             .and_then(crate::ClientEntity::interpolation_target_position),
         Some((4.0, 82.0, -34.5))
     );
     assert!(world.apply_entity_rotation(EntityRotationInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         y_rot: Some(10.0),
         x_rot: Some(20.0),
         y_head_rot: None,
@@ -55,13 +59,16 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
     assert_eq!(
         world
             .entities()
-            .at(37)
+            .at(EntityId(37))
             .and_then(crate::ClientEntity::interpolation_target_rotation),
         Some((10.0, 20.0))
     );
 
     world.tick();
-    let first = world.entities().at(37).expect("first interpolation step");
+    let first = world
+        .entities()
+        .at(EntityId(37))
+        .expect("first interpolation step");
     assert_eq!(first.interpolation_steps(), 2);
     assert_eq!(
         first.position(),
@@ -70,7 +77,10 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
     assert_eq!(first.rotation(), (356.666_66_f32, -6.6666665_f32, 350.0));
 
     world.tick();
-    let second = world.entities().at(37).expect("second interpolation step");
+    let second = world
+        .entities()
+        .at(EntityId(37))
+        .expect("second interpolation step");
     assert_eq!(second.interpolation_steps(), 1);
     assert_eq!(
         second.position(),
@@ -79,7 +89,10 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
     assert_eq!(second.rotation(), (3.333313_f32, 6.666667_f32, 350.0));
 
     world.tick();
-    let third = world.entities().at(37).expect("final interpolation step");
+    let third = world
+        .entities()
+        .at(EntityId(37))
+        .expect("final interpolation step");
     assert_eq!(third.interpolation_steps(), 0);
     assert_eq!(third.position(), (4.0, 82.0, -34.5));
     assert_eq!(third.rotation(), (10.0, 20.0, 350.0));
@@ -89,7 +102,7 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
 fn remote_player_motion_packet_interpolates_for_three_ticks() {
     let mut world = ClientWorld::default();
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
         x: 1.0,
@@ -102,14 +115,14 @@ fn remote_player_motion_packet_interpolates_for_three_ticks() {
 
     let target = (0.3, -0.6, 0.9);
     assert!(world.entities_mut().apply_motion(EntityMotionInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         x: target.0,
         y: target.1,
         z: target.2,
     }));
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("remote player motion target");
     assert_eq!(entity.motion(), (0.0, 0.0, 0.0));
     assert_eq!(entity.motion_interpolation_target(), Some(target));
@@ -119,7 +132,7 @@ fn remote_player_motion_packet_interpolates_for_three_ticks() {
     world.tick();
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("first remote player motion step");
     assert_eq!(entity.motion(), first);
     assert_eq!(entity.motion_interpolation_steps(), 2);
@@ -132,7 +145,7 @@ fn remote_player_motion_packet_interpolates_for_three_ticks() {
     world.tick();
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("second remote player motion step");
     assert_eq!(entity.motion(), second);
     assert_eq!(entity.motion_interpolation_steps(), 1);
@@ -145,7 +158,7 @@ fn remote_player_motion_packet_interpolates_for_three_ticks() {
     world.tick();
     let entity = world
         .entities()
-        .at(37)
+        .at(EntityId(37))
         .expect("final remote player motion step");
     assert_eq!(entity.motion(), third);
     assert_eq!(entity.motion(), target);
@@ -157,7 +170,7 @@ fn remote_player_motion_packet_interpolates_for_three_ticks() {
 fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     let mut world = ClientWorld::default();
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: 1,
         x: 10.0,
@@ -176,7 +189,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
         | ENTITY_RELATIVE_DELTA_Y_FLAG
         | ENTITY_RELATIVE_DELTA_Z_FLAG;
     assert!(world.apply_entity_teleport(EntityTeleportInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         x: 2.0,
         y: 3.0,
         z: 4.0,
@@ -187,13 +200,16 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
         x_rot: 10.0,
         relative_flags,
     }));
-    let entity = world.entities().at(37).expect("relative teleport entity");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("relative teleport entity");
     assert_eq!(entity.position(), (12.0, 67.0, 24.0));
     assert_eq!(entity.rotation(), (15.0, 10.0, 0.0));
     assert_eq!(entity.motion(), (1.25, 1.5, 3.75));
 
     assert!(world.apply_entity(EntityInput {
-        entity_id: 38,
+        entity_id: EntityId(38),
         uuid: Uuid::new(3, 4),
         type_id: 1,
         x: 10.0,
@@ -208,7 +224,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
         | ENTITY_RELATIVE_DELTA_Z_FLAG
         | ENTITY_RELATIVE_ROTATE_DELTA_FLAG;
     assert!(world.apply_entity_teleport(EntityTeleportInput {
-        entity_id: 38,
+        entity_id: EntityId(38),
         x: 10.0,
         y: 64.0,
         z: 20.0,
@@ -219,7 +235,10 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
         x_rot: 0.0,
         relative_flags: rotate_flags,
     }));
-    let entity = world.entities().at(38).expect("rotated teleport entity");
+    let entity = world
+        .entities()
+        .at(EntityId(38))
+        .expect("rotated teleport entity");
     let radians = (f64::from(-90.0_f32) * (std::f64::consts::PI / 180.0)) as f32;
     let expected_x = f64::from(mth_cos_f64(f64::from(radians)));
     let expected_z = -f64::from(mth_sin_f64(f64::from(radians)));
@@ -227,7 +246,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     assert_eq!(entity.motion(), (expected_x, 0.0, expected_z));
 
     assert!(world.apply_entity(EntityInput {
-        entity_id: 39,
+        entity_id: EntityId(39),
         uuid: Uuid::new(5, 6),
         type_id: 1,
         x: 10.0,
@@ -238,7 +257,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
         data: 0,
     }));
     assert!(world.apply_entity_teleport(EntityTeleportInput {
-        entity_id: 39,
+        entity_id: EntityId(39),
         x: 10.0,
         y: 64.0,
         z: 20.0,
@@ -252,7 +271,7 @@ fn entity_teleport_applies_relative_delta_motion_and_rotation() {
     assert_eq!(
         world
             .entities()
-            .at(39)
+            .at(EntityId(39))
             .expect("nonfinite teleport entity")
             .motion(),
         (0.5, 0.25, -0.75)
@@ -274,7 +293,7 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 37,
+        entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
         x: 1.0,
@@ -287,14 +306,14 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
 
     assert!(world.apply_entity_position_and_rotation(
         EntityPositionInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             x: 66.0,
             y: 80.0,
             z: -35.5,
             relative_flags: 0,
         },
         EntityRotationInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             y_rot: Some(10.0),
             x_rot: Some(20.0),
             y_head_rot: None,
@@ -303,7 +322,10 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
         },
         EntityPositionUpdateMode::PositionSync,
     ));
-    let entity = world.entities().at(37).expect("snapped remote player");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("snapped remote player");
     assert_eq!(entity.position(), (66.0, 80.0, -35.5));
     assert_eq!(entity.previous_position(), (66.0, 80.0, -35.5));
     assert_eq!(entity.rotation(), (10.0, 20.0, 350.0));
@@ -313,21 +335,24 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
     assert_eq!(entity.interpolation_target_rotation(), None);
 
     world.tick();
-    let entity = world.entities().at(37).expect("snapped remote player tick");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("snapped remote player tick");
     assert_eq!(entity.position(), (66.0, 80.0, -35.5));
     assert_eq!(entity.previous_position(), (66.0, 80.0, -35.5));
     assert_eq!(entity.rotation(), (10.0, 20.0, 350.0));
 
     assert!(world.apply_entity_position_and_rotation(
         EntityPositionInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             x: 130.0,
             y: 80.0,
             z: -35.5,
             relative_flags: 0,
         },
         EntityRotationInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             y_rot: Some(30.0),
             x_rot: Some(10.0),
             y_head_rot: None,
@@ -336,7 +361,10 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
         },
         EntityPositionUpdateMode::PositionSync,
     ));
-    let entity = world.entities().at(37).expect("threshold remote player");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("threshold remote player");
     assert_eq!(entity.position(), (66.0, 80.0, -35.5));
     assert_eq!(
         entity.interpolation_target_position(),
@@ -347,14 +375,14 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
 
     assert!(world.apply_entity_position_and_rotation(
         EntityPositionInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             x: 0.0,
             y: 0.0,
             z: 0.0,
             relative_flags: 0b111,
         },
         EntityRotationInput {
-            entity_id: 37,
+            entity_id: EntityId(37),
             y_rot: Some(20.0),
             x_rot: Some(100.0),
             y_head_rot: None,
@@ -363,7 +391,10 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
         },
         EntityPositionUpdateMode::Teleport,
     ));
-    let entity = world.entities().at(37).expect("relative teleport target");
+    let entity = world
+        .entities()
+        .at(EntityId(37))
+        .expect("relative teleport target");
     assert_eq!(
         entity.interpolation_target_position(),
         Some((130.0, 80.0, -35.5))

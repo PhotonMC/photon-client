@@ -1,13 +1,13 @@
 use super::*;
 
 impl ClientEntity {
-    pub fn id(&self) -> i32 {
+    pub fn id(&self) -> EntityId {
         self.id
     }
 
     pub(crate) fn collision_candidate(
         &self,
-        source_entity_id: Option<i32>,
+        source_entity_id: Option<EntityId>,
         source_type_id: Option<i32>,
         source_position: Option<Vec3>,
         same_vehicle: bool,
@@ -72,11 +72,11 @@ impl ClientEntity {
         })
     }
 
-    pub fn vehicle_id(&self) -> Option<i32> {
+    pub fn vehicle_id(&self) -> Option<EntityId> {
         self.vehicle_id
     }
 
-    pub fn passenger_ids(&self) -> &[i32] {
+    pub fn passenger_ids(&self) -> &[EntityId] {
         &self.passenger_ids
     }
 
@@ -120,8 +120,8 @@ impl ClientEntity {
     }
 
     /// The id of the entity this one is leashed to, if it is.
-    pub fn leash_holder_id(&self) -> Option<i32> {
-        (self.leash_holder_id != 0).then_some(self.leash_holder_id)
+    pub fn leash_holder_id(&self) -> Option<EntityId> {
+        (self.leash_holder_id != EntityId(0)).then_some(self.leash_holder_id)
     }
 
     /// Whether the entity is a player.

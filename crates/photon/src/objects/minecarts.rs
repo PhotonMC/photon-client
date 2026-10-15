@@ -94,7 +94,7 @@ pub fn remote_minecarts(
             position: (x, y, z),
             x_rot,
             y_rot,
-            offset_seed: offset_seed(entity.id()),
+            offset_seed: offset_seed(entity.id().0),
             hurt_dir: own.hurt_dir,
             hurt_time: own.hurt_time as f32 - partial,
             damage_time: (own.damage - partial).max(0.0),

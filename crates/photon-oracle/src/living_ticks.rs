@@ -24,7 +24,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let mut world = movement_world(row)?;
-        let entity_id = i32_field(row, "entity_id")?;
+        let entity_id = entity_id_field(row, "entity_id")?;
         let name = string(row, "entity")?;
         // The client's own player, whose chunk decides whether a death ticks
         // (the scene's simulation distance is eight chunks).
@@ -40,7 +40,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
         world.set_minecart_improvements(row.get("minecart_improvements").is_some());
         if !world.apply_entity(EntityInput {
             entity_id,
-            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
             type_id: photon_data::entity_type::id(name).ok_or("unknown entity type")?,
             x: bits64(row, "x")?,
             y: bits64(row, "y")?,
@@ -53,10 +53,10 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
         }
         // Another entity that stays where it is (what a guardian's beam aims at).
         if let Some(second) = row.get("second") {
-            let second_id = i32_field(second, "entity_id")?;
+            let second_id = entity_id_field(second, "entity_id")?;
             if !world.apply_entity(EntityInput {
                 entity_id: second_id,
-                uuid: Uuid::new(0, u64::from(second_id as u32)),
+                uuid: Uuid::new(0, u64::from(second_id.0 as u32)),
                 type_id: photon_data::entity_type::id(string(second, "entity")?)
                     .ok_or("unknown entity type")?,
                 x: bits64(second, "x")?,

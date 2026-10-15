@@ -2,6 +2,7 @@
 //! parts are posed from (`DragonFlightHistory`), how fast its wings beat, and
 //! the phase the server syncs (`EnderDragon.aiStep`, `onSyncedDataUpdated`).
 
+use photon_core::ids::EntityId;
 use photon_core::math::{mth_cos_f64, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32, mth_sin_f64};
 use photon_core::random::RandomSource;
 
@@ -153,7 +154,7 @@ fn rot_wrap(mut degrees: f32) -> f32 {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct DragonCrystals {
     /// The nearest crystal whose box meets the dragon's, 32 blocks wider.
-    pub nearest: Option<i32>,
+    pub nearest: Option<EntityId>,
     /// Whether the crystal the dragon holds is still in the world.
     pub current_exists: bool,
 }
@@ -166,7 +167,7 @@ pub struct EnderDragonState {
     phase: DragonPhase,
     dragon_death_time: i32,
     /// `EnderDragon.nearestCrystal`, by its id: the crystal whose beam it is healed by.
-    nearest_crystal: Option<i32>,
+    nearest_crystal: Option<EntityId>,
     /// `EnderDragon.subEntities`.
     parts: [DragonPart; 8],
     /// The entity's own random source, which the reference does not seed.
@@ -276,7 +277,7 @@ impl EnderDragonState {
     }
 
     /// `EnderDragon.nearestCrystal`: the id of the end crystal whose beam reaches it.
-    pub fn nearest_crystal(&self) -> Option<i32> {
+    pub fn nearest_crystal(&self) -> Option<EntityId> {
         self.nearest_crystal
     }
 

@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::item::equippable_allowed::Allowed;
+use photon_core::ids::EntityId;
 
 /// Which screen and rules a mount has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,15 +45,27 @@ pub struct Mount {
 }
 
 /// What the menu reads of the mount entity when it opens.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct MountEntity {
     /// The entity's id and its type's registry id.
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type: i32,
     /// `canUseSlot(SADDLE)` and `canUseSlot(BODY)`.
     pub can_use: [bool; 2],
     /// The entity type tags the server sent.
     pub entity_tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
+}
+
+/// The mount of a menu that has none: no entity (id zero) and nothing it can wear.
+impl Default for MountEntity {
+    fn default() -> Self {
+        Self {
+            entity_id: EntityId(0),
+            entity_type: 0,
+            can_use: [false; 2],
+            entity_tags: std::sync::Arc::default(),
+        }
+    }
 }
 
 /// The id `ClientContainerState` gives the menu a `ClientboundMountScreenOpenPacket` opens, which

@@ -197,7 +197,7 @@ pub(super) fn shaking_rotations_result(request: &Value) -> Result<Value, String>
         };
         let entity_id = 7;
         if !world.apply_entity(EntityInput {
-            entity_id,
+            entity_id: EntityId(entity_id),
             uuid: Uuid::new(0, 7),
             type_id: photon_data::entity_type::id(type_name).ok_or("no such entity type")?,
             x: 1.25,
@@ -228,9 +228,9 @@ pub(super) fn shaking_rotations_result(request: &Value) -> Result<Value, String>
             u8::from(flag("suffocating")?),
         ]);
         data.push(255);
-        world.apply_entity_metadata(entity_id, &data);
+        world.apply_entity_metadata(EntityId(entity_id), &data);
         let snapshot = world
-            .entity_snapshot(entity_id, bits("partial")?)
+            .entity_snapshot(EntityId(entity_id), bits("partial")?)
             .ok_or("shaking fixture entity disappeared")?;
         let placed = MobPlacement {
             body_rot: bits("body_rot")?,

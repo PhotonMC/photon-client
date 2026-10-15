@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// What the player aims at when the tick's keys are handled.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,7 +19,7 @@ pub enum Aim {
     /// An entity, where the aim lands on it, where the entity stands, and its
     /// box (min then max corner).
     Entity {
-        id: i32,
+        id: EntityId,
         location: [f64; 3],
         position: [f64; 3],
         bounds: [f64; 6],

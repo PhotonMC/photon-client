@@ -1,9 +1,10 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// Wire-level fields decoded from one clientbound add-entity packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AddEntityObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub uuid: Uuid,
     pub entity_type_id: i32,
     pub x: f64,
@@ -21,7 +22,7 @@ pub struct AddEntityObservation {
 /// One client-world tick applied to a supported world entity after its add packet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorldEntityTickObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type_id: i32,
     pub before_position: (f64, f64, f64),
     pub after_position: (f64, f64, f64),
@@ -35,7 +36,7 @@ pub struct WorldEntityTickObservation {
 /// Two client-world ticks applied to a newly added Experience Orb.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExperienceOrbTickObservation {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub entity_type_id: i32,
     pub before_position: (f64, f64, f64),
     pub after_first_tick_position: (f64, f64, f64),
@@ -49,25 +50,25 @@ pub struct ExperienceOrbTickObservation {
 /// Wire-level fields decoded from one clientbound remove-entities packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoveEntitiesObservation {
-    pub entity_ids: Vec<i32>,
+    pub entity_ids: Vec<EntityId>,
     pub applied_entity_count: usize,
 }
 
 /// Wire-level fields decoded from one clientbound passenger-list packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntityPassengersObservation {
-    pub vehicle_id: i32,
-    pub passenger_ids: Vec<i32>,
+    pub vehicle_id: EntityId,
+    pub passenger_ids: Vec<EntityId>,
     pub applied_to_world: bool,
-    pub applied_vehicle_passengers: Option<Vec<i32>>,
-    pub applied_passenger_vehicles: Vec<(i32, Option<i32>)>,
+    pub applied_vehicle_passengers: Option<Vec<EntityId>>,
+    pub applied_passenger_vehicles: Vec<(EntityId, Option<EntityId>)>,
 }
 
 /// One client-world tick observed across a vehicle and a known passenger.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityPassengerTickObservation {
-    pub vehicle_id: i32,
-    pub passenger_id: i32,
+    pub vehicle_id: EntityId,
+    pub passenger_id: EntityId,
     pub passenger_type_id: i32,
     pub before_vehicle_tick_count: i32,
     pub after_vehicle_tick_count: i32,
@@ -101,7 +102,7 @@ pub fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Con
         return Err(ConnectionError::Codec("add entity trailing payload"));
     }
     Ok(AddEntityObservation {
-        entity_id,
+        entity_id: EntityId(entity_id),
         uuid,
         entity_type_id,
         x,
@@ -119,10 +120,10 @@ pub fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, Con
 
 /// `ClientboundSetEntityLinkPacket`: the entity on a lead and the entity that holds it (zero
 /// when it is let go), each as an `int`.
-pub fn parse_set_entity_link_packet(input: &[u8]) -> Result<(i32, i32), ConnectionError> {
+pub fn parse_set_entity_link_packet(input: &[u8]) -> Result<(EntityId, EntityId), ConnectionError> {
     let mut input = input;
-    let source = read_i32(&mut input, "entity link source id")?;
-    let holder = read_i32(&mut input, "entity link holder id")?;
+    let source = EntityId(read_i32(&mut input, "entity link source id")?);
+    let holder = EntityId(read_i32(&mut input, "entity link holder id")?);
     if !input.is_empty() {
         return Err(ConnectionError::Codec("entity link trailing payload"));
     }
@@ -140,7 +141,7 @@ pub fn parse_remove_entities_packet(
             usize::try_from(count).map_err(|_| ConnectionError::Codec("remove entities count"))?;
         entity_ids.reserve(count.min(input.len()));
         for _ in 0..count {
-            entity_ids.push(read_varint(&mut input, "remove entity id")?);
+            entity_ids.push(EntityId(read_varint(&mut input, "remove entity id")?));
         }
     }
     if !input.is_empty() {
@@ -153,10 +154,12 @@ pub fn parse_remove_entities_packet(
 }
 
 /// `ClientboundTakeItemEntityPacket`: the entity taken, who took it, and how many.
-pub fn parse_take_item_entity_packet(input: &[u8]) -> Result<(i32, i32, i32), ConnectionError> {
+pub fn parse_take_item_entity_packet(
+    input: &[u8],
+) -> Result<(EntityId, EntityId, i32), ConnectionError> {
     let mut input = input;
-    let item_id = read_varint(&mut input, "take item entity id")?;
-    let player_id = read_varint(&mut input, "take item player id")?;
+    let item_id = EntityId(read_varint(&mut input, "take item entity id")?);
+    let player_id = EntityId(read_varint(&mut input, "take item player id")?);
     let amount = read_varint(&mut input, "take item amount")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("take item entity trailing payload"));
@@ -180,13 +183,13 @@ pub fn parse_set_passengers_packet(
     }
     let mut passenger_ids = Vec::with_capacity(count);
     for _ in 0..count {
-        passenger_ids.push(read_varint(&mut input, "set passenger id")?);
+        passenger_ids.push(EntityId(read_varint(&mut input, "set passenger id")?));
     }
     if !input.is_empty() {
         return Err(ConnectionError::Codec("set passengers trailing payload"));
     }
     Ok(EntityPassengersObservation {
-        vehicle_id,
+        vehicle_id: EntityId(vehicle_id),
         passenger_ids,
         applied_to_world: false,
         applied_vehicle_passengers: None,
@@ -208,7 +211,7 @@ wrapped_packet!(
 
 wrapped_packet!(
     /// `ClientboundTakeItemEntityPacket`.
-    TakeItemEntity((i32, i32, i32)) = parse_take_item_entity_packet,
+    TakeItemEntity((EntityId, EntityId, i32)) = parse_take_item_entity_packet,
     OnError::Ignore("take_item_entity")
 );
 

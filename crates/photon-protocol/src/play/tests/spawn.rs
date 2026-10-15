@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn add_entity_parser_matches_java_spawn_field_order() {
@@ -16,7 +17,7 @@ fn add_entity_parser_matches_java_spawn_field_order() {
     assert_eq!(
         parse_add_entity_packet(&payload).expect("add entity"),
         super::super::AddEntityObservation {
-            entity_id: 37,
+            entity_id: EntityId(37),
             uuid: photon_core::binary::Uuid::new(0, 0),
             entity_type_id: 120,
             x: 1.25,
@@ -44,7 +45,7 @@ fn remove_entities_parser_matches_java_int_id_list() {
     assert_eq!(
         parse_remove_entities_packet(&payload).expect("remove entities"),
         super::super::RemoveEntitiesObservation {
-            entity_ids: vec![37, -12, 0],
+            entity_ids: vec![EntityId(37), EntityId(-12), EntityId(0)],
             applied_entity_count: 0,
         }
     );
@@ -75,8 +76,8 @@ fn set_passengers_parser_matches_java_vehicle_and_varint_array_order() {
     assert_eq!(
         parse_set_passengers_packet(&payload).expect("set passengers"),
         super::super::EntityPassengersObservation {
-            vehicle_id: 37,
-            passenger_ids: vec![4, 128, -1],
+            vehicle_id: EntityId(37),
+            passenger_ids: vec![EntityId(4), EntityId(128), EntityId(-1)],
             applied_to_world: false,
             applied_vehicle_passengers: None,
             applied_passenger_vehicles: Vec::new(),
@@ -90,7 +91,7 @@ fn set_passengers_parser_matches_java_vehicle_and_varint_array_order() {
         parse_set_passengers_packet(&empty)
             .expect("empty set passengers")
             .passenger_ids,
-        Vec::<i32>::new()
+        Vec::<EntityId>::new()
     );
 
     let mut negative_count = Vec::new();
@@ -109,13 +110,13 @@ fn an_entity_link_names_the_leashed_entity_and_its_holder() {
     packet.extend_from_slice(&12_i32.to_be_bytes());
     assert_eq!(
         super::super::parse_set_entity_link_packet(&packet).unwrap(),
-        (7, 12)
+        (EntityId(7), EntityId(12))
     );
     // Nobody holds it any more.
     packet[4..].copy_from_slice(&0_i32.to_be_bytes());
     assert_eq!(
         super::super::parse_set_entity_link_packet(&packet).unwrap(),
-        (7, 0)
+        (EntityId(7), EntityId(0))
     );
     assert!(super::super::parse_set_entity_link_packet(&packet[..6]).is_err());
 }
@@ -128,7 +129,7 @@ fn take_item_entity_parser_reads_three_varints() {
     }
     assert_eq!(
         parse_take_item_entity_packet(&payload).expect("take item"),
-        (41, 7, 3)
+        (EntityId(41), EntityId(7), 3)
     );
     payload.push(0);
     assert!(parse_take_item_entity_packet(&payload).is_err());

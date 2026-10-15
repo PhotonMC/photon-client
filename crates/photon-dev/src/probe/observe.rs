@@ -1,8 +1,9 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 pub(super) fn observe_player_interpolation(
     trace: &mut PlayConnectionTrace,
-    entity_id: i32,
+    entity_id: EntityId,
     before_position: (f64, f64, f64),
     before_rotation: (f32, f32),
 ) {
@@ -55,7 +56,7 @@ pub(super) fn observe_player_interpolation(
 
 pub(super) fn observe_player_motion_interpolation(
     trace: &mut PlayConnectionTrace,
-    entity_id: i32,
+    entity_id: EntityId,
     before_motion: (f64, f64, f64),
     target_motion: (f64, f64, f64),
 ) {
@@ -100,7 +101,7 @@ pub(super) fn observe_player_motion_interpolation(
 pub(super) fn observe_player_position_snap(
     trace: &mut PlayConnectionTrace,
     packet_kind: &'static str,
-    entity_id: i32,
+    entity_id: EntityId,
     before_position: (f64, f64, f64),
     before_rotation: (f32, f32),
 ) {

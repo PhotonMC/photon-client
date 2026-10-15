@@ -64,7 +64,7 @@ fn login_and_respawn_parsers_match_java_common_spawn_info_order() {
     login_payload.push(1);
 
     let login = parse_login_packet(&login_payload).expect("login packet");
-    assert_eq!(login.player_id, 17);
+    assert_eq!(login.player_id, photon_core::ids::EntityId(17));
     assert!(login.hardcore);
     assert_eq!(login.level_count, 2);
     assert_eq!(login.max_players, 20);
@@ -121,7 +121,7 @@ fn game_event_parser_matches_java_id_and_float_order() {
 fn combat_kill_names_who_died_and_the_message() {
     let packet = [0xE8, 0x07, 8, 0, 2, b'h', b'i'];
     let (id, message) = super::super::parse_player_combat_kill_packet(&packet).unwrap();
-    assert_eq!(id, 1000);
+    assert_eq!(id, photon_core::ids::EntityId(1000));
     assert_eq!(message, photon_game::text::Component::literal("hi"));
 }
 

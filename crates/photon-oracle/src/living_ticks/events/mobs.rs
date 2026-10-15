@@ -2,7 +2,7 @@ use super::super::*;
 
 pub(crate) fn creeper_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `SynchedEntityData` as the packet carries it: id,
@@ -22,7 +22,7 @@ pub(crate) fn creeper_data_event(
 
 pub(crate) fn bee_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -40,7 +40,7 @@ pub(crate) fn bee_data_event(
 
 pub(crate) fn wolf_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -75,7 +75,7 @@ pub(crate) fn wolf_data_event(
 
 pub(crate) fn strider_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let suffocating = event["suffocating"].as_bool().ok_or("suffocating")?;
@@ -91,7 +91,7 @@ pub(crate) fn strider_data_event(
 
 pub(crate) fn panda_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -121,7 +121,7 @@ pub(crate) fn panda_data_event(
 
 pub(crate) fn fox_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -139,7 +139,7 @@ pub(crate) fn fox_data_event(
 
 pub(crate) fn polar_bear_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let standing = event["standing"].as_bool().ok_or("standing")?;
@@ -155,7 +155,7 @@ pub(crate) fn polar_bear_data_event(
 
 pub(crate) fn cat_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -186,7 +186,7 @@ pub(crate) fn cat_data_event(
 
 pub(crate) fn horse_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let data = [
@@ -201,7 +201,7 @@ pub(crate) fn horse_data_event(
 
 pub(crate) fn camel_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -224,7 +224,7 @@ pub(crate) fn camel_data_event(
 
 pub(crate) fn copper_golem_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -245,7 +245,7 @@ pub(crate) fn copper_golem_data_event(
 
 pub(crate) fn shulker_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -267,7 +267,7 @@ pub(crate) fn shulker_data_event(
 
 pub(crate) fn glow_squid_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = vec![photon_world::GLOW_SQUID_DARK_TICKS_DATA_ID, 1];
@@ -279,7 +279,7 @@ pub(crate) fn glow_squid_data_event(
 
 pub(crate) fn baby_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = vec![16, 8, u8::from(event["baby"].as_bool().ok_or("baby")?)];
@@ -290,7 +290,7 @@ pub(crate) fn baby_data_event(
 
 pub(crate) fn axolotl_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -312,7 +312,7 @@ pub(crate) fn axolotl_data_event(
 
 pub(crate) fn flier_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -336,7 +336,7 @@ pub(crate) fn flier_data_event(
 
 pub(crate) fn guardian_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -354,7 +354,7 @@ pub(crate) fn guardian_data_event(
 
 pub(crate) fn frog_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `Pose` ids: standing is zero, long jumping six, croaking eight, using
@@ -378,7 +378,7 @@ pub(crate) fn frog_data_event(
 
 pub(crate) fn sniffer_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `Sniffer.DATA_STATE`: serializer 35, then the state's id.
@@ -391,7 +391,7 @@ pub(crate) fn sniffer_data_event(
 
 pub(crate) fn armadillo_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `Armadillo.ARMADILLO_STATE`: serializer 36, then the state's id.
@@ -404,7 +404,7 @@ pub(crate) fn armadillo_data_event(
 
 pub(crate) fn creaking_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // The booleans `Creaking` defines, each when the event names it.
@@ -433,7 +433,7 @@ pub(crate) fn creaking_data_event(
 
 pub(crate) fn warden_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // `Warden.CLIENT_ANGER_LEVEL`, an int.
@@ -446,7 +446,7 @@ pub(crate) fn warden_data_event(
 
 pub(crate) fn turtle_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = Vec::new();
@@ -463,7 +463,7 @@ pub(crate) fn turtle_data_event(
 
 pub(crate) fn fish_data_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let data_id = match string(event, "fish")? {

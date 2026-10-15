@@ -10,6 +10,7 @@
 
 use photon_core::aabb::Aabb;
 use photon_core::direction::{Axis, Direction};
+use photon_core::ids::EntityId;
 use photon_core::math::{Vec3, floor_f64};
 
 use crate::{ClientEntity, ClientEntityDimensions, ClientWorld};
@@ -209,7 +210,7 @@ impl ClientEntity {
 /// where it stands and what box it has.
 #[derive(Debug, Clone, Copy)]
 pub struct EntityHit {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub location: Vec3,
     pub position: (f64, f64, f64),
     pub bounds: Aabb,
@@ -220,7 +221,7 @@ pub struct EntityHit {
 /// projectile can hit it (`Entity.canBeHitByProjectile`).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PickableBox {
-    pub(crate) id: i32,
+    pub(crate) id: EntityId,
     pub(crate) position: (f64, f64, f64),
     pub(crate) bounds: Aabb,
     pub(crate) pick_radius: f32,
@@ -231,7 +232,10 @@ pub(crate) struct PickableBox {
 impl ClientWorld {
     /// The pickable entities but `except`, then the dragons' parts (`Level.getEntities` lists
     /// those last).
-    pub(crate) fn pickable_boxes(&self, except: i32) -> impl Iterator<Item = PickableBox> + '_ {
+    pub(crate) fn pickable_boxes(
+        &self,
+        except: EntityId,
+    ) -> impl Iterator<Item = PickableBox> + '_ {
         let parts = self
             .entities
             .values()
@@ -250,7 +254,7 @@ impl ClientWorld {
                         );
                         let (x, y, z) = part.position;
                         PickableBox {
-                            id: dragon.id + 1 + index as i32,
+                            id: EntityId(dragon.id.0 + 1 + index as i32),
                             position: part.position,
                             bounds: size.make_bounding_box(Vec3::new(x, y, z)),
                             pick_radius: 0.0,
@@ -279,7 +283,7 @@ impl ClientWorld {
     /// local player (`except`) sees it.
     pub fn entity_hit_result(
         &self,
-        except: i32,
+        except: EntityId,
         from: Vec3,
         to: Vec3,
         search: Aabb,
@@ -342,7 +346,7 @@ mod tests {
         let mut world = ClientWorld::new(DimensionBounds::default());
         let dragon = photon_data::entity_type::id("minecraft:ender_dragon").expect("a dragon");
         assert!(world.apply_entity(EntityInput {
-            entity_id: 100,
+            entity_id: EntityId(100),
             uuid: Uuid::new(0, 100),
             type_id: dragon,
             x: 0.0,
@@ -353,7 +357,11 @@ mod tests {
             data: 0,
         }));
         // No chunk is loaded here to tick it in: it ticks all the same.
-        world.entities.at_mut(100).expect("the dragon").ticking = true;
+        world
+            .entities
+            .at_mut(EntityId(100))
+            .expect("the dragon")
+            .ticking = true;
         world.tick_entities();
         world
     }
@@ -366,7 +374,7 @@ mod tests {
         let world = world_with_dragon();
         let head = world
             .entities()
-            .at(100)
+            .at(EntityId(100))
             .and_then(|dragon| dragon.ender_dragon())
             .map(|state| state.parts()[0].position)
             .expect("a head");
@@ -382,9 +390,9 @@ mod tests {
             to.z + 1.0,
         );
         let hit = world
-            .entity_hit_result(1, from, to, search, 400.0)
+            .entity_hit_result(EntityId(1), from, to, search, 400.0)
             .expect("a hit");
-        assert_eq!(hit.entity_id, 101);
+        assert_eq!(hit.entity_id, EntityId(101));
         // A box the size of the head, round where it stands.
         assert!((hit.bounds.max_x - hit.bounds.min_x - 1.0).abs() < 1e-6);
         let away = Vec3::new(head.0 + 60.0, head.1, head.2 - 10.0);
@@ -399,7 +407,7 @@ mod tests {
         );
         assert!(
             world
-                .entity_hit_result(1, away, away_to, far, 400.0)
+                .entity_hit_result(EntityId(1), away, away_to, far, 400.0)
                 .is_none()
         );
     }

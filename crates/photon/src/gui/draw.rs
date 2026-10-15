@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl Gui {
     /// The settings screen that is open, the topmost of those over the
@@ -350,7 +351,7 @@ impl Gui {
                 };
             // A mount in the box of its screen, between two ticks as it stands now.
             let world = session.world();
-            let mut draw_entity = |id: i32,
+            let mut draw_entity = |id: EntityId,
                                    area: (i32, i32, i32, i32),
                                    size: f32,
                                    offset_y: f32,

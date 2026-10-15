@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_apply_input_updates_queryable_state_and_base_fallback() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let modifiers = LocalPlayerInputModifiers {
         using_item: false,
         passenger: false,
@@ -40,7 +41,7 @@ fn local_player_apply_input_updates_queryable_state_and_base_fallback() {
 #[test]
 fn local_player_input_reads_sneaking_speed_attribute() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let modifiers = || LocalPlayerInputModifiers {
         using_item: false,
         passenger: false,
@@ -71,7 +72,7 @@ fn local_player_input_reads_sneaking_speed_attribute() {
             2,
         )],
     );
-    assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[custom_attribute]));
     assert!(world.apply_local_player_input_from_attributes(
         Vec2::new(0.0, 1.0),
         false,
@@ -87,7 +88,7 @@ fn local_player_input_reads_sneaking_speed_attribute() {
         0.9,
         Vec::new(),
     );
-    assert!(world.apply_local_player_attributes(42, &[replacement_attribute]));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[replacement_attribute]));
     let non_slow_modifiers = LocalPlayerInputModifiers {
         moving_slowly: false,
         ..modifiers()
@@ -106,7 +107,7 @@ fn local_player_input_reads_sneaking_speed_attribute() {
         0.8,
         Vec::new(),
     );
-    assert!(!world.apply_local_player_attributes(99, &[wrong_attribute]));
+    assert!(!world.apply_local_player_attributes(EntityId(99), &[wrong_attribute]));
     assert!(world.apply_local_player_input_from_attributes(
         Vec2::new(0.0, 1.0),
         false,
@@ -125,7 +126,7 @@ fn local_player_input_reads_sneaking_speed_attribute() {
 #[test]
 fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let modifiers = LocalPlayerInputModifiers {
         using_item: false,
         passenger: false,
@@ -153,7 +154,7 @@ fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
             2,
         )],
     );
-    assert!(world.apply_local_player_attributes(42, &[custom_attribute]));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[custom_attribute]));
     let sneaking_modifiers = LocalPlayerInputModifiers {
         moving_slowly: true,
         ..modifiers

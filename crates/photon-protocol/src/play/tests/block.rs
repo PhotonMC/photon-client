@@ -58,7 +58,7 @@ fn block_destruction_parser_matches_java_progress_fields() {
     assert_eq!(
         parse_block_destruction_packet(&payload).expect("block destruction"),
         super::super::BlockDestructionObservation {
-            entity_id: 37,
+            entity_id: photon_core::ids::EntityId(37),
             x: -12,
             y: 67,
             z: 9,

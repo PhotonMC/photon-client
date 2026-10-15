@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_climbable_movement_clamps_and_stops_ladder_slide() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_climbable_state(true, false, false));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.4, -0.4, -0.4), (0.0, 0.0),));
     assert!(world.apply_local_player_climbable_movement());
@@ -52,7 +53,7 @@ fn local_player_climbable_movement_clamps_and_stops_ladder_slide() {
 #[test]
 fn local_player_friction_influenced_speed_follows_ground_and_flying_state() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
     assert!(world.apply_local_player_friction_influenced_speed(true, 0.6, 0.1));
     assert_eq!(
@@ -92,7 +93,7 @@ fn local_player_friction_influenced_speed_follows_ground_and_flying_state() {
         .local_player
         .as_mut()
         .expect("passenger player")
-        .vehicle_id = Some(7);
+        .vehicle_id = Some(EntityId(7));
     assert!(world.apply_local_player_friction_influenced_speed(false, 0.6, 0.1));
     assert_eq!(
         world
@@ -107,7 +108,7 @@ fn local_player_friction_influenced_speed_follows_ground_and_flying_state() {
 #[test]
 fn local_player_friction_influenced_speed_reads_movement_speed_attribute() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
     assert_eq!(
         world
@@ -134,7 +135,7 @@ fn local_player_friction_influenced_speed_reads_movement_speed_attribute() {
             ClientAttributeModifierState::from_wire("test:total".to_owned(), 0.5, 2),
         ],
     );
-    assert!(world.apply_local_player_attributes(42, &[attribute]));
+    assert!(world.apply_local_player_attributes(EntityId(42), &[attribute]));
     assert_eq!(
         world
             .local_player()
@@ -155,7 +156,7 @@ fn local_player_friction_influenced_speed_reads_movement_speed_attribute() {
 #[test]
 fn local_player_handle_relative_friction_applies_climbable_step_state() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert!(world.apply_local_player_position((0.0, 0.0, 0.0), (0.1, -0.2, 0.3), (37.5, 0.0),));
     assert!(world.apply_local_player_handle_relative_friction(
         crate::LocalPlayerHandleRelativeFrictionParameters {
@@ -219,7 +220,7 @@ fn local_player_handle_relative_friction_applies_climbable_step_state() {
 #[test]
 fn local_player_modified_friction_applies_formula_and_clamps_bounds() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
     assert!(world.apply_local_player_modified_friction(0.8, 1.0));
     assert_eq!(

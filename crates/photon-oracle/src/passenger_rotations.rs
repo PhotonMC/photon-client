@@ -25,7 +25,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .get("vehicle")
             .and_then(Value::as_object)
             .ok_or("passenger turn vehicle must be an object")?;
-        let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+        let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
         if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
             return Err("passenger turn fixture requires an oak boat".into());
         }
@@ -39,7 +39,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .ok_or("passenger turn vehicle rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
-            uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+            uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
             type_id: 89,
             x: vehicle_position.x,
             y: vehicle_position.y,
@@ -66,7 +66,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .get("passenger")
             .and_then(Value::as_object)
             .ok_or("passenger turn passenger must be an object")?;
-        let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+        let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
         let passenger_type_id = i32_field(&Value::Object(passenger.clone()), "type_id")?;
         if !matches!(passenger_type_id, 17 | 156) {
             return Err("passenger turn fixture requires a Player or Breeze passenger".into());
@@ -86,7 +86,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
             .ok_or("passenger turn passenger rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
-            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
             type_id: passenger_type_id,
             x: passenger_position.x,
             y: passenger_position.y,
@@ -159,7 +159,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
 
 pub(super) fn client_world_entity_passenger_rotation_state(
     label: &str,
-    entity_ids: &[i32],
+    entity_ids: &[EntityId],
     passenger_type_ids: &[i32],
     world: &ClientWorld,
 ) -> Result<Value, String> {
@@ -209,7 +209,7 @@ pub(super) fn client_world_entity_passenger_rotation_state(
 
 pub(super) fn client_world_entity_passenger_animal_rotation_state(
     label: &str,
-    entity_ids: &[i32],
+    entity_ids: &[EntityId],
     world: &ClientWorld,
 ) -> Result<Value, String> {
     let mut state = client_world_entity_tick_state(label, true, entity_ids, world)?;
@@ -283,7 +283,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .get("vehicle")
             .and_then(Value::as_object)
             .ok_or("passenger rotation vehicle must be an object")?;
-        let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+        let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
         if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
             return Err("passenger rotation fixture requires an oak boat".into());
         }
@@ -301,7 +301,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .ok_or("passenger rotation vehicle no_gravity must be a boolean")?;
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
-            uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+            uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
             type_id: 89,
             x: vehicle_position.x,
             y: vehicle_position.y,
@@ -324,7 +324,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .get("passenger")
             .and_then(Value::as_object)
             .ok_or("passenger rotation passenger must be an object")?;
-        let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+        let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
         let passenger_type_id = i32_field(&Value::Object(passenger.clone()), "type_id")?;
         if !matches!(passenger_type_id, 120 | 156) {
             return Err("passenger rotation fixture requires snowball or Player passengers".into());
@@ -348,7 +348,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
             .ok_or("passenger rotation passenger no_gravity must be a boolean")?;
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
-            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
             type_id: passenger_type_id,
             x: passenger_position.x,
             y: passenger_position.y,
@@ -432,7 +432,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
         return Err("passenger boat turn exemption fixture requires an oak boat".into());
     }
-    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     let vehicle_position = f64_vec3(
         vehicle
             .get("position")
@@ -443,7 +443,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
         .ok_or("passenger boat turn exemption vehicle rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
-        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
         type_id: 89,
         x: vehicle_position.x,
         y: vehicle_position.y,
@@ -472,7 +472,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     if i32_field(&Value::Object(passenger.clone()), "type_id")? != 17 {
         return Err("passenger boat turn exemption fixture requires a Breeze passenger".into());
     }
-    let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+    let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
     let passenger_position = f64_vec3(
         passenger
             .get("position")
@@ -488,7 +488,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
         .ok_or("passenger boat turn exemption rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: passenger_id,
-        uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+        uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
         type_id: 17,
         x: passenger_position.x,
         y: passenger_position.y,

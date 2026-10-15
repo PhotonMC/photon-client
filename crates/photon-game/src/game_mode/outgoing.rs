@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 /// A packet the game mode sends, in order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,7 +34,7 @@ pub enum Outgoing {
         x_rot: f32,
     },
     /// `ServerboundAttackPacket`.
-    Attack { entity_id: i32 },
+    Attack { entity_id: EntityId },
     /// `ServerboundPickItemFromBlockPacket`.
     PickItemFromBlock {
         x: i32,
@@ -42,13 +43,16 @@ pub enum Outgoing {
         include_data: bool,
     },
     /// `ServerboundPickItemFromEntityPacket`.
-    PickItemFromEntity { entity_id: i32, include_data: bool },
+    PickItemFromEntity {
+        entity_id: EntityId,
+        include_data: bool,
+    },
     /// `ServerboundSpectatorActionPacket`.
-    SpectatorAction { entity_id: Option<i32> },
+    SpectatorAction { entity_id: Option<EntityId> },
     /// `ServerboundInteractPacket`: the hit relative to the entity, and
     /// whether the secondary use (sneaking) is active.
     Interact {
-        entity_id: i32,
+        entity_id: EntityId,
         hand: u8,
         location: [f64; 3],
         secondary_use: bool,
@@ -136,7 +140,7 @@ impl Outgoing {
                 out.extend_from_slice(&y_rot.to_be_bytes());
                 out.extend_from_slice(&x_rot.to_be_bytes());
             }
-            Outgoing::Attack { entity_id } => photon_core::wire::write_varint(entity_id, &mut out),
+            Outgoing::Attack { entity_id: id } => photon_core::wire::write_varint(id.0, &mut out),
             Outgoing::PickItemFromBlock {
                 x,
                 y,
@@ -154,12 +158,12 @@ impl Outgoing {
                 entity_id,
                 include_data,
             } => {
-                photon_core::wire::write_varint(entity_id, &mut out);
+                photon_core::wire::write_varint(entity_id.0, &mut out);
                 out.push(u8::from(include_data));
             }
             // `OptionalInt`: the value and one, or nothing as zero.
             Outgoing::SpectatorAction { entity_id } => {
-                photon_core::wire::write_varint(entity_id.map_or(0, |id| id + 1), &mut out);
+                photon_core::wire::write_varint(entity_id.map_or(0, |id| id.0 + 1), &mut out);
             }
             Outgoing::Interact {
                 entity_id,
@@ -167,7 +171,7 @@ impl Outgoing {
                 location,
                 secondary_use,
             } => {
-                photon_core::wire::write_varint(entity_id, &mut out);
+                photon_core::wire::write_varint(entity_id.0, &mut out);
                 photon_core::wire::write_varint(i32::from(hand), &mut out);
                 photon_core::binary::write_lp_vec3(
                     Vec3::new(location[0], location[1], location[2]),

@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 pub fn parse_player_position_packet(input: &[u8]) -> Result<PlayerPositionPacket, ConnectionError> {
     let mut input = input;
@@ -56,16 +57,16 @@ pub fn resolve_player_position(
 /// `ClientboundPlayerCombatKillPacket`: who died and the message for them.
 pub fn parse_player_combat_kill_packet(
     input: &[u8],
-) -> Result<(i32, photon_game::text::Component), ConnectionError> {
+) -> Result<(EntityId, photon_game::text::Component), ConnectionError> {
     let mut input = input;
-    let id = read_varint(&mut input, "combat kill player id")?;
+    let id = EntityId(read_varint(&mut input, "combat kill player id")?);
     Ok((id, read_chat_component(&mut input, "combat kill message")?))
 }
 
 pub fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
     let mut input = input;
     let packet = LoginObservation {
-        player_id: read_i32(&mut input, "login player id")?,
+        player_id: EntityId(read_i32(&mut input, "login player id")?),
         hardcore: read_bool(&mut input, "login hardcore")?,
         level_count: {
             let count = read_count(&mut input, "login level count")?;
@@ -132,7 +133,7 @@ pub struct SpawnInfoObservation {
 /// The dimension and player-state fields carried by the initial login packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoginObservation {
-    pub player_id: i32,
+    pub player_id: EntityId,
     pub hardcore: bool,
     pub level_count: usize,
     pub max_players: i32,
@@ -151,7 +152,7 @@ pub struct LoginObservation {
 pub struct RespawnObservation {
     pub spawn_info: SpawnInfoObservation,
     pub data_to_keep: u8,
-    pub local_player_id: Option<i32>,
+    pub local_player_id: Option<EntityId>,
     pub local_player_recreated: bool,
     pub local_player_generation: Option<u64>,
     pub keep_entity_data: bool,
@@ -315,7 +316,7 @@ wrapped_packet!(
 );
 wrapped_packet!(
     /// `ClientboundPlayerCombatKillPacket`: who died, and the message of the death.
-    PlayerCombatKill((i32, photon_game::text::Component)) = parse_player_combat_kill_packet
+    PlayerCombatKill((EntityId, photon_game::text::Component)) = parse_player_combat_kill_packet
 );
 wrapped_packet!(
     /// `ClientboundGameEventPacket`.

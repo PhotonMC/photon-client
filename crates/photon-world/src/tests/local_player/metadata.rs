@@ -1,10 +1,11 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
     let mut world = ClientWorld::default();
     assert!(world.apply_entity(EntityInput {
-        entity_id: 42,
+        entity_id: EntityId(42),
         uuid: Uuid::new(1, 2),
         type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
         x: 1.25,
@@ -14,13 +15,13 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
         rotation: (15.0, -10.0, 35.0),
         data: 0,
     }));
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert_eq!(
         world.local_player().map(|player| player.head_rotation()),
         Some(35.0)
     );
     assert!(world.apply_entity_rotation(EntityRotationInput {
-        entity_id: 42,
+        entity_id: EntityId(42),
         y_rot: None,
         x_rot: None,
         y_head_rot: Some(135.0),
@@ -32,12 +33,18 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
         Some(35.0)
     );
     assert_eq!(
-        world.entities().at(42).map(|entity| entity.rotation().2),
+        world
+            .entities()
+            .at(EntityId(42))
+            .map(|entity| entity.rotation().2),
         Some(35.0)
     );
     world.tick();
     assert_eq!(
-        world.entities().at(42).map(|entity| entity.rotation().2),
+        world
+            .entities()
+            .at(EntityId(42))
+            .map(|entity| entity.rotation().2),
         Some(68.333336)
     );
     world.tick();
@@ -47,7 +54,10 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
         Some(135.0)
     );
     assert_eq!(
-        world.entities().at(42).map(|entity| entity.rotation().2),
+        world
+            .entities()
+            .at(EntityId(42))
+            .map(|entity| entity.rotation().2),
         Some(135.0)
     );
     assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
@@ -65,7 +75,7 @@ fn local_player_head_rotation_follows_entity_packet_and_respawn_keep_data() {
 #[test]
 fn local_player_arrow_count_metadata_follows_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
     let mut arrow_metadata = vec![
         crate::ENTITY_ARROW_COUNT_DATA_ID,
@@ -73,7 +83,7 @@ fn local_player_arrow_count_metadata_follows_entity_data_keep_respawn() {
     ];
     photon_core::wire::write_varint(5, &mut arrow_metadata);
     arrow_metadata.push(255);
-    assert!(world.apply_entity_metadata(42, &arrow_metadata));
+    assert!(world.apply_entity_metadata(EntityId(42), &arrow_metadata));
     assert_eq!(
         world.local_player().map(|player| player.arrow_count()),
         Some(5)
@@ -95,7 +105,7 @@ fn local_player_arrow_count_metadata_follows_entity_data_keep_respawn() {
 #[test]
 fn local_player_stinger_count_metadata_follows_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
 
     let mut stinger_metadata = vec![
         crate::ENTITY_STINGER_COUNT_DATA_ID,
@@ -103,7 +113,7 @@ fn local_player_stinger_count_metadata_follows_entity_data_keep_respawn() {
     ];
     photon_core::wire::write_varint(4, &mut stinger_metadata);
     stinger_metadata.push(255);
-    assert!(world.apply_entity_metadata(42, &stinger_metadata));
+    assert!(world.apply_entity_metadata(EntityId(42), &stinger_metadata));
     assert_eq!(
         world.local_player().map(|player| player.stinger_count()),
         Some(4)
@@ -125,8 +135,8 @@ fn local_player_stinger_count_metadata_follows_entity_data_keep_respawn() {
 #[test]
 fn local_player_effect_ambience_metadata_follows_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
-    assert!(world.apply_entity_metadata(42, &[10, 17, 0, 11, 8, 1, 255]));
+    world.set_local_player_id(EntityId(42));
+    assert!(world.apply_entity_metadata(EntityId(42), &[10, 17, 0, 11, 8, 1, 255]));
     assert!(
         world
             .local_player()
@@ -154,7 +164,7 @@ fn local_player_effect_ambience_metadata_follows_entity_data_keep_respawn() {
 #[test]
 fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let mut particle_metadata = vec![
         crate::ENTITY_EFFECT_PARTICLES_DATA_ID,
         crate::ENTITY_DATA_SERIALIZER_PARTICLES_ID as u8,
@@ -166,7 +176,7 @@ fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
     );
     particle_metadata.extend_from_slice(&0x5566_7788_i32.to_be_bytes());
     particle_metadata.push(255);
-    assert!(world.apply_entity_metadata(42, &particle_metadata));
+    assert!(world.apply_entity_metadata(EntityId(42), &particle_metadata));
     assert_eq!(
         world
             .local_player()
@@ -197,7 +207,7 @@ fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
 #[test]
 fn local_player_sleeping_position_follows_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     let bed = photon_core::binary::BlockPos::new(14, 90, -23);
     let mut sleeping_metadata = vec![
         crate::ENTITY_SLEEPING_POS_DATA_ID,
@@ -206,7 +216,7 @@ fn local_player_sleeping_position_follows_entity_data_keep_respawn() {
     ];
     photon_core::binary::write_blockpos(bed, &mut sleeping_metadata);
     sleeping_metadata.push(255);
-    assert!(world.apply_entity_metadata(42, &sleeping_metadata));
+    assert!(world.apply_entity_metadata(EntityId(42), &sleeping_metadata));
     assert_eq!(
         world
             .local_player()
@@ -238,14 +248,14 @@ fn local_player_sleeping_position_follows_entity_data_keep_respawn() {
 #[test]
 fn local_player_living_flags_follow_metadata_and_respawn_keep_mask() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(42);
+    world.set_local_player_id(EntityId(42));
     assert_eq!(
         world.local_player().map(|player| player.living_flags()),
         Some(0)
     );
 
     assert!(world.apply_entity_metadata(
-        42,
+        EntityId(42),
         &[
             crate::ENTITY_LIVING_FLAGS_DATA_ID,
             crate::ENTITY_DATA_SERIALIZER_BYTE_ID as u8,

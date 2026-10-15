@@ -26,7 +26,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .get("vehicle")
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation vehicle must be an object")?;
-        let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+        let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
         if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
             return Err("passenger animal rotation fixture requires an oak boat".into());
         }
@@ -40,7 +40,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .ok_or("passenger animal rotation vehicle rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
-            uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+            uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
             type_id: 89,
             x: vehicle_position.x,
             y: vehicle_position.y,
@@ -67,7 +67,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .get("animal")
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation animal must be an object")?;
-        let animal_id = i32_field(&Value::Object(animal.clone()), "entity_id")?;
+        let animal_id = entity_id_field(&Value::Object(animal.clone()), "entity_id")?;
         if i32_field(&Value::Object(animal.clone()), "type_id")? != 30 {
             return Err("passenger animal rotation fixture requires a Cow".into());
         }
@@ -86,7 +86,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .ok_or("passenger animal rotation animal rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: animal_id,
-            uuid: Uuid::new(0, u64::from(animal_id as u32)),
+            uuid: Uuid::new(0, u64::from(animal_id.0 as u32)),
             type_id: 30,
             x: animal_position.x,
             y: animal_position.y,
@@ -113,7 +113,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .get("filler")
             .and_then(Value::as_object)
             .ok_or("passenger animal rotation filler must be an object")?;
-        let filler_id = i32_field(&Value::Object(filler.clone()), "entity_id")?;
+        let filler_id = entity_id_field(&Value::Object(filler.clone()), "entity_id")?;
         if i32_field(&Value::Object(filler.clone()), "type_id")? != 120 {
             return Err("passenger animal rotation fixture requires a Snowball filler".into());
         }
@@ -132,7 +132,7 @@ pub(super) fn client_world_entity_passenger_animal_rotation_result(
             .ok_or("passenger animal rotation filler rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id: filler_id,
-            uuid: Uuid::new(0, u64::from(filler_id as u32)),
+            uuid: Uuid::new(0, u64::from(filler_id.0 as u32)),
             type_id: 120,
             x: filler_position.x,
             y: filler_position.y,
@@ -209,7 +209,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
     let vehicle = request["vehicle"]
         .as_object()
         .ok_or("vehicle must be an object")?;
-    let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+    let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
     if i32_field(&Value::Object(vehicle.clone()), "type_id")? != 89 {
         return Err("passenger animal position fixture requires an oak boat".into());
     }
@@ -223,7 +223,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
         .ok_or("passenger animal position vehicle rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
-        uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+        uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
         type_id: 89,
         x: vehicle_position.x,
         y: vehicle_position.y,
@@ -249,7 +249,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
     let animal = request["animal"]
         .as_object()
         .ok_or("animal must be an object")?;
-    let animal_id = i32_field(&Value::Object(animal.clone()), "entity_id")?;
+    let animal_id = entity_id_field(&Value::Object(animal.clone()), "entity_id")?;
     if i32_field(&Value::Object(animal.clone()), "type_id")? != 30 {
         return Err("passenger animal position fixture requires a Cow".into());
     }
@@ -268,7 +268,7 @@ pub(super) fn client_world_entity_passenger_animal_position_result(
         .ok_or("passenger animal position animal rotation must be an object")?;
     if !world.apply_entity(EntityInput {
         entity_id: animal_id,
-        uuid: Uuid::new(0, u64::from(animal_id as u32)),
+        uuid: Uuid::new(0, u64::from(animal_id.0 as u32)),
         type_id: 30,
         x: animal_position.x,
         y: animal_position.y,

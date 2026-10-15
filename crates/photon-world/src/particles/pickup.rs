@@ -2,6 +2,7 @@
 //! ticks, drawn as it was when it was taken.
 
 use crate::ClientItemStackState;
+use photon_core::ids::EntityId;
 
 /// `ItemPickupParticle.LIFE_TIME`.
 const LIFE_TIME: i32 = 3;
@@ -28,7 +29,7 @@ pub struct ItemPickup {
     /// Where the entity was taken from.
     pub from: (f64, f64, f64),
     /// Who took it: none for the local player.
-    pub target: Option<i32>,
+    pub target: Option<EntityId>,
     target_now: (f64, f64, f64),
     target_old: (f64, f64, f64),
     life: i32,
@@ -44,7 +45,7 @@ impl ItemPickup {
     /// `ItemPickupParticle(..)`: the taker's place is where it heads, now and before.
     pub fn new(
         (picked, from): (PickedUp, (f64, f64, f64)),
-        target: Option<i32>,
+        target: Option<EntityId>,
         target_at: (f64, f64, f64),
     ) -> Self {
         Self {

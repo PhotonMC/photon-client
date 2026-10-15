@@ -2,7 +2,7 @@ use crate::*;
 
 impl ClientWorld {
     /// Where the living entity of an id is and how tall its eyes are, if the world holds one.
-    pub(crate) fn living_target(&self, id: i32) -> Option<mobs::guardian::GuardianTarget> {
+    pub(crate) fn living_target(&self, id: EntityId) -> Option<mobs::guardian::GuardianTarget> {
         if let Some(player) = self.local_player.as_ref().filter(|p| p.id() == id) {
             let dimensions = player.player_dimensions();
             return Some(mobs::guardian::GuardianTarget {
@@ -21,7 +21,7 @@ impl ClientWorld {
         })
     }
 
-    pub(crate) fn species_surroundings(&self, entity_id: i32) -> (bool, bool) {
+    pub(crate) fn species_surroundings(&self, entity_id: EntityId) -> (bool, bool) {
         let sleeper_near_cat = self
             .entities
             .get(&entity_id)
@@ -33,14 +33,14 @@ impl ClientWorld {
     /// beam's id names, the local player among them.
     pub(crate) fn guardian_target_of(
         &self,
-        entity_id: i32,
+        entity_id: EntityId,
     ) -> Option<mobs::guardian::GuardianTarget> {
-        let id = self.entities.at(entity_id)?.guardian_attack_target()?;
+        let id = EntityId(self.entities.at(entity_id)?.guardian_attack_target()?);
         self.living_target(id)
     }
 
     /// What a tick of the entity looks up in the world.
-    pub(crate) fn targets_of(&self, entity_id: i32) -> entity::EntityTargets {
+    pub(crate) fn targets_of(&self, entity_id: EntityId) -> entity::EntityTargets {
         entity::EntityTargets {
             guardian: self.guardian_target_of(entity_id),
             wither: self.wither_targets_of(entity_id),
@@ -51,13 +51,13 @@ impl ClientWorld {
     /// The two entities a wither's side heads look at, by the ids it holds.
     pub(crate) fn wither_targets_of(
         &self,
-        entity_id: i32,
+        entity_id: EntityId,
     ) -> [Option<mobs::guardian::GuardianTarget>; 2] {
         let ids = self
             .entities
             .get(&entity_id)
             .map_or([0; 2], ClientEntity::wither_targets);
-        ids.map(|id| (id > 0).then(|| self.living_target(id)).flatten())
+        ids.map(|id| (id > 0).then(|| self.living_target(EntityId(id))).flatten())
     }
 }
 
@@ -65,7 +65,10 @@ impl Entities {
     /// `EnderDragon.checkCrystals`' look at the world: the nearest end crystal whose box
     /// meets the dragon's box made 32 blocks wider (by the distance between the two
     /// entities' places), and whether the crystal the dragon holds is still there.
-    pub(crate) fn dragon_crystals(&self, entity_id: i32) -> mobs::ender_dragon::DragonCrystals {
+    pub(crate) fn dragon_crystals(
+        &self,
+        entity_id: EntityId,
+    ) -> mobs::ender_dragon::DragonCrystals {
         let Some(dragon) = self.get(&entity_id).filter(|e| e.is_ender_dragon()) else {
             return mobs::ender_dragon::DragonCrystals::default();
         };

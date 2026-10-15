@@ -18,7 +18,7 @@ impl ClientWorld {
 
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
-    pub fn apply_entity_event(&mut self, entity_id: i32, event: i8) -> bool {
+    pub fn apply_entity_event(&mut self, entity_id: EntityId, event: i8) -> bool {
         // `FireworkRocketEntity.handleEntityEvent`: 17 sets it off where it is.
         if event == FIREWORK_ROCKET_EXPLODE_EVENT
             && let Some(entity) = self.entities.at(entity_id)
@@ -118,7 +118,7 @@ impl ClientWorld {
 
 impl Entities {
     /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
-    pub fn apply_damage_event(&mut self, entity_id: i32) -> bool {
+    pub fn apply_damage_event(&mut self, entity_id: EntityId) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -128,7 +128,7 @@ impl Entities {
     }
 
     /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
-    pub fn apply_hurt_animation(&mut self, entity_id: i32) -> bool {
+    pub fn apply_hurt_animation(&mut self, entity_id: EntityId) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -140,7 +140,7 @@ impl Entities {
     /// player: it dies (health spent), the sound aside.
     /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
     /// from bed, the critical-hit particles) are not carried out.
-    pub fn apply_animate(&mut self, entity_id: i32, action: u8) -> bool {
+    pub fn apply_animate(&mut self, entity_id: EntityId, action: u8) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -152,7 +152,7 @@ impl Entities {
         true
     }
 
-    pub fn apply_death_event(&mut self, entity_id: i32) -> bool {
+    pub fn apply_death_event(&mut self, entity_id: EntityId) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
@@ -178,7 +178,7 @@ impl Entities {
     /// `handleEntityLinkPacket`: the entity is tied to the entity with this id, or let go when
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.
-    pub fn set_leash_holder(&mut self, entity_id: i32, holder_id: i32) -> bool {
+    pub fn set_leash_holder(&mut self, entity_id: EntityId, holder_id: EntityId) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };

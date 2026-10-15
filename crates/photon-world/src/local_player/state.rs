@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl LocalPlayer {
     /// How many ticks the player has lived, which the model's idle sway
@@ -23,7 +24,7 @@ impl LocalPlayer {
     /// A player the connection just made, snapped to its spawn pose, with the
     /// game mode's abilities applied.
     pub fn new(
-        entity_id: i32,
+        entity_id: EntityId,
         position: Vec3,
         y_rot: f32,
         x_rot: f32,
@@ -93,7 +94,7 @@ impl LocalPlayer {
             bob_old: 0.0,
             first_tick: true,
             tick_count: 0,
-            random: photon_core::random::RandomSource::create(i64::from(entity_id)),
+            random: photon_core::random::RandomSource::create(i64::from(entity_id.0)),
             underwater: Default::default(),
             move_dist: 0.0,
             next_step: 1.0,
@@ -133,7 +134,7 @@ impl LocalPlayer {
         }
     }
 
-    pub fn entity_id(&self) -> i32 {
+    pub fn entity_id(&self) -> EntityId {
         self.entity_id
     }
 

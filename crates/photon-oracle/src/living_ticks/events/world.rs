@@ -1,23 +1,23 @@
 use super::super::*;
 
-pub(crate) fn damage_event(world: &mut ClientWorld, entity_id: i32) -> Result<(), String> {
+pub(crate) fn damage_event(world: &mut ClientWorld, entity_id: EntityId) -> Result<(), String> {
     world.entities_mut().apply_damage_event(entity_id);
     Ok(())
 }
 
-pub(crate) fn hurt_event(world: &mut ClientWorld, entity_id: i32) -> Result<(), String> {
+pub(crate) fn hurt_event(world: &mut ClientWorld, entity_id: EntityId) -> Result<(), String> {
     world.entities_mut().apply_hurt_animation(entity_id);
     Ok(())
 }
 
-pub(crate) fn death_event(world: &mut ClientWorld, entity_id: i32) -> Result<(), String> {
+pub(crate) fn death_event(world: &mut ClientWorld, entity_id: EntityId) -> Result<(), String> {
     world.entities_mut().apply_death_event(entity_id);
     Ok(())
 }
 
 pub(crate) fn move_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world.apply_entity_move(photon_world::EntityMoveInput {
@@ -35,7 +35,7 @@ pub(crate) fn move_event(
 
 pub(crate) fn animate_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world
@@ -46,7 +46,7 @@ pub(crate) fn animate_event(
 
 pub(crate) fn sync_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world.apply_entity_position_sync(
@@ -74,7 +74,7 @@ pub(crate) fn weather_event(world: &mut ClientWorld, event: &Value) -> Result<()
 
 pub(crate) fn equipment_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let stack = event["item"].as_str().map(|name| {
@@ -91,7 +91,7 @@ pub(crate) fn equipment_event(
 
 pub(crate) fn mob_flags_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let flags = event["flags"].as_i64().ok_or("flags")? as u8;
@@ -101,7 +101,7 @@ pub(crate) fn mob_flags_event(
 
 pub(crate) fn seed_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
     name: &str,
 ) -> Result<(), String> {
@@ -116,7 +116,7 @@ pub(crate) fn seed_event(
 
 pub(crate) fn entity_motion_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world
@@ -131,19 +131,19 @@ pub(crate) fn entity_motion_event(
 }
 
 pub(crate) fn passengers_event(world: &mut ClientWorld, event: &Value) -> Result<(), String> {
-    let riders: Vec<i32> = event["riders"]
+    let riders: Vec<EntityId> = event["riders"]
         .as_array()
         .ok_or("riders must be an array")?
         .iter()
-        .filter_map(|id| id.as_i64().map(|id| id as i32))
+        .filter_map(|id| id.as_i64().map(|id| EntityId(id as i32)))
         .collect();
-    world.apply_entity_passengers(i32_field(event, "vehicle")?, &riders);
+    world.apply_entity_passengers(EntityId(i32_field(event, "vehicle")?), &riders);
     Ok(())
 }
 
 pub(crate) fn sulfur_fuse_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = vec![photon_world::SULFUR_CUBE_FUSE_DATA_ID, 1];
@@ -155,7 +155,7 @@ pub(crate) fn sulfur_fuse_event(
 
 pub(crate) fn head_rotation_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let angle = i32_field(event, "angle")? as i8;
@@ -165,7 +165,7 @@ pub(crate) fn head_rotation_event(
 
 pub(crate) fn cube_size_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut data = vec![photon_world::CUBE_MOB_SIZE_DATA_ID, 1];
@@ -177,7 +177,7 @@ pub(crate) fn cube_size_event(
 
 pub(crate) fn guardian_random_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let tail = f32::from_bits(
@@ -192,7 +192,7 @@ pub(crate) fn guardian_random_event(
 
 pub(crate) fn move_rot_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     // A relative move with the turn the wire packs in a byte of 256ths.
@@ -213,7 +213,7 @@ pub(crate) fn move_rot_event(
 
 pub(crate) fn squid_speed_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let speed = u32::from_str_radix(string(event, "speed")?, 16)
@@ -227,7 +227,7 @@ pub(crate) fn squid_speed_event(
 
 pub(crate) fn copper_golem_idle_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world
@@ -238,7 +238,7 @@ pub(crate) fn copper_golem_idle_event(
 
 pub(crate) fn rabbit_idle_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world.entities_mut().fix_rabbit_idle(
@@ -251,7 +251,7 @@ pub(crate) fn rabbit_idle_event(
 
 pub(crate) fn attributes_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     let mut changed = Vec::new();
@@ -282,7 +282,7 @@ pub(crate) fn attributes_event(
 
 pub(crate) fn entity_event_event(
     world: &mut ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
     event: &Value,
 ) -> Result<(), String> {
     world.apply_entity_event(entity_id, i32_field(event, "event")? as i8);

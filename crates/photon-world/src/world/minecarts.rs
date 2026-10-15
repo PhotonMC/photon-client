@@ -10,7 +10,7 @@ impl ClientWorld {
     /// `handleMinecartAlongTrack`: the steps a minecart of the new behaviour is to play.
     pub fn apply_minecart_steps(
         &mut self,
-        entity_id: i32,
+        entity_id: EntityId,
         steps: &[objects::minecart_track::MinecartStep],
     ) -> bool {
         let Some(track) = self

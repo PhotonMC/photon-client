@@ -141,7 +141,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         };
         let game_mode_of_row = game_mode;
         let mut player = LocalPlayer::new(
-            i32_field(row, "entity_id")?,
+            EntityId(i32_field(row, "entity_id")?),
             photon_core::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
             bits32(row, "y_rot")?,
             bits32(row, "x_rot")?,
@@ -155,10 +155,10 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             // Entities the server told of.
             for described in row["entities"].as_array().into_iter().flatten() {
                 let name = string(described, "type")?;
-                let id = i32_field(described, "id")?;
+                let id = entity_id_field(described, "id")?;
                 if !world.apply_entity(EntityInput {
                     entity_id: id,
-                    uuid: Uuid::new(0, id as u64),
+                    uuid: Uuid::new(0, id.0 as u64),
                     type_id: photon_data::entity_type::id(name)
                         .ok_or_else(|| format!("unknown entity type {name}"))?,
                     x: bits64(described, "x")?,
@@ -214,12 +214,12 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         let mut held_stick = "";
         if let Some(ride) = row.get("ride") {
             let kind = string(ride, "type")?;
-            let id = i32_field(ride, "id")?;
+            let id = entity_id_field(ride, "id")?;
             world.set_local_player_id(player.entity_id());
             let motion = |key: &str| bits64(ride, key).unwrap_or(0.0);
             if !world.apply_entity(EntityInput {
                 entity_id: id,
-                uuid: Uuid::new(0, id as u64),
+                uuid: Uuid::new(0, id.0 as u64),
                 type_id: photon_data::entity_type::id(kind)
                     .ok_or_else(|| format!("unknown entity type {kind}"))?,
                 x: bits64(ride, "x")?,

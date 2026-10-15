@@ -2,7 +2,7 @@ use super::*;
 use photon_core::java_float::{JavaF32, JavaF64};
 
 impl ClientPlayerState {
-    pub fn passenger_ids(&self) -> &[i32] {
+    pub fn passenger_ids(&self) -> &[EntityId] {
         &self.passenger_ids
     }
 
@@ -214,7 +214,7 @@ impl ClientPlayerState {
         self.y_head_rot = JavaF32::new(self.y_head_rot.get() + delta_rotation);
     }
 
-    pub(crate) fn new(id: i32) -> Self {
+    pub(crate) fn new(id: EntityId) -> Self {
         Self {
             id,
             generation: 0,
@@ -282,11 +282,11 @@ impl ClientPlayerState {
         }
     }
 
-    pub fn id(&self) -> i32 {
+    pub fn id(&self) -> EntityId {
         self.id
     }
 
-    pub fn vehicle_id(&self) -> Option<i32> {
+    pub fn vehicle_id(&self) -> Option<EntityId> {
         self.vehicle_id
     }
 }

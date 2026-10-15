@@ -25,13 +25,13 @@ pub(super) fn client_world_entity_tick_result(
         .ok_or("entities must be an array")?;
     let mut entity_ids = Vec::with_capacity(input_entities.len());
     for entry in input_entities {
-        let entity_id = i32_field(entry, "entity_id")?;
+        let entity_id = entity_id_field(entry, "entity_id")?;
         let position = f64_vec3(entry.get("position").ok_or("position must be a vector")?)?;
         let movement = f64_vec3(entry.get("movement").ok_or("movement must be a vector")?)?;
         let rotation = entry.get("rotation").ok_or("rotation must be an object")?;
         if !world.apply_entity(EntityInput {
             entity_id,
-            uuid: Uuid::new(0, u64::from(entity_id as u32)),
+            uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
             type_id: entity_type_id,
             x: position.x,
             y: position.y,
@@ -84,8 +84,8 @@ pub(super) fn client_world_entity_tick_result(
 pub(super) fn client_world_entity_ticking_eligibility_state(
     label: &str,
     world: &ClientWorld,
-    player_id: i32,
-    remote_entity_id: i32,
+    player_id: EntityId,
+    remote_entity_id: EntityId,
 ) -> Result<Value, String> {
     let player = world
         .local_player()
@@ -99,13 +99,13 @@ pub(super) fn client_world_entity_ticking_eligibility_state(
         "accepted": true,
         "game_time": world.game_time(),
         "local_player": {
-            "entity_id": player_id,
+            "entity_id": player_id.0,
             "tick_count": player.tick_count(),
             "always_ticking": true,
             "ticking": true,
         },
         "entities": [{
-            "entity_id": remote.id(),
+            "entity_id": remote.id().0,
             "tick_count": remote.tick_count(),
             "always_ticking": remote.is_always_ticking(),
             "ticking": remote.is_ticking(),
@@ -117,14 +117,14 @@ pub(super) fn client_world_entity_ticking_eligibility_result(
     request: &Value,
 ) -> Result<Value, String> {
     let player = request.get("player").ok_or("player must be an object")?;
-    let player_id = i32_field(player, "entity_id")?;
+    let player_id = entity_id_field(player, "entity_id")?;
     let player_position = f64_vec3(
         player
             .get("position")
             .ok_or("player position must be a vector")?,
     )?;
     let remote = request.get("remote").ok_or("remote must be an object")?;
-    let remote_entity_id = i32_field(remote, "entity_id")?;
+    let remote_entity_id = entity_id_field(remote, "entity_id")?;
     let remote_position = f64_vec3(
         remote
             .get("position")
@@ -157,7 +157,7 @@ pub(super) fn client_world_entity_ticking_eligibility_result(
     }
     if !world.apply_entity(EntityInput {
         entity_id: remote_entity_id,
-        uuid: Uuid::new(0, u64::from(remote_entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(remote_entity_id.0 as u32)),
         type_id: remote_type_id,
         x: remote_position.x,
         y: remote_position.y,

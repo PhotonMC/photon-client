@@ -135,6 +135,7 @@ pub(super) fn rand_salt() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use photon_core::ids::EntityId;
     use std::net::TcpListener;
 
     /// A session over a loopback socket, and the far end of it, which a
@@ -200,7 +201,12 @@ mod tests {
         }
         step.push(1);
         session.handle_bytes(&step).unwrap();
-        let moved = session.world().entities().at(7).unwrap().position();
+        let moved = session
+            .world()
+            .entities()
+            .at(photon_core::ids::EntityId(7))
+            .unwrap()
+            .position();
         assert!((moved.0 - 9.0).abs() < 1e-9, "{moved:?}");
         // An entity packet that does not parse leaves the session alone.
         let mut broken = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
@@ -211,7 +217,13 @@ mod tests {
         remove.extend(varint(7));
         session.handle_bytes(&remove).unwrap();
         assert_eq!(session.entity_count(), 1);
-        assert!(session.world().entities().at(7).is_none());
+        assert!(
+            session
+                .world()
+                .entities()
+                .at(photon_core::ids::EntityId(7))
+                .is_none()
+        );
     }
 
     #[test]
@@ -228,28 +240,51 @@ mod tests {
         }
         step.push(1);
         session.handle_bytes(&step).unwrap();
-        let before = session.world().entities().at(7).unwrap().tick_count();
+        let before = session
+            .world()
+            .entities()
+            .at(photon_core::ids::EntityId(7))
+            .unwrap()
+            .tick_count();
         session.tick(Input::EMPTY).unwrap();
         session.tick(Input::EMPTY).unwrap();
-        let after = session.world().entities().at(7).unwrap().tick_count();
+        let after = session
+            .world()
+            .entities()
+            .at(photon_core::ids::EntityId(7))
+            .unwrap()
+            .tick_count();
         assert_eq!(after, before + 2);
         // Between two ticks the entity is drawn between where it was and is.
         let (old, new) = {
-            let entity = session.world().entities().at(7).unwrap();
+            let entity = session
+                .world()
+                .entities()
+                .at(photon_core::ids::EntityId(7))
+                .unwrap();
             (entity.previous_position(), entity.position())
         };
-        let half = session.entity_snapshot(7, 0.5).unwrap().position;
+        let half = session
+            .entity_snapshot(photon_core::ids::EntityId(7), 0.5)
+            .unwrap()
+            .position;
         assert!((half.0 - (old.0 + new.0) / 2.0).abs() < 1e-9);
-        assert!(session.entity_snapshot(99, 0.5).is_none());
+        assert!(
+            session
+                .entity_snapshot(photon_core::ids::EntityId(99), 0.5)
+                .is_none()
+        );
     }
 
     #[test]
     fn a_rider_is_told_how_to_dismount_and_follows_a_vehicle_removed_under_it() {
         let (mut session, _far_end) = detached();
-        session.local.player_id = Some(1);
-        session.world.set_local_player_id(1);
+        session.local.player_id = Some(photon_core::ids::EntityId(1));
+        session
+            .world
+            .set_local_player_id(photon_core::ids::EntityId(1));
         session.local.player = Some(LocalPlayer::new(
-            1,
+            photon_core::ids::EntityId(1),
             Vec3::new(8.0, 64.0, 8.0),
             0.0,
             0.0,
@@ -268,7 +303,10 @@ mod tests {
         passengers.extend(varint(1));
         passengers.extend(varint(1));
         session.handle_bytes(&passengers).unwrap();
-        assert_eq!(session.world().ridden_vehicle_of_local_player(), Some(7));
+        assert_eq!(
+            session.world().ridden_vehicle_of_local_player(),
+            Some(EntityId(7))
+        );
         assert!(matches!(
             session.drain_hud().as_slice(),
             [HudEvent::ActionBar(message)] if matches!(
@@ -281,7 +319,7 @@ mod tests {
         remove.extend(varint(1));
         remove.extend(varint(7));
         session.handle_bytes(&remove).unwrap();
-        assert_eq!(session.local.removed_player_vehicle, Some(7));
+        assert_eq!(session.local.removed_player_vehicle, Some(EntityId(7)));
         let mut teleport = varint(PLAY_CLIENTBOUND_TELEPORT_ENTITY_PACKET_ID as u32);
         teleport.extend(varint(7));
         for value in [20.0_f64, 70.0, -4.0, 0.0, 0.0, 0.0] {

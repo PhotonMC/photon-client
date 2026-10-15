@@ -10,12 +10,12 @@ use crate::*;
 #[derive(Debug, Default)]
 pub struct Entities {
     ecs: World,
-    ids: BTreeMap<i32, Entity>,
+    ids: BTreeMap<EntityId, Entity>,
     /// The ids of the entities in each section, as `EntitySectionStorage` indexes them.
-    pub(crate) sections: BTreeMap<(i32, i32, i32), BTreeSet<i32>>,
+    pub(crate) sections: BTreeMap<(i32, i32, i32), BTreeSet<EntityId>>,
     /// The entities the frame being drawn leaves out because they are wholly outside the view.
     /// Only the renderer sets it; nothing the world does reads it.
-    pub(crate) out_of_view: BTreeSet<i32>,
+    pub(crate) out_of_view: BTreeSet<EntityId>,
 }
 
 impl Entities {
@@ -27,17 +27,17 @@ impl Entities {
         self.ids.is_empty()
     }
 
-    pub fn contains_key(&self, entity_id: &i32) -> bool {
+    pub fn contains_key(&self, entity_id: &EntityId) -> bool {
         self.ids.contains_key(entity_id)
     }
 
-    pub fn get(&self, entity_id: &i32) -> Option<&ClientEntity> {
+    pub fn get(&self, entity_id: &EntityId) -> Option<&ClientEntity> {
         let entity = *self.ids.get(entity_id)?;
         self.ecs.get::<ClientEntity>(entity)
     }
 
     /// Every entity with its id, in id order.
-    pub fn iter(&self) -> impl Iterator<Item = (&i32, &ClientEntity)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&EntityId, &ClientEntity)> {
         self.ids
             .iter()
             .filter_map(|(id, &entity)| Some((id, self.ecs.get::<ClientEntity>(entity)?)))
@@ -47,12 +47,12 @@ impl Entities {
         self.iter().map(|(_, entity)| entity)
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = &i32> {
+    pub fn keys(&self) -> impl Iterator<Item = &EntityId> {
         self.ids.keys()
     }
 
     /// The entity of an id, to change.
-    pub fn at_mut(&mut self, entity_id: i32) -> Option<&mut ClientEntity> {
+    pub fn at_mut(&mut self, entity_id: EntityId) -> Option<&mut ClientEntity> {
         let entity = *self.ids.get(&entity_id)?;
         self.ecs
             .get_mut::<ClientEntity>(entity)
@@ -69,7 +69,11 @@ impl Entities {
     }
 
     /// Add an entity, replacing the one of its id; the one replaced.
-    pub(crate) fn insert(&mut self, entity_id: i32, entity: ClientEntity) -> Option<ClientEntity> {
+    pub(crate) fn insert(
+        &mut self,
+        entity_id: EntityId,
+        entity: ClientEntity,
+    ) -> Option<ClientEntity> {
         if let Some(&existing) = self.ids.get(&entity_id) {
             let slot = self.ecs.get_mut::<ClientEntity>(existing)?;
             return Some(std::mem::replace(slot.into_inner(), entity));
@@ -80,7 +84,7 @@ impl Entities {
     }
 
     /// Take an entity away, with its state.
-    pub(crate) fn remove(&mut self, entity_id: i32) -> Option<ClientEntity> {
+    pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<ClientEntity> {
         let entity = self.ids.remove(&entity_id)?;
         let removed = self.ecs.entity_mut(entity).take::<ClientEntity>();
         self.ecs.despawn(entity);
@@ -108,7 +112,7 @@ impl Entities {
     }
 
     /// Set which entities the next frames leave out as out of view.
-    pub fn set_out_of_view(&mut self, ids: BTreeSet<i32>) {
+    pub fn set_out_of_view(&mut self, ids: BTreeSet<EntityId>) {
         self.out_of_view = ids;
     }
 }

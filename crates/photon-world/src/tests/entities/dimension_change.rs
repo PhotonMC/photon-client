@@ -1,9 +1,10 @@
 use super::super::*;
+use photon_core::ids::EntityId;
 
 #[test]
 fn changing_dimension_keeps_local_player_identity_until_respawn_replacement() {
     let mut world = ClientWorld::default();
-    world.set_local_player_id(17);
+    world.set_local_player_id(EntityId(17));
     let input = DimensionInput {
         key: "minecraft:the_nether",
         dimension_type_id: 3,
@@ -18,13 +19,19 @@ fn changing_dimension_keeps_local_player_identity_until_respawn_replacement() {
         DimensionBounds::new(0, 256),
         DimensionEnvironment::for_builtin_dimension(input.key),
     ));
-    assert_eq!(world.local_player().map(|player| player.id()), Some(17));
+    assert_eq!(
+        world.local_player().map(|player| player.id()),
+        Some(EntityId(17))
+    );
     assert_eq!(
         world.local_player().map(|player| player.generation()),
         Some(0)
     );
     assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
-    assert_eq!(world.local_player().map(|player| player.id()), Some(17));
+    assert_eq!(
+        world.local_player().map(|player| player.id()),
+        Some(EntityId(17))
+    );
     assert_eq!(
         world.local_player().map(|player| player.generation()),
         Some(1)
@@ -46,7 +53,7 @@ fn changing_dimension_replaces_world_storage_and_builtin_bounds() {
         }],
     );
     assert!(world.apply_entity(EntityInput {
-        entity_id: 9,
+        entity_id: EntityId(9),
         uuid: Uuid::new(5, 6),
         type_id: 71,
         x: 0.0,

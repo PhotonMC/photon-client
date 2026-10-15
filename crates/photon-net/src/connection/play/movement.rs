@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::EntityId;
 
 impl PlaySession {
     /// The attack and use keys' part of `handleKeybinds`, with what the
@@ -182,7 +183,7 @@ impl PlaySession {
             .then_some(self.local.status.health);
         let player = self.local.player.get_or_insert_with(|| {
             let mut player = LocalPlayer::new(
-                self.local.player_id.unwrap_or(0),
+                self.local.player_id.unwrap_or(EntityId(0)),
                 position,
                 absolute.3,
                 absolute.4,

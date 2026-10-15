@@ -3,7 +3,7 @@ use super::*;
 pub(super) fn client_world_entity_boat_tick_state(
     label: &str,
     world: &ClientWorld,
-    entity_id: i32,
+    entity_id: EntityId,
 ) -> Result<Value, String> {
     let entity = world
         .entities()
@@ -15,7 +15,7 @@ pub(super) fn client_world_entity_boat_tick_state(
         "label": label,
         "accepted": true,
         "entities": [{
-            "entity_id": entity.id(),
+            "entity_id": entity.id().0,
             "tick_count": entity.tick_count(),
             "position": client_world_entity_tick_vector(entity.position()),
             "previous_position": client_world_entity_tick_vector(entity.previous_position()),
@@ -58,7 +58,7 @@ pub(super) fn client_world_entity_boat_tick_result(
         )
     };
     let boat = request.get("boat").ok_or("boat must be an object")?;
-    let boat_entity_id = i32_field(boat, "entity_id")?;
+    let boat_entity_id = entity_id_field(boat, "entity_id")?;
     let position = f64_vec3(
         boat.get("position")
             .ok_or("boat position must be a vector")?,
@@ -106,7 +106,7 @@ pub(super) fn client_world_entity_boat_tick_result(
     }
     if !world.apply_entity(EntityInput {
         entity_id: boat_entity_id,
-        uuid: Uuid::new(0, u64::from(boat_entity_id as u32)),
+        uuid: Uuid::new(0, u64::from(boat_entity_id.0 as u32)),
         type_id: 89,
         x: position.x,
         y: position.y,
@@ -118,7 +118,7 @@ pub(super) fn client_world_entity_boat_tick_result(
         return Err("boat air tick fixture entity was rejected".into());
     }
     if !world.apply_entity(EntityInput {
-        entity_id: passenger_id,
+        entity_id: photon_core::ids::EntityId(passenger_id),
         uuid: Uuid::new(0, u64::from(passenger_id as u32)),
         type_id: passenger_type_id,
         x: position.x,
@@ -131,9 +131,9 @@ pub(super) fn client_world_entity_boat_tick_result(
         return Err("boat tick fixture passenger was rejected".into());
     }
     if local_authority {
-        world.set_local_player_id(passenger_id);
+        world.set_local_player_id(photon_core::ids::EntityId(passenger_id));
     }
-    if !world.apply_entity_passengers(boat_entity_id, &[passenger_id]) {
+    if !world.apply_entity_passengers(boat_entity_id, &[photon_core::ids::EntityId(passenger_id)]) {
         return Err("boat tick fixture passenger relation was rejected".into());
     }
     if !world.set_boat_input(boat_entity_id, boat_input) {
@@ -211,7 +211,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .get("vehicle")
             .and_then(Value::as_object)
             .ok_or("boat family vehicle must be an object")?;
-        let vehicle_id = i32_field(&Value::Object(vehicle.clone()), "entity_id")?;
+        let vehicle_id = entity_id_field(&Value::Object(vehicle.clone()), "entity_id")?;
         let vehicle_type_id = i32_field(&Value::Object(vehicle.clone()), "type_id")?;
         if !matches!(vehicle_type_id, 8 | 9 | 89 | 90) {
             return Err("unknown boat family position vehicle type".into());
@@ -230,7 +230,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .ok_or("boat family vehicle no_gravity must be a boolean")?;
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
-            uuid: Uuid::new(0, u64::from(vehicle_id as u32)),
+            uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
             type_id: vehicle_type_id,
             x: vehicle_position.x,
             y: vehicle_position.y,
@@ -253,7 +253,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .get("passenger")
             .and_then(Value::as_object)
             .ok_or("boat family passenger must be an object")?;
-        let passenger_id = i32_field(&Value::Object(passenger.clone()), "entity_id")?;
+        let passenger_id = entity_id_field(&Value::Object(passenger.clone()), "entity_id")?;
         if i32_field(&Value::Object(passenger.clone()), "type_id")? != 120 {
             return Err("boat family position fixture requires snowball passengers".into());
         }
@@ -276,7 +276,7 @@ pub(super) fn client_world_entity_passenger_boat_family_position_result(
             .ok_or("boat family passenger no_gravity must be a boolean")?;
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
-            uuid: Uuid::new(0, u64::from(passenger_id as u32)),
+            uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
             type_id: 120,
             x: passenger_position.x,
             y: passenger_position.y,

@@ -40,7 +40,7 @@ pub(crate) struct EntityTargets {
 }
 
 pub struct EntityInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub uuid: photon_core::binary::Uuid,
     pub type_id: i32,
     pub x: f64,
@@ -52,14 +52,14 @@ pub struct EntityInput {
 }
 
 pub struct EntityMotionInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
 
 pub struct EntityRotationInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub y_rot: Option<f32>,
     pub x_rot: Option<f32>,
     pub y_head_rot: Option<f32>,
@@ -68,7 +68,7 @@ pub struct EntityRotationInput {
 }
 
 pub struct EntityPositionInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -76,7 +76,7 @@ pub struct EntityPositionInput {
 }
 
 pub struct EntityTeleportInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -95,7 +95,7 @@ pub enum EntityPositionUpdateMode {
 }
 
 pub struct EntityMoveInput {
-    pub entity_id: i32,
+    pub entity_id: EntityId,
     pub delta_x: i16,
     pub delta_y: i16,
     pub delta_z: i16,

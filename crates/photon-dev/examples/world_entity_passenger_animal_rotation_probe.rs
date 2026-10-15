@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .into());
     }
-    let expected_offset = if observation.passenger_id % 2 == 0 {
+    let expected_offset = if observation.passenger_id.0 % 2 == 0 {
         90.0
     } else {
         270.0
