@@ -30,7 +30,7 @@ cargo xtask parity --family gui         # one family (repeatable)
 cargo xtask parity --recapture          # capture Java again even for known keys
 ```
 
-The pre-push hook runs parity when engine crates or reference sources changed. Requirements: the local reference installed by `python3 tools/photon.py setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
+The pre-push hook runs parity when engine crates or reference sources changed. Requirements: the local reference installed by `cargo xtask setup` under `.data/` and a Java 25 JDK. See [setup](../development/setup.md).
 
 ## How it works today
 

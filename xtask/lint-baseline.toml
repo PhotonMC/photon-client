@@ -606,7 +606,6 @@
 "xtask/src/lint.rs::Rule::hint" = 12
 "xtask/src/lint.rs::Rule::name" = 12
 "xtask/src/lint/names.rs::name_problem" = 11
-"xtask/src/main.rs::main" = 11
 
 [fn-length]
 "crates/photon-core/src/aabb/clipping.rs::clip_bounds" = 119

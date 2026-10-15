@@ -21,5 +21,6 @@ Decisions:
 - [0006 Mod platform](adr/0006-mod-platform.md)
 - [0007 Assets and accounts](adr/0007-assets-and-accounts.md)
 - [0008 Vanilla and Enhanced](adr/0008-vanilla-and-enhanced.md)
+- [0009 Downloads and archives in xtask](adr/0009-xtask-downloads.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).

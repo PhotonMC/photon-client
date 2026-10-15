@@ -5,6 +5,7 @@
 //! toolchain.
 
 mod affected;
+mod dev;
 mod gate;
 mod git;
 mod hooks;
@@ -28,24 +29,50 @@ usage: cargo xtask <command>
   parity [--recapture] [--family <name>]...
                             compare the Rust adapter with the Java reference
   parity --print-cases [--family <name>]...
-                            print the case lines (the oracle and adapter input)";
+                            print the case lines (the oracle and adapter input)
+  setup [--skip-objects] [--named] [--decompile] [--java <path>]
+                            the pinned game from Mojang's servers into .data/minecraft
+  server [--accept-eula] [--background] [--stop] [--dir <path>] [--memory <size>] [--java <path>]
+                            set up and start the test server (port 25600, RCON 25601)
+  play [address] [--user <name>] [--size <w> <h>] [--fullscreen] [--camera back|front]
+       [--profile] [--no-build]
+                            build and start the client
+  rcon <command>...         send commands to the test server
+  bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
+        [--route still|run] [--vsync on|off] [--fps-limit <n>] [--validation] [--no-build]
+                            fixed scripted run, frame timing report in .data/runs/bench
+  shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
+                            scripted client run, first frame in .data/runs/shots";
+
+type Command = fn(&[String]) -> Result<(), String>;
+
+/// Every command and the function that runs it.
+const COMMANDS: &[(&str, Command)] = &[
+    ("lint", lint::run),
+    ("check", gate::check),
+    ("pre-commit", |_| gate::pre_commit()),
+    ("pre-push", |_| gate::pre_push()),
+    ("commit-msg", hooks::commit_msg),
+    ("install-hooks", |_| hooks::install()),
+    ("affected", affected::print),
+    ("parity", parity::run),
+    ("setup", dev::setup),
+    ("server", dev::server),
+    ("play", dev::play),
+    ("rcon", dev::rcon),
+    ("bench", dev::bench),
+    ("shot", dev::shot),
+];
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let Some((command, rest)) = args.split_first() else {
+    let Some((name, rest)) = args.split_first() else {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let result = match command.as_str() {
-        "lint" => lint::run(rest),
-        "check" => gate::check(rest),
-        "pre-commit" => gate::pre_commit(),
-        "pre-push" => gate::pre_push(),
-        "commit-msg" => hooks::commit_msg(rest),
-        "install-hooks" => hooks::install(),
-        "affected" => affected::print(rest),
-        "parity" => parity::run(rest),
-        _ => Err(format!("unknown command `{command}`\n\n{USAGE}")),
+    let result = match COMMANDS.iter().find(|(command, _)| command == name) {
+        Some((_, run)) => run(rest),
+        None => Err(format!("unknown command `{name}`\n\n{USAGE}")),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

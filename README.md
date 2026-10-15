@@ -69,9 +69,9 @@ You need:
 ```sh
 cargo xtask install-hooks
 cargo build --workspace
-python3 tools/photon.py setup                       # fetch the pinned game into .data/
-python3 tools/photon.py server --accept-eula --background
-python3 tools/photon.py play --user Walker
+cargo xtask setup                       # fetch the pinned game into .data/
+cargo xtask server --accept-eula --background
+cargo xtask play --user Walker
 ```
 
 Details are in [development setup](docs/development/setup.md).

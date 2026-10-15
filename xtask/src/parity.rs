@@ -10,7 +10,7 @@
 mod capture;
 mod cases;
 mod java;
-mod pins;
+pub(crate) mod pins;
 mod records;
 mod store;
 

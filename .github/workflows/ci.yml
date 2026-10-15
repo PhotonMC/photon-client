@@ -44,7 +44,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake ninja-build python3 libasound2-dev libwayland-dev \
+            cmake ninja-build libasound2-dev libwayland-dev \
             libxkbcommon-dev xorg-dev
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -70,7 +70,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake ninja-build python3 libasound2-dev libwayland-dev \
+            cmake ninja-build libasound2-dev libwayland-dev \
             libxkbcommon-dev xorg-dev
       - uses: actions/setup-java@v4
         with:
@@ -83,7 +83,7 @@ jobs:
         with:
           key: parity
       - name: Fetch the pinned game from Mojang
-        run: python3 tools/photon.py setup
+        run: cargo xtask setup
       - run: cargo xtask parity
 
   deny:

@@ -4,14 +4,14 @@
 
 - **Rust.** The toolchain pinned in `rust-toolchain.toml`. GLFW and shaderc build from source, so CMake and a C/C++ compiler are also needed (Visual Studio Build Tools on Windows, the Xcode command line tools on macOS).
 - **Vulkan.** A Vulkan driver; on macOS the Vulkan loader with MoltenVK.
-- **Reference tooling.** Python 3.9+ and Java 25 for the reference setup, the test server and the parity oracle. Python is being replaced by `cargo xtask` ([ADR 0005](../adr/0005-parity-v2.md)).
+- **Java.** Java 25 for the test server, the parity oracle and `setup --decompile`. The reference setup itself needs only the Rust toolchain ([ADR 0009](../adr/0009-xtask-downloads.md)).
 
 ## First steps
 
 ```sh
 cargo xtask install-hooks       # pre-commit, commit-msg and pre-push hooks
 cargo build --workspace
-python3 tools/photon.py setup   # pinned game into .data/ from Mojang's servers
+cargo xtask setup               # pinned game into .data/ from Mojang's servers
 ```
 
 `setup` downloads the pinned 26.2 client and server jars, libraries, the resources inside the jar and the asset objects from Mojang's official distribution into `.data/minecraft/`, and checks every file against its published hash. It stops if the client jar's hash does not match `tests/behavior/reference.json`. Options:
@@ -25,13 +25,13 @@ python3 tools/photon.py setup   # pinned game into .data/ from Mojang's servers
 ## Running the client
 
 ```sh
-python3 tools/photon.py server --accept-eula --background   # test server on port 25600
-python3 tools/photon.py play --user Walker
-python3 tools/photon.py rcon "time set noon" "weather clear"
-python3 tools/photon.py server --stop
+cargo xtask server --accept-eula --background   # test server on port 25600
+cargo xtask play --user Walker
+cargo xtask rcon "time set noon" "weather clear"
+cargo xtask server --stop
 ```
 
-The test server is offline, peaceful, seed 776, view distance 12, with RCON on 25601. Accepting the Minecraft EULA is your responsibility.
+The test server is offline, peaceful, seed 776, view distance 32, with RCON on 25601. Accepting the Minecraft EULA is your responsibility.
 
 `play` builds in release mode and starts the client with `PHOTON_ASSETS` set. Other `PHOTON_*` variables are passed through:
 
@@ -40,7 +40,7 @@ The test server is offline, peaceful, seed 776, view distance 12, with RCON on 2
 - `PHOTON_VALIDATION` enables the Vulkan validation layer.
 - `PHOTON_CULLING=0` disables culling for comparison.
 
-`python3 tools/photon.py bench` runs a fixed scripted session against the running server and writes a frame-timing report to `.data/runs/bench/`. `python3 tools/photon.py shot` runs a scripted session and saves a screenshot to `.data/runs/shots/`.
+`cargo xtask bench` runs a fixed scripted session against the running server and writes a frame-timing report to `.data/runs/bench/`. `cargo xtask shot` runs a scripted session and saves its first frame as a PNG in `.data/runs/shots/`.
 
 ## Checks
 

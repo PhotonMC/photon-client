@@ -20,6 +20,7 @@ allow = [
     "Unlicense",
     "0BSD",
     "Unicode-3.0",
+    "CDLA-Permissive-2.0",
 ]
 # The workspace crates carry no license field yet (open decision in the
 # quality review); third-party crates are still checked.
