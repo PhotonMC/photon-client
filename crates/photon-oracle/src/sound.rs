@@ -419,7 +419,7 @@ pub(super) fn sound_packets_result(request: &Value) -> Result<Value, String> {
             "sound_entity" => read_sound_entity_packet(&mut input).map(|packet| {
                 holder(&mut described, &packet.sound);
                 described["source"] = json!(packet.source.ordinal());
-                described["entity"] = json!(packet.entity_id);
+                described["entity"] = json!(packet.entity_id.0);
                 described["volume"] = json!(bits(packet.volume));
                 described["pitch"] = json!(bits(packet.pitch));
                 described["seed"] = json!(packet.seed.to_string());

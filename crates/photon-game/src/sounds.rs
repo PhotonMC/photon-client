@@ -105,7 +105,7 @@ pub struct SoundPacket {
 pub struct SoundEntityPacket {
     pub sound: SoundHolder,
     pub source: SoundSource,
-    pub entity_id: i32,
+    pub entity_id: photon_core::ids::EntityId,
     pub volume: f32,
     pub pitch: f32,
     pub seed: i64,

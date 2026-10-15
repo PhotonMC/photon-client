@@ -46,14 +46,14 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
             position.z,
         ]
     };
-    let Some(id) = target else {
+    let Some(id) = target.map(EntityId) else {
         return Some(local_eye());
     };
-    if EntityId(id) == player.entity_id() {
+    if id == player.entity_id() {
         return Some(local_eye());
     }
-    let entity = world.entities().at(EntityId(id))?;
-    let snapshot = world.entity_snapshot(EntityId(id), partial)?;
+    let entity = world.entities().at(id)?;
+    let snapshot = world.entity_snapshot(id, partial)?;
     let (_, _, eye) = photon_data::entity_type::pick(entity.type_id)?.size;
     let (x, y, z) = snapshot.position;
     Some([x, y + f64::from(eye * entity.scale()), z])
@@ -61,10 +61,10 @@ fn look_at_position(session: &PlaySession, target: Option<i32>, partial: f32) ->
 
 /// `GuardianRenderer.getPosition(target, bbHeight * 0.5, partial)`: the middle
 /// of what the beam aims at, if it is in the world.
-fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64; 3]> {
+fn target_position(session: &PlaySession, id: EntityId, partial: f32) -> Option<[f64; 3]> {
     let world = session.world();
     let player = session.player()?;
-    if EntityId(id) == player.entity_id() {
+    if id == player.entity_id() {
         let position = player.interpolated_position(f64::from(partial));
         let box_ = player.bounding_box();
         return Some([
@@ -73,8 +73,8 @@ fn target_position(session: &PlaySession, id: i32, partial: f32) -> Option<[f64;
             position.z,
         ]);
     }
-    let entity = world.entities().at(EntityId(id))?;
-    let snapshot = world.entity_snapshot(EntityId(id), partial)?;
+    let entity = world.entities().at(id)?;
+    let snapshot = world.entity_snapshot(id, partial)?;
     let pick = photon_data::entity_type::pick(entity.type_id)?;
     let (_, height, _) = match pick.baby {
         Some(baby) if entity.is_baby() => baby,
@@ -92,7 +92,7 @@ fn beam(
     (feet, eye_height, eye_position): ([f32; 3], f32, [f64; 3]),
     textures: &EntityTextures,
 ) -> Vec<Vertex> {
-    let Some(target) = entity.guardian_attack_target() else {
+    let Some(target) = entity.guardian_attack_target().map(EntityId) else {
         return Vec::new();
     };
     let (Some(own), Some(target), Some(rect)) = (

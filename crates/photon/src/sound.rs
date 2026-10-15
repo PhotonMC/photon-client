@@ -63,7 +63,7 @@ impl SoundAssets for IndexedAssets {
 
 /// The positions of the entities that sounds follow (`EntityBoundSoundInstance`), put up to date
 /// each tick; none once the entity is gone.
-type Followed = Arc<Mutex<HashMap<i32, Option<(f64, f64, f64)>>>>;
+type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 pub struct SoundSystem {
     engine: SoundEngine<MixerChannels>,
@@ -273,7 +273,7 @@ impl SoundSystem {
         let Some(position) = world
             .entities()
             .all()
-            .find(|found| found.id() == EntityId(entity))
+            .find(|found| found.id() == entity)
             .map(|found| found.position())
         else {
             return;
@@ -350,7 +350,7 @@ impl SoundSystem {
                 *position = world
                     .entities()
                     .all()
-                    .find(|entity| entity.id() == EntityId(*id))
+                    .find(|entity| entity.id() == *id)
                     .map(|entity| entity.position());
             }
         }

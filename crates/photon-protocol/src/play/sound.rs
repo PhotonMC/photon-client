@@ -66,7 +66,7 @@ pub fn read_sound_entity_packet(
     Ok(photon_game::sounds::SoundEntityPacket {
         sound: read_sound_holder(input)?,
         source: read_sound_source(input)?,
-        entity_id: read_varint(input, "sound entity id")?,
+        entity_id: photon_core::ids::EntityId(read_varint(input, "sound entity id")?),
         volume: read_f32(input, "sound volume")?,
         pitch: read_f32(input, "sound pitch")?,
         seed: read_i64(input, "sound seed")?,

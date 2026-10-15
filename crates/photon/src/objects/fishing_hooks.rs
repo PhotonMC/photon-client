@@ -86,20 +86,20 @@ pub fn fishing_hooks(
             continue;
         };
         // `ClientboundAddEntityPacket.getData`: the owner's id.
-        let owner_id = entity.data;
+        let owner_id = EntityId(entity.data);
         let (x, y, z) = snapshot.position;
         let hook = (x, y, z);
-        let hand = if EntityId(owner_id) == player.entity_id() {
+        let hand = if owner_id == player.entity_id() {
             local_hand(player, hook_view)
         } else {
             let Some(owner) = world
                 .entities()
                 .all()
-                .find(|owner| owner.id() == EntityId(owner_id) && owner.is_player())
+                .find(|owner| owner.id() == owner_id && owner.is_player())
             else {
                 continue;
             };
-            let Some(owner_snapshot) = world.entity_snapshot(EntityId(owner_id), partial) else {
+            let Some(owner_snapshot) = world.entity_snapshot(owner_id, partial) else {
                 continue;
             };
             let rod = is_rod(owner.equipment(EquipmentSlot::MainHand));
