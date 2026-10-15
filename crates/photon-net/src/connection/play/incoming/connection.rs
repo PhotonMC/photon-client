@@ -1,49 +1,65 @@
 use super::*;
 
-impl PlaySession {
-    pub(super) fn on_set_simulation_distance(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        if let Some(chunks) = parsed(parse_entity_id_prefix(payload), "entity_id_prefix") {
-            self.trace.world.set_server_simulation_distance(chunks);
-        }
+/// The packets of this family, by packet id.
+pub(super) const DECODERS: &[(i32, Decoder)] = &[
+    (
+        PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID,
+        typed::<SetSimulationDistance>,
+    ),
+    (
+        PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID,
+        typed::<crate::common::ClientboundKeepAlivePacket>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PING_PACKET_ID,
+        typed::<crate::common::ClientboundPingPacket>,
+    ),
+    (PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID, typed::<UpdateTags>),
+    (PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID, typed::<Disconnect>),
+];
+
+/// `handleSetChunkCacheRadius`'s sibling: the simulation distance the server runs with.
+impl ClientboundPacket for SetSimulationDistance {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.set_server_simulation_distance(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_keep_alive(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let packet = crate::common::ClientboundKeepAlivePacket::decode(&mut input)
-            .map_err(|_| ConnectionError::Codec("play keep alive"))?;
-        self.send(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, |output| {
-            crate::common::ServerboundKeepAlivePacket::new(packet.id).encode(output);
+/// `handleKeepAlive`: answered at once with the same number.
+impl ClientboundPacket for crate::common::ClientboundKeepAlivePacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.send(PLAY_SERVERBOUND_KEEP_ALIVE_PACKET_ID, |output| {
+            crate::common::ServerboundKeepAlivePacket::new(self.id).encode(output);
             Ok(())
         })?;
         Ok(())
     }
+}
 
-    pub(super) fn on_ping(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let packet = crate::common::ClientboundPingPacket::decode(&mut input)
-            .map_err(|_| ConnectionError::Codec("play ping"))?;
-        self.send(PLAY_SERVERBOUND_PONG_PACKET_ID, |output| {
-            crate::common::ServerboundPongPacket::new(packet.id).encode(output);
+/// `handlePing`: answered at once with the same number.
+impl ClientboundPacket for crate::common::ClientboundPingPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.send(PLAY_SERVERBOUND_PONG_PACKET_ID, |output| {
+            crate::common::ServerboundPongPacket::new(self.id).encode(output);
             Ok(())
         })?;
         Ok(())
     }
+}
 
-    pub(super) fn on_update_tags(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        let packet = photon_core::tags::ClientboundUpdateTagsPacket::decode(&mut input)
-            .map_err(|_| ConnectionError::Codec("update tags"))?;
-        self.trace.world.apply_update_tags_packet(&packet);
+/// `handleUpdateTags`.
+impl ClientboundPacket for UpdateTags {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.apply_update_tags_packet(&self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_disconnect(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        let mut input = payload;
-        self.disconnect = Some(read_disconnect_reason(&mut input)?);
+/// `handleDisconnect`.
+impl ClientboundPacket for Disconnect {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.disconnect = Some(self.0);
         Ok(())
     }
 }

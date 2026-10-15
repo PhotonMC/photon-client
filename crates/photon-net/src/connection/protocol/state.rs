@@ -215,3 +215,37 @@ pub(crate) fn parse_update_mob_effect_packet(
         applied_to_world: false,
     })
 }
+
+wrapped_packet!(
+    /// `ClientboundSetSimulationDistancePacket`: the distance, in chunks.
+    SetSimulationDistance(i32) = parse_entity_id_prefix,
+    OnError::Ignore("entity_id_prefix")
+);
+
+impl Decode for crate::common::ClientboundKeepAlivePacket {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        crate::common::ClientboundKeepAlivePacket::decode(&mut input)
+            .map_err(|_| ConnectionError::Codec("play keep alive"))
+    }
+}
+
+impl Decode for crate::common::ClientboundPingPacket {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        crate::common::ClientboundPingPacket::decode(&mut input)
+            .map_err(|_| ConnectionError::Codec("play ping"))
+    }
+}
+
+/// `ClientboundUpdateTagsPacket`.
+pub(crate) struct UpdateTags(pub photon_core::tags::ClientboundUpdateTagsPacket);
+
+impl Decode for UpdateTags {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        photon_core::tags::ClientboundUpdateTagsPacket::decode(&mut input)
+            .map(Self)
+            .map_err(|_| ConnectionError::Codec("update tags"))
+    }
+}

@@ -1,53 +1,66 @@
 use super::*;
 
-impl PlaySession {
-    pub(super) fn on_recipe_book_add(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_recipe_book_add_packet(payload) {
-            Ok((entries, replace)) => {
-                self.trace.world.recipe_book_mut().add(entries, replace);
-            }
-            Err(error) => self.warn(format!("recipe book add: {error:?}")),
-        }
+/// The packets of this family, by packet id.
+pub(super) const DECODERS: &[(i32, Decoder)] = &[
+    (
+        PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID,
+        typed::<RecipeBookAdd>,
+    ),
+    (
+        PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID,
+        typed::<RecipeBookRemove>,
+    ),
+    (
+        PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID,
+        typed::<RecipeBookSettings>,
+    ),
+    (
+        PLAY_CLIENTBOUND_PLACE_GHOST_RECIPE_PACKET_ID,
+        typed::<PlaceGhostRecipe>,
+    ),
+    (
+        PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID,
+        typed::<UpdateRecipes>,
+    ),
+];
+
+impl ClientboundPacket for RecipeBookAdd {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let (entries, replace) = self.0;
+        session.trace.world.recipe_book_mut().add(entries, replace);
         Ok(())
     }
+}
 
-    pub(super) fn on_recipe_book_remove(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_recipe_book_remove_packet(payload) {
-            Ok(ids) => self.trace.world.recipe_book_mut().remove(&ids),
-            Err(error) => self.warn(format!("recipe book remove: {error:?}")),
-        }
+impl ClientboundPacket for RecipeBookRemove {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.recipe_book_mut().remove(&self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_recipe_book_settings(
-        &mut self,
-        payload: &[u8],
-    ) -> Result<(), ConnectionError> {
-        match parse_recipe_book_settings_packet(payload) {
-            Ok(settings) => self.trace.world.recipe_book_mut().set_settings(settings),
-            Err(error) => self.warn(format!("recipe book settings: {error:?}")),
-        }
+impl ClientboundPacket for RecipeBookSettings {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.recipe_book_mut().set_settings(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_place_ghost_recipe(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_place_ghost_recipe_packet(payload) {
-            Ok(ghost) => self.trace.world.recipe_book_mut().ghost = Some(ghost),
-            Err(error) => self.warn(format!("place ghost recipe: {error:?}")),
-        }
+impl ClientboundPacket for PlaceGhostRecipe {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.recipe_book_mut().ghost = Some(self.0);
         Ok(())
     }
+}
 
-    pub(super) fn on_update_recipes(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        match parse_update_recipes_packet(payload) {
-            Ok(update) => {
-                self.trace.world.apply_recipe_property_sets(update.sets);
-                self.trace
-                    .world
-                    .apply_stonecutter_recipes(update.stonecutter);
-            }
-            Err(error) => self.warn(format!("recipes: {error:?}")),
-        }
+impl ClientboundPacket for UpdateRecipes {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let update = self.0;
+        session.trace.world.apply_recipe_property_sets(update.sets);
+        session
+            .trace
+            .world
+            .apply_stonecutter_recipes(update.stonecutter);
         Ok(())
     }
 }

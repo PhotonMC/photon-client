@@ -20,7 +20,7 @@ pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, Connecti
 pub(super) fn spawn_reader(
     mut reader: TcpStream,
     compression_threshold: Option<usize>,
-) -> Receiver<Result<ClientboundPlay, ConnectionError>> {
+) -> Receiver<Result<Incoming, ConnectionError>> {
     let (sender, incoming) = mpsc::channel();
     std::thread::spawn(move || {
         loop {
@@ -35,7 +35,7 @@ pub(super) fn spawn_reader(
                 split_packet(&body),
                 Ok((PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID, _))
             );
-            let packet = ClientboundPlay::decode(body);
+            let packet = incoming::decode_packet(body);
             let failed = packet.is_err();
             if sender.send(packet).is_err() || failed || terminal {
                 return;
@@ -245,7 +245,7 @@ impl PlaySession {
     pub(super) fn assemble(
         writer: TcpStream,
         compression_threshold: Option<usize>,
-        incoming: Receiver<Result<ClientboundPlay, ConnectionError>>,
+        incoming: Receiver<Result<Incoming, ConnectionError>>,
         trace: PlayConnectionTrace,
         (username, auto_jump): (&str, bool),
     ) -> Self {

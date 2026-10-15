@@ -28,6 +28,7 @@ use super::probe::{
 };
 use super::protocol::*;
 use super::session::{read_packet, send_packet};
+use incoming::Incoming;
 
 mod books;
 mod chat;
@@ -73,7 +74,7 @@ pub(super) const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 pub struct PlaySession {
     pub(super) writer: TcpStream,
     pub(super) compression_threshold: Option<usize>,
-    pub(super) incoming: Receiver<Result<ClientboundPlay, ConnectionError>>,
+    incoming: Receiver<Result<Incoming, ConnectionError>>,
     pub(super) trace: PlayConnectionTrace,
     pub(super) player_id: Option<i32>,
     pub(super) game_mode: ClientPlayerGameMode,

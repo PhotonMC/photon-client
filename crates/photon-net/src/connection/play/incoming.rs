@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
 use super::*;
 use crate::connection::probe::{store_cookie, take_custom_payload, take_report_details};
 
@@ -9,61 +12,116 @@ mod player;
 mod recipes;
 mod world;
 
+/// A clientbound play packet, parsed (the reference's `Packet`): what it does to the client is
+/// its `handle`, the listener's `handleX` of the reference.
+pub(super) trait ClientboundPacket: Send {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError>;
+
+    /// Whether loading may be over once the packet is handled.
+    fn checks_loading(&self) -> bool {
+        true
+    }
+}
+
+/// A packet as the reader thread hands it over; the order the packets came in is kept, so an
+/// error surfaces where it always did.
+pub(super) type Incoming = Box<dyn ClientboundPacket>;
+
+/// Parses the packet with this id from its payload.
+type Decoder = fn(i32, &[u8]) -> Result<Incoming, ConnectionError>;
+
+/// The packets of the families that are typed, by packet id.
+fn decoders() -> &'static HashMap<i32, Decoder> {
+    static DECODERS: OnceLock<HashMap<i32, Decoder>> = OnceLock::new();
+    DECODERS.get_or_init(|| {
+        [
+            world::DECODERS,
+            connection::DECODERS,
+            chat::DECODERS,
+            recipes::DECODERS,
+        ]
+        .concat()
+        .into_iter()
+        .collect()
+    })
+}
+
+/// Parse the packet in `body` (its id, then its payload). A family that is not typed yet stays
+/// bytes, parsed where it is handled.
+pub(super) fn decode_packet(body: Vec<u8>) -> Result<Incoming, ConnectionError> {
+    let (packet_id, payload) = split_packet(&body)?;
+    match decoders().get(&packet_id) {
+        Some(decode) => decode(packet_id, payload),
+        None => Ok(Box::new(RawPacket(body))),
+    }
+}
+
+/// The decoder of a packet type, as its table row holds it.
+fn typed<P>(_packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError>
+where
+    P: Decode + ClientboundPacket + 'static,
+{
+    match P::decode(payload) {
+        Ok(packet) => Ok(Box::new(packet)),
+        Err(error) => match P::ON_ERROR {
+            OnError::Fail => Err(error),
+            OnError::Ignore(name) => {
+                log::debug!("ignored {name} packet: {error}");
+                Ok(Box::new(Ignored))
+            }
+            OnError::Warn(label) => Ok(Box::new(Malformed(format!("{label}: {error:?}")))),
+        },
+    }
+}
+
+/// A packet of a family that is not typed yet: its whole body.
+struct RawPacket(Vec<u8>);
+
+impl ClientboundPacket for RawPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.handle(&self.0)
+    }
+
+    /// `handle` ends with the check itself.
+    fn checks_loading(&self) -> bool {
+        false
+    }
+}
+
+/// A packet that did not parse and is dropped.
+struct Ignored;
+
+impl ClientboundPacket for Ignored {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+}
+
+/// A packet that did not parse: the session warns, once for each message.
+struct Malformed(String);
+
+impl ClientboundPacket for Malformed {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.warn(self.0);
+        Ok(())
+    }
+}
+
 impl PlaySession {
     /// A packet from the reader thread, applied to the client's state.
-    pub(super) fn handle_incoming(
-        &mut self,
-        packet: ClientboundPlay,
-    ) -> Result<(), ConnectionError> {
-        match packet {
-            ClientboundPlay::Raw(body) => return self.handle(&body),
-            // These two never ended a packet by checking whether loading is done.
-            ClientboundPlay::Chunk(chunk) => {
-                self.apply_chunk(&chunk);
-                return Ok(());
-            }
-            ClientboundPlay::Light(update) => {
-                self.apply_light_update(&update);
-                return Ok(());
-            }
-            ClientboundPlay::InitializeBorder(packet) => {
-                self.trace.world.apply_world_border_initialize(packet);
-            }
-            ClientboundPlay::SetBorderCenter(packet) => {
-                self.trace
-                    .world
-                    .apply_world_border_center(packet.x, packet.z);
-            }
-            ClientboundPlay::SetBorderLerpSize {
-                old_size,
-                new_size,
-                time,
-            } => {
-                self.trace
-                    .world
-                    .apply_world_border_lerp_size(old_size, new_size, time);
-            }
-            ClientboundPlay::SetBorderSize(packet) => {
-                self.trace.world.apply_world_border_size(packet.size);
-            }
-            ClientboundPlay::SetBorderWarningDelay(packet) => {
-                self.trace
-                    .world
-                    .apply_world_border_warning_time(packet.time);
-            }
-            ClientboundPlay::SetBorderWarningDistance(packet) => {
-                self.trace
-                    .world
-                    .apply_world_border_warning_blocks(packet.blocks);
-            }
+    pub(super) fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
+        let checks_loading = packet.checks_loading();
+        packet.handle(self)?;
+        if checks_loading {
+            self.maybe_finish_loading()?;
         }
-        self.maybe_finish_loading()
+        Ok(())
     }
 
     /// A packet's bytes, parsed and applied: the way a test hands one over.
     #[cfg(test)]
     pub(super) fn handle_bytes(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
-        self.handle_incoming(ClientboundPlay::decode(body.to_vec())?)
+        self.handle_incoming(decode_packet(body.to_vec())?)
     }
 
     /// A packet of a family that is not typed yet, parsed where it is handled.
@@ -108,14 +166,9 @@ impl PlaySession {
             PLAY_CLIENTBOUND_MOVE_ENTITY_ROT_PACKET_ID => self.on_move_entity_rot(payload)?,
             PLAY_CLIENTBOUND_ANIMATE_PACKET_ID => self.on_animate(payload)?,
             PLAY_CLIENTBOUND_ENTITY_EVENT_PACKET_ID => self.on_entity_event(payload)?,
-            PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID => {
-                self.on_set_simulation_distance(payload)?
-            }
             PLAY_CLIENTBOUND_DAMAGE_EVENT_PACKET_ID => self.on_damage_event(payload)?,
             PLAY_CLIENTBOUND_HURT_ANIMATION_PACKET_ID => self.on_hurt_animation(payload)?,
             PLAY_CLIENTBOUND_RESPAWN_PACKET_ID => self.on_respawn(payload)?,
-            PLAY_CLIENTBOUND_CHUNK_PACKET_ID => self.on_chunk(payload)?,
-            PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID => self.on_light_update(payload)?,
             PLAY_CLIENTBOUND_FORGET_LEVEL_CHUNK_PACKET_ID => self.on_forget_level_chunk(payload)?,
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => self.on_block_update(payload)?,
             PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID => {
@@ -130,8 +183,6 @@ impl PlaySession {
             PLAY_CLIENTBOUND_CHUNK_BATCH_FINISHED_PACKET_ID => {
                 self.on_chunk_batch_finished(payload)?
             }
-            PLAY_CLIENTBOUND_KEEP_ALIVE_PACKET_ID => self.on_keep_alive(payload)?,
-            PLAY_CLIENTBOUND_PING_PACKET_ID => self.on_ping(payload)?,
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => self.on_set_entity_data(payload)?,
             PLAY_CLIENTBOUND_SET_EQUIPMENT_PACKET_ID => self.on_set_equipment(payload)?,
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => self.on_update_attributes(payload)?,
@@ -165,13 +216,6 @@ impl PlaySession {
             PLAY_CLIENTBOUND_BLOCK_EVENT_PACKET_ID => self.on_block_event(payload)?,
             PLAY_CLIENTBOUND_MERCHANT_OFFERS_PACKET_ID => self.on_merchant_offers(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_SET_DATA_PACKET_ID => self.on_container_set_data(payload)?,
-            PLAY_CLIENTBOUND_SYSTEM_CHAT_PACKET_ID => self.on_system_chat(payload)?,
-            PLAY_CLIENTBOUND_DISGUISED_CHAT_PACKET_ID => self.on_disguised_chat(payload)?,
-            PLAY_CLIENTBOUND_PLAYER_CHAT_PACKET_ID => self.on_player_chat(payload)?,
-            PLAY_CLIENTBOUND_DELETE_CHAT_PACKET_ID => self.on_delete_chat(payload)?,
-            PLAY_CLIENTBOUND_COMMAND_SUGGESTIONS_PACKET_ID => {
-                self.on_command_suggestions(payload)?
-            }
             PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID
             | PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID
@@ -179,8 +223,6 @@ impl PlaySession {
             | PLAY_CLIENTBOUND_CLEAR_TITLES_PACKET_ID
             | PLAY_CLIENTBOUND_BOSS_EVENT_PACKET_ID
             | PLAY_CLIENTBOUND_TAB_LIST_PACKET_ID => self.on_hud(payload, packet_id)?,
-            PLAY_CLIENTBOUND_WAYPOINT_PACKET_ID => self.on_waypoint(payload)?,
-            PLAY_CLIENTBOUND_COMMANDS_PACKET_ID => self.on_commands(payload)?,
             PLAY_CLIENTBOUND_SET_OBJECTIVE_PACKET_ID
             | PLAY_CLIENTBOUND_SET_SCORE_PACKET_ID
             | PLAY_CLIENTBOUND_RESET_SCORE_PACKET_ID
@@ -190,21 +232,12 @@ impl PlaySession {
             }
             PLAY_CLIENTBOUND_PLAYER_INFO_UPDATE_PACKET_ID => self.on_player_info_update(payload)?,
             PLAY_CLIENTBOUND_PLAYER_INFO_REMOVE_PACKET_ID => self.on_player_info_remove(payload)?,
-            PLAY_CLIENTBOUND_RECIPE_BOOK_ADD_PACKET_ID => self.on_recipe_book_add(payload)?,
-            PLAY_CLIENTBOUND_RECIPE_BOOK_REMOVE_PACKET_ID => self.on_recipe_book_remove(payload)?,
-            PLAY_CLIENTBOUND_RECIPE_BOOK_SETTINGS_PACKET_ID => {
-                self.on_recipe_book_settings(payload)?
-            }
-            PLAY_CLIENTBOUND_PLACE_GHOST_RECIPE_PACKET_ID => self.on_place_ghost_recipe(payload)?,
-            PLAY_CLIENTBOUND_UPDATE_RECIPES_PACKET_ID => self.on_update_recipes(payload)?,
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => self.on_container_set_slot(payload)?,
             PLAY_CLIENTBOUND_COOLDOWN_PACKET_ID => self.on_cooldown(payload)?,
             PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => self.on_set_cursor_item(payload)?,
             PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
                 self.on_set_player_inventory(payload)?
             }
-            PLAY_CLIENTBOUND_UPDATE_TAGS_PACKET_ID => self.on_update_tags(payload)?,
-            PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID => self.on_disconnect(payload)?,
             _ => {}
         }
         self.maybe_finish_loading()

@@ -495,3 +495,15 @@ pub(crate) fn parse_set_chunk_cache_center_packet(
     }
     Ok((x, z))
 }
+
+impl Decode for ChunkPacketObservation {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        parse_chunk_packet(payload)
+    }
+}
+
+impl Decode for LightUpdateObservation {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        parse_light_update_packet(payload)
+    }
+}

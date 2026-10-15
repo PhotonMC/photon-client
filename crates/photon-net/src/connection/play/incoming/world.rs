@@ -1,16 +1,127 @@
 use super::*;
 
+/// The packets of this family, by packet id.
+pub(super) const DECODERS: &[(i32, Decoder)] = &[
+    (
+        PLAY_CLIENTBOUND_CHUNK_PACKET_ID,
+        typed::<ChunkPacketObservation>,
+    ),
+    (
+        PLAY_CLIENTBOUND_LIGHT_UPDATE_PACKET_ID,
+        typed::<LightUpdateObservation>,
+    ),
+    (
+        PLAY_CLIENTBOUND_INITIALIZE_BORDER_PACKET_ID,
+        typed::<InitializeBorder>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_BORDER_CENTER_PACKET_ID,
+        typed::<SetBorderCenter>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_BORDER_LERP_SIZE_PACKET_ID,
+        typed::<SetBorderLerpSize>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_BORDER_SIZE_PACKET_ID,
+        typed::<SetBorderSize>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_BORDER_WARNING_DELAY_PACKET_ID,
+        typed::<SetBorderWarningDelay>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SET_BORDER_WARNING_DISTANCE_PACKET_ID,
+        typed::<SetBorderWarningDistance>,
+    ),
+];
+
+/// `handleLevelChunkWithLight`: the chunk, then its light.
+impl ClientboundPacket for ChunkPacketObservation {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.apply_chunk(&self);
+        Ok(())
+    }
+
+    /// A chunk never ended its packet by checking whether loading is done.
+    fn checks_loading(&self) -> bool {
+        false
+    }
+}
+
+/// `handleLightUpdatePacket`.
+impl ClientboundPacket for LightUpdateObservation {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.apply_light_update(&self);
+        Ok(())
+    }
+
+    fn checks_loading(&self) -> bool {
+        false
+    }
+}
+
+/// `handleInitializeBorder`.
+impl ClientboundPacket for InitializeBorder {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.apply_world_border_initialize(self.0);
+        Ok(())
+    }
+}
+
+/// `handleSetBorderCenter`.
+impl ClientboundPacket for SetBorderCenter {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .trace
+            .world
+            .apply_world_border_center(self.x, self.z);
+        Ok(())
+    }
+}
+
+/// `handleSetBorderLerpSize`.
+impl ClientboundPacket for SetBorderLerpSize {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .trace
+            .world
+            .apply_world_border_lerp_size(self.old_size, self.new_size, self.time);
+        Ok(())
+    }
+}
+
+/// `handleSetBorderSize`.
+impl ClientboundPacket for SetBorderSize {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.trace.world.apply_world_border_size(self.size);
+        Ok(())
+    }
+}
+
+/// `handleSetBorderWarningDelay`.
+impl ClientboundPacket for SetBorderWarningDelay {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .trace
+            .world
+            .apply_world_border_warning_time(self.time);
+        Ok(())
+    }
+}
+
+/// `handleSetBorderWarningDistance`.
+impl ClientboundPacket for SetBorderWarningDistance {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session
+            .trace
+            .world
+            .apply_world_border_warning_blocks(self.blocks);
+        Ok(())
+    }
+}
+
 impl PlaySession {
-    pub(super) fn on_chunk(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        self.apply_chunk(&parse_chunk_packet(payload)?);
-        Ok(())
-    }
-
-    pub(super) fn on_light_update(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
-        self.apply_light_update(&parse_light_update_packet(payload)?);
-        Ok(())
-    }
-
     pub(super) fn on_forget_level_chunk(&mut self, payload: &[u8]) -> Result<(), ConnectionError> {
         let (x, z) = parse_forget_level_chunk_packet(payload)?;
         self.trace.world.unload_chunk(x, z);

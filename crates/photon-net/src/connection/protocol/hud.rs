@@ -177,3 +177,14 @@ pub enum BossOperation {
     },
     Properties(u8),
 }
+
+wrapped_packet!(
+    /// `ClientboundTrackedWaypointPacket`: the operation and the waypoint it is done to.
+    Waypoint(
+        (
+            photon_game::waypoint::WaypointOperation,
+            photon_game::waypoint::TrackedWaypoint,
+        )
+    ) = parse_waypoint_packet,
+    OnError::Warn("waypoint")
+);

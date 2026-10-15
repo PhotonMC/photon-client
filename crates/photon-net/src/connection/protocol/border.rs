@@ -95,3 +95,30 @@ impl Decode for SetBorderWarningDistance {
         Ok(Self { blocks })
     }
 }
+
+/// `ClientboundInitializeBorderPacket`.
+pub(crate) struct InitializeBorder(pub photon_world::ClientWorldBorderInitialization);
+
+impl Decode for InitializeBorder {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        parse_initialize_border_packet(payload).map(Self)
+    }
+}
+
+/// `ClientboundSetBorderLerpSizePacket`.
+pub(crate) struct SetBorderLerpSize {
+    pub old_size: f64,
+    pub new_size: f64,
+    pub time: i64,
+}
+
+impl Decode for SetBorderLerpSize {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let (old_size, new_size, time) = parse_set_border_lerp_size_packet(payload)?;
+        Ok(Self {
+            old_size,
+            new_size,
+            time,
+        })
+    }
+}

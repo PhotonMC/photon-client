@@ -350,3 +350,34 @@ impl FilterMask {
         }
     }
 }
+
+wrapped_packet!(
+    /// `ClientboundSystemChatPacket`.
+    SystemChat(ChatEvent) = parse_system_chat_event,
+    OnError::Warn("system chat")
+);
+wrapped_packet!(
+    /// `ClientboundDisguisedChatPacket`.
+    DisguisedChat(ChatEvent) = parse_disguised_chat_event,
+    OnError::Warn("disguised chat")
+);
+wrapped_packet!(
+    /// `ClientboundPlayerChatPacket`.
+    PlayerChat(PlayerChatPacket) = parse_player_chat_packet,
+    OnError::Warn("player chat")
+);
+wrapped_packet!(
+    /// `ClientboundDeleteChatPacket`.
+    DeleteChat(PackedSignature) = parse_delete_chat_packet,
+    OnError::Warn("delete chat")
+);
+
+/// `ClientboundDisconnectPacket`: why the server ended the connection.
+pub(crate) struct Disconnect(pub photon_game::text::Component);
+
+impl Decode for Disconnect {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        read_disconnect_reason(&mut input).map(Self)
+    }
+}

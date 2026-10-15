@@ -268,3 +268,29 @@ pub(crate) struct RecipeUpdate {
     pub sets: Vec<(String, Vec<i32>)>,
     pub stonecutter: Vec<photon_world::StonecutterEntry>,
 }
+
+wrapped_packet!(
+    /// `ClientboundRecipeBookAddPacket`: the entries, and whether they replace the book's.
+    RecipeBookAdd((Vec<(photon_world::RecipeDisplayEntry, u8)>, bool)) = parse_recipe_book_add_packet,
+    OnError::Warn("recipe book add")
+);
+wrapped_packet!(
+    /// `ClientboundRecipeBookRemovePacket`.
+    RecipeBookRemove(Vec<i32>) = parse_recipe_book_remove_packet,
+    OnError::Warn("recipe book remove")
+);
+wrapped_packet!(
+    /// `ClientboundRecipeBookSettingsPacket`.
+    RecipeBookSettings([photon_world::BookTypeSettings; 4]) = parse_recipe_book_settings_packet,
+    OnError::Warn("recipe book settings")
+);
+wrapped_packet!(
+    /// `ClientboundPlaceGhostRecipePacket`.
+    PlaceGhostRecipe((i32, photon_world::RecipeDisplay)) = parse_place_ghost_recipe_packet,
+    OnError::Warn("place ghost recipe")
+);
+wrapped_packet!(
+    /// `ClientboundUpdateRecipesPacket`.
+    UpdateRecipes(RecipeUpdate) = parse_update_recipes_packet,
+    OnError::Warn("recipes")
+);

@@ -200,3 +200,14 @@ pub struct CommandSuggestions {
     pub length: usize,
     pub matches: Vec<String>,
 }
+
+wrapped_packet!(
+    /// `ClientboundCommandSuggestionsPacket`.
+    Suggestions(CommandSuggestions) = parse_command_suggestions,
+    OnError::Warn("suggestions")
+);
+wrapped_packet!(
+    /// `ClientboundCommandsPacket`: the commands the server has.
+    Commands(photon_game::commands::CommandTree) = parse_commands_packet,
+    OnError::Warn("commands")
+);
