@@ -63,7 +63,7 @@ impl ClientWorld {
         self.detach_entity_from_vehicle(entity_id);
         self.eject_entity_passengers(entity_id);
         self.entities_mut().remove_from_section(entity_id, position);
-        self.entities.by_id.remove(&entity_id).is_some()
+        self.entities.remove(entity_id).is_some()
     }
 
     /// Update one live entity position and its persistent section membership.
@@ -134,7 +134,7 @@ impl ClientWorld {
         } else {
             entity_kind::EntityKind::Plain
         };
-        self.entities.by_id.insert(
+        self.entities.insert(
             entity.entity_id,
             ClientEntity {
                 id: entity.entity_id,
@@ -318,7 +318,7 @@ mod ticking;
 
 impl Entities {
     pub fn count(&self) -> usize {
-        self.by_id.len()
+        self.len()
     }
 
     /// Return the number of non-empty entity sections in the client index.
@@ -327,13 +327,11 @@ impl Entities {
     }
 
     pub fn at(&self, entity_id: i32) -> Option<&ClientEntity> {
-        self.by_id.get(&entity_id)
+        self.get(&entity_id)
     }
 
     pub fn metadata(&self, entity_id: i32) -> Option<&[u8]> {
-        self.by_id
-            .get(&entity_id)
-            .and_then(|entity| entity.metadata())
+        self.get(&entity_id).and_then(|entity| entity.metadata())
     }
 
     pub(crate) fn add_to_section(&mut self, entity_id: i32, position: (f64, f64, f64)) {
@@ -357,7 +355,7 @@ impl Entities {
 
 impl ClientWorld {
     pub(crate) fn entity_exists(&self, entity_id: i32) -> bool {
-        self.entities.by_id.contains_key(&entity_id)
+        self.entities.contains_key(&entity_id)
             || self
                 .local_player
                 .as_ref()

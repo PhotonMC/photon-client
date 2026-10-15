@@ -537,7 +537,7 @@
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 12
 "crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 11
 "crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 14
-"crates/photon-world/src/world/chunks.rs::ClientWorld::unload_chunk" = 13
+"crates/photon-world/src/world/chunks.rs::ClientWorld::unload_chunk" = 11
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 14
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 31
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13

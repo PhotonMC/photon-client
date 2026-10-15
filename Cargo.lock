@@ -1406,6 +1406,7 @@ dependencies = [
 name = "photon-world"
 version = "0.1.0"
 dependencies = [
+ "bevy_ecs",
  "photon-core",
  "photon-data",
  "rayon",

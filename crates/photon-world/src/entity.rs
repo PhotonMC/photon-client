@@ -9,7 +9,7 @@ use photon_core::math::{
     mth_rot_lerp_f64, mth_sin_f64, projectile_lerp_rotation_f32, wrap_degrees_f32,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct ClientEntity {
     pub(crate) id: i32,
     pub uuid: photon_core::binary::Uuid,

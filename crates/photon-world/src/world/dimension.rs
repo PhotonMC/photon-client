@@ -126,7 +126,7 @@ impl ClientWorld {
                 .map(|cache| cache.server_view_radius);
             self.chunks.clear();
             self.chunk_cache = server_view_radius.map(ClientChunkCacheState::new);
-            self.entities.by_id.clear();
+            self.entities.clear();
             self.maps.clear();
             if let Some(player) = self.local_player.as_mut() {
                 player.vehicle_id = None;

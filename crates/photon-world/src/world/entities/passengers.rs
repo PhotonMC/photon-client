@@ -350,7 +350,7 @@ impl ClientWorld {
         vehicle_id: i32,
         passenger_id: i32,
     ) {
-        let Some(vehicle_y_rot) = self.entities.by_id.get(&vehicle_id).and_then(|vehicle| {
+        let Some(vehicle_y_rot) = self.entities.get(&vehicle_id).and_then(|vehicle| {
             VANILLA_BOAT_PASSENGER_GEOMETRY
                 .iter()
                 .any(|&(type_id, _, _)| type_id == vehicle.type_id)
@@ -370,7 +370,7 @@ impl ClientWorld {
     }
 
     pub(crate) fn mob_in_water(&self, entity_id: i32) -> Option<bool> {
-        let entity = self.entities.by_id.get(&entity_id)?;
+        let entity = self.entities.get(&entity_id)?;
         if !entity.tracks_water() {
             return None;
         }

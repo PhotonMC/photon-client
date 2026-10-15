@@ -119,7 +119,7 @@ impl ClientWorld {
 impl Entities {
     /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
     pub fn apply_damage_event(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.walk.set_speed(1.5);
@@ -129,7 +129,7 @@ impl Entities {
 
     /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
     pub fn apply_hurt_animation(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.living.hurt_time = 10;
@@ -141,7 +141,7 @@ impl Entities {
     /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
     /// from bed, the critical-hit particles) are not carried out.
     pub fn apply_animate(&mut self, entity_id: i32, action: u8) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
@@ -153,7 +153,7 @@ impl Entities {
     }
 
     pub fn apply_death_event(&mut self, entity_id: i32) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.is_player() {
@@ -179,7 +179,7 @@ impl Entities {
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.
     pub fn set_leash_holder(&mut self, entity_id: i32, holder_id: i32) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if photon_data::leash::leash_of(entity.type_id).is_none() {

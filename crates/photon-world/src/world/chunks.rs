@@ -165,13 +165,13 @@ impl ClientWorld {
             }
             if removed.is_some() {
                 self.unload_chunk_light(chunk_x, chunk_z);
-                for entity in self.entities.by_id.values_mut() {
+                self.entities.for_each_mut(|entity| {
                     if !entity.always_ticking
                         && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
                     {
                         entity.ticking = false;
                     }
-                }
+                });
             }
             return removed.is_some();
         }
@@ -179,13 +179,13 @@ impl ClientWorld {
         let removed = self.chunks.remove(&(chunk_x, chunk_z)).is_some();
         if removed {
             self.unload_chunk_light(chunk_x, chunk_z);
-            for entity in self.entities.by_id.values_mut() {
+            self.entities.for_each_mut(|entity| {
                 if !entity.always_ticking
                     && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
                 {
                     entity.ticking = false;
                 }
-            }
+            });
         }
         removed
     }
@@ -316,11 +316,11 @@ impl ClientWorld {
         } else {
             self.chunks.insert((chunk_x, chunk_z), new_chunk);
         }
-        for entity in self.entities.by_id.values_mut() {
+        self.entities.for_each_mut(|entity| {
             if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
                 entity.ticking = true;
             }
-        }
+        });
         true
     }
 }

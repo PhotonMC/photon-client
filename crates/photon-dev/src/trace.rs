@@ -12,7 +12,7 @@ pub struct PacketObservation {
 }
 
 /// The observable result of the initial real-server session.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Default)]
 pub struct PlayConnectionTrace {
     pub packets: Vec<PacketObservation>,
     pub compression_threshold: Option<usize>,

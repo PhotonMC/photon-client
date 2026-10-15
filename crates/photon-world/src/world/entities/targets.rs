@@ -66,15 +66,12 @@ impl Entities {
     /// meets the dragon's box made 32 blocks wider (by the distance between the two
     /// entities' places), and whether the crystal the dragon holds is still there.
     pub(crate) fn dragon_crystals(&self, entity_id: i32) -> mobs::ender_dragon::DragonCrystals {
-        let Some(dragon) = self.by_id.get(&entity_id).filter(|e| e.is_ender_dragon()) else {
+        let Some(dragon) = self.get(&entity_id).filter(|e| e.is_ender_dragon()) else {
             return mobs::ender_dragon::DragonCrystals::default();
         };
         let current = dragon.ender_dragon().and_then(|own| own.nearest_crystal());
-        let current_exists = current.is_some_and(|id| {
-            self.by_id
-                .get(&id)
-                .is_some_and(ClientEntity::is_end_crystal)
-        });
+        let current_exists =
+            current.is_some_and(|id| self.get(&id).is_some_and(ClientEntity::is_end_crystal));
         let (x, y, z) = dragon.position();
         let size = dragon.dimensions();
         let half = f64::from(size.width()) / 2.0 + 32.0;
@@ -84,7 +81,7 @@ impl Entities {
         );
         let mut nearest = None;
         let mut distance = f64::MAX;
-        for crystal in self.by_id.values().filter(|e| e.is_end_crystal()) {
+        for crystal in self.values().filter(|e| e.is_end_crystal()) {
             let (cx, cy, cz) = crystal.position();
             let crystal_size = crystal.dimensions();
             let reach = f64::from(crystal_size.width()) / 2.0;

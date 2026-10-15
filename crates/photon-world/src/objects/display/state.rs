@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::sync_cell::SyncCell;
 
 impl DisplayState {
     /// The state of a display of this kind before any data has come.
@@ -227,7 +228,7 @@ pub struct DisplayState {
     pub(super) interpolation_start_tick: i64,
     pub(super) interpolation_duration: i32,
     /// `lastProgress`, as its bits: asking for a progress remembers it.
-    pub(super) last_progress: Cell<u32>,
+    pub(super) last_progress: SyncCell<u32>,
     pub(super) update_render_state: bool,
     pub(super) update_start_tick: bool,
     pub(super) update_interpolation_duration: bool,
@@ -292,7 +293,7 @@ impl Default for DisplayState {
             item_display: 0,
             interpolation_start_tick: -2_147_483_648,
             interpolation_duration: 0,
-            last_progress: Cell::new(0.0_f32.to_bits()),
+            last_progress: SyncCell::new(0.0_f32.to_bits()),
             update_render_state: false,
             update_start_tick: false,
             update_interpolation_duration: false,

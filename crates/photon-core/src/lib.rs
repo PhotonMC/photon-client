@@ -14,6 +14,7 @@ pub mod random;
 pub mod sha1;
 pub mod shape;
 pub mod smooth;
+pub mod sync_cell;
 pub mod tags;
 pub mod timer;
 pub mod utf8;

@@ -342,7 +342,7 @@ impl ClientWorld {
 
 impl Entities {
     pub fn apply_motion(&mut self, input: EntityMotionInput) -> bool {
-        let Some(entity) = self.by_id.get_mut(&input.entity_id) else {
+        let Some(entity) = self.at_mut(input.entity_id) else {
             return false;
         };
         if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {

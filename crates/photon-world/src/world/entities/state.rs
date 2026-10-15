@@ -52,7 +52,7 @@ impl Entities {
         entity_id: i32,
         attributes: &[ClientAttributeState],
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         let Some(type_name) = photon_data::entity_type::name(entity.type_id) else {
@@ -85,7 +85,7 @@ impl Entities {
         entity_id: i32,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.item_stack = stack;
@@ -102,7 +102,7 @@ impl Entities {
         slot: EquipmentSlot,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.equipment[slot as usize] = stack;
@@ -118,7 +118,7 @@ impl Entities {
         below_is_ladder: bool,
         ladder_facing: &str,
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
@@ -134,7 +134,7 @@ impl Entities {
         still_timeout: bool,
         is_vehicle: bool,
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID {
@@ -155,7 +155,7 @@ impl Entities {
         spectator: bool,
         on_climbable: bool,
     ) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.alive = alive;
@@ -166,7 +166,7 @@ impl Entities {
 
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
     pub fn apply_player_flying_state(&mut self, entity_id: i32, flying: bool) -> bool {
-        let Some(entity) = self.by_id.get_mut(&entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_PLAYER_ENTITY_TYPE_ID {

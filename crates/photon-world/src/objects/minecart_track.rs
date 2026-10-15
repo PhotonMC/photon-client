@@ -2,7 +2,7 @@
 //! server sends the steps it took along the track, and the client plays them back over three
 //! ticks, weighted by how far each went, instead of easing to a place.
 
-use std::cell::Cell;
+use photon_core::sync_cell::SyncCell;
 
 use photon_core::java_float::JavaF32;
 use photon_core::math::{mth_lerp_f64, mth_rot_lerp_f32};
@@ -70,7 +70,7 @@ pub struct TrackLerp {
     current_steps: Vec<MinecartStep>,
     current_total_weight: f64,
     old_lerp: Option<MinecartStep>,
-    cache: Cell<Option<Cached>>,
+    cache: SyncCell<Option<Cached>>,
 }
 
 // The cache holds finite numbers: never NaN.

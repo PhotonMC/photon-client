@@ -2,8 +2,6 @@
 //! state made from it when it changes (a transformation, shadow and the rest that ease from the
 //! last one to the new over the interpolation duration), and the progress of that easing.
 
-use std::cell::Cell;
-
 use photon_core::math::{mth_inverse_lerp_f32, mth_lerp_f32, mth_lerp_int};
 
 use crate::metadata::{

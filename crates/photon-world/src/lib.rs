@@ -78,7 +78,7 @@ pub use shadow::{ShadowInput, ShadowPiece};
 pub use world::{Entities, LevelEvent, block_sound_of};
 
 /// The client-side copy of the currently loaded world.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ClientWorld {
     dimension: DimensionBounds,
     dimension_key: String,
@@ -440,3 +440,11 @@ fn tick_projectile(entity: &mut ClientEntity, kind: VanillaProjectileKind, path_
     }
 }
 mod world;
+
+#[cfg(test)]
+fn _assert_send_sync<T: Send + Sync + 'static>() {}
+#[cfg(test)]
+#[test]
+fn entity_is_send_sync() {
+    _assert_send_sync::<ClientEntity>();
+}

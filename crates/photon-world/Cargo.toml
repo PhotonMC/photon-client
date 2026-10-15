@@ -10,6 +10,7 @@ include = ["/Cargo.toml", "/src/**"]
 [dependencies]
 photon-core.workspace = true
 photon-data.workspace = true
+bevy_ecs.workspace = true
 rayon.workspace = true
 
 [lints]
