@@ -4,6 +4,7 @@
 //! `ItemEnchantments.Mutable`.
 
 use super::*;
+use photon_core::ids::ItemId;
 use photon_world::item_components::ids;
 
 fn varint(value: i32) -> Vec<u8> {
@@ -17,8 +18,8 @@ fn varint_of(value: &[u8]) -> Option<i32> {
 }
 
 /// The item's own value of a component, as the wire writes it.
-fn prototype(item: i32, id: i32) -> Option<Vec<u8>> {
-    let durability = usize::try_from(item)
+fn prototype(item: ItemId, id: i32) -> Option<Vec<u8>> {
+    let durability = usize::try_from(item.0)
         .ok()
         .and_then(|index| ITEMS.get(index))
         .map_or(0, |item| item.max_damage);
@@ -80,7 +81,7 @@ pub(super) fn remove(stack: &mut Stack, id: i32) {
 
 /// `ItemStack.transmuteCopy`: another item with this stack's patch, laid
 /// over the new item's own components.
-pub(super) fn transmute(stack: &Stack, item: i32) -> Stack {
+pub(super) fn transmute(stack: &Stack, item: ItemId) -> Stack {
     let mut made = Stack::new(stack.item_count(), item);
     let patch = stack.patch();
     for (id, value) in patch.added {

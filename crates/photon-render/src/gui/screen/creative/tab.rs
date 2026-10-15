@@ -292,7 +292,7 @@ impl CreativeScreen {
             // name; the reference walks a hash set, so their order is its own.
             if !lines.is_empty() && kind == TabKind::Search && creative_slot {
                 for tag in &self.visible_tags {
-                    if self.tags.contains(stack.item_registry_id(), tag) {
+                    if self.tags.contains(stack.item_registry_id().0, tag) {
                         lines.insert(
                             1,
                             vec![Run {

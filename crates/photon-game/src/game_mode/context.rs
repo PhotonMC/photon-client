@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
+use photon_core::ids::ItemId;
 
 /// What the player aims at when the tick's keys are handled.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -118,7 +119,7 @@ impl Context<'_> {
     }
 
     /// `getItemInHand`: the stack's item and count, or nothing.
-    pub(super) fn held(&self, hand: u8) -> Option<(i32, i32)> {
+    pub(super) fn held(&self, hand: u8) -> Option<(ItemId, i32)> {
         self.world
             .local_player()
             .and_then(|state| state.inventory_slot(self.hand_slot(hand)))

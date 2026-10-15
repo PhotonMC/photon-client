@@ -1,5 +1,6 @@
 //! The body of a dialog screen: its parts (wrapped text, item boxes) and how they are laid out.
 
+use photon_core::ids::ItemId;
 use photon_game::dialog::{Body, PlainMessage};
 use photon_game::text::{Lang, Run, Style};
 
@@ -16,7 +17,7 @@ pub(super) const PADDING: i32 = 4;
 
 /// The item an item body shows.
 pub(super) struct Shown {
-    pub(super) id: i32,
+    pub(super) id: ItemId,
     pub(super) count: i32,
     pub(super) decorations: bool,
 }

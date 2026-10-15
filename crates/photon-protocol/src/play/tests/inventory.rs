@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn creative_stone_slot_encoder_matches_java_optional_item_stack() {
     let mut payload = Vec::new();
-    encode_creative_stone_slot(&mut payload, 36, 1).expect("creative slot packet");
+    encode_creative_stone_slot(&mut payload, 36, ItemId(1)).expect("creative slot packet");
 
     let mut input = payload.as_slice();
     let (slot, rest) = input.split_at(2);
@@ -33,7 +33,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     use photon_world::ClientItemStackState as Stack;
     // A stack made here has no patch: both counts are zero.
     let mut payload = Vec::new();
-    encode_creative_slot(&mut payload, 38, Some(&Stack::new(3, 1_044)));
+    encode_creative_slot(&mut payload, 38, Some(&Stack::new(3, ItemId(1_044))));
     let mut input = &payload[2..];
     assert_eq!(
         i16::from_be_bytes(payload[..2].try_into().expect("slot")),
@@ -49,9 +49,9 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     );
     assert_eq!(input, &[0, 0]);
     // A stack with a patch writes each value behind its length.
-    let stack = Stack::from_wire(1, 5, vec![103], Vec::new()).with_patch_bytes(vec![1, 0, 103, 1]);
+    let s = Stack::from_wire(1, ItemId(5), vec![103], vec![]).with_patch_bytes(vec![1, 0, 103, 1]);
     let mut payload = Vec::new();
-    encode_creative_slot(&mut payload, -1, Some(&stack));
+    encode_creative_slot(&mut payload, -1, Some(&s));
     assert_eq!(
         i16::from_be_bytes(payload[..2].try_into().expect("slot")),
         -1
@@ -66,7 +66,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
 #[test]
 fn creative_item_slot_encoder_keeps_registry_id_and_empty_components() {
     let mut payload = Vec::new();
-    encode_creative_item_slot(&mut payload, 36, 1, 1_044).expect("creative item slot");
+    encode_creative_item_slot(&mut payload, 36, 1, ItemId(1_044)).expect("creative item slot");
 
     let mut input = payload.as_slice();
     assert_eq!(i16::from_be_bytes(input[..2].try_into().expect("slot")), 36);
@@ -337,7 +337,7 @@ fn inventory_click_encoder_keeps_ahead_state_id() {
 #[test]
 fn inventory_pickup_prediction_encoder_keeps_item_hash_fields() {
     let mut payload = Vec::new();
-    encode_inventory_pickup_with_prediction(&mut payload, 2, 8, 1)
+    encode_inventory_pickup_with_prediction(&mut payload, 2, 8, ItemId(1))
         .expect("inventory prediction packet");
 
     let mut input = payload.as_slice();
@@ -392,7 +392,7 @@ fn inventory_pickup_prediction_encoder_keeps_item_hash_fields() {
 #[test]
 fn inventory_wrong_slot_prediction_encoder_keeps_pre_click_slot_and_carried_hashes() {
     let mut payload = Vec::new();
-    encode_inventory_pickup_with_wrong_slot_prediction(&mut payload, 2, 8, 1)
+    encode_inventory_pickup_with_wrong_slot_prediction(&mut payload, 2, 8, ItemId(1))
         .expect("wrong-slot inventory prediction packet");
 
     let mut input = payload.as_slice();
@@ -487,7 +487,7 @@ fn inventory_wrong_carried_prediction_encoder_keeps_empty_carried_hash() {
 #[test]
 fn inventory_wrong_both_prediction_encoder_keeps_slot_item_and_empty_carried_hash() {
     let mut payload = Vec::new();
-    encode_inventory_pickup_with_wrong_both_prediction(&mut payload, 2, 8, 1)
+    encode_inventory_pickup_with_wrong_both_prediction(&mut payload, 2, 8, ItemId(1))
         .expect("wrong-both inventory prediction packet");
 
     let mut input = payload.as_slice();

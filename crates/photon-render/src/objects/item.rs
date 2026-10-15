@@ -2,6 +2,7 @@
 //! each (`ItemEntityRenderer`): the stack bobs and spins, and the copies
 //! sit beside one another at offsets its seed gives.
 
+use photon_core::ids::ItemId;
 use photon_core::math::mth_sin_f64;
 use photon_core::random::RandomSource;
 
@@ -24,8 +25,8 @@ pub fn rendered_amount(stack_count: i32) -> i32 {
 
 /// `ItemClusterRenderState.getSeedForItemStack`: what the copies' offsets
 /// are drawn from.
-pub fn seed_for_stack(item_registry_id: i32, damage: i32) -> i32 {
-    item_registry_id + damage
+pub fn seed_for_stack(item_registry_id: ItemId, damage: i32) -> i32 {
+    item_registry_id.0 + damage
 }
 
 /// A model's extent as the renderer reads it: its lowest point, and its

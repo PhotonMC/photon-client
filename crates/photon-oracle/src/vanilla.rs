@@ -388,7 +388,9 @@ pub(super) fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String
 
 /// The item tags of the data pack, as a tag packet would carry them.
 pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags, String> {
-    let packet = vanilla_tags_of("item", "minecraft:item", &photon_game::item::id_of)?;
+    let packet = vanilla_tags_of("item", "minecraft:item", &|name| {
+        photon_game::item::id_of(name).map(|id| id.0)
+    })?;
     photon_world::block::tags::ItemTags::from_registries(&packet.registries)
         .ok_or_else(|| "no item tags".to_owned())
 }

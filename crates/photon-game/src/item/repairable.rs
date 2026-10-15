@@ -7,6 +7,7 @@
 //! a repair material fails there; regenerate the rows from the fixture's
 //! component 33 and group them by value.
 
+use photon_core::ids::ItemId;
 use photon_core::wire::write_varint;
 
 /// `Repairable.items`: a tag, or the items listed.
@@ -95,8 +96,8 @@ static REPAIRABLE: &[Group] = &[
 
 /// The component's value for the item as the network writes it (a holder
 /// set: zero and the tag's name, or one more than the count and the ids).
-pub(crate) fn repairable_value(item: i32) -> Option<Vec<u8>> {
-    let name = usize::try_from(item)
+pub(crate) fn repairable_value(item: ItemId) -> Option<Vec<u8>> {
+    let name = usize::try_from(item.0)
         .ok()
         .and_then(|index| photon_data::item::registry::ITEMS.get(index))?
         .name;
@@ -111,7 +112,7 @@ pub(crate) fn repairable_value(item: i32) -> Option<Vec<u8>> {
         RepairItems::Items(items) => {
             write_varint(items.len() as i32 + 1, &mut out);
             for name in *items {
-                write_varint(crate::item::id_of(name)?, &mut out);
+                write_varint(crate::item::id_of(name)?.0, &mut out);
             }
         }
     }
@@ -139,7 +140,11 @@ mod tests {
                 .iter()
                 .find(|(id, _)| *id == photon_data::item::component_types::REPAIRABLE)
                 .map(|(_, value)| value.clone());
-            assert_eq!(repairable_value(index as i32), dumped, "{name}");
+            assert_eq!(
+                repairable_value(photon_core::ids::ItemId(index as i32)),
+                dumped,
+                "{name}"
+            );
         }
     }
 }

@@ -228,7 +228,7 @@ mod tests {
             std::sync::Arc::new(crate::registries::for_tests()),
         );
         let mut menu = ContainerMenu {
-            carried: Some(Stack::new(5, 1)),
+            carried: Some(Stack::new(5, photon_core::ids::ItemId(1))),
             ..ContainerMenu::default()
         };
         let effects = click(&mut creative, &mut menu, None, 0, ClickType::Pickup);
@@ -242,7 +242,7 @@ mod tests {
     fn the_bin_empties_the_whole_inventory_with_a_quick_click() {
         let mut creative = menu_on(TabKind::Inventory);
         let mut menu = ContainerMenu::default();
-        menu.slots[10] = Some(Stack::new(3, 1));
+        menu.slots[10] = Some(Stack::new(3, photon_core::ids::ItemId(1)));
         let effects = click(
             &mut creative,
             &mut menu,

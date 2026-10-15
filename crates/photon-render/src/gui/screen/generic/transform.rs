@@ -5,6 +5,7 @@
 //! Not drawn: the cartography table's map (the client has no map data), the
 //! smithing table's armour stand and the enchanting table's book.
 
+use photon_core::ids::ItemId;
 use std::time::Instant;
 
 use super::{GenericScreen, GuiBlend, KeyResult, MenuKind, ScreenAction, ScreenDraw};
@@ -95,7 +96,7 @@ pub(super) fn empty_icon(kind: MenuKind, index: usize) -> Option<&'static str> {
 }
 
 /// Which item a slot holds, to see it change.
-fn key_of(menu: &ContainerMenu, slot: usize) -> Option<(i32, i32)> {
+fn key_of(menu: &ContainerMenu, slot: usize) -> Option<(ItemId, i32)> {
     menu.slots
         .get(slot)
         .and_then(Option::as_ref)
@@ -112,7 +113,7 @@ pub(super) struct Extras {
     start_index: usize,
     scrolling: bool,
     options_count: usize,
-    stone_input: Option<(i32, i32)>,
+    stone_input: Option<(ItemId, i32)>,
     /// The loom's pattern list: its scroll position, first row shown, whether
     /// the bar is grabbed and how many patterns it offers.
     loom_offs: f32,
@@ -121,7 +122,7 @@ pub(super) struct Extras {
     loom_count: usize,
     name: EditBox,
     focused_at: Instant,
-    filled_for: Option<Option<(i32, i32)>>,
+    filled_for: Option<Option<(ItemId, i32)>>,
     /// `AnvilMenu.itemName`: the name the server was last sent, none yet.
     /// `setTooltipForNextFrame`: the tooltip a menu's own widgets asked for,
     /// which is drawn last.
@@ -250,7 +251,7 @@ impl Extras {
     /// `SmithingScreen.containerTick`: the icons of the three slots, for the template in the first.
     pub(super) fn tick_smithing(&mut self, menu: &ContainerMenu) {
         let template = menu.slots.first().and_then(Option::as_ref).map(|stack| {
-            photon_data::item::registry::ITEMS[stack.item_registry_id() as usize].name
+            photon_data::item::registry::ITEMS[stack.item_registry_id().0 as usize].name
         });
         let (base, addition): (&'static [&'static str], &'static [&'static str]) = match template {
             Some("minecraft:netherite_upgrade_smithing_template") => {

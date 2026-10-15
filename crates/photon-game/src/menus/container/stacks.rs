@@ -36,7 +36,7 @@ impl ContainerMenu {
 }
 
 pub(super) fn stacking(stack: &Stack) -> Option<&'static Item> {
-    usize::try_from(stack.item_registry_id())
+    usize::try_from(stack.item_registry_id().0)
         .ok()
         .and_then(|id| ITEMS.get(id))
 }
@@ -169,7 +169,7 @@ pub(super) fn write_hashed_stack(
         return;
     };
     out.push(1);
-    photon_core::wire::write_varint(stack.item_registry_id(), out);
+    photon_core::wire::write_varint(stack.item_registry_id().0, out);
     photon_core::wire::write_varint(stack.item_count(), out);
     let mut patch = stack.patch();
     patch.added.sort_by_key(|(id, _)| *id);

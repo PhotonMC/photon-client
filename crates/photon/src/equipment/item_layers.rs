@@ -43,7 +43,7 @@ impl ItemLayerCache {
         tints: &BiomeTints,
     ) -> &[ItemLayer] {
         let context = self.context;
-        let variants = self.layers.entry(stack.item_registry_id()).or_default();
+        let variants = self.layers.entry(stack.item_registry_id().0).or_default();
         let index = match variants
             .iter()
             .position(|(patch, _)| patch == stack.patch_bytes())

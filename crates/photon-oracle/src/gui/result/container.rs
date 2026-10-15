@@ -131,7 +131,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         if !tooltips {
             return Vec::new();
         }
-        let name = photon_data::item::registry::ITEMS[stack.item_registry_id() as usize]
+        let name = photon_data::item::registry::ITEMS[stack.item_registry_id().0 as usize]
             .name
             .trim_start_matches("minecraft:");
         let text = lang

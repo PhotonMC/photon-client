@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl GameMode {
     /// The hands whose stack was used since the last call, in order.
@@ -174,7 +175,7 @@ impl GameMode {
         &mut self,
         ctx: &mut Context<'_>,
         hand: u8,
-        item: i32,
+        item: ItemId,
         aim: Aim,
     ) -> UseResult {
         // A player who may not build passes, unless the stack's `can_place_on`
@@ -198,7 +199,7 @@ impl GameMode {
         &mut self,
         ctx: &mut Context<'_>,
         hand: u8,
-        item: i32,
+        item: ItemId,
         aim: Aim,
     ) -> UseResult {
         let Aim::Block {

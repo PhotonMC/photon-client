@@ -302,8 +302,9 @@ pub fn defaults(item: &Item, registries: Option<&Registries>) -> Patch {
 mod tests {
     use super::*;
     use crate::item::values::Values;
+    use photon_core::ids::ItemId;
 
-    fn item(name: &str) -> i32 {
+    fn item(name: &str) -> ItemId {
         crate::item::id_of(name).expect("an item")
     }
 

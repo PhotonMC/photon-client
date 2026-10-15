@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl GenericScreen {
     /// The clicks the name box asked for since the last call.
@@ -162,7 +163,7 @@ impl GenericScreen {
 
     /// What an entry shows, as a stack of one.
     pub(super) fn option_stack(item: i32) -> Option<photon_world::ClientItemStackState> {
-        (item >= 0).then(|| photon_world::ClientItemStackState::new(1, item))
+        (item >= 0).then(|| photon_world::ClientItemStackState::new(1, ItemId(item)))
     }
 
     /// Whether the loom shows its patterns: a banner and a dye, room for
@@ -288,7 +289,7 @@ impl GenericScreen {
             .and_then(Option::as_ref)
             .and_then(|stack| {
                 photon_data::item::registry::ITEMS
-                    .get(usize::try_from(stack.item_registry_id()).ok()?)
+                    .get(usize::try_from(stack.item_registry_id().0).ok()?)
             })
             .and_then(|item| item.name.strip_prefix("minecraft:")?.strip_suffix("_dye"))
             .unwrap_or("white");

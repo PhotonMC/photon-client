@@ -283,6 +283,12 @@ fn answer(line: &str) -> Result<String, String> {
     serde_json::to_string(&response).map_err(|error| error.to_string())
 }
 
+/// The raw registry id of an item named with or without its namespace.
+fn raw_item_id(name: &str) -> Option<i32> {
+    let name = format!("minecraft:{}", name.trim_start_matches("minecraft:"));
+    photon_game::item::id_of(&name).map(|id| id.0)
+}
+
 /// The menu a scenario row describes: its kind, recipe sets, data and XP
 /// level, as the client holds them before its slots are set.
 pub(super) fn menu_named(
@@ -332,13 +338,7 @@ pub(super) fn menu_named(
                         .and_then(Value::as_array)
                         .into_iter()
                         .flatten()
-                        .filter_map(|item| {
-                            let name = item.as_str()?;
-                            photon_game::item::id_of(&format!(
-                                "minecraft:{}",
-                                name.trim_start_matches("minecraft:")
-                            ))
-                        })
+                        .filter_map(|item| raw_item_id(item.as_str()?))
                         .collect(),
                 )
             })
@@ -348,13 +348,7 @@ pub(super) fn menu_named(
         menu.accepted = vec![std::sync::Arc::new(
             inputs
                 .iter()
-                .filter_map(|item| {
-                    let name = item.as_str()?;
-                    photon_game::item::id_of(&format!(
-                        "minecraft:{}",
-                        name.trim_start_matches("minecraft:")
-                    ))
-                })
+                .filter_map(|item| raw_item_id(item.as_str()?))
                 .collect(),
         )];
     }
@@ -423,7 +417,7 @@ pub(super) fn menu_named(
         menu.accepted = vec![std::sync::Arc::new(
             inputs
                 .iter()
-                .filter_map(|name| photon_game::item::id_of(name.as_str()?))
+                .filter_map(|name| photon_game::item::id_of(name.as_str()?).map(|id| id.0))
                 .collect(),
         )];
     }

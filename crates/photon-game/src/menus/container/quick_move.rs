@@ -453,7 +453,7 @@ impl ContainerMenu {
     pub(super) fn can_smelt(&self, stack: &Stack) -> bool {
         self.accepted
             .first()
-            .is_some_and(|inputs| inputs.contains(&stack.item_registry_id()))
+            .is_some_and(|inputs| inputs.contains(&stack.item_registry_id().0))
     }
 
     /// `AbstractFurnaceMenu.quickMoveStack`.

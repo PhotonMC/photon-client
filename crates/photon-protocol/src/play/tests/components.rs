@@ -3,8 +3,13 @@ use super::*;
 #[test]
 fn inventory_component_hash_prediction_encoder_keeps_registry_hash_fields() {
     let mut payload = Vec::new();
-    encode_inventory_pickup_with_component_hash_prediction(&mut payload, 2, 1, 1_046)
-        .expect("component-hash inventory prediction packet");
+    encode_inventory_pickup_with_component_hash_prediction(
+        &mut payload,
+        2,
+        1,
+        photon_core::ids::ItemId(1_046),
+    )
+    .expect("component-hash inventory prediction packet");
 
     let mut input = payload.as_slice();
     assert_eq!(
@@ -127,7 +132,7 @@ fn inventory_item_component_conformance_encoder_uses_table_rows() {
         input = &input[1..];
         assert_eq!(
             photon_core::wire::read_varint(&mut input).expect("item registry id"),
-            spec.item_registry_id
+            spec.item_registry_id.0
         );
         assert_eq!(
             photon_core::wire::read_varint(&mut input).expect("item count"),
@@ -169,7 +174,7 @@ fn inventory_item_component_conformance_parser_consumes_table_codecs() {
     for spec in VANILLA_ITEM_COMPONENT_CONFORMANCE {
         let mut payload = Vec::new();
         photon_core::wire::write_varint(1, &mut payload);
-        photon_core::wire::write_varint(spec.item_registry_id, &mut payload);
+        photon_core::wire::write_varint(spec.item_registry_id.0, &mut payload);
         photon_core::wire::write_varint(1, &mut payload);
         photon_core::wire::write_varint(0, &mut payload);
         photon_core::wire::write_varint(spec.component_type_id, &mut payload);
@@ -213,8 +218,13 @@ fn inventory_item_component_conformance_parser_consumes_table_codecs() {
 #[test]
 fn inventory_partial_changed_slot_prediction_encoder_omits_slot_hash() {
     let mut payload = Vec::new();
-    encode_inventory_pickup_with_partial_changed_slot_prediction(&mut payload, 2, 8, 1)
-        .expect("partial changed-slot prediction packet");
+    encode_inventory_pickup_with_partial_changed_slot_prediction(
+        &mut payload,
+        2,
+        8,
+        photon_core::ids::ItemId(1),
+    )
+    .expect("partial changed-slot prediction packet");
 
     let mut input = payload.as_slice();
     assert_eq!(

@@ -1754,7 +1754,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 2, 8, 1),
+                    |output| encode_inventory_pickup_with_prediction(output, 2, 8, ItemId(1)),
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;
@@ -1770,7 +1770,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_wrong_slot_prediction(output, 2, 8, 1),
+                    |o| encode_inventory_pickup_with_wrong_slot_prediction(o, 2, 8, ItemId(1)),
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;
@@ -1802,7 +1802,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_wrong_both_prediction(output, 2, 8, 1),
+                    |o| encode_inventory_pickup_with_wrong_both_prediction(o, 2, 8, ItemId(1)),
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;
@@ -1864,7 +1864,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 0, 8, 1),
+                    |output| encode_inventory_pickup_with_prediction(output, 0, 8, ItemId(1)),
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;
@@ -1880,7 +1880,7 @@ pub(super) fn connect_and_probe_with_mode(
                     &mut stream,
                     ConnectionProtocol::Play,
                     PLAY_SERVERBOUND_CONTAINER_CLICK_PACKET_ID,
-                    |output| encode_inventory_pickup_with_prediction(output, 99, 8, 1),
+                    |output| encode_inventory_pickup_with_prediction(output, 99, 8, ItemId(1)),
                     compression_threshold,
                 )?;
                 trace.container_click_packets_sent += 1;

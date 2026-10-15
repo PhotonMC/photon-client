@@ -293,10 +293,10 @@ pub(crate) fn display_data_event(
     data.push(255);
     world.apply_entity_metadata(entity_id, &data);
     if let Some(name) = event["item"].as_str() {
-        let id = photon_data::item::registry::index(name).unwrap_or(0);
+        let id = photon_game::item::id_of(name).unwrap_or(photon_core::ids::ItemId(0));
         world.entities_mut().apply_item_stack(
             entity_id,
-            Some(photon_world::ClientItemStackState::new(1, id as i32)),
+            Some(photon_world::ClientItemStackState::new(1, id)),
         );
     }
     Ok(())

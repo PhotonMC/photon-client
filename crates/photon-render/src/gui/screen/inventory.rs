@@ -344,7 +344,7 @@ mod tests {
     fn a_click_picks_up_on_press_and_places_on_release() {
         let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
-        menu.slots[36] = Some(Stack::new(64, 1));
+        menu.slots[36] = Some(Stack::new(64, photon_core::ids::ItemId(1)));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 36);
         let press = screen.mouse_clicked((x, y), 0, false, now, &menu);
@@ -381,7 +381,7 @@ mod tests {
     fn a_drag_over_slots_sends_the_quick_craft_steps() {
         let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
-        menu.carried = Some(Stack::new(64, 1));
+        menu.carried = Some(Stack::new(64, photon_core::ids::ItemId(1)));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 10);
         assert!(
@@ -416,7 +416,7 @@ mod tests {
     fn a_double_click_gathers() {
         let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
         let mut menu = ContainerMenu::default();
-        menu.slots[20] = Some(Stack::new(5, 1));
+        menu.slots[20] = Some(Stack::new(5, photon_core::ids::ItemId(1)));
         let now = std::time::Instant::now();
         let (x, y) = centre(&screen, 20);
         screen.mouse_clicked((x, y), 0, false, now, &menu);

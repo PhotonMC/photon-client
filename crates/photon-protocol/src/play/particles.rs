@@ -104,7 +104,7 @@ pub fn read_particle_options(
             },
             // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
             "item" => {
-                let item = read_varint(input, NAME)?;
+                let item = ItemId(read_varint(input, NAME)?);
                 read_varint(input, NAME)?;
                 photon_game::item_components::read_patch(input)
                     .map_err(|_| ConnectionError::Codec(NAME))?;

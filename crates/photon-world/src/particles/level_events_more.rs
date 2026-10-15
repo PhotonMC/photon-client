@@ -2,6 +2,7 @@
 //! eye shattering, a spawner's flames, bone meal's sparkles and a mace's smash.
 
 use photon_core::direction::Axis;
+use photon_core::ids::ItemId;
 use photon_core::math::{fdlibm_cos, fdlibm_sin};
 use photon_core::random::RandomSource;
 
@@ -103,8 +104,8 @@ impl ParticleEngine {
             f64::from(pos.1),
             f64::from(pos.2) + 0.5,
         );
-        let shard =
-            photon_data::item::registry::index("minecraft:splash_potion").map_or(0, |id| id as i32);
+        let shard = photon_data::item::registry::index("minecraft:splash_potion")
+            .map_or(ItemId(0), |id| ItemId(id as i32));
         for _ in 0..8 {
             let random = &mut *context.level_random;
             let push = (
@@ -151,8 +152,8 @@ impl ParticleEngine {
             f64::from(pos.1),
             f64::from(pos.2) + 0.5,
         );
-        let eye =
-            photon_data::item::registry::index("minecraft:ender_eye").map_or(0, |id| id as i32);
+        let eye = photon_data::item::registry::index("minecraft:ender_eye")
+            .map_or(ItemId(0), |id| ItemId(id as i32));
         for _ in 0..8 {
             let random = &mut *context.level_random;
             let push = (

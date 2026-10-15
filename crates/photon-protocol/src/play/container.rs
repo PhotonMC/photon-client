@@ -77,7 +77,7 @@ pub struct ContainerSetSlotObservation {
     pub state_id: i32,
     pub slot: i16,
     pub item_count: Option<i32>,
-    pub item_registry_id: Option<i32>,
+    pub item_registry_id: Option<ItemId>,
     pub positive_component_type_ids: Vec<i32>,
     pub negative_component_type_ids: Vec<i32>,
     pub item: Option<ClientItemStackState>,
@@ -88,7 +88,7 @@ pub struct ContainerSetSlotObservation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CursorItemObservation {
     pub item_count: Option<i32>,
-    pub item_registry_id: Option<i32>,
+    pub item_registry_id: Option<ItemId>,
     pub positive_component_type_ids: Vec<i32>,
     pub negative_component_type_ids: Vec<i32>,
     pub item: Option<ClientItemStackState>,
@@ -100,7 +100,7 @@ pub struct CursorItemObservation {
 pub struct SetPlayerInventoryObservation {
     pub slot: i32,
     pub item_count: Option<i32>,
-    pub item_registry_id: Option<i32>,
+    pub item_registry_id: Option<ItemId>,
     pub positive_component_type_ids: Vec<i32>,
     pub negative_component_type_ids: Vec<i32>,
     pub item: Option<ClientItemStackState>,
@@ -115,15 +115,15 @@ pub struct ContainerSetContentObservation {
     pub item_count: usize,
     pub items: Vec<Option<ClientItemStackState>>,
     pub hotbar_slot_zero_item_count: Option<i32>,
-    pub hotbar_slot_zero_item_registry_id: Option<i32>,
+    pub hotbar_slot_zero_item_registry_id: Option<ItemId>,
     pub hotbar_slot_zero_positive_component_type_ids: Vec<i32>,
     pub hotbar_slot_zero_negative_component_type_ids: Vec<i32>,
     pub main_inventory_slot_zero_item_count: Option<i32>,
-    pub main_inventory_slot_zero_item_registry_id: Option<i32>,
+    pub main_inventory_slot_zero_item_registry_id: Option<ItemId>,
     pub main_inventory_slot_zero_positive_component_type_ids: Vec<i32>,
     pub main_inventory_slot_zero_negative_component_type_ids: Vec<i32>,
     pub carried_item_count: Option<i32>,
-    pub carried_item_registry_id: Option<i32>,
+    pub carried_item_registry_id: Option<ItemId>,
     pub carried_positive_component_type_ids: Vec<i32>,
     pub carried_negative_component_type_ids: Vec<i32>,
     pub carried_item: Option<ClientItemStackState>,
@@ -142,7 +142,7 @@ pub struct ContainerDataObservation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ParsedItemStackObservation {
     pub(super) item_count: Option<i32>,
-    pub(super) item_registry_id: Option<i32>,
+    pub(super) item_registry_id: Option<ItemId>,
     pub(super) positive_component_type_ids: Vec<i32>,
     pub(super) negative_component_type_ids: Vec<i32>,
     pub(super) patch_bytes: Vec<u8>,
@@ -162,7 +162,7 @@ pub(super) fn parse_optional_item_stack(
             patch_bytes: Vec::new(),
         });
     }
-    let item_registry_id = read_varint(input, name)?;
+    let item_registry_id = ItemId(read_varint(input, name)?);
     let patch_start = *input;
     let patch = photon_game::item_components::read_patch(input)
         .map_err(|_| ConnectionError::Codec(name))?;

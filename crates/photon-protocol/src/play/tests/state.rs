@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, ItemId};
 
 #[test]
 fn entity_metadata_parser_keeps_java_end_marker_and_raw_payload() {
@@ -70,7 +70,10 @@ fn set_equipment_reads_each_slot_until_the_one_without_the_continue_bit() {
     assert_eq!(packet.slots.len(), 2);
     assert_eq!(packet.slots[0].0, 0);
     let stack = packet.slots[0].1.as_ref().expect("a stack");
-    assert_eq!((stack.item_count(), stack.item_registry_id()), (2, 10));
+    assert_eq!(
+        (stack.item_count(), stack.item_registry_id()),
+        (2, ItemId(10))
+    );
     assert_eq!(packet.slots[1], (5, None));
     assert!(parse_entity_equipment_packet(&payload[..4]).is_err());
 }

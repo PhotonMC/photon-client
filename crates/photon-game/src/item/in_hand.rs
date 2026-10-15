@@ -2,6 +2,7 @@
 //! inventory while the hand dips out of view and back, and how high each
 //! hand is.
 
+use photon_core::ids::ItemId;
 use photon_world::ClientItemStackState;
 
 /// A hand's shown stack and its height, 1 when fully up.
@@ -21,7 +22,7 @@ pub struct ItemInHand {
 
 /// A client item's swap properties, by item id: whether a new stack dips
 /// the hand, and how far.
-pub type SwapProperties<'a> = dyn Fn(i32) -> (bool, f32) + 'a;
+pub type SwapProperties<'a> = dyn Fn(ItemId) -> (bool, f32) + 'a;
 
 /// `ItemInHandRenderer.shouldInstantlyReplaceVisibleItem`. An empty stack
 /// has no item model component, so it always animates.
@@ -139,7 +140,7 @@ mod tests {
     #[test]
     fn a_new_stack_dips_the_hand_and_swaps_at_the_bottom() {
         let mut hand = ItemInHand::default();
-        let stone = ClientItemStackState::new(64, 1);
+        let stone = ClientItemStackState::new(64, photon_core::ids::ItemId(1));
         for _ in 0..3 {
             hand.tick(None, None, 1.0, false, DEFAULTS);
         }
@@ -159,7 +160,7 @@ mod tests {
     #[test]
     fn the_same_stack_changed_in_place_does_not_dip() {
         let mut hand = ItemInHand::default();
-        let mut stone = ClientItemStackState::new(64, 1);
+        let mut stone = ClientItemStackState::new(64, photon_core::ids::ItemId(1));
         for _ in 0..5 {
             hand.tick(Some(&stone), None, 1.0, false, DEFAULTS);
         }

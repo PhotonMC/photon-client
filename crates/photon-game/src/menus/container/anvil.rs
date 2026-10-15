@@ -65,7 +65,7 @@ impl ContainerMenu {
         }
         (1..count).any(|_| {
             photon_core::wire::read_varint(&mut input)
-                .is_ok_and(|item| item == repair.item_registry_id())
+                .is_ok_and(|item| ItemId(item) == repair.item_registry_id())
         })
     }
 

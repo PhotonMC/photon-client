@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chest_item = content.items[0]
         .as_ref()
         .ok_or("vanilla custom-container slot 0 was empty")?;
-    if chest_item.item_count() != 7 || chest_item.item_registry_id() != 1 {
+    if chest_item.item_count() != 7 || chest_item.item_registry_id().0 != 1 {
         return Err("vanilla custom-container slot 0 did not contain stone x7".into());
     }
 
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let world_item = container
         .slot(0)
         .ok_or("Rust custom-container slot 0 was empty")?;
-    if world_item.item_count() != 7 || world_item.item_registry_id() != 1 {
+    if world_item.item_count() != 7 || world_item.item_registry_id().0 != 1 {
         return Err("Rust custom-container slot 0 did not contain stone x7".into());
     }
 

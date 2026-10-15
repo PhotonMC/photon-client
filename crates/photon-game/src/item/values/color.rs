@@ -1,23 +1,24 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl Values {
     /// The components of a stack of an item with a patch, as the wire
     /// carried it from the positive component count on; empty for none.
     /// A default that names an entry of a registry (an instrument) is left
     /// out, for there is no registry to find its id in.
-    pub fn new(item: i32, patch: &[u8]) -> Self {
+    pub fn new(item: ItemId, patch: &[u8]) -> Self {
         Self::build(item, patch, None)
     }
 
     /// Like [`Values::new`], with the registries the defaults' entries are
     /// found in.
-    pub fn with_registries(item: i32, patch: &[u8], registries: &Registries) -> Self {
+    pub fn with_registries(item: ItemId, patch: &[u8], registries: &Registries) -> Self {
         Self::build(item, patch, Some(registries))
     }
 
-    pub(super) fn build(item: i32, patch: &[u8], registries: Option<&Registries>) -> Self {
+    pub(super) fn build(item: ItemId, patch: &[u8], registries: Option<&Registries>) -> Self {
         let mut input = patch;
-        let defaults = usize::try_from(item)
+        let defaults = usize::try_from(item.0)
             .ok()
             .and_then(|index| photon_data::item::registry::ITEMS.get(index))
             .map_or_else(

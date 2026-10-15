@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
+use photon_core::ids::ItemId;
 
 #[test]
 fn a_walking_player_swings_its_limbs_and_turns_its_body_after_the_way_it_walks() {
@@ -127,8 +128,8 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        let main = ClientItemStackState::new(1, 10);
-        let off = ClientItemStackState::new(2, 11);
+        let main = ClientItemStackState::new(1, photon_core::ids::ItemId(10));
+        let off = ClientItemStackState::new(2, photon_core::ids::ItemId(11));
         assert!(world.entities_mut().apply_equipment(
             EntityId(entity_id),
             EquipmentSlot::MainHand,
@@ -149,7 +150,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     let entity = world.entities().at(EntityId(5)).expect("the player");
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
-        (Some(10), Some(11))
+        (Some(ItemId(10)), Some(ItemId(11)))
     );
     // The avatar's data names the left arm (`HumanoidArm` id zero).
     assert!(world.apply_entity_metadata(
@@ -165,7 +166,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     assert!(entity.main_arm_is_left());
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
-        (Some(11), Some(10))
+        (Some(ItemId(11)), Some(ItemId(10)))
     );
     // A mob is left-handed by its flag.
     assert!(world.apply_entity_metadata(
@@ -180,7 +181,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     let entity = world.entities().at(EntityId(6)).expect("the mob");
     assert_eq!(
         (id_of(entity, false), id_of(entity, true)),
-        (Some(11), Some(10))
+        (Some(ItemId(11)), Some(ItemId(10)))
     );
     // An empty slot clears it.
     assert!(
@@ -368,7 +369,7 @@ fn a_swing_lasts_as_long_as_the_held_spears_and_a_kinetic_hit_kicks_for_ten_tick
         crate::EquipmentSlot::MainHand,
         Some(ClientItemStackState::from_wire(
             1,
-            iron_spear as i32,
+            photon_core::ids::ItemId(iron_spear as i32),
             vec![],
             vec![],
         )),

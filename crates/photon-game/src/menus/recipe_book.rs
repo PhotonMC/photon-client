@@ -158,7 +158,7 @@ impl StackedItems {
             return;
         }
         let count = stack.item_count().min(max_stack_size(stack));
-        *self.0.entry(stack.item_registry_id()).or_insert(0) += count;
+        *self.0.entry(stack.item_registry_id().0).or_insert(0) += count;
     }
 
     /// The player's 36 inventory slots and the book's ingredient slots of the

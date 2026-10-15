@@ -99,7 +99,7 @@ impl ContainerMenu {
 
     /// `ItemStack.is(tag)`.
     pub(super) fn in_tag(&self, stack: &Stack, tag: &str) -> bool {
-        self.item_tags.contains(stack.item_registry_id(), tag)
+        self.item_tags.contains(stack.item_registry_id().0, tag)
     }
 
     /// `Slot.mayPlace` of these menus' slots; `None` for another menu's.
@@ -126,7 +126,7 @@ impl ContainerMenu {
             (MenuKind::Smithing, 0..=2) => self
                 .accepted
                 .get(index)
-                .is_some_and(|items| items.contains(&stack.item_registry_id())),
+                .is_some_and(|items| items.contains(&stack.item_registry_id().0)),
             (MenuKind::Loom, 0) => is_class(stack, ItemClass::BannerItem),
             // The loom's tags hold exactly the items that carry the `dye` and
             // `provides_banner_patterns` components.
@@ -240,7 +240,7 @@ impl ContainerMenu {
                 } else if self
                     .accepted
                     .first()
-                    .is_some_and(|inputs| inputs.contains(&stack.item_registry_id()))
+                    .is_some_and(|inputs| inputs.contains(&stack.item_registry_id().0))
                 {
                     self.move_item_stack_to(&mut stack, 0, 1, false)
                 } else if index < 29 {
@@ -314,7 +314,7 @@ impl ContainerMenu {
                             && self
                                 .accepted
                                 .get(input)
-                                .is_some_and(|items| items.contains(&stack.item_registry_id()))
+                                .is_some_and(|items| items.contains(&stack.item_registry_id().0))
                     }),
                     _ => true,
                 };

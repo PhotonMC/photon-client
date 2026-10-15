@@ -702,7 +702,7 @@
 "crates/photon-oracle/src/chunk.rs::client_world_chunk_cache_result" = 99
 "crates/photon-oracle/src/chunkpos.rs::random_state" = 90
 "crates/photon-oracle/src/command.rs::command_parse_result" = 77
-"crates/photon-oracle/src/command.rs::menu_named" = 142
+"crates/photon-oracle/src/command.rs::menu_named" = 130
 "crates/photon-oracle/src/command.rs::respond" = 86
 "crates/photon-oracle/src/container.rs::container_clicks_result" = 128
 "crates/photon-oracle/src/declarations.rs::block_declarations" = 149
@@ -1205,8 +1205,8 @@
 "crates/photon-dev/examples/world_block_entity_spawner_state_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_environment_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_probe.rs" = 1
-"crates/photon-dev/examples/world_player_container_menu_map_probe.rs" = 3
-"crates/photon-dev/examples/world_player_container_probe.rs" = 3
+"crates/photon-dev/examples/world_player_container_menu_map_probe.rs" = 1
+"crates/photon-dev/examples/world_player_container_probe.rs" = 1
 "crates/photon-oracle/src/shape/world_collision.rs" = 1
 "crates/photon-world/src/block/entity.rs" = 1
 

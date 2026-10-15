@@ -1,10 +1,12 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 /// The stack a tab declares: the item and the components it carries, as the
 /// network carries them. A component naming an entry the registries do not
 /// hold is left out.
 pub fn table_stack(entry: &CreativeStack, registries: &Registries) -> Stack {
-    let item = photon_data::item::registry::index(entry.item).map_or(0, |index| index as i32);
+    let item = photon_data::item::registry::index(entry.item)
+        .map_or(ItemId(0), |index| ItemId(index as i32));
     let added: Vec<(i32, Vec<u8>)> = entry
         .components
         .iter()
@@ -153,7 +155,7 @@ pub fn tab_contains(tab: usize, stack: &Stack, registries: &Registries) -> bool 
     } else {
         stack.patch_bytes()
     };
-    let item = usize::try_from(stack.item_registry_id()).ok();
+    let item = usize::try_from(stack.item_registry_id().0).ok();
     candidates.iter().any(|candidate| {
         photon_data::item::registry::index(candidate.item) == item
             && table_stack(candidate, registries).patch_bytes() == patch

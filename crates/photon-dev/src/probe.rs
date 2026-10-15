@@ -7,7 +7,7 @@ use std::io;
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
-use photon_core::wire;
+use photon_core::{ids::ItemId, wire};
 use photon_protocol::phase::ConnectionProtocol;
 use photon_world::{
     BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, DimensionBounds,

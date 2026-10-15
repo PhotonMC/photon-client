@@ -158,7 +158,7 @@ impl LocalPlayer {
     }
 
     /// The item now in the main hand, by registry id; air when empty.
-    pub fn set_main_hand_item(&mut self, item: i32) {
+    pub fn set_main_hand_item(&mut self, item: ItemId) {
         self.main_hand_item = item;
         self.hands.main_item = item;
     }
@@ -206,12 +206,25 @@ pub fn attack_strength_delay(attack_speed: f64) -> f32 {
     (1.0 / attack_speed * 20.0) as f32
 }
 
+impl Default for HandState {
+    fn default() -> Self {
+        Self {
+            main_item: ItemId(0),
+            off_item: ItemId(0),
+            dig_speed: None,
+            mining_fatigue: None,
+            using_item: false,
+            using_off_hand: false,
+        }
+    }
+}
+
 /// What the local player's swing and use of items read of the world's player state.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandState {
     /// The registry ids of what the main and off hands hold (air when empty).
-    pub main_item: i32,
-    pub off_item: i32,
+    pub main_item: ItemId,
+    pub off_item: ItemId,
     /// The greater of the haste and conduit power amplifiers, if either is on.
     pub dig_speed: Option<i32>,
     pub mining_fatigue: Option<i32>,

@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hopper_item = content.items[0]
         .as_ref()
         .ok_or("vanilla hopper slot 0 was empty")?;
-    if hopper_item.item_count() != 7 || hopper_item.item_registry_id() != 1 {
+    if hopper_item.item_count() != 7 || hopper_item.item_registry_id().0 != 1 {
         return Err("vanilla hopper slot 0 did not contain stone x7".into());
     }
 
@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Rust hopper menu metadata did not match vanilla".into());
     }
     let world_item = container.slot(0).ok_or("Rust hopper slot 0 was empty")?;
-    if world_item.item_count() != 7 || world_item.item_registry_id() != 1 {
+    if world_item.item_count() != 7 || world_item.item_registry_id().0 != 1 {
         return Err("Rust hopper slot 0 did not contain stone x7".into());
     }
 

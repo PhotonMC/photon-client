@@ -14,7 +14,7 @@ pub fn inventory_component_spec(
 pub fn encode_creative_stone_slot(
     output: &mut Vec<u8>,
     slot: i16,
-    stone_item_registry_id: i32,
+    stone_item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     encode_creative_item_slot(output, slot, 1, stone_item_registry_id)
 }
@@ -23,11 +23,11 @@ pub fn encode_creative_item_slot(
     output: &mut Vec<u8>,
     slot: i16,
     count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     output.extend_from_slice(&slot.to_be_bytes());
     wire::write_varint(count, output);
-    wire::write_varint(item_registry_id, output);
+    wire::write_varint(item_registry_id.0, output);
     wire::write_varint(0, output);
     wire::write_varint(0, output);
     Ok(())
@@ -41,7 +41,7 @@ pub fn encode_creative_slot(output: &mut Vec<u8>, slot: i16, stack: Option<&Clie
     match stack {
         Some(stack) if stack.item_count() > 0 => {
             wire::write_varint(stack.item_count(), output);
-            wire::write_varint(stack.item_registry_id(), output);
+            wire::write_varint(stack.item_registry_id().0, output);
             // The server reads a client's components behind their lengths. A
             // patch this cannot read is left off rather than sent wrong.
             match photon_game::item_components::delimit(stack.patch_bytes()) {
@@ -147,7 +147,7 @@ pub fn encode_inventory_pickup_with_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction(output, state_id, None, Some((item_count, item_registry_id)))
 }
@@ -156,7 +156,7 @@ pub fn encode_inventory_pickup_with_wrong_slot_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction(
         output,
@@ -177,7 +177,7 @@ pub fn encode_inventory_pickup_with_wrong_both_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction(output, state_id, Some((item_count, item_registry_id)), None)
 }
@@ -185,8 +185,8 @@ pub fn encode_inventory_pickup_with_wrong_both_prediction(
 pub fn encode_inventory_pickup_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
-    changed_slot_item: Option<(i32, i32)>,
-    carried_item: Option<(i32, i32)>,
+    changed_slot_item: Option<(i32, ItemId)>,
+    carried_item: Option<(i32, ItemId)>,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction_with_carried_patch(
         output,
@@ -202,7 +202,7 @@ pub fn encode_inventory_pickup_with_component_hash_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     let spec = inventory_component_spec("custom_model_data")
         .expect("custom model data component is in the conformance table");
@@ -237,7 +237,7 @@ pub fn encode_inventory_pickup_with_partial_changed_slot_prediction(
     output: &mut Vec<u8>,
     state_id: i32,
     item_count: i32,
-    item_registry_id: i32,
+    item_registry_id: ItemId,
 ) -> Result<(), ConnectionError> {
     encode_inventory_pickup_prediction_packet(
         output,
@@ -252,8 +252,8 @@ pub fn encode_inventory_pickup_with_partial_changed_slot_prediction(
 pub fn encode_inventory_pickup_prediction_with_carried_patch(
     output: &mut Vec<u8>,
     state_id: i32,
-    changed_slot_item: Option<(i32, i32)>,
-    carried_item: Option<(i32, i32)>,
+    changed_slot_item: Option<(i32, ItemId)>,
+    carried_item: Option<(i32, ItemId)>,
     carried_added_components: &[(i32, i32)],
     carried_removed_components: &[i32],
 ) -> Result<(), ConnectionError> {
@@ -270,8 +270,8 @@ pub fn encode_inventory_pickup_prediction_with_carried_patch(
 pub fn encode_inventory_pickup_prediction_packet(
     output: &mut Vec<u8>,
     state_id: i32,
-    changed_slot_item: Option<Option<(i32, i32)>>,
-    carried_item: Option<(i32, i32)>,
+    changed_slot_item: Option<Option<(i32, ItemId)>>,
+    carried_item: Option<(i32, ItemId)>,
     carried_added_components: &[(i32, i32)],
     carried_removed_components: &[i32],
 ) -> Result<(), ConnectionError> {
@@ -296,13 +296,13 @@ pub fn encode_inventory_pickup_prediction_packet(
     Ok(())
 }
 
-pub fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, i32)>) {
+pub fn encode_hashed_stack(output: &mut Vec<u8>, item: Option<(i32, ItemId)>) {
     encode_hashed_stack_with_components(output, item, &[], &[]);
 }
 
 pub fn encode_hashed_stack_with_components(
     output: &mut Vec<u8>,
-    item: Option<(i32, i32)>,
+    item: Option<(i32, ItemId)>,
     added_components: &[(i32, i32)],
     removed_components: &[i32],
 ) {
@@ -312,7 +312,7 @@ pub fn encode_hashed_stack_with_components(
     };
 
     output.push(1);
-    wire::write_varint(item_registry_id, output);
+    wire::write_varint(item_registry_id.0, output);
     wire::write_varint(item_count, output);
     wire::write_varint(added_components.len() as i32, output);
     for (component_type_id, component_hash) in added_components {
@@ -375,7 +375,7 @@ pub struct InventoryComponentProbeSpec {
     pub component_type_id: i32,
     pub codec: InventoryComponentCodec,
     pub component_hash: i32,
-    pub item_registry_id: i32,
+    pub item_registry_id: ItemId,
     pub expected_positive_component_type_ids: &'static [i32],
     pub carried_components: &'static [(i32, i32)],
 }

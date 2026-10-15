@@ -4,8 +4,9 @@ use photon_core::ids::EntityId;
 #[test]
 fn local_player_inventory_state_applies_slot_cursor_and_respawn_reset() {
     let mut world = ClientWorld::default();
-    let stone = ClientItemStackState::from_wire(8, 1, vec![], vec![]);
-    let bottle = ClientItemStackState::from_wire(1, 1_149, vec![], vec![]);
+    let stone = ClientItemStackState::from_wire(8, photon_core::ids::ItemId(1), vec![], vec![]);
+    let bottle =
+        ClientItemStackState::from_wire(1, photon_core::ids::ItemId(1_149), vec![], vec![]);
     let mut items = vec![None; 46];
     items[36] = Some(stone.clone());
 
@@ -66,8 +67,9 @@ fn local_player_inventory_state_applies_slot_cursor_and_respawn_reset() {
 #[test]
 fn local_player_container_state_applies_open_content_slot_cursor_close_and_reset() {
     let mut world = ClientWorld::default();
-    let stone = ClientItemStackState::from_wire(7, 1, vec![], vec![]);
-    let bottle = ClientItemStackState::from_wire(1, 1_149, vec![], vec![]);
+    let stone = ClientItemStackState::from_wire(7, photon_core::ids::ItemId(1), vec![], vec![]);
+    let bottle =
+        ClientItemStackState::from_wire(1, photon_core::ids::ItemId(1_149), vec![], vec![]);
     let title = [10, 0, 0, 0];
     let mut items = vec![None; 63];
     items[0] = Some(stone.clone());

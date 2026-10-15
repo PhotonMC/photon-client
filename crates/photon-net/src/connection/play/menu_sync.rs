@@ -24,7 +24,7 @@ impl PlaySession {
             None => "minecraft:no_item_required".to_owned(),
             Some(pattern) => {
                 // `provides_banner_patterns` names `pattern_item/<name>`.
-                let name = usize::try_from(pattern.item_registry_id())
+                let name = usize::try_from(pattern.item_registry_id().0)
                     .ok()
                     .and_then(|id| photon_data::item::registry::ITEMS.get(id))
                     .map_or("", |item| item.name);
@@ -117,7 +117,7 @@ impl PlaySession {
                     .slots
                     .first()
                     .and_then(Option::as_ref)
-                    .map(|input| self.world.stonecutter_options(input.item_registry_id()))
+                    .map(|input| self.world.stonecutter_options(input.item_registry_id().0))
                     .unwrap_or_default();
             }
             if menu.kind == photon_game::menus::container::MenuKind::Loom {

@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, ItemId};
 
 impl PlaySession {
     /// The attack and use keys' part of `handleKeybinds`, with what the
@@ -245,11 +245,11 @@ impl PlaySession {
     }
 
     /// The registry id of what the off hand holds (air when empty).
-    pub(super) fn off_hand_item(&self) -> i32 {
+    pub(super) fn off_hand_item(&self) -> ItemId {
         self.world
             .local_player()
             .and_then(|state| state.inventory_slot(45))
-            .map_or(0, |stack| stack.item_registry_id())
+            .map_or(ItemId(0), |stack| stack.item_registry_id())
     }
 
     /// The mouse turns the player (`Entity.turn`), who in a boat is then held within a quarter

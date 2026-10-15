@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl RecipeBookPanel {
     /// `GhostSlots.extractTooltip`: over a ghost slot, the tooltip of the item
@@ -28,7 +29,7 @@ impl RecipeBookPanel {
             return false;
         }
         let (item, count) = stacks[self.select_time() % stacks.len()];
-        let lines = (draw.tooltip)(&Stack::new(count, item), false);
+        let lines = (draw.tooltip)(&Stack::new(count, ItemId(item)), false);
         self.tooltip(draw, mouse, lines);
         true
     }
@@ -85,7 +86,8 @@ impl RecipeBookPanel {
                 }
                 let (item, count) = stacks[self.select_time() % stacks.len()];
                 let first = draw.frame.items.len();
-                draw.frame.item(draw.item, &Stack::new(count, item), 0, 0);
+                draw.frame
+                    .item(draw.item, &Stack::new(count, ItemId(item)), 0, 0);
                 // The pose: to the slot's place, 0.375 of the size, about
                 // the item's middle.
                 let (tx, ty) = ((button.x + 2 + sx) as f32, (button.y + 2 + sy) as f32);
@@ -127,7 +129,7 @@ impl RecipeBookPanel {
             };
             draw.frame.fill(draw.atlas, rect, 0x30FF_0000);
             let (item, count) = stacks[self.select_time() % stacks.len()];
-            let stack = Stack::new(count, item);
+            let stack = Stack::new(count, ItemId(item));
             draw.frame.item(draw.item, &stack, x, y);
             draw.frame
                 .fill(draw.atlas, (x, y, x + 16, y + 16), 0x30FF_FFFF);

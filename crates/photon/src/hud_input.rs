@@ -1,6 +1,7 @@
 //! What the HUD shows, read from the session: the player's attributes (by
 //! the registry's ids), effects, stacks and status.
 
+use photon_core::ids::ItemId;
 use photon_game::game_mode::Aim;
 use photon_game::input::pick::pick;
 use photon_game::options::AttackIndicator;
@@ -59,7 +60,7 @@ pub fn hud_input(
     let stack = |slot: i16| {
         local
             .and_then(|state| state.inventory_slot(slot))
-            .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != 0)
+            .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != ItemId(0))
             .cloned()
     };
     // `Minecraft.crosshairPickEntity`: a living entity the crosshair is on that has not died.

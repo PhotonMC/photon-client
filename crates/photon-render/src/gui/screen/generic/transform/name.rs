@@ -352,7 +352,7 @@ impl GenericScreen {
                 .and_then(Option::as_ref)
                 .and_then(|stack| {
                     photon_data::item::registry::ITEMS
-                        .get(usize::try_from(stack.item_registry_id()).ok()?)
+                        .get(usize::try_from(stack.item_registry_id().0).ok()?)
                 })
                 .map_or("", |item| item.name)
         };

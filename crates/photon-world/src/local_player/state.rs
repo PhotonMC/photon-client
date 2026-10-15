@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, ItemId};
 
 impl LocalPlayer {
     /// How many ticks the player has lived, which the model's idle sway
@@ -76,8 +76,8 @@ impl LocalPlayer {
             attack_anim_old: 0.0,
             attack_strength_ticker: 0,
             elytra: crate::elytra::ElytraState::default(),
-            main_hand_item: 0,
-            last_main_hand_item: 0,
+            main_hand_item: ItemId(0),
+            last_main_hand_item: ItemId(0),
             hands: HandState::default(),
             using_item_ticks: 0,
             item_swap_ticker: 0,

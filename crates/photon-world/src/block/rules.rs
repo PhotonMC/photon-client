@@ -8,6 +8,7 @@
 //! any other class answers [`Rule::Unported`], and the caller does not
 //! predict what it does.
 
+use photon_core::ids::ItemId;
 use std::collections::BTreeMap;
 
 use photon_core::direction::{Axis, Direction};
@@ -94,7 +95,7 @@ pub struct PlaceContext<'a> {
     pub face: Direction,
     pub location: (f64, f64, f64),
     /// The held item's registry id; `None` is an empty hand.
-    pub item: Option<i32>,
+    pub item: Option<ItemId>,
     /// `Player.getDirection`, from the yaw.
     pub horizontal_direction: Direction,
     /// Whether the clicked block itself is replaced (`replaceClicked`).
@@ -125,7 +126,7 @@ impl PlaceContext<'_> {
     fn holds_item_of(&self, state: i32) -> bool {
         block(state)
             .and_then(|block| photon_data::item::registry::index(block.item_name()))
-            .is_some_and(|item| self.item == i32::try_from(item).ok())
+            .is_some_and(|item| self.item == i32::try_from(item).ok().map(ItemId))
     }
 }
 
@@ -339,21 +340,21 @@ pub fn use_without_item(state: i32) -> Rule<UseResult> {
 }
 
 /// An item by registry id.
-pub fn item(item: i32) -> Option<&'static Item> {
-    usize::try_from(item)
+pub fn item(item: ItemId) -> Option<&'static Item> {
+    usize::try_from(item.0)
         .ok()
         .and_then(|index| ITEMS.get(index))
 }
 
 /// The class whose own `useOn` the item runs; `Item` for an unknown item.
-pub fn item_use_on_owner(item_id: i32) -> ItemClass {
+pub fn item_use_on_owner(item_id: ItemId) -> ItemClass {
     item(item_id).map_or(ItemClass::Item, |item| {
         item.class.owner_of(ItemMethod::UseOn)
     })
 }
 
 /// The class whose own `use` the item runs; `Item` for an unknown item.
-pub fn item_use_owner(item_id: i32) -> ItemClass {
+pub fn item_use_owner(item_id: ItemId) -> ItemClass {
     item(item_id).map_or(ItemClass::Item, |item| item.class.owner_of(ItemMethod::Use))
 }
 

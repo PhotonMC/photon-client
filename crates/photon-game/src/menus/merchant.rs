@@ -3,6 +3,7 @@
 //! the payment slots buy.
 
 use crate::menus::container::max_stack_size;
+use photon_core::ids::ItemId;
 use photon_world::ClientItemStackState as Stack;
 use photon_world::item_components::Patch;
 
@@ -10,7 +11,7 @@ use photon_world::item_components::Patch;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemCost {
     /// The item's registry id.
-    pub item: i32,
+    pub item: ItemId,
     pub count: i32,
     /// `DataComponentExactPredicate`: each component's type id and its value's bytes.
     pub components: Vec<(i32, Vec<u8>)>,

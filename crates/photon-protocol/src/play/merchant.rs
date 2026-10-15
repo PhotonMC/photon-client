@@ -5,7 +5,7 @@ pub(super) fn parse_item_cost(
     input: &mut &[u8],
 ) -> Result<photon_game::menus::merchant::ItemCost, ConnectionError> {
     const NAME: &str = "merchant item cost";
-    let item = read_varint(input, NAME)?;
+    let item = ItemId(read_varint(input, NAME)?);
     let count = read_varint(input, NAME)?;
     let mut cursor = photon_game::item_components::Cursor { data: input };
     let components = cursor.count().map_err(|_| ConnectionError::Codec(NAME))?;
@@ -44,7 +44,7 @@ pub fn parse_merchant_offers_packet(
         let result = parse_optional_item_stack(input, NAME)?;
         let result = photon_world::ClientItemStackState::from_wire(
             result.item_count.unwrap_or(0),
-            result.item_registry_id.unwrap_or(0),
+            result.item_registry_id.unwrap_or(ItemId(0)),
             result.positive_component_type_ids,
             result.negative_component_type_ids,
         )

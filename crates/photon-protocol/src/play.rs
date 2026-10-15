@@ -12,7 +12,7 @@ use flate2::write::ZlibEncoder;
 use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::phase::ConnectionProtocol;
 use photon_core::binary::{BitSet, Uuid};
-use photon_core::ids::EntityTypeId;
+use photon_core::ids::{EntityTypeId, ItemId};
 use photon_core::wire;
 use photon_world::objects::minecart_track::MinecartStep;
 use photon_world::{

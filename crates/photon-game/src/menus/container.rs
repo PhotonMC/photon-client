@@ -14,6 +14,7 @@
 //! bundle's selected item. Component hashes are ported for the components
 //! [`hash`](photon_world::item_components::hash) names.
 
+use photon_core::ids::ItemId;
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 use photon_world::ClientItemStackState as Stack;
@@ -58,7 +59,7 @@ pub struct ContainerMenu {
     /// What the anvil's `createResult` keeps between calls.
     pub(super) anvil: anvil::AnvilState,
     /// The item in the stonecutter's input the last time its list was made.
-    pub(super) last_input: Option<i32>,
+    pub(super) last_input: Option<ItemId>,
     /// The menu's `ContainerData` (a furnace's burn and cook progress).
     pub data: Vec<i16>,
     /// What the merchant of a trading menu offers, and the offer the payments are now matched to.

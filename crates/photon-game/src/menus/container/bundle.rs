@@ -103,7 +103,7 @@ fn set_contents(stack: &mut Stack, contents: &Contents) {
         let mut value = Vec::new();
         photon_core::wire::write_varint(items.len() as i32, &mut value);
         for item in items {
-            photon_core::wire::write_varint(item.item_registry_id(), &mut value);
+            photon_core::wire::write_varint(item.item_registry_id().0, &mut value);
             photon_core::wire::write_varint(item.item_count(), &mut value);
             value.extend(item.patch().trusted());
         }
@@ -375,7 +375,7 @@ impl ContainerMenu {
             .and_then(Option::as_ref)
             .is_some_and(|stack| {
                 self.item_tags
-                    .contains(stack.item_registry_id(), "minecraft:bundles")
+                    .contains(stack.item_registry_id().0, "minecraft:bundles")
             })
     }
 

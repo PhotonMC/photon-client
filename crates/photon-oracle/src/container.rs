@@ -30,7 +30,7 @@ pub(super) fn container_clicks_result(request: &Value) -> Result<Value, String> 
         match stack {
             None => Value::Null,
             Some(stack) => json!({
-                "item": photon_data::item::registry::ITEMS[stack.item_registry_id() as usize].name,
+                "item": photon_data::item::registry::ITEMS[stack.item_registry_id().0 as usize].name,
                 "count": stack.item_count(),
             }),
         }
@@ -221,7 +221,7 @@ fn bundle_mouse_step(
         .map(|stack| match stack {
             None => Value::Null,
             Some(stack) => json!({
-                "item": photon_data::item::registry::ITEMS[stack.item_registry_id() as usize].name,
+                "item": photon_data::item::registry::ITEMS[stack.item_registry_id().0 as usize].name,
                 "count": stack.item_count(),
             }),
         })
@@ -232,7 +232,7 @@ fn bundle_mouse_step(
     }
     if let Some(carried) = &menu.carried {
         described["carried"] = json!({
-            "item": photon_data::item::registry::ITEMS[carried.item_registry_id() as usize].name,
+            "item": photon_data::item::registry::ITEMS[carried.item_registry_id().0 as usize].name,
             "count": carried.item_count(),
         });
     }

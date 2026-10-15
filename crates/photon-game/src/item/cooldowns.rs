@@ -74,7 +74,7 @@ pub fn group(stack: &Stack) -> String {
         Some(namespaced(&String::from_utf8_lossy(name)))
     });
     named.unwrap_or_else(|| {
-        usize::try_from(stack.item_registry_id())
+        usize::try_from(stack.item_registry_id().0)
             .ok()
             .and_then(|id| photon_data::item::registry::ITEMS.get(id))
             .map_or_else(String::new, |item| item.name.to_owned())

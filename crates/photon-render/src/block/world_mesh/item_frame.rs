@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl BlockRenderer {
     /// The fake state an item frame's model is drawn from (`BlockStateDefinitions.getItemFrameFakeState`),
@@ -13,12 +14,12 @@ impl BlockRenderer {
     /// the vertices' colour. `grass` reads the grass colour map.
     pub fn item_layers(
         &self,
-        item: i32,
+        item: ItemId,
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
         patch: &[u8],
     ) -> Vec<ItemLayer> {
-        let Some(Some(def)) = usize::try_from(item)
+        let Some(Some(def)) = usize::try_from(item.0)
             .ok()
             .and_then(|index| self.items.get(index))
         else {
@@ -89,8 +90,8 @@ impl BlockRenderer {
 
     /// The particle textures of an item's model layers on the ground (`pickParticleMaterial`'s
     /// choices), in layer order; a layer with none is left out.
-    pub fn item_particle_sprites(&self, item: i32) -> Vec<String> {
-        let Some(Some(def)) = usize::try_from(item)
+    pub fn item_particle_sprites(&self, item: ItemId) -> Vec<String> {
+        let Some(Some(def)) = usize::try_from(item.0)
             .ok()
             .and_then(|index| self.items.get(index))
         else {
@@ -112,8 +113,8 @@ impl BlockRenderer {
 
     /// A client item's swap properties: whether a new stack lowers the
     /// hand, and how far. Items without a definition take the defaults.
-    pub fn item_swap(&self, item: i32) -> (bool, f32) {
-        usize::try_from(item)
+    pub fn item_swap(&self, item: ItemId) -> (bool, f32) {
+        usize::try_from(item.0)
             .ok()
             .and_then(|index| self.items.get(index))
             .and_then(Option::as_ref)

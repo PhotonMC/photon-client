@@ -21,7 +21,7 @@ pub(super) fn rarity_colour(rarity: i32) -> &'static str {
 }
 
 pub(super) fn item_name_of(stack: &Stack) -> &'static str {
-    usize::try_from(stack.item_registry_id())
+    usize::try_from(stack.item_registry_id().0)
         .ok()
         .and_then(|id| photon_data::item::registry::ITEMS.get(id))
         .map_or("", |item| item.name)

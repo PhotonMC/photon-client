@@ -1,5 +1,6 @@
 use super::*;
 use crate::equipment::arm_poses;
+use photon_core::ids::ItemId;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
 /// the attack strength recovers.
@@ -49,7 +50,7 @@ pub fn hands(
     let (walked, bob) = player.view_bob(partial);
     let (x_bob, y_bob) = player.hand_bob(partial);
     let (view_y_rot, view_x_rot) = player.rotation();
-    let swap = |item: i32| renderer.item_swap(item);
+    let swap = |item: ItemId| renderer.item_swap(item);
     let main_height = item_in_hand.inverse_arm_height(MAIN_HAND, partial, &swap);
     let off_height = item_in_hand.inverse_arm_height(OFF_HAND, partial, &swap);
     let hand_view = HandView {

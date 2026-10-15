@@ -33,6 +33,11 @@ id_type!(
 );
 
 id_type!(
+    /// An item's id in the `minecraft:item` registry (`Item`).
+    ItemId
+);
+
+id_type!(
     /// An entity type's id in the `minecraft:entity_type` registry (`EntityType`), the number
     /// the server sends with an added entity.
     EntityTypeId

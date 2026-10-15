@@ -22,7 +22,7 @@ use crate::java_math;
 use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
 use photon_core::direction::{Axis, Direction};
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, ItemId};
 use photon_core::math::{
     MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_sin_f64,
 };
@@ -130,8 +130,8 @@ pub struct LocalPlayer {
     pub(super) attack_strength_ticker: i32,
     /// The main hand item's registry id (air when empty), and the one the
     /// last tick saw.
-    pub(super) main_hand_item: i32,
-    pub(super) last_main_hand_item: i32,
+    pub(super) main_hand_item: ItemId,
+    pub(super) last_main_hand_item: ItemId,
     /// What the hands hold, the effects and the use of an item, as the world last heard them.
     pub(super) hands: HandState,
     /// How many ticks the item in use has been used (`getTicksUsingItem`).

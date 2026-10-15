@@ -1,8 +1,8 @@
 use super::*;
 
-pub const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: i32 = 1_046;
+pub const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: ItemId = ItemId(1_046);
 
-pub const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: i32 = 1_044;
+pub const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: ItemId = ItemId(1_044);
 
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
 

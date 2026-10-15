@@ -1,12 +1,13 @@
 //! `ClientWorld` container layer split out of the former single-file module.
 
+use photon_core::ids::ItemId;
 use std::collections::BTreeMap;
 
 /// Raw item-stack state retained by the client inventory copy.
 #[derive(Debug, Clone)]
 pub struct ClientItemStackState {
     pub(crate) item_count: i32,
-    pub(crate) item_registry_id: i32,
+    pub(crate) item_registry_id: ItemId,
     pub(crate) positive_component_type_ids: Vec<i32>,
     pub(crate) negative_component_type_ids: Vec<i32>,
     /// The component patch as the wire carried it, for comparing stacks.
@@ -40,7 +41,7 @@ impl Eq for ClientItemStackState {}
 impl ClientItemStackState {
     pub fn from_wire(
         item_count: i32,
-        item_registry_id: i32,
+        item_registry_id: ItemId,
         positive_component_type_ids: Vec<i32>,
         negative_component_type_ids: Vec<i32>,
     ) -> Self {
@@ -66,7 +67,7 @@ impl ClientItemStackState {
     }
 
     /// A stack of an item with no component patch.
-    pub fn new(item_count: i32, item_registry_id: i32) -> Self {
+    pub fn new(item_count: i32, item_registry_id: ItemId) -> Self {
         Self::from_wire(item_count, item_registry_id, Vec::new(), Vec::new())
     }
 
@@ -183,7 +184,7 @@ impl ClientItemStackState {
         self.item_count
     }
 
-    pub fn item_registry_id(&self) -> i32 {
+    pub fn item_registry_id(&self) -> ItemId {
         self.item_registry_id
     }
 

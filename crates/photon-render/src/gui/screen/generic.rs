@@ -480,7 +480,7 @@ mod tests {
         let kind = MenuKind::Chest(3);
         let mut screen = GenericScreen::new(kind, 427, 240, titles());
         let mut menu = ContainerMenu::for_menu(kind, 4, Vec::new(), None, 0);
-        menu.slots[30] = Some(Stack::new(5, 1));
+        menu.slots[30] = Some(Stack::new(5, photon_core::ids::ItemId(1)));
         let (x, y) = slot_position(kind, 30);
         let mouse = (
             f64::from(screen.layout.left() + x + 8),
@@ -526,15 +526,15 @@ mod tests {
             })
         );
         // Not while something is carried, nor over an item, nor on the player's slots.
-        menu.carried = Some(Stack::new(1, 1));
+        menu.carried = Some(Stack::new(1, photon_core::ids::ItemId(1)));
         assert_eq!(toggle(&menu, 0, ClickType::Pickup), None);
         menu.carried = None;
-        menu.slots[0] = Some(Stack::new(1, 1));
+        menu.slots[0] = Some(Stack::new(1, photon_core::ids::ItemId(1)));
         assert_eq!(toggle(&menu, 0, ClickType::Pickup), None);
         assert_eq!(toggle(&menu, 12, ClickType::Pickup), None);
         // A number key switches a switched-off slot on when the hotbar slot holds something.
         assert_eq!(toggle(&menu, 1, ClickType::Swap), None);
-        menu.slots[36] = Some(Stack::new(1, 1));
+        menu.slots[36] = Some(Stack::new(1, photon_core::ids::ItemId(1)));
         assert_eq!(
             GenericScreen::crafter_toggle(
                 MenuKind::Crafter,

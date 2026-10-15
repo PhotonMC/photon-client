@@ -1,6 +1,6 @@
 //! `ParticleEngine`: the particles of the level, and how they get in.
 
-use photon_core::ids::EntityId;
+use photon_core::ids::{EntityId, ItemId};
 use std::collections::VecDeque;
 
 use photon_core::binary::BlockPos;
@@ -49,7 +49,7 @@ pub enum ParticleData {
     /// `SculkChargeParticleOptions`: how far the quad is turned.
     Roll(f32),
     /// `ItemParticleOption`: the item, by its registry id (its components are not read).
-    Item(i32),
+    Item(ItemId),
     /// `VibrationParticleOption`: where it is headed, and how many ticks until it arrives.
     Vibration {
         destination: PositionSource,

@@ -372,7 +372,7 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
                     let made = photon_game::menus::creative::table_stack(entry, &registries);
                     let mut wire = Vec::new();
                     photon_core::wire::write_varint(made.item_count(), &mut wire);
-                    photon_core::wire::write_varint(made.item_registry_id(), &mut wire);
+                    photon_core::wire::write_varint(made.item_registry_id().0, &mut wire);
                     wire.extend(made.patch().trusted());
                     let mut components = serde_json::Map::new();
                     for component in entry.components {

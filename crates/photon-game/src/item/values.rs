@@ -9,6 +9,7 @@ use crate::item_components::{self, Cursor, Patch, PotionContents, ids};
 use crate::registries::Registries;
 use crate::text::Component;
 use photon_core::ids::EntityTypeId;
+use photon_core::ids::ItemId;
 
 /// The components of a stack: `ItemStack.get`.
 pub struct Values {
@@ -471,7 +472,7 @@ mod color;
 mod tests {
     use super::*;
 
-    fn item(name: &str) -> i32 {
+    fn item(name: &str) -> ItemId {
         crate::item::id_of(name).expect("an item")
     }
 
@@ -517,7 +518,7 @@ pub struct Equippable {
 }
 
 /// `ItemStack.get(DataComponents.EQUIPPABLE)`: the stack's patch over the item's own.
-pub fn equippable_of(item: i32, patch: &[u8]) -> Option<Equippable> {
+pub fn equippable_of(item: ItemId, patch: &[u8]) -> Option<Equippable> {
     let values = Values::new(item, patch);
     if let Some(equippable) = values.patched_equippable() {
         return Some(equippable);
@@ -525,7 +526,7 @@ pub fn equippable_of(item: i32, patch: &[u8]) -> Option<Equippable> {
     if values.removes(ids::EQUIPPABLE) {
         return None;
     }
-    let item = usize::try_from(item)
+    let item = usize::try_from(item.0)
         .ok()
         .and_then(|index| photon_data::item::registry::ITEMS.get(index))?;
     let equip = item.equippable.as_ref()?;

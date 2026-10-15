@@ -1,6 +1,7 @@
 //! The level's particles on the client: the engine, the random sources the reference seeds from
 //! the clock, and the sprite lists of `particles/*.json`.
 
+use photon_core::ids::ItemId;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -73,7 +74,7 @@ impl TerrainMaterials for BlockMaterials {
             .to_owned()
     }
 
-    fn item_particle_textures(&self, item: i32) -> Vec<String> {
+    fn item_particle_textures(&self, item: ItemId) -> Vec<String> {
         self.renderer.item_particle_sprites(item)
     }
 

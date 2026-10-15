@@ -80,7 +80,7 @@ impl HeldItem {
 /// `BlockItemStateProperties` applied), or none for an item that is not a
 /// block item.
 pub fn block_item_state(stack: &ClientItemStackState) -> Option<u32> {
-    let item = usize::try_from(stack.item_registry_id())
+    let item = usize::try_from(stack.item_registry_id().0)
         .ok()
         .and_then(|index| photon_data::item::registry::ITEMS.get(index))?;
     let block = photon_data::block::registry::block(item.block?)?;

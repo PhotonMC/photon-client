@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 #[test]
 fn container_slot_parser_matches_empty_optional_item_stack() {
@@ -48,12 +49,12 @@ fn container_slot_parser_skips_custom_model_data_component() {
             state_id: 8,
             slot: 36,
             item_count: Some(1),
-            item_registry_id: Some(1_046),
+            item_registry_id: Some(photon_core::ids::ItemId(1_046)),
             positive_component_type_ids: vec![17],
             negative_component_type_ids: Vec::new(),
             item: Some(super::super::ClientItemStackState::from_wire(
                 1,
-                1_046,
+                photon_core::ids::ItemId(1_046),
                 vec![17],
                 Vec::new(),
             )),
@@ -84,12 +85,12 @@ fn container_slot_parser_skips_food_component() {
             state_id: 10,
             slot: 36,
             item_count: Some(1),
-            item_registry_id: Some(1_089),
+            item_registry_id: Some(photon_core::ids::ItemId(1_089)),
             positive_component_type_ids: vec![23],
             negative_component_type_ids: Vec::new(),
             item: Some(super::super::ClientItemStackState::from_wire(
                 1,
-                1_089,
+                photon_core::ids::ItemId(1_089),
                 vec![23],
                 Vec::new(),
             )),
@@ -144,12 +145,12 @@ fn container_slot_parser_skips_damage_tool_and_weapon_components() {
             state_id: 9,
             slot: 36,
             item_count: Some(1),
-            item_registry_id: Some(1_000),
+            item_registry_id: Some(photon_core::ids::ItemId(1_000)),
             positive_component_type_ids: vec![3, 28, 29],
             negative_component_type_ids: Vec::new(),
             item: Some(super::super::ClientItemStackState::from_wire(
                 1,
-                1_000,
+                photon_core::ids::ItemId(1_000),
                 vec![3, 28, 29],
                 Vec::new(),
             )),
@@ -217,7 +218,7 @@ fn container_content_parser_observes_main_inventory_slot_zero() {
     assert_eq!(observation.main_inventory_slot_zero_item_count, Some(1));
     assert_eq!(
         observation.main_inventory_slot_zero_item_registry_id,
-        Some(1)
+        Some(ItemId(1))
     );
     assert!(
         observation
@@ -233,7 +234,7 @@ fn container_content_parser_observes_main_inventory_slot_zero() {
         observation.items[9],
         Some(super::super::ClientItemStackState::from_wire(
             1,
-            1,
+            photon_core::ids::ItemId(1),
             vec![],
             vec![]
         ))
@@ -270,12 +271,12 @@ fn cursor_and_direct_player_inventory_parsers_match_java_optional_stack_codecs()
         super::super::SetPlayerInventoryObservation {
             slot: 0,
             item_count: Some(1),
-            item_registry_id: Some(1),
+            item_registry_id: Some(photon_core::ids::ItemId(1)),
             positive_component_type_ids: Vec::new(),
             negative_component_type_ids: Vec::new(),
             item: Some(super::super::ClientItemStackState::from_wire(
                 1,
-                1,
+                photon_core::ids::ItemId(1),
                 Vec::new(),
                 Vec::new(),
             )),
@@ -352,10 +353,10 @@ fn merchant_offers_read_each_offer_and_the_traders_standing() {
     let (container, state) = parse_merchant_offers_packet(&payload).unwrap();
     assert_eq!(container, 5);
     let offer = &state.offers[0];
-    assert_eq!((offer.cost_a.item, offer.cost_a.count), (4, 3));
+    assert_eq!((offer.cost_a.item, offer.cost_a.count), (ItemId(4), 3));
     assert_eq!(
         (offer.result.item_registry_id(), offer.result.item_count()),
-        (7, 2)
+        (ItemId(7), 2)
     );
     assert_eq!((offer.uses, offer.max_uses, offer.xp), (1, 12, 2));
     assert_eq!((offer.special_price_diff, offer.demand), (-1, 3));

@@ -10,20 +10,23 @@ pub mod in_hand;
 pub(crate) mod repairable;
 pub mod values;
 
+use photon_core::ids::ItemId;
 use photon_data::item::registry::{ITEMS, Item, RuleBlocks, Tool};
 use photon_world::ClientBlockStateRegistry;
 
 /// The item with a registry id.
-pub fn definition(id: i32) -> Option<&'static Item> {
-    usize::try_from(id).ok().and_then(|index| ITEMS.get(index))
+pub fn definition(id: ItemId) -> Option<&'static Item> {
+    usize::try_from(id.0)
+        .ok()
+        .and_then(|index| ITEMS.get(index))
 }
 
 /// The registry id of a named item.
-pub fn id_of(name: &str) -> Option<i32> {
+pub fn id_of(name: &str) -> Option<ItemId> {
     ITEMS
         .iter()
         .position(|item| item.name == name)
-        .map(|index| index as i32)
+        .map(|index| ItemId(index as i32))
 }
 
 /// `HolderSet.contains` for a block state.
@@ -58,7 +61,7 @@ pub fn is_correct_for_drops(tool: &Tool, registry: &ClientBlockStateRegistry, st
 /// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a component patch,
 /// as a stack that keeps the patch's bytes.
 pub fn read_template(input: &mut &[u8]) -> Option<photon_world::ClientItemStackState> {
-    let item = photon_core::wire::read_varint(input).ok()?;
+    let item = ItemId(photon_core::wire::read_varint(input).ok()?);
     let count = photon_core::wire::read_varint(input).ok()?;
     let start = *input;
     let patch = photon_world::item_components::read_patch(input).ok()?;

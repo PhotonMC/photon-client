@@ -5,8 +5,8 @@ use photon_core::ids::EntityId;
 fn an_open_containers_last_slots_are_the_players_inventory() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(EntityId(42));
-    let stone = ClientItemStackState::from_wire(7, 1, vec![], vec![]);
-    let dirt = ClientItemStackState::from_wire(3, 10, vec![], vec![]);
+    let stone = ClientItemStackState::from_wire(7, photon_core::ids::ItemId(1), vec![], vec![]);
+    let dirt = ClientItemStackState::from_wire(3, photon_core::ids::ItemId(10), vec![], vec![]);
     let mut items = vec![None; 63];
     // A main inventory slot (menu 9) and the first hotbar slot (menu 36),
     // which a three row chest lists at 27 and 54.

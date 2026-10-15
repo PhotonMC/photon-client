@@ -1,6 +1,7 @@
 //! `BreakingItemParticle`: a crumb of an item (a snowball's, a slime ball's, an eaten food's),
 //! showing a quarter of the item's picture.
 
+use photon_core::ids::ItemId;
 use std::sync::Arc;
 
 use photon_core::random::RandomSource;
@@ -21,7 +22,8 @@ impl Particle {
         (data, sprites): (ParticleData, &Arc<SpriteSet>),
         (materials, provider_random): (Option<&dyn TerrainMaterials>, &mut RandomSource),
     ) -> Option<Self> {
-        let item = |name: &str| photon_data::item::registry::index(name).map(|index| index as i32);
+        let item =
+            |name: &str| photon_data::item::registry::index(name).map(|index| ItemId(index as i32));
         let (item, pushed) = match (name, data) {
             ("item", ParticleData::Item(item)) => (Some(item), true),
             ("item_slime", _) => (item("minecraft:slime_ball"), false),

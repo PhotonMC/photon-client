@@ -274,7 +274,9 @@ pub(super) fn item_foil_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         if row.get("all").is_some() {
             let foil: Vec<bool> = (0..photon_data::item::registry::ITEMS.len())
-                .map(|index| Values::new(index as i32, &[0, 0]).has_foil())
+                .map(|index| {
+                    Values::new(photon_core::ids::ItemId(index as i32), &[0, 0]).has_foil()
+                })
                 .collect();
             out.push(json!({"label": row["label"], "foil": foil}));
             continue;
@@ -284,7 +286,7 @@ pub(super) fn item_foil_result(request: &Value) -> Result<Value, String> {
         let patch = hex_bytes(string(row, "patch")?)?;
         out.push(json!({
             "label": row["label"],
-            "foil": Values::new(item as i32, &patch).has_foil(),
+            "foil": Values::new(photon_core::ids::ItemId(item as i32), &patch).has_foil(),
         }));
     }
     Ok(json!({"rows": out}))
@@ -297,7 +299,8 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
         let item =
             photon_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
         let patch = hex_bytes(string(row, "patch")?)?;
-        let found = photon_game::item::values::equippable_of(item as i32, &patch);
+        let found =
+            photon_game::item::values::equippable_of(photon_core::ids::ItemId(item as i32), &patch);
         out.push(json!({
             "label": row["label"],
             "slot": found.as_ref().map_or("none", |found| found.slot),

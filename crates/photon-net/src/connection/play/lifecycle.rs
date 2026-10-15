@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 /// How many times in a row the server may send the client on before it is given up on.
 const MAX_TRANSFERS: usize = 5;
@@ -59,7 +60,7 @@ impl PlaySession {
             .world
             .local_player()
             .and_then(|state| state.inventory_slot((36 + self.local.status.selected_slot) as i16))
-            .map_or(0, |stack| stack.item_registry_id());
+            .map_or(ItemId(0), |stack| stack.item_registry_id());
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
         // What the rider steers with: its input, its look, and the stick in its hands.

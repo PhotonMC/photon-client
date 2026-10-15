@@ -210,7 +210,7 @@ pub(super) fn advanced_lines(
         ));
     }
     out.push(Component::literal(item_name_of(stack)).with_colour("dark_gray"));
-    let own = usize::try_from(stack.item_registry_id())
+    let own = usize::try_from(stack.item_registry_id().0)
         .ok()
         .and_then(|id| photon_data::item::component_sets::DEFAULT_COMPONENT_SETS.get(id))
         .copied()

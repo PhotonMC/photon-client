@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use photon_core::binary::BlockPos;
 use photon_core::direction::Direction;
+use photon_core::ids::ItemId;
 use photon_core::math::ceil_f64;
 use photon_core::random::RandomSource;
 
@@ -23,7 +24,7 @@ pub trait TerrainMaterials: std::fmt::Debug {
 
     /// The particle textures of an item's model layers as it lies on the ground
     /// (`ItemStackRenderState` layers' `particleMaterial`), in layer order.
-    fn item_particle_textures(&self, _item: i32) -> Vec<String> {
+    fn item_particle_textures(&self, _item: ItemId) -> Vec<String> {
         Vec::new()
     }
 }

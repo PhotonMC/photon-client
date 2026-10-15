@@ -307,7 +307,7 @@ pub(super) fn piglin_arm_pose(
     } else if off.is_some_and(|stack| {
         session
             .world()
-            .item_in_tag(stack.item_registry_id(), "minecraft:piglin_loved")
+            .item_in_tag(stack.item_registry_id().0, "minecraft:piglin_loved")
     }) {
         PiglinArmPose::AdmiringItem
     } else if melee {
@@ -357,5 +357,5 @@ pub(super) fn pose_humanoid(
 /// Whether a stack is of the item with this name.
 pub(crate) fn is_item(stack: &photon_world::ClientItemStackState, name: &str) -> bool {
     photon_data::item::registry::index(name)
-        .is_some_and(|index| usize::try_from(stack.item_registry_id()) == Ok(index))
+        .is_some_and(|index| usize::try_from(stack.item_registry_id().0) == Ok(index))
 }

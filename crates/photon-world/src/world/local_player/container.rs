@@ -208,7 +208,7 @@ impl ClientWorld {
         let item = |slot: i32| {
             state
                 .inventory_slot(slot as i16)
-                .map_or(0, |stack| stack.item_registry_id())
+                .map_or(ItemId(0), |stack| stack.item_registry_id())
         };
         let amplifier = |id: i32| {
             state

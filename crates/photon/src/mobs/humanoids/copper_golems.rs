@@ -165,6 +165,7 @@ fn carried(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use photon_core::ids::ItemId;
     use photon_game::item_components::{Patch, ids};
     use photon_world::ClientItemStackState;
 
@@ -181,7 +182,7 @@ mod tests {
             added: vec![(ids::BLOCK_STATE, value)],
             removed: Vec::new(),
         };
-        let id = photon_data::item::registry::index(item).expect("item") as i32;
+        let id = ItemId(photon_data::item::registry::index(item).expect("item") as i32);
         ClientItemStackState::new(1, id).with_patch_bytes(patch.trusted())
     }
 
@@ -193,7 +194,9 @@ mod tests {
         let default = block.default_state_id() - first;
         let plain = ClientItemStackState::new(
             1,
-            photon_data::item::registry::index("minecraft:sea_pickle").expect("item") as i32,
+            photon_core::ids::ItemId(
+                photon_data::item::registry::index("minecraft:sea_pickle").expect("item") as i32,
+            ),
         );
         assert_eq!(state_of(plain), Some(default));
         let three = state_of(with_state("minecraft:sea_pickle", &[("pickles", "3")]));
@@ -208,6 +211,12 @@ mod tests {
         );
         // An item that places no block shows no block.
         let stick = photon_data::item::registry::index("minecraft:stick").expect("item") as i32;
-        assert_eq!(block_item_state(&ClientItemStackState::new(1, stick)), None);
+        assert_eq!(
+            block_item_state(&ClientItemStackState::new(
+                1,
+                photon_core::ids::ItemId(stick)
+            )),
+            None
+        );
     }
 }

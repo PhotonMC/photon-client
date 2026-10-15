@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.container_id == 0
                 && observation.slot == 36
                 && observation.state_id == 2
-                && observation.item_registry_id == Some(1_412)
+                && observation.item_registry_id == Some(photon_core::ids::ItemId(1_412))
                 && observation.applied_to_world
         })
     else {
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.container_id == 0
                 && observation.slot == 36
                 && observation.state_id == 3
-                && observation.item_registry_id == Some(1_149)
+                && observation.item_registry_id == Some(photon_core::ids::ItemId(1_149))
                 && observation.applied_to_world
         })
     else {
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || player
             .inventory_slot(36)
             .map(|item| item.item_registry_id())
-            != Some(1_149)
+            != Some(photon_core::ids::ItemId(1_149))
         || player.carried_item().is_some()
     {
         return Err(format!(

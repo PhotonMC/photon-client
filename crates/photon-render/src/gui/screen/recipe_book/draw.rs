@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::ItemId;
 
 impl RecipeBookPanel {
     /// What the search reads of each collection: the tooltip lines of its
@@ -16,7 +17,7 @@ impl RecipeBookPanel {
                     continue;
                 };
                 for (item, _) in display_stacks(entry.display.result(), draw.tags) {
-                    let stack = Stack::new(1, item);
+                    let stack = Stack::new(1, ItemId(item));
                     text.lines.extend(
                         photon_game::tooltip::search_lines(
                             &stack,
@@ -301,7 +302,7 @@ impl RecipeBookPanel {
             let x_offsets: &[i32] = if names.len() == 2 { &[3, 14] } else { &[9] };
             for (name, dx) in names.iter().zip(x_offsets) {
                 if let Some(id) = photon_data::item::registry::index(&format!("minecraft:{name}")) {
-                    let stack = Stack::new(1, id as i32);
+                    let stack = Stack::new(1, ItemId(id as i32));
                     draw.frame.item(draw.item, &stack, x + dx, y + 5);
                 }
             }
@@ -369,7 +370,7 @@ impl RecipeBookPanel {
                 self.squeeze_button(draw, mark, collection.entries[0], (x, y));
                 continue;
             };
-            let stack = Stack::new(count, item);
+            let stack = Stack::new(count, ItemId(item));
             let mut offset = 4;
             if many && same_display(&results) {
                 draw.frame
