@@ -74,7 +74,9 @@ impl PlaySession {
             PLAY_SERVERBOUND_CONFIGURATION_ACKNOWLEDGED_PACKET_ID,
             |_| Ok(()),
         )?;
-        let mut stream = self.writer.try_clone()?;
+        // The acknowledgement is on the wire before the connection is used directly.
+        self.writer.flush()?;
+        let mut stream = self.writer.stream()?;
         stream.set_read_timeout(Some(RECONFIGURATION_TIMEOUT))?;
         // What the connection learned at login stays; the registries, tags and features are the
         // new configuration's.
@@ -94,7 +96,7 @@ impl PlaySession {
         stream.set_read_timeout(None)?;
         let incoming = spawn_reader(stream, self.compression_threshold);
         let mut fresh = Self::assemble(
-            self.writer.try_clone()?,
+            self.writer.stream()?,
             self.compression_threshold,
             incoming,
             state,

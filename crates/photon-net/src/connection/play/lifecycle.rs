@@ -138,13 +138,8 @@ impl PlaySession {
         if self.disconnect.is_some() {
             return Ok(());
         }
-        send_packet(
-            &mut self.writer,
-            ConnectionProtocol::Play,
-            id,
-            body,
-            self.compression_threshold,
-        )
+        self.writer
+            .send(frame_packet(id, body, self.compression_threshold)?)
     }
 
     /// Log in, configure, and start reading play packets in the background.
@@ -248,7 +243,7 @@ impl PlaySession {
         (username, auto_jump): (&str, bool),
     ) -> Self {
         Self {
-            writer,
+            writer: PacketWriter::start(writer).expect("a thread to write on"),
             compression_threshold,
             incoming,
             world: state.new_world(),

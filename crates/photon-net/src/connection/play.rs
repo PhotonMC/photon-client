@@ -13,7 +13,6 @@ use std::time::Duration;
 
 use photon_core::math::Vec3;
 use photon_core::wire;
-use photon_protocol::phase::ConnectionProtocol;
 use photon_world::input::Input;
 use photon_world::local_player::{LocalPlayer, ServerboundMovement};
 use photon_world::{
@@ -24,8 +23,9 @@ use photon_world::{
 use super::entities;
 use super::open::open_play_connection;
 use super::record::NoRecorder;
-use super::session::{read_packet, send_packet};
+use super::session::{frame_packet, read_packet};
 use super::state::ConnectionState;
+use super::writer::PacketWriter;
 use incoming::Incoming;
 use photon_protocol::play::*;
 
@@ -71,7 +71,7 @@ pub(super) const PLAY_SERVERBOUND_PLAYER_INPUT_PACKET_ID: i32 = 43;
 
 /// A connection in the play phase with its world and local player.
 pub struct PlaySession {
-    pub(super) writer: TcpStream,
+    pub(super) writer: PacketWriter,
     pub(super) compression_threshold: Option<usize>,
     incoming: Receiver<Result<Incoming, ConnectionError>>,
     pub(super) state: ConnectionState,

@@ -8,13 +8,14 @@ mod record;
 mod session;
 mod state;
 mod status;
+mod writer;
 
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
 pub use play::PlaySession;
 pub use record::{NoRecorder, Recorder};
 pub use session::{
-    connect_stream, read_packet, send_configuration_start, send_handshake_intention,
+    connect_stream, frame_packet, read_packet, send_configuration_start, send_handshake_intention,
     send_handshake_to, send_packet,
 };
 pub use state::ConnectionState;

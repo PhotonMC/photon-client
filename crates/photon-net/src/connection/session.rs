@@ -95,6 +95,22 @@ pub fn send_handshake_to(
     )
 }
 
+/// A packet as it goes on the wire: its id and payload, framed and, past the threshold,
+/// compressed.
+pub fn frame_packet<F>(
+    packet_id: i32,
+    encode_payload: F,
+    compression_threshold: Option<usize>,
+) -> Result<Vec<u8>, ConnectionError>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
+{
+    let mut body = Vec::new();
+    wire::write_varint(packet_id, &mut body);
+    encode_payload(&mut body)?;
+    encode_packet_frame(&body, compression_threshold)
+}
+
 pub fn send_packet<F>(
     stream: &mut TcpStream,
     _phase: ConnectionProtocol,
@@ -105,10 +121,7 @@ pub fn send_packet<F>(
 where
     F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
 {
-    let mut body = Vec::new();
-    wire::write_varint(packet_id, &mut body);
-    encode_payload(&mut body)?;
-    let framed = encode_packet_frame(&body, compression_threshold)?;
+    let framed = frame_packet(packet_id, encode_payload, compression_threshold)?;
     stream.write_all(&framed)?;
     stream.flush()?;
     Ok(())
