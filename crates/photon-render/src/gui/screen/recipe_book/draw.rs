@@ -17,7 +17,7 @@ impl RecipeBookPanel {
                     continue;
                 };
                 for (item, _) in display_stacks(entry.display.result(), draw.tags) {
-                    let stack = Stack::new(1, ItemId(item));
+                    let stack = Stack::new(1, item);
                     text.lines.extend(
                         photon_game::tooltip::search_lines(
                             &stack,
@@ -27,7 +27,7 @@ impl RecipeBookPanel {
                         .into_iter()
                         .map(|line| line.to_lowercase()),
                     );
-                    if let Some(item) = usize::try_from(item)
+                    if let Some(item) = usize::try_from(item.0)
                         .ok()
                         .and_then(|item| photon_data::item::registry::ITEMS.get(item))
                     {
@@ -361,7 +361,7 @@ impl RecipeBookPanel {
             let mark = draw.frame.mark();
             draw.frame
                 .sprite(draw.atlas, &format!("recipe_book/{sprite}"), x, y, 25, 25);
-            let results: Vec<Vec<(i32, i32)>> = offered
+            let results: Vec<Vec<(ItemId, i32)>> = offered
                 .iter()
                 .filter_map(|id| draw.book.known.get(id))
                 .map(|entry| display_stacks(entry.display.result(), draw.tags))
@@ -370,7 +370,7 @@ impl RecipeBookPanel {
                 self.squeeze_button(draw, mark, collection.entries[0], (x, y));
                 continue;
             };
-            let stack = Stack::new(count, ItemId(item));
+            let stack = Stack::new(count, item);
             let mut offset = 4;
             if many && same_display(&results) {
                 draw.frame

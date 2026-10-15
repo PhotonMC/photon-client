@@ -5,6 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use photon_core::ids::ItemId;
 use photon_data::item::component_types as ids;
 use photon_world::{
     ClientItemStackState as Stack, Ingredient, RecipeBook, RecipeDisplay, SlotDisplay,
@@ -141,7 +142,7 @@ impl Collection {
 /// `StackedItemContents`: how many of each item the player holds, counting
 /// only plain stacks (`Inventory.accountSimpleStack`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct StackedItems(BTreeMap<i32, i32>);
+pub struct StackedItems(BTreeMap<ItemId, i32>);
 
 impl StackedItems {
     /// `accountSimpleStack`: damaged, enchanted and named stacks do not count.
@@ -158,7 +159,7 @@ impl StackedItems {
             return;
         }
         let count = stack.item_count().min(max_stack_size(stack));
-        *self.0.entry(stack.item_registry_id().0).or_insert(0) += count;
+        *self.0.entry(stack.item_registry_id()).or_insert(0) += count;
     }
 
     /// The player's 36 inventory slots and the book's ingredient slots of the
@@ -182,12 +183,12 @@ impl StackedItems {
     /// matching, so an ingredient that takes a scarce item does not starve
     /// one that could have taken another.
     pub fn can_craft(&self, ingredients: &[Ingredient], tags: &ItemTags) -> bool {
-        let options: Vec<Vec<i32>> = ingredients
+        let options: Vec<Vec<ItemId>> = ingredients
             .iter()
             .map(|ingredient| {
-                let items: Vec<i32> = match ingredient {
+                let items: Vec<ItemId> = match ingredient {
                     Ingredient::Items(items) => items.clone(),
-                    Ingredient::Tag(tag) => tags.members(tag).collect(),
+                    Ingredient::Tag(tag) => tags.members(tag).map(ItemId).collect(),
                 };
                 items
                     .into_iter()
@@ -195,7 +196,7 @@ impl StackedItems {
                     .collect()
             })
             .collect();
-        let mut owners: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
+        let mut owners: BTreeMap<ItemId, Vec<usize>> = BTreeMap::new();
         (0..options.len()).all(|ingredient| {
             let mut seen = BTreeSet::new();
             self.place(ingredient, &options, &mut owners, &mut seen)
@@ -205,9 +206,9 @@ impl StackedItems {
     fn place(
         &self,
         ingredient: usize,
-        options: &[Vec<i32>],
-        owners: &mut BTreeMap<i32, Vec<usize>>,
-        seen: &mut BTreeSet<i32>,
+        options: &[Vec<ItemId>],
+        owners: &mut BTreeMap<ItemId, Vec<usize>>,
+        seen: &mut BTreeSet<ItemId>,
     ) -> bool {
         for &item in &options[ingredient] {
             if !seen.insert(item) {
@@ -352,14 +353,22 @@ mod tests {
     use super::*;
 
     fn stacked(items: &[(i32, i32)]) -> StackedItems {
-        StackedItems(items.iter().copied().collect())
+        StackedItems(
+            items
+                .iter()
+                .map(|&(item, count)| (ItemId(item), count))
+                .collect(),
+        )
     }
 
     #[test]
     fn picker_reassigns_a_shared_item() {
         let tags = ItemTags::default();
         // Ingredient A takes item 1 or 2, B only item 1; one of each held.
-        let ingredients = [Ingredient::Items(vec![1, 2]), Ingredient::Items(vec![1])];
+        let ingredients = [
+            Ingredient::Items(vec![ItemId(1), ItemId(2)]),
+            Ingredient::Items(vec![ItemId(1)]),
+        ];
         assert!(stacked(&[(1, 1), (2, 1)]).can_craft(&ingredients, &tags));
         assert!(!stacked(&[(1, 1)]).can_craft(&ingredients, &tags));
     }
@@ -392,11 +401,11 @@ mod tests {
     fn an_overlay_button_lays_its_ingredients_on_seven_unit_cells() {
         let display = RecipeDisplay::Shapeless {
             ingredients: vec![
-                SlotDisplay::Item(1),
+                SlotDisplay::Item(ItemId(1)),
                 SlotDisplay::Empty,
-                SlotDisplay::Item(2),
+                SlotDisplay::Item(ItemId(2)),
             ],
-            result: SlotDisplay::Item(9),
+            result: SlotDisplay::Item(ItemId(9)),
         };
         let slots = overlay_slots(&display, &ItemTags::default());
         let places: Vec<(i32, i32)> = slots.iter().map(|slot| (slot.0, slot.1)).collect();
@@ -405,22 +414,27 @@ mod tests {
 
     #[test]
     fn a_button_cycles_recipes_then_their_items() {
-        let results = vec![vec![(1, 1), (2, 1)], vec![(3, 1)]];
+        let results = vec![vec![(ItemId(1), 1), (ItemId(2), 1)], vec![(ItemId(3), 1)]];
         // Time steps through the recipes, and each lap through the items.
         let shown: Vec<_> = (0..4).map(|time| button_stack(&results, time)).collect();
         assert_eq!(
             shown,
-            [Some((1, 1)), Some((3, 1)), Some((2, 1)), Some((3, 1))]
+            [
+                Some((ItemId(1), 1)),
+                Some((ItemId(3), 1)),
+                Some((ItemId(2), 1)),
+                Some((ItemId(3), 1))
+            ]
         );
-        assert!(same_display(&[vec![(1, 1)], vec![(1, 1)]]));
-        assert!(!same_display(&[vec![(1, 1)], vec![(1, 2)]]));
+        assert!(same_display(&[vec![(ItemId(1), 1)], vec![(ItemId(1), 1)]]));
+        assert!(!same_display(&[vec![(ItemId(1), 1)], vec![(ItemId(1), 2)]]));
     }
 
     #[test]
     fn a_shapeless_ghost_fills_the_grid_in_order() {
         let display = RecipeDisplay::Shapeless {
-            ingredients: vec![SlotDisplay::Item(5), SlotDisplay::Item(6)],
-            result: SlotDisplay::Item(9),
+            ingredients: vec![SlotDisplay::Item(ItemId(5)), SlotDisplay::Item(ItemId(6))],
+            result: SlotDisplay::Item(ItemId(9)),
         };
         let slots = ghost_slots(BookKind::Crafting { size: 3 }, &display, &|_| true);
         let places: Vec<usize> = slots.iter().map(|slot| slot.0).collect();
@@ -430,7 +444,10 @@ mod tests {
     #[test]
     fn picker_counts_an_item_once_per_ingredient() {
         let tags = ItemTags::default();
-        let two = [Ingredient::Items(vec![5]), Ingredient::Items(vec![5])];
+        let two = [
+            Ingredient::Items(vec![ItemId(5)]),
+            Ingredient::Items(vec![ItemId(5)]),
+        ];
         assert!(stacked(&[(5, 2)]).can_craft(&two, &tags));
         assert!(!stacked(&[(5, 1)]).can_craft(&two, &tags));
     }

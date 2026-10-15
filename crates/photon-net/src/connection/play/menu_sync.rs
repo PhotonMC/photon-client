@@ -117,7 +117,7 @@ impl PlaySession {
                     .slots
                     .first()
                     .and_then(Option::as_ref)
-                    .map(|input| self.world.stonecutter_options(input.item_registry_id().0))
+                    .map(|input| self.world.stonecutter_options(input.item_registry_id()))
                     .unwrap_or_default();
             }
             if menu.kind == photon_game::menus::container::MenuKind::Loom {

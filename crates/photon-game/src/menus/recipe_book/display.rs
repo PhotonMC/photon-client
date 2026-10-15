@@ -196,7 +196,7 @@ pub fn overlay_slots(display: &RecipeDisplay, tags: &ItemTags) -> Vec<OverlaySlo
 /// What a button shows for a recipe and how it cycles
 /// (`RecipeButton.getDisplayStack`): `results` holds each recipe's stacks as
 /// (item, count); `index` counts up with time.
-pub fn button_stack(results: &[Vec<(i32, i32)>], index: usize) -> Option<(i32, i32)> {
+pub fn button_stack(results: &[Vec<(ItemId, i32)>], index: usize) -> Option<(ItemId, i32)> {
     let count = results.len();
     if count == 0 {
         return None;
@@ -207,7 +207,7 @@ pub fn button_stack(results: &[Vec<(i32, i32)>], index: usize) -> Option<(i32, i
 }
 
 /// `allRecipesHaveSameResultDisplay`: every stack of every recipe is the same.
-pub fn same_display(results: &[Vec<(i32, i32)>]) -> bool {
+pub fn same_display(results: &[Vec<(ItemId, i32)>]) -> bool {
     let mut all = results.iter().flatten();
     all.next()
         .is_none_or(|first| results.iter().flatten().all(|stack| stack == first))
@@ -216,7 +216,7 @@ pub fn same_display(results: &[Vec<(i32, i32)>]) -> bool {
 /// The items a display can show, which a ghost slot and a button cycle
 /// through (`SlotDisplay.resolveForStacks`). Displays that need more of the
 /// world than the client keeps (fuels, potions) show nothing.
-pub fn display_items(display: &SlotDisplay, tags: &ItemTags) -> Vec<i32> {
+pub fn display_items(display: &SlotDisplay, tags: &ItemTags) -> Vec<ItemId> {
     display_stacks(display, tags)
         .into_iter()
         .map(|(item, _)| item)
@@ -224,11 +224,11 @@ pub fn display_items(display: &SlotDisplay, tags: &ItemTags) -> Vec<i32> {
 }
 
 /// The stacks a display can show, as (item, count).
-pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(i32, i32)> {
+pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(ItemId, i32)> {
     match display {
         SlotDisplay::Item(item) => vec![(*item, 1)],
         SlotDisplay::ItemStack(item, count) => vec![(*item, *count)],
-        SlotDisplay::Tag(tag) => tags.members(tag).map(|item| (item, 1)).collect(),
+        SlotDisplay::Tag(tag) => tags.members(tag).map(|item| (ItemId(item), 1)).collect(),
         SlotDisplay::Composite(all) => all
             .iter()
             .flat_map(|one| display_stacks(one, tags))
@@ -244,7 +244,7 @@ pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(i32, i32)>
             .iter()
             .enumerate()
             .filter(|(_, item)| item.burn_time > 0)
-            .map(|(id, _)| (id as i32, 1))
+            .map(|(id, _)| (ItemId(id as i32), 1))
             .collect(),
         SlotDisplay::Empty => Vec::new(),
     }

@@ -41,8 +41,8 @@ pub struct ContainerMenu {
     /// How many layers the banner in the loom already has.
     pub banner_layers: usize,
     /// What the stonecutter offers for its input: the item each entry shows,
-    /// or -1 for one that names none.
-    pub options: Vec<i32>,
+    /// or none for one that names none.
+    pub options: Vec<Option<ItemId>>,
     /// The player's experience level, which the anvil asks for.
     pub xp_level: i32,
     /// The enchantment registry's entries by network id, which the click

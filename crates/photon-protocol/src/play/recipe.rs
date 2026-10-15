@@ -18,9 +18,9 @@ pub(super) fn read_slot_display(
             let source = next(input)?;
             D::OnlyWithComponent(Box::new(source), read_varint(input, "display component")?)
         }
-        4 => D::Item(read_varint(input, "display item")?),
+        4 => D::Item(ItemId(read_varint(input, "display item")?)),
         5 => {
-            let item = read_varint(input, "display stack item")?;
+            let item = ItemId(read_varint(input, "display stack item")?);
             let count = read_varint(input, "display stack count")?;
             photon_game::item_components::read_patch(input)
                 .map_err(|_| ConnectionError::Codec("display stack components"))?;
@@ -77,7 +77,7 @@ pub(super) fn read_ingredient(
     }
     let mut items = Vec::new();
     for _ in 0..marker - 1 {
-        items.push(read_varint(input, "ingredient item")?);
+        items.push(ItemId(read_varint(input, "ingredient item")?));
     }
     Ok(photon_world::Ingredient::Items(items))
 }

@@ -3,10 +3,12 @@
 //! it (`SelectableRecipe.SingleInputSet`, without the recipes themselves,
 //! which the server keeps).
 
+use photon_core::ids::ItemId;
+
 /// An `Ingredient` as the network writes it: items, or a tag of them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ingredient {
-    Items(Vec<i32>),
+    Items(Vec<ItemId>),
     Tag(String),
 }
 
@@ -17,9 +19,9 @@ pub enum SlotDisplay {
     AnyFuel,
     WithAnyPotion(Box<SlotDisplay>),
     OnlyWithComponent(Box<SlotDisplay>, i32),
-    Item(i32),
+    Item(ItemId),
     /// An item stack: its item and count; the components are not kept.
-    ItemStack(i32, i32),
+    ItemStack(ItemId, i32),
     Tag(String),
     Dyed(Box<SlotDisplay>, Box<SlotDisplay>),
     SmithingTrim(Box<SlotDisplay>, Box<SlotDisplay>, i32),
@@ -30,7 +32,7 @@ pub enum SlotDisplay {
 impl SlotDisplay {
     /// `resolveForFirstStack`'s item: the first thing the display shows, for
     /// the displays that name an item.
-    pub fn first_item(&self) -> Option<i32> {
+    pub fn first_item(&self) -> Option<ItemId> {
         match self {
             Self::Item(item) | Self::ItemStack(item, _) => Some(*item),
             Self::WithAnyPotion(inner)

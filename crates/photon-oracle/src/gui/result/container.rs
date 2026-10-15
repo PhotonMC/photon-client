@@ -67,7 +67,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
                     .and_then(photon_game::item::id_of)
                     .is_some_and(|id| id == input)
             })
-            .map(|_| 1)
+            .map(|_| Some(input))
             .collect();
     }
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(root));

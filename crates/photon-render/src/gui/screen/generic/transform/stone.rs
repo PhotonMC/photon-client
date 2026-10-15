@@ -162,8 +162,8 @@ impl GenericScreen {
     }
 
     /// What an entry shows, as a stack of one.
-    pub(super) fn option_stack(item: i32) -> Option<photon_world::ClientItemStackState> {
-        (item >= 0).then(|| photon_world::ClientItemStackState::new(1, ItemId(item)))
+    pub(super) fn option_stack(item: Option<ItemId>) -> Option<photon_world::ClientItemStackState> {
+        item.map(|item| photon_world::ClientItemStackState::new(1, item))
     }
 
     /// Whether the loom shows its patterns: a banner and a dye, room for

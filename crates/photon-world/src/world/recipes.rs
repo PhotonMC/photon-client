@@ -30,7 +30,7 @@ impl ClientWorld {
         let mut accepted = BTreeSet::new();
         for entry in self.stonecutter.iter() {
             match &entry.input {
-                Ingredient::Items(items) => accepted.extend(items.iter().copied()),
+                Ingredient::Items(items) => accepted.extend(items.iter().map(|item| item.0)),
                 Ingredient::Tag(tag) => accepted.extend(tags.members(tag)),
             }
         }
@@ -39,15 +39,15 @@ impl ClientWorld {
 
     /// `SingleInputSet.selectByInput`: what each entry that takes the item
     /// shows, in the server's order (the first item of each display).
-    pub fn stonecutter_options(&self, item: i32) -> Vec<i32> {
+    pub fn stonecutter_options(&self, item: ItemId) -> Vec<Option<ItemId>> {
         let tags = self.block_state_registry.item_tags();
         self.stonecutter
             .iter()
             .filter(|entry| match &entry.input {
                 Ingredient::Items(items) => items.contains(&item),
-                Ingredient::Tag(tag) => tags.contains(item, tag),
+                Ingredient::Tag(tag) => tags.contains(item.0, tag),
             })
-            .map(|entry| entry.display.first_item().unwrap_or(-1))
+            .map(|entry| entry.display.first_item())
             .collect()
     }
 

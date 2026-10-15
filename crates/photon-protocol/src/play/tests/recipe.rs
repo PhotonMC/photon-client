@@ -19,15 +19,17 @@ fn recipe_book_add_reads_a_shaped_entry_and_its_flags() {
             width: 2,
             height: 1,
             ingredients: vec![
-                photon_world::SlotDisplay::Item(10),
+                photon_world::SlotDisplay::Item(photon_core::ids::ItemId(10)),
                 photon_world::SlotDisplay::Empty
             ],
-            result: photon_world::SlotDisplay::Item(20),
+            result: photon_world::SlotDisplay::Item(photon_core::ids::ItemId(20)),
         }
     );
     assert_eq!(
         entry.requirements,
-        Some(vec![photon_world::Ingredient::Items(vec![10])])
+        Some(vec![photon_world::Ingredient::Items(vec![
+            photon_core::ids::ItemId(10)
+        ])])
     );
     let mut book = photon_world::RecipeBook::default();
     book.add(entries, replace);
