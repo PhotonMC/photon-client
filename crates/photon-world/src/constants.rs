@@ -148,8 +148,10 @@ pub(crate) const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     ),
 ];
 pub(crate) const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
-pub const VANILLA_AIR_BLOCK_STATE_ID: BlockStateId = BlockStateId(0);
-pub const VANILLA_WATER_BLOCK_STATE_ID: BlockStateId = BlockStateId(86);
+pub const VANILLA_AIR_BLOCK_STATE_ID: BlockStateId =
+    photon_data::block::registry::default_state_named("minecraft:air");
+pub const VANILLA_WATER_BLOCK_STATE_ID: BlockStateId =
+    photon_data::block::registry::default_state_named("minecraft:water");
 pub(crate) const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 pub(crate) const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 pub(crate) const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;

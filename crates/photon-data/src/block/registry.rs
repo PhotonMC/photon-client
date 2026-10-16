@@ -182,6 +182,35 @@ impl Block {
     }
 }
 
+/// The default state of the block with this name, worked out while compiling by the same
+/// numbering the registry uses: a name the registry lacks stops the build.
+pub const fn default_state_named(name: &str) -> BlockStateId {
+    let mut first = 0_i32;
+    let mut index = 0;
+    while index < BLOCKS.len() {
+        let block = &BLOCKS[index];
+        let mut count = 1_i32;
+        let mut offset = 0_i32;
+        let mut slot = 0;
+        while slot < block.properties.len() {
+            let values = block.properties[slot].values;
+            let mut value = 0;
+            while value < values.len() && !crate::name::same(values[value], block.default[slot]) {
+                value += 1;
+            }
+            offset = offset * values.len() as i32 + value as i32;
+            count *= values.len() as i32;
+            slot += 1;
+        }
+        if crate::name::same(block.name, name) {
+            return BlockStateId(first + offset);
+        }
+        first += count;
+        index += 1;
+    }
+    panic!("the block registry has no such name");
+}
+
 /// Which block a state number belongs to, by index, and how far into it the
 /// state sits.
 pub fn block_index_for_state(state: BlockStateId) -> Option<(usize, u32)> {
