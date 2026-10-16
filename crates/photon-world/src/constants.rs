@@ -10,24 +10,42 @@ pub(crate) const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 = 31;
 pub(crate) const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
-pub(crate) const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(156);
-pub(crate) const VANILLA_ITEM_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(71);
-pub(crate) const VANILLA_BREEZE_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(17);
-pub(crate) const VANILLA_SPIDER_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(124);
-pub(crate) const VANILLA_ZOMBIE_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(151);
-pub(crate) const VANILLA_SHULKER_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(112);
-pub(crate) const VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(58);
-pub const VANILLA_COW_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(30);
-pub const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(120);
-pub const VANILLA_ARROW_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(6);
-pub const VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(49);
-pub const VANILLA_EGG_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(39);
-pub const VANILLA_ENDER_PEARL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(44);
-pub const VANILLA_EXPERIENCE_BOTTLE_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(48);
-pub const VANILLA_SPLASH_POTION_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(105);
-pub const VANILLA_LINGERING_POTION_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(106);
-pub const VANILLA_SPECTRAL_ARROW_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(123);
-pub const VANILLA_TRIDENT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(136);
+pub(crate) const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:player");
+pub(crate) const VANILLA_ITEM_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:item");
+pub(crate) const VANILLA_BREEZE_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:breeze");
+pub(crate) const VANILLA_SPIDER_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:spider");
+pub(crate) const VANILLA_ZOMBIE_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:zombie");
+pub(crate) const VANILLA_SHULKER_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:shulker");
+pub(crate) const VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:happy_ghast");
+pub const VANILLA_COW_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:cow");
+pub const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:snowball");
+pub const VANILLA_ARROW_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:arrow");
+pub const VANILLA_EXPERIENCE_ORB_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:experience_orb");
+pub const VANILLA_EGG_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:egg");
+pub const VANILLA_ENDER_PEARL_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:ender_pearl");
+pub const VANILLA_EXPERIENCE_BOTTLE_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:experience_bottle");
+pub const VANILLA_SPLASH_POTION_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:splash_potion");
+pub const VANILLA_LINGERING_POTION_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:lingering_potion");
+pub const VANILLA_SPECTRAL_ARROW_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:spectral_arrow");
+pub const VANILLA_TRIDENT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:trident");
 pub(crate) const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
     2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
     43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
@@ -52,13 +70,16 @@ pub(crate) const VANILLA_ARROW_GRAVITY: f64 = 0.05;
 pub(crate) const PROJECTILE_DEGREES_PER_RADIAN: f64 = 57.2957763671875;
 pub(crate) const VANILLA_EXPERIENCE_ORB_AIR_FRICTION: f32 = 0.98_f32;
 pub(crate) const VANILLA_EXPERIENCE_ORB_GRAVITY: f64 = 0.03;
-pub const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(133);
+pub const VANILLA_PRIMED_TNT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:tnt");
 pub(crate) const VANILLA_PRIMED_TNT_AIR_FRICTION: f32 = 0.98_f32;
 pub(crate) const VANILLA_PRIMED_TNT_GRAVITY: f64 = 0.04;
-pub const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(51);
+pub const VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:falling_block");
 pub(crate) const VANILLA_FALLING_BLOCK_AIR_FRICTION: f32 = 0.98_f32;
 pub(crate) const VANILLA_FALLING_BLOCK_GRAVITY: f64 = 0.04;
-pub const VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(53);
+pub const VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:firework_rocket");
 pub(crate) const VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION: f64 = 1.15;
 pub(crate) const VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION: f64 = 0.04;
 pub(crate) const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;

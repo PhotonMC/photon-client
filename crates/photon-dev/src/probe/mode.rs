@@ -142,7 +142,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| entity.motion())
                 } else {
                     None
@@ -292,7 +292,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| {
                             (
                                 entity.position(),
@@ -344,7 +344,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| {
                             (
                                 entity.position(),
@@ -396,7 +396,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| {
                             (
                                 entity.position(),
@@ -443,7 +443,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| {
                             (
                                 entity.position(),
@@ -490,7 +490,7 @@ pub(super) fn connect_and_probe_with_mode(
                         .world
                         .entities()
                         .at(observation.entity_id)
-                        .filter(|entity| entity.type_id == photon_core::ids::EntityTypeId(156))
+                        .filter(|entity| entity.type_id == PLAYER_ENTITY_TYPE)
                         .map(|entity| {
                             (
                                 entity.position(),

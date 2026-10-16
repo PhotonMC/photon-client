@@ -22,6 +22,34 @@ pub fn id(name: &str) -> Option<EntityTypeId> {
         .map(|index| EntityTypeId(index as i32))
 }
 
+/// The id of the type with this name, resolved while compiling: a name the registry lacks
+/// stops the build.
+pub const fn named(name: &str) -> EntityTypeId {
+    let wanted = name.as_bytes();
+    let mut index = 0;
+    while index < ENTITY_TYPES.len() {
+        if same_bytes(ENTITY_TYPES[index].as_bytes(), wanted) {
+            return EntityTypeId(index as i32);
+        }
+        index += 1;
+    }
+    panic!("the entity type registry has no such name");
+}
+
+const fn same_bytes(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut at = 0;
+    while at < left.len() {
+        if left[at] != right[at] {
+            return false;
+        }
+        at += 1;
+    }
+    true
+}
+
 /// A pig or cow variant of the data pack: the textures (`entity/pig/pig_cold`
 /// with its namespace) and the model family it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

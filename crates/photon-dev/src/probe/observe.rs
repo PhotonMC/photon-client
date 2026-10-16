@@ -13,7 +13,7 @@ pub(super) fn observe_player_interpolation(
     let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
-    if entity.type_id != photon_core::ids::EntityTypeId(156) {
+    if entity.type_id != PLAYER_ENTITY_TYPE {
         return;
     }
     let Some(target_position) = entity.interpolation_target_position() else {
@@ -66,7 +66,7 @@ pub(super) fn observe_player_motion_interpolation(
     let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
-    if entity.type_id != photon_core::ids::EntityTypeId(156)
+    if entity.type_id != PLAYER_ENTITY_TYPE
         || before_motion == target_motion
         || entity.motion_interpolation_target() != Some(target_motion)
     {
@@ -111,7 +111,7 @@ pub(super) fn observe_player_position_snap(
     let Some(entity) = trace.world.entities().at(entity_id) else {
         return;
     };
-    if entity.type_id != photon_core::ids::EntityTypeId(156) || entity.interpolation_steps() != 0 {
+    if entity.type_id != PLAYER_ENTITY_TYPE || entity.interpolation_steps() != 0 {
         return;
     }
     let target_position = entity.position();

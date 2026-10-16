@@ -25,6 +25,10 @@ use photon_net::connection::{read_packet, send_packet};
 use photon_protocol::play::*;
 use photon_protocol::{common, login};
 
+/// The player's entity type, read from the registry while compiling.
+pub(crate) const PLAYER_ENTITY_TYPE: photon_core::ids::EntityTypeId =
+    photon_data::entity_type::named("minecraft:player");
+
 mod observe;
 pub(crate) use observe::*;
 mod mode;
