@@ -74,6 +74,26 @@ pub struct MovingPiston {
 
 impl Eq for MovingPiston {}
 
+impl MovingPiston {
+    /// `getMovementDirection`: the way the block moves.
+    pub fn movement_direction(&self) -> photon_core::direction::Direction {
+        if self.extending {
+            self.direction
+        } else {
+            self.direction.opposite()
+        }
+    }
+
+    /// `getExtendedProgress`: how far the block is from where it ends, as a part of a block.
+    pub fn extended_progress(&self) -> f32 {
+        if self.extending {
+            self.progress - 1.0
+        } else {
+            1.0 - self.progress
+        }
+    }
+}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]

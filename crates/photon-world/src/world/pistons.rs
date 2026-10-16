@@ -4,6 +4,7 @@
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
 use photon_core::math::Vec3;
+use photon_core::shape::{Shapes, VoxelShape};
 use photon_data::block::blocks::id;
 use photon_data::block::definition::PushReaction;
 use photon_data::block::registry::BLOCKS;
@@ -60,6 +61,38 @@ fn moving(
         progress_old: 0.0,
         death_ticks: 0,
     }
+}
+
+/// The collision shape of a state at a place.
+fn shape_at(state: BlockStateId, pos: Pos) -> VoxelShape {
+    block::registry::collision_shape_at(state, [pos.0, pos.1, pos.2])
+}
+
+/// The piston that draws back as an arm does leaves its base behind, in the shape of one that is out.
+fn base_shape_of_retracting(moving: &MovingPiston, pos: Pos) -> VoxelShape {
+    let carries_piston = block::state_or_air(moving.moved_state)
+        .block()
+        .class
+        .is(photon_data::block::classes::BlockClass::PistonBaseBlock);
+    if moving.extending || !moving.source || !carries_piston {
+        return Shapes::empty();
+    }
+    rules::with_property(moving.moved_state, "extended", "true")
+        .map_or_else(Shapes::empty, |state| shape_at(state, pos))
+}
+
+/// What the moving block is made of: the arm of a piston as the head, in the length it has by
+/// now, or the block it carries.
+fn shown_state(moving: &MovingPiston) -> BlockStateId {
+    if !moving.source {
+        return moving.moved_state;
+    }
+    let short = moving.extending != (1.0 - moving.progress < 0.25);
+    let short = if short { "true" } else { "false" };
+    state_of(
+        id::PISTON_HEAD,
+        &[("facing", moving.direction.name()), ("short", short)],
+    )
 }
 
 impl ClientWorld {
@@ -246,6 +279,27 @@ impl ClientWorld {
     fn update_neighbour_shapes_of(&mut self, pos: Pos, flags: u32) {
         let at = Vec3::new(0.0, 0.0, 0.0);
         self.update_neighbour_shapes(pos, flags, UPDATE_LIMIT, at);
+    }
+
+    /// `PistonMovingBlockEntity.getCollisionShape`: what a moving piston block fills at the
+    /// progress it has made; with `no_clip` the direction an entity is being moved by the piston
+    /// in, the block it carries lets that entity through while it is still moving that way.
+    pub fn moving_piston_collision_shape(
+        &self,
+        pos: Pos,
+        no_clip: Option<Direction>,
+    ) -> VoxelShape {
+        let Some(moving) = self.moving_piston_at(pos) else {
+            return Shapes::empty();
+        };
+        let head_shape = base_shape_of_retracting(moving, pos);
+        if moving.progress < 1.0 && no_clip == Some(moving.movement_direction()) {
+            return head_shape;
+        }
+        let (dx, dy, dz) = moving.direction.step();
+        let by = |step: i32| f64::from(step) * f64::from(moving.extended_progress());
+        let carried = shape_at(shown_state(moving), pos).move_by(by(dx), by(dy), by(dz));
+        Shapes::or(&head_shape, &carried)
     }
 
     /// The moving piston a block entity holds at a place.

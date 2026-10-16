@@ -517,6 +517,14 @@ class MovementSupport {
                             + moving.isSourcePiston() + ","
                             + Oracle.bits((float) getField(moving, "progress")) + ","
                             + Oracle.bits((float) getField(moving, "progressO")));
+                        // What the block fills: the boxes of its collision shape.
+                        var boxes = new StringBuilder("shape," + x + "," + y + "," + z);
+                        for (var part : state.getCollisionShape(level, pos).toAabbs()) {
+                            for (double edge : new double[] {part.minX, part.minY, part.minZ, part.maxX, part.maxY, part.maxZ}) {
+                                boxes.append(',').append(Oracle.bits(edge));
+                            }
+                        }
+                        lines.add(boxes.toString());
                     }
                 }
             }

@@ -158,6 +158,9 @@ impl Level<'_> {
         let collisions = self.world.collect_block_collisions_with(area, |state, at| {
             Some(if is_block(state, "minecraft:powder_snow") {
                 powder_snow_collision_shape(fall_distance)
+            } else if is_block(state, "minecraft:moving_piston") {
+                self.world
+                    .moving_piston_collision_shape((at[0], at[1], at[2]), None)
             } else if let Some(bottom) = self.lava_stand
                 && let Some(shape) = self.lava_surface_shape(state, at, bottom)
             {

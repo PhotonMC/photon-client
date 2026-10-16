@@ -196,8 +196,8 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
     }
 }
 
-/// `blk,x,y,z,id` for each block that is not air in the box a row watches, and `mov,...` for the
-/// moving pistons among them.
+/// `blk,x,y,z,id` for each block that is not air in the box a row watches, and `mov,...` and
+/// `shape,...` for the moving pistons among them.
 pub(super) fn region_lines(world: &ClientWorld, row: &Value) -> Vec<String> {
     let Some(corners) = row["region"].as_array() else {
         return Vec::new();
@@ -207,24 +207,44 @@ pub(super) fn region_lines(world: &ClientWorld, row: &Value) -> Vec<String> {
     for x in corner(0)..=corner(3) {
         for y in corner(1)..=corner(4) {
             for z in corner(2)..=corner(5) {
-                let state = world.block_state_or_air(x, y, z);
-                if photon_world::block::state_or_air(state).block().air {
-                    continue;
-                }
-                lines.push(format!("blk,{x},{y},{z},{}", state.0));
-                if let Some(moving) = world.moving_piston_at((x, y, z)) {
-                    lines.push(format!(
-                        "mov,{x},{y},{z},{},{},{},{},{:08x},{:08x}",
-                        moving.moved_state.0,
-                        moving.direction as usize,
-                        moving.extending,
-                        moving.source,
-                        moving.progress.to_bits(),
-                        moving.progress_old.to_bits()
-                    ));
-                }
+                lines.extend(block_lines(world, (x, y, z)));
             }
         }
     }
+    lines
+}
+
+/// The lines of one place of a watched box: its block and, for a moving piston, its move and shape.
+fn block_lines(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> Vec<String> {
+    let state = world.block_state_or_air(x, y, z);
+    if photon_world::block::state_or_air(state).block().air {
+        return Vec::new();
+    }
+    let mut lines = vec![format!("blk,{x},{y},{z},{}", state.0)];
+    let Some(moving) = world.moving_piston_at((x, y, z)) else {
+        return lines;
+    };
+    lines.push(format!(
+        "mov,{x},{y},{z},{},{},{},{},{:08x},{:08x}",
+        moving.moved_state.0,
+        moving.direction as usize,
+        moving.extending,
+        moving.source,
+        moving.progress.to_bits(),
+        moving.progress_old.to_bits()
+    ));
+    let mut boxes = format!("shape,{x},{y},{z}");
+    for aabb in world
+        .moving_piston_collision_shape((x, y, z), None)
+        .to_aabbs()
+    {
+        let edges = [
+            aabb.min_x, aabb.min_y, aabb.min_z, aabb.max_x, aabb.max_y, aabb.max_z,
+        ];
+        for edge in edges {
+            boxes.push_str(&format!(",{:016x}", edge.to_bits()));
+        }
+    }
+    lines.push(boxes);
     lines
 }
