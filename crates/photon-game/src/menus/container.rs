@@ -53,7 +53,8 @@ pub struct ContainerMenu {
     /// Whether the last click was made with infinite materials (creative).
     pub(super) infinite_materials: bool,
     /// What the mount menu reads of its entity.
-    pub mount: mount::MountEntity,
+    /// The entity of a mount menu; none for any other menu.
+    pub mount: Option<mount::MountEntity>,
     /// The language item names are compared in (the anvil's rename).
     pub lang: std::sync::Arc<crate::text::Lang>,
     /// What the anvil's `createResult` keeps between calls.
@@ -151,7 +152,7 @@ impl Default for ContainerMenu {
             enchantments: std::sync::Arc::default(),
             enchantment_traits: std::sync::Arc::default(),
             infinite_materials: false,
-            mount: mount::MountEntity::default(),
+            mount: None,
             lang: std::sync::Arc::default(),
             anvil: anvil::AnvilState::default(),
             last_input: None,

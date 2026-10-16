@@ -277,11 +277,11 @@ pub(super) fn mount_menu(
     let tame = mount["tame"].as_bool().ok_or("tame must be a bool")?;
     let kind = photon_game::menus::container::MenuKind::Mount(Mount { family, columns });
     let mut menu = ContainerMenu::for_menu(kind, 4, Vec::new(), None, 0);
-    menu.mount = MountEntity {
+    menu.mount = Some(MountEntity {
         entity_id: EntityId(0),
         entity_type: photon_data::entity_type::id(name).ok_or("unknown entity")?,
         can_use: MountEntity::can_use_slots(name, baby, tame),
         entity_tags: std::sync::Arc::new(vanilla_entity_type_tags()?),
-    };
+    });
     Ok(menu)
 }

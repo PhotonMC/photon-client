@@ -92,14 +92,16 @@ impl GenericScreen {
             }
         }
         // `InventoryScreen.extractEntityInInventoryFollowsMouse` of the mount.
-        let model = (draw.entity)(
-            menu.mount.entity_id,
-            (left + 26, top + 18, left + 78, top + 70),
-            17.0,
-            0.25,
-            (mouse.0 as f32, mouse.1 as f32),
-        );
-        draw.frame.entity(&model);
+        if let Some(mount) = &menu.mount {
+            let model = (draw.entity)(
+                mount.entity_id,
+                (left + 26, top + 18, left + 78, top + 70),
+                17.0,
+                0.25,
+                (mouse.0 as f32, mouse.1 as f32),
+            );
+            draw.frame.entity(&model);
+        }
     }
 
     /// `MerchantScreen.extractLabels`: the title, with the merchant's level when its bar shows, the

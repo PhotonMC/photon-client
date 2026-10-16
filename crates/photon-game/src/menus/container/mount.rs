@@ -56,18 +56,6 @@ pub struct MountEntity {
     pub entity_tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
 }
 
-/// The mount of a menu that has none: no entity (id zero) and nothing it can wear.
-impl Default for MountEntity {
-    fn default() -> Self {
-        Self {
-            entity_id: EntityId(0),
-            entity_type: EntityTypeId(0),
-            can_use: [false; 2],
-            entity_tags: std::sync::Arc::default(),
-        }
-    }
-}
-
 /// The id `ClientContainerState` gives the menu a `ClientboundMountScreenOpenPacket` opens, which
 /// has no menu type of its own.
 pub const MOUNT_MENU_TYPE: i32 = -2;
@@ -117,7 +105,10 @@ impl ContainerMenu {
     /// `Slot.isActive`: a slot that is not takes no click and is not drawn.
     pub fn slot_active(&self, index: usize) -> bool {
         match self.kind {
-            MenuKind::Mount(mount) if index < 2 => self.mount.active(mount.family)[index],
+            MenuKind::Mount(mount) if index < 2 => self
+                .mount
+                .as_ref()
+                .is_some_and(|entity| entity.active(mount.family)[index]),
             _ => true,
         }
     }
@@ -139,8 +130,9 @@ impl ContainerMenu {
         crate::item::values::equippable_of(stack.item_registry_id(), stack.patch_bytes())
             .is_some_and(|equippable| {
                 equippable.slot == slot
-                    && self.mount.can_use[index]
-                    && self.mount.allows(equippable.allowed_entities.as_ref())
+                    && self.mount.as_ref().is_some_and(|entity| {
+                        entity.can_use[index] && entity.allows(equippable.allowed_entities.as_ref())
+                    })
             })
     }
 

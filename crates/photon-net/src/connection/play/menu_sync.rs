@@ -130,7 +130,7 @@ impl PlaySession {
             menu.enchantment_traits = self.menus.enchantment_traits.clone();
             menu.lang = self.social.lang.clone();
             if let Some((_, _, entity)) = &mount {
-                menu.mount = entity.clone();
+                menu.mount = Some(entity.clone());
             }
             menu.xp_level = self.local.status.experience_level;
             if menu.kind == photon_game::menus::container::MenuKind::Merchant {
