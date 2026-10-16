@@ -392,6 +392,9 @@ class MovementSupport {
      * connected to it (its `shared_data`, as the server's update tag carries it).
      */
     static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+        if (row.has("game_time")) {
+            level.setTimeFromServer(row.get("game_time").getAsLong());
+        }
         if (row.has("players")) {
             int id = 100;
             for (var element : row.getAsJsonArray("players")) {
@@ -438,6 +441,41 @@ class MovementSupport {
                         net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         }
+    }
+
+    /**
+     * `be,x,y,z,...` for each place a row watches: what its block entity holds of what block
+     * events set. A place with no block entity reads as `none`.
+     */
+    static java.util.List<String> watchLines(
+        JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) throws Exception {
+        var lines = new java.util.ArrayList<String>();
+        if (!row.has("watch")) {
+            return lines;
+        }
+        for (var element : row.getAsJsonArray("watch")) {
+            var watched = element.getAsJsonObject();
+            var pos = new BlockPos(watched.get("x").getAsInt(), watched.get("y").getAsInt(),
+                watched.get("z").getAsInt());
+            var entity = level.getBlockEntity(pos);
+            String held;
+            if (entity == null) {
+                held = "none";
+            } else if (entity instanceof net.minecraft.world.level.block.entity.DecoratedPotBlockEntity pot) {
+                held = "pot," + pot.wobbleStartedAtTick + ","
+                    + (pot.lastWobbleStyle == null ? -1 : pot.lastWobbleStyle.ordinal());
+            } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity gateway) {
+                held = "gateway," + getField(gateway, "teleportCooldown");
+            } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
+                held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
+            } else if (entity instanceof net.minecraft.world.level.block.entity.PotentSulfurBlockEntity sulfur) {
+                held = "sulfur," + sulfur.eruptionTick;
+            } else {
+                held = "other";
+            }
+            lines.add("be," + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + held);
+        }
+        return lines;
     }
 
     /** The parrots a row put in the level, by their numbers. */

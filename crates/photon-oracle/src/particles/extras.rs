@@ -31,6 +31,9 @@ fn uuid_of(value: &Value) -> Result<(Uuid, [i32; 4]), String> {
 /// Put a row's `players` and `parrots` in the level, and give each of its `vaults` the shared
 /// data the server would have sent with the chunk.
 pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    if let Some(time) = row["game_time"].as_u64() {
+        world.set_game_time(time);
+    }
     for (index, player) in row["players"].as_array().into_iter().flatten().enumerate() {
         let (uuid, _) = uuid_of(&player["uuid"])?;
         put_entity(
@@ -137,4 +140,58 @@ pub(super) fn party_lines(world: &ClientWorld) -> Vec<String> {
         .into_iter()
         .map(|(id, party)| format!("party,{id},{party}"))
         .collect()
+}
+
+/// `be,x,y,z,...` for each place a row watches: what its block entity holds of what block events
+/// set. A place whose block does not keep an entity reads as `none`.
+pub(super) fn watch_lines(world: &ClientWorld, row: &Value) -> Vec<String> {
+    let mut lines = Vec::new();
+    for watched in row["watch"].as_array().into_iter().flatten() {
+        let (Ok(x), Ok(y), Ok(z)) = (
+            i32_field(watched, "x"),
+            i32_field(watched, "y"),
+            i32_field(watched, "z"),
+        ) else {
+            continue;
+        };
+        lines.push(format!("be,{x},{y},{z},{}", held_at(world, (x, y, z))));
+    }
+    lines
+}
+
+/// The type of block entity a block keeps, were it asked for one.
+fn entity_type_of(block_name: &str) -> Option<&'static str> {
+    match block_name {
+        "minecraft:decorated_pot" => Some("minecraft:decorated_pot"),
+        "minecraft:end_gateway" => Some("minecraft:end_gateway"),
+        "minecraft:spawner" => Some("minecraft:mob_spawner"),
+        "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
+        _ => None,
+    }
+}
+
+/// What the block entity at a place holds, as the reference reads it: one it has not made yet is
+/// made as it is asked for, with the defaults.
+fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
+    let block = photon_world::block::state_or_air(world.block_state_or_air(x, y, z)).block();
+    let Some(kind) = entity_type_of(block.name) else {
+        return "none".to_owned();
+    };
+    let type_id = photon_data::block_entity_type::id(kind).unwrap_or_default();
+    let made =
+        photon_world::ClientBlockEntity::from_wire(type_id, None).made_at(world.game_time() as i64);
+    let entity = world.block_entity_at(x, y, z).unwrap_or(&made);
+    let events = entity.events();
+    match kind {
+        "minecraft:decorated_pot" => {
+            let (start, style) = events.wobble.unwrap_or((0, -1));
+            format!("pot,{start},{style}")
+        }
+        "minecraft:end_gateway" => format!("gateway,{}", events.teleport_cooldown),
+        "minecraft:mob_spawner" => {
+            let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
+            format!("spawner,{delay}")
+        }
+        _ => format!("sulfur,{}", events.eruption_tick),
+    }
 }

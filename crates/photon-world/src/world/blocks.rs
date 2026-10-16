@@ -16,6 +16,24 @@ impl ClientWorld {
             .get(&(x, y, z))
     }
 
+    /// The block entity at a place, made as the block's own type when the chunk holds none
+    /// (`LevelChunk.getBlockEntity` with `IMMEDIATE`).
+    pub(crate) fn block_entity_or_new(
+        &mut self,
+        (x, y, z): (i32, i32, i32),
+        type_name: &str,
+    ) -> Option<&mut ClientBlockEntity> {
+        let type_id = photon_data::block_entity_type::id(type_name)?;
+        let time = self.game_time() as i64;
+        let chunk = self.chunk_for_update(x.div_euclid(16), z.div_euclid(16))?;
+        Some(
+            chunk
+                .block_entities
+                .entry((x, y, z))
+                .or_insert_with(|| ClientBlockEntity::from_wire(type_id, None).made_at(time)),
+        )
+    }
+
     /// Apply a server-verified block-state update to an already loaded section.
     pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: BlockStateId) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
@@ -118,6 +136,7 @@ impl ClientWorld {
     where
         I: IntoIterator<Item = BlockEntityInput<'a>>,
     {
+        let time = self.game_time() as i64;
         let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
             return 0;
         };
@@ -128,7 +147,8 @@ impl ClientWorld {
             }
             chunk.block_entities.insert(
                 (entity.x, entity.y, entity.z),
-                ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
+                ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
+                    .made_at(time),
             );
             applied += 1;
         }
@@ -137,13 +157,23 @@ impl ClientWorld {
 
     pub fn apply_block_entity_update(&mut self, entity: BlockEntityInput<'_>) -> bool {
         let chunk_key = (entity.x.div_euclid(16), entity.z.div_euclid(16));
+        let time = self.game_time() as i64;
         let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
             return false;
         };
-        chunk.block_entities.insert(
-            (entity.x, entity.y, entity.z),
-            ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec)),
-        );
+        let key = (entity.x, entity.y, entity.z);
+        let mut updated =
+            ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
+                .made_at(time);
+        // `handleBlockEntityData` loads into the entity that is there: what events set stays.
+        if let Some(old) = chunk
+            .block_entities
+            .get(&key)
+            .filter(|old| old.type_id == entity.type_id)
+        {
+            updated.events = old.events.clone();
+        }
+        chunk.block_entities.insert(key, updated);
         true
     }
 

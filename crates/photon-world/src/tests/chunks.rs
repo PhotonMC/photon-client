@@ -236,11 +236,7 @@ fn block_entities_are_queryable_and_removed_with_their_chunk() {
     assert_eq!(world.loaded_block_entity_count(), 1);
     assert_eq!(
         world.block_entity_at(-1, -63, 32),
-        Some(&crate::ClientBlockEntity {
-            type_id: 7,
-            tag: Some(tag.to_vec()),
-            spawner_state: None,
-        })
+        Some(&crate::ClientBlockEntity::from_wire(7, Some(tag.to_vec())))
     );
 
     let replacement = [10, 0, 0];

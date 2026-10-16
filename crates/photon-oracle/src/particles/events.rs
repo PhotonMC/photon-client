@@ -3,6 +3,19 @@
 use super::*;
 use photon_world::local_player::LocalSound;
 
+/// A `block_event`: the block at the place takes an event and its data, each a byte.
+fn queue_block_event(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    let byte =
+        |key: &str| u8::try_from(i32_field(event, key)?).map_err(|_| format!("{key} is a byte"));
+    let pos = (
+        i32_field(event, "x")?,
+        i32_field(event, "y")?,
+        i32_field(event, "z")?,
+    );
+    world.apply_block_event(pos, byte("b0")?, byte("b1")?);
+    Ok(())
+}
+
 /// A `level_event` (the event, the block and the data) or `block_event` (the block) event, queued
 /// in the world as the client would; false for an event of another kind.
 pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, String> {
@@ -62,9 +75,7 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
         "global_level_event" => {
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);
         }
-        "block_event" => {
-            world.apply_note_block_event(pos()?);
-        }
+        "block_event" => queue_block_event(event, world)?,
         "fireworks" => {
             use photon_world::particles::{FireworkExplosion, FireworkLaunch, FireworkShape};
             let colors = |list: &Value| -> Result<Vec<i32>, String> {
@@ -208,13 +219,15 @@ pub(super) fn heard(
     lines
 }
 
-/// What a tick played, then whether each parrot of the scene dances.
+/// What a tick played, then whether each parrot of the scene dances and what the block entities
+/// the row watches hold.
 pub(super) fn ticked_lines(
     ticked: &[LocalSound],
-    world: &photon_world::ClientWorld,
+    (world, row): (&photon_world::ClientWorld, &Value),
 ) -> Vec<String> {
     let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
     lines.extend(super::extras::party_lines(world));
+    lines.extend(super::extras::watch_lines(world, row));
     lines
 }
 

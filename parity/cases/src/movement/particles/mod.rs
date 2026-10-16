@@ -5,6 +5,7 @@
 mod animating;
 mod engine;
 mod engine_rows;
+mod engine_rows_late;
 mod events;
 mod fireworks;
 mod layouts;

@@ -826,7 +826,7 @@
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 176
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
-"crates/photon-oracle/src/particles/events.rs::queues" = 113
+"crates/photon-oracle/src/particles/events.rs::queues" = 111
 "crates/photon-oracle/src/particles/factory.rs::particle_of" = 287
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_player_position_result" = 137
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_position_result" = 151

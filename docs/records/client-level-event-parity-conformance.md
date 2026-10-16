@@ -74,3 +74,10 @@ rastgelesiyle işler.
   by three are told the record plays or stops; a parrot dances until its jukebox is 3.46 or more
   from it or is no longer a jukebox. The oracle compares which parrots dance after each tick, not
   the clearing on a parrot's own tick.
+- Block events on block entities (#47): the block as it stands takes the event (the packet's block
+  is ignored). A decorated pot notes when it started to wobble and in which style (only 0 and 1
+  are styles), an end gateway's cooldown starts at 40, a spawner's delay is reset to its minimum
+  and a potent sulfur block notes the game time of its eruption; a potent sulfur block entity
+  made by the level starts with the game time it was made at. The oracle compares the state the
+  entities hold; what reads it (the pot and gateway renderers, the spawner's and the sulfur's
+  tickers) is still to come.

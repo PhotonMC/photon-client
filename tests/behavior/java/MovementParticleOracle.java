@@ -651,6 +651,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             for (var parrot : MovementSupport.parrots(level)) {
                 sounds.add("party," + parrot.getId() + "," + parrot.isPartyParrot());
             }
+            MovementSupport.watchLines(row, level).forEach(sounds::add);
             counted.add("sounds", sounds);
             counted.addProperty("particles", groupParticles(engine).size());
             counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());

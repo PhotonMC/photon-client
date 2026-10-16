@@ -11,6 +11,21 @@ pub struct ClientSpawnerState {
     pub(crate) spawn_range: i32,
 }
 
+impl Default for ClientSpawnerState {
+    /// A spawner with none of its data: `BaseSpawner`'s own defaults.
+    fn default() -> Self {
+        Self {
+            delay: 20,
+            min_spawn_delay: 200,
+            max_spawn_delay: 800,
+            spawn_count: 4,
+            max_nearby_entities: 6,
+            required_player_range: 16,
+            spawn_range: 4,
+        }
+    }
+}
+
 impl ClientSpawnerState {
     pub fn delay(&self) -> i32 {
         self.delay
@@ -41,11 +56,35 @@ impl ClientSpawnerState {
     }
 }
 
+/// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
+/// for the renderers and tickers that read it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockEntityEvents {
+    /// `DecoratedPotBlockEntity.wobbleStartedAtTick` and the style's number
+    /// (`lastWobbleStyle`), once a pot has wobbled.
+    pub wobble: Option<(i64, i32)>,
+    /// `TheEndGatewayBlockEntity.teleportCooldown`.
+    pub teleport_cooldown: i32,
+    /// `PotentSulfurBlockEntity.eruptionTick`: -1 until an eruption.
+    pub eruption_tick: i64,
+}
+
+impl Default for BlockEntityEvents {
+    fn default() -> Self {
+        Self {
+            wobble: None,
+            teleport_cooldown: 0,
+            eruption_tick: -1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientBlockEntity {
     pub type_id: i32,
     pub tag: Option<Vec<u8>>,
     pub(crate) spawner_state: Option<ClientSpawnerState>,
+    pub(crate) events: BlockEntityEvents,
 }
 
 impl ClientBlockEntity {
@@ -55,7 +94,24 @@ impl ClientBlockEntity {
             type_id,
             tag,
             spawner_state,
+            events: BlockEntityEvents::default(),
         }
+    }
+
+    /// The block entity as the level makes it (`BlockEntity.setLevel`): a potent sulfur block
+    /// notes the game time as when it last erupted.
+    pub fn made_at(mut self, game_time: i64) -> Self {
+        if photon_data::block_entity_type::name(self.type_id) == Some("minecraft:potent_sulfur")
+            && self.events.eruption_tick == -1
+        {
+            self.events.eruption_tick = game_time;
+        }
+        self
+    }
+
+    /// What block events set in the block entity.
+    pub fn events(&self) -> &BlockEntityEvents {
+        &self.events
     }
 
     pub fn spawner_state(&self) -> Option<&ClientSpawnerState> {

@@ -152,10 +152,7 @@ impl ClientboundPacket for BlockEntityData {
 impl ClientboundPacket for BlockEventPacket {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (pos, event, data) = self.0;
-        // `ClientLevel.blockEvent`: the block as it is now takes the event.
-        if !session.world.apply_chest_block_event(pos, event, data) {
-            session.world.apply_note_block_event(pos);
-        }
+        session.world.apply_block_event(pos, event, data);
         Ok(())
     }
 }

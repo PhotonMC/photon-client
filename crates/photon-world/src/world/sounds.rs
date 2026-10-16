@@ -100,6 +100,34 @@ impl ClientWorld {
             .push(LevelEvent::Explosion(Box::new(explosion)));
     }
 
+    /// `ClientLevel.blockEvent`: the block as it stands takes the event.
+    pub fn apply_block_event(&mut self, pos: (i32, i32, i32), event: u8, data: u8) {
+        if !self.apply_chest_block_event(pos, event, data) && !self.apply_note_block_event(pos) {
+            self.apply_block_entity_event(pos, event, data);
+        }
+    }
+
+    /// `BaseEntityBlock.triggerEvent` of the blocks whose entity keeps what the event says: a
+    /// decorated pot starts to wobble, an end gateway's cooldown starts, a spawner's delay is
+    /// reset and a potent sulfur block notes when it erupted.
+    fn apply_block_entity_event(&mut self, pos: (i32, i32, i32), event: u8, data: u8) {
+        let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
+            return;
+        };
+        let class = block::state_or_air(state).block().class;
+        let time = self.game_time() as i64;
+        let Some((type_name, react)) = BLOCK_ENTITY_REACTIONS
+            .iter()
+            .find(|(own, _, _)| class.is(*own))
+            .map(|(_, name, react)| (*name, *react))
+        else {
+            return;
+        };
+        if let Some(entity) = self.block_entity_or_new(pos, type_name) {
+            react(entity, (i32::from(event), i32::from(data)), time);
+        }
+    }
+
     /// `ClientLevel.blockEvent`, for what the client does with one beside a block entity's: a note
     /// block plays its instrument as it is now (`NoteBlock.triggerEvent`). False for another block.
     pub fn apply_note_block_event(&mut self, pos: (i32, i32, i32)) -> bool {
@@ -123,6 +151,63 @@ impl ClientWorld {
             .push(LevelEvent::Note { pos, sound, note });
         true
     }
+}
+
+/// What a block event does to the entity of a block: the block's class, its entity's type and the
+/// reaction (the event, its data and the game time).
+type Reaction = fn(&mut ClientBlockEntity, (i32, i32), i64);
+
+const BLOCK_ENTITY_REACTIONS: [(photon_data::block::classes::BlockClass, &str, Reaction); 4] = {
+    use photon_data::block::classes::BlockClass;
+    [
+        (
+            BlockClass::DecoratedPotBlock,
+            "minecraft:decorated_pot",
+            pot_wobbles,
+        ),
+        (
+            BlockClass::EndGatewayBlock,
+            "minecraft:end_gateway",
+            gateway_cools_down,
+        ),
+        (
+            BlockClass::SpawnerBlock,
+            "minecraft:mob_spawner",
+            spawner_resets,
+        ),
+        (
+            BlockClass::PotentSulfurBlock,
+            "minecraft:potent_sulfur",
+            sulfur_erupts,
+        ),
+    ]
+};
+
+/// `DecoratedPotBlockEntity.triggerEvent`: event 1 with one of the two wobble styles.
+fn pot_wobbles(entity: &mut ClientBlockEntity, (event, style): (i32, i32), time: i64) {
+    if event == 1 && (0..=1).contains(&style) {
+        entity.events.wobble = Some((time, style));
+    }
+}
+
+/// `TheEndGatewayBlockEntity.triggerEvent`.
+fn gateway_cools_down(entity: &mut ClientBlockEntity, (event, _): (i32, i32), _: i64) {
+    if event == 1 {
+        entity.events.teleport_cooldown = 40;
+    }
+}
+
+/// `BaseSpawner.onEventTriggered`.
+fn spawner_resets(entity: &mut ClientBlockEntity, (event, _): (i32, i32), _: i64) {
+    if event == 1 {
+        let spawner = entity.spawner_state.get_or_insert_with(Default::default);
+        spawner.delay = spawner.min_spawn_delay;
+    }
+}
+
+/// `PotentSulfurBlock.triggerEvent`: whatever the event.
+fn sulfur_erupts(entity: &mut ClientBlockEntity, _: (i32, i32), time: i64) {
+    entity.events.eruption_tick = time;
 }
 
 /// The sound a note block's instrument plays (`NoteBlockInstrument.getSoundEvent`); none for

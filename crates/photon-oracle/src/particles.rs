@@ -347,7 +347,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 LevelEventContext::new(&world, &view, &mut level_random, &mut particle_random);
             engine.tick_explosions(&mut context);
             let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
-            sounds.extend(events::ticked_lines(&ticked, &world));
+            sounds.extend(events::ticked_lines(&ticked, (&world, row)));
             ticks.push(json!({
                 "pending": pending,
                 "particles": engine.particle_count(),
