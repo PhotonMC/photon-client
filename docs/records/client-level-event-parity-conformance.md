@@ -52,14 +52,13 @@ rastgelesiyle işler.
 - Ses tohumu çekiliyor ama ses motoruna verilmiyor; varyantı motorun kendi rastgelesi seçer.
 - `level-event-more` özeti ender gözü halkasındaki bir `Math.sin`'in 1 ulp farkıyla tutmuyor (JVM
   intrinsic'i, Q04 sınıfı). Topuz darbesi (2013) satırda yok; Java'da model yöneticisi ister.
-- Kalan olaylar (kemik tozu büyümesi 1505, sarkıt 1504 — çevre öznitelikleri ister —, portal
-  yolculuğu 1032, kasa 3015 ve 3016, jukebox) [T78g](../tasks/T78g-son-seviye-olaylari.md)'de.
 - T78f: deneme spawner'ının olayları (3011–3014, 3017, 3019–3021): kıvılcımlı duman, algılama
   zerreleri (sayı `30 + min(veri,10)*5`, `LOOKAT_Y` ile yalnız dikey eksende dönen
   `trial_spawner_detection` zerresi), fırlatma alevi, ominous olma zerreleri; sesler `BLOCKS`,
   perde `(r−r)*0.2+1`. Bu zerrenin kamera dönüşü `movement/particle-quads` satırlarında eşit.
 - Mesafe gecikmeli ses (`distanceDelay`) yok; oracle erteli sesi hemen çalmış sayar.
-- Sarkıt damlası (1504): sarkıtın kökü 10 blok içinde aranır, kökün üstündeki akışkan (çamur ve
-  suyun buharlaşmadığı yerde su) damlanın türünü seçer; akışkan yoksa boyutun varsayılanı
-  (Nether'de lav). İstemci boyut türünün özniteliklerini henüz okumaz, vanilla boyutların
-  değerlerini kullanır; oracle yalnız Overworld'dür, bu yüzden Nether dalı satırda yok.
+- Stalactite drip (1504): the root is searched for within 10 blocks; the fluid above it (mud counts
+  as water where water does not evaporate) picks the drop, and with no fluid the dimension's
+  default (lava in the Nether) applies. The client does not read a dimension type's attributes
+  yet and uses the vanilla dimensions' values; the oracle is overworld only, so the Nether branch
+  has no row.

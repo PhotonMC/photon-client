@@ -294,9 +294,11 @@ fn engine_rows_10() -> Vec<Value> {
     ]
 }
 
+const DRIPSTONE: &str = "minecraft:pointed_dripstone";
+
 /// A dripstone column hanging from the root at `root_y` (the tip `length` blocks below it) with
 /// the block above the root: the blocks of the column and the tip's position.
-fn dripstone_column(x: i64, root_y: i64, length: i64, above: Value) -> Vec<Value> {
+fn dripstone_column(x: i64, root_y: i64, length: i64, (block, above): (&str, Value)) -> Vec<Value> {
     let tip_y = root_y - length;
     let mut blocks = vec![put(x, root_y, 0, "minecraft:stone"), above];
     for y in tip_y..root_y {
@@ -305,7 +307,7 @@ fn dripstone_column(x: i64, root_y: i64, length: i64, above: Value) -> Vec<Value
             x,
             y,
             0,
-            "minecraft:pointed_dripstone",
+            block,
             &[("vertical_direction", "down"), ("thickness", thickness), ("waterlogged", "false")],
         ));
     }
@@ -328,19 +330,19 @@ fn engine_rows_11() -> Vec<Value> {
     let mut events = Vec::new();
     for (index, (block, properties)) in covers.iter().enumerate() {
         let x = index as i64 * 3 + 1;
-        blocks.extend(dripstone_column(x, 70, 3, put_with(x, 71, 0, block, properties)));
+        blocks.extend(dripstone_column(x, 70, 3, (DRIPSTONE, put_with(x, 71, 0, block, properties))));
         events.push(level_event(index as i64 % 3, 1504, (x, 67, 0), 0));
     }
     // A column whose root is ten blocks above the tip is found, one eleven above is not.
     let near = 27;
-    blocks.extend(dripstone_column(near, 76, 10, put(near, 77, 0, "minecraft:water")));
+    blocks.extend(dripstone_column(near, 76, 10, (DRIPSTONE, put(near, 77, 0, "minecraft:water"))));
     events.push(level_event(0, 1504, (near, 66, 0), 0));
     let far = 30;
-    blocks.extend(dripstone_column(far, 77, 11, put(far, 78, 0, "minecraft:water")));
+    blocks.extend(dripstone_column(far, 77, 11, (DRIPSTONE, put(far, 78, 0, "minecraft:water"))));
     events.push(level_event(0, 1504, (far, 66, 0), 0));
     // A column with a stalagmite in its middle, a lone stalagmite and a block that is no dripstone.
     let broken = 33;
-    blocks.extend(dripstone_column(broken, 70, 4, put(broken, 71, 0, "minecraft:water")));
+    blocks.extend(dripstone_column(broken, 70, 4, (DRIPSTONE, put(broken, 71, 0, "minecraft:water"))));
     blocks.push(put_with(
         broken,
         68,
@@ -358,6 +360,10 @@ fn engine_rows_11() -> Vec<Value> {
         &[("vertical_direction", "up"), ("thickness", "tip"), ("waterlogged", "false")],
     ));
     events.push(level_event(1, 1504, (up, 66, 0), 0));
+    // The sulfur spike is a speleothem too, with its own offset.
+    let spike = 42;
+    blocks.extend(dripstone_column(spike, 70, 3, ("minecraft:sulfur_spike", put(spike, 71, 0, "minecraft:water"))));
+    events.push(level_event(0, 1504, (spike, 67, 0), 0));
     blocks.push(put(39, 66, 0, "minecraft:stone"));
     events.push(level_event(2, 1504, (39, 66, 0), 0));
     vec![engine_row("dripstone-drip", events).blocks(blocks).ticks(6).seeds(150).describe(8).row()]
