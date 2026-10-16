@@ -16,11 +16,22 @@ impl ClientWorld {
             .get(&(x, y, z))
     }
 
+    /// The block entity at a place, to change.
+    pub(crate) fn block_entity_mut_at(
+        &mut self,
+        (x, y, z): (i32, i32, i32),
+    ) -> Option<&mut ClientBlockEntity> {
+        self.chunk_for_update(x.div_euclid(16), z.div_euclid(16))?
+            .block_entities
+            .get_mut(&(x, y, z))
+    }
+
     /// `Level.removeBlockEntity`.
     pub(crate) fn remove_block_entity(&mut self, (x, y, z): (i32, i32, i32)) {
         if let Some(chunk) = self.chunk_for_update(x.div_euclid(16), z.div_euclid(16)) {
             chunk.block_entities.remove(&(x, y, z));
         }
+        self.block_tickers.unregister((x, y, z));
     }
 
     /// The block entity at a place, made as the block's own type when the chunk holds none
@@ -76,6 +87,7 @@ impl ClientWorld {
         // entity.
         if block::state_or_air(previous_state_id).block != block::state_or_air(state_id).block {
             chunk.block_entities.remove(&(x, y, z));
+            self.block_tickers.unregister((x, y, z));
         }
         if block::chest::is_drawn_state(state_id) {
             chunk.chests.insert((x, y, z));

@@ -127,7 +127,7 @@ impl PlaySession {
         if ridden.is_none() {
             self.world.tick_entities();
         }
-        self.world.tick_sky_flash();
+        self.world.tick_after_entities();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))

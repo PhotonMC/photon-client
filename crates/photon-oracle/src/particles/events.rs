@@ -219,6 +219,19 @@ pub(super) fn heard(
     lines
 }
 
+/// The block entities of the level tick, for the rows that ask for it, as they do after the
+/// entities and before the level's own tick; then how many particles wait to join the engine.
+pub(super) fn tick_block_entities(
+    world: &mut ClientWorld,
+    row: &Value,
+    engine: &photon_world::particles::ParticleEngine,
+) -> usize {
+    if row["tick_block_entities"].as_bool() == Some(true) {
+        world.tick_block_entities();
+    }
+    engine.pending_count()
+}
+
 /// What a tick played, then whether each parrot of the scene dances and what the block entities
 /// the row watches hold.
 pub(super) fn ticked_lines(

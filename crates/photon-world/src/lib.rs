@@ -127,6 +127,8 @@ pub struct ClientWorld {
     rider_controls: ride::mount::Controller,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<EntityId, DestroyProgress>,
+    /// The block entities the level ticks, in the order they were set up.
+    block_tickers: world::BlockTickers,
 }
 
 impl Default for ClientWorld {

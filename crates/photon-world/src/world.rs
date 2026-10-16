@@ -1,5 +1,7 @@
 //! The client's copy of the world: `ClientWorld`'s methods, by what they act on.
 
+mod block_tickers;
+pub(crate) use block_tickers::BlockTickers;
 mod blocks;
 mod border;
 mod chunks;

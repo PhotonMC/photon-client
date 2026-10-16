@@ -260,7 +260,82 @@ impl ClientWorld {
     fn set_moving_piston(&mut self, pos: Pos, moving: MovingPiston) {
         if let Some(entity) = self.block_entity_or_new(pos, "minecraft:piston") {
             entity.events.moving = Some(moving);
+            self.block_tickers.register(pos);
         }
+    }
+
+    /// What `Minecraft.tick` does after the entities: the block entities tick, then the level's own
+    /// tick runs its sky flash down.
+    pub fn tick_after_entities(&mut self) {
+        self.tick_block_entities();
+        self.tick_sky_flash();
+    }
+
+    /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
+    /// up. Only the moving pistons tick so far.
+    pub fn tick_block_entities(&mut self) {
+        self.block_tickers.begin_pass();
+        let mut index = 0;
+        while let Some(pos) = self.block_tickers.next_to_tick(&mut index) {
+            self.tick_moving_piston(pos);
+        }
+        self.block_tickers.end_pass();
+    }
+
+    /// `PistonMovingBlockEntity.tick`: a block on its way moves half the way on each tick; one that
+    /// arrived waits a few more and settles as the block it is.
+    fn tick_moving_piston(&mut self, pos: Pos) {
+        let here = block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2));
+        let Some(mut moving) = self.moving_piston_at(pos).cloned() else {
+            // The entity is gone (its chunk, or it was replaced by another's): no ticker for it.
+            self.block_tickers.unregister(pos);
+            return;
+        };
+        if here.block != id::MOVING_PISTON as u16 || !self.border_holds(pos) {
+            return;
+        }
+        moving.progress_old = moving.progress;
+        if moving.progress_old >= 1.0 {
+            if moving.death_ticks < 5 {
+                moving.death_ticks += 1;
+                self.store_moving_piston(pos, moving);
+            } else {
+                self.settle_moving_piston(pos, &moving);
+            }
+        } else {
+            moving.progress = (moving.progress + 0.5).min(1.0);
+            self.store_moving_piston(pos, moving);
+        }
+    }
+
+    /// Whether a place is inside the world border (`isTicking`).
+    fn border_holds(&self, pos: Pos) -> bool {
+        let border = self.world_border();
+        let (x, z) = (f64::from(pos.0), f64::from(pos.2));
+        x >= border.min_x(0.0)
+            && x < border.max_x(0.0)
+            && z >= border.min_z(0.0)
+            && z < border.max_z(0.0)
+    }
+
+    fn store_moving_piston(&mut self, pos: Pos, moving: MovingPiston) {
+        if let Some(entity) = self.block_entity_mut_at(pos) {
+            entity.events.moving = Some(moving);
+        }
+    }
+
+    /// The end of a move: the entity goes and the block it carried takes its place.
+    fn settle_moving_piston(&mut self, pos: Pos, moving: &MovingPiston) {
+        self.remove_block_entity(pos);
+        let shaped = self.update_from_neighbour_shapes(moving.moved_state, pos);
+        if rules::state_is_air(shaped) {
+            self.set_block_flagged(pos, moving.moved_state, 340);
+            return;
+        }
+        let dry = rules::with_property(shaped, "waterlogged", "false")
+            .filter(|_| rules::property(shaped, "waterlogged") == Some("true"))
+            .unwrap_or(shaped);
+        self.set_block_flagged(pos, dry, 67);
     }
 
     /// `PistonMovingBlockEntity.finalTick`: the move is over at once, and the block settles.

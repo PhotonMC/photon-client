@@ -89,3 +89,9 @@ rastgelesiyle işler.
   piston's data right after the events. Not yet compared: the blocks a push breaks (their break
   particles take seeds the oracle cannot give), and the shapes that only blocks with a port of
   `updateShape` take (the others keep their state here).
+- Moving pistons tick (#47): the level's block entities tick after its entities, in the order they
+  were set up (one set up during a pass waits for the next, a removed one is dropped as the pass
+  reaches it). A moving piston moves half the way each tick, waits five ticks once it arrived
+  and settles as the block it carried, shaped by its neighbours (a waterlogged one dries). The
+  oracle ticks the block entities only for the rows that ask for it. Entities caught by a moving
+  block are not pushed yet.

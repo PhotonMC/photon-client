@@ -641,6 +641,10 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            // The level's block entities tick after its entities, before the level's own tick.
+            if (row.has("tick_block_entities") && row.get("tick_block_entities").getAsBoolean()) {
+                level.tickBlockEntities();
+            }
             // `ClientLevel.tick`'s explosion tracker, before the engine.
             var tracker = getField(level, "explosionTracker");
             tracker.getClass().getMethod("tick", net.minecraft.client.multiplayer.ClientLevel.class).invoke(tracker, level);

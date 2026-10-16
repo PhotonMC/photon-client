@@ -32,6 +32,7 @@ impl ClientWorld {
             rider_controls: ride::mount::Controller::default(),
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
+            block_tickers: crate::world::BlockTickers::default(),
         }
     }
 
@@ -119,6 +120,7 @@ impl ClientWorld {
             // A new level starts with no predictions and no cracks.
             self.predictions = prediction::BlockPredictions::new();
             self.destroying_blocks.clear();
+            self.block_tickers = crate::world::BlockTickers::default();
         }
         changed
     }

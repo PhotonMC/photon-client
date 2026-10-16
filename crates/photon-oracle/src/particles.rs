@@ -342,7 +342,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                     other => return Err(format!("unknown particle event {other}")),
                 }
             }
-            let pending = engine.pending_count();
+            let pending = events::tick_block_entities(&mut world, row, &engine);
             let mut context =
                 LevelEventContext::new(&world, &view, &mut level_random, &mut particle_random);
             engine.tick_explosions(&mut context);
