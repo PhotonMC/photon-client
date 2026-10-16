@@ -74,6 +74,11 @@ pub(super) fn client_world_collision_case(request: &Value) -> Result<Value, Stri
     Ok(json!({"states": states}))
 }
 
+fn is_happy_ghast(type_id: i32) -> bool {
+    photon_data::entity_type::id("minecraft:happy_ghast")
+        == Some(photon_core::ids::EntityTypeId(type_id))
+}
+
 pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result<Value, String> {
     let inputs = request
         .get("inputs")
@@ -116,7 +121,7 @@ pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result
                     rotation: (0.0, 0.0, 0.0),
                     data: 0,
                 });
-                if type_id == 58 {
+                if is_happy_ghast(type_id) {
                     world.entities_mut().apply_happy_ghast_collision_state(
                         entity_id,
                         entity.get("baby").and_then(Value::as_bool).unwrap_or(false),
