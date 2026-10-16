@@ -1,6 +1,7 @@
 //! The title screen (`TitleScreen`): the logo, the yellow splash, the menu's buttons, the version
 //! and the copyright line, over the panorama's overlay.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Lang, Run, Style};
 
 use crate::gui::font::Font;

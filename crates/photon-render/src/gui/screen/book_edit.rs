@@ -1,6 +1,7 @@
 //! The book and quill's screen (`BookEditScreen`): the page's text box over the book, the page
 //! buttons, the page's number, and Sign and Done under the book.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use super::book::page_style;

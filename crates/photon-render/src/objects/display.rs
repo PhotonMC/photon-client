@@ -1,6 +1,7 @@
 //! A display entity (`DisplayRenderer`): the matrix of its transformation, and where its block or
 //! item is drawn.
 
+use crate::gui::draw_runs;
 use photon_world::objects::display::{Billboard, Transformation};
 
 use crate::joml::{Matrix4, Pose, Quaternion};
@@ -214,7 +215,7 @@ pub fn text_vertices(
         let quads = crate::gui::frame::glyph_quads(
             atlas,
             font,
-            runs,
+            &draw_runs(runs),
             (*x, *y),
             submit.color as u32,
             submit.shadow,

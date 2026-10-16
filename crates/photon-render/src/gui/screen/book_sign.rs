@@ -2,6 +2,7 @@
 //! the author under it, the warning that signing is final, and Sign and Close and Cancel under
 //! the book.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::chat::split;

@@ -2,6 +2,7 @@
 //! mappings, Reset Keys and Done. A mapping's button waits for the next key or mouse button,
 //! which it is bound to (Escape unbinds it).
 
+use crate::gui::FontRuns;
 use std::cell::Cell;
 
 use photon_data::keys::InputKey;

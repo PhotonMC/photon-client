@@ -2,6 +2,7 @@
 //! mouse is on the widget, or the keyboard has it, once it has waited out
 //! its delay.
 
+use crate::gui::FrameRuns;
 use std::cell::Cell;
 
 use photon_game::text::{Component, Lang, Run, Style};

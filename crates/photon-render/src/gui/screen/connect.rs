@@ -1,6 +1,7 @@
 //! The screens of a join: `ConnectScreen` (what the connection is doing, and Cancel) and, once
 //! the level has begun, `LevelLoadingScreen` ("Loading terrain..."; a server shows no progress).
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;

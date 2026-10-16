@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::FontRuns;
 
 impl VideoSettingsScreen {
     /// `init`, with the GUI scale as it is set, and the most the window

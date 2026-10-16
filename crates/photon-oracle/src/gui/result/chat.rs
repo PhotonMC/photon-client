@@ -1,4 +1,5 @@
 use super::*;
+use photon_render::gui::FrameRuns;
 
 use photon_render::gui::chat::{ChatLog, ChatSettings};
 

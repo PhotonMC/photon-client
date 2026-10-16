@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::FrameRuns;
 
 impl ChatScreen {
     /// `ChatScreen.init`: the box holds `initial` (empty, or a slash), and

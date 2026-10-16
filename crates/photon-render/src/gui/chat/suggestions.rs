@@ -2,6 +2,7 @@
 //! which one is chosen, how Tab, the arrow keys and the mouse move the choice,
 //! and what the list and the ghost text after the box's cursor look like.
 
+use crate::gui::FrameRuns;
 use crate::gui::font::Font;
 use crate::gui::{GuiAtlas, GuiFrame};
 

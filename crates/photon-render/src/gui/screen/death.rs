@@ -1,6 +1,7 @@
 //! The death screen (`DeathScreen`): the title, what killed the player and
 //! the score over a red gradient, and the buttons that wake after a second.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::font::Font;

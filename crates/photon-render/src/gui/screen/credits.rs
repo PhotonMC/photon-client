@@ -1,6 +1,7 @@
 //! The credits screen (`WinScreen`): the end poem and the credits, rolled up the screen over the
 //! menu's background, shown when the player wins the game.
 
+use crate::gui::{FontRuns, FrameRuns};
 use std::path::Path;
 
 use photon_core::json::{self, JsonValue};

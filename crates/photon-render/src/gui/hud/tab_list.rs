@@ -3,6 +3,7 @@
 //!
 //! Not drawn: heads (an online-mode server's, which need skins).
 
+use crate::gui::{FontRuns, FrameRuns};
 use std::collections::HashMap;
 
 use photon_game::text::{Lang, Run};

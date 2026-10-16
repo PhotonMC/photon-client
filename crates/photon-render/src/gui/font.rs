@@ -187,10 +187,10 @@ impl Font {
     }
 
     /// `Font.width` of styled text: bold glyphs advance a unit more.
-    pub fn width_of_runs(&self, runs: &[photon_game::text::Run]) -> i32 {
+    pub fn width_of_text_runs(&self, runs: &[crate::gui::TextRun]) -> i32 {
         runs.iter()
             .flat_map(|run| {
-                let bold = run.style.bold == Some(true);
+                let bold = run.bold;
                 run.text
                     .chars()
                     .filter_map(|codepoint| self.glyph(codepoint))

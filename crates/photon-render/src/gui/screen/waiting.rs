@@ -1,6 +1,7 @@
 //! The screen shown while the server answers a dialog (`WaitingForResponseScreen`): a title, and
 //! a button that appears after a second and wakes after five.
 
+use crate::gui::FontRuns;
 use photon_game::text::{Component, Lang, Style};
 
 use crate::gui::font::Font;

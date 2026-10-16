@@ -3,6 +3,7 @@
 //! Teams, scoreboard text below the name and attribute changes are not
 //! carried: nobody is on a team, the name shows at the default distance.
 
+use crate::gui::draw_runs;
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 use photon_world::{ClientEntity, ClientEntityPose};
 
@@ -262,7 +263,7 @@ pub fn submit_vertices(
     for corners in glyph_quads(
         atlas,
         font,
-        &runs,
+        &draw_runs(&runs),
         (submit.x, submit.y),
         submit.color as u32,
         false,

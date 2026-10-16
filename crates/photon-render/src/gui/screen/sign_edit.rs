@@ -2,6 +2,7 @@
 //! the sign's board blown up in the middle, its four lines in the text's colour with the cursor
 //! on the line being edited, and Done under it.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::block_entity::sign::{SignKind, dark_color};

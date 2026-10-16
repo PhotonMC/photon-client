@@ -1,6 +1,7 @@
 //! The scoreboard's sidebar (`Hud.displayScoreboardSidebar`): a title over
 //! up to fifteen lines, each a name and its score, at the right edge.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::Run;
 
 use crate::gui::font::Font;

@@ -1,6 +1,7 @@
 //! `KeyBindsList`: a heading for each category, then a row for each of its key mappings with
 //! the mapping's name, the button that waits for its key and the button that resets it.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_data::keys::{InputKey, mappings};
 use photon_game::options::key_display_name;
 use photon_game::text::{Component, Lang, Run, Style};

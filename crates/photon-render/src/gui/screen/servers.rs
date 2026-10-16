@@ -10,7 +10,7 @@ use crate::gui::layout::{Grid, Item, Settings, horizontal, place_in_frame};
 use crate::gui::widgets::button_set::ButtonSet;
 use crate::gui::widgets::scroll_area::{Place, SCROLLBAR_WIDTH};
 use crate::gui::widgets::{Kind, Widget};
-use crate::gui::{GuiAtlas, GuiFrame};
+use crate::gui::{FontRuns, FrameRuns, GuiAtlas, GuiFrame};
 
 /// `HeaderAndFooterLayout(this, 33, 60)`.
 const HEADER_HEIGHT: i32 = 33;

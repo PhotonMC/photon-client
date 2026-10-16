@@ -6,6 +6,7 @@
 //! what fits a search box.
 
 use crate::gui::font::Font;
+use crate::gui::{FontRuns, FrameRuns};
 use crate::gui::{GuiAtlas, GuiFrame};
 
 /// A key an edit box acts on.

@@ -63,7 +63,7 @@ pub fn style_under<'a>(
 /// drawn.
 pub fn bounds(
     font: &Font,
-    runs: &[Run],
+    runs: &[crate::gui::TextRun],
     (x, y): (i32, i32),
     shadow: bool,
 ) -> Option<(i32, i32, i32, i32)> {
@@ -72,8 +72,8 @@ pub fn bounds(
     let y = y as f32;
     let shadow_offset = if shadow { 1.0 } else { 0.0 };
     for run in runs {
-        let bold = run.style.bold == Some(true);
-        let italic = run.style.italic == Some(true);
+        let bold = run.bold;
+        let italic = run.italic;
         for codepoint in run.text.chars() {
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;

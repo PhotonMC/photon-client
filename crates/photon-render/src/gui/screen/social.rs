@@ -9,6 +9,7 @@
 mod draw;
 mod input;
 
+use crate::gui::FontRuns;
 use std::cell::Cell;
 use std::time::Instant;
 

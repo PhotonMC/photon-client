@@ -3,6 +3,7 @@
 //! of the book in the menu's one slot, the page the menu's data says; a book the server opens in
 //! the player's hand keeps its pages and its page itself.
 
+use crate::gui::{FontRuns, FrameRuns};
 use std::sync::Arc;
 
 use photon_game::menus::container::{ClickType, ContainerMenu};

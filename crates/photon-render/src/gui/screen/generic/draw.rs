@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::{FontRuns, FrameRuns};
 
 impl GenericScreen {
     /// `CrafterScreen.slotClicked`: a click on an empty slot of the grid switches it on or off

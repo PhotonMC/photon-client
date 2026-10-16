@@ -2,6 +2,8 @@
 //! each face's lines are drawn, in what colour and light, and with what outline. The board and
 //! the post are the block's own model.
 
+use crate::gui::FontRuns;
+use crate::gui::draw_runs;
 use photon_core::direction::Direction;
 use photon_game::sign::{BLACK, DYE_TEXT_COLORS};
 use photon_game::text::{Run, Style};
@@ -202,7 +204,8 @@ pub fn sign_text_vertices(
                         continue;
                     }
                     let at = (submit.x + dx as f32, submit.y + dy as f32);
-                    let quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
+                    let quads =
+                        glyph_quads(atlas, font, &draw_runs(&plain), at, submit.outline, false);
                     world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
                 }
             }
@@ -210,7 +213,7 @@ pub fn sign_text_vertices(
         let quads = glyph_quads(
             atlas,
             font,
-            &submit.line,
+            &draw_runs(&submit.line),
             (submit.x, submit.y),
             submit.color,
             false,

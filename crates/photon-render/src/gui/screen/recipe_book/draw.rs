@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::FrameRuns;
 use photon_core::ids::ItemId;
 
 impl RecipeBookPanel {

@@ -6,6 +6,7 @@
 //! which by default is the largest whole number that keeps the GUI at least
 //! 320 by 240.
 
+use super::TextRun;
 use super::atlas::GuiAtlas;
 
 /// One GUI vertex, in GUI units.
@@ -171,20 +172,13 @@ pub type ItemDrawer<'a> = dyn FnMut(&photon_world::ClientItemStackState, f32, f3
 
 /// The runs as the reference's character sequence yields them: neighbours in
 /// one style are one stretch.
-fn merged_runs(runs: &[photon_game::text::Run]) -> Vec<(String, Option<u32>, bool, bool)> {
+fn merged_runs(runs: &[TextRun]) -> Vec<(String, Option<u32>, bool, bool)> {
     let mut merged: Vec<(String, Option<u32>, bool, bool)> = Vec::new();
-    let mut last: Option<&photon_game::text::Style> = None;
     for run in runs {
         match merged.last_mut() {
-            Some(previous) if last == Some(&run.style) => previous.0.push_str(&run.text),
-            _ => merged.push((
-                run.text.clone(),
-                run.style.colour,
-                run.style.bold == Some(true),
-                run.style.italic == Some(true),
-            )),
+            Some(previous) if run.joins_previous => previous.0.push_str(&run.text),
+            _ => merged.push((run.text.clone(), run.colour, run.bold, run.italic)),
         }
-        last = Some(&run.style);
     }
     merged
 }
@@ -196,7 +190,7 @@ fn merged_runs(runs: &[photon_game::text::Run]) -> Vec<(String, Option<u32>, boo
 pub(crate) fn glyph_quads(
     atlas: &GuiAtlas,
     font: &crate::gui::font::Font,
-    runs: &[photon_game::text::Run],
+    runs: &[TextRun],
     (x, y): (f32, f32),
     default_colour: u32,
     shadow: bool,
@@ -207,7 +201,6 @@ pub(crate) fn glyph_quads(
     let mut pen = x;
     for run in runs {
         let colour = run
-            .style
             .colour
             .map_or(default_colour, |rgb| (default_colour & 0xFF00_0000) | rgb);
         // `ARGB.scaleRGB(colour, 0.25)`.
@@ -216,11 +209,11 @@ pub(crate) fn glyph_quads(
             .into_iter()
             .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
         // A style that names its shadow colour has that one; a clear one has none.
-        let shadow_colour = run.style.shadow.unwrap_or(shadow_colour);
+        let shadow_colour = run.shadow.unwrap_or(shadow_colour);
         let shadow_drawn = shadow && shadow_colour >> 24 != 0;
         let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
-        let bold = run.style.bold == Some(true);
-        let italic = run.style.italic == Some(true);
+        let bold = run.bold;
+        let italic = run.italic;
         for codepoint in run.text.chars() {
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;

@@ -2,6 +2,7 @@
 //! `extractOverlayMessage`): what `Hud` keeps of them, how long, and how they
 //! fade.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::Run;
 
 use crate::gui::GuiAtlas;

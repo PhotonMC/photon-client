@@ -2,6 +2,7 @@
 //! `LerpingBossEvent`): what each keeps, how its progress eases, and how it
 //! draws.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::Run;
 
 use crate::gui::GuiAtlas;

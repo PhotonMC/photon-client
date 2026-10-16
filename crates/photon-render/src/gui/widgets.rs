@@ -10,6 +10,7 @@ pub mod slider;
 pub mod text_area;
 pub mod text_field;
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::Run;
 
 use crate::gui::font::Font;

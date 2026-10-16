@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::{FontRuns, FrameRuns};
 
 impl ChatLog {
     /// `ChatComponent.tick`: the clock, and the deletions that have waited

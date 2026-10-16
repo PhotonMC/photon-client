@@ -2,6 +2,7 @@
 //! picked shown by its name; F4 steps to the next, the mouse picks by hovering once it has moved,
 //! and letting go of F3 switches to the one picked.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_world::ClientPlayerGameMode;
 

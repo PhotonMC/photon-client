@@ -2,6 +2,7 @@
 //! centred under it and two buttons, over the menu background (or the death
 //! screen's gradient, for `DeathScreen.TitleConfirmScreen`).
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::chat::split;

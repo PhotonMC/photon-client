@@ -11,6 +11,7 @@ pub mod sound;
 pub mod text;
 pub mod video;
 
+use crate::gui::FontRuns;
 use photon_game::options::values::IntRange;
 use photon_game::text::{Component, Lang, Run, Style};
 

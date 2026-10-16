@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
+use photon_render::gui::FrameRuns;
 
 impl Gui {
     /// The settings screen that is open, the topmost of those over the

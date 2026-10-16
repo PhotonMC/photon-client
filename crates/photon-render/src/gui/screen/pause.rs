@@ -1,6 +1,7 @@
 //! The pause menu (`PauseScreen`): the buttons of the game menu laid out in
 //! a grid, over the menu background.
 
+use crate::gui::FontRuns;
 use std::cell::Cell;
 
 use photon_game::text::{Component, Lang, Run, Style};

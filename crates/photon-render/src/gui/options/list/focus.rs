@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::FontRuns;
 
 impl OptionsList {
     /// A list with no entries, for a screen `width` wide whose list stands

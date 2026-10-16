@@ -94,23 +94,23 @@ impl GuiFrame {
     /// with the first followed by two more; a single line is two units
     /// shorter. The box goes where the mouse's tooltip position puts it in a
     /// screen `screen` units big.
-    pub fn tooltip(
+    pub fn tooltip_runs(
         &mut self,
         atlas: &GuiAtlas,
         font: &crate::gui::font::Font,
-        lines: &[Vec<photon_game::text::Run>],
+        lines: &[Vec<TextRun>],
         mouse: (i32, i32),
         screen: (i32, i32),
     ) {
-        self.tooltip_with(atlas, font, lines, &Positioner::Default, mouse, screen);
+        self.tooltip_with_runs(atlas, font, lines, &Positioner::Default, mouse, screen);
     }
 
     /// A tooltip placed by a positioner (`ClientTooltipPositioner`).
-    pub fn tooltip_with(
+    pub fn tooltip_with_runs(
         &mut self,
         atlas: &GuiAtlas,
         font: &crate::gui::font::Font,
-        lines: &[Vec<photon_game::text::Run>],
+        lines: &[Vec<TextRun>],
         positioner: &Positioner,
         mouse: (i32, i32),
         screen: (i32, i32),
@@ -120,7 +120,7 @@ impl GuiFrame {
         }
         let width = lines
             .iter()
-            .map(|line| font.width_of_runs(line))
+            .map(|line| font.width_of_text_runs(line))
             .max()
             .unwrap_or(0);
         let height = lines.len() as i32 * 10 - if lines.len() == 1 { 2 } else { 0 };
@@ -128,7 +128,7 @@ impl GuiFrame {
         self.tooltip_box(atlas, x, y, width, height);
         let mut line_y = y;
         for (index, line) in lines.iter().enumerate() {
-            self.styled_text(atlas, font, line, x, line_y, 0xFFFF_FFFF, true);
+            self.styled_text_runs(atlas, font, line, (x, line_y), 0xFFFF_FFFF, true);
             line_y += 10 + if index == 0 { 2 } else { 0 };
         }
     }
@@ -204,18 +204,15 @@ impl GuiFrame {
         colour: u32,
         shadow: bool,
     ) {
-        let runs = [photon_game::text::Run {
-            text: text.to_owned(),
-            style: photon_game::text::Style::default(),
-        }];
-        self.styled_text(atlas, font, &runs, x, y, colour, shadow);
+        let runs = [TextRun::plain(text)];
+        self.styled_text_runs(atlas, font, &runs, (x, y), colour, shadow);
     }
 
     /// Keeps a text call for a test that asked for the calls.
     pub(super) fn log_text(
         &mut self,
         (x, y): (i32, i32),
-        runs: &[photon_game::text::Run],
+        runs: &[TextRun],
         colour: u32,
         shadow: bool,
         bounds: Option<(i32, i32, i32, i32)>,
@@ -241,17 +238,12 @@ impl GuiFrame {
     /// `GuiGraphics.text` of styled text: each run in its colour, with the
     /// bold glyphs drawn twice a unit apart and the italic ones sheared.
     /// Underlines, strikethrough and obfuscation are not drawn.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
-    pub fn styled_text(
+    pub fn styled_text_runs(
         &mut self,
         atlas: &GuiAtlas,
         font: &crate::gui::font::Font,
-        runs: &[photon_game::text::Run],
-        x: i32,
-        y: i32,
+        runs: &[TextRun],
+        (x, y): (i32, i32),
         default_colour: u32,
         shadow: bool,
     ) {

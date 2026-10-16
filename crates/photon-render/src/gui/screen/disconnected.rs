@@ -1,6 +1,7 @@
 //! The screen a lost connection leaves (`DisconnectedScreen`): the title,
 //! the reason wrapped and centred, and a button back.
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::gui::chat::split;

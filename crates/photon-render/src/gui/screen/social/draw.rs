@@ -1,6 +1,7 @@
 //! The social interactions screen's drawing (`SocialInteractionsScreen.extractRenderState`,
 //! `PlayerEntry.extractContent`).
 
+use crate::gui::{FontRuns, FrameRuns};
 use photon_game::text::{Run, Style};
 
 use super::*;
