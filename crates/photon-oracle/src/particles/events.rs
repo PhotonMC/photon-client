@@ -228,6 +228,7 @@ pub(super) fn ticked_lines(
     let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
     lines.extend(super::extras::party_lines(world));
     lines.extend(super::extras::watch_lines(world, row));
+    lines.extend(super::extras::region_lines(world, row));
     lines
 }
 

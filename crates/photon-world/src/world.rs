@@ -11,6 +11,7 @@ mod lighting;
 mod local_player;
 mod minecarts;
 mod pickup;
+mod pistons;
 mod recipes;
 mod sounds;
 pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};

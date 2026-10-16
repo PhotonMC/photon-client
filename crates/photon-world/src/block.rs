@@ -4,6 +4,7 @@
 
 pub(crate) mod chest;
 pub(crate) mod entity;
+pub(crate) mod piston;
 pub mod registry;
 pub mod rules;
 

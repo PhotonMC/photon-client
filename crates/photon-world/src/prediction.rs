@@ -146,7 +146,7 @@ impl ClientWorld {
     /// `updateNeighbourShapes`: each neighbour, in the reference's order,
     /// reshapes to the changed block through `updateOrDestroy`. A neighbour
     /// whose class's rule is not written keeps its state.
-    fn update_neighbour_shapes(
+    pub(crate) fn update_neighbour_shapes(
         &mut self,
         pos: (i32, i32, i32),
         flags: u32,

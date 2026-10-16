@@ -153,7 +153,43 @@ impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
     }
 }
 
+/// The pitch a sound-only event draws.
+fn spread_pitch(pitch: Pitch, random: &mut RandomSource) -> f32 {
+    match pitch {
+        Pitch::Fixed(pitch) => pitch,
+        Pitch::Spread(base, scale) => base + (random.next_float() - random.next_float()) * scale,
+        Pitch::Slight => random.next_float() * 0.1 + 0.9,
+        Pitch::Thrown => 0.4 / (random.next_float() * 0.4 + 0.8),
+    }
+}
+
 impl ParticleEngine {
+    /// An event other than a plain level event is played at once: the sounds it makes.
+    fn other_level_event<F: FnMut() -> RandomSource>(
+        &mut self,
+        level_event: LevelEvent,
+        context: &mut LevelEventContext<'_, F>,
+    ) -> Vec<LocalSound> {
+        match level_event {
+            LevelEvent::Level { .. } => Vec::new(),
+            LevelEvent::Note { pos, sound, note } => {
+                vec![self.note_block(context, pos, (sound, note))]
+            }
+            LevelEvent::Explosion(explosion) => self.explode(*explosion, context),
+            LevelEvent::Global { event, pos } => self.global_level_event((event, pos), context),
+            LevelEvent::Fireworks(launch) => {
+                self.create_fireworks(*launch, context);
+                Vec::new()
+            }
+            LevelEvent::PistonSound => {
+                // `PistonBaseBlock.triggerEvent`: the pitch is asked of the level's random source
+                // whether or not the client plays the sound (the server does that for the player).
+                context.level_random.next_float();
+                Vec::new()
+            }
+        }
+    }
+
     /// `LevelEventHandler.levelEvent` for the events carried: the sounds it plays, in order. Its
     /// particles go through the level as it asks for them.
     pub fn level_event<F: FnMut() -> RandomSource>(
@@ -161,32 +197,14 @@ impl ParticleEngine {
         level_event: LevelEvent,
         context: &mut LevelEventContext<'_, F>,
     ) -> Vec<LocalSound> {
-        let (event, pos, data) = match level_event {
-            LevelEvent::Level { event, pos, data } => (event, pos, data),
-            LevelEvent::Note { pos, sound, note } => {
-                return vec![self.note_block(context, pos, (sound, note))];
-            }
-            LevelEvent::Explosion(explosion) => return self.explode(*explosion, context),
-            LevelEvent::Global { event, pos } => {
-                return self.global_level_event((event, pos), context);
-            }
-            LevelEvent::Fireworks(launch) => {
-                self.create_fireworks(*launch, context);
-                return Vec::new();
-            }
+        let LevelEvent::Level { event, pos, data } = level_event else {
+            return self.other_level_event(level_event, context);
         };
         let mut sounds: Vec<LocalSound> = ambience_event(event, context).into_iter().collect();
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         if let Some((name, source, volume, pitch)) = sound_only(event, data) {
             let random = &mut *context.level_random;
-            let pitch = match pitch {
-                Pitch::Fixed(pitch) => pitch,
-                Pitch::Spread(base, scale) => {
-                    base + (random.next_float() - random.next_float()) * scale
-                }
-                Pitch::Slight => random.next_float() * 0.1 + 0.9,
-                Pitch::Thrown => 0.4 / (random.next_float() * 0.4 + 0.8),
-            };
+            let pitch = spread_pitch(pitch, random);
             sounds.push(local_sound(name, source, (volume, pitch), pos, random));
         }
         if self.more_level_event((event, pos, data), context, &mut sounds) {

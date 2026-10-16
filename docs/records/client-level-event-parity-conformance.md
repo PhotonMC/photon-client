@@ -81,3 +81,11 @@ rastgelesiyle işler.
   made by the level starts with the game time it was made at. The oracle compares the state the
   entities hold; what reads it (the pot and gateway renderers, the spawner's and the sulfur's
   tickers) is still to come.
+- Piston events (#47): the client runs `PistonBaseBlock.triggerEvent` itself: the structure the
+  push moves (twelve blocks at most, slime and honey holding on to what is beside them) becomes
+  moving pistons, the blocks it breaks go with a break event, the piston and its arm change, and
+  the pitch of the sound is drawn from the level's random source (the client plays no sound of its
+  own; the server's reaches the player). The oracle compares every block of a box and each moving
+  piston's data right after the events. Not yet compared: the blocks a push breaks (their break
+  particles take seeds the oracle cannot give), and the shapes that only blocks with a port of
+  `updateShape` take (the others keep their state here).

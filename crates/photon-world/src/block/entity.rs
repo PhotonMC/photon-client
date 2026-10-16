@@ -56,6 +56,24 @@ impl ClientSpawnerState {
     }
 }
 
+/// `PistonMovingBlockEntity`: a block on its way between two places.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MovingPiston {
+    /// `movedState`: the block (or the piston) being moved.
+    pub moved_state: photon_core::ids::BlockStateId,
+    pub direction: photon_core::direction::Direction,
+    pub extending: bool,
+    /// `isSourcePiston`: the arm of the piston that moves, not a block it pushes.
+    pub source: bool,
+    pub progress: f32,
+    /// `progressO`: the progress of the tick before.
+    pub progress_old: f32,
+    /// How many ticks the finished move has waited before the block settles.
+    pub death_ticks: i32,
+}
+
+impl Eq for MovingPiston {}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,6 +85,8 @@ pub struct BlockEntityEvents {
     pub teleport_cooldown: i32,
     /// `PotentSulfurBlockEntity.eruptionTick`: -1 until an eruption.
     pub eruption_tick: i64,
+    /// The move a moving piston block is in the middle of.
+    pub moving: Option<MovingPiston>,
 }
 
 impl Default for BlockEntityEvents {
@@ -75,6 +95,7 @@ impl Default for BlockEntityEvents {
             wobble: None,
             teleport_cooldown: 0,
             eruption_tick: -1,
+            moving: None,
         }
     }
 }

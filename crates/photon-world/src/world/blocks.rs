@@ -16,6 +16,13 @@ impl ClientWorld {
             .get(&(x, y, z))
     }
 
+    /// `Level.removeBlockEntity`.
+    pub(crate) fn remove_block_entity(&mut self, (x, y, z): (i32, i32, i32)) {
+        if let Some(chunk) = self.chunk_for_update(x.div_euclid(16), z.div_euclid(16)) {
+            chunk.block_entities.remove(&(x, y, z));
+        }
+    }
+
     /// The block entity at a place, made as the block's own type when the chunk holds none
     /// (`LevelChunk.getBlockEntity` with `IMMEDIATE`).
     pub(crate) fn block_entity_or_new(

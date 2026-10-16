@@ -103,8 +103,23 @@ impl ClientWorld {
     /// `ClientLevel.blockEvent`: the block as it stands takes the event.
     pub fn apply_block_event(&mut self, pos: (i32, i32, i32), event: u8, data: u8) {
         if !self.apply_chest_block_event(pos, event, data) && !self.apply_note_block_event(pos) {
-            self.apply_block_entity_event(pos, event, data);
+            if self.is_piston_base(pos) {
+                self.apply_piston_event(pos, i32::from(event), i32::from(data));
+            } else {
+                self.apply_block_entity_event(pos, event, data);
+            }
         }
+    }
+
+    /// Whether the block at a place is a piston (`PistonBaseBlock`).
+    fn is_piston_base(&self, pos: (i32, i32, i32)) -> bool {
+        self.block_state_at(pos.0, pos.1, pos.2)
+            .is_some_and(|state| {
+                block::state_or_air(state)
+                    .block()
+                    .class
+                    .is(photon_data::block::classes::BlockClass::PistonBaseBlock)
+            })
     }
 
     /// `BaseEntityBlock.triggerEvent` of the blocks whose entity keeps what the event says: a
@@ -289,6 +304,9 @@ pub enum LevelEvent {
     Global { event: i32, pos: (i32, i32, i32) },
     /// A firework rocket went off (`ClientLevel.createFireworks`).
     Fireworks(Box<crate::particles::FireworkLaunch>),
+    /// The sound a piston asks the level for when it moves: the server plays it to the player, and
+    /// the client only draws the pitch from its random source.
+    PistonSound,
 }
 
 impl LevelEvent {

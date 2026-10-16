@@ -48,6 +48,11 @@ class MovementSupport {
             } catch (ReflectiveOperationException failure) {
                 throw new IllegalStateException(failure);
             }
+            // A piston's sound is asked of the level for everyone but the player, who hears the
+            // server's: the real client plays none, and its player is not in this scene.
+            if (instance.getIdentifier().toString().startsWith("minecraft:block.piston.")) {
+                return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
+            }
             // The player's ambient sounds (underwater additions, the cave's) are drawn by chance from a
             // random source the scene does not seed: they are left out.
             // The honey block's slide sound while sliding down it is a one-in-five chance each tick, from
@@ -301,6 +306,8 @@ class MovementSupport {
         var wire = new CapturingConnection();
         setField(listener, "connection", wire);
         setField(listener, "clientLoaded", true);
+        // What a block entity asks the registries for (`Level.enabledFeatures`).
+        setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         // What a brewing stand's ingredient slot asks the level.
         setField(listener, "potionBrewing", net.minecraft.world.item.alchemy.PotionBrewing.bootstrap(
             net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
@@ -313,6 +320,9 @@ class MovementSupport {
             new net.minecraft.client.multiplayer.ClientLevel.ClientLevelData(
                 net.minecraft.world.Difficulty.PEACEFUL, false, false),
             net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
+
+        // A block that changes tells the renderer which section to rebuild; nothing draws here.
+        setField(level, "levelExtractor", unsafe.allocateInstance(NoRebuilds.class));
 
         if (row.has("border")) {
             // The world border the server set, as the packets leave it.
@@ -474,6 +484,42 @@ class MovementSupport {
                 held = "other";
             }
             lines.add("be," + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + held);
+        }
+        return lines;
+    }
+
+    /**
+     * The blocks of the box a row watches (`blk,x,y,z,id` for each that is not air) and the moves of
+     * the moving pistons in it (`mov,x,y,z,moved,direction,extending,source,progress,previous`).
+     */
+    static java.util.List<String> regionLines(
+        JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) throws Exception {
+        var lines = new java.util.ArrayList<String>();
+        if (!row.has("region")) {
+            return lines;
+        }
+        var box = row.getAsJsonArray("region");
+        for (int x = box.get(0).getAsInt(); x <= box.get(3).getAsInt(); x++) {
+            for (int y = box.get(1).getAsInt(); y <= box.get(4).getAsInt(); y++) {
+                for (int z = box.get(2).getAsInt(); z <= box.get(5).getAsInt(); z++) {
+                    var pos = new BlockPos(x, y, z);
+                    var state = level.getBlockState(pos);
+                    if (state.isAir()) {
+                        continue;
+                    }
+                    lines.add("blk," + x + "," + y + "," + z + "," + net.minecraft.world.level.block.Block.getId(state));
+                    if (state.is(net.minecraft.world.level.block.Blocks.MOVING_PISTON)
+                        && level.getBlockEntity(pos) instanceof
+                            net.minecraft.world.level.block.piston.PistonMovingBlockEntity moving) {
+                        lines.add("mov," + x + "," + y + "," + z + ","
+                            + net.minecraft.world.level.block.Block.getId(moving.getMovedState()) + ","
+                            + moving.getDirection().ordinal() + "," + moving.isExtending() + ","
+                            + moving.isSourcePiston() + ","
+                            + Oracle.bits((float) getField(moving, "progress")) + ","
+                            + Oracle.bits((float) getField(moving, "progressO")));
+                    }
+                }
+            }
         }
         return lines;
     }

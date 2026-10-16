@@ -195,3 +195,36 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
         _ => format!("sulfur,{}", events.eruption_tick),
     }
 }
+
+/// `blk,x,y,z,id` for each block that is not air in the box a row watches, and `mov,...` for the
+/// moving pistons among them.
+pub(super) fn region_lines(world: &ClientWorld, row: &Value) -> Vec<String> {
+    let Some(corners) = row["region"].as_array() else {
+        return Vec::new();
+    };
+    let corner = |index: usize| corners[index].as_i64().unwrap_or_default() as i32;
+    let mut lines = Vec::new();
+    for x in corner(0)..=corner(3) {
+        for y in corner(1)..=corner(4) {
+            for z in corner(2)..=corner(5) {
+                let state = world.block_state_or_air(x, y, z);
+                if photon_world::block::state_or_air(state).block().air {
+                    continue;
+                }
+                lines.push(format!("blk,{x},{y},{z},{}", state.0));
+                if let Some(moving) = world.moving_piston_at((x, y, z)) {
+                    lines.push(format!(
+                        "mov,{x},{y},{z},{},{},{},{},{:08x},{:08x}",
+                        moving.moved_state.0,
+                        moving.direction as usize,
+                        moving.extending,
+                        moving.source,
+                        moving.progress.to_bits(),
+                        moving.progress_old.to_bits()
+                    ));
+                }
+            }
+        }
+    }
+    lines
+}
