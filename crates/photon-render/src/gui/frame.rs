@@ -186,7 +186,7 @@ fn merged_runs(runs: &[TextRun]) -> Vec<(String, Option<u32>, bool, bool)> {
     for run in runs {
         match merged.last_mut() {
             Some(previous) if run.joins_previous => previous.0.push_str(&run.text),
-            _ => merged.push((run.text.clone(), run.colour, run.bold, run.italic)),
+            _ => merged.push((run.text.to_string(), run.colour, run.bold, run.italic)),
         }
     }
     merged

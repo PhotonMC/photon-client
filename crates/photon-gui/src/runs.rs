@@ -4,11 +4,11 @@
 use photon_render::gui::TextRun;
 
 /// A component's runs as the draw layer takes them.
-pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun> {
+pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
     runs.iter()
         .enumerate()
         .map(|(index, run)| TextRun {
-            text: run.text.clone(),
+            text: run.text.as_str().into(),
             colour: run.style.colour,
             bold: run.style.bold == Some(true),
             italic: run.style.italic == Some(true),
@@ -111,7 +111,7 @@ impl FrameRuns for photon_render::gui::GuiFrame {
 }
 
 /// The lines of a tooltip as the draw layer takes them.
-pub fn draw_lines(lines: &[Vec<photon_game::text::Run>]) -> Vec<Vec<TextRun>> {
+pub fn draw_lines(lines: &[Vec<photon_game::text::Run>]) -> Vec<Vec<TextRun<'_>>> {
     lines.iter().map(|line| draw_runs(line)).collect()
 }
 

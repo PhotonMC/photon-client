@@ -140,8 +140,16 @@ fn display_lines(
     runs: &[photon_game::text::Run],
     width: i32,
     font: &photon_render::gui::font::Font,
-) -> Vec<Vec<photon_render::gui::TextRun>> {
-    photon_gui::draw_lines(&photon_gui::chat::split(runs, width, font))
+) -> Vec<Vec<photon_render::gui::TextRun<'static>>> {
+    let lines = photon_gui::chat::split(runs, width, font);
+    photon_gui::draw_lines(&lines)
+        .into_iter()
+        .map(|line| {
+            line.into_iter()
+                .map(photon_render::gui::TextRun::into_owned)
+                .collect()
+        })
+        .collect()
 }
 
 /// The triangles of every text display the server added: the text seen through blocks and the text

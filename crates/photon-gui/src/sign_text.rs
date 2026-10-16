@@ -68,7 +68,10 @@ pub fn sign_text_submits(
                 pose,
                 x,
                 y: (index as i32 * line_height - midpoint) as f32,
-                line: draw_runs(&line),
+                line: draw_runs(&line)
+                    .into_iter()
+                    .map(photon_render::gui::TextRun::into_owned)
+                    .collect(),
                 light,
                 color,
                 outline,

@@ -60,7 +60,7 @@ pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
                 match runs.last_mut() {
                     Some((text, last)) if *last == colour => text.push_str(&run.text),
                     _ if run.text.is_empty() => {}
-                    _ => runs.push((run.text.clone(), colour)),
+                    _ => runs.push((run.text.to_string(), colour)),
                 }
             }
             json!({

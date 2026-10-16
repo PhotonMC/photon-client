@@ -96,7 +96,7 @@ pub struct SignTextSubmit {
     pub pose: Pose,
     pub x: f32,
     pub y: f32,
-    pub line: Vec<crate::gui::TextRun>,
+    pub line: Vec<crate::gui::TextRun<'static>>,
     pub light: i32,
     pub color: u32,
     pub outline: u32,
