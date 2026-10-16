@@ -50,7 +50,7 @@ pub(super) fn client_world_entity_player_interpolation_result(
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(156),
+        type_id: photon_data::entity_type::named("minecraft:player"),
         x: initial_position.x,
         y: initial_position.y,
         z: initial_position.z,
@@ -152,7 +152,7 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(156),
+        type_id: photon_data::entity_type::named("minecraft:player"),
         x: initial_position.x,
         y: initial_position.y,
         z: initial_position.z,
@@ -255,7 +255,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(156),
+        type_id: photon_data::entity_type::named("minecraft:player"),
         x: initial_position.x,
         y: initial_position.y,
         z: initial_position.z,
@@ -343,7 +343,7 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(156),
+        type_id: photon_data::entity_type::named("minecraft:player"),
         x: initial_position.x,
         y: initial_position.y,
         z: initial_position.z,

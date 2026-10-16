@@ -6,7 +6,7 @@ use std::time::Duration;
 use photon_core::math::{mth_atan2, mth_rot_lerp_f32};
 use photon_dev::connect_and_world_arrow_tick_probe;
 
-const ARROW_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(6);
+const ARROW_ENTITY_TYPE_ID: EntityTypeId = photon_data::entity_type::named("minecraft:arrow");
 const ARROW_GRAVITY: f64 = 0.05;
 const PI_F32: f32 = f32::from_bits(0x4049_0fdb);
 

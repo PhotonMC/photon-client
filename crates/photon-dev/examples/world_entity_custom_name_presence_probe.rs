@@ -1,4 +1,3 @@
-use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -15,12 +14,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "P08NamePresence".to_owned());
     let trace =
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
-    let Some(entity) = trace
-        .world
-        .entities()
-        .all()
-        .find(|entity| entity.type_id == EntityTypeId(85) && entity.has_custom_name())
-    else {
+    let Some(entity) = trace.world.entities().all().find(|entity| {
+        entity.type_id == photon_data::entity_type::named("minecraft:minecart")
+            && entity.has_custom_name()
+    }) else {
         return Err("vanilla named minecart was not applied to ClientWorld".into());
     };
 

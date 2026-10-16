@@ -40,7 +40,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
             uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-            type_id: photon_core::ids::EntityTypeId(89),
+            type_id: photon_data::entity_type::named("minecraft:oak_boat"),
             x: vehicle_position.x,
             y: vehicle_position.y,
             z: vehicle_position.z,
@@ -302,7 +302,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
         if !world.apply_entity(EntityInput {
             entity_id: vehicle_id,
             uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-            type_id: photon_core::ids::EntityTypeId(89),
+            type_id: photon_data::entity_type::named("minecraft:oak_boat"),
             x: vehicle_position.x,
             y: vehicle_position.y,
             z: vehicle_position.z,
@@ -444,7 +444,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     if !world.apply_entity(EntityInput {
         entity_id: vehicle_id,
         uuid: Uuid::new(0, u64::from(vehicle_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: vehicle_position.x,
         y: vehicle_position.y,
         z: vehicle_position.z,
@@ -489,7 +489,7 @@ pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     if !world.apply_entity(EntityInput {
         entity_id: passenger_id,
         uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(17),
+        type_id: photon_data::entity_type::named("minecraft:breeze"),
         x: passenger_position.x,
         y: passenger_position.y,
         z: passenger_position.z,

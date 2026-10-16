@@ -13,7 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let trace =
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
     let Some(entity) = trace.world.entities().all().find(|entity| {
-        entity.type_id == photon_core::ids::EntityTypeId(5) && entity.is_custom_name_visible()
+        entity.type_id == photon_data::entity_type::named("minecraft:armor_stand")
+            && entity.is_custom_name_visible()
     }) else {
         return Err("vanilla visible-name entity was not applied to ClientWorld".into());
     };

@@ -16,7 +16,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
     let Some(entity) = trace.world.entities().all().find(|entity| {
         let (x, _, z) = entity.position();
-        entity.type_id == photon_core::ids::EntityTypeId(70) && x == 43.5 && z == -35.5
+        entity.type_id == photon_data::entity_type::named("minecraft:iron_golem")
+            && x == 43.5
+            && z == -35.5
     }) else {
         return Err("vanilla living entity flags were not applied to ClientWorld".into());
     };

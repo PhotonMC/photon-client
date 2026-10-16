@@ -38,7 +38,7 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
             if !world.apply_entity(EntityInput {
                 entity_id: id,
                 uuid: Uuid::new(0, id.0 as u64),
-                type_id: photon_core::ids::EntityTypeId(156),
+                type_id: photon_data::entity_type::named("minecraft:player"),
                 x: at.0,
                 y: at.1,
                 z: at.2,

@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_entity_passenger_tick_probe;
 
-const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(120);
+const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:snowball");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()

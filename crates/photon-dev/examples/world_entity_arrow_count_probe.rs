@@ -1,4 +1,3 @@
-use photon_core::ids::EntityTypeId;
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -17,7 +16,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         connect_and_world_entity_metadata_probe(address, &username, Duration::from_secs(60))?;
     let Some(entity) = trace.world.entities().all().find(|entity| {
         let (x, _, z) = entity.position();
-        entity.type_id == EntityTypeId(70) && x == 55.5 && z == -35.5 && entity.arrow_count() > 0
+        entity.type_id == photon_data::entity_type::named("minecraft:iron_golem")
+            && x == 55.5
+            && z == -35.5
+            && entity.arrow_count() > 0
     }) else {
         return Err("vanilla living entity arrow count was not applied to ClientWorld".into());
     };

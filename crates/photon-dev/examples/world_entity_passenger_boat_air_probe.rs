@@ -7,7 +7,8 @@ use photon_core::math::{MTH_DEG_TO_RAD, mth_cos_f64, mth_sin_f64};
 use photon_dev::connect_and_world_entity_passengers_probe;
 use photon_world::BoatInput;
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:oak_boat");
 const VANILLA_BOAT_AIR_FRICTION: f32 = 0.9_f32;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

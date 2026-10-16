@@ -9,8 +9,10 @@ use photon_dev::{
     connect_and_world_entity_passenger_rotation_probe,
 };
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
-const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(156);
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:oak_boat");
+const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:player");
 const VANILLA_BOAT_PASSENGER_MAX_ROTATION: f32 = 105.0;
 
 fn wrap_degrees(value: f32) -> f32 {

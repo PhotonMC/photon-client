@@ -6,8 +6,10 @@ use std::time::Duration;
 use photon_dev::connect_and_world_entity_passengers_probe;
 use photon_world::BoatInput;
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
-const VANILLA_ZOMBIE_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(151);
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:oak_boat");
+const VANILLA_ZOMBIE_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:zombie");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);

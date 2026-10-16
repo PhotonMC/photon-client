@@ -434,7 +434,7 @@ pub(super) fn client_world_player_tick_result(request: &Value) -> Result<Value, 
     if !world.apply_entity(EntityInput {
         entity_id: player_id,
         uuid: Uuid::new(0, u64::from(player_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(156),
+        type_id: photon_data::entity_type::named("minecraft:player"),
         x: 0.0,
         y: 0.0,
         z: 0.0,

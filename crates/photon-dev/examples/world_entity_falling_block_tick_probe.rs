@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_falling_block_tick_probe;
 
-const FALLING_BLOCK_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(51);
+const FALLING_BLOCK_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:falling_block");
 const FALLING_BLOCK_GRAVITY: f64 = 0.04;
 const FALLING_BLOCK_AIR_FRICTION: f64 = 0.98_f32 as f64;
 

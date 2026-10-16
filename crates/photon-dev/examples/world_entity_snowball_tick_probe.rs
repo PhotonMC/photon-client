@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_snowball_tick_probe;
 
-const SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(120);
+const SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = photon_data::entity_type::named("minecraft:snowball");
 const SNOWBALL_GRAVITY: f64 = 0.03;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

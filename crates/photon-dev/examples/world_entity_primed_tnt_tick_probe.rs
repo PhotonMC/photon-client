@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_primed_tnt_tick_probe;
 
-const PRIMED_TNT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(133);
+const PRIMED_TNT_ENTITY_TYPE_ID: EntityTypeId = photon_data::entity_type::named("minecraft:tnt");
 const PRIMED_TNT_GRAVITY: f64 = 0.04;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

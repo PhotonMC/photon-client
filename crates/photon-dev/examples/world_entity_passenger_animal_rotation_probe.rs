@@ -5,9 +5,11 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_entity_passenger_animal_rotation_probe;
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
-const VANILLA_COW_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(30);
-const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(120);
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:oak_boat");
+const VANILLA_COW_ENTITY_TYPE_ID: EntityTypeId = photon_data::entity_type::named("minecraft:cow");
+const VANILLA_SNOWBALL_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:snowball");
 const VANILLA_BOAT_PASSENGER_MAX_ROTATION: f32 = 105.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

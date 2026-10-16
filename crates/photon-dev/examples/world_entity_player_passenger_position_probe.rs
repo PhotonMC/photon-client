@@ -8,8 +8,10 @@ use photon_dev::{
     connect_and_remote_player_motion_mover_probe, connect_and_world_entity_passenger_tick_probe,
 };
 
-const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(89);
-const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId = EntityTypeId(156);
+const VANILLA_OAK_BOAT_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:oak_boat");
+const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId =
+    photon_data::entity_type::named("minecraft:player");
 const VANILLA_OAK_BOAT_PASSENGER_RIDE_HEIGHT: f64 = 0.1875;
 const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
 
