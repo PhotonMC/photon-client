@@ -140,3 +140,99 @@ impl FrameRuns for crate::gui::GuiFrame {
 pub fn draw_lines(lines: &[Vec<photon_game::text::Run>]) -> Vec<Vec<TextRun>> {
     lines.iter().map(|line| draw_runs(line)).collect()
 }
+
+/// Items with the decorations the game's rules give them (a durability bar, a cooldown, a count);
+/// the screens' view of [`crate::gui::GuiFrame`].
+pub trait ItemSlots {
+    /// `itemBar`: the durability (or a bundle's fullness) under the item, on a black strip.
+    fn item_bar(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    );
+
+    /// `itemCooldown`: a white veil over the item, as tall as what is left of its group's cooldown.
+    fn item_cooldown(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    );
+
+    /// `GuiGraphics.item` and `itemDecorations`: an item in the slot at `(x, y)`, then its count
+    /// (or the given text) in the given colour when it is not one.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
+    )]
+    fn item_with_count(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        font: &crate::gui::font::Font,
+        draw: &mut crate::gui::ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        count: i32,
+        text: Option<(&str, u32)>,
+        x: i32,
+        y: i32,
+    );
+}
+
+impl ItemSlots for crate::gui::GuiFrame {
+    fn item_bar(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    ) {
+        if let Some(bar) = photon_game::menus::container::item_bar(stack) {
+            self.item_bar_strip(atlas, (x, y), bar);
+        }
+    }
+
+    fn item_cooldown(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        stack: &photon_world::ClientItemStackState,
+        x: i32,
+        y: i32,
+    ) {
+        self.item_cooldown_group(atlas, (x, y), &photon_game::item::cooldowns::group(stack));
+    }
+
+    fn item_with_count(
+        &mut self,
+        atlas: &crate::gui::GuiAtlas,
+        font: &crate::gui::font::Font,
+        draw: &mut crate::gui::ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        count: i32,
+        text: Option<(&str, u32)>,
+        x: i32,
+        y: i32,
+    ) {
+        self.item(draw, stack, x, y);
+        self.item_bar(atlas, stack, x, y);
+        self.item_cooldown(atlas, stack, x, y);
+        let count_text = count.to_string();
+        let shown = match text {
+            Some(text) => Some(text),
+            None if count != 1 => Some((count_text.as_str(), 0xFFFF_FFFF)),
+            None => None,
+        };
+        if let Some((text, colour)) = shown {
+            self.text_with_shadow(
+                atlas,
+                font,
+                text,
+                x + 19 - 2 - font.width(text),
+                y + 6 + 3,
+                colour,
+            );
+        }
+    }
+}

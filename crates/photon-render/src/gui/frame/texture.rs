@@ -496,57 +496,13 @@ impl GuiFrame {
         );
     }
 
-    /// `GuiGraphics.item` and `itemDecorations`: an item in the slot at
-    /// `(x, y)`, then its count (or the given text) in the given colour when
-    /// it is not one.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
-    pub fn item_with_count(
+    /// `itemBar`'s strip: a black one with the bar over it, `width` units of `colour`.
+    pub fn item_bar_strip(
         &mut self,
         atlas: &GuiAtlas,
-        font: &crate::gui::font::Font,
-        draw: &mut ItemDrawer<'_>,
-        stack: &photon_world::ClientItemStackState,
-        count: i32,
-        text: Option<(&str, u32)>,
-        x: i32,
-        y: i32,
+        (x, y): (i32, i32),
+        (width, colour): (i32, i32),
     ) {
-        self.item(draw, stack, x, y);
-        self.item_bar(atlas, stack, x, y);
-        self.item_cooldown(atlas, stack, x, y);
-        let count_text = count.to_string();
-        let shown = match text {
-            Some(text) => Some(text),
-            None if count != 1 => Some((count_text.as_str(), 0xFFFF_FFFF)),
-            None => None,
-        };
-        if let Some((text, colour)) = shown {
-            self.text_with_shadow(
-                atlas,
-                font,
-                text,
-                x + 19 - 2 - font.width(text),
-                y + 6 + 3,
-                colour,
-            );
-        }
-    }
-
-    /// `itemBar`: the durability (or a bundle's fullness) under the item, on
-    /// a black strip.
-    pub fn item_bar(
-        &mut self,
-        atlas: &GuiAtlas,
-        stack: &photon_world::ClientItemStackState,
-        x: i32,
-        y: i32,
-    ) {
-        let Some((width, colour)) = photon_game::menus::container::item_bar(stack) else {
-            return;
-        };
         let (left, top) = (x + 2, y + 13);
         self.fill(atlas, (left, top, left + 13, top + 2), 0xFF00_0000);
         // `ARGB.opaque`.
@@ -558,18 +514,11 @@ impl GuiFrame {
     }
 
     /// `itemCooldown`: a white veil over the item, as tall as what is left of
-    /// its group's cooldown.
-    pub fn item_cooldown(
-        &mut self,
-        atlas: &GuiAtlas,
-        stack: &photon_world::ClientItemStackState,
-        x: i32,
-        y: i32,
-    ) {
+    /// the cooldown of `group`.
+    pub fn item_cooldown_group(&mut self, atlas: &GuiAtlas, (x, y): (i32, i32), group: &str) {
         if self.cooldowns.is_empty() {
             return;
         }
-        let group = photon_game::item::cooldowns::group(stack);
         let cooldown = self
             .cooldowns
             .iter()

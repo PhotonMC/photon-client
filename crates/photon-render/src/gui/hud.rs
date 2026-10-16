@@ -11,6 +11,7 @@ pub mod titles;
 use self::locator::{LocatorInput, WaypointStyles};
 use super::atlas::GuiAtlas;
 use super::frame::{GuiBlend, GuiFrame, ItemDrawer};
+use crate::gui::ItemSlots;
 use photon_core::random::RandomSource;
 use photon_game::options::AttackIndicator;
 

@@ -3,6 +3,7 @@
 //! button list its grid of buttons) in a scrolling box, and the dialog's own buttons in a row at
 //! the bottom, over the menu background.
 
+use crate::gui::ItemSlots;
 use crate::gui::{FontRuns, FrameRuns};
 use std::cell::Cell;
 

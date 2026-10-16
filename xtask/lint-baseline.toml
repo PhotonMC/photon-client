@@ -13,7 +13,7 @@
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
-"crates/photon-render/src/gui/frame/texture.rs" = 559
+"crates/photon-render/src/gui/frame/texture.rs" = 513
 "crates/photon-render/src/gui/screen/container.rs" = 509
 "crates/photon-render/src/gui/screen/servers.rs" = 515
 "crates/photon-render/src/vulkan/pipeline.rs" = 501
@@ -1170,9 +1170,7 @@
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::blit_part" = 9
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::glyphs" = 7
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::sprite_cut" = 8
-"crates/photon-render/src/gui/run.rs::GuiFrame::styled_text" = 7
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::blit_texture" = 8
-"crates/photon-render/src/gui/frame/texture.rs::GuiFrame::item_with_count" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::nine_slice" = 9
 "crates/photon-render/src/gui/hud.rs::Hud::build" = 7
 "crates/photon-render/src/gui/hud.rs::Hud::draw" = 8
@@ -1180,6 +1178,8 @@
 "crates/photon-render/src/gui/hud/tab_list.rs::draw" = 7
 "crates/photon-render/src/gui/hud/tab_list.rs::draw_hearts" = 7
 "crates/photon-render/src/gui/options/video/size.rs::VideoSettingsScreen::new" = 7
+"crates/photon-render/src/gui/run.rs::GuiFrame::item_with_count" = 8
+"crates/photon-render/src/gui/run.rs::GuiFrame::styled_text" = 7
 "crates/photon-render/src/gui/screen/confirm.rs::ConfirmScreen::new" = 7
 "crates/photon-render/src/gui/screen/container.rs::ContainerMouse::clicked" = 7
 "crates/photon-render/src/objects/leash.rs::vertex_pair" = 8

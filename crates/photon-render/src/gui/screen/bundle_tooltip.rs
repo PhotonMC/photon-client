@@ -4,6 +4,7 @@
 
 use super::ScreenDraw;
 use super::container::ContainerLayout;
+use crate::gui::ItemSlots;
 use crate::gui::frame::Positioner;
 use crate::gui::{FontRuns, FrameRuns};
 use photon_game::menus::container::{BundleView, bundle_view};

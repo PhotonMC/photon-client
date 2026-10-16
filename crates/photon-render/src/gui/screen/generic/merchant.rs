@@ -1,6 +1,7 @@
 //! The trading screen (`MerchantScreen`): the list of offers with its scroller, what each offer
 //! asks and gives, the merchant's experience bar, and the buttons that choose a trade.
 
+use crate::gui::ItemSlots;
 use photon_game::menus::container::ContainerMenu;
 use photon_game::menus::merchant::{MerchantOffer, can_level_up, level_xp_range};
 use photon_world::ClientItemStackState as Stack;

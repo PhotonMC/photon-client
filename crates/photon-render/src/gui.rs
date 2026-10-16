@@ -20,4 +20,4 @@ pub use atlas::GuiAtlas;
 pub use frame::{DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, Positioner};
 pub use hud::{HeartType, Hud, HudInput};
 pub use items::GuiItemVertex;
-pub use run::{FontRuns, FrameRuns, TextRun, draw_lines, draw_runs};
+pub use run::{FontRuns, FrameRuns, ItemSlots, TextRun, draw_lines, draw_runs};

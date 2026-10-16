@@ -2,9 +2,9 @@
 //! handling (clicks, drags, double clicks) over a view of a menu, the slot
 //! keys, and drawing a slot and the carried stack.
 
+use crate::gui::{FrameRuns, ItemSlots, screen::ScreenDraw};
 use photon_game::menus::container::{ClickType, max_stack_size};
 use photon_world::ClientItemStackState as Stack;
-use {super::ScreenDraw, crate::gui::FrameRuns};
 
 /// `MouseHandler`'s double click window.
 const DOUBLE_CLICK: std::time::Duration = std::time::Duration::from_millis(250);
