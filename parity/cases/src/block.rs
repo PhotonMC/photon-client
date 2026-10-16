@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 
 /// Case label and oracle operation of each whole-registry table.
 const TABLES: &[(&str, &str)] = &[
+    ("registry-names", "registry_names"),
     ("state-definitions", "state_definitions"),
     ("declarations", "block_declarations"),
     ("item-declarations", "item_declarations"),

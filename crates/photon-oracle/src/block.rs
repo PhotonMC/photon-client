@@ -1,6 +1,13 @@
 use super::*;
 
-pub(super) fn block_result(request: &Value) -> Result<Value, String> {
+pub(super) fn block_case(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "registry_names" {
+        return registry_names(request);
+    }
+    block_result(request)
+}
+
+fn block_result(request: &Value) -> Result<Value, String> {
     use photon_data::block::registry;
     let operation = string(request, "operation")?;
     let rows = request["rows"]
@@ -480,6 +487,22 @@ pub(super) fn block_result(request: &Value) -> Result<Value, String> {
             }
             other => return Err(format!("unknown block operation: {other}")),
         }
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// The names of the registries whose wire ids the client reads, one row per label.
+fn registry_names(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("block rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        out.push(json!({
+            "label": string(row, "label")?,
+            "block_entity_types": photon_data::block_entity_type::names(),
+            "menu_types": photon_data::menu_type::names(),
+        }));
     }
     Ok(json!({"rows": out}))
 }

@@ -150,7 +150,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
         "resources" => resources_result(&request)?,
         "window" => window_result(&request)?,
         "atlas" => atlas_result(&request)?,
-        "block" => block_result(&request)?,
+        "block" => block_case(&request)?,
         "image" => image_result(&request)?,
         "model" => model_result(&request)?,
         "json" => json_result(&request)?,

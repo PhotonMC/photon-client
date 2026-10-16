@@ -16,6 +16,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             switch (operation) {
+                case "registry_names" -> rows.add(registryNames(element.getAsJsonObject()));
                 case "state_definitions" -> rows.add(stateDefinitions(element.getAsJsonObject()));
                 case "block_tints" -> rows.add(blockTints(element.getAsJsonObject()));
                 case "face_occlusion" -> rows.add(faceOcclusion(element.getAsJsonObject()));
@@ -44,5 +45,25 @@ public final class BlockOracle extends BlockDeclarationOracle {
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** The names of the registries whose wire ids the client reads, in id order. */
+    static JsonObject registryNames(JsonObject row) {
+        Oracle.vanillaRegistries();
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("block_entity_types",
+            names(net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE));
+        entry.add("menu_types", names(net.minecraft.core.registries.BuiltInRegistries.MENU));
+        return entry;
+    }
+
+    private static <T> JsonArray names(net.minecraft.core.Registry<T> registry) {
+        var names = new JsonArray();
+        for (int id = 0; id < registry.size(); id++) {
+            var key = registry.getKey(registry.byId(id));
+            names.add(key.toString());
+        }
+        return names;
     }
 }

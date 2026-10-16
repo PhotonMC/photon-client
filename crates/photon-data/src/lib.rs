@@ -12,6 +12,7 @@
 
 pub mod animation;
 pub mod block;
+pub mod block_entity_type;
 pub mod block_sound;
 pub mod damage_effect;
 pub mod entity_model;
@@ -23,6 +24,7 @@ pub mod keys;
 pub mod leash;
 pub mod leaves;
 pub mod map;
+pub mod menu_type;
 pub mod particle_type;
 pub mod sound_event;
 pub mod spear;

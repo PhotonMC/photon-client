@@ -8,6 +8,7 @@ table is never trusted blindly.
 Floats are written as the shortest decimal that reads back as exactly the
 reference's bits, so the tables stay readable and nothing is lost.
 """
+import gzip
 import json
 import struct
 import sys
@@ -17,9 +18,15 @@ DATA = "crates/photon-data/src"
 
 
 def load_rows(path, case_id):
-    """Every row of a case's result in a capture."""
-    for line in open(path, encoding="utf-8"):
+    """Every row of a case's result in a capture.
+
+    A capture is either a plain `outputs.jsonl` or a parity store
+    (`.data/parity/<version>/<family>.jsonl.gz`, whose lines wrap the case in `record`).
+    """
+    opener = gzip.open if path.endswith(".gz") else open
+    for line in opener(path, "rt", encoding="utf-8"):
         case = json.loads(line)
+        case = case.get("record", case)
         if case["case_id"] == case_id:
             return case["result"]["rows"]
     raise SystemExit(f"no {case_id} case in {path}")
