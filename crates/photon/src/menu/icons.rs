@@ -1,7 +1,7 @@
 //! The server list's icons: the favicons the pings bring, kept with the saved servers and put
 //! into the GUI atlas (`ServerSelectionList.OnlineServerEntry`'s `uploadServerIcon`).
 
-use photon_render::gui::favicon::sync_server_icon;
+use photon_gui::favicon::sync_server_icon;
 
 use super::{Menu, Result, Screen};
 use crate::play::Client;

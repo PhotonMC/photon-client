@@ -4,8 +4,8 @@ use super::*;
 /// have no system names here, as GLFW is not running in the reference either.
 pub(super) fn key_binds_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_data::keys::{InputKey, key_of};
-    use photon_render::gui::options::keybinds::{BindKey, KeyBindsScreen};
-    use photon_render::gui::widgets::slider::SliderKey;
+    use photon_gui::options::keybinds::{BindKey, KeyBindsScreen};
+    use photon_gui::widgets::slider::SliderKey;
     use photon_render::window::scale::WindowScale;
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let lang = photon_game::text::Lang::load(&ctx.root);

@@ -2,12 +2,12 @@ use super::*;
 
 /// `title_screen`: the title screen with a splash, after some keys and frames, under a mouse.
 pub(super) fn title_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::widgets::navigation::Direction;
+    use photon_gui::widgets::navigation::Direction;
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let lang = photon_game::text::Lang::load(&ctx.root);
     let size = (int("width"), int("height"));
-    let mut screen = photon_render::gui::screen::title::TitleScreen::new(
+    let mut screen = photon_gui::screen::title::TitleScreen::new(
         font,
         &lang,
         size,
@@ -71,7 +71,7 @@ pub(super) fn join_multiplayer_screen_case(
         .iter()
         .map(|name| photon_game::servers::ServerData::new(name, "127.0.0.1:1"))
         .collect();
-    let mut screen = photon_render::gui::screen::servers::JoinMultiplayerScreen::new(
+    let mut screen = photon_gui::screen::servers::JoinMultiplayerScreen::new(
         font,
         &lang,
         (int("width"), int("height")),
@@ -96,7 +96,7 @@ pub(super) fn join_multiplayer_screen_case(
     // Each entry's check of its icon, as its draw makes it.
     let mut shown = Vec::new();
     for (index, server) in saved.iter_mut().enumerate() {
-        let sync = photon_render::gui::favicon::sync_server_icon(
+        let sync = photon_gui::favicon::sync_server_icon(
             &mut ctx.atlas,
             &mut ctx.atlas_image,
             server,
@@ -143,7 +143,7 @@ pub(super) fn join_multiplayer_screen_case(
 /// `server_form`: the add, edit or direct form after text, keys and clicks.
 pub(super) fn server_form_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_game::servers::PackStatus;
-    use photon_render::gui::screen::server_form::{FormKind, ServerFormScreen};
+    use photon_gui::screen::server_form::{FormKind, ServerFormScreen};
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let text = |key: &str| row[key].as_str().unwrap_or_default();
@@ -217,7 +217,7 @@ pub(super) fn server_form_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
 
 /// `connect_screen`: the connecting screen with a status, or the terrain loading screen.
 pub(super) fn connect_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::connect::{ConnectScreen, draw_level_loading};
+    use photon_gui::screen::connect::{ConnectScreen, draw_level_loading};
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let lang = photon_game::text::Lang::load(&ctx.root);

@@ -10,9 +10,9 @@ impl OptionWidget {
         use photon_game::options::ChatVisibility;
         use photon_game::options::values::{IntRange, UnitDouble};
         use photon_game::text::Component;
-        use photon_render::gui::options::text;
-        use photon_render::gui::widgets::cycle::CycleButton;
-        use photon_render::gui::widgets::slider::OptionSlider;
+        use photon_gui::options::text;
+        use photon_gui::widgets::cycle::CycleButton;
+        use photon_gui::widgets::slider::OptionSlider;
         let caption = |key: &str| Component::translatable(key);
         let double = || value.as_f64().ok_or("value must be a number");
         Ok(match kind {
@@ -80,10 +80,10 @@ impl OptionWidget {
     pub(super) fn step(
         &mut self,
         lang: &photon_game::text::Lang,
-        arena: &photon_render::gui::layout::Arena,
+        arena: &photon_gui::layout::Arena,
         step: &Value,
     ) -> Result<(), String> {
-        use photon_render::gui::widgets::slider::{InputType, SliderKey};
+        use photon_gui::widgets::slider::{InputType, SliderKey};
         let number = |key: &str| step[key].as_f64().unwrap_or(0.0);
         let shift = step["shift"].as_bool().unwrap_or(false);
         let key = match step["key"].as_str() {
@@ -159,7 +159,7 @@ impl OptionWidget {
         frame: &mut photon_render::gui::GuiFrame,
         atlas: &photon_render::gui::GuiAtlas,
         font: &photon_render::gui::font::Font,
-        arena: &photon_render::gui::layout::Arena,
+        arena: &photon_gui::layout::Arena,
         mouse: (i32, i32),
     ) {
         match self {

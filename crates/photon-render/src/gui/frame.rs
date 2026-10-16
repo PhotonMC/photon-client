@@ -72,15 +72,24 @@ pub enum DrawOp {
     },
 }
 
+/// `ScreenRectangle`: where a widget is, and how big.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScreenRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
 /// Where a tooltip goes (`ClientTooltipPositioner`).
 #[derive(Debug, Clone, Copy)]
 pub enum Positioner {
     /// `DefaultTooltipPositioner`: by the mouse.
     Default,
     /// `MenuTooltipPositioner`: by the mouse, off the widget.
-    Menu(crate::gui::widgets::navigation::Rectangle),
+    Menu(ScreenRect),
     /// `BelowOrAboveWidgetTooltipPositioner`: under the widget, or over it.
-    BelowOrAbove(crate::gui::widgets::navigation::Rectangle),
+    BelowOrAbove(ScreenRect),
 }
 
 impl Positioner {

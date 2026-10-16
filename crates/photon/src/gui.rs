@@ -5,24 +5,23 @@ use std::sync::Arc;
 
 use photon_game::registries::Registries;
 use photon_game::text::{Lang, Style};
+use photon_gui::Hud;
+use photon_gui::chat::ChatLog;
+use photon_gui::hud::boss_bar::BossBars;
+use photon_gui::hud::locator::LocatorCamera;
+use photon_gui::hud::sidebar::{self, SidebarLine};
+use photon_gui::hud::tab_list::{self, HealthStates, TabEntry, TabObjective, TabPlayer, TabScores};
+use photon_gui::hud::titles::Titles;
+use photon_gui::screen::ScreenDraw;
+use photon_gui::screen::pause::PauseScreen;
 use photon_net::connection::{BossOperation, ChatEvent, ChatHolder, HudEvent, PlaySession};
 use photon_render::VulkanBackend;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::entity::player_model::{PlayerModel, PlayerRenderState};
-use photon_render::gui::chat::ChatLog;
+use photon_render::gui::GuiAtlas;
 use photon_render::gui::font::Font;
-use photon_render::gui::hud::boss_bar::BossBars;
-use photon_render::gui::hud::locator::LocatorCamera;
-use photon_render::gui::hud::sidebar::{self, SidebarLine};
-use photon_render::gui::hud::tab_list::{
-    self, HealthStates, TabEntry, TabObjective, TabPlayer, TabScores,
-};
-use photon_render::gui::hud::titles::Titles;
 use photon_render::gui::items::GuiItemVertex;
-use photon_render::gui::screen::ScreenDraw;
-use photon_render::gui::screen::pause::PauseScreen;
-use photon_render::gui::{GuiAtlas, Hud};
 use photon_render::window::WindowSurface;
 use photon_world::ClientItemStackState;
 

@@ -5,8 +5,8 @@ use photon_data::item::registry::AIR_ITEM;
 use photon_game::game_mode::Aim;
 use photon_game::input::pick::pick;
 use photon_game::options::AttackIndicator;
+use photon_gui::hud::locator::{LocatorCamera, LocatorInput, Viewer};
 use photon_net::connection::PlaySession;
-use photon_render::gui::hud::locator::{LocatorCamera, LocatorInput, Viewer};
 use photon_world::ClientPlayerState;
 use photon_world::local_player::attack_strength_delay;
 
@@ -52,7 +52,7 @@ pub fn hud_input(
     first_person: bool,
     camera: LocatorCamera,
     attack_indicator: AttackIndicator,
-) -> photon_render::gui::HudInput {
+) -> photon_gui::HudInput {
     let status = *session.status();
     let game_mode = session.game_mode();
     let local = session.world().local_player();
@@ -76,7 +76,7 @@ pub fn hud_input(
             .find(|entity| entity.id() == id)
             .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
     });
-    photon_render::gui::HudInput {
+    photon_gui::HudInput {
         cooldowns: Vec::new(),
         first_person,
         spectator: game_mode == photon_world::ClientPlayerGameMode::Spectator,
@@ -86,7 +86,7 @@ pub fn hud_input(
         max_health: attribute(local, MAX_HEALTH, 20.0, 1.0, 1024.0) as f32,
         absorption: local.map_or(0.0, |state| state.absorption()),
         invulnerable_time: player.map_or(0, |player| player.invulnerable_time()),
-        heart_type: photon_render::gui::HeartType::for_player(
+        heart_type: photon_gui::HeartType::for_player(
             has_effect(local, POISON),
             has_effect(local, WITHER),
             local.is_some_and(|state| state.is_fully_frozen()),

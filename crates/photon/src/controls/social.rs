@@ -1,8 +1,8 @@
 use super::*;
 use photon_core::binary::Uuid;
 use photon_game::text::Component;
-use photon_render::gui::chat::Tag;
-use photon_render::gui::screen::social::{Page, Roster, SocialEvent, SocialInteractionsScreen};
+use photon_gui::chat::Tag;
+use photon_gui::screen::social::{Page, Roster, SocialEvent, SocialInteractionsScreen};
 
 /// `CommonLinks.BLOCKING_HELP`.
 const BLOCKING_HELP: &str = "https://aka.ms/javablocking";
@@ -19,13 +19,12 @@ impl Controls {
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
         let players = session.social_players();
-        let person =
-            |(id, name): (Uuid, String)| photon_render::gui::screen::social::SocialPlayer {
-                id,
-                name,
-                recent_messages: false,
-                draft_report: false,
-            };
+        let person = |(id, name): (Uuid, String)| photon_gui::screen::social::SocialPlayer {
+            id,
+            name,
+            recent_messages: false,
+            draft_report: false,
+        };
         let roster = Roster {
             // `ServerData.name` of a direct connection.
             server: assets.lang.text("selectServer.defaultName"),

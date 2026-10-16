@@ -27,6 +27,7 @@ photon-net = [
     "photon-protocol",
 ]
 photon-render = ["photon-core", "photon-data", "photon-world"]
+photon-gui = ["photon-core", "photon-data", "photon-world", "photon-game", "photon-render"]
 photon-audio = []
 photon = [
     "photon-core",
@@ -36,6 +37,7 @@ photon = [
     "photon-protocol",
     "photon-net",
     "photon-render",
+    "photon-gui",
     "photon-audio",
 ]
 photon-oracle = [
@@ -46,6 +48,7 @@ photon-oracle = [
     "photon-protocol",
     "photon-net",
     "photon-render",
+    "photon-gui",
     "photon-audio",
 ]
 photon-dev = [

@@ -1,7 +1,7 @@
 use super::*;
 use photon_game::text::Component;
+use photon_gui::screen::confirm::ConfirmBackground;
 use photon_net::connection::{PackAction, PackRequest};
-use photon_render::gui::screen::confirm::ConfirmBackground;
 
 /// `ClientCommonPacketListenerImpl.PackConfirmScreen`: the packs the server asked for that the
 /// player has not been answered for, and whether the latest of them is required.

@@ -465,7 +465,7 @@ impl Controls {
                 Action::Press | Action::Repeat,
                 _,
             ) => {
-                use photon_render::gui::widgets::navigation::Direction;
+                use photon_gui::widgets::navigation::Direction;
                 pause.arrow(match key {
                     Key::Up => Direction::Up,
                     Key::Down => Direction::Down,

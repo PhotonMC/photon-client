@@ -195,9 +195,9 @@ fn bundle_mouse_step(
     click: &Value,
     selected: usize,
 ) -> Result<Value, String> {
-    use photon_render::gui::screen::ScreenAction;
+    use photon_gui::screen::ScreenAction;
     let slot = click["slot"].as_u64().ok_or("slot must be a number")? as usize;
-    let mut mouse = photon_render::gui::screen::bundle_mouse::BundleMouse::default();
+    let mut mouse = photon_gui::screen::bundle_mouse::BundleMouse::default();
     if click["type"] == "SCROLL" {
         let wheel = click["button"].as_i64().ok_or("button must be a number")?;
         mouse.scrolled(wheel as f64, Some(slot), menu);

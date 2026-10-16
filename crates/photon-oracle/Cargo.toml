@@ -15,6 +15,7 @@ photon-audio = { workspace = true, features = ["device"] }
 photon-game.workspace = true
 photon-net.workspace = true
 photon-render.workspace = true
+photon-gui.workspace = true
 glfw.workspace = true
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
 

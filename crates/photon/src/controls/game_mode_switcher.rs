@@ -1,5 +1,5 @@
 use super::*;
-use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
+use photon_gui::screen::game_mode::GameModeSwitcherScreen;
 
 /// `debug.prefix` and a message: `KeyboardHandler.debugFeedbackComponent`.
 fn debug_feedback(key: &str) -> photon_game::text::Component {

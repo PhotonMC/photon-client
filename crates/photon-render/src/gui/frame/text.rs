@@ -300,7 +300,7 @@ impl GuiFrame {
         clippy::too_many_arguments,
         reason = "mirrors the parameters of the reference's `GuiGraphics` call"
     )]
-    pub(crate) fn blit_part(
+    pub fn blit_part(
         &mut self,
         atlas: &GuiAtlas,
         blend: GuiBlend,
@@ -321,7 +321,7 @@ impl GuiFrame {
         clippy::too_many_arguments,
         reason = "mirrors the parameters of the reference's `GuiGraphics` call"
     )]
-    pub(crate) fn sprite_cut(
+    pub fn sprite_cut(
         &mut self,
         atlas: &GuiAtlas,
         name: &str,
@@ -344,7 +344,7 @@ impl GuiFrame {
 
     /// A region of a sprite, `(u, v, width, height)` of a sprite `size`
     /// units big, stretched to a rectangle `(x, y, w, h)`.
-    pub(crate) fn blit_region(
+    pub fn blit_region(
         &mut self,
         atlas: &GuiAtlas,
         blend: GuiBlend,
@@ -358,7 +358,7 @@ impl GuiFrame {
     }
 
     /// `blit_region` with the first texel anywhere in the texture: a scrolling background.
-    pub(crate) fn blit_region_f32(
+    pub fn blit_region_f32(
         &mut self,
         atlas: &GuiAtlas,
         blend: GuiBlend,

@@ -1303,6 +1303,7 @@ dependencies = [
  "photon-core",
  "photon-data",
  "photon-game",
+ "photon-gui",
  "photon-net",
  "photon-render",
  "photon-world",
@@ -1351,6 +1352,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "photon-gui"
+version = "0.1.0"
+dependencies = [
+ "glfw",
+ "photon-core",
+ "photon-data",
+ "photon-game",
+ "photon-render",
+ "photon-world",
+]
+
+[[package]]
 name = "photon-net"
 version = "0.1.0"
 dependencies = [
@@ -1371,6 +1384,7 @@ dependencies = [
  "photon-core",
  "photon-data",
  "photon-game",
+ "photon-gui",
  "photon-net",
  "photon-render",
  "photon-world",
@@ -1399,7 +1413,6 @@ dependencies = [
  "log",
  "photon-core",
  "photon-data",
- "photon-game",
  "photon-world",
  "raw-window-handle",
  "rayon",

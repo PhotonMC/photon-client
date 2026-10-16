@@ -31,7 +31,7 @@ pub(super) fn written_book_patch(pages: &[Value]) -> Vec<u8> {
 }
 
 pub(super) fn menu_key(step: &Value) -> Result<MenuKey, String> {
-    use photon_render::gui::widgets::slider::SliderKey;
+    use photon_gui::widgets::slider::SliderKey;
     Ok(match step["key"].as_str().unwrap_or_default() {
         "tab" => MenuKey::Tab(true),
         "shift+tab" => MenuKey::Tab(false),

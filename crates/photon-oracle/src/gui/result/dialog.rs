@@ -4,8 +4,8 @@ use photon_game::dialog::{
     Action, ActionButton, AfterAction, Body, CommonData, Dialog, Next, PlainMessage, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
-use photon_render::gui::screen::dialog::{DialogScreen, Press};
-use photon_render::gui::screen::waiting::WaitingScreen;
+use photon_gui::screen::dialog::{DialogScreen, Press};
+use photon_gui::screen::waiting::WaitingScreen;
 
 fn text(value: &Value) -> Component {
     Component::literal(value.as_str().unwrap_or_default())

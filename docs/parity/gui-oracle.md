@@ -19,8 +19,8 @@ Screen layout and behaviour are verified by running Java's **own GUI code** head
 
 Screen patterns:
 
-- Screens: `photon-render/src/gui/screen/{pause,death,disconnected}.rs`.
-- Layout grid: `gui/layout.rs`. Widgets: `gui/widgets.rs`. Sprites: `gui/atlas.rs`.
+- Screens: `photon-gui/src/screen/{pause,death,disconnected}.rs`.
+- Layout grid: `photon-gui/src/layout.rs`. Widgets: `photon-gui/src/widgets.rs`. Sprites: `photon-render/src/gui/atlas.rs`.
 - Game wiring: `crates/photon/src/{controls,gui,play}.rs`.
 
 ## Covered operations

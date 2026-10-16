@@ -1,11 +1,11 @@
 //! The open inventory screen and what the client does with its clicks.
 
+use photon_gui::screen::creative::{CreativeAssets, CreativeScreen};
+use photon_gui::screen::generic::{EnchantText, GenericScreen, Titles};
+use photon_gui::screen::inventory::InventoryScreen;
+use photon_gui::screen::recipe_book::RecipeAssets;
+use photon_gui::screen::{Screen, ScreenAction};
 use photon_net::connection::PlaySession;
-use photon_render::gui::screen::creative::{CreativeAssets, CreativeScreen};
-use photon_render::gui::screen::generic::{EnchantText, GenericScreen, Titles};
-use photon_render::gui::screen::inventory::InventoryScreen;
-use photon_render::gui::screen::recipe_book::RecipeAssets;
-use photon_render::gui::screen::{Screen, ScreenAction};
 use photon_render::window::WindowSurface;
 use photon_world::block::tags::ItemTags;
 
@@ -64,7 +64,7 @@ impl ScreenAssets {
         may_build: bool,
     ) -> Box<dyn Screen> {
         if kind == photon_game::menus::container::MenuKind::Lectern {
-            return Box::new(photon_render::gui::screen::book::BookScreen::new(
+            return Box::new(photon_gui::screen::book::BookScreen::new(
                 width,
                 height,
                 self.lang.clone(),
@@ -150,7 +150,7 @@ impl ScreenAssets {
 /// The window's clipboard, for an edit box.
 pub struct WindowClipboard<'a>(pub &'a mut WindowSurface);
 
-impl photon_render::gui::widgets::edit_box::Clipboard for WindowClipboard<'_> {
+impl photon_gui::widgets::edit_box::Clipboard for WindowClipboard<'_> {
     fn get(&mut self) -> String {
         self.0.clipboard()
     }

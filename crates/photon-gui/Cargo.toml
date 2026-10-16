@@ -1,0 +1,19 @@
+[package]
+name = "photon-gui"
+description = "Screens, the HUD, chat and widgets: what the game draws on top of the world."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+photon-core.workspace = true
+photon-data.workspace = true
+photon-world.workspace = true
+photon-game.workspace = true
+photon-render.workspace = true
+glfw.workspace = true
+
+[lints]
+workspace = true

@@ -2,12 +2,12 @@ use super::*;
 
 /// `sign_texts`: what a sign's text submits, each line's pose, place, runs, light and colours.
 pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::block_entity::sign::{SignFace, SignKind, sign_text_submits};
+    use photon_gui::sign_text::{SignFace, sign_text_submits};
     let lang = photon_game::text::Lang::load(&ctx.root);
     let kind = if row["kind"] == "hanging" {
-        SignKind::Hanging
+        photon_render::block_entity::sign::SignKind::Hanging
     } else {
-        SignKind::Standing
+        photon_render::block_entity::sign::SignKind::Standing
     };
     let wall = row["wall"]
         .as_str()
@@ -83,7 +83,7 @@ pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
 /// `sign_edit_screen`: the sign editing screen of a face after text and keys, drawn at a time
 /// after it opened, and the lines it would send.
 pub(super) fn sign_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::sign_edit::{SignBoard, SignEditScreen};
+    use photon_gui::screen::sign_edit::{SignBoard, SignEditScreen};
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let lang = photon_game::text::Lang::load(&ctx.root);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;

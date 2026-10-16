@@ -271,7 +271,7 @@ impl Controls {
         let mut input = None;
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                input = Some(photon_render::gui::options::language::LanguageInput {
+                input = Some(photon_gui::options::language::LanguageInput {
                     done: true,
                     language: None,
                 });

@@ -61,7 +61,7 @@ impl Play {
             tilt_strength: 1.0,
         });
         let bob = photon_render::scene::multiply(hurt, bob);
-        let locator = photon_render::gui::hud::locator::LocatorCamera {
+        let locator = photon_gui::hud::locator::LocatorCamera {
             y_rot,
             x_rot,
             position: [camera.x, camera.y, camera.z],

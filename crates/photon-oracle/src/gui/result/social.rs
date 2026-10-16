@@ -2,7 +2,7 @@ use super::*;
 
 use photon_core::binary::Uuid;
 use photon_game::text::Component;
-use photon_render::gui::screen::social::{
+use photon_gui::screen::social::{
     Page, Roster, SocialEvent, SocialInteractionsScreen, SocialPlayer,
 };
 

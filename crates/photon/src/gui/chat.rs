@@ -51,8 +51,8 @@ impl Gui {
         log: &mut ChatLog,
         focused: bool,
     ) {
+        use photon_gui::chat::Tag;
         use photon_net::connection::FilterMask;
-        use photon_render::gui::chat::Tag;
         if packet.filter == FilterMask::FullyFiltered {
             return;
         }
@@ -104,10 +104,7 @@ impl Gui {
         log.add_component(
             content,
             &self.lang,
-            (
-                None,
-                Some(photon_render::gui::chat::Tag::SystemSinglePlayer),
-            ),
+            (None, Some(photon_gui::chat::Tag::SystemSinglePlayer)),
             &self.font,
             focused,
         );
@@ -120,7 +117,7 @@ impl Gui {
         log: &mut ChatLog,
         (focused, hidden): (bool, &[photon_core::binary::Uuid]),
     ) {
-        use photon_render::gui::chat::Tag;
+        use photon_gui::chat::Tag;
         for event in events {
             // `Minecraft.isBlocked`: what a player the local player hid says is not shown (the
             // local player's own words always are).

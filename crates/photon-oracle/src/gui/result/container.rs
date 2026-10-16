@@ -24,8 +24,8 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let font = &ctx.font;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_render::gui::screen::Screen;
-    use photon_render::gui::screen::generic::{EnchantText, GenericScreen, Titles};
+    use photon_gui::screen::Screen;
+    use photon_gui::screen::generic::{EnchantText, GenericScreen, Titles};
     let name = row["menu"].as_str().ok_or("menu")?;
     // Item cooldowns the server set, then the player's ticks since.
     let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
@@ -87,7 +87,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let (width, height) = (int("width"), int("height"));
     let mut screen: Box<dyn Screen> =
         if menu.kind == photon_game::menus::container::MenuKind::Lectern {
-            Box::new(photon_render::gui::screen::book::BookScreen::new(
+            Box::new(photon_gui::screen::book::BookScreen::new(
                 width,
                 height,
                 lang.clone(),
@@ -139,7 +139,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             .or_else(|| lang.get(&format!("block.minecraft.{name}")))
             .unwrap_or(name)
             .to_owned();
-        vec![photon_render::gui::chat::plain_runs(&text)]
+        vec![photon_gui::chat::plain_runs(&text)]
     };
     let book = photon_world::RecipeBook::default();
     let tags = photon_world::block::tags::ItemTags::default();
@@ -176,7 +176,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
                 }));
                 Vec::<photon_render::gui::GuiItemVertex>::new()
             };
-        let mut draw = photon_render::gui::screen::ScreenDraw {
+        let mut draw = photon_gui::screen::ScreenDraw {
             frame: &mut drawn,
             atlas,
             font,
@@ -224,7 +224,7 @@ fn mount_height(row: &Value) -> f32 {
 /// The game mode switcher: each step's mouse and whether the switch key was pressed, then the
 /// screen drawn and the mode it picked.
 pub(super) fn game_mode_switcher_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
+    use photon_gui::screen::game_mode::GameModeSwitcherScreen;
     use photon_world::ClientPlayerGameMode;
     let mode = |name: &str| match name {
         "creative" => ClientPlayerGameMode::Creative,

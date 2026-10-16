@@ -37,7 +37,7 @@ impl Gui {
             last_frame_ms: 0,
         };
         gui.hud
-            .set_waypoint_styles(photon_render::gui::hud::locator::WaypointStyles::load(root));
+            .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load(root));
         gui.set_language(language);
         Ok(gui)
     }
@@ -67,7 +67,7 @@ impl Gui {
     pub fn screen_assets(&self) -> ScreenAssets {
         let lang = &self.lang;
         ScreenAssets {
-            creative: photon_render::gui::screen::creative::CreativeAssets {
+            creative: photon_gui::screen::creative::CreativeAssets {
                 trees: Arc::new(photon_game::menus::creative::SearchTrees::new(
                     lang.clone(),
                     self.registries.clone(),

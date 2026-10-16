@@ -1,10 +1,10 @@
 use super::*;
 use photon_game::dialog::{Dialog, DialogRef, Next, run_action};
 use photon_game::text::{Component, Lang};
+use photon_gui::screen::dialog::{DialogScreen, Press};
+use photon_gui::screen::waiting::WaitingScreen;
 use photon_net::connection::DialogEvent;
 use photon_render::gui::font::Font;
-use photon_render::gui::screen::dialog::{DialogScreen, Press};
-use photon_render::gui::screen::waiting::WaitingScreen;
 
 /// The screen a server dialog puts over the game.
 pub enum DialogLayer {

@@ -1,6 +1,6 @@
 use super::*;
 
-use photon_render::gui::screen::sign_edit::{SignBoard, SignEditScreen};
+use photon_gui::screen::sign_edit::{SignBoard, SignEditScreen};
 
 /// The sign the player is writing on: its screen, its block and the face.
 pub struct SignEdit {

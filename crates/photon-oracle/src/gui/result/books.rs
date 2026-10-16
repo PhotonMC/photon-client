@@ -28,7 +28,7 @@ fn step_key(name: &str) -> Result<(glfw::Key, bool, bool), String> {
 /// `book_edit_screen`: the book and quill's screen after text, keys and clicks, drawn at a time
 /// after it opened, its pages and the page it is on.
 pub(super) fn book_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::book_edit::BookEditScreen;
+    use photon_gui::screen::book_edit::BookEditScreen;
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let lang = photon_game::text::Lang::load(&ctx.root);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
@@ -88,7 +88,7 @@ pub(super) fn book_edit_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
 /// `book_sign_screen`: the signing screen with a title kept from before, shown for the first time
 /// or again, after text, keys and clicks, and the title as it stands.
 pub(super) fn book_sign_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::book_sign::BookSignScreen;
+    use photon_gui::screen::book_sign::BookSignScreen;
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let lang = photon_game::text::Lang::load(&ctx.root);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
@@ -138,8 +138,8 @@ pub(super) fn book_sign_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
 /// `book_view`: a written book the server opened in the hand, after clicks and keys, and the
 /// page open.
 pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_render::gui::screen::Screen;
-    use photon_render::gui::screen::book::BookScreen;
+    use photon_gui::screen::Screen;
+    use photon_gui::screen::book::BookScreen;
     let font = std::sync::Arc::new(Font::load(&ctx.root).ok_or("font")?);
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(&ctx.root));
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
@@ -161,7 +161,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
                 let (key, ..) = step_key(step["key"].as_str().unwrap_or_default())?;
                 screen.key_pressed(
                     key,
-                    photon_render::gui::screen::KeyMods::default(),
+                    photon_gui::screen::KeyMods::default(),
                     &menu,
                     &mut crate::gui::NoClipboard,
                 );
@@ -199,7 +199,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         photon_world::RecipeBook::default(),
         photon_world::block::tags::ItemTags::default(),
     );
-    let mut draw = photon_render::gui::screen::ScreenDraw {
+    let mut draw = photon_gui::screen::ScreenDraw {
         frame: &mut frame,
         atlas: &ctx.atlas,
         font: &font,

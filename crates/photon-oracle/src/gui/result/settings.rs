@@ -9,8 +9,8 @@ pub(super) fn options_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::options::OptionsScreen;
-    use photon_render::gui::widgets::slider::SliderKey;
+    use photon_gui::options::OptionsScreen;
+    use photon_gui::widgets::slider::SliderKey;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let mouse = (
@@ -77,7 +77,7 @@ pub(super) fn video_settings_screen_case(
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::options::video::VideoSettingsScreen;
+    use photon_gui::options::video::VideoSettingsScreen;
     use photon_render::window::scale::WindowScale;
     let lang = photon_game::text::Lang::load(root);
     let framebuffer = (
@@ -99,7 +99,7 @@ pub(super) fn video_settings_screen_case(
         row["in_world"].as_bool().unwrap_or(false),
         gui_scale,
         max_scale,
-        photon_render::gui::options::video::VideoValues::default(),
+        photon_gui::options::video::VideoValues::default(),
     );
     let mut last = (0.0, 0.0);
     let mut clock = 0_u64;
@@ -182,10 +182,10 @@ pub(super) fn chat_options_screen_case(
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::options::chat::ChatOptionsScreen;
-    use photon_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
-    use photon_render::gui::options::skin::SkinCustomizationScreen;
-    use photon_render::gui::options::sound::SoundOptionsScreen;
+    use photon_gui::options::chat::ChatOptionsScreen;
+    use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+    use photon_gui::options::skin::SkinCustomizationScreen;
+    use photon_gui::options::sound::SoundOptionsScreen;
     // The settings screens that have the same inputs.
     enum Shell {
         Chat(ChatOptionsScreen),
@@ -359,10 +359,10 @@ pub(super) fn language_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::options::language::LanguageSelectScreen;
+    use photon_gui::options::language::LanguageSelectScreen;
     use photon_render::window::scale::WindowScale;
     struct NoClipboard;
-    impl photon_render::gui::widgets::edit_box::Clipboard for NoClipboard {
+    impl photon_gui::widgets::edit_box::Clipboard for NoClipboard {
         fn get(&mut self) -> String {
             String::new()
         }

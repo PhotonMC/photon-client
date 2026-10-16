@@ -9,10 +9,10 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::widgets::navigation::Direction;
+    use photon_gui::widgets::navigation::Direction;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
-    let mut screen = photon_render::gui::screen::pause::PauseScreen::new(font, &lang, size);
+    let mut screen = photon_gui::screen::pause::PauseScreen::new(font, &lang, size);
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
@@ -55,7 +55,7 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+    use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let text =
@@ -159,7 +159,7 @@ pub(super) fn widgets_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
-    let mut arena = photon_render::gui::layout::Arena::default();
+    let mut arena = photon_gui::layout::Arena::default();
     let rect = arena.add(width, 20);
     (arena.0[rect].x, arena.0[rect].y) = (100, 50);
     let mut widget = OptionWidget::new(
@@ -194,7 +194,7 @@ pub(super) fn death_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     let cause = row["cause"]
         .as_str()
         .map(photon_game::text::Component::literal);
-    let mut screen = photon_render::gui::screen::death::DeathScreen::new(
+    let mut screen = photon_gui::screen::death::DeathScreen::new(
         &lang,
         size,
         cause.as_ref(),
@@ -228,9 +228,8 @@ pub(super) fn disconnected_screen_case(ctx: &mut GuiContext, row: &Value) -> Res
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let reason = photon_game::text::Component::literal(row["reason"].as_str().unwrap_or_default());
-    let screen = photon_render::gui::screen::disconnected::DisconnectedScreen::new(
-        font, &lang, size, &reason,
-    );
+    let screen =
+        photon_gui::screen::disconnected::DisconnectedScreen::new(font, &lang, size, &reason);
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
@@ -250,7 +249,7 @@ pub(super) fn credits_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         ..GuiFrame::default()
     };
     let assets = ctx.root.clone();
-    let mut screen = photon_render::gui::screen::credits::CreditsScreen::new(
+    let mut screen = photon_gui::screen::credits::CreditsScreen::new(
         &ctx.font,
         &assets,
         (int("width"), int("height")),

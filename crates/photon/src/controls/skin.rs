@@ -1,5 +1,5 @@
 use super::*;
-use photon_render::gui::options::skin::SkinCustomizationScreen;
+use photon_gui::options::skin::SkinCustomizationScreen;
 
 impl Controls {
     /// `SkinCustomizationScreen`, over the options screen.

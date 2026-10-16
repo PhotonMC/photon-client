@@ -141,7 +141,7 @@ fn display_lines(
     width: i32,
     font: &photon_render::gui::font::Font,
 ) -> Vec<Vec<photon_render::gui::TextRun>> {
-    photon_render::gui::draw_lines(&photon_render::gui::chat::split(runs, width, font))
+    photon_gui::draw_lines(&photon_gui::chat::split(runs, width, font))
 }
 
 /// The triangles of every text display the server added: the text seen through blocks and the text

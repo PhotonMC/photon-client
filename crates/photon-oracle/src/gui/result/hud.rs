@@ -8,10 +8,10 @@ pub(super) fn titles_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::titles::Titles;
+    use photon_gui::hud::titles::Titles;
     let mut titles = Titles::default();
     titles.set_times(int("fade_in"), int("stay"), int("fade_out"));
-    let runs = |text: &str| photon_render::gui::chat::plain_runs(text);
+    let runs = |text: &str| photon_gui::chat::plain_runs(text);
     if let Some(title) = row["title"].as_str() {
         titles.set_title(runs(title));
         for _ in 0..int("elapsed") {
@@ -50,7 +50,7 @@ pub(super) fn sidebar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::sidebar;
+    use photon_gui::hud::sidebar;
     let lang = photon_game::text::Lang::new([]);
     let board = scoreboard_from(row)?;
     let style = photon_game::text::Style::default();
@@ -86,7 +86,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::{Hud, HudInput};
+    use photon_gui::hud::{Hud, HudInput};
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let speed = row["attack_speed"].as_f64().unwrap_or(4.0);
     let delay = photon_world::local_player::attack_strength_delay(speed);
@@ -104,7 +104,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         max_health: 20.0,
         absorption: 0.0,
         invulnerable_time: 0,
-        heart_type: photon_render::gui::HeartType::Normal,
+        heart_type: photon_gui::HeartType::Normal,
         regeneration: false,
         hardcore: false,
         armor: 0,
@@ -150,8 +150,8 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let font = &ctx.font;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_render::gui::HeartType;
-    use photon_render::gui::hud::{Hud, HudInput};
+    use photon_gui::HeartType;
+    use photon_gui::hud::{Hud, HudInput};
     let number = |key: &str| row[key].as_f64().unwrap_or(0.0);
     let has = |name: &str| {
         row["effects"]
@@ -230,12 +230,12 @@ pub(super) fn boss_bar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::boss_bar::BossBars;
+    use photon_gui::hud::boss_bar::BossBars;
     let mut bars = BossBars::default();
     for (index, bar) in row["bars"].as_array().ok_or("bars")?.iter().enumerate() {
         bars.add(
             index as u128 + 1,
-            photon_render::gui::chat::plain_runs(bar["name"].as_str().unwrap_or_default()),
+            photon_gui::chat::plain_runs(bar["name"].as_str().unwrap_or_default()),
             bar["progress"].as_f64().unwrap_or(0.0) as f32,
             bar["color"].as_u64().unwrap_or(0) as u8,
             bar["overlay"].as_u64().unwrap_or(0) as u8,
@@ -259,9 +259,7 @@ pub(super) fn locator_bar_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::locator::{
-        self, LocatorCamera, LocatorInput, Viewer, WaypointStyles,
-    };
+    use photon_gui::hud::locator::{self, LocatorCamera, LocatorInput, Viewer, WaypointStyles};
     let numbers = |value: &Value| -> Vec<f64> {
         value
             .as_array()
@@ -319,11 +317,11 @@ pub(super) fn tab_list_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::hud::tab_list::{self, HealthStates, TabPlayer, TabScores};
+    use photon_gui::hud::tab_list::{self, HealthStates, TabPlayer, TabScores};
     let runs = |key: &str| {
         row[key]
             .as_str()
-            .map(photon_render::gui::chat::plain_runs)
+            .map(photon_gui::chat::plain_runs)
             .unwrap_or_default()
     };
     let board = scoreboard_from(row)?;

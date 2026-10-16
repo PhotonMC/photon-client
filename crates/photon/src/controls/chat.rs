@@ -246,11 +246,9 @@ impl Controls {
                 let gui = (size.gui_scaled_width(), size.gui_scaled_height());
                 let screen =
                     ConfirmScreen::link(&assets.creative.font, &assets.lang, gui, url, false)
-                        .with_background(
-                            photon_render::gui::screen::confirm::ConfirmBackground::Menu {
-                                in_world: true,
-                            },
-                        );
+                        .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
+                            in_world: true,
+                        });
                 self.link_confirm = Some((screen, url.clone()));
             }
             ClickEvent::OpenFile(path) => open_uri(path),

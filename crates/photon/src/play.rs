@@ -208,7 +208,7 @@ struct FrameCamera {
     /// `Camera.getCullFrustum`.
     frustum: photon_render::visibility::Frustum,
     /// What the locator bar reads of the camera.
-    locator: photon_render::gui::hud::locator::LocatorCamera,
+    locator: photon_gui::hud::locator::LocatorCamera,
 }
 
 /// A joined session with its window, renderer and everything the frames

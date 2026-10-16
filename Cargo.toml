@@ -16,6 +16,7 @@ photon-protocol = { path = "crates/photon-protocol" }
 photon-net = { path = "crates/photon-net" }
 photon-dev = { path = "crates/photon-dev" }
 photon-render = { path = "crates/photon-render" }
+photon-gui = { path = "crates/photon-gui" }
 photon-audio = { path = "crates/photon-audio", default-features = false }
 parity-cases = { path = "parity/cases" }
 ash = "0.38.0"

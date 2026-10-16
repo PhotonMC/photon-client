@@ -66,11 +66,8 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         photon_game::menus::container::toggle_bundle_selected(&mut stack, selected as i32);
     }
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let layout = photon_render::gui::screen::container::ContainerLayout::new(
-        int("width"),
-        int("height"),
-        (0, 0),
-    );
+    let layout =
+        photon_gui::screen::container::ContainerLayout::new(int("width"), int("height"), (0, 0));
     let mut item = |_: &photon_world::ClientItemStackState,
                     _: f32,
                     _: f32,
@@ -95,7 +92,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    let mut draw = photon_render::gui::screen::ScreenDraw {
+    let mut draw = photon_gui::screen::ScreenDraw {
         frame: &mut frame,
         atlas: &ctx.atlas,
         font: &ctx.font,
@@ -112,8 +109,6 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     };
     let text = (draw.tooltip)(&stack, false);
     let mouse = (f64::from(int("mouse_x")), f64::from(int("mouse_y")));
-    photon_render::gui::screen::bundle_tooltip::stack_tooltip(
-        &layout, &mut draw, &stack, &text, mouse,
-    );
+    photon_gui::screen::bundle_tooltip::stack_tooltip(&layout, &mut draw, &stack, &text, mouse);
     Ok(json!({"label": row["label"], "ops": gui_ops(&frame.log.take().unwrap_or_default())}))
 }

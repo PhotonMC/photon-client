@@ -1,6 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
-use photon_render::gui::FrameRuns;
+use photon_gui::FrameRuns;
 
 impl Gui {
     /// The settings screen that is open, the topmost of those over the
@@ -161,7 +161,7 @@ impl Gui {
             };
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;
-        let hud_input = photon_render::gui::HudInput {
+        let hud_input = photon_gui::HudInput {
             // `getGameTimeDeltaPartialTick(true)`.
             cooldowns: session
                 .item_cooldowns()

@@ -1,7 +1,7 @@
 use super::*;
-use photon_render::gui::FrameRuns;
+use photon_gui::FrameRuns;
 
-use photon_render::gui::chat::{ChatLog, ChatSettings};
+use photon_gui::chat::{ChatLog, ChatSettings};
 
 pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
@@ -13,7 +13,7 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::gui::chat::Tag;
+    use photon_gui::chat::Tag;
     let mut log = ChatLog::default();
     // The chat options a row sets, before the messages and again
     // after them (which wraps them anew).
@@ -133,7 +133,7 @@ pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
     let root = &ctx.root;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_render::gui::chat::ChatScreen;
+    use photon_gui::chat::ChatScreen;
     let width = int("width");
     let height = int("height");
     let text = row["text"].as_str().ok_or("text")?;
@@ -197,7 +197,7 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let root = &ctx.root;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_render::gui::chat::{ChatDrafts, ChatMethod, ChatScreen, ExitReason};
+    use photon_gui::chat::{ChatDrafts, ChatMethod, ChatScreen, ExitReason};
     let (width, height) = (int("width"), int("height"));
     let save = row["save"].as_bool().unwrap_or(false);
     let font = std::sync::Arc::new(Font::load(root).ok_or("font")?);

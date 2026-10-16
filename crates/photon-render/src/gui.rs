@@ -1,23 +1,17 @@
-//! The GUI: the frame the HUD and the screens draw into, its atlas, the font,
-//! item icons, widgets, the HUD and the screens.
+//! What the GUI draws with: the frame the HUD and the screens draw into, its atlas, the font and
+//! item icons. The screens themselves are in `photon-gui`.
 
 pub mod atlas;
-pub mod chat;
 pub mod favicon;
 pub mod font;
 pub mod frame;
-pub mod hud;
 pub mod items;
-pub mod layout;
-pub mod options;
 pub mod run;
-pub mod screen;
 pub mod text_hit;
-pub mod tooltip;
-pub mod widgets;
 
 pub use atlas::GuiAtlas;
-pub use frame::{DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, Positioner};
-pub use hud::{HeartType, Hud, HudInput};
+pub use frame::{
+    DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, Positioner, ScreenRect,
+};
 pub use items::GuiItemVertex;
-pub use run::{FontRuns, FrameRuns, ItemSlots, TextRun, draw_lines, draw_runs};
+pub use run::TextRun;

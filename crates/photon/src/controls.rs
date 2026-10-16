@@ -11,40 +11,40 @@ use photon_game::options::Options;
 
 use photon_net::connection::PlaySession;
 
-use photon_render::gui::chat::ChatSettings;
+use photon_gui::chat::ChatSettings;
 
-use photon_render::gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
+use photon_gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
 
-use photon_render::gui::options::chat::ChatOptionsScreen;
+use photon_gui::options::chat::ChatOptionsScreen;
 
-use photon_render::gui::options::keybinds::{BindKey, KeyBindsScreen};
+use photon_gui::options::keybinds::{BindKey, KeyBindsScreen};
 
-use photon_render::gui::options::language::LanguageSelectScreen;
+use photon_gui::options::language::LanguageSelectScreen;
 
-use photon_render::gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
 
-use photon_render::gui::options::sound::SoundOptionsScreen;
+use photon_gui::options::sound::SoundOptionsScreen;
 
-use photon_render::gui::options::video::{VideoSettingsScreen, VideoValues};
+use photon_gui::options::video::{VideoSettingsScreen, VideoValues};
 
-use photon_render::gui::options::{OptionsAction, OptionsInput, OptionsScreen};
+use photon_gui::options::{OptionsAction, OptionsInput, OptionsScreen};
 
-use photon_render::gui::screen::confirm::ConfirmAction as LinkAction;
+use photon_gui::screen::confirm::ConfirmAction as LinkAction;
 
-use photon_render::gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
+use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
 
-use photon_render::gui::screen::credits::CreditsScreen;
-use photon_render::gui::screen::death::{DeathAction, DeathScreen};
-use photon_render::gui::screen::game_mode::GameModeSwitcherScreen;
-use photon_render::gui::screen::social::SocialInteractionsScreen;
+use photon_gui::screen::credits::CreditsScreen;
+use photon_gui::screen::death::{DeathAction, DeathScreen};
+use photon_gui::screen::game_mode::GameModeSwitcherScreen;
+use photon_gui::screen::social::SocialInteractionsScreen;
 
-use photon_render::gui::screen::disconnected::DisconnectedScreen;
+use photon_gui::screen::disconnected::DisconnectedScreen;
 
-use photon_render::gui::screen::pause::{PauseAction, PauseScreen};
+use photon_gui::screen::pause::{PauseAction, PauseScreen};
 
-use photon_render::gui::screen::{KeyMods, KeyResult};
+use photon_gui::screen::{KeyMods, KeyResult};
 
-use photon_render::gui::widgets::slider::SliderKey;
+use photon_gui::widgets::slider::SliderKey;
 
 use photon_render::window::WindowSurface;
 
@@ -96,7 +96,7 @@ pub struct Controls {
     /// The chat settings, opened the same way.
     pub chat_options_screen: Option<ChatOptionsScreen>,
     /// The skin customization, opened the same way.
-    pub skin_screen: Option<photon_render::gui::options::skin::SkinCustomizationScreen>,
+    pub skin_screen: Option<photon_gui::options::skin::SkinCustomizationScreen>,
     pub sound_screen: Option<SoundOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,

@@ -1,8 +1,8 @@
 use super::*;
 
-use photon_render::gui::screen::book::BookScreen;
-use photon_render::gui::screen::book_edit::{BookEditAction, BookEditScreen};
-use photon_render::gui::screen::book_sign::{BookSignAction, BookSignScreen};
+use photon_gui::screen::book::BookScreen;
+use photon_gui::screen::book_edit::{BookEditAction, BookEditScreen};
+use photon_gui::screen::book_sign::{BookSignAction, BookSignScreen};
 
 /// The book and quill being written in: its screen, the signing screen while it is over it, and
 /// the hand that holds it.

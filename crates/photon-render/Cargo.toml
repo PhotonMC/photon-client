@@ -11,7 +11,6 @@ include = ["/Cargo.toml", "/build.rs", "/src/**", "/shaders/**"]
 photon-core.workspace = true
 photon-data.workspace = true
 photon-world.workspace = true
-photon-game.workspace = true
 ash.workspace = true
 ash-window.workspace = true
 flate2.workspace = true

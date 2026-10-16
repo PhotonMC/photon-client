@@ -2,10 +2,9 @@
 //! boards themselves are block models.
 
 use photon_core::math::Vec3;
+use photon_gui::sign_text::{SignFace, sign_text_submits};
 use photon_net::connection::PlaySession;
-use photon_render::block_entity::sign::{
-    OUTLINE_DISTANCE_SQR, SignFace, SignKind, sign_text_submits, sign_text_vertices,
-};
+use photon_render::block_entity::sign::{OUTLINE_DISTANCE_SQR, SignKind, sign_text_vertices};
 use photon_render::joml::Pose;
 use photon_render::scene::Vertex;
 
