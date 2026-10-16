@@ -64,19 +64,16 @@ impl GameMode {
             }
             _ => None,
         };
-        match aimed_block {
-            Some((x, y, z, face)) => {
-                self.start_destroy_block(ctx, (x, y, z), face, out);
-                if is_air(ctx.state_at((x, y, z))) {
-                    end_attack = true;
-                }
+        if let Some((x, y, z, face)) = aimed_block {
+            self.start_destroy_block(ctx, (x, y, z), face, out);
+            if is_air(ctx.state_at((x, y, z))) {
+                end_attack = true;
             }
-            None => {
-                if ctx.mode != ClientPlayerGameMode::Creative {
-                    self.miss_time = 10;
-                }
-                ctx.player.reset_attack_strength();
+        } else {
+            if ctx.mode != ClientPlayerGameMode::Creative {
+                self.miss_time = 10;
             }
+            ctx.player.reset_attack_strength();
         }
         ctx.swing(out);
         end_attack

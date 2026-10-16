@@ -46,7 +46,7 @@ fn modify() -> Vec<Value> {
         "sneaking_movement_factor": f32_bits(0.3),
     });
     let mut local_player_input_inputs = vec![];
-    for values in local_player_input_cases.iter() {
+    for values in &local_player_input_cases {
         let input_values = merged(vec![local_player_input_defaults.clone(), values.clone()]);
         local_player_input_inputs.push(input_values.clone());
     }
@@ -93,7 +93,7 @@ fn apply() -> Vec<Value> {
     ];
     let local_player_apply_input_defaults = apply_move_x();
     let mut local_player_apply_input_inputs = vec![];
-    for values in local_player_apply_input_cases.iter() {
+    for values in &local_player_apply_input_cases {
         let input_values = merged(vec![local_player_apply_input_defaults.clone(), values.clone()]);
         local_player_apply_input_inputs.push(input_values.clone());
     }
@@ -251,7 +251,7 @@ fn can_start() -> Vec<Value> {
         "moving_slowly": false,
     });
     let mut local_player_sprint_gate_inputs = vec![];
-    for values in local_player_sprint_gate_cases.iter() {
+    for values in &local_player_sprint_gate_cases {
         let input_values = merged(vec![local_player_sprint_gate_defaults.clone(), values.clone()]);
         local_player_sprint_gate_inputs.push(input_values.clone());
     }

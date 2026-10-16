@@ -21,7 +21,7 @@ fn constants() -> Vec<Value> {
         "x_axis",
         "z_axis",
     ] {
-        out.push(case(format!("mth/constants/{}", name), "math", "mth_constants", json!({"name": name})));
+        out.push(case(format!("mth/constants/{name}"), "math", "mth_constants", json!({"name": name})));
     }
     let mth_trigonometric_values = vec![
         ("zero", f64_bits(0.0)),
@@ -36,9 +36,9 @@ fn constants() -> Vec<Value> {
         ("nan-payload", "7ff8000000000001".to_string()),
     ];
     for function in ["sin", "cos"] {
-        for (label, value) in mth_trigonometric_values.iter() {
+        for (label, value) in &mth_trigonometric_values {
             out.push(case(
-                format!("mth/{}/{}", function, label),
+                format!("mth/{function}/{label}"),
                 "math",
                 "mth_floating_primitives",
                 json!({"fn": function, "type": "f64", "value": value}),
@@ -57,9 +57,9 @@ fn constants() -> Vec<Value> {
         ("negative-infinity", "ff800000".to_string()),
         ("nan-payload", "7fc00001".to_string()),
     ];
-    for (label, value) in mth_sqrt_values.iter() {
+    for (label, value) in &mth_sqrt_values {
         out.push(case(
-            format!("mth/sqrt/{}", label),
+            format!("mth/sqrt/{label}"),
             "math",
             "mth_floating_primitives",
             json!({"fn": "sqrt", "type": "f32", "value": value}),
@@ -82,9 +82,9 @@ fn abs_f32() -> Vec<Value> {
         ("negative-infinity", "ff800000".to_string()),
         ("negative-nan-payload", "ffc01234".to_string()),
     ];
-    for (label, value) in mth_abs_values.iter() {
+    for (label, value) in &mth_abs_values {
         out.push(case(
-            format!("mth/abs-f32/{}", label),
+            format!("mth/abs-f32/{label}"),
             "math",
             "mth_floating_primitives",
             json!({"fn": "abs", "type": "f32", "value": value}),
@@ -102,9 +102,9 @@ fn abs_f32() -> Vec<Value> {
         ("nan-value", raw("7fc01234"), raw("00000000"), raw("3f800000")),
         ("nan-max", raw("3f800000"), raw("00000000"), raw("7fc01234")),
     ];
-    for (label, value, minimum, maximum) in mth_clamp_f32.iter() {
+    for (label, value, minimum, maximum) in &mth_clamp_f32 {
         out.push(case(
-            format!("mth/clamp-f32/{}", label),
+            format!("mth/clamp-f32/{label}"),
             "math",
             "mth_floating_primitives",
             json!({"fn": "clamp", "type": "f32", "value": value.f32(), "min": minimum.f32(), "max": maximum.f32()}),
@@ -127,9 +127,9 @@ fn clamp_f64() -> Vec<Value> {
         ("nan-value", raw("7ff8000000001234"), raw("0000000000000000"), raw("3ff0000000000000")),
         ("nan-max", raw("3ff0000000000000"), raw("0000000000000000"), raw("7ff8000000001234")),
     ];
-    for (label, value, minimum, maximum) in mth_clamp_f64.iter() {
+    for (label, value, minimum, maximum) in &mth_clamp_f64 {
         out.push(case(
-            format!("mth/clamp-f64/{}", label),
+            format!("mth/clamp-f64/{label}"),
             "math",
             "mth_floating_primitives",
             json!({"fn": "clamp", "type": "f64", "value": value.f64(), "min": minimum.f64(), "max": maximum.f64()}),
@@ -141,17 +141,17 @@ fn clamp_f64() -> Vec<Value> {
 fn power_helpers() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_power_helpers = mth_power_helpers_rows();
-    for (label, width, function, input_value) in mth_power_helpers.iter() {
+    for (label, width, function, input_value) in &mth_power_helpers {
         out.push(case(
-            format!("mth/power-helpers/{}", label),
+            format!("mth/power-helpers/{label}"),
             "math",
             "mth_power_helpers",
             json!({"type": width, "fn": function, "input": input_value}),
         ));
     }
-    for (label, width, input_value) in mth_frac_helpers().iter() {
+    for (label, width, input_value) in &mth_frac_helpers() {
         out.push(case(
-            format!("mth/frac/{}", label),
+            format!("mth/frac/{label}"),
             "math",
             "mth_frac",
             json!({"type": width, "fn": "frac", "input": input_value}),
@@ -267,9 +267,9 @@ fn get_int() -> Vec<Value> {
         ("invalid-max-default", Some("invalid"), "2147483647"),
         ("invalid-min-default", Some("invalid"), "-2147483648"),
     ];
-    for (label, input_value, default) in mth_get_int.iter() {
+    for (label, input_value, default) in &mth_get_int {
         out.push(case(
-            format!("mth/get-int/{}", label),
+            format!("mth/get-int/{label}"),
             "math",
             "mth_get_int",
             json!({"input": input_value, "default": default}),
@@ -297,9 +297,9 @@ fn integer_helpers() -> Vec<Value> {
         ("round-toward/long/negative-input", "i64", "round_toward", "-7", "3"),
         ("round-toward/long/multiplication-overflow", "i64", "round_toward", "9223372036854775807", "2"),
     ];
-    for (label, width, function, input_value, divisor) in mth_integer_helpers.iter() {
+    for (label, width, function, input_value, divisor) in &mth_integer_helpers {
         out.push(case(
-            format!("mth/integer-helpers/{}", label),
+            format!("mth/integer-helpers/{label}"),
             "math",
             "mth_integer_helpers",
             json!({"type": width, "fn": function, "input": input_value, "divisor": divisor}),

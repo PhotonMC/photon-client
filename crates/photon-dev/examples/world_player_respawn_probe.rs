@@ -100,10 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "initial_local_player_attribute_count={}",
         initial_attribute_update.attributes.len()
     );
-    println!(
-        "initial_local_player_attribute_modifier_count={}",
-        initial_attribute_modifier_count
-    );
+    println!("initial_local_player_attribute_modifier_count={initial_attribute_modifier_count}");
     println!(
         "respawn_local_player_attribute_count={}",
         respawn.local_player_attribute_count

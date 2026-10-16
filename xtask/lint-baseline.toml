@@ -7,7 +7,7 @@
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
-"crates/photon-oracle/src/model.rs" = 504
+"crates/photon-oracle/src/model.rs" = 503
 "crates/photon-oracle/src/movement.rs" = 572
 "crates/photon-oracle/src/particles.rs" = 553
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
@@ -15,7 +15,7 @@
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-render/src/gui/frame/texture.rs" = 559
 "crates/photon-render/src/gui/screen/container.rs" = 509
-"crates/photon-render/src/gui/screen/servers.rs" = 516
+"crates/photon-render/src/gui/screen/servers.rs" = 515
 "crates/photon-render/src/vulkan/pipeline.rs" = 501
 "crates/photon-world/src/local_player/ticking.rs" = 501
 "crates/photon-world/src/particles/firework.rs" = 541
@@ -270,7 +270,7 @@
 "crates/photon-oracle/src/hex.rs::wire_result" = 25
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result" = 17
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result::held_poses" = 16
-"crates/photon-oracle/src/light.rs::client_world_light_result" = 13
+"crates/photon-oracle/src/light.rs::client_world_light_result" = 12
 "crates/photon-oracle/src/living_ticks.rs::living_entity_ticks_result" = 111
 "crates/photon-oracle/src/living_ticks/events/mobs.rs::frog_data_event" = 11
 "crates/photon-oracle/src/living_ticks/events/objects.rs::display_data_event" = 17
@@ -354,7 +354,7 @@
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 11
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 19
 "crates/photon-render/src/gui/hud.rs::HeartType::sprite" = 11
-"crates/photon-render/src/gui/hud.rs::Hud::player_health" = 41
+"crates/photon-render/src/gui/hud.rs::Hud::player_health" = 40
 "crates/photon-render/src/gui/hud/locator.rs::TrackedWaypoint::pitch" = 12
 "crates/photon-render/src/gui/hud/locator.rs::set_brightness" = 11
 "crates/photon-render/src/gui/hud/tab_list.rs::draw_hearts" = 15
@@ -628,14 +628,14 @@
 "crates/photon-dev/examples/world_entity_passenger_boat_family_probe.rs::main" = 82
 "crates/photon-dev/examples/world_entity_passenger_boat_remote_probe.rs::main" = 105
 "crates/photon-dev/examples/world_entity_passenger_generic_position_probe.rs::main" = 71
-"crates/photon-dev/examples/world_entity_passenger_living_turn_probe.rs::main" = 101
+"crates/photon-dev/examples/world_entity_passenger_living_turn_probe.rs::main" = 100
 "crates/photon-dev/examples/world_entity_passenger_multi_position_probe.rs::main" = 100
 "crates/photon-dev/examples/world_entity_passenger_position_probe.rs::main" = 70
 "crates/photon-dev/examples/world_entity_passenger_rotation_clamp_probe.rs::main" = 67
 "crates/photon-dev/examples/world_entity_passenger_rotation_exemption_probe.rs::main" = 62
 "crates/photon-dev/examples/world_entity_passenger_rotation_probe.rs::main" = 116
 "crates/photon-dev/examples/world_entity_passenger_tick_probe.rs::main" = 73
-"crates/photon-dev/examples/world_entity_passenger_turn_probe.rs::main" = 96
+"crates/photon-dev/examples/world_entity_passenger_turn_probe.rs::main" = 95
 "crates/photon-dev/examples/world_entity_passengers_probe.rs::main" = 71
 "crates/photon-dev/examples/world_entity_player_passenger_position_probe.rs::main" = 89
 "crates/photon-dev/examples/world_entity_position_probe.rs::main" = 111
@@ -648,9 +648,9 @@
 "crates/photon-dev/examples/world_player_attribute_effective_probe.rs::main" = 87
 "crates/photon-dev/examples/world_player_container_menu_map_probe.rs::main" = 84
 "crates/photon-dev/examples/world_player_container_probe.rs::main" = 87
-"crates/photon-dev/examples/world_player_death_respawn_probe.rs::main" = 136
+"crates/photon-dev/examples/world_player_death_respawn_probe.rs::main" = 133
 "crates/photon-dev/examples/world_player_game_mode_probe.rs::main" = 95
-"crates/photon-dev/examples/world_player_respawn_probe.rs::main" = 144
+"crates/photon-dev/examples/world_player_respawn_probe.rs::main" = 141
 "crates/photon-dev/examples/world_remote_player_head_rotation_probe.rs::main" = 112
 "crates/photon-dev/examples/world_remote_player_interpolation_probe.rs::main" = 109
 "crates/photon-dev/examples/world_remote_player_motion_probe.rs::main" = 98
@@ -766,7 +766,7 @@
 "crates/photon-oracle/src/model.rs::model_parse_result" = 150
 "crates/photon-oracle/src/model.rs::model_result" = 127
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
-"crates/photon-oracle/src/model.rs::model_winding_result" = 68
+"crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
 "crates/photon-oracle/src/movement.rs::movement_result" = 571
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
@@ -867,7 +867,7 @@
 "crates/photon-render/src/entity/player_renderer.rs::held_item_vertices" = 71
 "crates/photon-render/src/entity/special_models.rs::head" = 90
 "crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 88
-"crates/photon-render/src/gui/chat.rs::break_lines" = 69
+"crates/photon-render/src/gui/chat.rs::break_lines" = 66
 "crates/photon-render/src/gui/chat/log.rs::ChatLog::draw_with" = 101
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 94
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
@@ -915,13 +915,13 @@
 "crates/photon-render/src/gui/screen/recipe_book/draw.rs::RecipeBookPanel::draw_panel" = 92
 "crates/photon-render/src/gui/screen/recipe_book/draw.rs::RecipeBookPanel::draw_recipes" = 102
 "crates/photon-render/src/gui/screen/server_form.rs::ServerFormScreen::new" = 105
-"crates/photon-render/src/gui/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 104
+"crates/photon-render/src/gui/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 103
 "crates/photon-render/src/gui/screen/social.rs::SocialInteractionsScreen::new" = 62
 "crates/photon-render/src/gui/screen/social.rs::layout" = 70
 "crates/photon-render/src/gui/screen/social/draw.rs::SocialInteractionsScreen::draw" = 102
 "crates/photon-render/src/gui/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 106
 "crates/photon-render/src/gui/screen/title.rs::TitleScreen::new" = 104
-"crates/photon-render/src/gui/widgets/edit_box.rs::EditBox::draw_formatted" = 103
+"crates/photon-render/src/gui/widgets/edit_box.rs::EditBox::draw_formatted" = 100
 "crates/photon-render/src/gui/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-render/src/gui/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
 "crates/photon-render/src/gui/widgets/text_area.rs::MultiLineEditBox::draw_contents" = 79
@@ -951,7 +951,7 @@
 "crates/photon-render/src/vulkan/device/presentation.rs::create_presentation" = 88
 "crates/photon-render/src/vulkan/device/sync.rs::create_sync" = 86
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 205
-"crates/photon-render/src/vulkan/memory.rs::VulkanBackend::arena_upload" = 100
+"crates/photon-render/src/vulkan/memory.rs::VulkanBackend::arena_upload" = 91
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 95
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::load_panorama" = 61
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95

@@ -537,7 +537,7 @@ impl Hud {
                 |offset: i32| (((air + offset) * 10) as f32 / max_air as f32).ceil() as i32;
             let full_bubbles = bubble(-2);
             let popping = bubble(0);
-            let delay = if air != 0 && under_water { 1 } else { 0 };
+            let delay = i32::from(air != 0 && under_water);
             let empty_bubbles = 10 - bubble(delay);
             let is_popping = full_bubbles != popping;
             for index in 1..=10 {

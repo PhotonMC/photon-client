@@ -341,12 +341,11 @@ pub(super) fn json_result(request: &Value) -> Result<Value, String> {
             .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16))
             .collect::<Result<_, _>>()
             .map_err(|error| format!("text hex: {error}"))?;
-        let text = match core::str::from_utf8(&bytes) {
-            Ok(text) => text,
-            Err(_) => {
-                out.push(json!({"label": label, "outcome": "rejected"}));
-                continue;
-            }
+        let text = if let Ok(text) = core::str::from_utf8(&bytes) {
+            text
+        } else {
+            out.push(json!({"label": label, "outcome": "rejected"}));
+            continue;
         };
         match photon_core::json::parse(text) {
             Err(_) => out.push(json!({"label": label, "outcome": "rejected"})),

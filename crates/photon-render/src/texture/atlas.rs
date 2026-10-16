@@ -309,11 +309,7 @@ impl Stitcher {
 
 /// Java `smallestFittingMinTexel`: round up to a whole mip-level texel.
 fn smallest_fitting_min_texel(input: i32, max_mip_level: i32) -> i32 {
-    let rounded = if input & ((1 << max_mip_level) - 1) == 0 {
-        0
-    } else {
-        1
-    };
+    let rounded = i32::from(input & ((1 << max_mip_level) - 1) != 0);
     ((input >> max_mip_level) + rounded) << max_mip_level
 }
 

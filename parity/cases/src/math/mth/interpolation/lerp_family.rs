@@ -35,9 +35,9 @@ fn clamped_lerp() -> Vec<Value> {
             ("infinite-range", 0.5, f64::NEG_INFINITY, f64::INFINITY),
             ("nan-min-out-of-range", -0.5, f64::NAN, 2.0),
         ];
-        for (label, factor, minimum, maximum) in mth_clamped_lerp.iter().cloned() {
+        for (label, factor, minimum, maximum) in mth_clamped_lerp.iter().copied() {
             out.push(case(
-                format!("mth/clamped-lerp/{}/{}", width, label),
+                format!("mth/clamped-lerp/{width}/{label}"),
                 "math",
                 "mth_clamped_lerp",
                 json!({
@@ -49,9 +49,9 @@ fn clamped_lerp() -> Vec<Value> {
             ));
         }
     }
-    for (label, value, resolution) in mth_quantize().iter().cloned() {
+    for (label, value, resolution) in mth_quantize().iter().copied() {
         out.push(case(
-            format!("mth/quantize/{}", label),
+            format!("mth/quantize/{label}"),
             "math",
             "mth_quantize",
             json!({"value": f64_bits(value), "resolution": (resolution).to_string()}),
@@ -112,7 +112,7 @@ fn inverse_lerp_cases(width: &str) -> Vec<Value> {
     let mut out = Vec::new();
     for (label, value, minimum, maximum) in inverse_lerp_rows(width) {
         out.push(case(
-            format!("mth/inverse-lerp/{}/{}", width, label),
+            format!("mth/inverse-lerp/{width}/{label}"),
             "math",
             "mth_inverse_lerp",
             json!({
@@ -130,7 +130,7 @@ fn lerp_cases(width: &str) -> Vec<Value> {
     let mut out = Vec::new();
     for (label, alpha, p0, p1) in lerp_rows(width) {
         out.push(case(
-            format!("mth/lerp/{}/{}", width, label),
+            format!("mth/lerp/{width}/{label}"),
             "math",
             "mth_lerp",
             json!({
@@ -156,9 +156,9 @@ fn section_inputs() -> Vec<Value> {
 fn mth() -> Vec<Value> {
     let mut out = Vec::new();
     for (operation, path_name) in [("mth_lerp_int", "lerp-int"), ("mth_lerp_discrete", "lerp-discrete")] {
-        for (label, alpha, p0, p1) in mth_integer_lerp().iter().cloned() {
+        for (label, alpha, p0, p1) in mth_integer_lerp().iter().copied() {
             out.push(case(
-                format!("mth/{}/{}", path_name, label),
+                format!("mth/{path_name}/{label}"),
                 "math",
                 operation,
                 json!({"alpha": f32_bits(alpha), "p0": (p0).to_string(), "p1": (p1).to_string()}),
@@ -168,8 +168,8 @@ fn mth() -> Vec<Value> {
     for (operation, path_name) in
         [("mth_smoothstep", "smoothstep"), ("mth_smoothstep_derivative", "smoothstep-derivative")]
     {
-        for (label, value) in mth_smoothstep().iter().cloned() {
-            out.push(case(format!("mth/{}/{}", path_name, label), "math", operation, json!({"x": f64_bits(value)})));
+        for (label, value) in mth_smoothstep().iter().copied() {
+            out.push(case(format!("mth/{path_name}/{label}"), "math", operation, json!({"x": f64_bits(value)})));
         }
     }
     out
@@ -197,9 +197,9 @@ fn rot_lerp() -> Vec<Value> {
             ("infinite-to", 0.5, 0.0, f64::INFINITY),
             ("nan-to", 0.5, 0.0, f64::NAN),
         ];
-        for (label, alpha, from_value, to_value) in mth_rot_lerp.iter().cloned() {
+        for (label, alpha, from_value, to_value) in mth_rot_lerp.iter().copied() {
             out.push(case(
-                format!("mth/rot-lerp/{}/{}", width, label),
+                format!("mth/rot-lerp/{width}/{label}"),
                 "math",
                 "mth_rot_lerp",
                 json!({
@@ -211,9 +211,9 @@ fn rot_lerp() -> Vec<Value> {
             ));
         }
     }
-    for (label, alpha, from_value, to_value) in mth_rot_lerp_rad().iter().cloned() {
+    for (label, alpha, from_value, to_value) in mth_rot_lerp_rad().iter().copied() {
         out.push(case(
-            format!("mth/rot-lerp-rad/{}", label),
+            format!("mth/rot-lerp-rad/{label}"),
             "math",
             "mth_rot_lerp_rad",
             json!({"alpha": f32_bits(alpha), "from": f32_bits(from_value), "to": f32_bits(to_value)}),
@@ -224,9 +224,9 @@ fn rot_lerp() -> Vec<Value> {
 
 fn triangle_wave() -> Vec<Value> {
     let mut out = Vec::new();
-    for (label, index, period) in mth_triangle_wave().iter().cloned() {
+    for (label, index, period) in mth_triangle_wave().iter().copied() {
         out.push(case(
-            format!("mth/triangle-wave/{}", label),
+            format!("mth/triangle-wave/{label}"),
             "math",
             "mth_triangle_wave",
             json!({"index": f32_bits(index), "period": f32_bits(period)}),
@@ -238,9 +238,9 @@ fn triangle_wave() -> Vec<Value> {
 fn clamped_map_f64() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_clamped_map_f64 = mth_clamped_map_f64_rows();
-    for (label, value, from_min, from_max, to_min, to_max) in mth_clamped_map_f64.iter().cloned() {
+    for (label, value, from_min, from_max, to_min, to_max) in mth_clamped_map_f64.iter().copied() {
         out.push(case(
-            format!("mth/clamped-map-f64/{}", label),
+            format!("mth/clamped-map-f64/{label}"),
             "math",
             "mth_clamped_map_f64",
             json!({
@@ -283,9 +283,9 @@ fn mth_clamped_map_f64_rows() -> Vec<(&'static str, f64, f64, f64, f64, f64)> {
 fn clamped_map_f32() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_clamped_map_f32 = mth_clamped_map_f32_rows();
-    for (label, value, from_min, from_max, to_min, to_max) in mth_clamped_map_f32.iter().cloned() {
+    for (label, value, from_min, from_max, to_min, to_max) in mth_clamped_map_f32.iter().copied() {
         out.push(case(
-            format!("mth/clamped-map-f32/{}", label),
+            format!("mth/clamped-map-f32/{label}"),
             "math",
             "mth_clamped_map_f32",
             json!({
@@ -328,9 +328,9 @@ fn mth_clamped_map_f32_rows() -> Vec<(&'static str, f64, f64, f64, f64, f64)> {
 fn map_f64() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_map_f64 = mth_map_f64_rows();
-    for (label, value, from_min, from_max, to_min, to_max) in mth_map_f64.iter().cloned() {
+    for (label, value, from_min, from_max, to_min, to_max) in mth_map_f64.iter().copied() {
         out.push(case(
-            format!("mth/map-f64/{}", label),
+            format!("mth/map-f64/{label}"),
             "math",
             "mth_map_f64",
             json!({

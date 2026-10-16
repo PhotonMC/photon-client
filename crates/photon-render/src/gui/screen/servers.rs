@@ -313,15 +313,14 @@ impl JoinMultiplayerScreen {
         );
         let status_x = x + ROW_WIDTH - 4 - 10 - 5;
         let ping = self.pings[index].as_ref();
-        let sprite = match ping {
-            Some(view) => view.icon.to_owned(),
-            None => {
-                let mut bars = (frame.millis / 100 + index as u64 * 2) & 7;
-                if bars > 4 {
-                    bars = 8 - bars;
-                }
-                format!("server_list/pinging_{}", bars + 1)
+        let sprite = if let Some(view) = ping {
+            view.icon.to_owned()
+        } else {
+            let mut bars = (frame.millis / 100 + index as u64 * 2) & 7;
+            if bars > 4 {
+                bars = 8 - bars;
             }
+            format!("server_list/pinging_{}", bars + 1)
         };
         if let Some(view) = ping {
             for (line, text) in (0..).zip(&view.motd) {

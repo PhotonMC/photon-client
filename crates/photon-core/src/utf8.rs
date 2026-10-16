@@ -91,13 +91,13 @@ fn decode_java_utf8(bytes: &[u8]) -> Vec<u16> {
                 i = bytes.len();
             } else {
                 let b1 = bytes[i + 1];
-                if !is_continuation(b1) {
-                    out.push(0xFFFD);
-                    i += 1;
-                } else {
+                if is_continuation(b1) {
                     let code = (u16::from(b0 & 0x1F) << 6) | u16::from(b1 & 0x3F);
                     out.push(code);
                     i += 2;
+                } else {
+                    out.push(0xFFFD);
+                    i += 1;
                 }
             }
         } else if (0xE0..=0xEF).contains(&b0) {
@@ -115,10 +115,7 @@ fn decode_java_utf8(bytes: &[u8]) -> Vec<u16> {
                     i = bytes.len();
                 } else {
                     let b2 = bytes[i + 2];
-                    if !is_continuation(b2) {
-                        out.push(0xFFFD);
-                        i += 2;
-                    } else {
+                    if is_continuation(b2) {
                         let code = (u16::from(b0 & 0x0F) << 12)
                             | (u16::from(b1 & 0x3F) << 6)
                             | u16::from(b2 & 0x3F);
@@ -128,6 +125,9 @@ fn decode_java_utf8(bytes: &[u8]) -> Vec<u16> {
                             out.push(code);
                         }
                         i += 3;
+                    } else {
+                        out.push(0xFFFD);
+                        i += 2;
                     }
                 }
             }
@@ -156,10 +156,7 @@ fn decode_java_utf8(bytes: &[u8]) -> Vec<u16> {
                         i = bytes.len();
                     } else {
                         let b3 = bytes[i + 3];
-                        if !is_continuation(b3) {
-                            out.push(0xFFFD);
-                            i += 3;
-                        } else {
+                        if is_continuation(b3) {
                             let code = (u32::from(b0 & 0x07) << 18)
                                 | (u32::from(b1 & 0x3F) << 12)
                                 | (u32::from(b2 & 0x3F) << 6)
@@ -171,6 +168,9 @@ fn decode_java_utf8(bytes: &[u8]) -> Vec<u16> {
                             out.push(0xD800 | ((code >> 10) as u16));
                             out.push(0xDC00 | ((code & 0x3FF) as u16));
                             i += 4;
+                        } else {
+                            out.push(0xFFFD);
+                            i += 3;
                         }
                     }
                 }
@@ -215,7 +215,20 @@ fn encode_netty_utf8(value: &[u16]) -> Vec<u8> {
                     break;
                 }
                 let next = value[i];
-                if !is_low_surrogate(next) {
+                if is_low_surrogate(next) {
+                    let high = u32::from(unit - 0xD800);
+                    let low = u32::from(next - 0xDC00);
+                    let code = 0x10000 + (high << 10) + low;
+                    // Valid surrogate pairs always form a supplementary scalar.
+                    if let Some(ch) = char::from_u32(code) {
+                        let mut buf = [0; 4];
+                        out.extend_from_slice(ch.encode_utf8(&mut buf).as_bytes());
+                    } else {
+                        out.push(b'?');
+                        out.push(b'?');
+                    }
+                    i += 1;
+                } else {
                     out.push(b'?');
                     if is_high_surrogate(next) {
                         out.push(b'?');
@@ -224,22 +237,6 @@ fn encode_netty_utf8(value: &[u16]) -> Vec<u8> {
                         // unpaired high surrogate is emitted as a single raw
                         // byte, not re-encoded as UTF-8.
                         out.push((next & 0xFF) as u8);
-                    }
-                    i += 1;
-                } else {
-                    let high = u32::from(unit - 0xD800);
-                    let low = u32::from(next - 0xDC00);
-                    let code = 0x10000 + (high << 10) + low;
-                    // Valid surrogate pairs always form a supplementary scalar.
-                    match char::from_u32(code) {
-                        Some(ch) => {
-                            let mut buf = [0; 4];
-                            out.extend_from_slice(ch.encode_utf8(&mut buf).as_bytes());
-                        }
-                        None => {
-                            out.push(b'?');
-                            out.push(b'?');
-                        }
                     }
                     i += 1;
                 }

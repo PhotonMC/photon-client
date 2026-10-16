@@ -23,10 +23,8 @@ pub(crate) fn java_double_compare(left: f64, right: f64) -> i32 {
         let right_bits = java_double_to_long_bits(right) as i64;
         if left_bits < right_bits {
             -1
-        } else if left_bits > right_bits {
-            1
         } else {
-            0
+            i32::from(left_bits > right_bits)
         }
     }
 }

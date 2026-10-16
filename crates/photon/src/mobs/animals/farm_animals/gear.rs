@@ -104,7 +104,7 @@ pub(super) fn layers(
             };
             let has_chest = !baby && entity.horse_has_chest();
             let pose = |model: &mut _| {
-                photon_render::entity::mob_model::MobModel::setup_llama(model, &look, has_chest)
+                photon_render::entity::mob_model::MobModel::setup_llama(model, &look, has_chest);
             };
             let carpet = entity
                 .equipment(EquipmentSlot::Body)

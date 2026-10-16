@@ -39,9 +39,9 @@ fn geometry_helpers() -> Vec<Value> {
         ("counterclockwise", geometry_helpers_counterclockwise()),
         ("overflow", geometry_helpers_overflow()),
     ];
-    for (label, values) in blockpos_geometry_helpers.iter() {
+    for (label, values) in &blockpos_geometry_helpers {
         out.push(case(
-            format!("blockpos/geometry-helpers/{}", label),
+            format!("blockpos/geometry-helpers/{label}"),
             "math",
             "blockpos_geometry_helpers",
             values.clone(),
@@ -98,9 +98,9 @@ fn distance_helpers() -> Vec<Value> {
         ("integer-boundaries", distance_helpers_integer_boundaries()),
         ("special-point", distance_helpers_special_point()),
     ];
-    for (label, values) in blockpos_distance_helpers.iter() {
+    for (label, values) in &blockpos_distance_helpers {
         out.push(case(
-            format!("blockpos/distance-helpers/{}", label),
+            format!("blockpos/distance-helpers/{label}"),
             "math",
             "blockpos_distance_helpers",
             values.clone(),
@@ -113,13 +113,8 @@ fn distance_helpers() -> Vec<Value> {
         ("min-abs-edge", distance_helpers_min_abs_edge()),
         ("integer-boundaries", distance_helpers_integer_boundaries_x()),
     ];
-    for (label, values) in blockpos_integer_helpers.iter() {
-        out.push(case(
-            format!("blockpos/integer-helpers/{}", label),
-            "math",
-            "blockpos_integer_helpers",
-            values.clone(),
-        ));
+    for (label, values) in &blockpos_integer_helpers {
+        out.push(case(format!("blockpos/integer-helpers/{label}"), "math", "blockpos_integer_helpers", values.clone()));
     }
     out
 }
@@ -222,8 +217,8 @@ fn clamp_location() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_clamp_location.iter() {
-        out.push(case(format!("blockpos/clamp-location/{}", label), "math", "blockpos_clamp_location", values.clone()));
+    for (label, values) in &blockpos_clamp_location {
+        out.push(case(format!("blockpos/clamp-location/{label}"), "math", "blockpos_clamp_location", values.clone()));
     }
     out
 }
@@ -276,9 +271,9 @@ fn coordinate_helpers() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_coordinate_helpers.iter() {
+    for (label, values) in &blockpos_coordinate_helpers {
         out.push(case(
-            format!("blockpos/coordinate-helpers/{}", label),
+            format!("blockpos/coordinate-helpers/{label}"),
             "math",
             "blockpos_coordinate_helpers",
             values.clone(),

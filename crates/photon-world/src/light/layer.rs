@@ -136,15 +136,12 @@ impl DataLayer {
 
 impl Arena {
     pub(super) fn alloc(&mut self, layer: DataLayer) -> LayerId {
-        match self.free.pop() {
-            Some(id) => {
-                self.layers[id as usize] = Some((layer, 0));
-                id
-            }
-            None => {
-                self.layers.push(Some((layer, 0)));
-                (self.layers.len() - 1) as LayerId
-            }
+        if let Some(id) = self.free.pop() {
+            self.layers[id as usize] = Some((layer, 0));
+            id
+        } else {
+            self.layers.push(Some((layer, 0)));
+            (self.layers.len() - 1) as LayerId
         }
     }
 

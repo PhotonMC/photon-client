@@ -38,8 +38,8 @@ fn offset() -> Vec<Value> {
         ("i32-wrap", offset_i32_wrap()),
         ("arbitrary-zero", offset_arbitrary_zero()),
     ];
-    for (label, values) in sectionpos_offset.iter() {
-        out.push(case(format!("sectionpos/offset/{}", label), "math", "sectionpos_offset", values.clone()));
+    for (label, values) in &sectionpos_offset {
+        out.push(case(format!("sectionpos/offset/{label}"), "math", "sectionpos_offset", values.clone()));
     }
     out
 }
@@ -109,21 +109,16 @@ fn ranges() -> Vec<Value> {
         ),
         ("around-chunk", ranges_around_chunk()),
     ];
-    for (label, values) in sectionpos_ranges.iter() {
-        out.push(case(format!("sectionpos/ranges/{}", label), "math", "sectionpos_ranges", values.clone()));
+    for (label, values) in &sectionpos_ranges {
+        out.push(case(format!("sectionpos/ranges/{label}"), "math", "sectionpos_ranges", values.clone()));
     }
     let sectionpos_blocks_inside = [
         ("origin", json!({"x": "0", "y": "0", "z": "0"})),
         ("negative", json!({"x": "-1", "y": "-2", "z": "-3"})),
         ("coordinate-boundaries", json!({"x": "134217727", "y": "-134217728", "z": "134217727"})),
     ];
-    for (label, values) in sectionpos_blocks_inside.iter() {
-        out.push(case(
-            format!("sectionpos/blocks-inside/{}", label),
-            "math",
-            "sectionpos_blocks_inside",
-            values.clone(),
-        ));
+    for (label, values) in &sectionpos_blocks_inside {
+        out.push(case(format!("sectionpos/blocks-inside/{label}"), "math", "sectionpos_blocks_inside", values.clone()));
     }
     let sectionpos_around_and_at = [
         ("coordinates-interior", json!({"mode": "coordinates", "x": "1", "y": "2", "z": "3"})),
@@ -133,9 +128,9 @@ fn ranges() -> Vec<Value> {
         ("packed-overload", json!({"mode": "packed", "block_node": "ffffffffffffffff"})),
         ("coordinate-overflow", json!({"mode": "coordinates", "x": "2147483647", "y": "1", "z": "1"})),
     ];
-    for (label, values) in sectionpos_around_and_at.iter() {
+    for (label, values) in &sectionpos_around_and_at {
         out.push(case(
-            format!("sectionpos/around-and-at/{}", label),
+            format!("sectionpos/around-and-at/{label}"),
             "math",
             "sectionpos_around_and_at_block_pos",
             values.clone(),
@@ -201,9 +196,9 @@ fn double_coordinates() -> Vec<Value> {
         ("block-negative-boundary", json!({"fn": "block_to_section", "value": "c030000000000001"})),
         ("block-nan", json!({"fn": "block_to_section", "value": "7ff8000000000001"})),
     ];
-    for (label, values) in sectionpos_double_coordinates.iter() {
+    for (label, values) in &sectionpos_double_coordinates {
         out.push(case(
-            format!("sectionpos/double-coordinates/{}", label),
+            format!("sectionpos/double-coordinates/{label}"),
             "math",
             "sectionpos_double_coordinates",
             values.clone(),
@@ -223,8 +218,8 @@ fn double_coordinates() -> Vec<Value> {
             json!({"mode": "position", "x": "7fefffffffffffff", "y": "7ff8000000000001", "z": "fff0000000000000"}),
         ),
     ];
-    for (label, values) in sectionpos_of_overloads.iter() {
-        out.push(case(format!("sectionpos/of-overloads/{}", label), "math", "sectionpos_of_overloads", values.clone()));
+    for (label, values) in &sectionpos_of_overloads {
+        out.push(case(format!("sectionpos/of-overloads/{label}"), "math", "sectionpos_of_overloads", values.clone()));
     }
     let relative = [
         ("origin", (0, 0, 0)),

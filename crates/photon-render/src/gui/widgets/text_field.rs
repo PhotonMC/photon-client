@@ -142,9 +142,7 @@ impl TextField {
         if message.is_empty() {
             return;
         }
-        let updated = if self.selection != self.cursor {
-            self.delete_selection(&message)
-        } else {
+        let updated = if self.selection == self.cursor {
             let other = self.cursor.saturating_add_signed(count).min(message.len());
             let (start, end) = (other.min(self.cursor), other.max(self.cursor));
             let mut out = message[..start].to_vec();
@@ -154,6 +152,8 @@ impl TextField {
                 self.selection = start;
             }
             out
+        } else {
+            self.delete_selection(&message)
         };
         *text = updated.into_iter().collect();
     }

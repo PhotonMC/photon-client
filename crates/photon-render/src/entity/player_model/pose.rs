@@ -184,15 +184,15 @@ pub(super) fn pose_arms(root: &mut Part, state: &PlayerRenderState) {
         } else {
             state.right_arm_pose.is_two_handed()
         };
-        if right_handed != two_handed_offhand {
-            pose_arm(root, state, Arm::Left);
-            if !state.left_arm_pose.affects_offhand_pose() {
-                pose_arm(root, state, Arm::Right);
-            }
-        } else {
+        if right_handed == two_handed_offhand {
             pose_arm(root, state, Arm::Right);
             if !state.right_arm_pose.affects_offhand_pose() {
                 pose_arm(root, state, Arm::Left);
+            }
+        } else {
+            pose_arm(root, state, Arm::Left);
+            if !state.left_arm_pose.affects_offhand_pose() {
+                pose_arm(root, state, Arm::Right);
             }
         }
     }

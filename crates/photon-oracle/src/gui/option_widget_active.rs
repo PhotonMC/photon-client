@@ -137,7 +137,7 @@ impl OptionWidget {
                 (Self::Fov(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
                 (Self::Unit(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
                 (Self::Boolean(button), Some(SliderKey::Select)) => {
-                    ignore(button.selected(lang, shift))
+                    ignore(button.selected(lang, shift));
                 }
                 (Self::Visibility(button), Some(SliderKey::Select)) => {
                     ignore(button.selected(lang, shift));

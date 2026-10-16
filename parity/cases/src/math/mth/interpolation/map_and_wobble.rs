@@ -14,9 +14,9 @@ const MIN_SUBNORMAL_F64: f64 = 5e-324;
 fn map_f32() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_map_f32 = mth_map_f32_rows();
-    for (label, value, from_min, from_max, to_min, to_max) in mth_map_f32.iter().cloned() {
+    for (label, value, from_min, from_max, to_min, to_max) in mth_map_f32.iter().copied() {
         out.push(case(
-            format!("mth/map-f32/{}", label),
+            format!("mth/map-f32/{label}"),
             "math",
             "mth_map_f32",
             json!({
@@ -29,8 +29,8 @@ fn map_f32() -> Vec<Value> {
         ));
     }
     let wobble_coords = wobble_coords_rows();
-    for (label, coord) in wobble_coords.iter() {
-        out.push(case(format!("mth/wobble-f64/{}", label), "math", "mth_wobble_f64", json!({"coord": coord.clone()})));
+    for (label, coord) in &wobble_coords {
+        out.push(case(format!("mth/wobble-f64/{label}"), "math", "mth_wobble_f64", json!({"coord": coord.clone()})));
     }
     out
 }
@@ -90,7 +90,7 @@ fn lerp2() -> Vec<Value> {
     let mth_lerp2 = mth_lerp2_rows();
     for (label, alpha1, alpha2, x00, x10, x01, x11) in mth_lerp2.iter().cloned() {
         out.push(case(
-            format!("mth/interpolation/lerp2/{}", label),
+            format!("mth/interpolation/lerp2/{label}"),
             "math",
             "mth_interpolation",
             json!({

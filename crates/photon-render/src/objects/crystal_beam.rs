@@ -101,7 +101,7 @@ pub fn crystal_beam_triangles(
     light: [f32; 2],
 ) -> Vec<Vertex> {
     let mut triangles = Vec::new();
-    for quad in beam.vertices.as_chunks::<4>().0.iter() {
+    for quad in beam.vertices.as_chunks::<4>().0 {
         for corners in repeats(quad) {
             for index in [0, 1, 2, 0, 2, 3] {
                 let (position, coordinate, grey) = corners[index];

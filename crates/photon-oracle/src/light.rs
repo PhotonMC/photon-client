@@ -357,7 +357,7 @@ pub(super) fn client_world_light_result(request: &Value) -> Result<Value, String
                         .iter()
                         .zip(&biome_sections)
                         .map(|(blocks, biomes)| SectionInput {
-                            non_empty_block_count: if blocks[0] == 0 { 0 } else { 1 },
+                            non_empty_block_count: i16::from(blocks[0] != 0),
                             fluid_count: 0,
                             block_states: blocks,
                             biomes,

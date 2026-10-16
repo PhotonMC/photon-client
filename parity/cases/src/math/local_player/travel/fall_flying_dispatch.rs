@@ -47,7 +47,7 @@ fn update_fall_flying_movement() -> Vec<Value> {
         "gravity": f64_bits(0.08),
     });
     let mut local_player_update_fall_flying_inputs = vec![];
-    for values in local_player_update_fall_flying_cases.iter() {
+    for values in &local_player_update_fall_flying_cases {
         let input_values = merged(vec![local_player_update_fall_flying_defaults.clone(), values.clone()]);
         local_player_update_fall_flying_inputs.push(input_values.clone());
     }
@@ -90,7 +90,7 @@ fn travel_dispatch() -> Vec<Value> {
     ];
     let local_player_travel_dispatch_defaults = travel_dispatch_input();
     let mut local_player_travel_dispatch_inputs = vec![];
-    for values in local_player_travel_dispatch_cases.iter() {
+    for values in &local_player_travel_dispatch_cases {
         let input_values = merged(vec![local_player_travel_dispatch_defaults.clone(), values.clone()]);
         local_player_travel_dispatch_inputs.push(input_values.clone());
     }

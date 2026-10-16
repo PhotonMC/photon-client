@@ -99,16 +99,15 @@ impl PalettedStates {
     /// Put a state at a position; the state it replaced.
     pub(crate) fn set(&mut self, position: usize, state: BlockStateId) -> Option<BlockStateId> {
         let previous = self.get(position)?;
-        let index = match self.palette.iter().position(|known| *known == state.0) {
-            Some(index) => index,
-            None => {
-                self.palette.push(state.0);
-                let needed = Self::bits_for(self.palette.len());
-                if needed != self.bits {
-                    self.resize(needed);
-                }
-                self.palette.len() - 1
+        let index = if let Some(index) = self.palette.iter().position(|known| *known == state.0) {
+            index
+        } else {
+            self.palette.push(state.0);
+            let needed = Self::bits_for(self.palette.len());
+            if needed != self.bits {
+                self.resize(needed);
             }
+            self.palette.len() - 1
         };
         self.store(position, index);
         Some(previous)

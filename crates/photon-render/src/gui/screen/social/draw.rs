@@ -82,17 +82,15 @@ impl SocialInteractionsScreen {
                 true,
             );
         }
-        if !self.entries.is_empty() {
-            self.draw_list(frame, atlas, font, mouse);
-        } else {
-            let empty = if !self.search.is_empty() {
-                Some(&self.empty[0])
-            } else {
+        if self.entries.is_empty() {
+            let empty = if self.search.is_empty() {
                 match self.page {
                     Page::All => None,
                     Page::Hidden => Some(&self.empty[1]),
                     Page::Blocked => Some(&self.empty[2]),
                 }
+            } else {
+                Some(&self.empty[0])
             };
             if let Some(text) = empty {
                 let x = width / 2 - font.width_of_runs(text) / 2;
@@ -106,6 +104,8 @@ impl SocialInteractionsScreen {
                     true,
                 );
             }
+        } else {
+            self.draw_list(frame, atlas, font, mouse);
         }
         self.hint_visible.set(self.page == Page::Blocked);
     }

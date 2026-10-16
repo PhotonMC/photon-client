@@ -35,7 +35,7 @@ fn coordinate_conversions() -> Vec<Value> {
     for fn_ in ["block_to_section", "section_to_block", "section_relative"] {
         for value in COORDINATES {
             out.push(case(
-                format!("coord/{}/{}", fn_, value),
+                format!("coord/{fn_}/{value}"),
                 "math",
                 "coord",
                 json!({"fn": fn_, "value": value.to_string()}),

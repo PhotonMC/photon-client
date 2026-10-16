@@ -165,7 +165,7 @@ pub fn mth_lerp_int(alpha: f32, start: i32, end: i32) -> i32 {
 pub fn mth_lerp_discrete(alpha: f32, start: i32, end: i32) -> i32 {
     let delta = end.wrapping_sub(start);
     let offset = floor_f32(alpha * delta.wrapping_sub(1) as f32);
-    let positive_alpha = if alpha > 0.0 { 1 } else { 0 };
+    let positive_alpha = i32::from(alpha > 0.0);
     start.wrapping_add(offset).wrapping_add(positive_alpha)
 }
 

@@ -96,7 +96,7 @@ impl Validation {
         // SAFETY: the messenger is owned by `self`, consumed here, so it is destroyed once.
         unsafe {
             self.loader
-                .destroy_debug_utils_messenger(self.messenger, None)
+                .destroy_debug_utils_messenger(self.messenger, None);
         };
     }
 }

@@ -273,29 +273,28 @@ pub(super) fn atlas_result(request: &Value) -> Result<Value, String> {
             });
         }
         let label = string(row, "label")?;
-        match stitcher.stitch() {
-            Err(_) => out.push(json!({"label": label, "outcome": "stitch_failed"})),
-            Ok(()) => {
-                let placements: Vec<Value> = stitcher
-                    .placements()
-                    .into_iter()
-                    .map(|placement| {
-                        json!({
-                            "name": placement.name.as_string(),
-                            "x": placement.x,
-                            "y": placement.y,
-                            "padding": placement.padding,
-                        })
+        if stitcher.stitch().is_err() {
+            out.push(json!({"label": label, "outcome": "stitch_failed"}));
+        } else {
+            let placements: Vec<Value> = stitcher
+                .placements()
+                .into_iter()
+                .map(|placement| {
+                    json!({
+                        "name": placement.name.as_string(),
+                        "x": placement.x,
+                        "y": placement.y,
+                        "padding": placement.padding,
                     })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "stitched",
-                    "width": stitcher.width(),
-                    "height": stitcher.height(),
-                    "placements": placements,
-                }));
-            }
+                })
+                .collect();
+            out.push(json!({
+                "label": label,
+                "outcome": "stitched",
+                "width": stitcher.width(),
+                "height": stitcher.height(),
+                "placements": placements,
+            }));
         }
     }
     Ok(json!({"rows": out}))

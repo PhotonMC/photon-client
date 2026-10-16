@@ -400,32 +400,29 @@ impl EditBox {
         // `applyFormat`: the parts, drawn one after another; their width.
         let draw_text =
             |frame: &mut GuiFrame, text: &str, offset: usize, x: i32, colour: u32| -> i32 {
-                match formatter.and_then(|format| format(text, offset)) {
-                    Some(parts) => {
-                        let mut at = x;
-                        for (part, rgb, italic) in parts {
-                            if italic {
-                                let runs = [photon_game::text::Run {
-                                    text: part,
-                                    style: photon_game::text::Style {
-                                        colour: Some(rgb),
-                                        italic: Some(true),
-                                        ..photon_game::text::Style::default()
-                                    },
-                                }];
-                                frame.styled_text(atlas, font, &runs, at, text_y, colour, shadow);
-                                at += font.width_of_runs(&runs);
-                            } else {
-                                plain(frame, &part, at, 0xFF00_0000 | rgb);
-                                at += font.width(&part);
-                            }
+                if let Some(parts) = formatter.and_then(|format| format(text, offset)) {
+                    let mut at = x;
+                    for (part, rgb, italic) in parts {
+                        if italic {
+                            let runs = [photon_game::text::Run {
+                                text: part,
+                                style: photon_game::text::Style {
+                                    colour: Some(rgb),
+                                    italic: Some(true),
+                                    ..photon_game::text::Style::default()
+                                },
+                            }];
+                            frame.styled_text(atlas, font, &runs, at, text_y, colour, shadow);
+                            at += font.width_of_runs(&runs);
+                        } else {
+                            plain(frame, &part, at, 0xFF00_0000 | rgb);
+                            at += font.width(&part);
                         }
-                        at - x
                     }
-                    None => {
-                        plain(frame, text, x, colour);
-                        font.width(text)
-                    }
+                    at - x
+                } else {
+                    plain(frame, text, x, colour);
+                    font.width(text)
                 }
             };
         let shown = self.shown(font);

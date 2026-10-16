@@ -34,9 +34,9 @@ fn tick() -> Vec<Value> {
         "shift": false,
         "sprint": false,
     });
-    for (label, values) in keyboard_inputs.iter() {
+    for (label, values) in &keyboard_inputs {
         let keys = merged(vec![keyboard_defaults.clone(), values.clone()]);
-        out.push(case(format!("keyboard-input/tick/{}", label), "math", "keyboard_input", keys.clone()));
+        out.push(case(format!("keyboard-input/tick/{label}"), "math", "keyboard_input", keys.clone()));
     }
     out
 }

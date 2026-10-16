@@ -426,7 +426,9 @@ pub(super) fn fluid_falling_adjusted_movement(
     is_falling: bool,
     movement: Vec3,
 ) -> Vec3 {
-    if base_gravity != 0.0 {
+    if base_gravity == 0.0 {
+        movement
+    } else {
         let y = if is_falling
             && (movement.y - 0.005).abs() >= 0.003
             && (movement.y - base_gravity / 16.0).abs() < 0.003
@@ -436,8 +438,6 @@ pub(super) fn fluid_falling_adjusted_movement(
             movement.y - base_gravity / 16.0
         };
         Vec3::new(movement.x, y, movement.z)
-    } else {
-        movement
     }
 }
 

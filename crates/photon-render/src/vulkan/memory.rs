@@ -205,21 +205,17 @@ impl VulkanBackend {
                     .position(|&(_, length)| length >= size)
                     .map(|range| (block, range))
             });
-            let (block, range) = match found {
-                Some(found) => found,
-                None => {
-                    let block = self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?;
-                    let given_back = self.arena.iter().position(Option::is_none);
-                    match given_back {
-                        Some(slot) => {
-                            self.arena[slot] = Some(block);
-                            (slot, 0)
-                        }
-                        None => {
-                            self.arena.push(Some(block));
-                            (self.arena.len() - 1, 0)
-                        }
-                    }
+            let (block, range) = if let Some(found) = found {
+                found
+            } else {
+                let block = self.create_arena_block(size.max(ARENA_BLOCK_SIZE))?;
+                let given_back = self.arena.iter().position(Option::is_none);
+                if let Some(slot) = given_back {
+                    self.arena[slot] = Some(block);
+                    (slot, 0)
+                } else {
+                    self.arena.push(Some(block));
+                    (self.arena.len() - 1, 0)
                 }
             };
             let arena = self.arena[block].as_mut().expect("found or made above");
@@ -234,48 +230,43 @@ impl VulkanBackend {
                 offset,
                 size,
             };
-            let chunk = match self.staging_filling.iter().copied().find(|&chunk| {
+            let chunk = if let Some(chunk) = self.staging_filling.iter().copied().find(|&chunk| {
                 let held = self.staging[chunk]
                     .as_ref()
                     .expect("filling chunks are live");
                 held.size - held.used >= size
             }) {
-                Some(chunk) => chunk,
-                None => {
-                    let free = (0..self.staging.len()).find(|chunk| {
-                        !self.staging_filling.contains(chunk)
-                            && !self
-                                .staging_in_flight
-                                .iter()
-                                .any(|&(_, busy)| busy == *chunk)
-                            && self.staging[*chunk]
-                                .as_ref()
-                                .is_some_and(|held| held.size >= size)
-                    });
-                    let chunk = match free {
-                        Some(chunk) => chunk,
-                        None => {
-                            let made = self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?;
-                            let given_back = self.staging.iter().position(Option::is_none);
-                            match given_back {
-                                Some(slot) => {
-                                    self.staging[slot] = Some(made);
-                                    slot
-                                }
-                                None => {
-                                    self.staging.push(Some(made));
-                                    self.staging.len() - 1
-                                }
-                            }
-                        }
-                    };
-                    self.staging[chunk]
-                        .as_mut()
-                        .expect("chosen or made above")
-                        .used = 0;
-                    self.staging_filling.push(chunk);
+                chunk
+            } else {
+                let free = (0..self.staging.len()).find(|chunk| {
+                    !self.staging_filling.contains(chunk)
+                        && !self
+                            .staging_in_flight
+                            .iter()
+                            .any(|&(_, busy)| busy == *chunk)
+                        && self.staging[*chunk]
+                            .as_ref()
+                            .is_some_and(|held| held.size >= size)
+                });
+                let chunk = if let Some(chunk) = free {
                     chunk
-                }
+                } else {
+                    let made = self.create_staging_chunk(size.max(STAGING_CHUNK_SIZE))?;
+                    let given_back = self.staging.iter().position(Option::is_none);
+                    if let Some(slot) = given_back {
+                        self.staging[slot] = Some(made);
+                        slot
+                    } else {
+                        self.staging.push(Some(made));
+                        self.staging.len() - 1
+                    }
+                };
+                self.staging[chunk]
+                    .as_mut()
+                    .expect("chosen or made above")
+                    .used = 0;
+                self.staging_filling.push(chunk);
+                chunk
             };
             let staging = self.staging[chunk].as_mut().expect("chosen or made above");
             let source = staging.used;

@@ -187,10 +187,10 @@ impl MobModel {
                 head.z_rot = 0.35 * sin(0.6 * age);
             });
             set(self, "right_front_leg", &|leg| {
-                leg.x_rot = -0.75 * sin(0.3 * age)
+                leg.x_rot = -0.75 * sin(0.3 * age);
             });
             set(self, "left_front_leg", &|leg| {
-                leg.x_rot = 0.75 * sin(0.3 * age)
+                leg.x_rot = 0.75 * sin(0.3 * age);
             });
         } else {
             set(self, "head", &|head| head.z_rot = 0.0);
@@ -233,37 +233,37 @@ impl MobModel {
         if state.lie_on_back_amount > 0.0 {
             let amount = state.lie_on_back_amount;
             set(self, "right_hind_leg", &|leg| {
-                leg.x_rot = -0.6 * sin(age * 0.15)
+                leg.x_rot = -0.6 * sin(age * 0.15);
             });
             set(self, "left_hind_leg", &|leg| {
-                leg.x_rot = 0.6 * sin(age * 0.15)
+                leg.x_rot = 0.6 * sin(age * 0.15);
             });
             set(self, "right_front_leg", &|leg| {
-                leg.x_rot = 0.3 * sin(age * 0.25)
+                leg.x_rot = 0.3 * sin(age * 0.25);
             });
             set(self, "left_front_leg", &|leg| {
-                leg.x_rot = -0.3 * sin(age * 0.25)
+                leg.x_rot = -0.3 * sin(age * 0.25);
             });
             set(self, "head", &|head| {
-                head.x_rot = rot_lerp_rad(amount, head.x_rot, pi / 2.0)
+                head.x_rot = rot_lerp_rad(amount, head.x_rot, pi / 2.0);
             });
         }
         if state.roll_amount > 0.0 {
             let amount = state.roll_amount;
             set(self, "head", &|head| {
-                head.x_rot = rot_lerp_rad(amount, head.x_rot, 2.056_194_5)
+                head.x_rot = rot_lerp_rad(amount, head.x_rot, 2.056_194_5);
             });
             set(self, "right_hind_leg", &|leg| {
-                leg.x_rot = -0.5 * sin(age * 0.5)
+                leg.x_rot = -0.5 * sin(age * 0.5);
             });
             set(self, "left_hind_leg", &|leg| {
-                leg.x_rot = 0.5 * sin(age * 0.5)
+                leg.x_rot = 0.5 * sin(age * 0.5);
             });
             set(self, "right_front_leg", &|leg| {
-                leg.x_rot = 0.5 * sin(age * 0.5)
+                leg.x_rot = 0.5 * sin(age * 0.5);
             });
             set(self, "left_front_leg", &|leg| {
-                leg.x_rot = -0.5 * sin(age * 0.5)
+                leg.x_rot = -0.5 * sin(age * 0.5);
             });
         }
     }
@@ -299,7 +299,7 @@ impl MobModel {
                 body.x_rot = rot_lerp_rad(amount, body.x_rot, 1.740_796_3);
             });
             set(self, "head", &|head| {
-                head.x_rot = rot_lerp_rad(amount, head.x_rot, pi / 2.0)
+                head.x_rot = rot_lerp_rad(amount, head.x_rot, pi / 2.0);
             });
         }
         set(self, "right_front_leg", &|leg| leg.z_rot = -0.270_796_42);

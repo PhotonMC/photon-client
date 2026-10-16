@@ -151,7 +151,7 @@ pub(super) fn model_rotation_result(request: &Value) -> Result<Value, String> {
         let to = read("to")?;
         let mut origin = read("origin")?;
         // The deserializer scales the origin into block units before use.
-        for axis in origin.iter_mut() {
+        for axis in &mut origin {
             *axis *= 0.0625;
         }
         let angle = f32::from_bits(
@@ -246,24 +246,23 @@ pub(super) fn model_winding_result(request: &Value) -> Result<Value, String> {
             Some(direction) => {
                 entry.insert("direction".into(), json!(direction_name(direction)));
                 let mut payloads = [10_u64, 20, 30, 40];
-                match photon_render::recalculate_winding(&mut positions, &mut payloads, direction) {
-                    Err(_) => {
-                        entry.insert("winding".into(), json!("no_matching_vertex"));
-                    }
-                    Ok(()) => {
-                        let wound: Vec<Value> = positions
-                            .iter()
-                            .map(|vertex| {
-                                json!({
-                                    "x": format!("{:08x}", vertex[0].to_bits()),
-                                    "y": format!("{:08x}", vertex[1].to_bits()),
-                                    "z": format!("{:08x}", vertex[2].to_bits()),
-                                })
+                if photon_render::recalculate_winding(&mut positions, &mut payloads, direction)
+                    .is_err()
+                {
+                    entry.insert("winding".into(), json!("no_matching_vertex"));
+                } else {
+                    let wound: Vec<Value> = positions
+                        .iter()
+                        .map(|vertex| {
+                            json!({
+                                "x": format!("{:08x}", vertex[0].to_bits()),
+                                "y": format!("{:08x}", vertex[1].to_bits()),
+                                "z": format!("{:08x}", vertex[2].to_bits()),
                             })
-                            .collect();
-                        entry.insert("wound".into(), json!(wound));
-                        entry.insert("uv_order".into(), json!(payloads.to_vec()));
-                    }
+                        })
+                        .collect();
+                    entry.insert("wound".into(), json!(wound));
+                    entry.insert("uv_order".into(), json!(payloads.to_vec()));
                 }
             }
         }

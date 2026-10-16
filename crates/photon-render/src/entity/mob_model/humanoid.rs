@@ -221,7 +221,7 @@ impl MobModel {
                     self.root.child(arm).x_rot = -1.8;
                 }
                 PiglinArmPose::CrossbowHold => {
-                    crate::entity::player_model::animate_crossbow_hold(&mut self.root, main_right)
+                    crate::entity::player_model::animate_crossbow_hold(&mut self.root, main_right);
                 }
                 PiglinArmPose::CrossbowCharge => {
                     crate::entity::player_model::animate_crossbow_charge(
@@ -231,7 +231,7 @@ impl MobModel {
                             humanoid.ticks_using_item,
                         ),
                         main_right,
-                    )
+                    );
                 }
                 PiglinArmPose::AdmiringItem => {
                     let head = self.root.child("head");

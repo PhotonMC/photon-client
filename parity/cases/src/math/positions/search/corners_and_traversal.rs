@@ -29,9 +29,9 @@ fn between_corners_direction() -> Vec<Value> {
         ("nan-direction", between_corners_direction_nan_direction()),
         ("integer-boundary-overflow", between_corners_direction_integer_boundary()),
     ];
-    for (label, values) in blockpos_between_corners_direction.iter() {
+    for (label, values) in &blockpos_between_corners_direction {
         out.push(case(
-            format!("blockpos/between-corners-direction/{}", label),
+            format!("blockpos/between-corners-direction/{label}"),
             "math",
             "blockpos_between_corners_direction",
             values.clone(),
@@ -136,9 +136,9 @@ fn breadth_first_traversal() -> Vec<Value> {
         ("depth-limit", breadth_first_traversal_depth_limit()),
         ("packed-visited", breadth_first_traversal_packed_visited()),
     ];
-    for (label, values) in blockpos_breadth_first_traversal.iter() {
+    for (label, values) in &blockpos_breadth_first_traversal {
         out.push(case(
-            format!("blockpos/breadth-first-traversal/{}", label),
+            format!("blockpos/breadth-first-traversal/{label}"),
             "math",
             "blockpos_breadth_first_traversal",
             values.clone(),

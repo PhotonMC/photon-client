@@ -252,7 +252,7 @@ pub(super) fn parse_rotation(
         .ok_or_else(|| reject("rotation must be an object"))?;
     let mut origin = parse_vector(block, "origin")?;
     // Written in sixteenths, used in block units.
-    for axis in origin.iter_mut() {
+    for axis in &mut origin {
         *axis *= 0.0625;
     }
     let rescale = if block.has("rescale") {

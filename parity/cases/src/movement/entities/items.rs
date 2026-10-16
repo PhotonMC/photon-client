@@ -30,7 +30,7 @@ fn item_2() -> Vec<Value> {
     [20, 21, 22, 23, -3]
         .into_iter()
         .map(|entity_id| {
-            row(format!("resting-id-{}", entity_id), floor(), (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 24)
+            row(format!("resting-id-{entity_id}"), floor(), (0.5, 64.0, 0.5), (0.0, 0.0, 0.0), 24)
                 .on_ground(true)
                 .entity_id(entity_id)
                 .row()

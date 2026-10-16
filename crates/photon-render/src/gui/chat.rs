@@ -187,16 +187,13 @@ fn break_lines(runs: &[Run], max: i32, font: &Font, indent_soft: bool) -> Vec<Ve
             last_space = Some(current.len() - 1);
         }
         if width > max as f32 && current.len() > 1 {
-            let (line, rest) = match last_space {
-                Some(space) => {
-                    let rest = current.split_off(space + 1);
-                    current.pop();
-                    (std::mem::take(&mut current), rest)
-                }
-                None => {
-                    let rest = current.split_off(current.len() - 1);
-                    (std::mem::take(&mut current), rest)
-                }
+            let (line, rest) = if let Some(space) = last_space {
+                let rest = current.split_off(space + 1);
+                current.pop();
+                (std::mem::take(&mut current), rest)
+            } else {
+                let rest = current.split_off(current.len() - 1);
+                (std::mem::take(&mut current), rest)
             };
             lines.push((line, soft));
             soft = true;

@@ -163,7 +163,7 @@ pub(super) fn client_world_border_state_case(request: &Value) -> Result<Value, S
                             absolute_max_size: i32_field(event, "absolute_max_size")?,
                             warning_blocks: i32_field(event, "warning_blocks")?,
                             warning_time: i32_field(event, "warning_time")?,
-                        })
+                        });
                     }
                     "center" => world.apply_world_border_center(
                         f64_field(event, "center_x")?,
@@ -176,10 +176,10 @@ pub(super) fn client_world_border_state_case(request: &Value) -> Result<Value, S
                     ),
                     "size" => world.apply_world_border_size(f64_field(event, "size")?),
                     "warning_blocks" => {
-                        world.apply_world_border_warning_blocks(i32_field(event, "value")?)
+                        world.apply_world_border_warning_blocks(i32_field(event, "value")?);
                     }
                     "warning_time" => {
-                        world.apply_world_border_warning_time(i32_field(event, "value")?)
+                        world.apply_world_border_warning_time(i32_field(event, "value")?);
                     }
                     "tick" => world.tick(),
                     _ => return Err(format!("unknown world border event: {operation}")),

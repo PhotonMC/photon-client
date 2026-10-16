@@ -76,27 +76,24 @@ impl ClientEntity {
         if suffocating {
             let modifier =
                 ClientAttributeModifierState::new(modifier_id.to_string(), f64::from(-0.34_f32), 1);
-            match position {
-                Some(index) => {
-                    let modifiers = &mut self.attributes[index].modifiers;
-                    modifiers.retain(|existing| existing.id != modifier_id);
-                    modifiers.push(modifier);
-                }
-                None => {
-                    let base = photon_data::entity_type::name(self.type_id)
-                        .and_then(|name| {
-                            photon_data::entity_type::default_attribute(
-                                name,
-                                "minecraft:movement_speed",
-                            )
-                        })
-                        .unwrap_or(0.0);
-                    self.attributes.push(ClientAttributeState::new(
-                        attribute_id,
-                        base,
-                        vec![modifier],
-                    ));
-                }
+            if let Some(index) = position {
+                let modifiers = &mut self.attributes[index].modifiers;
+                modifiers.retain(|existing| existing.id != modifier_id);
+                modifiers.push(modifier);
+            } else {
+                let base = photon_data::entity_type::name(self.type_id)
+                    .and_then(|name| {
+                        photon_data::entity_type::default_attribute(
+                            name,
+                            "minecraft:movement_speed",
+                        )
+                    })
+                    .unwrap_or(0.0);
+                self.attributes.push(ClientAttributeState::new(
+                    attribute_id,
+                    base,
+                    vec![modifier],
+                ));
             }
         } else if let Some(index) = position {
             self.attributes[index]

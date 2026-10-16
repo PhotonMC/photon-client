@@ -29,9 +29,9 @@ fn angle_wrap_difference_wrap_degrees_type() -> Vec<Value> {
         ("positive-infinity", "7f800000".to_string()),
         ("nan-payload", "7fc12345".to_string()),
     ];
-    for (label, value) in mth_wrap_degrees_90.iter() {
+    for (label, value) in &mth_wrap_degrees_90 {
         out.push(case(
-            format!("mth/angle-wrap-difference/wrap-degrees-90/{}", label),
+            format!("mth/angle-wrap-difference/wrap-degrees-90/{label}"),
             "math",
             "mth_angle_wrap_difference",
             json!({"type": "f32", "fn": "wrap_degrees_90", "value": value.clone()}),
@@ -60,9 +60,9 @@ fn degrees_difference() -> Vec<Value> {
         ("nan-to", f32_bits(1.0), "7fc12345".to_string()),
         ("overflow", "ff7fffff".to_string(), "7f7fffff".to_string()),
     ];
-    for (label, from_value, to_value) in mth_degrees_difference.iter() {
+    for (label, from_value, to_value) in &mth_degrees_difference {
         out.push(case(
-            format!("mth/angle-wrap-difference/degrees-difference/{}", label),
+            format!("mth/angle-wrap-difference/degrees-difference/{label}"),
             "math",
             "mth_angle_wrap_difference",
             json!({"type": "f32", "fn": "degrees_difference", "from": from_value.clone(), "to": to_value.clone()}),
@@ -74,21 +74,21 @@ fn degrees_difference() -> Vec<Value> {
 fn degrees_difference_abs() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_degrees_difference_abs = mth_degrees_difference_abs_rows();
-    for (label, from_value, to_value) in mth_degrees_difference_abs.iter() {
+    for (label, from_value, to_value) in &mth_degrees_difference_abs {
         out.push(case(
-            format!("mth/angle-wrap-difference/degrees-difference-abs/{}", label),
+            format!("mth/angle-wrap-difference/degrees-difference-abs/{label}"),
             "math",
             "mth_angle_wrap_difference",
             json!({"type": "f32", "fn": "degrees_difference_abs", "from": from_value.clone(), "to": to_value.clone()}),
         ));
     }
     let mth_rotate_if_necessary = mth_rotate_if_necessary_rows();
-    for (label, base, target, maximum) in mth_rotate_if_necessary.iter() {
+    for (label, base, target, maximum) in &mth_rotate_if_necessary {
         let base = base.f32();
         let target = target.f32();
         let maximum = maximum.f32();
         out.push(case(
-            format!("mth/angle-approach/rotate-if-necessary/{}", label),
+            format!("mth/angle-approach/rotate-if-necessary/{label}"),
             "math",
             "mth_angle_approach",
             json!({
@@ -169,12 +169,12 @@ fn approach() -> Vec<Value> {
         ("nan-increment", num(0.0), num(10.0), raw("7fc12345")),
         ("rounding", raw("3f800001"), raw("3f800101"), raw("33800000")),
     ];
-    for (label, current, target, increment) in mth_approach.iter() {
+    for (label, current, target, increment) in &mth_approach {
         let current = current.f32();
         let target = target.f32();
         let increment = increment.f32();
         out.push(case(
-            format!("mth/angle-approach/approach/{}", label),
+            format!("mth/angle-approach/approach/{label}"),
             "math",
             "mth_angle_approach",
             json!({
@@ -211,12 +211,12 @@ fn approach_degrees() -> Vec<Value> {
         ("nan-current", raw("7fc12345"), num(0.0), num(1.0)),
         ("nan-target", num(0.0), raw("7fc12345"), num(1.0)),
     ];
-    for (label, current, target, increment) in mth_approach_degrees.iter() {
+    for (label, current, target, increment) in &mth_approach_degrees {
         let current = current.f32();
         let target = target.f32();
         let increment = increment.f32();
         out.push(case(
-            format!("mth/angle-approach/approach-degrees/{}", label),
+            format!("mth/angle-approach/approach-degrees/{label}"),
             "math",
             "mth_angle_approach",
             json!({
@@ -231,7 +231,7 @@ fn approach_degrees() -> Vec<Value> {
     for (label, y, x) in mth_atan2().iter().cloned() {
         let y = y.f64();
         let x = f64_bits(x);
-        out.push(case(format!("mth/atan2/{}", label), "math", "mth_atan2", json!({"y": y.clone(), "x": x})));
+        out.push(case(format!("mth/atan2/{label}"), "math", "mth_atan2", json!({"y": y.clone(), "x": x})));
     }
     out
 }
@@ -261,9 +261,9 @@ fn angle_helpers() -> Vec<Value> {
         ("wrap-long/exact-turn", "i64", "wrap_degrees", "360".to_string()),
         ("wrap-long/max", "i64", "wrap_degrees", "9223372036854775807".to_string()),
     ];
-    for (label, width, function, input_value) in mth_angle_helpers.iter() {
+    for (label, width, function, input_value) in &mth_angle_helpers {
         out.push(case(
-            format!("mth/angle-helpers/{}", label),
+            format!("mth/angle-helpers/{label}"),
             "math",
             "mth_angle_helpers",
             json!({"type": width, "fn": function, "input": input_value.clone()}),
@@ -274,9 +274,9 @@ fn angle_helpers() -> Vec<Value> {
 
 fn rotation_around_axis() -> Vec<Value> {
     let mut out = Vec::new();
-    for (label, axis, rotation) in mth_rotation_around_axis().iter().cloned() {
+    for (label, axis, rotation) in mth_rotation_around_axis().iter().copied() {
         out.push(case(
-            format!("mth/rotation-around-axis/{}", label),
+            format!("mth/rotation-around-axis/{label}"),
             "math",
             "mth_rotation_around_axis",
             json!({

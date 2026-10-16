@@ -159,9 +159,9 @@ fn clip() -> Vec<Value> {
         ("parallel-miss", ((-1.0, 2.0, 0.5), (2.0, 2.0, 0.5))),
         ("below-threshold", ((-1.0, 0.5, 0.5), (-0.99999999, 0.5, 0.5))),
     ];
-    for (label, (source, target)) in clip_rays.iter().cloned() {
+    for (label, (source, target)) in clip_rays.iter().copied() {
         out.push(case(
-            format!("aabb/clip/{}", label),
+            format!("aabb/clip/{label}"),
             "math",
             "aabb",
             merged(vec![
@@ -368,10 +368,10 @@ fn of_bounding_box() -> Vec<Value> {
         ),
         ("chain", vec![bounding_box(10, 20, 30, 12, 24, 36), bounding_box(-8, -6, -4, -2, 0, 2)]),
     ];
-    for (label, boxes) in bounding_box_cases.iter() {
+    for (label, boxes) in &bounding_box_cases {
         let steps = boxes.iter().map(|box_| json!({"op": "of_bounding_box", "box": box_})).collect::<Vec<_>>();
         out.push(case(
-            format!("aabb/of-bounding-box/{}", label),
+            format!("aabb/of-bounding-box/{label}"),
             "math",
             "aabb",
             merged(vec![unit(), json!({"steps": steps.clone()})]),

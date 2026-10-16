@@ -88,13 +88,12 @@ impl BookScreen {
 
     /// The pages and the page open: the hand's book's, or the lectern menu's.
     fn book(&self, menu: &ContainerMenu) -> (Vec<Component>, usize) {
-        match &self.held {
-            Some((pages, page)) => (pages.clone(), *page),
-            None => {
-                let pages = Self::pages(menu);
-                let page = Self::page(menu, pages.len());
-                (pages, page)
-            }
+        if let Some((pages, page)) = &self.held {
+            (pages.clone(), *page)
+        } else {
+            let pages = Self::pages(menu);
+            let page = Self::page(menu, pages.len());
+            (pages, page)
         }
     }
 

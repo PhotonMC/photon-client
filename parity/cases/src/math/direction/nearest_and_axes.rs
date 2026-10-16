@@ -18,9 +18,9 @@ fn approximate_nearest_overloads() -> Vec<Value> {
         ("precision-boundary", approximate_nearest_overloads_precision()),
         ("signed-zero", approximate_nearest_overloads_signed_zero()),
     ];
-    for (name, values) in direction_approximate_nearest_overload_cases.iter() {
+    for (name, values) in &direction_approximate_nearest_overload_cases {
         out.push(case(
-            format!("direction/approximate-nearest-overloads/{}", name),
+            format!("direction/approximate-nearest-overloads/{name}"),
             "math",
             "direction_approximate_nearest_overloads",
             values.clone(),
@@ -45,9 +45,9 @@ fn approximate_nearest_overloads() -> Vec<Value> {
         ("vec3i/zero-none", "vec3i", 0, 0, 0, "none"),
         ("vec3i/min-z", "vec3i", 0, 0, -2147483648, "up"),
     ];
-    for (name, kind, x, y, z, or_else) in direction_nearest_cases.iter() {
+    for (name, kind, x, y, z, or_else) in &direction_nearest_cases {
         out.push(case(
-            format!("direction/nearest/{}", name),
+            format!("direction/nearest/{name}"),
             "math",
             "direction_nearest",
             json!({
@@ -167,9 +167,9 @@ fn axis_step_order() -> Vec<Value> {
         ("nan-x", json!({"x": "7ff8000000000001", "y": "0000000000000000", "z": f64_bits(1.0)})),
         ("nan-z", json!({"x": f64_bits(1.0), "y": "0000000000000000", "z": "7ff8000000000001"})),
     ];
-    for (name, vector) in direction_axis_step_values.iter() {
+    for (name, vector) in &direction_axis_step_values {
         out.push(case(
-            format!("direction/axis-step-order/{}", name),
+            format!("direction/axis-step-order/{name}"),
             "math",
             "direction_axis_step_order",
             vector.clone(),
@@ -208,9 +208,9 @@ fn is_facing_angle() -> Vec<Value> {
         ("max-finite", "east", "7f7fffff".to_string()),
         ("min-negative-finite", "west", "ff7fffff".to_string()),
     ];
-    for (name, direction, angle) in direction_facing_angle_cases.iter() {
+    for (name, direction, angle) in &direction_facing_angle_cases {
         out.push(case(
-            format!("direction/is-facing-angle/{}", name),
+            format!("direction/is-facing-angle/{name}"),
             "math",
             "direction_is_facing_angle",
             json!({"name": direction, "angle": angle.clone()}),
@@ -245,8 +245,8 @@ fn helpers() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in axis_cycle_helpers.iter() {
-        out.push(case(format!("axis-cycle/helpers/{}", label), "math", "axis_cycle_helpers", values.clone()));
+    for (label, values) in &axis_cycle_helpers {
+        out.push(case(format!("axis-cycle/helpers/{label}"), "math", "axis_cycle_helpers", values.clone()));
     }
     out
 }

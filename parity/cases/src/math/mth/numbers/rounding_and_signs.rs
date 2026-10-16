@@ -10,9 +10,9 @@ use crate::math::values::*;
 fn rounding_helpers() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_rounding_helpers = mth_rounding_helpers_rows();
-    for (label, width, function, input_value) in mth_rounding_helpers.iter() {
+    for (label, width, function, input_value) in &mth_rounding_helpers {
         out.push(case(
-            format!("mth/rounding-helpers/{}", label),
+            format!("mth/rounding-helpers/{label}"),
             "math",
             "mth_rounding_helpers",
             json!({"type": width, "fn": function, "input": input_value}),
@@ -45,9 +45,9 @@ fn rounding_helpers() -> Vec<Value> {
             ("nan-modulus", 1.0, f64::NAN),
             ("negative-zero-input-zero-modulus", -0.0, 0.0),
         ];
-        for (label, input_value, modulus) in mth_positive_modulo.iter().cloned() {
+        for (label, input_value, modulus) in mth_positive_modulo.iter().copied() {
             out.push(case(
-                format!("mth/positive-modulo/{}/{}", width, label),
+                format!("mth/positive-modulo/{width}/{label}"),
                 "math",
                 "mth_positive_modulo",
                 json!({"type": width, "input": float_bits(input_value, width), "mod": float_bits(modulus, width)}),
@@ -119,9 +119,9 @@ fn abs_max() -> Vec<Value> {
             ("nan-second", 3.0, f64::NAN),
             ("negative-nan-second", 3.0, -f64::NAN),
         ];
-        for (label, first, second) in mth_abs_max.iter().cloned() {
+        for (label, first, second) in mth_abs_max.iter().copied() {
             out.push(case(
-                format!("mth/abs-max/{}/{}", width, label),
+                format!("mth/abs-max/{width}/{label}"),
                 "math",
                 "mth_abs_max",
                 json!({"type": width, "first": float_bits(first, width), "second": float_bits(second, width)}),
@@ -152,9 +152,9 @@ fn equal() -> Vec<Value> {
             ("nan-first", f64::NAN, 1.0),
             ("nan-second", 1.0, f64::NAN),
         ];
-        for (label, first, second) in mth_equal.iter().cloned() {
+        for (label, first, second) in mth_equal.iter().copied() {
             out.push(case(
-                format!("mth/equal/{}/{}", width, label),
+                format!("mth/equal/{width}/{label}"),
                 "math",
                 "mth_equal",
                 json!({"type": width, "first": float_bits(first, width), "second": float_bits(second, width)}),
@@ -203,8 +203,8 @@ fn out_from_origin() -> Vec<Value> {
         ("invalid-negative-step", json!({"mode": "step", "origin": "0", "lower": "-1", "upper": "1", "step": "-2"})),
         ("invalid-both", json!({"mode": "step", "origin": "0", "lower": "2", "upper": "-2", "step": "0"})),
     ];
-    for (label, values) in mth_out_from_origin.iter() {
-        out.push(case(format!("mth/out-from-origin/{}", label), "math", "mth_out_from_origin", values.clone()));
+    for (label, values) in &mth_out_from_origin {
+        out.push(case(format!("mth/out-from-origin/{label}"), "math", "mth_out_from_origin", values.clone()));
     }
     out
 }
@@ -233,25 +233,25 @@ fn mul_and_truncate() -> Vec<Value> {
         ("denominator-two", "2147483647", "2", "3"),
         ("mixed-overflow", "123456789", "97", "-987654321"),
     ];
-    for (label, numerator, denominator, factor) in mth_mul_and_truncate.iter() {
+    for (label, numerator, denominator, factor) in &mth_mul_and_truncate {
         out.push(case(
-            format!("mth/mul-and-truncate/{}", label),
+            format!("mth/mul-and-truncate/{label}"),
             "math",
             "mth_mul_and_truncate",
             json!({"numerator": numerator, "denominator": denominator, "factor": factor}),
         ));
     }
-    for (label, value) in mth_sign().iter().cloned() {
-        out.push(case(format!("mth/sign/{}", label), "math", "mth_sign", json!({"x": f64_bits(value)})));
+    for (label, value) in mth_sign().iter().copied() {
+        out.push(case(format!("mth/sign/{label}"), "math", "mth_sign", json!({"x": f64_bits(value)})));
     }
-    for (label, x) in mth_square_f32().iter().cloned() {
-        out.push(case(format!("mth/square-f32/{}", label), "math", "mth_square_f32", json!({"x": f32_bits(x)})));
+    for (label, x) in mth_square_f32().iter().copied() {
+        out.push(case(format!("mth/square-f32/{label}"), "math", "mth_square_f32", json!({"x": f32_bits(x)})));
     }
-    for (label, x) in mth_cube_f32().iter().cloned() {
-        out.push(case(format!("mth/cube-f32/{}", label), "math", "mth_cube_f32", json!({"x": f32_bits(x)})));
+    for (label, x) in mth_cube_f32().iter().copied() {
+        out.push(case(format!("mth/cube-f32/{label}"), "math", "mth_cube_f32", json!({"x": f32_bits(x)})));
     }
-    for (label, x) in mth_square_f64().iter().cloned() {
-        out.push(case(format!("mth/square-f64/{}", label), "math", "mth_square_f64", json!({"x": f64_bits(x)})));
+    for (label, x) in mth_square_f64().iter().copied() {
+        out.push(case(format!("mth/square-f64/{label}"), "math", "mth_square_f64", json!({"x": f64_bits(x)})));
     }
     out
 }
@@ -275,8 +275,8 @@ fn square_i32() -> Vec<Value> {
         ("minimum-plus-one", -2147483647),
         ("mixed", 123456789),
     ];
-    for (label, x) in mth_square_i32.iter() {
-        out.push(case(format!("mth/square-i32/{}", label), "math", "mth_square_i32", json!({"x": (x).to_string()})));
+    for (label, x) in &mth_square_i32 {
+        out.push(case(format!("mth/square-i32/{label}"), "math", "mth_square_i32", json!({"x": (x).to_string()})));
     }
     let mth_square_i64 = vec![
         ("basic", 3),
@@ -295,8 +295,8 @@ fn square_i32() -> Vec<Value> {
         ("minimum-plus-one", -9223372036854775807_i64),
         ("mixed", 1234567890123456789_i64),
     ];
-    for (label, x) in mth_square_i64.iter() {
-        out.push(case(format!("mth/square-i64/{}", label), "math", "mth_square_i64", json!({"x": (x).to_string()})));
+    for (label, x) in &mth_square_i64 {
+        out.push(case(format!("mth/square-i64/{label}"), "math", "mth_square_i64", json!({"x": (x).to_string()})));
     }
     out
 }

@@ -17,9 +17,9 @@ fn decode() -> Vec<Value> {
         ("short", vec!["1"]),
         ("long", vec!["1", "2", "3"]),
     ];
-    for (label, values) in chunkpos_codec_decodes.iter() {
+    for (label, values) in &chunkpos_codec_decodes {
         out.push(case(
-            format!("chunkpos/codec/decode/{}", label),
+            format!("chunkpos/codec/decode/{label}"),
             "math",
             "chunkpos_codec",
             json!({"mode": "decode", "values": values.clone()}),
@@ -31,9 +31,9 @@ fn decode() -> Vec<Value> {
         ("boundaries", json!({"x": "2147483647", "z": "-2147483648"})),
         ("alternating", json!({"x": "1437226410", "z": "-1437226411"})),
     ];
-    for (label, values) in chunkpos_codec_encodes.iter() {
+    for (label, values) in &chunkpos_codec_encodes {
         out.push(case(
-            format!("chunkpos/codec/encode/{}", label),
+            format!("chunkpos/codec/encode/{label}"),
             "math",
             "chunkpos_codec",
             merged(vec![json!({"mode": "encode"}), values.clone()]),
@@ -52,9 +52,9 @@ fn block_coordinates() -> Vec<Value> {
         ("shift-wrap", json!({"x": "134217728", "z": "-134217729", "offset": "-1"})),
         ("offset-wrap", json!({"x": "1", "z": "-2", "offset": "2147483647"})),
     ];
-    for (label, values) in chunkpos_block_coordinates.iter() {
+    for (label, values) in &chunkpos_block_coordinates {
         out.push(case(
-            format!("chunkpos/block-coordinates/{}", label),
+            format!("chunkpos/block-coordinates/{label}"),
             "math",
             "chunkpos_block_coordinates",
             values.clone(),
@@ -71,9 +71,9 @@ fn block_coordinates() -> Vec<Value> {
             json!({"x": "2147483647", "z": "-2147483648", "region_x": "-67108864", "region_z": "67108863"}),
         ),
     ];
-    for (label, values) in chunkpos_region_coordinates.iter() {
+    for (label, values) in &chunkpos_region_coordinates {
         out.push(case(
-            format!("chunkpos/region-coordinates/{}", label),
+            format!("chunkpos/region-coordinates/{label}"),
             "math",
             "chunkpos_region_coordinates",
             values.clone(),
@@ -92,13 +92,8 @@ fn block_positions() -> Vec<Value> {
         ("offset-wrap", block_positions_offset_wrap()),
         ("shift-wrap", block_positions_shift_wrap()),
     ];
-    for (label, values) in chunkpos_block_positions.iter() {
-        out.push(case(
-            format!("chunkpos/block-positions/{}", label),
-            "math",
-            "chunkpos_block_positions",
-            values.clone(),
-        ));
+    for (label, values) in &chunkpos_block_positions {
+        out.push(case(format!("chunkpos/block-positions/{label}"), "math", "chunkpos_block_positions", values.clone()));
     }
     let chunkpos_representation = [
         ("origin", json!({"x": "0", "z": "0", "hash_x": "0", "hash_z": "0"})),
@@ -111,8 +106,8 @@ fn block_positions() -> Vec<Value> {
             json!({"x": "2147483647", "z": "2147483647", "hash_x": "-2147483648", "hash_z": "-2147483648"}),
         ),
     ];
-    for (label, values) in chunkpos_representation.iter() {
-        out.push(case(format!("chunkpos/representation/{}", label), "math", "chunkpos_representation", values.clone()));
+    for (label, values) in &chunkpos_representation {
+        out.push(case(format!("chunkpos/representation/{label}"), "math", "chunkpos_representation", values.clone()));
     }
     let chunkpos_from_blockpos = [
         ("origin", json!({"x": "0", "y": "0", "z": "0"})),
@@ -122,8 +117,8 @@ fn block_positions() -> Vec<Value> {
         ("max-boundary", json!({"x": "2147483647", "y": "2147483647", "z": "-2147483648"})),
         ("min-boundary", json!({"x": "-2147483648", "y": "-2147483648", "z": "2147483647"})),
     ];
-    for (label, values) in chunkpos_from_blockpos.iter() {
-        out.push(case(format!("chunkpos/from-blockpos/{}", label), "math", "chunkpos_from_blockpos", values.clone()));
+    for (label, values) in &chunkpos_from_blockpos {
+        out.push(case(format!("chunkpos/from-blockpos/{label}"), "math", "chunkpos_from_blockpos", values.clone()));
     }
     out
 }
@@ -234,8 +229,8 @@ fn distances() -> Vec<Value> {
         ),
         ("signed-minimum", json!({"x": "0", "z": "0", "other_x": "-2147483648", "other_z": "-2147483648"})),
     ];
-    for (label, values) in chunkpos_distances.iter() {
-        out.push(case(format!("chunkpos/distances/{}", label), "math", "chunkpos_distances", values.clone()));
+    for (label, values) in &chunkpos_distances {
+        out.push(case(format!("chunkpos/distances/{label}"), "math", "chunkpos_distances", values.clone()));
     }
     let chunkpos_from_section_node = [
         ("origin", json!({"section_node": "0000000000000000"})),
@@ -245,9 +240,9 @@ fn distances() -> Vec<Value> {
         ("maximums", json!({"section_node": "7ffffdfffff7ffff"})),
         ("y-discard", json!({"section_node": "0000abfffef7ffff"})),
     ];
-    for (label, values) in chunkpos_from_section_node.iter() {
+    for (label, values) in &chunkpos_from_section_node {
         out.push(case(
-            format!("chunkpos/from-section-node/{}", label),
+            format!("chunkpos/from-section-node/{label}"),
             "math",
             "chunkpos_from_section_node",
             values.clone(),
@@ -263,8 +258,8 @@ fn distances() -> Vec<Value> {
         ("center-radius-positive", json!({"mode": "center-radius", "x": "-2", "z": "3", "radius": "2"})),
         ("center-radius-negative", json!({"mode": "center-radius", "x": "4", "z": "-6", "radius": "-1"})),
     ];
-    for (label, values) in chunkpos_range_closed.iter() {
-        out.push(case(format!("chunkpos/range-closed/{}", label), "math", "chunkpos_range_closed", values.clone()));
+    for (label, values) in &chunkpos_range_closed {
+        out.push(case(format!("chunkpos/range-closed/{label}"), "math", "chunkpos_range_closed", values.clone()));
     }
     out
 }
@@ -272,7 +267,7 @@ fn distances() -> Vec<Value> {
 fn constants() -> Vec<Value> {
     let mut out = Vec::new();
     for name in ["zero", "invalid_chunk_pos", "region_size", "region_max_index"] {
-        out.push(case(format!("chunkpos/constants/{}", name), "math", "chunkpos_constant", json!({"name": name})));
+        out.push(case(format!("chunkpos/constants/{name}"), "math", "chunkpos_constant", json!({"name": name})));
     }
     let chunkpos_packed_accessors = [
         ("zero", "0000000000000000"),
@@ -282,9 +277,9 @@ fn constants() -> Vec<Value> {
         ("x-max-z-min", "800000007fffffff"),
         ("alternating", "aa55aa5555aa55aa"),
     ];
-    for (label, packed) in chunkpos_packed_accessors.iter() {
+    for (label, packed) in &chunkpos_packed_accessors {
         out.push(case(
-            format!("chunkpos/packed-accessors/{}", label),
+            format!("chunkpos/packed-accessors/{label}"),
             "math",
             "chunkpos_packed_accessors",
             json!({"packed": packed}),
@@ -298,8 +293,8 @@ fn constants() -> Vec<Value> {
         ("signed-minimum-quirk", json!({"x": "-2147483648", "z": "0"})),
         ("signed-maximum", json!({"x": "2147483647", "z": "-2147483648"})),
     ];
-    for (label, values) in chunkpos_validity.iter() {
-        out.push(case(format!("chunkpos/validity/{}", label), "math", "chunkpos_validity", values.clone()));
+    for (label, values) in &chunkpos_validity {
+        out.push(case(format!("chunkpos/validity/{label}"), "math", "chunkpos_validity", values.clone()));
     }
     out
 }

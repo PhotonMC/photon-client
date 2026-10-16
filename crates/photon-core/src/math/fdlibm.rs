@@ -63,10 +63,10 @@ fn kernel_sin(x: f64, y: f64, tail: bool) -> f64 {
     let z = x * x;
     let v = z * x;
     let r = S2 + z * (S3 + z * (S4 + z * (S5 + z * S6)));
-    if !tail {
-        x + v * (S1 + z * r)
-    } else {
+    if tail {
         x - ((z * (0.5 * y - v * r) - y) - v * S1)
+    } else {
+        x + v * (S1 + z * r)
     }
 }
 
@@ -102,25 +102,25 @@ fn rem_pio2(x: f64) -> (i32, f64, f64) {
         if hx > 0 {
             let mut z = x - PIO2_1;
             let (y0, y1);
-            if ix != 0x3ff9_21fb {
-                y0 = z - PIO2_1T;
-                y1 = (z - y0) - PIO2_1T;
-            } else {
+            if ix == 0x3ff9_21fb {
                 z -= PIO2_2;
                 y0 = z - PIO2_2T;
                 y1 = (z - y0) - PIO2_2T;
+            } else {
+                y0 = z - PIO2_1T;
+                y1 = (z - y0) - PIO2_1T;
             }
             return (1, y0, y1);
         }
         let mut z = x + PIO2_1;
         let (y0, y1);
-        if ix != 0x3ff9_21fb {
-            y0 = z + PIO2_1T;
-            y1 = (z - y0) + PIO2_1T;
-        } else {
+        if ix == 0x3ff9_21fb {
             z += PIO2_2;
             y0 = z + PIO2_2T;
             y1 = (z - y0) + PIO2_2T;
+        } else {
+            y0 = z + PIO2_1T;
+            y1 = (z - y0) + PIO2_1T;
         }
         return (-1, y0, y1);
     }

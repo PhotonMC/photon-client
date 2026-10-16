@@ -40,8 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let passenger_id = observation.passenger_id;
     if vehicle_type_id != VANILLA_OAK_BOAT_ENTITY_TYPE_ID {
         return Err(format!(
-            "expected oak boat vehicle {}, got {}",
-            VANILLA_OAK_BOAT_ENTITY_TYPE_ID, vehicle_type_id
+            "expected oak boat vehicle {VANILLA_OAK_BOAT_ENTITY_TYPE_ID}, got {vehicle_type_id}"
         )
         .into());
     }

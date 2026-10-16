@@ -103,9 +103,7 @@ pub fn mth_mul_and_truncate(numerator: i32, denominator: i32, factor: i32) -> i3
 
 /// Return Java `Math.floorDiv(int, int)`, including Java's signed overflow.
 pub fn floor_div_i32(dividend: i32, divisor: i32) -> i32 {
-    if divisor == 0 {
-        panic!("division by zero");
-    }
+    assert!(divisor != 0, "division by zero");
     // Java's integer division defines MIN_VALUE / -1 as MIN_VALUE; Rust's
     // checked debug division would otherwise panic here.
     if dividend == i32::MIN && divisor == -1 {
@@ -147,9 +145,7 @@ pub fn round_toward_i64(input: i64, multiple: i64) -> i64 {
 }
 
 pub(super) fn floor_div_i64(dividend: i64, divisor: i64) -> i64 {
-    if divisor == 0 {
-        panic!("division by zero");
-    }
+    assert!(divisor != 0, "division by zero");
     if dividend == i64::MIN && divisor == -1 {
         return i64::MIN;
     }
@@ -349,9 +345,7 @@ pub fn clamp_i64(value: i64, min: i64, max: i64) -> i64 {
 
 /// Return Java `Mth.isMultipleOf(int, int)`.
 pub fn is_multiple_of_i32(dividend: i32, divisor: i32) -> bool {
-    if divisor == 0 {
-        panic!("division by zero");
-    }
+    assert!(divisor != 0, "division by zero");
     if dividend == i32::MIN && divisor == -1 {
         return true;
     }

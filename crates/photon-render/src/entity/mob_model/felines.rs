@@ -43,7 +43,9 @@ impl MobModel {
             head.x_rot = state.quadruped.x_rot * degrees;
             head.y_rot = state.quadruped.head_y_rot * degrees;
         });
-        if !state.sitting {
+        if state.sitting {
+            self.setup_feline_sitting(state);
+        } else {
             if !state.baby {
                 set(self, "body", &|part| part.x_rot = half_pi);
             }
@@ -73,8 +75,6 @@ impl MobModel {
                     part.x_rot = 1.727_876_1 + sway * cos(position) * speed;
                 });
             }
-        } else {
-            self.setup_feline_sitting(state);
         }
         self.setup_feline_lying(state);
         if state.relax_state_one_amount > 0.0 {

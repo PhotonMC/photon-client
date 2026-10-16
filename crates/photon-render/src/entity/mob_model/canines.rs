@@ -66,14 +66,14 @@ impl MobModel {
         // `shakeOffWater`: the body rolls; the grown wolf's head, upper body
         // and tail roll in their own parts, the baby's whole head and tail.
         set(self, "body", &|part| {
-            part.z_rot = state.body_roll_angle(-0.16)
+            part.z_rot = state.body_roll_angle(-0.16);
         });
         if state.baby {
             set(self, "head", &|part| {
                 part.z_rot = state.head_roll_angle + state.body_roll_angle(0.0);
             });
             set(self, "tail", &|part| {
-                part.z_rot = state.body_roll_angle(-0.2)
+                part.z_rot = state.body_roll_angle(-0.2);
             });
         } else {
             set(self, "head", &|head| {
@@ -82,7 +82,7 @@ impl MobModel {
                 }
             });
             set(self, "upper_body", &|part| {
-                part.z_rot = state.body_roll_angle(-0.08)
+                part.z_rot = state.body_roll_angle(-0.08);
             });
             set(self, "tail", &|tail| {
                 if let Some(real) = tail.child_mut("real_tail") {

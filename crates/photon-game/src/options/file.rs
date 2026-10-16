@@ -156,7 +156,7 @@ impl Options {
             }
             Key::ChatOpacity => self.chat_opacity = unit().unwrap_or(self.chat_opacity),
             Key::ChatLineSpacing => {
-                self.chat_line_spacing = unit().unwrap_or(self.chat_line_spacing)
+                self.chat_line_spacing = unit().unwrap_or(self.chat_line_spacing);
             }
             Key::TextBackgroundOpacity => {
                 self.text_background_opacity = unit().unwrap_or(self.text_background_opacity);

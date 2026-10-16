@@ -35,9 +35,9 @@ fn fast_inv_cube_root() -> Vec<Value> {
         ("negative-nan-payload", "ffc12345".to_string()),
         ("tiny-neighbor", "00000002".to_string()),
     ];
-    for (label, input_value) in mth_fast_inv_cube_root.iter() {
+    for (label, input_value) in &mth_fast_inv_cube_root {
         out.push(case(
-            format!("mth/fast-inv-cube-root/{}", label),
+            format!("mth/fast-inv-cube-root/{label}"),
             "math",
             "mth_fast_inv_cube_root",
             json!({"input": input_value}),
@@ -48,13 +48,13 @@ fn fast_inv_cube_root() -> Vec<Value> {
 
 fn hsv_to_color() -> Vec<Value> {
     let mut out = Vec::new();
-    for (label, hue, saturation, value, alpha) in mth_hsv_to_color().iter() {
+    for (label, hue, saturation, value, alpha) in &mth_hsv_to_color() {
         let hue = hue.f32();
         let saturation = saturation.f32();
         let value = value.f32();
         for mode in ["rgb", "argb"] {
             out.push(case(
-                format!("mth/hsv-to-color/{}/{}", label, mode),
+                format!("mth/hsv-to-color/{label}/{mode}"),
                 "math",
                 "mth_hsv_to_color",
                 json!({
@@ -73,13 +73,13 @@ fn hsv_to_color() -> Vec<Value> {
 fn get_seed() -> Vec<Value> {
     let mut out = Vec::new();
     let mth_get_seed = mth_get_seed_rows();
-    for (label, x, y, z) in mth_get_seed.iter() {
-        out.push(case(format!("mth/get-seed/{}", label), "math", "mth_get_seed", json!({"x": x, "y": y, "z": z})));
+    for (label, x, y, z) in &mth_get_seed {
+        out.push(case(format!("mth/get-seed/{label}"), "math", "mth_get_seed", json!({"x": x, "y": y, "z": z})));
     }
     let mth_inv_sqrt_f32 = mth_inv_sqrt_f32_rows();
-    for (label, input_value) in mth_inv_sqrt_f32.iter() {
+    for (label, input_value) in &mth_inv_sqrt_f32 {
         out.push(case(
-            format!("mth/inv-sqrt/f32/{}", label),
+            format!("mth/inv-sqrt/f32/{label}"),
             "math",
             "mth_inv_sqrt",
             json!({"type": "f32", "input": input_value}),
@@ -156,9 +156,9 @@ fn inv_sqrt_f64() -> Vec<Value> {
         ("nan-payload", "7ff0000000000001"),
         ("negative-nan-payload", "fff0000000000001"),
     ];
-    for (label, input_value) in mth_inv_sqrt_f64.iter() {
+    for (label, input_value) in &mth_inv_sqrt_f64 {
         out.push(case(
-            format!("mth/inv-sqrt/f64/{}", label),
+            format!("mth/inv-sqrt/f64/{label}"),
             "math",
             "mth_inv_sqrt",
             json!({"type": "f64", "input": input_value}),
@@ -172,9 +172,9 @@ fn inv_sqrt_f64() -> Vec<Value> {
         ("negative-boundary", -123, -2147483648, -2147483641),
         ("single-bit-range", 0, 0, 1),
     ];
-    for (label, seed, minimum, maximum) in mth_next_int.iter() {
+    for (label, seed, minimum, maximum) in &mth_next_int {
         out.push(case(
-            format!("mth/next-random/i32/{}", label),
+            format!("mth/next-random/i32/{label}"),
             "math",
             "mth_next_random",
             json!({
@@ -201,9 +201,9 @@ fn next_random() -> Vec<Value> {
             ("infinite-max", 123, 1.0, f64::INFINITY),
             ("nan-min", 123, f64::NAN, 1.0),
         ];
-        for (label, seed, minimum, maximum) in mth_next_float.iter().cloned() {
+        for (label, seed, minimum, maximum) in mth_next_float.iter().copied() {
             out.push(case(
-                format!("mth/next-random/{}/{}", width, label),
+                format!("mth/next-random/{width}/{label}"),
                 "math",
                 "mth_next_random",
                 json!({
@@ -228,9 +228,9 @@ fn inclusive() -> Vec<Value> {
         ("wide-finite", 7, -100, 100),
         ("single-bit-range", 0, 0, 1),
     ];
-    for (label, seed, minimum, maximum) in mth_random_between_inclusive.iter() {
+    for (label, seed, minimum, maximum) in &mth_random_between_inclusive {
         out.push(case(
-            format!("mth/random-helpers/inclusive/{}", label),
+            format!("mth/random-helpers/inclusive/{label}"),
             "math",
             "mth_random_helpers",
             json!({
@@ -250,9 +250,9 @@ fn inclusive() -> Vec<Value> {
         ("infinite-max", 123, 1.0, f64::INFINITY),
         ("nan-min", 123, f64::NAN, 1.0),
     ];
-    for (label, seed, minimum, maximum) in mth_random_between.iter().cloned() {
+    for (label, seed, minimum, maximum) in mth_random_between.iter().copied() {
         out.push(case(
-            format!("mth/random-helpers/between/{}", label),
+            format!("mth/random-helpers/between/{label}"),
             "math",
             "mth_random_helpers",
             json!({
@@ -277,9 +277,9 @@ fn normal() -> Vec<Value> {
         ("negative-zero-mean", 42, -0.0, 0.0),
         ("infinite-mean", 7, f64::INFINITY, 1.0),
     ];
-    for (label, seed, mean, deviation) in mth_normal.iter().cloned() {
+    for (label, seed, mean, deviation) in mth_normal.iter().copied() {
         out.push(case(
-            format!("mth/random-helpers/normal/{}", label),
+            format!("mth/random-helpers/normal/{label}"),
             "math",
             "mth_random_helpers",
             json!({

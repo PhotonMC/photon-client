@@ -54,7 +54,7 @@ impl FoxState {
 
     /// `Fox.getVariant`'s id: red (zero) for an id the variants lack.
     pub fn variant(&self) -> i32 {
-        if self.variant == 1 { 1 } else { 0 }
+        i32::from(self.variant == 1)
     }
 
     pub fn is_sitting(&self) -> bool {

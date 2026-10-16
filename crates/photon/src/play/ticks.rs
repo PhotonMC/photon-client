@@ -433,8 +433,8 @@ impl Play {
         }
         self.accumulated -= TICK_LENGTH;
         let held = match self.script.as_mut() {
-            Some(script) => match script.next() {
-                Some((held, turn, pitch)) => {
+            Some(script) => {
+                if let Some((held, turn, pitch)) = script.next() {
                     if (turn != 0.0 || pitch != 0.0)
                         && let Some(player) = self.session.player_mut()
                     {
@@ -442,12 +442,11 @@ impl Play {
                         player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
                     }
                     held
-                }
-                None => {
+                } else {
                     *script_done = true;
                     HeldKeys::default()
                 }
-            },
+            }
             None => self.controls.keys,
         };
         // Once the script ends the keys stay as its last step left them,

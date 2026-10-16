@@ -179,13 +179,13 @@ pub(super) fn configuration_unit_result(request: &Value) -> Result<Value, String
             let mut buffer = prefix.clone();
             match packet {
                 "server-finish" => {
-                    ServerboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer)
+                    ServerboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer);
                 }
                 "client-finish" => {
-                    ClientboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer)
+                    ClientboundFinishConfigurationPacket::INSTANCE.encode(&mut buffer);
                 }
                 "accept-code-of-conduct" => {
-                    ServerboundAcceptCodeOfConductPacket::INSTANCE.encode(&mut buffer)
+                    ServerboundAcceptCodeOfConductPacket::INSTANCE.encode(&mut buffer);
                 }
                 _ => return Err("unknown configuration unit packet".into()),
             }

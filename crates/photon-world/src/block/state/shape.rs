@@ -211,10 +211,8 @@ pub(super) fn light_dampening(
     }
     if solid_render {
         15
-    } else if propagates_skylight_down {
-        0
     } else {
-        1
+        u8::from(!propagates_skylight_down)
     }
 }
 

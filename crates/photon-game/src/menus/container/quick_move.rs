@@ -115,16 +115,13 @@ impl ContainerMenu {
             self.active_offer = found;
             found = recipe_for(&offers, buy_b.as_ref(), buy_a.as_ref(), self.selection_hint);
         }
-        match found.filter(|index| !offers[*index].is_out_of_stock()) {
-            Some(index) => {
-                self.active_offer = Some(index);
-                self.slots[2] = Some(offers[index].result.clone());
-                self.future_xp = offers[index].xp;
-            }
-            None => {
-                self.slots[2] = None;
-                self.future_xp = 0;
-            }
+        if let Some(index) = found.filter(|index| !offers[*index].is_out_of_stock()) {
+            self.active_offer = Some(index);
+            self.slots[2] = Some(offers[index].result.clone());
+            self.future_xp = offers[index].xp;
+        } else {
+            self.slots[2] = None;
+            self.future_xp = 0;
         }
     }
 

@@ -49,7 +49,7 @@ fn chain() -> Vec<Value> {
     for (label, steps) in blockpos_steps.iter().cloned() {
         let (x, y, z) = lookup(&blockpos_origins, label);
         out.push(case(
-            format!("blockpos/chain/{}", label),
+            format!("blockpos/chain/{label}"),
             "math",
             "blockpos",
             json!({"x": (x).to_string(), "y": (y).to_string(), "z": (z).to_string(), "steps": steps.clone()}),
@@ -67,8 +67,8 @@ fn packed_helpers() -> Vec<Value> {
         ("masked-overflow", packed_helpers_masked_overflow()),
         ("integer-boundaries", packed_helpers_integer_boundaries()),
     ];
-    for (label, values) in blockpos_packed_helpers.iter() {
-        out.push(case(format!("blockpos/packed-helpers/{}", label), "math", "blockpos_packed_helpers", values.clone()));
+    for (label, values) in &blockpos_packed_helpers {
+        out.push(case(format!("blockpos/packed-helpers/{label}"), "math", "blockpos_packed_helpers", values.clone()));
     }
     let blockpos_relative_helpers = [
         ("basic", json!({"x": "10", "y": "20", "z": "30", "direction": "north", "axis": "x", "steps": "3"})),
@@ -76,9 +76,9 @@ fn packed_helpers() -> Vec<Value> {
         ("negative-steps", json!({"x": "17", "y": "-16", "z": "1", "direction": "west", "axis": "z", "steps": "-2"})),
         ("overflow", packed_helpers_overflow()),
     ];
-    for (label, values) in blockpos_relative_helpers.iter() {
+    for (label, values) in &blockpos_relative_helpers {
         out.push(case(
-            format!("blockpos/relative-helpers/{}", label),
+            format!("blockpos/relative-helpers/{label}"),
             "math",
             "blockpos_relative_helpers",
             values.clone(),
@@ -186,8 +186,8 @@ fn vector_helpers() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_vector_helpers.iter() {
-        out.push(case(format!("blockpos/vector-helpers/{}", label), "math", "blockpos_vector_helpers", values.clone()));
+    for (label, values) in &blockpos_vector_helpers {
+        out.push(case(format!("blockpos/vector-helpers/{label}"), "math", "blockpos_vector_helpers", values.clone()));
     }
     out
 }

@@ -153,7 +153,15 @@ impl CamelState {
         }
         let pose_time = self.pose_time(game_time);
         let sitting = self.sitting();
-        if (pose_time < 0) != sitting {
+        if (pose_time < 0) == sitting {
+            self.sit.stop();
+            self.sit_pose.stop();
+            self.dash.animate_when(self.dashing, tick_count);
+            self.sit_up.animate_when(
+                self.in_pose_transition(game_time) && pose_time >= 0,
+                tick_count,
+            );
+        } else {
             self.sit_up.stop();
             self.dash.stop();
             if sitting && (0..SIT_DOWN_TICKS).contains(&pose_time) {
@@ -163,14 +171,6 @@ impl CamelState {
                 self.sit.stop();
                 self.sit_pose.start_if_stopped(tick_count);
             }
-        } else {
-            self.sit.stop();
-            self.sit_pose.stop();
-            self.dash.animate_when(self.dashing, tick_count);
-            self.sit_up.animate_when(
-                self.in_pose_transition(game_time) && pose_time >= 0,
-                tick_count,
-            );
         }
     }
 }

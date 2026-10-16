@@ -9,18 +9,18 @@ use crate::math::values::*;
 fn ray_intersects_aabb() -> Vec<Value> {
     let mut out = Vec::new();
     let ray_intersects_aabb = ray_intersects_aabb_rows();
-    for (label, ray_start, ray_dir, aabb) in ray_intersects_aabb.iter() {
+    for (label, ray_start, ray_dir, aabb) in &ray_intersects_aabb {
         out.push(case(
-            format!("mth/ray-intersects-aabb/{}", label),
+            format!("mth/ray-intersects-aabb/{label}"),
             "math",
             "mth_ray_intersects_aabb",
             json!({"ray_start": ray_start.clone(), "ray_dir": ray_dir.clone(), "aabb": aabb.clone()}),
         ));
     }
     let mth_fast_inv_sqrt = mth_fast_inv_sqrt_rows();
-    for (label, input_value) in mth_fast_inv_sqrt.iter() {
+    for (label, input_value) in &mth_fast_inv_sqrt {
         out.push(case(
-            format!("mth/fast-inv-sqrt/{}", label),
+            format!("mth/fast-inv-sqrt/{label}"),
             "math",
             "mth_fast_inv_sqrt",
             json!({"input": input_value}),

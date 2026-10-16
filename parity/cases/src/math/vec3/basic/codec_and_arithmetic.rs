@@ -9,9 +9,9 @@ use crate::math::values::*;
 fn decode() -> Vec<Value> {
     let mut out = Vec::new();
     let codec_decodes = codec_decodes_rows();
-    for (label, values) in codec_decodes.iter() {
+    for (label, values) in &codec_decodes {
         out.push(case(
-            format!("vec3/codec/decode/{}", label),
+            format!("vec3/codec/decode/{label}"),
             "math",
             "vec3_codec",
             json!({"mode": "decode", "values": values.clone()}),
@@ -23,9 +23,9 @@ fn decode() -> Vec<Value> {
         ("signed-zero", json!({"x": "8000000000000000", "y": "0000000000000000", "z": "8000000000000000"})),
         ("special", json!({"x": "7ff8000000000002", "y": "7ff0000000000000", "z": "fff0000000000000"})),
     ];
-    for (label, values) in codec_encodes.iter() {
+    for (label, values) in &codec_encodes {
         out.push(case(
-            format!("vec3/codec/encode/{}", label),
+            format!("vec3/codec/encode/{label}"),
             "math",
             "vec3_codec",
             merged(vec![json!({"mode": "encode"}), values.clone()]),
@@ -54,7 +54,7 @@ fn decode() -> Vec<Value> {
     }
     for (label, (x, y, z)) in vectors3 {
         out.push(case(
-            format!("vec3/normalize/{}", label),
+            format!("vec3/normalize/{label}"),
             "math",
             "vec3",
             json!({"x": x.clone(), "y": y.clone(), "z": z.clone(), "steps": [{"action": "normalize"}]}),

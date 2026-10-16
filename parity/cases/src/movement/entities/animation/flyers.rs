@@ -392,7 +392,7 @@ fn flyers_15() -> Vec<Value> {
         .into_iter()
         .map(|ticks| {
             living(
-                format!("copper-golem-idle-{}", ticks),
+                format!("copper-golem-idle-{ticks}"),
                 "copper_golem",
                 ticks,
                 vec![json!({"tick": 0, "type": "copper_golem_idle", "seed": 5})],

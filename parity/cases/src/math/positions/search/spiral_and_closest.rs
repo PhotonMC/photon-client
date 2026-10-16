@@ -54,8 +54,8 @@ fn spiral_around() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_spiral_around.iter() {
-        out.push(case(format!("blockpos/spiral-around/{}", label), "math", "blockpos_spiral_around", values.clone()));
+    for (label, values) in &blockpos_spiral_around {
+        out.push(case(format!("blockpos/spiral-around/{label}"), "math", "blockpos_spiral_around", values.clone()));
     }
     out
 }
@@ -109,9 +109,9 @@ fn find_closest_match() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_find_closest_match.iter() {
+    for (label, values) in &blockpos_find_closest_match {
         out.push(case(
-            format!("blockpos/find-closest-match/{}", label),
+            format!("blockpos/find-closest-match/{label}"),
             "math",
             "blockpos_find_closest_match",
             values.clone(),
@@ -141,9 +141,9 @@ fn between_closed_streams() -> Vec<Value> {
         ("reversed", between_closed_streams_reversed()),
         ("integer-boundaries", between_closed_streams_integer_boundaries()),
     ];
-    for (label, values) in blockpos_between_closed_streams.iter() {
+    for (label, values) in &blockpos_between_closed_streams {
         out.push(case(
-            format!("blockpos/between-closed-streams/{}", label),
+            format!("blockpos/between-closed-streams/{label}"),
             "math",
             "blockpos_between_closed_streams",
             values.clone(),

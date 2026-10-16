@@ -197,7 +197,7 @@ fn chunk_packet_parser_rejects_trailing_payload() {
 
     match parse_chunk_packet(&payload) {
         Err(super::super::ConnectionError::Codec(name)) => {
-            assert_eq!(name, "chunk trailing payload")
+            assert_eq!(name, "chunk trailing payload");
         }
         result => panic!("unexpected chunk parser result: {result:?}"),
     }

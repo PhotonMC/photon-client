@@ -23,7 +23,7 @@ fn friction_influenced_speed() -> Vec<Value> {
     ];
     let local_player_friction_influenced_speed_defaults = friction_influenced_speed_on_ground();
     let mut local_player_friction_influenced_speed_inputs = vec![];
-    for values in local_player_friction_influenced_speed_cases.iter() {
+    for values in &local_player_friction_influenced_speed_cases {
         let input_values = merged(vec![local_player_friction_influenced_speed_defaults.clone(), values.clone()]);
         local_player_friction_influenced_speed_inputs.push(input_values.clone());
     }
@@ -45,7 +45,7 @@ fn friction_influenced_speed() -> Vec<Value> {
     ];
     let local_player_modified_friction_defaults = json!({"friction": f32_bits(0.6), "modifier": f32_bits(1.0)});
     let mut local_player_modified_friction_inputs = vec![];
-    for values in local_player_modified_friction_cases.iter() {
+    for values in &local_player_modified_friction_cases {
         let input_values = merged(vec![local_player_modified_friction_defaults.clone(), values.clone()]);
         local_player_modified_friction_inputs.push(input_values.clone());
     }
@@ -215,7 +215,7 @@ fn handle_relative_friction() -> Vec<Value> {
         "jumping": false,
     });
     let mut local_player_handle_relative_friction_inputs = vec![];
-    for values in local_player_handle_relative_friction_cases.iter() {
+    for values in &local_player_handle_relative_friction_cases {
         let input_values = merged(vec![local_player_handle_relative_friction_defaults.clone(), values.clone()]);
         local_player_handle_relative_friction_inputs.push(input_values.clone());
     }

@@ -323,7 +323,7 @@ fn signed_zero_atan2() -> Vec<Value> {
         json!({"first": {"x": "7ff8000000000001", "y": "3ff0000000000000", "z": "0000000000000000"}}),
     ));
     for name in ["zero", "x_axis", "y_axis", "z_axis"] {
-        out.push(case(format!("vec3/constants/{}", name), "math", "vec3_constant", json!({"name": name})));
+        out.push(case(format!("vec3/constants/{name}"), "math", "vec3_constant", json!({"name": name})));
     }
     out
 }

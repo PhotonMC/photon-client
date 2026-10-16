@@ -37,6 +37,19 @@ unsafe_op_in_unsafe_fn = "warn"
 undocumented_unsafe_blocks = "warn"
 unwrap_used = "warn"
 
+# A pedantic subset: the lints whose fixes cannot change what Java-parity code computes and that
+# fit the codebase's idioms. The rest (casts, float comparison, wildcard imports, `must_use` and
+# doc lints, line limits) stay off; see docs/development/coding-standards.md.
+bool_to_int_with_if = "warn"
+cloned_instead_of_copied = "warn"
+explicit_iter_loop = "warn"
+if_not_else = "warn"
+manual_assert = "warn"
+semicolon_if_nothing_returned = "warn"
+single_match_else = "warn"
+unnested_or_patterns = "warn"
+uninlined_format_args = "warn"
+
 # Java integer arithmetic always wraps. Keeping overflow checks on in both
 # profiles makes an unintended wrap a test failure instead of a silent
 # release-only divergence; deliberate wrapping is written with `wrapping_*`.

@@ -14,8 +14,8 @@ fn between_closed() -> Vec<Value> {
         ("negative", between_closed_negative()),
         ("integer-boundaries", between_closed_integer_boundaries()),
     ];
-    for (label, values) in blockpos_between_closed.iter() {
-        out.push(case(format!("blockpos/between-closed/{}", label), "math", "blockpos_between_closed", values.clone()));
+    for (label, values) in &blockpos_between_closed {
+        out.push(case(format!("blockpos/between-closed/{label}"), "math", "blockpos_between_closed", values.clone()));
     }
     let blockpos_neighbor_column = [
         ("ascending", json!({"start_x": "10", "start_y": "5", "start_z": "-2", "end_y": "7"})),
@@ -23,13 +23,8 @@ fn between_closed() -> Vec<Value> {
         ("singleton", json!({"start_x": "0", "start_y": "-2", "start_z": "0", "end_y": "-2"})),
         ("integer-boundaries", between_closed_integer_boundaries_start_x()),
     ];
-    for (label, values) in blockpos_neighbor_column.iter() {
-        out.push(case(
-            format!("blockpos/neighbor-column/{}", label),
-            "math",
-            "blockpos_neighbor_column",
-            values.clone(),
-        ));
+    for (label, values) in &blockpos_neighbor_column {
+        out.push(case(format!("blockpos/neighbor-column/{label}"), "math", "blockpos_neighbor_column", values.clone()));
     }
     let blockpos_square_out_south_east = [
         ("basic", json!({"x": "1", "y": "2", "z": "3"})),
@@ -37,9 +32,9 @@ fn between_closed() -> Vec<Value> {
         ("zero", json!({"x": "0", "y": "0", "z": "0"})),
         ("integer-boundaries", json!({"x": "2147483647", "y": "-2147483648", "z": "2147483647"})),
     ];
-    for (label, values) in blockpos_square_out_south_east.iter() {
+    for (label, values) in &blockpos_square_out_south_east {
         out.push(case(
-            format!("blockpos/square-out-south-east/{}", label),
+            format!("blockpos/square-out-south-east/{label}"),
             "math",
             "blockpos_square_out_south_east",
             values.clone(),
@@ -130,8 +125,8 @@ fn random_ranges() -> Vec<Value> {
         ("unit-ranges", random_ranges_unit_ranges()),
         ("integer-boundaries", random_ranges_integer_boundaries()),
     ];
-    for (label, values) in blockpos_random_ranges.iter() {
-        out.push(case(format!("blockpos/random-ranges/{}", label), "math", "blockpos_random_ranges", values.clone()));
+    for (label, values) in &blockpos_random_ranges {
+        out.push(case(format!("blockpos/random-ranges/{label}"), "math", "blockpos_random_ranges", values.clone()));
     }
     let blockpos_between_closed_aabb = [
         ("fractional", box_bits(0.25, 0.25, 0.25, 1.75, 1.75, 1.75)),
@@ -140,9 +135,9 @@ fn random_ranges() -> Vec<Value> {
         ("integer-boundaries", box_bits(0.0, -1.0, 2.0, 1.0, 0.0, 3.0)),
         ("signed-zero", box_bits(-0.0, -0.0, -0.0, 0.0, 0.0, 0.0)),
     ];
-    for (label, values) in blockpos_between_closed_aabb.iter() {
+    for (label, values) in &blockpos_between_closed_aabb {
         out.push(case(
-            format!("blockpos/between-closed-aabb/{}", label),
+            format!("blockpos/between-closed-aabb/{label}"),
             "math",
             "blockpos_between_closed_aabb",
             json!({"aabb": values.clone()}),
@@ -157,9 +152,9 @@ fn random_ranges() -> Vec<Value> {
         ("flat", json!({"origin": {"x": "-3", "y": "4", "z": "-2"}, "reach_x": "1", "reach_y": "0", "reach_z": "0"})),
         ("integer-boundaries", random_ranges_integer_boundaries_origin()),
     ];
-    for (label, values) in blockpos_within_manhattan.iter() {
+    for (label, values) in &blockpos_within_manhattan {
         out.push(case(
-            format!("blockpos/within-manhattan/{}", label),
+            format!("blockpos/within-manhattan/{label}"),
             "math",
             "blockpos_within_manhattan",
             values.clone(),

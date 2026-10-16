@@ -148,7 +148,7 @@ pub(super) fn worn_layers(
                 kind,
                 (humanoid, aggressive, holding_bow),
                 (entity, arm_pose),
-            )
+            );
         },
         &|model, rect, colour| mob_vertices_coloured(model, placement, rect, colour),
     );

@@ -148,7 +148,7 @@ pub fn triangle_normal(p0: [f32; 3], p1: [f32; 3], p2: [f32; 3]) -> [f32; 3] {
     // reciprocal in float.
     let length_squared = normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2];
     let inverse_length = 1.0_f32 / (f64::from(length_squared).sqrt() as f32);
-    for component in normal.iter_mut() {
+    for component in &mut normal {
         *component *= inverse_length;
     }
     normal

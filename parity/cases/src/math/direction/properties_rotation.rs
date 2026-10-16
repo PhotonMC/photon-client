@@ -9,16 +9,11 @@ use crate::math::values::*;
 fn properties() -> Vec<Value> {
     let mut out = Vec::new();
     for name in ["down", "up", "north", "south", "west", "east"] {
-        out.push(case(
-            format!("direction/properties/{}", name),
-            "math",
-            "direction",
-            json!({"name": name, "steps": []}),
-        ));
+        out.push(case(format!("direction/properties/{name}"), "math", "direction", json!({"name": name, "steps": []})));
     }
     for name in ["down", "up", "north", "south", "west", "east"] {
         out.push(case(
-            format!("direction/rotate-y/{}", name),
+            format!("direction/rotate-y/{name}"),
             "math",
             "direction",
             json!({"name": name, "steps": [{"axis": "y", "clockwise": true}, {"axis": "y", "clockwise": true}]}),
@@ -26,7 +21,7 @@ fn properties() -> Vec<Value> {
     }
     for (name, axis) in [("north", "x"), ("north", "z"), ("down", "x"), ("up", "z"), ("west", "x"), ("east", "z")] {
         out.push(case(
-            format!("direction/rotate-{}/{}", axis, name),
+            format!("direction/rotate-{axis}/{name}"),
             "math",
             "direction",
             json!({"name": name, "steps": [{"axis": axis, "clockwise": true}]}),
@@ -35,7 +30,7 @@ fn properties() -> Vec<Value> {
     for direction in ["down", "up", "north", "south", "west", "east"] {
         for axis in ["x", "y", "z"] {
             out.push(case(
-                format!("direction/axial-rotation/{}/{}", direction, axis),
+                format!("direction/axial-rotation/{direction}/{axis}"),
                 "math",
                 "direction_axial_rotation",
                 json!({"name": direction, "axis": axis}),
@@ -44,7 +39,7 @@ fn properties() -> Vec<Value> {
     }
     for direction in ["down", "up", "north", "south", "west", "east"] {
         out.push(case(
-            format!("direction/y-rotation/{}", direction),
+            format!("direction/y-rotation/{direction}"),
             "math",
             "direction_y_rotation",
             json!({"name": direction}),
@@ -59,10 +54,10 @@ fn data() -> Vec<Value> {
         ("3d", vec![0, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5, -6, -7, 6, 11, -11, -2147483648, 2147483647]),
         ("2d", vec![0, 1, 2, 3, -1, -2, -3, -4, -5, 4, 7, -7, -2147483648, 2147483647]),
     ];
-    for (width, values) in direction_data_values.iter() {
-        for value in values.iter() {
+    for (width, values) in &direction_data_values {
+        for value in values {
             out.push(case(
-                format!("direction/data/{}/{}", width, value),
+                format!("direction/data/{width}/{value}"),
                 "math",
                 "direction_data",
                 json!({"type": width, "value": (value).to_string()}),
@@ -92,8 +87,8 @@ fn data() -> Vec<Value> {
         ("negative-infinity", "fff0000000000000".to_string()),
         ("nan", "7ff8000000000001".to_string()),
     ];
-    for (name, value) in direction_y_rot_values.iter() {
-        out.push(case(format!("direction/y-rot/{}", name), "math", "direction_y_rot", json!({"value": value})));
+    for (name, value) in &direction_y_rot_values {
+        out.push(case(format!("direction/y-rot/{name}"), "math", "direction_y_rot", json!({"value": value})));
     }
     out
 }
@@ -103,13 +98,13 @@ fn axis() -> Vec<Value> {
     for axis in ["x", "y", "z"] {
         for direction in ["positive", "negative"] {
             out.push(case(
-                format!("direction/axis/{}/{}", axis, direction),
+                format!("direction/axis/{axis}/{direction}"),
                 "math",
                 "direction_axis",
                 json!({"axis": axis, "direction": direction}),
             ));
             out.push(case(
-                format!("direction/get/{}/{}", axis, direction),
+                format!("direction/get/{axis}/{direction}"),
                 "math",
                 "direction_get",
                 json!({"axis": axis, "direction": direction}),
@@ -118,16 +113,16 @@ fn axis() -> Vec<Value> {
     }
     for name in ["down", "up", "north", "south", "west", "east"] {
         out.push(case(
-            format!("direction/unit-vectors/{}", name),
+            format!("direction/unit-vectors/{name}"),
             "math",
             "direction_unit_vectors",
             json!({"name": name}),
         ));
-        out.push(case(format!("direction/step/{}", name), "math", "direction_step", json!({"name": name})));
+        out.push(case(format!("direction/step/{name}"), "math", "direction_step", json!({"name": name})));
     }
     for axis in ["x", "y", "z"] {
         out.push(case(
-            format!("direction/axis-orientation/{}", axis),
+            format!("direction/axis-orientation/{axis}"),
             "math",
             "direction_axis_orientation",
             json!({"axis": axis}),
@@ -135,7 +130,7 @@ fn axis() -> Vec<Value> {
     }
     for axis in ["x", "y", "z"] {
         out.push(case(
-            format!("direction/axis-directions/{}", axis),
+            format!("direction/axis-directions/{axis}"),
             "math",
             "direction_axis_directions",
             json!({"axis": axis}),
@@ -148,7 +143,7 @@ fn axis_direction_values() -> Vec<Value> {
     let mut out = Vec::new();
     for direction in ["positive", "negative"] {
         out.push(case(
-            format!("direction/axis-direction-values/{}", direction),
+            format!("direction/axis-direction-values/{direction}"),
             "math",
             "direction_axis_direction_values",
             json!({"direction": direction}),
@@ -160,10 +155,10 @@ fn axis_direction_values() -> Vec<Value> {
 fn axis_choose() -> Vec<Value> {
     let mut out = Vec::new();
     let direction_axis_choose_cases = [("distinct", axis_choose_distinct()), ("special", axis_choose_special())];
-    for (label, values) in direction_axis_choose_cases.iter() {
+    for (label, values) in &direction_axis_choose_cases {
         for axis in ["x", "y", "z"] {
             out.push(case(
-                format!("direction/axis-choose/{}/{}", label, axis),
+                format!("direction/axis-choose/{label}/{axis}"),
                 "math",
                 "direction_axis_choose",
                 merged(vec![json!({"axis": axis}), values.clone()]),
@@ -173,7 +168,7 @@ fn axis_choose() -> Vec<Value> {
     for axis in ["x", "y", "z"] {
         for direction in ["down", "up", "north", "south", "west", "east", "none"] {
             out.push(case(
-                format!("direction/axis-test/{}/{}", axis, direction),
+                format!("direction/axis-test/{axis}/{direction}"),
                 "math",
                 "direction_axis_test",
                 json!({"axis": axis, "direction": direction}),
@@ -181,19 +176,19 @@ fn axis_choose() -> Vec<Value> {
         }
     }
     for axis in ["x", "y", "z"] {
-        out.push(case(format!("direction/axis-plane/{}", axis), "math", "direction_axis_plane", json!({"axis": axis})));
+        out.push(case(format!("direction/axis-plane/{axis}"), "math", "direction_axis_plane", json!({"axis": axis})));
     }
     for plane in ["horizontal", "vertical"] {
         for direction in ["down", "up", "north", "south", "west", "east", "none"] {
             out.push(case(
-                format!("direction/plane-test/{}/{}", plane, direction),
+                format!("direction/plane-test/{plane}/{direction}"),
                 "math",
                 "direction_plane_test",
                 json!({"plane": plane, "direction": direction}),
             ));
         }
         out.push(case(
-            format!("direction/plane-order/{}", plane),
+            format!("direction/plane-order/{plane}"),
             "math",
             "direction_plane_order",
             json!({"plane": plane}),
@@ -235,34 +230,29 @@ fn random() -> Vec<Value> {
     for seed in ["0", "1", "-1", "42", "12345", "9223372036854775807", "-9223372036854775808"] {
         for plane in ["horizontal", "vertical"] {
             out.push(case(
-                format!("direction/random/{}/{}", seed, plane),
+                format!("direction/random/{seed}/{plane}"),
                 "math",
                 "direction_random",
                 json!({"seed": seed, "plane": plane}),
             ));
             out.push(case(
-                format!("direction/plane-shuffle/{}/{}", seed, plane),
+                format!("direction/plane-shuffle/{seed}/{plane}"),
                 "math",
                 "direction_plane_shuffle",
                 json!({"seed": seed, "plane": plane}),
             ));
         }
-        out.push(case(
-            format!("direction/all-shuffle/{}", seed),
-            "math",
-            "direction_all_shuffle",
-            json!({"seed": seed}),
-        ));
+        out.push(case(format!("direction/all-shuffle/{seed}"), "math", "direction_all_shuffle", json!({"seed": seed})));
     }
     out.push(case("direction/stream", "math", "direction_stream", json!({})));
     for name in ["down", "up", "north", "south", "west", "east"] {
-        out.push(case(format!("direction/to-y-rot/{}", name), "math", "direction_to_y_rot", json!({"name": name})));
+        out.push(case(format!("direction/to-y-rot/{name}"), "math", "direction_to_y_rot", json!({"name": name})));
     }
     for name in ["down", "up", "north", "south", "west", "east"] {
-        out.push(case(format!("direction/get-y-rot/{}", name), "math", "direction_get_y_rot", json!({"name": name})));
+        out.push(case(format!("direction/get-y-rot/{name}"), "math", "direction_get_y_rot", json!({"name": name})));
     }
     for name in ["down", "up", "north", "south", "west", "east"] {
-        out.push(case(format!("direction/rotation/{}", name), "math", "direction_rotation", json!({"name": name})));
+        out.push(case(format!("direction/rotation/{name}"), "math", "direction_rotation", json!({"name": name})));
     }
     out
 }
@@ -273,11 +263,11 @@ fn name_lookup() -> Vec<Value> {
         ("direction", vec!["down", "up", "north", "south", "west", "east", "NORTH", "North", "north ", ""]),
         ("axis", vec!["x", "y", "z", "X", "Y", "z ", ""]),
     ];
-    for (kind, names) in direction_name_lookup_cases.iter() {
-        for name in names.iter().cloned() {
-            let label = if !name.is_empty() { name } else { "empty" };
+    for (kind, names) in &direction_name_lookup_cases {
+        for name in names.iter().copied() {
+            let label = if name.is_empty() { "empty" } else { name };
             out.push(case(
-                format!("direction/name-lookup/{}/{}", kind, label),
+                format!("direction/name-lookup/{kind}/{label}"),
                 "math",
                 "direction_name_lookup",
                 json!({"kind": kind, "name": name}),
@@ -286,10 +276,10 @@ fn name_lookup() -> Vec<Value> {
     }
     let direction_enum_text_cases =
         [("axis_direction", vec!["positive", "negative"]), ("plane", vec!["horizontal", "vertical"])];
-    for (kind, names) in direction_enum_text_cases.iter() {
-        for name in names.iter() {
+    for (kind, names) in &direction_enum_text_cases {
+        for name in names {
             out.push(case(
-                format!("direction/enum-text/{}/{}", kind, name),
+                format!("direction/enum-text/{kind}/{name}"),
                 "math",
                 "direction_enum_text",
                 json!({"kind": kind, "name": name}),
@@ -298,10 +288,10 @@ fn name_lookup() -> Vec<Value> {
     }
     let direction_enum_name_cases =
         [("direction", vec!["down", "up", "north", "south", "west", "east"]), ("axis", vec!["x", "y", "z"])];
-    for (kind, names) in direction_enum_name_cases.iter() {
-        for name in names.iter() {
+    for (kind, names) in &direction_enum_name_cases {
+        for name in names {
             out.push(case(
-                format!("direction/enum-name/{}/{}", kind, name),
+                format!("direction/enum-name/{kind}/{name}"),
                 "math",
                 "direction_enum_name",
                 json!({"kind": kind, "name": name}),
@@ -331,9 +321,9 @@ fn approximate_nearest() -> Vec<Value> {
         ("subnormal", json!({"x": "0000000000000001", "y": "0000000000000000", "z": "0000000000000000"})),
         ("max-finite", json!({"x": "7fefffffffffffff", "y": "0000000000000000", "z": "0000000000000000"})),
     ];
-    for (name, vector) in direction_approximate_nearest_cases.iter() {
+    for (name, vector) in &direction_approximate_nearest_cases {
         out.push(case(
-            format!("direction/approximate-nearest/{}", name),
+            format!("direction/approximate-nearest/{name}"),
             "math",
             "direction_approximate_nearest",
             vector.clone(),

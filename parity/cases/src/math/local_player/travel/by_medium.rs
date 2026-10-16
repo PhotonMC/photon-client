@@ -54,7 +54,7 @@ fn travel_flying() -> Vec<Value> {
         "air_speed": f32_bits(0.04),
     });
     let mut local_player_travel_flying_inputs = vec![];
-    for values in local_player_travel_flying_cases.iter() {
+    for values in &local_player_travel_flying_cases {
         let input_values = merged(vec![local_player_travel_flying_defaults.clone(), values.clone()]);
         local_player_travel_flying_inputs.push(input_values.clone());
     }
@@ -89,7 +89,7 @@ fn travel_in_water() -> Vec<Value> {
     ];
     let local_player_travel_in_water_defaults = travel_in_water_input();
     let mut local_player_travel_in_water_inputs = vec![];
-    for values in local_player_travel_in_water_cases.iter() {
+    for values in &local_player_travel_in_water_cases {
         let input_values = merged(vec![local_player_travel_in_water_defaults.clone(), values.clone()]);
         local_player_travel_in_water_inputs.push(input_values.clone());
     }
@@ -195,7 +195,7 @@ fn travel_in_lava() -> Vec<Value> {
         "current_y": f64_bits(10.0),
     });
     let mut local_player_travel_in_lava_inputs = vec![];
-    for values in local_player_travel_in_lava_cases.iter() {
+    for values in &local_player_travel_in_lava_cases {
         let input_values = merged(vec![local_player_travel_in_lava_defaults.clone(), values.clone()]);
         local_player_travel_in_lava_inputs.push(input_values.clone());
     }
@@ -245,7 +245,7 @@ fn travel_in_air() -> Vec<Value> {
     ];
     let local_player_travel_in_air_defaults = travel_in_air_input();
     let mut local_player_travel_in_air_inputs = vec![];
-    for values in local_player_travel_in_air_cases.iter() {
+    for values in &local_player_travel_in_air_cases {
         let input_values = merged(vec![local_player_travel_in_air_defaults.clone(), values.clone()]);
         local_player_travel_in_air_inputs.push(input_values.clone());
     }

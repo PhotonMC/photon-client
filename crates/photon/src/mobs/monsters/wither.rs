@@ -287,7 +287,7 @@ pub(super) fn glowing_layers(
                 (entity, &state, partial),
                 placed,
                 vertices,
-            )
+            );
         }
         _ => {}
     }

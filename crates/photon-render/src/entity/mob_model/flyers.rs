@@ -202,10 +202,10 @@ impl MobModel {
             }
             ParrotPose::Party => {
                 adjust("left_leg", &|leg| {
-                    leg.z_rot = (-std::f64::consts::PI / 9.0) as f32
+                    leg.z_rot = (-std::f64::consts::PI / 9.0) as f32;
                 });
                 adjust("right_leg", &|leg| {
-                    leg.z_rot = (std::f64::consts::PI / 9.0) as f32
+                    leg.z_rot = (std::f64::consts::PI / 9.0) as f32;
                 });
             }
             ParrotPose::Standing | ParrotPose::OnShoulder => {}

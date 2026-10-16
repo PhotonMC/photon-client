@@ -360,9 +360,9 @@ impl VulkanBackend {
                 .image_indices(&indices);
             match self.swapchain_device.queue_present(self.queue, &present) {
                 Ok(false) => {}
-                Ok(true)
-                | Err(vk::Result::ERROR_OUT_OF_DATE_KHR)
-                | Err(vk::Result::SUBOPTIMAL_KHR) => self.out_of_date = true,
+                Ok(true) | Err(vk::Result::ERROR_OUT_OF_DATE_KHR | vk::Result::SUBOPTIMAL_KHR) => {
+                    self.out_of_date = true;
+                }
                 Err(result) => return Err(VulkanError::Call("vkQueuePresentKHR", result)),
             }
             self.timings.submit_present = submit_start.elapsed();

@@ -232,7 +232,7 @@ impl SectionMeshes {
             backend.set_visible_sections(self.culling.then_some(visible));
             let nothing_to_hand_out = ordered.is_empty();
             profile::timed(Span::HandOut, || {
-                self.hand_out(session, ordered, view.origin)
+                self.hand_out(session, ordered, view.origin);
             });
             let flood_settled = !self.graph_stale && !self.flood.busy();
             if !script_done

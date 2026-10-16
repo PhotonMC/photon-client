@@ -14,9 +14,9 @@ fn packed_accessors() -> Vec<Value> {
         ("maximums", "7ffffdfffff7ffff"),
         ("alternating", "aa55aa5555aa55aa"),
     ];
-    for (label, packed) in sectionpos_packed_accessors.iter() {
+    for (label, packed) in &sectionpos_packed_accessors {
         out.push(case(
-            format!("sectionpos/packed-accessors/{}", label),
+            format!("sectionpos/packed-accessors/{label}"),
             "math",
             "sectionpos_packed_accessors",
             json!({"packed": packed}),
@@ -30,9 +30,9 @@ fn packed_accessors() -> Vec<Value> {
         ("shift-wrap", json!({"x": "134217728", "y": "-134217729", "z": "-134217728"})),
         ("coordinate-boundaries", json!({"x": "2147483647", "y": "-2147483648", "z": "-2147483647"})),
     ];
-    for (label, values) in sectionpos_block_coordinates.iter() {
+    for (label, values) in &sectionpos_block_coordinates {
         out.push(case(
-            format!("sectionpos/block-coordinates/{}", label),
+            format!("sectionpos/block-coordinates/{label}"),
             "math",
             "sectionpos_block_coordinates",
             values.clone(),
@@ -51,9 +51,9 @@ fn relative_to_block() -> Vec<Value> {
         ("short-min", json!({"x": "1", "y": "2", "z": "3", "relative": "-32768"})),
         ("coordinate-boundaries", json!({"x": "134217727", "y": "-134217728", "z": "-134217729", "relative": "4095"})),
     ];
-    for (label, values) in sectionpos_relative_to_block.iter() {
+    for (label, values) in &sectionpos_relative_to_block {
         out.push(case(
-            format!("sectionpos/relative-to-block/{}", label),
+            format!("sectionpos/relative-to-block/{label}"),
             "math",
             "sectionpos_relative_to_block",
             values.clone(),
@@ -67,8 +67,8 @@ fn relative_to_block() -> Vec<Value> {
         ("shift-wrap", json!({"x": "134217728", "y": "-134217729", "z": "-134217728"})),
         ("coordinate-boundaries", json!({"x": "2147483647", "y": "-2147483648", "z": "-2147483647"})),
     ];
-    for (label, values) in sectionpos_spatial.iter() {
-        out.push(case(format!("sectionpos/spatial/{}", label), "math", "sectionpos_spatial", values.clone()));
+    for (label, values) in &sectionpos_spatial {
+        out.push(case(format!("sectionpos/spatial/{label}"), "math", "sectionpos_spatial", values.clone()));
     }
     out
 }
@@ -110,9 +110,9 @@ fn packed_transformations() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in sectionpos_packed_transformations.iter() {
+    for (label, values) in &sectionpos_packed_transformations {
         out.push(case(
-            format!("sectionpos/packed-transformations/{}", label),
+            format!("sectionpos/packed-transformations/{label}"),
             "math",
             "sectionpos_packed_transformations",
             values.clone(),
@@ -153,8 +153,8 @@ fn as_long() -> Vec<Value> {
         ("packed-negative-limits", as_long_packed_negative_limits()),
         ("arbitrary-and-i32", as_long_arbitrary_and_i32()),
     ];
-    for (label, values) in sectionpos_as_long.iter() {
-        out.push(case(format!("sectionpos/as-long/{}", label), "math", "sectionpos_as_long", values.clone()));
+    for (label, values) in &sectionpos_as_long {
+        out.push(case(format!("sectionpos/as-long/{label}"), "math", "sectionpos_as_long", values.clone()));
     }
     out
 }

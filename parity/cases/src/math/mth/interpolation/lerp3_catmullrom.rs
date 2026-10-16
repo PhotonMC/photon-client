@@ -16,7 +16,7 @@ fn lerp3() -> Vec<Value> {
     let mth_lerp3 = mth_lerp3_rows();
     for (label, alpha1, alpha2, alpha3, x000, x100, x010, x110, x001, x101, x011, x111) in mth_lerp3.iter().cloned() {
         out.push(case(
-            format!("mth/interpolation/lerp3/{}", label),
+            format!("mth/interpolation/lerp3/{label}"),
             "math",
             "mth_interpolation",
             json!({
@@ -365,7 +365,7 @@ fn catmullrom() -> Vec<Value> {
     ];
     for (label, alpha, p0, p1, p2, p3) in mth_catmullrom.iter().cloned() {
         out.push(case(
-            format!("mth/interpolation/catmullrom/{}", label),
+            format!("mth/interpolation/catmullrom/{label}"),
             "math",
             "mth_interpolation",
             json!({

@@ -6,7 +6,7 @@ use crate::item_components;
 #[test]
 fn every_creative_stack_reads_whole() {
     let registries = crate::registries::for_tests();
-    for tab in photon_data::item::creative_tabs::CREATIVE_TABS.iter() {
+    for tab in &photon_data::item::creative_tabs::CREATIVE_TABS {
         for entry in tab.items {
             let stack = crate::menus::creative::table_stack(entry, &registries);
             // An empty patch is kept as no bytes.

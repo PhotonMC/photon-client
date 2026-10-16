@@ -112,25 +112,7 @@ impl GenericScreen {
             }
             let level = format!("container/enchanting_table/level_{}", row + 1);
             let affordable = Self::enchant_can_afford(menu, row);
-            let (name_colour, cost_colour) = if !affordable {
-                draw.frame.sprite(
-                    draw.atlas,
-                    "container/enchanting_table/enchantment_slot_disabled",
-                    x,
-                    y,
-                    108,
-                    19,
-                );
-                draw.frame.sprite(
-                    draw.atlas,
-                    &format!("{level}_disabled"),
-                    x + 1,
-                    y + 1,
-                    16,
-                    16,
-                );
-                (0xFF34_2F25, 0xFF40_7F10)
-            } else {
+            let (name_colour, cost_colour) = if affordable {
                 let (xx, yy) = (mouse.0 - f64::from(x), mouse.1 - f64::from(y));
                 let over = (0.0..108.0).contains(&xx) && (0.0..19.0).contains(&yy);
                 let (sprite, colour) = if over {
@@ -148,6 +130,24 @@ impl GenericScreen {
                 );
                 draw.frame.sprite(draw.atlas, &level, x + 1, y + 1, 16, 16);
                 (colour, 0xFF80_FF20)
+            } else {
+                draw.frame.sprite(
+                    draw.atlas,
+                    "container/enchanting_table/enchantment_slot_disabled",
+                    x,
+                    y,
+                    108,
+                    19,
+                );
+                draw.frame.sprite(
+                    draw.atlas,
+                    &format!("{level}_disabled"),
+                    x + 1,
+                    y + 1,
+                    16,
+                    16,
+                );
+                (0xFF34_2F25, 0xFF40_7F10)
             };
             draw.frame
                 .text(draw.atlas, &alt, &shown, x + 20, y + 2, name_colour);

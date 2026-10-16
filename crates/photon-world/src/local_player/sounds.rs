@@ -354,14 +354,14 @@ impl LocalPlayer {
             return;
         }
         let primary = Self::primary_step_pos(level, on_pos);
-        if primary != on_pos {
+        if primary == on_pos {
+            self.play_block_step(level, on_pos);
+        } else {
             if Self::state_in_tag(level, primary, "minecraft:combination_step_sound_blocks") {
                 self.play_combination_step(level, primary, on_pos);
             } else {
                 self.play_block_step(level, primary);
             }
-        } else {
-            self.play_block_step(level, on_pos);
         }
     }
 

@@ -42,7 +42,7 @@ fn fluid_falling_adjustment() -> Vec<Value> {
     ];
     let local_player_fluid_adjustment_defaults = fluid_falling_adjustment_base_gravity();
     let mut local_player_fluid_adjustment_inputs = vec![];
-    for values in local_player_fluid_adjustment_cases.iter() {
+    for values in &local_player_fluid_adjustment_cases {
         let input_values = merged(vec![local_player_fluid_adjustment_defaults.clone(), values.clone()]);
         local_player_fluid_adjustment_inputs.push(input_values.clone());
     }
@@ -121,7 +121,7 @@ fn climbable_movement() -> Vec<Value> {
         "z": f64_bits(-0.4),
     });
     let mut local_player_climbable_movement_inputs = vec![];
-    for values in local_player_climbable_movement_cases.iter() {
+    for values in &local_player_climbable_movement_cases {
         let input_values = merged(vec![local_player_climbable_movement_defaults.clone(), values.clone()]);
         local_player_climbable_movement_inputs.push(input_values.clone());
     }

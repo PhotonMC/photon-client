@@ -148,8 +148,8 @@ impl DeathScreen {
     /// Tab: the focus moves to the next button.
     pub fn tab(&mut self, forward: bool) {
         let next = match (self.focus, forward) {
-            (None, true) | (Some(1), true) => 0,
-            (None, false) | (Some(0), false) => 1,
+            (None | Some(1), true) => 0,
+            (None | Some(0), false) => 1,
             (Some(_), _) => 1 - self.focus.unwrap_or(0),
         };
         self.focus = Some(next);

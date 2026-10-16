@@ -49,21 +49,20 @@ impl ItemLayerCache {
     ) -> &[ItemLayer] {
         let context = self.context;
         let variants = self.layers.entry(stack.item_registry_id().0).or_default();
-        let index = match variants
+        let index = if let Some(index) = variants
             .iter()
             .position(|(patch, _)| patch == stack.patch_bytes())
         {
-            Some(index) => index,
-            None => {
-                let layers = renderer.item_layers(
-                    stack.item_registry_id(),
-                    context,
-                    &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
-                    stack.patch_bytes(),
-                );
-                variants.push((stack.patch_bytes().to_vec(), layers));
-                variants.len() - 1
-            }
+            index
+        } else {
+            let layers = renderer.item_layers(
+                stack.item_registry_id(),
+                context,
+                &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
+                stack.patch_bytes(),
+            );
+            variants.push((stack.patch_bytes().to_vec(), layers));
+            variants.len() - 1
         };
         &variants[index].1
     }

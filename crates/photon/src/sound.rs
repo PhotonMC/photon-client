@@ -284,16 +284,15 @@ impl SoundSystem {
         }
         let followed = Arc::clone(&self.followed);
         instance.ticker = Some(Box::new(move |state| {
-            match followed
+            if let Some(Some(position)) = followed
                 .lock()
                 .ok()
                 .and_then(|map| map.get(&entity).copied())
             {
-                Some(Some(position)) => *state.position = position,
-                _ => {
-                    *state.stopped = true;
-                    *state.looping = false;
-                }
+                *state.position = position;
+            } else {
+                *state.stopped = true;
+                *state.looping = false;
             }
         }));
         let id = self.engine.add(instance);

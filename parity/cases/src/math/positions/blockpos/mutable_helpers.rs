@@ -32,13 +32,8 @@ fn mutable_helpers() -> Vec<Value> {
             }),
         ),
     ];
-    for (label, values) in blockpos_mutable_helpers.iter() {
-        out.push(case(
-            format!("blockpos/mutable-helpers/{}", label),
-            "math",
-            "blockpos_mutable_helpers",
-            values.clone(),
-        ));
+    for (label, values) in &blockpos_mutable_helpers {
+        out.push(case(format!("blockpos/mutable-helpers/{label}"), "math", "blockpos_mutable_helpers", values.clone()));
     }
     out
 }

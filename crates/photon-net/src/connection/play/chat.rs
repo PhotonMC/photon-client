@@ -148,12 +148,11 @@ impl PlaySession {
         self.social.next_chat_index = packet.global_index + 1;
         let mut queue = std::collections::VecDeque::new();
         for seen in &packet.last_seen {
-            match self.social.signature_cache.unpack(seen) {
-                Some(signature) => queue.push_back(signature),
-                None => {
-                    self.warn("player chat: unknown signature".to_owned());
-                    return;
-                }
+            if let Some(signature) = self.social.signature_cache.unpack(seen) {
+                queue.push_back(signature);
+            } else {
+                self.warn("player chat: unknown signature".to_owned());
+                return;
             }
         }
         if let Some(signature) = &packet.signature {

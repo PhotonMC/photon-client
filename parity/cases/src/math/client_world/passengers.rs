@@ -122,7 +122,7 @@ fn entity_passenger_player_position() -> Vec<Value> {
         "math",
         "client_world_entity_passenger_boat_family_position",
         json!({
-            "rows": boat_family_rows.clone().iter().cloned().map(|(label, vehicle_id, vehicle_type_id, passenger_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": vehicle_type_id, "position": vector_bits(2.0, 10.0, 2.0), "rotation": {"y": f32_bits(90.0), "x": f32_bits(0.0)}, "no_gravity": false}, "passenger": {"entity_id": passenger_id, "type_id": 120, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.125, 0.0, 0.0), "rotation": {"y": f32_bits(10.0), "x": f32_bits(-15.0)}, "no_gravity": false}})).collect::<Vec<_>>(),
+            "rows": boat_family_rows.clone().iter().copied().map(|(label, vehicle_id, vehicle_type_id, passenger_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": vehicle_type_id, "position": vector_bits(2.0, 10.0, 2.0), "rotation": {"y": f32_bits(90.0), "x": f32_bits(0.0)}, "no_gravity": false}, "passenger": {"entity_id": passenger_id, "type_id": 120, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.125, 0.0, 0.0), "rotation": {"y": f32_bits(10.0), "x": f32_bits(-15.0)}, "no_gravity": false}})).collect::<Vec<_>>(),
             "operations": [{"action": "tick", "label": "family-seat", "ticks": 1}],
         }),
     ));
@@ -137,7 +137,7 @@ fn entity_passenger_rotation() -> Vec<Value> {
         "math",
         "client_world_entity_passenger_rotation",
         json!({
-            "rows": rotation_rows.clone().iter().cloned().map(|(label, vehicle_id, passenger_type_id, passenger_id, passenger_yaw)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "passenger": {"entity_id": passenger_id, "type_id": passenger_type_id, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(passenger_yaw), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
+            "rows": rotation_rows.clone().iter().copied().map(|(label, vehicle_id, passenger_type_id, passenger_id, passenger_yaw)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "passenger": {"entity_id": passenger_id, "type_id": passenger_type_id, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(passenger_yaw), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
             "operations": [{"action": "tick", "label": "clamp", "ticks": 1}],
         }),
     ));
@@ -170,7 +170,7 @@ fn entity_passenger_rotation() -> Vec<Value> {
         "math",
         "client_world_entity_passenger_animal_rotation",
         json!({
-            "rows": animal_rotation_rows.clone().iter().cloned().map(|(label, vehicle_id, animal_id, filler_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "animal": {"entity_id": animal_id, "type_id": 30, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(170.0), "x": f32_bits(0.0)}, "no_gravity": true}, "filler": {"entity_id": filler_id, "type_id": 120, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
+            "rows": animal_rotation_rows.clone().iter().copied().map(|(label, vehicle_id, animal_id, filler_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "animal": {"entity_id": animal_id, "type_id": 30, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(170.0), "x": f32_bits(0.0)}, "no_gravity": true}, "filler": {"entity_id": filler_id, "type_id": 120, "position": vector_bits(2.0, 12.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
             "operations": [{"action": "tick", "label": "animal-capacity-offset", "ticks": 1}],
         }),
     ));
@@ -208,7 +208,7 @@ fn entity_passenger_animal_position() -> Vec<Value> {
         "math",
         "client_world_entity_passenger_turn",
         json!({
-            "rows": turn_rows.clone().iter().cloned().map(|(label, vehicle_id, passenger_id, passenger_type_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "passenger": {"entity_id": passenger_id, "type_id": passenger_type_id, "position": vector_bits(2.0, 2.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(168.75), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
+            "rows": turn_rows.clone().iter().copied().map(|(label, vehicle_id, passenger_id, passenger_type_id)| json!({"label": label, "vehicle": {"entity_id": vehicle_id, "type_id": 89, "position": vector_bits(2.0, 2.0, 2.0), "rotation": {"y": f32_bits(0.0), "x": f32_bits(0.0)}, "no_gravity": true}, "passenger": {"entity_id": passenger_id, "type_id": passenger_type_id, "position": vector_bits(2.0, 2.0, 2.0), "movement": vector_bits(0.0, 0.0, 0.0), "rotation": {"y": f32_bits(168.75), "x": f32_bits(0.0)}, "no_gravity": true}})).collect::<Vec<_>>(),
             "operations": [{"action": "turn", "label": "direct-passenger-turn", "mouse_x": -100.0, "mouse_y": 0.0}],
         }),
     ));

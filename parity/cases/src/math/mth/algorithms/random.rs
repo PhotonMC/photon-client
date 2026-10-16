@@ -9,7 +9,7 @@ fn sequence() -> Vec<Value> {
     let mut out = Vec::new();
     for seed in [0, 1, -1, 12345, 9223372036854775807_i64] {
         out.push(case(
-            format!("random/sequence/{}", seed),
+            format!("random/sequence/{seed}"),
             "math",
             "random",
             json!({
@@ -26,7 +26,7 @@ fn sequence() -> Vec<Value> {
     }
     for bound in [1, 2, 16, 100] {
         out.push(case(
-            format!("random/bound-{}", bound),
+            format!("random/bound-{bound}"),
             "math",
             "random",
             json!({
@@ -39,7 +39,7 @@ fn sequence() -> Vec<Value> {
         [("zero", 0), ("one", 1), ("negative-one", -1), ("fixed", 12345), ("max", 9223372036854775807_i64)]
     {
         out.push(case(
-            format!("random/gaussian/sequence/{}", label),
+            format!("random/gaussian/sequence/{label}"),
             "math",
             "random",
             json!({
@@ -268,7 +268,7 @@ fn from_seed() -> Vec<Value> {
         ("high-bit", 4611686018427387904_i64),
     ] {
         out.push(case(
-            format!("mth/create-insecure-uuid/{}", label),
+            format!("mth/create-insecure-uuid/{label}"),
             "math",
             "mth_create_insecure_uuid",
             json!({"seed": (seed).to_string()}),
@@ -306,7 +306,7 @@ fn murmur_hash3_mixer() -> Vec<Value> {
         ("all-zero-high-byte", 16777215),
     ] {
         out.push(case(
-            format!("mth/murmur-hash3-mixer/{}", label),
+            format!("mth/murmur-hash3-mixer/{label}"),
             "math",
             "mth_murmur_hash3_mixer",
             json!({"input": (input_value).to_string()}),
@@ -344,7 +344,7 @@ fn binary_search() -> Vec<Value> {
         ("low-range-gt", -2147483648, -2147483630, "gt", -2147483640),
     ] {
         out.push(case(
-            format!("mth/binary-search/{}", label),
+            format!("mth/binary-search/{label}"),
             "math",
             "mth_binary_search",
             json!({

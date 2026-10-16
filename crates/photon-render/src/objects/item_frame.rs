@@ -55,10 +55,10 @@ pub fn item_frame_poses(
         (f64::from(direction.get_step_y()) * WALL_SHIFT) as f32,
         (f64::from(direction.get_step_z()) * WALL_SHIFT) as f32,
     );
-    let (x_rot, y_rot) = if direction.axis() != Axis::Y {
-        (0.0, 180.0 - direction.to_y_rot())
-    } else {
+    let (x_rot, y_rot) = if direction.axis() == Axis::Y {
         (-90.0 * direction.get_step_y() as f32, 180.0)
+    } else {
+        (0.0, 180.0 - direction.to_y_rot())
     };
     pose.rotate(&Quaternion::rotation_x(degrees(x_rot)));
     pose.rotate(&Quaternion::rotation_y(degrees(y_rot)));

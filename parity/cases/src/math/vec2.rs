@@ -340,7 +340,7 @@ fn basic() -> Vec<Value> {
         json!({"first": {"x": "7f800000", "y": "7fc00001"}, "second": {"x": "ff800000", "y": "7fc00002"}}),
     ));
     for name in ["zero", "one", "unit_x", "neg_unit_x", "unit_y", "neg_unit_y", "max", "min"] {
-        out.push(case(format!("vec2/constants/{}", name), "math", "vec2_constant", json!({"name": name})));
+        out.push(case(format!("vec2/constants/{name}"), "math", "vec2_constant", json!({"name": name})));
     }
     out
 }
