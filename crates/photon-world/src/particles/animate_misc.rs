@@ -24,7 +24,7 @@ impl ParticleEngine {
     /// `Block.animateTick` of these blocks; false for another block.
     pub(super) fn misc_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        (state, name): (i32, &str),
+        (state, name): (BlockStateId, &str),
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
@@ -88,8 +88,8 @@ impl ParticleEngine {
             ));
         }
         let portal = |dx: i32| {
-            let state = context.world.block_state_at(bx + dx, by, bz).unwrap_or(0);
-            crate::block::state_or_air(i64::from(state)).block().name == "minecraft:nether_portal"
+            let state = context.world.block_state_or_air(bx + dx, by, bz);
+            crate::block::state_or_air(state).block().name == "minecraft:nether_portal"
         };
         let along_x = portal(-1) || portal(1);
         for _ in 0..4 {
@@ -135,9 +135,8 @@ impl ParticleEngine {
             let ax = bx + spread(random);
             let ay = by - random.next_int_bound(10).unwrap_or(0);
             let az = bz + spread(random);
-            let state = context.world.block_state_at(ax, ay, az).unwrap_or(0);
-            let full = crate::block::state(BlockStateId(state))
-                .is_some_and(|info| info.collision_full_block);
+            let state = context.world.block_state_or_air(ax, ay, az);
+            let full = crate::block::state(state).is_some_and(|info| info.collision_full_block);
             if !full {
                 let at = (
                     f64::from(ax) + random.next_double(),
@@ -164,11 +163,8 @@ impl ParticleEngine {
         if direction == Direction::Up {
             return;
         }
-        let neighbour = context
-            .world
-            .block_state_at(bx + dx, by + dy, bz + dz)
-            .unwrap_or(0);
-        let covered = crate::block::state(BlockStateId(neighbour))
+        let neighbour = context.world.block_state_or_air(bx + dx, by + dy, bz + dz);
+        let covered = crate::block::state(neighbour)
             .is_some_and(|info| info.is_face_sturdy(direction.opposite()));
         if covered {
             return;
@@ -188,7 +184,7 @@ impl ParticleEngine {
     /// `EndRodBlock.animateTick`: a glint one time in five somewhere along the rod.
     fn end_rod<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         (bx, by, bz): (i32, i32, i32),
         random: &mut RandomSource,
         context: &mut LevelEventContext<'_, F>,

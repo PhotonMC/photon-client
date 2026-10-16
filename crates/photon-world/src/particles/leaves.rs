@@ -157,7 +157,7 @@ impl ParticleEngine {
     /// full top. (A drip in the rain, `isRainingAt`, is not carried.)
     pub(super) fn leaves_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        (state, name): (i32, &str),
+        (state, name): (BlockStateId, &str),
         (x, y, z): (i32, i32, i32),
         random: &mut RandomSource,
         (context, materials): (&mut LevelEventContext<'_, F>, Option<&dyn TerrainMaterials>),
@@ -169,8 +169,8 @@ impl ParticleEngine {
             return;
         }
         let world = context.world;
-        let below = world.block_state_at(x, y - 1, z).unwrap_or(0);
-        let shape = crate::block::registry::collision_shape_at(BlockStateId(below), [x, y - 1, z]);
+        let below = world.block_state_or_air(x, y - 1, z);
+        let shape = crate::block::registry::collision_shape_at(below, [x, y - 1, z]);
         let top = shape.face_shape(photon_core::direction::Direction::Up);
         if !Shapes::join_is_not_empty(&Shapes::block(), &top, BooleanOp::NotSame) {
             return;

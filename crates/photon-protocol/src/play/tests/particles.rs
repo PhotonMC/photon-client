@@ -39,7 +39,7 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
     assert!(input.is_empty());
     assert_eq!(
         (packet.type_id, packet.data.block_state()),
-        (block, Some(1234))
+        (block, Some(photon_core::ids::BlockStateId(1234)))
     );
 }
 

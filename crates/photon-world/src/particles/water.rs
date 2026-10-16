@@ -2,7 +2,6 @@
 //! `WaterDropParticle` (rain) and `SplashParticle`, `WakeParticle` (a fishing bobber's trail),
 //! `WaterCurrentDownParticle` and `SquidInkParticle`.
 
-use photon_core::ids::BlockStateId;
 use std::sync::Arc;
 
 use photon_core::direction::Axis;
@@ -39,7 +38,7 @@ fn containing((x, y, z): (f64, f64, f64)) -> [i32; 3] {
 }
 
 fn fluid_at(world: &ClientWorld, [x, y, z]: [i32; 3]) -> crate::block::fluid::FluidState {
-    crate::block::state_or_air(i64::from(world.block_state_at(x, y, z).unwrap_or(0))).fluid
+    crate::block::state_or_air(world.block_state_or_air(x, y, z)).fluid
 }
 
 /// `getFluidState(pos).is(FluidTags.WATER)`.
@@ -263,7 +262,7 @@ impl Particle {
                 if !self.removed {
                     self.animated_fade();
                     let [x, y, z] = containing((self.x, self.y, self.z));
-                    let state = world.block_state_at(x, y, z).unwrap_or(0);
+                    let state = world.block_state_or_air(x, y, z);
                     if super::terrain::is_air(super::terrain::name_of(state)) {
                         self.yd -= f64::from(0.0074_f32);
                     }
@@ -360,8 +359,8 @@ impl Particle {
         }
         let pos = containing((self.x, self.y, self.z));
         let [bx, by, bz] = pos;
-        let state = world.block_state_at(bx, by, bz).unwrap_or(0);
-        let shape = crate::block::registry::collision_shape_at(BlockStateId(state.max(0)), pos);
+        let state = world.block_state_or_air(bx, by, bz);
+        let shape = crate::block::registry::collision_shape_at(state, pos);
         let shape_top = shape.max_at(Axis::Y, self.x - f64::from(bx), self.z - f64::from(bz));
         // `FluidState.getHeight`: the whole block under the same fluid, else its own height.
         let fluid = fluid_at(world, pos);

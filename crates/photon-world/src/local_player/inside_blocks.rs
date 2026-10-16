@@ -149,9 +149,7 @@ pub(crate) fn living_inside_effect(
                     .block_state_registry
                     .collision_shape(above_state)
                     .is_empty()
-                    && crate::block::state_or_air(i64::from(above_state))
-                        .fluid
-                        .is_empty()
+                    && crate::block::state_or_air(above_state).fluid.is_empty()
             });
             let delta = *body.delta;
             let y = if nothing_above {

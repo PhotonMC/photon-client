@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// What breaking reads of the player besides its movement state: the held
 /// item, the effects and the attributes. Taken before a tick's attack.
@@ -37,16 +38,16 @@ pub(super) const ENTITY_INTERACTION_RANGE: i32 = 13;
 pub(super) const DIRECTION_DOWN: u8 = 0;
 
 /// The block a state belongs to; a number outside the registry is air.
-pub(super) fn block(state: i32) -> &'static photon_data::block::registry::Block {
-    photon_world::block::state_or_air(i64::from(state)).block()
+pub(super) fn block(state: BlockStateId) -> &'static photon_data::block::registry::Block {
+    photon_world::block::state_or_air(state).block()
 }
 
 /// `BlockState.isAir`.
-pub(super) fn is_air(state: i32) -> bool {
+pub(super) fn is_air(state: BlockStateId) -> bool {
     block(state).air
 }
 
-pub(super) fn is_game_master_block(state: i32) -> bool {
+pub(super) fn is_game_master_block(state: BlockStateId) -> bool {
     block(state)
         .class
         .implements(photon_data::block::classes::BlockInterface::GameMasterBlock)
@@ -117,7 +118,7 @@ impl Miner {
         &self,
         world: &ClientWorld,
         player: &LocalPlayer,
-        state: i32,
+        state: BlockStateId,
     ) -> f32 {
         let registry = world.block_state_registry();
         let mut speed = self
@@ -148,7 +149,7 @@ impl Miner {
     }
 
     /// `Player.hasCorrectToolForDrops`.
-    pub(super) fn has_correct_tool(&self, world: &ClientWorld, state: i32) -> bool {
+    pub(super) fn has_correct_tool(&self, world: &ClientWorld, state: BlockStateId) -> bool {
         !block(state).requires_correct_tool_for_drops
             || self.tool().is_some_and(|tool| {
                 crate::item::is_correct_for_drops(tool, world.block_state_registry(), state)
@@ -157,7 +158,12 @@ impl Miner {
 
     /// `BlockBehaviour.getDestroyProgress`: how much one tick of breaking
     /// does.
-    pub fn destroy_progress(&self, world: &ClientWorld, player: &LocalPlayer, state: i32) -> f32 {
+    pub fn destroy_progress(
+        &self,
+        world: &ClientWorld,
+        player: &LocalPlayer,
+        state: BlockStateId,
+    ) -> f32 {
         let destroy_time = block(state).destroy_time;
         if destroy_time == -1.0 {
             return 0.0;

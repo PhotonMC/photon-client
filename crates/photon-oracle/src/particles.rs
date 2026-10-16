@@ -390,21 +390,18 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
 struct OracleTerrain;
 
 impl TerrainMaterials for OracleTerrain {
-    fn particle_texture(&self, _state: i32) -> String {
+    fn particle_texture(&self, _state: BlockStateId) -> String {
         "block/stone".into()
     }
 
     fn tint(
         &self,
         _world: &ClientWorld,
-        state: i32,
+        state: BlockStateId,
         _pos: photon_core::binary::BlockPos,
     ) -> Option<i32> {
         // The tint sources of these blocks do not read the biome (`BlockColors`).
-        match photon_world::block::state_or_air(i64::from(state))
-            .block()
-            .name
-        {
+        match photon_world::block::state_or_air(state).block().name {
             "minecraft:spruce_leaves" => Some(-10_380_959),
             "minecraft:birch_leaves" => Some(-8_345_771),
             // `grassBlock().colorAsTerrainParticle`: none.
@@ -414,7 +411,7 @@ impl TerrainMaterials for OracleTerrain {
     }
 }
 
-fn state_of(row: &Value) -> Result<i32, String> {
+fn state_of(row: &Value) -> Result<BlockStateId, String> {
     let described = &row["state"];
     let name = string(described, "block")?;
     let definition =
@@ -433,7 +430,6 @@ fn state_of(row: &Value) -> Result<i32, String> {
     }
     definition
         .state_id(&chosen)
-        .map(|state| state.0)
         .ok_or_else(|| format!("bad properties for {name}"))
 }
 

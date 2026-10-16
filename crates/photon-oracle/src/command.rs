@@ -185,7 +185,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
                     let own: Vec<Value> = overrides
                         .iter()
                         .filter(|(state, _)| {
-                            photon_world::block::state_or_air(i64::from(*state))
+                            photon_world::block::state_or_air(BlockStateId(*state as i32))
                                 .block()
                                 .name
                                 == name

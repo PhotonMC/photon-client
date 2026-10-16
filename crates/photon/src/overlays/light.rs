@@ -1,6 +1,5 @@
 use super::*;
 use crate::equipment::arm_poses;
-use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
@@ -134,7 +133,7 @@ pub fn outline(
     let Some(state) = session.world().block_state_at(x, y, z) else {
         return Vec::new();
     };
-    let shape = photon_world::outline_shape(BlockStateId(state), [x, y, z]);
+    let shape = photon_world::outline_shape(state, [x, y, z]);
     photon_render::block::outline::outline_vertices(
         &shape,
         view.relative([x, y, z]),
@@ -171,7 +170,7 @@ pub fn cracks(
         let Some(state) = session.world().block_state_at(x, y, z) else {
             continue;
         };
-        let (quads, offset) = renderer.block_quads(state as u32, [x, y, z]);
+        let (quads, offset) = renderer.block_quads(state, [x, y, z]);
         breaking.extend(photon_render::block::breaking::breaking_vertices(
             &quads,
             offset,

@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// The dyes, in `DyeColor.getId` order.
 pub const DYES: [&str; 16] = [
@@ -22,7 +23,7 @@ pub const DYES: [&str; 16] = [
 
 /// A table of which blocks are of some classes, by the block's registry id.
 pub(super) fn is_of_classes(
-    state_id: i32,
+    state_id: BlockStateId,
     classes: &[BlockClass],
     table: &'static OnceLock<Vec<bool>>,
 ) -> bool {
@@ -32,12 +33,12 @@ pub(super) fn is_of_classes(
             .map(|block| classes.iter().any(|class| block.class.is(*class)))
             .collect()
     });
-    let block = crate::block::state_or_air(i64::from(state_id)).block;
+    let block = crate::block::state_or_air(state_id).block;
     blocks.get(usize::from(block)).copied().unwrap_or(false)
 }
 
 /// Whether a block state is a chest's (the blocks `ChestBlock` and `EnderChestBlock` make).
-pub(crate) fn is_chest_state(state_id: i32) -> bool {
+pub(crate) fn is_chest_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(
         state_id,
@@ -47,37 +48,37 @@ pub(crate) fn is_chest_state(state_id: i32) -> bool {
 }
 
 /// Whether a block state is a shulker box's.
-pub(crate) fn is_shulker_state(state_id: i32) -> bool {
+pub(crate) fn is_shulker_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::ShulkerBoxBlock], &BLOCKS)
 }
 
 /// Whether a block state is a bell's.
-pub(crate) fn is_bell_state(state_id: i32) -> bool {
+pub(crate) fn is_bell_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::BellBlock], &BLOCKS)
 }
 
 /// Whether a block state is a skull's or a head's.
-pub(crate) fn is_skull_state(state_id: i32) -> bool {
+pub(crate) fn is_skull_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::AbstractSkullBlock], &BLOCKS)
 }
 
 /// Whether a block state is a banner's.
-pub(crate) fn is_banner_state(state_id: i32) -> bool {
+pub(crate) fn is_banner_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::AbstractBannerBlock], &BLOCKS)
 }
 
 /// Whether a block state is a sign's or a hanging sign's.
-pub(crate) fn is_sign_state(state_id: i32) -> bool {
+pub(crate) fn is_sign_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::SignBlock], &BLOCKS)
 }
 
 /// Whether a block state is a hanging sign's (on a ceiling or a wall).
-pub(super) fn is_hanging_sign_state(state_id: i32) -> bool {
+pub(super) fn is_hanging_sign_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(
         state_id,
@@ -122,7 +123,7 @@ pub(super) fn banner_patterns(tag: &[u8]) -> Vec<(String, String)> {
 }
 
 /// Whether a block state has a block entity the client draws.
-pub(crate) fn is_drawn_state(state_id: i32) -> bool {
+pub(crate) fn is_drawn_state(state_id: BlockStateId) -> bool {
     is_chest_state(state_id)
         || is_shulker_state(state_id)
         || is_bell_state(state_id)

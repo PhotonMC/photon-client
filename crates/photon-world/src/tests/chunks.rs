@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 #[test]
 fn chunk_sections_are_queryable_with_java_local_order() {
@@ -18,12 +19,12 @@ fn chunk_sections_are_queryable_with_java_local_order() {
     assert_eq!(world.loaded_chunk_count(), 1);
     assert_eq!(world.loaded_section_count(), 1);
     assert_eq!(world.section_counts_at(-1, -4, 2), Some((6, 1)));
-    assert_eq!(world.block_state_at(-16, -64, 32), Some(11));
-    assert_eq!(world.block_state_at(-1, -64, 32), Some(12));
-    assert_eq!(world.block_state_at(-16, -64, 33), Some(13));
-    assert_eq!(world.block_state_at(-1, -64, 47), Some(14));
-    assert_eq!(world.block_state_at(-16, -63, 32), Some(15));
-    assert_eq!(world.block_state_at(-1, -49, 47), Some(16));
+    assert_eq!(world.block_state_at(-16, -64, 32), Some(BlockStateId(11)));
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(BlockStateId(12)));
+    assert_eq!(world.block_state_at(-16, -64, 33), Some(BlockStateId(13)));
+    assert_eq!(world.block_state_at(-1, -64, 47), Some(BlockStateId(14)));
+    assert_eq!(world.block_state_at(-16, -63, 32), Some(BlockStateId(15)));
+    assert_eq!(world.block_state_at(-1, -49, 47), Some(BlockStateId(16)));
     assert_eq!(world.block_state_at(-17, -64, 32), None);
     assert_eq!(world.biome_at(-16, -64, 32), Some(21));
     assert_eq!(world.biome_at(-4, -64, 32), Some(22));
@@ -48,10 +49,10 @@ fn chunk_cache_hides_stale_slots_from_world_queries() {
     ));
 
     assert!(world.contains_chunk(0, 0));
-    assert_eq!(world.block_state_at(0, -64, 0), Some(11));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(BlockStateId(11)));
     assert_eq!(world.section_counts_at(0, -4, 0), Some((6, 1)));
     assert_eq!(world.biome_at(0, -64, 0), Some(21));
-    assert!(world.update_block_state(0, -64, 0, 86));
+    assert!(world.update_block_state(0, -64, 0, BlockStateId(86)));
 
     world.update_chunk_cache_center(8, 0);
     assert_eq!(world.loaded_chunk_count(), 1);
@@ -59,11 +60,11 @@ fn chunk_cache_hides_stale_slots_from_world_queries() {
     assert_eq!(world.block_state_at(0, -64, 0), None);
     assert_eq!(world.section_counts_at(0, -4, 0), None);
     assert_eq!(world.biome_at(0, -64, 0), None);
-    assert!(!world.update_block_state(0, -64, 0, 87));
+    assert!(!world.update_block_state(0, -64, 0, BlockStateId(87)));
 
     world.update_chunk_cache_center(0, 0);
     assert!(world.contains_chunk(0, 0));
-    assert_eq!(world.block_state_at(0, -64, 0), Some(86));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(BlockStateId(86)));
 }
 
 #[test]
@@ -81,11 +82,11 @@ fn server_block_update_replaces_loaded_state() {
         }],
     );
 
-    assert_eq!(world.block_state_at(-1, -64, 32), Some(12));
-    assert!(world.update_block_state(-1, -64, 32, 86));
-    assert_eq!(world.block_state_at(-1, -64, 32), Some(86));
-    assert!(!world.update_block_state(-17, -64, 32, 86));
-    assert!(!world.update_block_state(-1, -48, 32, 86));
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(BlockStateId(12)));
+    assert!(world.update_block_state(-1, -64, 32, BlockStateId(86)));
+    assert_eq!(world.block_state_at(-1, -64, 32), Some(BlockStateId(86)));
+    assert!(!world.update_block_state(-17, -64, 32, BlockStateId(86)));
+    assert!(!world.update_block_state(-1, -48, 32, BlockStateId(86)));
 }
 
 #[test]
@@ -290,7 +291,7 @@ fn replacing_and_unloading_a_chunk_updates_the_section_cache() {
 
     assert_eq!(world.loaded_chunk_count(), 1);
     assert_eq!(world.loaded_section_count(), 1);
-    assert_eq!(world.block_state_at(0, -64, 0), Some(31));
+    assert_eq!(world.block_state_at(0, -64, 0), Some(BlockStateId(31)));
     assert_eq!(world.biome_at(0, -64, 0), Some(32));
     assert!(world.unload_chunk(0, 0));
     assert!(!world.contains_chunk(0, 0));
@@ -317,10 +318,26 @@ fn client_world_applies_block_update_tags_to_state_registry() {
     )]);
 
     world.apply_update_tags_packet(&packet);
-    assert!(world.block_state_registry().is_climbable_state(5720));
-    assert!(world.block_state_registry().is_climbable_state(8389));
-    assert!(world.block_state_registry().is_glide_through_state(8389));
-    assert!(!world.block_state_registry().is_glide_through_state(5720));
+    assert!(
+        world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(5720))
+    );
+    assert!(
+        world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(8389))
+    );
+    assert!(
+        world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(8389))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(5720))
+    );
 
     let replacement = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
         Identifier::parse("minecraft:block").unwrap(),
@@ -330,9 +347,21 @@ fn client_world_applies_block_update_tags_to_state_registry() {
         )],
     )]);
     world.apply_update_tags_packet(&replacement);
-    assert!(world.block_state_registry().is_climbable_state(5720));
-    assert!(!world.block_state_registry().is_climbable_state(8389));
-    assert!(!world.block_state_registry().is_glide_through_state(8389));
+    assert!(
+        world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(5720))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(8389))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(8389))
+    );
 }
 
 #[test]
@@ -365,15 +394,17 @@ fn client_world_updates_stair_shape_from_loaded_neighbors() {
     );
 
     assert!(world.apply_stair_neighbor_shape_update(0, 0, 0));
-    assert_eq!(world.block_state_at(0, 0, 0), Some(3924));
+    assert_eq!(world.block_state_at(0, 0, 0), Some(BlockStateId(3924)));
     assert_eq!(
-        world.block_state_registry().stair_shape_name(3924),
+        world
+            .block_state_registry()
+            .stair_shape_name(BlockStateId(3924)),
         Some("outer_left")
     );
     assert_eq!(
         world
             .block_state_registry()
-            .collision_shape(3924)
+            .collision_shape(BlockStateId(3924))
             .to_aabbs(),
         vec![
             Aabb::new(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),

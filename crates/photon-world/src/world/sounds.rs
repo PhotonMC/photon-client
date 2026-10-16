@@ -1,4 +1,5 @@
 use crate::*;
+use photon_core::ids::BlockStateId;
 
 impl ClientWorld {
     /// A sound the world makes at a place (`Level.playLocalSound`), for the sound engine to play.
@@ -20,7 +21,7 @@ impl ClientWorld {
     pub(crate) fn block_sound(
         &mut self,
         pos: (i32, i32, i32),
-        state: i32,
+        state: BlockStateId,
         pick: fn(&photon_data::block_sound::SoundTypeRow) -> &'static str,
         scale: (fn(f32) -> f32, f32),
     ) {
@@ -30,7 +31,7 @@ impl ClientWorld {
     }
 
     /// `BlockItem.place`'s sound: the block placed, a little softer than loud and lower.
-    pub fn play_place_sound(&mut self, pos: (i32, i32, i32), state: i32) {
+    pub fn play_place_sound(&mut self, pos: (i32, i32, i32), state: BlockStateId) {
         self.block_sound(
             pos,
             state,
@@ -40,7 +41,7 @@ impl ClientWorld {
     }
 
     /// `MultiPlayerGameMode.continueDestroyBlock`'s hit sound: a block struck while it is broken.
-    pub fn play_hit_sound(&mut self, pos: (i32, i32, i32), state: i32) {
+    pub fn play_hit_sound(&mut self, pos: (i32, i32, i32), state: BlockStateId) {
         self.block_sound(
             pos,
             state,
@@ -105,7 +106,7 @@ impl ClientWorld {
         let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
             return false;
         };
-        if block::state_or_air(i64::from(state)).block().name != "minecraft:note_block" {
+        if block::state_or_air(state).block().name != "minecraft:note_block" {
             return false;
         }
         let Some(sound) = block::rules::property(state, "instrument").and_then(note_block_sound)
@@ -217,12 +218,13 @@ impl LevelEvent {
         else {
             return None;
         };
-        if block::state_or_air(i64::from(data)).block().name == "minecraft:air" {
+        let state = BlockStateId(data);
+        if block::state_or_air(state).block().name == "minecraft:air" {
             return None;
         }
         block_sound_of(
             pos,
-            data,
+            state,
             photon_data::block_sound::SoundTypeRow::break_sound,
             (|volume| (volume + 1.0) / 2.0, 0.8),
         )
@@ -233,13 +235,12 @@ impl LevelEvent {
 /// asks, whichever of the five sounds `pick` takes. Nothing for a state with no sound type.
 pub fn block_sound_of(
     pos: (i32, i32, i32),
-    state: i32,
+    state: BlockStateId,
     pick: fn(&photon_data::block_sound::SoundTypeRow) -> &'static str,
     (volume, pitch): (fn(f32) -> f32, f32),
 ) -> Option<local_player::LocalSound> {
-    let id = i64::from(state);
-    let info = block::state_or_air(id);
-    let sound_type = u32::try_from(id)
+    let info = block::state_or_air(state);
+    let sound_type = u32::try_from(state.0)
         .ok()
         .and_then(|id| photon_data::block_sound::of_state(info.block().name, id))?;
     Some(local_player::LocalSound {

@@ -1,6 +1,6 @@
 //! `ClientWorld` constants layer split out of the former single-file module.
 
-use photon_core::ids::EntityTypeId;
+use photon_core::ids::{BlockStateId, EntityTypeId};
 
 pub const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
@@ -148,8 +148,8 @@ pub(crate) const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
     ),
 ];
 pub(crate) const VANILLA_PLAYER_VEHICLE_ATTACHMENT_Y: f64 = 0.6;
-pub(crate) const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
-pub(crate) const VANILLA_WATER_BLOCK_STATE_ID: i32 = 86;
+pub const VANILLA_AIR_BLOCK_STATE_ID: BlockStateId = BlockStateId(0);
+pub const VANILLA_WATER_BLOCK_STATE_ID: BlockStateId = BlockStateId(86);
 pub(crate) const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 pub(crate) const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 pub(crate) const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;

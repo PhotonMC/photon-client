@@ -1,5 +1,6 @@
 //! `FallingDustParticle`: a speck of a block that drifts down and turns, coloured by the block.
 
+use photon_core::ids::BlockStateId;
 use std::sync::Arc;
 
 use photon_core::binary::BlockPos;
@@ -28,10 +29,10 @@ impl Particle {
     pub fn falling_dust_provider(
         random: impl FnOnce() -> RandomSource,
         at: (f64, f64, f64),
-        (state, sprites): (i32, &Arc<SpriteSet>),
+        (state, sprites): (BlockStateId, &Arc<SpriteSet>),
         (world, materials): (&ClientWorld, Option<&dyn TerrainMaterials>),
     ) -> Option<Self> {
-        let block = crate::block::state_or_air(i64::from(state)).block();
+        let block = crate::block::state_or_air(state).block();
         if !block.air && INVISIBLE.contains(&block.name) {
             return None;
         }
@@ -41,7 +42,7 @@ impl Particle {
             photon_core::math::floor_f64(at.2),
         );
         let map_color = || {
-            let id = photon_data::map::state_map_color(block.name, state as u32);
+            let id = photon_data::map::state_map_color(block.name, state.0 as u32);
             photon_data::map::base_color(id)
         };
         let tint = photon_data::map::dust_color(block.name)

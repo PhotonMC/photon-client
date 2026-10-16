@@ -259,17 +259,14 @@ pub(super) fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool
     if is_game_master_block(old) || is_air(old) {
         return false;
     }
-    let fluid = photon_world::block::state_or_air(i64::from(old))
-        .fluid
-        .legacy_block()
-        .0;
+    let fluid = photon_world::block::state_or_air(old).fluid.legacy_block();
     let position: Vec3 = ctx.player.position();
     let changed = ctx
         .world
         .set_block_with_updates(pos, fluid, 11, 512, position);
     if changed {
         // `Block.playerWillDestroy`: the break sound (and the particles).
-        ctx.world.apply_level_event(2001, pos, old);
+        ctx.world.apply_level_event(2001, pos, old.0);
     }
     changed
 }

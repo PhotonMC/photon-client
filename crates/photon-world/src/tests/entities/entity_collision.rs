@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
@@ -302,20 +303,36 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
     }
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
 
-    assert!(world.block_state_registry().is_climbable_state(5719));
-    assert!(world.block_state_registry().is_climbable_state(5726));
-    assert!(!world.block_state_registry().is_climbable_state(1));
-    assert!(!world.block_state_registry().is_climbable_state(99999));
+    assert!(
+        world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(5719))
+    );
+    assert!(
+        world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(5726))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(1))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_climbable_state(BlockStateId(99999))
+    );
     assert!(
         world
             .entities_mut()
             .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 5720));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), BlockStateId(5720)));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
-    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 1));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), BlockStateId(1)));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
-    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), 0));
+    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), BlockStateId(0)));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
 }
 
@@ -338,15 +355,31 @@ fn indexed_player_collision_respects_glide_through_tag() {
     }
     let test_area = Aabb::new(0.0, 0.0, 0.0, 1.0, 3.0, 1.0);
 
-    assert!(world.block_state_registry().is_glide_through_state(8389));
-    assert!(!world.block_state_registry().is_glide_through_state(1));
-    assert!(!world.block_state_registry().is_glide_through_state(99999));
+    assert!(
+        world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(8389))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(1))
+    );
+    assert!(
+        !world
+            .block_state_registry()
+            .is_glide_through_state(BlockStateId(99999))
+    );
     assert!(
         world
             .entities_mut()
             .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, false));
+    assert!(world.apply_entity_living_climbable_glide_through_state(
+        EntityId(8),
+        BlockStateId(8389),
+        false
+    ));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         !world
@@ -356,7 +389,11 @@ fn indexed_player_collision_respects_glide_through_tag() {
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, true));
+    assert!(world.apply_entity_living_climbable_glide_through_state(
+        EntityId(8),
+        BlockStateId(8389),
+        true
+    ));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
@@ -366,7 +403,11 @@ fn indexed_player_collision_respects_glide_through_tag() {
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 1, true));
+    assert!(world.apply_entity_living_climbable_glide_through_state(
+        EntityId(8),
+        BlockStateId(1),
+        true
+    ));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         world
@@ -376,7 +417,11 @@ fn indexed_player_collision_respects_glide_through_tag() {
             .is_fall_flying()
     );
 
-    assert!(world.apply_entity_living_climbable_glide_through_state(EntityId(8), 8389, false));
+    assert!(world.apply_entity_living_climbable_glide_through_state(
+        EntityId(8),
+        BlockStateId(8389),
+        false
+    ));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(
         !world

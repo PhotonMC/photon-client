@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// What a block state holds for movement, looked up once.
 #[derive(Clone, Copy)]
@@ -29,8 +30,10 @@ pub(crate) struct LivingEffects<'a> {
 impl StateInfo {
     /// A state against the server's tags; a number outside the registry
     /// reads as air.
-    pub(super) fn of(state_id: Option<i32>, tags: &crate::block::tags::BlockTags) -> Self {
-        let state = crate::block::state_or_air(state_id.map_or(0, i64::from));
+    pub(super) fn of(state_id: Option<BlockStateId>, tags: &crate::block::tags::BlockTags) -> Self {
+        let state = crate::block::state_or_air(
+            state_id.unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
+        );
         let block = state.block();
         let index = usize::from(state.block);
         let tagged = [

@@ -32,7 +32,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                 i32_field(block, "y")?,
                 i32_field(block, "z")?,
             ),
-            state.0,
+            state,
         );
     }
     let mut world = ClientWorld::new(dimension);
@@ -52,9 +52,9 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                             if let Some(&state) =
                                 placed.get(&(chunk_x * 16 + x, min_y + y, chunk_z * 16 + z))
                             {
-                                states[(y * 256 + z * 16 + x) as usize] = state;
-                                let (block, _) = registry::block_for_state(BlockStateId(state))
-                                    .ok_or("state out of range")?;
+                                states[(y * 256 + z * 16 + x) as usize] = state.0;
+                                let (block, _) =
+                                    registry::block_for_state(state).ok_or("state out of range")?;
                                 if !matches!(
                                     block.name,
                                     "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"

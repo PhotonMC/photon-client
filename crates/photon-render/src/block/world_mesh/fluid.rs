@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// The sprites the fluid renderer draws with, which no block model names.
 pub(super) const FLUID_SPRITES: [&str; 5] = [
@@ -18,7 +19,7 @@ pub(super) const FLUID_SPRITES: [&str; 5] = [
 /// it is solid, this asks whether its collision shape is the whole block.
 /// That is the same answer for ordinary full blocks and an approximation for
 /// everything else.
-pub(super) struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<i32>, S, L> {
+pub(super) struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<BlockStateId>, S, L> {
     pub(super) biome_tint: &'a dyn Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     pub(super) read: &'a R,
     pub(super) lighter: &'a crate::block::light::Lighter<S, L>,
@@ -34,7 +35,7 @@ pub(super) struct FluidAt {
 
 impl<R, S, L> FluidMesher<'_, R, S, L>
 where
-    R: Fn(i32, i32, i32) -> Option<i32>,
+    R: Fn(i32, i32, i32) -> Option<BlockStateId>,
     S: Fn([i32; 3]) -> Option<photon_core::ids::BlockStateId>,
     L: Fn([i32; 3]) -> (u8, u8),
 {
@@ -56,7 +57,6 @@ where
 
     pub(super) fn solid(&self, x: i32, y: i32, z: i32) -> bool {
         (self.read)(x, y, z)
-            .map(photon_core::ids::BlockStateId)
             .and_then(photon_world::block::state)
             .is_some_and(|state| {
                 photon_world::block::states()
@@ -134,7 +134,6 @@ where
         z: i32,
     ) -> bool {
         let face = (self.read)(x, y, z)
-            .map(photon_core::ids::BlockStateId)
             .and_then(photon_world::block::state)
             .map(|state| state.face(direction.opposite()));
         face == Some(photon_world::block::state::FULL_FACE)
@@ -145,7 +144,6 @@ where
     /// the reference's half-transparent blocks and leaves.
     pub(super) fn shows_overlay(&self, x: i32, y: i32, z: i32) -> bool {
         (self.read)(x, y, z)
-            .map(photon_core::ids::BlockStateId)
             .and_then(photon_world::block::state)
             .is_some_and(|state| photon_world::block::shows_fluid_overlay(state.block()))
     }

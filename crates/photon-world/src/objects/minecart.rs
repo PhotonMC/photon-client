@@ -191,8 +191,8 @@ impl RailShape {
 }
 
 /// The shape of the rail a block state is, if it is one (`BaseRailBlock.isRail`).
-pub fn rail_shape(state: i32) -> Option<RailShape> {
-    let info = crate::block::state_or_air(i64::from(state));
+pub fn rail_shape(state: BlockStateId) -> Option<RailShape> {
+    let info = crate::block::state_or_air(state);
     let block = info.block();
     if !matches!(
         block.name,
@@ -211,14 +211,14 @@ pub fn rail_shape(state: i32) -> Option<RailShape> {
 }
 
 /// Whether a block state is a rail (`BlockTags.RAILS`).
-fn is_rail(state: Option<i32>) -> bool {
+fn is_rail(state: Option<BlockStateId>) -> bool {
     state.is_some_and(|state| rail_shape(state).is_some())
 }
 
 /// The rail block a position is on or just above: its coordinates and shape (the part
 /// `getPos` and `getPosOffs` share).
 fn rail_under(
-    block_at: &dyn Fn(i32, i32, i32) -> Option<i32>,
+    block_at: &dyn Fn(i32, i32, i32) -> Option<BlockStateId>,
     (x, y, z): (f64, f64, f64),
 ) -> ((i32, i32, i32), Option<RailShape>) {
     let xt = photon_core::math::floor_f64(x);
@@ -233,7 +233,7 @@ fn rail_under(
 /// `OldMinecartBehavior.getPos`: where the rail puts a minecart that is at this place, along
 /// the rail from one exit to the other and as high as the slope there, if it is on a rail.
 pub fn rail_pos(
-    block_at: &dyn Fn(i32, i32, i32) -> Option<i32>,
+    block_at: &dyn Fn(i32, i32, i32) -> Option<BlockStateId>,
     (x, y, z): (f64, f64, f64),
 ) -> Option<(f64, f64, f64)> {
     let ((xt, yt, zt), shape) = rail_under(block_at, (x, y, z));
@@ -267,7 +267,7 @@ pub fn rail_pos(
 
 /// `OldMinecartBehavior.getPosOffs`: [`rail_pos`] this far along the rail (either way) from here.
 pub fn rail_pos_offset(
-    block_at: &dyn Fn(i32, i32, i32) -> Option<i32>,
+    block_at: &dyn Fn(i32, i32, i32) -> Option<BlockStateId>,
     (x, y, z): (f64, f64, f64),
     offset: f64,
 ) -> Option<(f64, f64, f64)> {

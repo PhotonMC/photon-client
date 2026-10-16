@@ -68,9 +68,9 @@ impl std::fmt::Debug for BlockMaterials {
 }
 
 impl TerrainMaterials for BlockMaterials {
-    fn particle_texture(&self, state: i32) -> String {
+    fn particle_texture(&self, state: BlockStateId) -> String {
         self.renderer
-            .particle_sprite(BlockStateId(state))
+            .particle_sprite(state)
             .unwrap_or("minecraft:missingno")
             .to_owned()
     }
@@ -79,12 +79,12 @@ impl TerrainMaterials for BlockMaterials {
         self.renderer.item_particle_sprites(item)
     }
 
-    fn tint(&self, world: &ClientWorld, state: i32, pos: BlockPos) -> Option<i32> {
+    fn tint(&self, world: &ClientWorld, state: BlockStateId, pos: BlockPos) -> Option<i32> {
         // `BiomeColors.getAverage...Color`: the biome colours blended around the block.
         let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);
         let biome_tint = |kind, position: [i32; 3]| self.tints.tint(kind, position, &noise_biome);
         self.renderer
-            .particle_tint(BlockStateId(state), [pos.x, pos.y, pos.z], &biome_tint)
+            .particle_tint(state, [pos.x, pos.y, pos.z], &biome_tint)
     }
 }
 

@@ -17,7 +17,7 @@ impl ClientWorld {
     }
 
     /// Apply a server-verified block-state update to an already loaded section.
-    pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: i32) -> bool {
+    pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: BlockStateId) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
         let Some(chunk) = self.chunks.get_mut(chunk_key.0, chunk_key.1) else {
             return false;
@@ -49,9 +49,7 @@ impl ClientWorld {
         self.block_animations.remove(&(x, y, z));
         // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
         // entity.
-        if block::state_or_air(i64::from(previous_state_id)).block
-            != block::state_or_air(i64::from(state_id)).block
-        {
+        if block::state_or_air(previous_state_id).block != block::state_or_air(state_id).block {
             chunk.block_entities.remove(&(x, y, z));
         }
         if block::chest::is_drawn_state(state_id) {
@@ -92,7 +90,7 @@ impl ClientWorld {
         let Some(state_id) = self.block_state_at(x, y, z) else {
             return false;
         };
-        let is_stairs = block::state(BlockStateId(state_id)).is_some_and(|state| {
+        let is_stairs = block::state(state_id).is_some_and(|state| {
             state
                 .block()
                 .class
@@ -101,7 +99,7 @@ impl ClientWorld {
         if !is_stairs {
             return false;
         }
-        let state_at = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
+        let state_at = |x: i32, y: i32, z: i32| self.block_state_or_air(x, y, z);
         let block::rules::Rule::Known(updated_state_id) = block::rules::update_shape(
             state_id,
             &state_at,
@@ -186,10 +184,7 @@ impl ClientWorld {
                     continue;
                 };
                 if motion_blocking(state)
-                    && !block::state_or_air(i64::from(state))
-                        .block()
-                        .name
-                        .ends_with("_leaves")
+                    && !block::state_or_air(state).block().name.ends_with("_leaves")
                 {
                     return section_y * 16 + local_y as i32 + 1;
                 }
@@ -221,7 +216,13 @@ impl ClientWorld {
             })
     }
 
-    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+    /// The block state, or air where no chunk was loaded.
+    pub fn block_state_or_air(&self, x: i32, y: i32, z: i32) -> BlockStateId {
+        self.block_state_at(x, y, z)
+            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID)
+    }
+
+    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<BlockStateId> {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
         let chunk = self.chunk_for_query(chunk_key.0, chunk_key.1)?;
         let section_y = y.div_euclid(16);

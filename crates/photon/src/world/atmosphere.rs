@@ -43,12 +43,7 @@ pub fn weather(
         tints.precipitation_at([x, y, z], &noise_biome, sea_level)
     };
     let lighter = photon_render::block::light::Lighter {
-        state: |[x, y, z]: [i32; 3]| {
-            world
-                .block_state_at(x, y, z)
-                .filter(|state| *state >= 0)
-                .map(photon_core::ids::BlockStateId)
-        },
+        state: |[x, y, z]: [i32; 3]| world.block_state_at(x, y, z),
         light: |[x, y, z]: [i32; 3]| {
             (
                 world.block_brightness(x, y, z),

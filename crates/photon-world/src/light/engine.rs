@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl Engine {
     pub(super) fn propagate_light_sources(&mut self, level: &Level<'_>, chunk: ColumnKey) {
@@ -87,7 +88,7 @@ impl Engine {
             || !self.increase_queue.is_empty()
     }
 
-    pub(super) fn block_emission(&self, block: BlockKey, state: i32) -> u8 {
+    pub(super) fn block_emission(&self, block: BlockKey, state: BlockStateId) -> u8 {
         let emission = emission(state);
         if emission > 0 && self.storage.light_on_in_section(section_of(block)) {
             emission
@@ -158,7 +159,7 @@ impl Engine {
             let new_level = new_level as u8;
             let from_state = *from_state.get_or_insert_with(|| {
                 if entry::is_from_empty_shape(data) {
-                    0
+                    crate::constants::VANILLA_AIR_BLOCK_STATE_ID
                 } else {
                     level.state(from)
                 }

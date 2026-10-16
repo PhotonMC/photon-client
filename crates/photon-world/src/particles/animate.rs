@@ -2,7 +2,6 @@
 //! level's random) and show what they show (by their own random): a torch's flame and smoke, a
 //! lit redstone torch's dust, lava's pops, water's specks, and the drips under a fluid.
 
-use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 use photon_data::block::definition::Fluid;
 
@@ -45,9 +44,9 @@ impl ParticleEngine {
         let x = xt + pick(context.level_random);
         let y = yt + pick(context.level_random);
         let z = zt + pick(context.level_random);
-        let state = context.world.block_state_at(x, y, z).unwrap_or(0);
+        let state = context.world.block_state_or_air(x, y, z);
         self.block_animate_tick(state, (x, y, z), animate_random, (context, sounds));
-        let Some(info) = crate::block::state(BlockStateId(state)) else {
+        let Some(info) = crate::block::state(state) else {
             return;
         };
         let fluid = info.fluid;
@@ -79,8 +78,8 @@ impl ParticleEngine {
         context: &mut LevelEventContext<'_, F>,
         sounds: &mut Vec<LocalSound>,
     ) {
-        let above = context.world.block_state_at(x, y + 1, z).unwrap_or(0);
-        if !crate::block::state_or_air(i64::from(above)).block().air {
+        let above = context.world.block_state_or_air(x, y + 1, z);
+        if !crate::block::state_or_air(above).block().air {
             return;
         }
         if random.next_int_bound(100) == Ok(0) {
@@ -155,14 +154,14 @@ impl ParticleEngine {
     ) {
         use photon_core::direction::Axis;
         let world = context.world;
-        let state = world.block_state_at(x, y, z).unwrap_or(0);
-        let Some(info) = crate::block::state(BlockStateId(state)) else {
+        let state = world.block_state_or_air(x, y, z);
+        let Some(info) = crate::block::state(state) else {
             return;
         };
         if !info.fluid.is_empty() {
             return;
         }
-        let shape = crate::block::registry::collision_shape_at(BlockStateId(state), [x, y, z]);
+        let shape = crate::block::registry::collision_shape_at(state, [x, y, z]);
         let (fx, fy, fz) = (f64::from(x), f64::from(y), f64::from(z));
         let top = shape.max(Axis::Y);
         let span = |shape: &photon_core::shape::VoxelShape| {
@@ -196,12 +195,10 @@ impl ParticleEngine {
             self.spawn_fluid_particle(span(&shape), fy + bottom - 0.05, drip, context);
             return;
         }
-        let below = world.block_state_at(x, y - 1, z).unwrap_or(0);
+        let below = world.block_state_or_air(x, y - 1, z);
         let below_top =
-            crate::block::registry::collision_shape_at(BlockStateId(below), [x, y - 1, z])
-                .max(Axis::Y);
-        let below_dry =
-            crate::block::state(BlockStateId(below)).is_none_or(|info| info.fluid.is_empty());
+            crate::block::registry::collision_shape_at(below, [x, y - 1, z]).max(Axis::Y);
+        let below_dry = crate::block::state(below).is_none_or(|info| info.fluid.is_empty());
         if below_top < 1.0 && below_dry {
             self.spawn_fluid_particle(span(&shape), fy - 0.05, drip, context);
         }

@@ -31,19 +31,21 @@ pub fn id_of(name: &str) -> Option<ItemId> {
 }
 
 /// `HolderSet.contains` for a block state.
-fn rule_covers(blocks: &RuleBlocks, registry: &ClientBlockStateRegistry, state: i32) -> bool {
+fn rule_covers(
+    blocks: &RuleBlocks,
+    registry: &ClientBlockStateRegistry,
+    state: BlockStateId,
+) -> bool {
     match blocks {
         RuleBlocks::Tag(tag) => registry.is_state_in_tag(state, tag),
-        RuleBlocks::Blocks(names) => {
-            photon_data::block::registry::block_for_state(BlockStateId(state))
-                .is_some_and(|(block, _)| names.contains(&block.name))
-        }
+        RuleBlocks::Blocks(names) => photon_data::block::registry::block_for_state(state)
+            .is_some_and(|(block, _)| names.contains(&block.name)),
     }
 }
 
 /// `Tool.getMiningSpeed`: the first rule with a speed that covers the block,
 /// or the default.
-pub fn mining_speed(tool: &Tool, registry: &ClientBlockStateRegistry, state: i32) -> f32 {
+pub fn mining_speed(tool: &Tool, registry: &ClientBlockStateRegistry, state: BlockStateId) -> f32 {
     tool.rules
         .iter()
         .find(|rule| rule.speed.is_some() && rule_covers(&rule.blocks, registry, state))
@@ -53,7 +55,11 @@ pub fn mining_speed(tool: &Tool, registry: &ClientBlockStateRegistry, state: i32
 
 /// `Tool.isCorrectForDrops`: the first rule that decides it and covers the
 /// block, or not.
-pub fn is_correct_for_drops(tool: &Tool, registry: &ClientBlockStateRegistry, state: i32) -> bool {
+pub fn is_correct_for_drops(
+    tool: &Tool,
+    registry: &ClientBlockStateRegistry,
+    state: BlockStateId,
+) -> bool {
     tool.rules
         .iter()
         .find(|rule| rule.correct_for_drops.is_some() && rule_covers(&rule.blocks, registry, state))

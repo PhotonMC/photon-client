@@ -43,7 +43,7 @@ fn block_update_parser_matches_java_packed_position_and_state() {
             x: -12,
             y: -63,
             z: 9,
-            state_id: 123,
+            state_id: photon_core::ids::BlockStateId(123),
         }
     );
 }

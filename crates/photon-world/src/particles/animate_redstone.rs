@@ -43,7 +43,7 @@ impl ParticleEngine {
     /// `Block.animateTick` of these blocks; false for another block.
     pub(super) fn redstone_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        (state, name): (i32, &str),
+        (state, name): (BlockStateId, &str),
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
@@ -76,7 +76,7 @@ impl ParticleEngine {
     /// `RepeaterBlock.animateTick`: a speck of dust along its torches while it is powered.
     fn repeater<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         context: &mut LevelEventContext<'_, F>,
@@ -107,7 +107,7 @@ impl ParticleEngine {
     /// `BubbleColumnBlock.animateTick`: bubbles rising (or a current drawing down) and the sound.
     fn bubble_column<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
@@ -174,7 +174,7 @@ impl ParticleEngine {
     /// `SculkSensorBlock.animateTick`: a spark off a side of an active sensor.
     fn sculk_sensor<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         context: &mut LevelEventContext<'_, F>,
@@ -220,7 +220,7 @@ impl ParticleEngine {
     /// `LeverBlock.makeParticle`: a red speck at the lever's handle.
     fn lever_particle<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         scale: f32,
         context: &mut LevelEventContext<'_, F>,
@@ -262,9 +262,8 @@ impl ParticleEngine {
             let (sx, sy, sz) = direction.step();
             let next = context
                 .world
-                .block_state_at(pos.0 + sx, pos.1 + sy, pos.2 + sz)
-                .unwrap_or(0);
-            if crate::block::state(BlockStateId(next)).is_some_and(|info| info.solid_render) {
+                .block_state_or_air(pos.0 + sx, pos.1 + sy, pos.2 + sz);
+            if crate::block::state(next).is_some_and(|info| info.solid_render) {
                 continue;
             }
             let random = &mut *context.level_random;
@@ -290,7 +289,7 @@ impl ParticleEngine {
     /// `RedStoneWireBlock.animateTick`: dust along each of its arms.
     fn redstone_wire<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         context: &mut LevelEventContext<'_, F>,
@@ -390,11 +389,10 @@ impl ParticleEngine {
         let (sx, sy, sz) = direction.step();
         let next = context
             .world
-            .block_state_at(pos.0 + sx, pos.1 + sy, pos.2 + sz)
-            .unwrap_or(0);
+            .block_state_or_air(pos.0 + sx, pos.1 + sy, pos.2 + sz);
         // The sponge occludes: the drop forms unless the neighbour is sturdy toward it.
-        let sturdy = crate::block::state(BlockStateId(next))
-            .is_some_and(|info| info.is_face_sturdy(direction.opposite()));
+        let sturdy =
+            crate::block::state(next).is_some_and(|info| info.is_face_sturdy(direction.opposite()));
         if sturdy {
             return;
         }

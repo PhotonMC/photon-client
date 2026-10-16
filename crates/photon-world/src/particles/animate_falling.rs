@@ -1,6 +1,7 @@
 //! `FallingBlock.animateTick`: dust sifting out of a falling block with room below it, and the
 //! desert's sand sounds (`AmbientDesertBlockSoundsPlayer.playAmbientSandSounds`).
 
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 
 use super::super::ClientWorld;
@@ -10,8 +11,8 @@ use super::engine::{ParticleData, ParticleEngine};
 use super::level_events::LevelEventContext;
 
 /// `FallingBlock.isFree`: air, fire, a fluid, or a block that gives way.
-fn is_free(world: &ClientWorld, state: i32) -> bool {
-    let info = crate::block::state_or_air(i64::from(state));
+fn is_free(world: &ClientWorld, state: BlockStateId) -> bool {
+    let info = crate::block::state_or_air(state);
     let block = info.block();
     block.air
         || block.liquid
@@ -23,12 +24,12 @@ fn is_free(world: &ClientWorld, state: i32) -> bool {
 }
 
 /// The state at a block, air where nothing is loaded.
-fn state_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> i32 {
-    world.block_state_at(x, y, z).unwrap_or(0)
+fn state_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> BlockStateId {
+    world.block_state_or_air(x, y, z)
 }
 
-fn in_tag(world: &ClientWorld, state: i32, tag: &str) -> bool {
-    let info = crate::block::state_or_air(i64::from(state));
+fn in_tag(world: &ClientWorld, state: BlockStateId, tag: &str) -> bool {
+    let info = crate::block::state_or_air(state);
     world
         .block_state_registry
         .tags()
@@ -42,7 +43,7 @@ fn world_surface(world: &ClientWorld, x: i32, z: i32) -> i32 {
     (bounds.min_y..=top)
         .rev()
         .find(|&y| {
-            !crate::block::state_or_air(i64::from(state_at(world, (x, y, z))))
+            !crate::block::state_or_air(state_at(world, (x, y, z)))
                 .block()
                 .air
         })
@@ -59,7 +60,7 @@ fn column_triggers(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> bool {
             "minecraft:triggers_ambient_desert_sand_block_sounds",
         )
     };
-    let air = |state: i32| crate::block::state_or_air(i64::from(state)).block().air;
+    let air = |state: BlockStateId| crate::block::state_or_air(state).block().air;
     let surface = world_surface(world, x, z) - 1;
     if (surface - y).abs() > 5 {
         let mut above = state_at(world, (x, y + 6, z));
@@ -100,7 +101,7 @@ impl ParticleEngine {
     /// `FallingBlock.animateTick`, and sand's sounds after it.
     pub(super) fn falling_block_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        (state, sand): (i32, bool),
+        (state, sand): (BlockStateId, bool),
         (x, y, z): (i32, i32, i32),
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
@@ -115,7 +116,7 @@ impl ParticleEngine {
             );
             self.level_add_data(context, "falling_dust", ParticleData::Block(state), at);
         }
-        let above = crate::block::state_or_air(i64::from(state_at(world, (x, y + 1, z))));
+        let above = crate::block::state_or_air(state_at(world, (x, y + 1, z)));
         if sand
             && above.block().name == "minecraft:air"
             && random.next_int_bound(2100) == Ok(0)

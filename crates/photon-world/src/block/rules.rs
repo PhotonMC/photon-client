@@ -24,11 +24,11 @@ pub enum Rule<T> {
     Unported,
 }
 
-fn block_index(state: i32) -> Option<(usize, u32)> {
-    registry::block_index_for_state(BlockStateId(state))
+fn block_index(state: BlockStateId) -> Option<(usize, u32)> {
+    registry::block_index_for_state(state)
 }
 
-fn block(state: i32) -> Option<&'static Block> {
+fn block(state: BlockStateId) -> Option<&'static Block> {
     block_index(state).map(|(index, _)| &BLOCKS[index])
 }
 
@@ -43,13 +43,13 @@ fn owner(block: &Block, method: Method) -> Option<BlockClass> {
 
 /// The class whose own `method` a state's block runs; `None` for
 /// `BlockBehaviour`'s own or a state outside the registry.
-fn state_owner(state: i32, method: Method) -> Option<BlockClass> {
+fn state_owner(state: BlockStateId, method: Method) -> Option<BlockClass> {
     block(state).and_then(|block| owner(block, method))
 }
 
 /// A property's value in a state.
-pub fn property(state: i32, name: &str) -> Option<&'static str> {
-    let (block, offset) = registry::block_for_state(BlockStateId(state))?;
+pub fn property(state: BlockStateId, name: &str) -> Option<&'static str> {
+    let (block, offset) = registry::block_for_state(state)?;
     block
         .properties_at(offset)?
         .into_iter()
@@ -58,8 +58,8 @@ pub fn property(state: i32, name: &str) -> Option<&'static str> {
 }
 
 /// `setValue`: the same state with one property changed.
-pub fn with_property(state: i32, name: &str, value: &str) -> Option<i32> {
-    let (block, offset) = registry::block_for_state(BlockStateId(state))?;
+pub fn with_property(state: BlockStateId, name: &str, value: &str) -> Option<BlockStateId> {
+    let (block, offset) = registry::block_for_state(state)?;
     let mut chosen: BTreeMap<String, String> = block
         .properties_at(offset)?
         .into_iter()
@@ -67,29 +67,28 @@ pub fn with_property(state: i32, name: &str, value: &str) -> Option<i32> {
         .collect();
     let slot = chosen.get_mut(name)?;
     *slot = value.to_owned();
-    block.state_id(&chosen).map(|id| id.0)
+    block.state_id(&chosen)
 }
 
-fn default_state(block: usize) -> i32 {
-    registry::BLOCKS[block].default_state_id().0
+fn default_state(block: usize) -> BlockStateId {
+    registry::BLOCKS[block].default_state_id()
 }
 
-fn is_air(state: i32) -> bool {
+fn is_air(state: BlockStateId) -> bool {
     matches!(
-        registry::block_for_state(BlockStateId(state)).map(|(block, _)| block.name),
+        registry::block_for_state(state).map(|(block, _)| block.name),
         Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air")
     )
 }
 
 /// `getFluidState(pos).is(Fluids.WATER)`: a water source, loose or held.
-pub fn is_water_source(state: i32) -> bool {
-    crate::block::state_or_air(i64::from(state)).fluid.fluid
-        == photon_data::block::definition::Fluid::Water
+pub fn is_water_source(state: BlockStateId) -> bool {
+    crate::block::state_or_air(state).fluid.fluid == photon_data::block::definition::Fluid::Water
 }
 
 /// What a block reads of the level and of the use that places it.
 pub struct PlaceContext<'a> {
-    pub state_at: &'a dyn Fn(i32, i32, i32) -> i32,
+    pub state_at: &'a dyn Fn(i32, i32, i32) -> BlockStateId,
     /// Where the aim hit, and on which face.
     pub hit_pos: (i32, i32, i32),
     pub face: Direction,
@@ -118,12 +117,12 @@ impl PlaceContext<'_> {
         }
     }
 
-    fn state(&self, pos: (i32, i32, i32)) -> i32 {
+    fn state(&self, pos: (i32, i32, i32)) -> BlockStateId {
         (self.state_at)(pos.0, pos.1, pos.2)
     }
 
     /// Whether the item in use is the block's own (`asItem`).
-    fn holds_item_of(&self, state: i32) -> bool {
+    fn holds_item_of(&self, state: BlockStateId) -> bool {
         block(state)
             .and_then(|block| photon_data::item::registry::index(block.item_name()))
             .is_some_and(|item| self.item == i32::try_from(item).ok().map(ItemId))
@@ -132,7 +131,7 @@ impl PlaceContext<'_> {
 
 /// `BlockBehaviour.canBeReplaced(state, context)` as the block's class
 /// decides it.
-pub fn can_be_replaced(state: i32, ctx: &PlaceContext<'_>) -> Rule<bool> {
+pub fn can_be_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<bool> {
     let Some(block) = block(state) else {
         return Rule::Known(false);
     };
@@ -160,7 +159,7 @@ pub fn can_be_replaced(state: i32, ctx: &PlaceContext<'_>) -> Rule<bool> {
 
 /// `Block.getStateForPlacement` for the block the item places; `None` is a
 /// refusal.
-pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<i32>> {
+pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
     let default = default_state(block);
     let pos = ctx.clicked_pos();
     #[expect(
@@ -220,7 +219,7 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
 }
 
 /// `BlockBehaviour.canSurvive` as the block's class decides it.
-pub fn can_survive(state: i32) -> Rule<bool> {
+pub fn can_survive(state: BlockStateId) -> Rule<bool> {
     match state_owner(state, Method::CanSurvive) {
         None => Rule::Known(true),
         Some(_) => Rule::Unported,
@@ -228,18 +227,18 @@ pub fn can_survive(state: i32) -> Rule<bool> {
 }
 
 /// `instanceof StairBlock`.
-fn is_stairs(state: i32) -> bool {
+fn is_stairs(state: BlockStateId) -> bool {
     block(state).is_some_and(|block| block.class.is(BlockClass::StairBlock))
 }
 
-fn facing(state: i32) -> Option<Direction> {
+fn facing(state: BlockStateId) -> Option<Direction> {
     property(state, "facing").and_then(Direction::from_name)
 }
 
 /// `StairBlock.getStairsShape`.
 fn stairs_shape(
-    state: i32,
-    state_at: &dyn Fn(i32, i32, i32) -> i32,
+    state: BlockStateId,
+    state_at: &dyn Fn(i32, i32, i32) -> BlockStateId,
     pos: (i32, i32, i32),
 ) -> &'static str {
     let Some(facing_dir) = facing(state) else {
@@ -286,11 +285,11 @@ fn stairs_shape(
 /// `BlockBehaviour.updateShape`: the state after the neighbour in
 /// `direction` changed, as the block's class decides it.
 pub fn update_shape(
-    state: i32,
-    state_at: &dyn Fn(i32, i32, i32) -> i32,
+    state: BlockStateId,
+    state_at: &dyn Fn(i32, i32, i32) -> BlockStateId,
     pos: (i32, i32, i32),
     direction: Direction,
-) -> Rule<i32> {
+) -> Rule<BlockStateId> {
     match state_owner(state, Method::UpdateShape) {
         None => Rule::Known(state),
         Some(BlockClass::StairBlock) => {
@@ -324,7 +323,7 @@ impl UseResult {
 }
 
 /// `BlockBehaviour.useItemOn`.
-pub fn use_item_on(state: i32) -> Rule<UseResult> {
+pub fn use_item_on(state: BlockStateId) -> Rule<UseResult> {
     match state_owner(state, Method::UseItemOn) {
         None => Rule::Known(UseResult::TryEmptyHand),
         Some(_) => Rule::Unported,
@@ -332,7 +331,7 @@ pub fn use_item_on(state: i32) -> Rule<UseResult> {
 }
 
 /// `BlockBehaviour.useWithoutItem`.
-pub fn use_without_item(state: i32) -> Rule<UseResult> {
+pub fn use_without_item(state: BlockStateId) -> Rule<UseResult> {
     match state_owner(state, Method::UseWithoutItem) {
         None => Rule::Known(UseResult::Pass),
         Some(_) => Rule::Unported,
@@ -359,6 +358,6 @@ pub fn item_use_owner(item_id: ItemId) -> ItemClass {
 }
 
 /// Whether a state is air, for `updateOrDestroy`.
-pub fn state_is_air(state: i32) -> bool {
+pub fn state_is_air(state: BlockStateId) -> bool {
     is_air(state)
 }

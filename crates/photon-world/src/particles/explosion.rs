@@ -134,11 +134,8 @@ impl ParticleEngine {
         );
         let (cx, cy, cz) = explosion.center;
         let at = [cx + local.0, cy + local.1, cz + local.2].map(photon_core::math::floor_f64);
-        let state = context
-            .world
-            .block_state_at(at[0], at[1], at[2])
-            .unwrap_or(0);
-        if !crate::block::state_or_air(i64::from(state)).block().air {
+        let state = context.world.block_state_or_air(at[0], at[1], at[2]);
+        if !crate::block::state_or_air(state).block().air {
             return;
         }
         let speed =

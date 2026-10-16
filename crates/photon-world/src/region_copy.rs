@@ -16,7 +16,7 @@ use photon_core::ids::BlockStateId;
 pub struct RegionCopy {
     min: [i32; 3],
     size: [i32; 3],
-    states: Vec<Option<i32>>,
+    states: Vec<Option<BlockStateId>>,
     /// Block light, then sky light.
     light: Vec<(u8, u8)>,
     quart_min: [i32; 3],
@@ -42,7 +42,7 @@ impl RegionCopy {
     }
 
     /// The block state, nothing where no chunk was loaded or outside the box.
-    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+    pub fn block_state_at(&self, x: i32, y: i32, z: i32) -> Option<BlockStateId> {
         self.states[self.index(x, y, z)?]
     }
 
@@ -189,7 +189,7 @@ impl ClientWorld {
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::aabb::BlockHitResult> {
         self.clip_with(from, to, |state, position| {
-            crate::outline_shape(BlockStateId(state), position)
+            crate::outline_shape(state, position)
         })
     }
 
@@ -199,7 +199,7 @@ impl ClientWorld {
         &self,
         from: photon_core::math::Vec3,
         to: photon_core::math::Vec3,
-        shape: impl Fn(i32, [i32; 3]) -> photon_core::shape::VoxelShape,
+        shape: impl Fn(BlockStateId, [i32; 3]) -> photon_core::shape::VoxelShape,
     ) -> Option<photon_core::aabb::BlockHitResult> {
         use photon_core::math::{floor_f64, frac_f64};
         if from.x == to.x && from.y == to.y && from.z == to.z {

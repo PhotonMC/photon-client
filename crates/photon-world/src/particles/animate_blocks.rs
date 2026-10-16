@@ -39,8 +39,8 @@ fn step(facing: Option<&str>) -> (f64, f64) {
 }
 
 /// `FireBlock.canBurn`: a block with ignite odds that is not under water.
-fn can_burn(state: i32) -> bool {
-    let name = crate::block::state_or_air(i64::from(state)).block().name;
+fn can_burn(state: BlockStateId) -> bool {
+    let name = crate::block::state_or_air(state).block().name;
     crate::block::rules::property(state, "waterlogged") != Some("true")
         && photon_data::fire::odds(name).is_some_and(|(ignite, _)| ignite > 0)
 }
@@ -50,12 +50,12 @@ impl ParticleEngine {
     /// sounds are added to `sounds`.
     pub(super) fn block_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         pos: (i32, i32, i32),
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
     ) {
-        let full = crate::block::state_or_air(i64::from(state)).block().name;
+        let full = crate::block::state_or_air(state).block().name;
         let name = full.strip_prefix("minecraft:").unwrap_or(full);
         let lit = crate::block::rules::property(state, "lit") == Some("true");
         if photon_data::leaves::of(full).is_some() {
@@ -107,7 +107,7 @@ impl ParticleEngine {
     /// `TorchBlock`, `WallTorchBlock`, `RedstoneTorchBlock` and `RedstoneWallTorchBlock`.
     fn torch_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         name: &str,
         (x, y, z): (i32, i32, i32),
         random: &mut RandomSource,
@@ -171,16 +171,12 @@ impl ParticleEngine {
             let event = ("minecraft:block.fire.ambient", LocalSoundSource::Blocks);
             sounds.push(local_sound(event, (volume, pitch), at, context));
         }
-        let state = |dx: i32, dy: i32, dz: i32| {
-            context
-                .world
-                .block_state_at(bx + dx, by + dy, bz + dz)
-                .unwrap_or(0)
-        };
+        let state =
+            |dx: i32, dy: i32, dz: i32| context.world.block_state_or_air(bx + dx, by + dy, bz + dz);
         // `SoulFireBlock.canBurn` is always true.
-        let burns = |state: i32| soul || can_burn(state);
+        let burns = |state: BlockStateId| soul || can_burn(state);
         let below = state(0, -1, 0);
-        let below_sturdy = crate::block::state(BlockStateId(below))
+        let below_sturdy = crate::block::state(below)
             .is_some_and(|info| info.is_face_sturdy(photon_core::direction::Direction::Up));
         let tenth = f64::from(0.1_f32);
         if !burns(below) && !below_sturdy {
@@ -254,7 +250,7 @@ impl ParticleEngine {
     /// smoke (and a furnace's flame) out of the front, or a smoker's out of the top.
     fn furnace<F: FnMut() -> RandomSource>(
         &mut self,
-        state: i32,
+        state: BlockStateId,
         (bx, by, bz): (i32, i32, i32),
         name: &str,
         random: &mut RandomSource,

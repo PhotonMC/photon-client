@@ -1,7 +1,8 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl Level<'_> {
-    pub(crate) fn state_id(&self, pos: BlockPos) -> Option<i32> {
+    pub(crate) fn state_id(&self, pos: BlockPos) -> Option<BlockStateId> {
         self.world.block_state_at(pos.x, pos.y, pos.z)
     }
 
@@ -120,7 +121,7 @@ impl Level<'_> {
     /// above it and no lava lies on top of it.
     pub(super) fn lava_surface_shape(
         &self,
-        state: i32,
+        state: BlockStateId,
         at: [i32; 3],
         bottom: f64,
     ) -> Option<VoxelShape> {
@@ -216,7 +217,7 @@ impl Level<'_> {
         !self
             .world
             .collect_block_collisions_with(area, |state, at| {
-                crate::block::state_or_air(i64::from(state))
+                crate::block::state_or_air(state)
                     .suffocating
                     .then(|| registry.collision_shape_at(state, at))
             })
@@ -246,7 +247,10 @@ impl Level<'_> {
         if same_fluid {
             return false;
         }
-        let state = crate::block::state_or_air(self.state_id(pos).map_or(0, i64::from));
+        let state = crate::block::state_or_air(
+            self.state_id(pos)
+                .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
+        );
         !state.block().class.is(BlockClass::IceBlock) && state.is_face_sturdy(direction)
     }
 
@@ -425,7 +429,7 @@ impl Level<'_> {
     ) -> Result<bool, Unsupported> {
         Ok(self
             .state_id(pos)
-            .is_some_and(|state| crate::block::state_or_air(i64::from(state)).blocks_motion))
+            .is_some_and(|state| crate::block::state_or_air(state).blocks_motion))
     }
 }
 

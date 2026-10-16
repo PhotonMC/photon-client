@@ -100,7 +100,11 @@ pub(super) fn strider_is_suffocating(
     let inside = BlockPos::new(floor_f64(x), floor_f64(y), floor_f64(z));
     let on = level.on_pos(strider.tracking.support.main_block, Vec3::new(x, y, z), 0.2);
     let warm = |pos: BlockPos| {
-        let state = crate::block::state_or_air(level.state_id(pos).map_or(0, i64::from));
+        let state = crate::block::state_or_air(
+            level
+                .state_id(pos)
+                .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
+        );
         world
             .block_state_registry
             .tags()

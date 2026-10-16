@@ -1,6 +1,7 @@
 //! The falling blocks (`FallingBlockRenderer`): the block's model tessellated as the world's is
 //! (smooth light, its biome's colour) with air all about it, set where the entity is.
 
+use photon_core::ids::BlockStateId;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, MeshWorld};
@@ -26,7 +27,7 @@ pub fn falling_blocks(
             continue;
         }
         // `ClientboundAddEntityPacket.getData`: the block state's number.
-        let Ok(state) = u32::try_from(entity.data) else {
+        let Some(state) = BlockStateId::non_negative(entity.data) else {
             continue;
         };
         let (x, y, z) = entity.position();
@@ -36,7 +37,7 @@ pub fn falling_blocks(
             photon_core::math::floor_f64(y),
             photon_core::math::floor_f64(z),
         ];
-        if world.block_state_at(at[0], at[1], at[2]) == i32::try_from(state).ok() {
+        if world.block_state_at(at[0], at[1], at[2]) == Some(state) {
             continue;
         }
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
@@ -51,9 +52,9 @@ pub fn falling_blocks(
         let start = entity.start_block();
         let read = |px: i32, py: i32, pz: i32| {
             Some(if [px, py, pz] == block {
-                state as i32
+                state
             } else {
-                0
+                photon_world::VANILLA_AIR_BLOCK_STATE_ID
             })
         };
         let light = |px: i32, py: i32, pz: i32| {

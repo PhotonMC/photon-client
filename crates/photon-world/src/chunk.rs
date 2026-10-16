@@ -1,6 +1,7 @@
 //! `ClientWorld` chunk layer split out of the former single-file module.
 
 use super::*;
+use photon_core::ids::BlockStateId;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -263,7 +264,11 @@ impl ClientSection {
         self.non_empty_block_count == 0
     }
 
-    pub(crate) fn set_block_state(&mut self, index: usize, state_id: i32) -> Option<i32> {
+    pub(crate) fn set_block_state(
+        &mut self,
+        index: usize,
+        state_id: BlockStateId,
+    ) -> Option<BlockStateId> {
         // The complete block-state registry is still open; this slice has the
         // exact air/non-air and source-water classifications used by its
         // pinned update trace.

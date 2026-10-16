@@ -9,7 +9,7 @@
 "crates/photon-oracle/src/math_cases/player.rs" = 538
 "crates/photon-oracle/src/model.rs" = 504
 "crates/photon-oracle/src/movement.rs" = 572
-"crates/photon-oracle/src/particles.rs" = 557
+"crates/photon-oracle/src/particles.rs" = 553
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
@@ -19,7 +19,7 @@
 "crates/photon-render/src/vulkan/pipeline.rs" = 501
 "crates/photon-world/src/local_player/ticking.rs" = 501
 "crates/photon-world/src/particles/firework.rs" = 541
-"crates/photon-world/src/particles/level_events_last.rs" = 579
+"crates/photon-world/src/particles/level_events_last.rs" = 576
 "crates/photon/src/menu.rs" = 644
 "crates/photon/src/mobs/animals/farm_animals.rs" = 515
 
@@ -837,7 +837,7 @@
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 186
 "crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 75
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 81
-"crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 140
+"crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 137
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 87
 "crates/photon-render/src/block/world_mesh/states.rs::bake_states" = 75
 "crates/photon-render/src/border.rs::quads" = 82
@@ -977,7 +977,7 @@
 "crates/photon-world/src/lib.rs::apply_special_data" = 97
 "crates/photon-world/src/light/sky_sources.rs::Engine::propagate_sky_sources" = 75
 "crates/photon-world/src/local_player/inside_blocks.rs::blocks_intersected_between" = 161
-"crates/photon-world/src/local_player/inside_blocks.rs::living_inside_effect" = 80
+"crates/photon-world/src/local_player/inside_blocks.rs::living_inside_effect" = 78
 "crates/photon-world/src/local_player/level.rs::Level::clip_hits_fall_reset" = 86
 "crates/photon-world/src/local_player/rotation.rs::LocalPlayer::send_position" = 68
 "crates/photon-world/src/local_player/serverbound.rs::ServerboundMovement::encode_body" = 96
@@ -989,13 +989,12 @@
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 64
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 92
 "crates/photon-world/src/mobs/guardian.rs::GuardianState::tick" = 70
-"crates/photon-world/src/particles/animate_blocks.rs::ParticleEngine::fire" = 61
 "crates/photon-world/src/particles/attract.rs::Particle::attract_tick" = 62
 "crates/photon-world/src/particles/colour.rs::Particle::glow" = 64
 "crates/photon-world/src/particles/drip.rs::Particle::drip_provider" = 63
-"crates/photon-world/src/particles/drip.rs::Particle::drip_tick" = 78
+"crates/photon-world/src/particles/drip.rs::Particle::drip_tick" = 76
 "crates/photon-world/src/particles/drip.rs::drip_of" = 66
-"crates/photon-world/src/particles/explosion.rs::ParticleEngine::explosion_particle" = 70
+"crates/photon-world/src/particles/explosion.rs::ParticleEngine::explosion_particle" = 67
 "crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 74
 "crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 104
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 95
@@ -1015,7 +1014,7 @@
 "crates/photon-world/src/ride/mount/travel.rs::MountBody::move_self" = 62
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 93
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 83
-"crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 68
+"crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 67
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 61
 "crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 138
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 95

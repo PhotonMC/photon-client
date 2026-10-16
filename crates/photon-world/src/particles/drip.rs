@@ -176,14 +176,12 @@ impl Particle {
         self.zd *= f64::from(0.98_f32);
         if drip.fluid != Fluid::Empty {
             let pos = [self.x, self.y, self.z].map(floor_f64);
-            let state = world.block_state_at(pos[0], pos[1], pos[2]).unwrap_or(0);
-            let fluid = crate::block::state_or_air(i64::from(state)).fluid;
+            let state = world.block_state_or_air(pos[0], pos[1], pos[2]);
+            let fluid = crate::block::state_or_air(state).fluid;
             if !fluid.is_empty() && fluid.is_same(drip.fluid) {
                 // `FluidState.getHeight`: full under the same fluid.
-                let above = world
-                    .block_state_at(pos[0], pos[1] + 1, pos[2])
-                    .unwrap_or(0);
-                let above = crate::block::state_or_air(i64::from(above)).fluid;
+                let above = world.block_state_or_air(pos[0], pos[1] + 1, pos[2]);
+                let above = crate::block::state_or_air(above).fluid;
                 let height = if !above.is_empty() && above.is_same(drip.fluid) {
                     1.0
                 } else {

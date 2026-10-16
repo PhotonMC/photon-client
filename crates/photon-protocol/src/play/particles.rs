@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityId;
 
 /// `ClientboundLevelParticlesPacket`, read from the front of `input`: nothing for a type whose
@@ -50,7 +51,7 @@ pub fn read_particle_options(
     };
     let color = |input: &mut &[u8]| read_i32(input, NAME).map(|value| value as u32);
     let data = if photon_data::particle_type::carries_block_state(type_id) {
-        ParticleData::Block(read_varint(input, NAME)?)
+        ParticleData::Block(BlockStateId(read_varint(input, NAME)?))
     } else if photon_data::particle_type::is_simple(type_id) {
         ParticleData::Plain
     } else {

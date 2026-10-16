@@ -19,7 +19,7 @@ pub(super) fn light_coords(world: &ClientWorld, pos: BlockPos) -> i32 {
     let state = state_or_air(
         world
             .block_state_at(pos.x, pos.y, pos.z)
-            .map_or(0, i64::from),
+            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
     );
     if state.emissive_rendering {
         return FULL_BRIGHT;

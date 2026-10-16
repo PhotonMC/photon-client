@@ -103,11 +103,15 @@ impl BlockRenderer {
     /// nothing, as the breaking overlay draws them: corners in the model's
     /// own unit cube and each quad's facing, with the block's offset. The
     /// variants are the ones the world mesh picks there.
-    pub fn block_quads(&self, state_id: u32, position: [i32; 3]) -> (Vec<FacedQuad>, [f32; 3]) {
-        let Some(StateRender::Drawn(drawn)) = self.states.get(state_id as usize) else {
+    pub fn block_quads(
+        &self,
+        state_id: BlockStateId,
+        position: [i32; 3],
+    ) -> (Vec<FacedQuad>, [f32; 3]) {
+        let Some(StateRender::Drawn(drawn)) = self.state_render(state_id) else {
             return (Vec::new(), [0.0; 3]);
         };
-        let info = photon_world::block::state_or_air(i64::from(state_id));
+        let info = photon_world::block::state_or_air(state_id);
         let mut random =
             photon_core::random::RandomSource::create(photon_world::block::seed(info, position));
         let mut quads = Vec::new();
@@ -184,9 +188,9 @@ impl BlockRenderer {
         });
         // A fake state is of air: it gives off no light.
         let info = photon_world::block::state_or_air(if state.0 as u32 >= self.frame_base {
-            0
+            BlockStateId(0)
         } else {
-            i64::from(state)
+            state
         });
         Some((
             ItemLayer {
@@ -213,7 +217,7 @@ impl BlockRenderer {
         mesh_origin: [i32; 3],
     ) -> RegionMesh
     where
-        R: Fn(i32, i32, i32) -> Option<i32>,
+        R: Fn(i32, i32, i32) -> Option<BlockStateId>,
         L: Fn(i32, i32, i32) -> (u8, u8),
         T: Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     {
@@ -232,7 +236,7 @@ impl BlockRenderer {
         seed_position: [i32; 3],
     ) -> crate::scene::Mesh
     where
-        R: Fn(i32, i32, i32) -> Option<i32>,
+        R: Fn(i32, i32, i32) -> Option<BlockStateId>,
         L: Fn(i32, i32, i32) -> (u8, u8),
         T: Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     {
@@ -251,7 +255,7 @@ impl BlockRenderer {
         seed_position: Option<[i32; 3]>,
     ) -> RegionMesh
     where
-        R: Fn(i32, i32, i32) -> Option<i32>,
+        R: Fn(i32, i32, i32) -> Option<BlockStateId>,
         L: Fn(i32, i32, i32) -> (u8, u8),
         T: Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     {
@@ -262,7 +266,7 @@ impl BlockRenderer {
             tags,
         } = *world;
         let lighter = crate::block::light::Lighter {
-            state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(BlockStateId::non_negative),
+            state: |p: [i32; 3]| read(p[0], p[1], p[2]),
             light: |p: [i32; 3]| light(p[0], p[1], p[2]),
         };
         let mut mesh = Mesh::default();
@@ -276,9 +280,7 @@ impl BlockRenderer {
                         origin[1] + offset_y,
                         origin[2] + offset_z,
                     ];
-                    let Some(state_id) = read(position[0], position[1], position[2])
-                        .and_then(BlockStateId::non_negative)
-                    else {
+                    let Some(state_id) = read(position[0], position[1], position[2]) else {
                         continue;
                     };
                     let drawn = match self.states.get(state_id.0 as usize) {
@@ -299,8 +301,7 @@ impl BlockRenderer {
                                 position[0] + step_x,
                                 position[1] + step_y,
                                 position[2] + step_z,
-                            )
-                            .and_then(BlockStateId::non_negative);
+                            );
                             !photon_world::block::should_render_face(
                                 state_id, neighbour, facing, tags,
                             )
@@ -310,7 +311,7 @@ impl BlockRenderer {
                     if drawn.closes_in && Direction::stream().all(&mut is_hidden) {
                         continue;
                     }
-                    let info = photon_world::block::state_or_air(i64::from(state_id));
+                    let info = photon_world::block::state_or_air(state_id);
                     let mut random = photon_core::random::RandomSource::create(
                         photon_world::block::seed(info, seed_position.unwrap_or(position)),
                     );
@@ -446,7 +447,7 @@ pub(super) fn push_block_quad(
 /// its own atlas.
 pub fn build_world_mesh(
     source: &impl AssetSource,
-    read: impl Fn(i32, i32, i32) -> Option<i32>,
+    read: impl Fn(i32, i32, i32) -> Option<BlockStateId>,
     light: impl Fn(i32, i32, i32) -> (u8, u8),
     biome_tint: impl Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     origin: [i32; 3],

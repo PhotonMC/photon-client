@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::BlockStateId;
 
 #[test]
 fn block_collision_collection_follows_cursor_order_and_overlap() {
@@ -25,10 +26,16 @@ fn block_collision_collection_follows_cursor_order_and_overlap() {
         }],
     );
     let shapes = BTreeMap::from([
-        (1, Shapes::block()),
-        (2, Shapes::box_shape(0.0, 0.0, 0.0, 1.0, 0.5, 1.0).unwrap()),
-        (3, Shapes::box_shape(0.0, 0.5, 0.0, 1.0, 1.0, 1.0).unwrap()),
-        (4, Shapes::empty()),
+        (BlockStateId(1), Shapes::block()),
+        (
+            BlockStateId(2),
+            Shapes::box_shape(0.0, 0.0, 0.0, 1.0, 0.5, 1.0).unwrap(),
+        ),
+        (
+            BlockStateId(3),
+            Shapes::box_shape(0.0, 0.5, 0.0, 1.0, 1.0, 1.0).unwrap(),
+        ),
+        (BlockStateId(4), Shapes::empty()),
     ]);
 
     let collisions = world

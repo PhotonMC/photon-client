@@ -1,4 +1,5 @@
 use crate::*;
+use photon_core::ids::BlockStateId;
 use photon_core::java_float::JavaF32;
 
 impl ClientWorld {
@@ -6,7 +7,7 @@ impl ClientWorld {
     pub fn apply_entity_living_climbable_block_state(
         &mut self,
         entity_id: EntityId,
-        state_id: i32,
+        state_id: BlockStateId,
     ) -> bool {
         let on_climbable = self.block_state_registry.is_climbable_state(state_id);
         let Some(entity) = self.entities.at_mut(entity_id) else {
@@ -20,7 +21,7 @@ impl ClientWorld {
     pub fn apply_entity_living_climbable_glide_through_state(
         &mut self,
         entity_id: EntityId,
-        state_id: i32,
+        state_id: BlockStateId,
         fall_flying: bool,
     ) -> bool {
         let is_climbable = self.block_state_registry.is_climbable_state(state_id);

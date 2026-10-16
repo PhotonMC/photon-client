@@ -65,7 +65,11 @@ impl LocalPlayer {
     }
 
     fn state_in_tag(level: &Level<'_>, pos: BlockPos, tag: &str) -> bool {
-        let state = crate::block::state_or_air(level.state_id(pos).map_or(0, i64::from));
+        let state = crate::block::state_or_air(
+            level
+                .state_id(pos)
+                .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
+        );
         level
             .world
             .block_state_registry
@@ -88,9 +92,11 @@ impl LocalPlayer {
         level: &Level<'_>,
         pos: BlockPos,
     ) -> Option<&'static photon_data::block_sound::SoundTypeRow> {
-        let id = level.state_id(pos).map_or(0, i64::from);
+        let id = level
+            .state_id(pos)
+            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID);
         let state = crate::block::state_or_air(id);
-        photon_data::block_sound::of_state(state.block().name, u32::try_from(id).ok()?)
+        photon_data::block_sound::of_state(state.block().name, u32::try_from(id.0).ok()?)
     }
 
     /// `Entity.playStepSound`: the block's step sound, a sixth as loud.
@@ -169,7 +175,9 @@ impl LocalPlayer {
     /// damage is none, farmland and turtle eggs break only on the server).
     pub(super) fn fall_on(&mut self, level: &Level<'_>, pos: BlockPos, distance: f64) {
         use photon_data::block::classes::BlockClass;
-        let id = level.state_id(pos).map_or(0, i64::from);
+        let id = level
+            .state_id(pos)
+            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID);
         let state = crate::block::state_or_air(id);
         let block = state.block();
         let is = |class: BlockClass| block.class.lineage().any(|own| own == class);
@@ -231,7 +239,9 @@ impl LocalPlayer {
         'search: for z in (area.min_z.floor() as i32)..=(area.max_z.floor() as i32) {
             for y in (area.min_y.floor() as i32)..=(area.max_y.floor() as i32) {
                 for x in (area.min_x.floor() as i32)..=(area.max_x.floor() as i32) {
-                    let id = level.state_id(BlockPos::new(x, y, z)).map_or(0, i64::from);
+                    let id = level
+                        .state_id(BlockPos::new(x, y, z))
+                        .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID);
                     let state = crate::block::state_or_air(id);
                     if state.block().name == "minecraft:bubble_column" {
                         found = Some(state);

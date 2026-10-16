@@ -14,12 +14,9 @@ pub fn state(state: BlockStateId) -> Option<&'static StateInfo> {
 
 /// A state's values, a number outside the registry reading as air
 /// (`Block.stateById`).
-pub fn state_or_air(state: i64) -> &'static StateInfo {
+pub fn state_or_air(state: BlockStateId) -> &'static StateInfo {
     let states = states();
-    i32::try_from(state)
-        .ok()
-        .and_then(|state| states.get(BlockStateId(state)))
-        .unwrap_or(&states.states[0])
+    states.get(state).unwrap_or(&states.states[0])
 }
 
 pub(super) fn build() -> States {

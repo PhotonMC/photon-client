@@ -164,8 +164,8 @@ mod tests;
 
 /// Whether the `MOTION_BLOCKING` heightmap counts a state: it blocks
 /// motion or holds a fluid.
-pub fn motion_blocking(state: i32) -> bool {
-    let state = block::state_or_air(i64::from(state));
+pub fn motion_blocking(state: BlockStateId) -> bool {
+    let state = block::state_or_air(state);
     state.blocks_motion || !state.fluid.is_empty()
 }
 
@@ -376,7 +376,7 @@ impl light::LightChunks for LightView<'_> {
         self.chunk(chunk_x, chunk_z).is_some()
     }
 
-    fn block_state(&self, x: i32, y: i32, z: i32) -> i32 {
+    fn block_state(&self, x: i32, y: i32, z: i32) -> BlockStateId {
         self.chunk(x >> 4, z >> 4)
             .and_then(|chunk| chunk.sections.get(&(y >> 4)))
             .and_then(|section| {
@@ -384,7 +384,7 @@ impl light::LightChunks for LightView<'_> {
                     .block_states
                     .get(((y & 15) * 256 + (z & 15) * 16 + (x & 15)) as usize)
             })
-            .unwrap_or(0)
+            .unwrap_or(constants::VANILLA_AIR_BLOCK_STATE_ID)
     }
 
     fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&light::ChunkSkyLightSources> {

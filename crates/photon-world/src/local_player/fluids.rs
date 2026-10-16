@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl LocalPlayer {
     pub(super) fn update_fluid_interaction(
@@ -83,8 +84,8 @@ impl LocalPlayer {
 
 /// The fluid a block state holds: whether it is water (rather than lava),
 /// its own height, and whether it is falling. Nothing for a dry state.
-pub fn state_fluid(state_id: i32) -> Option<(bool, f32, bool)> {
-    let fluid = crate::block::state_or_air(i64::from(state_id)).fluid;
+pub fn state_fluid(state_id: BlockStateId) -> Option<(bool, f32, bool)> {
+    let fluid = crate::block::state_or_air(state_id).fluid;
     (!fluid.is_empty()).then(|| {
         (
             fluid.is_same(Fluid::Water),
@@ -95,8 +96,6 @@ pub fn state_fluid(state_id: i32) -> Option<(bool, f32, bool)> {
 }
 
 /// Whether a block state holds any fluid, as a section's fluid count sees it.
-pub fn state_has_fluid(state_id: i32) -> bool {
-    !crate::block::state_or_air(i64::from(state_id))
-        .fluid
-        .is_empty()
+pub fn state_has_fluid(state_id: BlockStateId) -> bool {
+    !crate::block::state_or_air(state_id).fluid.is_empty()
 }

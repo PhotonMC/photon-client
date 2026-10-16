@@ -166,8 +166,8 @@ impl LocalPlayer {
     }
 }
 
-pub(crate) fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {
-    let (block, offset) = registry::block_for_state(BlockStateId(state_id?))?;
+pub(crate) fn property(state_id: Option<BlockStateId>, name: &str) -> Option<&'static str> {
+    let (block, offset) = registry::block_for_state(state_id?)?;
     block
         .properties_at(offset)?
         .into_iter()
@@ -221,7 +221,7 @@ pub struct RideTick {
 /// A block the walk reached, and what its visit needs to act on.
 pub(crate) struct InsideVisit {
     pub(crate) pos: BlockPos,
-    pub(crate) state: Option<i32>,
+    pub(crate) state: Option<BlockStateId>,
     pub(crate) info: StateInfo,
     /// `isPrecise`: the entity's box really overlaps the block, or it moved a long way.
     pub(crate) precise: bool,

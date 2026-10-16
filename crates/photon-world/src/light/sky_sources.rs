@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl Engine {
     pub(super) fn propagate_sky_sources(&mut self, level: &Level<'_>, chunk: ColumnKey) {
@@ -338,16 +339,18 @@ impl ChunkSkyLightSources {
         let level_min_y = self.min_y + 1;
         let section_min = |index: usize| level_min_y + index as i32 * 16;
         let mut top_y = section_min(top) + 16;
-        let mut top_state = 0;
+        let mut top_state = crate::constants::VANILLA_AIR_BLOCK_STATE_ID;
         for index in (0..=top).rev() {
             match &sections[index] {
                 None => {
-                    top_state = 0;
+                    top_state = crate::constants::VANILLA_AIR_BLOCK_STATE_ID;
                     top_y = section_min(index);
                 }
                 Some(states) => {
                     for y in (0..16).rev() {
-                        let bottom_state = states.get((y * 256 + z * 16 + x) as usize).unwrap_or(0);
+                        let bottom_state = states
+                            .get((y * 256 + z * 16 + x) as usize)
+                            .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID);
                         if is_edge_occluded(top_state, bottom_state) {
                             return top_y;
                         }
@@ -362,7 +365,13 @@ impl ChunkSkyLightSources {
 
     /// `update` after the block at local `x`, `z` and height `y` changed.
     /// `state` answers the chunk's block at a local position and height.
-    pub fn update(&mut self, state: impl Fn(i32, i32, i32) -> i32, x: i32, y: i32, z: i32) -> bool {
+    pub fn update(
+        &mut self,
+        state: impl Fn(i32, i32, i32) -> BlockStateId,
+        x: i32,
+        y: i32,
+        z: i32,
+    ) -> bool {
         let index = Self::index(x, z);
         let current = self.heights[index];
         if y + 1 < current {
@@ -399,13 +408,13 @@ impl ChunkSkyLightSources {
     )]
     pub(super) fn update_edge(
         &mut self,
-        state: &impl Fn(i32, i32, i32) -> i32,
+        state: &impl Fn(i32, i32, i32) -> BlockStateId,
         index: usize,
         old_top_edge_y: i32,
         top_pos: (i32, i32, i32),
-        top_state: i32,
+        top_state: BlockStateId,
         bottom_pos: (i32, i32, i32),
-        bottom_state: i32,
+        bottom_state: BlockStateId,
     ) -> bool {
         let checked = top_pos.1;
         if is_edge_occluded(top_state, bottom_state) {
@@ -422,9 +431,9 @@ impl ChunkSkyLightSources {
 
     pub(super) fn find_lowest_source_below(
         &self,
-        state: &impl Fn(i32, i32, i32) -> i32,
+        state: &impl Fn(i32, i32, i32) -> BlockStateId,
         start: (i32, i32, i32),
-        start_state: i32,
+        start_state: BlockStateId,
     ) -> i32 {
         let (x, mut top_y, z) = start;
         let mut top_state = start_state;

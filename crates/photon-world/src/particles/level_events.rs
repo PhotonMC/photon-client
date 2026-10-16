@@ -2,6 +2,7 @@
 //! level's random in the order the reference draws them.
 
 use photon_core::binary::BlockPos;
+use photon_core::ids::BlockStateId;
 use photon_core::math::fdlibm_pow;
 use photon_core::random::RandomSource;
 use photon_data::particle_type;
@@ -194,7 +195,7 @@ impl ParticleEngine {
                 let at = BlockPos::new(pos.0, pos.1, pos.2);
                 self.add_destroy_block_effect(
                     context.world,
-                    (at, data),
+                    (at, BlockStateId(data)),
                     &mut context.particle_random,
                 );
             }

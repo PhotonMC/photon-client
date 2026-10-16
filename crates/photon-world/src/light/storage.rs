@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl Storage {
     pub(super) fn new(layer: LightLayer) -> Self {
@@ -365,6 +366,6 @@ pub trait LightChunks {
     /// bedrock.
     fn has_chunk(&self, chunk_x: i32, chunk_z: i32) -> bool;
     /// A block state in a loaded chunk.
-    fn block_state(&self, x: i32, y: i32, z: i32) -> i32;
+    fn block_state(&self, x: i32, y: i32, z: i32) -> BlockStateId;
     fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&ChunkSkyLightSources>;
 }

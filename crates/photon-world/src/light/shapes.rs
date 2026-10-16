@@ -1,26 +1,30 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
-pub(super) fn light_traits(state: i32) -> &'static crate::block::StateInfo {
-    crate::block::state_or_air(i64::from(state))
+pub(super) fn light_traits(state: BlockStateId) -> &'static crate::block::StateInfo {
+    crate::block::state_or_air(state)
 }
 
-pub(super) fn emission(state: i32) -> u8 {
+pub(super) fn emission(state: BlockStateId) -> u8 {
     light_traits(state).light_emission
 }
 
-pub(super) fn dampening(state: i32) -> u8 {
+pub(super) fn dampening(state: BlockStateId) -> u8 {
     light_traits(state).light_dampening
 }
 
 /// `LightEngine.isEmptyShape`: light ignores the shape of a block that
 /// cannot occlude or does not use its shape for light.
-pub(super) fn is_empty_shape(state: i32) -> bool {
+pub(super) fn is_empty_shape(state: BlockStateId) -> bool {
     let traits = light_traits(state);
     !traits.can_occlude || !traits.use_shape_for_light_occlusion
 }
 
 /// `LightEngine.getOcclusionShape`, as a face number.
-pub(super) fn occlusion_shape(state: i32, direction: Direction) -> crate::block::state::Face {
+pub(super) fn occlusion_shape(
+    state: BlockStateId,
+    direction: Direction,
+) -> crate::block::state::Face {
     if is_empty_shape(state) {
         crate::block::state::EMPTY_FACE
     } else {
@@ -37,7 +41,7 @@ pub(super) fn face_shape_occludes(
 }
 
 /// `LightEngine.hasDifferentLightProperties`.
-pub fn has_different_light_properties(old: i32, new: i32) -> bool {
+pub fn has_different_light_properties(old: BlockStateId, new: BlockStateId) -> bool {
     if old == new {
         return false;
     }
@@ -49,7 +53,7 @@ pub fn has_different_light_properties(old: i32, new: i32) -> bool {
 }
 
 /// `ChunkSkyLightSources.isEdgeOccluded`.
-pub(super) fn is_edge_occluded(top: i32, bottom: i32) -> bool {
+pub(super) fn is_edge_occluded(top: BlockStateId, bottom: BlockStateId) -> bool {
     dampening(bottom) != 0
         || face_shape_occludes(
             occlusion_shape(top, Direction::Down),
@@ -57,11 +61,11 @@ pub(super) fn is_edge_occluded(top: i32, bottom: i32) -> bool {
         )
 }
 
-pub(super) fn bedrock() -> i32 {
-    static STATE: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
+pub(super) fn bedrock() -> BlockStateId {
+    static STATE: std::sync::OnceLock<BlockStateId> = std::sync::OnceLock::new();
     *STATE.get_or_init(|| {
         photon_data::block::registry::block("minecraft:bedrock")
-            .map_or(0, |block| block.default_state_id().0)
+            .map_or(BlockStateId(0), |block| block.default_state_id())
     })
 }
 
@@ -70,11 +74,15 @@ pub(super) struct Level<'a> {
 }
 
 impl Engine {
-    pub(super) fn opacity(state: i32) -> u8 {
+    pub(super) fn opacity(state: BlockStateId) -> u8 {
         dampening(state).max(1)
     }
 
-    pub(super) fn shape_occludes(from: i32, to: i32, direction: Direction) -> bool {
+    pub(super) fn shape_occludes(
+        from: BlockStateId,
+        to: BlockStateId,
+        direction: Direction,
+    ) -> bool {
         face_shape_occludes(
             occlusion_shape(from, direction),
             occlusion_shape(to, direction.opposite()),
@@ -83,7 +91,7 @@ impl Engine {
 }
 
 impl Level<'_> {
-    pub(super) fn state(&self, block: BlockKey) -> i32 {
+    pub(super) fn state(&self, block: BlockKey) -> BlockStateId {
         if self.chunks.has_chunk(block.0 >> 4, block.2 >> 4) {
             self.chunks.block_state(block.0, block.1, block.2)
         } else {

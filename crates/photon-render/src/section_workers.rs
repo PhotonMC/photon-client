@@ -150,8 +150,9 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
     for y in 0..16 {
         for z in 0..16 {
             for x in 0..16 {
-                let state = read(corner[0] + x, corner[1] + y, corner[2] + z).unwrap_or(0);
-                if photon_world::block::state_or_air(i64::from(state)).solid_render {
+                let state = read(corner[0] + x, corner[1] + y, corner[2] + z)
+                    .unwrap_or(photon_world::VANILLA_AIR_BLOCK_STATE_ID);
+                if photon_world::block::state_or_air(state).solid_render {
                     graph.set_opaque(x as usize, y as usize, z as usize);
                 }
             }

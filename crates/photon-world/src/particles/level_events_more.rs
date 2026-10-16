@@ -2,7 +2,6 @@
 //! eye shattering, a spawner's flames, bone meal's sparkles and a mace's smash.
 
 use photon_core::direction::Axis;
-use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 use photon_core::math::{fdlibm_cos, fdlibm_sin};
 use photon_core::random::RandomSource;
@@ -69,12 +68,8 @@ impl ParticleEngine {
             (x + 0.5, y + 0.5, z + 0.5),
             context,
         ));
-        let state = context
-            .world
-            .block_state_at(pos.0, pos.1, pos.2)
-            .unwrap_or(0);
-        let shape =
-            crate::block::registry::outline_shape(BlockStateId(state), [pos.0, pos.1, pos.2]);
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
+        let shape = crate::block::registry::outline_shape(state, [pos.0, pos.1, pos.2]);
         let center = shape.max_at(Axis::Y, 0.5, 0.5) + 0.031_25;
         for _ in 0..10 {
             let random = &mut *context.level_random;
@@ -182,15 +177,11 @@ impl ParticleEngine {
         count: i32,
         context: &mut LevelEventContext<'_, F>,
     ) {
-        let state = context
-            .world
-            .block_state_at(pos.0, pos.1, pos.2)
-            .unwrap_or(0);
-        let height = if crate::block::state_or_air(i64::from(state)).block().air {
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
+        let height = if crate::block::state_or_air(state).block().air {
             1.0
         } else {
-            crate::block::registry::outline_shape(BlockStateId(state), [pos.0, pos.1, pos.2])
-                .max(Axis::Y)
+            crate::block::registry::outline_shape(state, [pos.0, pos.1, pos.2]).max(Axis::Y)
         };
         // `ParticleUtils.spawnParticles`, spread half a block, floating allowed.
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
@@ -218,10 +209,7 @@ impl ParticleEngine {
         count: i32,
         context: &mut LevelEventContext<'_, F>,
     ) {
-        let state = context
-            .world
-            .block_state_at(pos.0, pos.1, pos.2)
-            .unwrap_or(0);
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
         let (cx, cy, cz) = (
             f64::from(pos.0) + 0.5,
             f64::from(pos.1) + 1.0,

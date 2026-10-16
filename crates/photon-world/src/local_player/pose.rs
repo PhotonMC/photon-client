@@ -55,7 +55,7 @@ impl LocalPlayer {
 
     /// `Entity.isColliding`: whether a block's collision shape at `pos`
     /// overlaps the player.
-    pub fn is_colliding(&self, world: &ClientWorld, pos: BlockPos, state: i32) -> bool {
+    pub fn is_colliding(&self, world: &ClientWorld, pos: BlockPos, state: BlockStateId) -> bool {
         let shape = world
             .block_state_registry()
             .collision_shape_at(state, [pos.x, pos.y, pos.z])
@@ -136,8 +136,8 @@ pub(super) fn is_sliding_down_honey(body: &LivingEffects<'_>, pos: BlockPos) -> 
     dx + 1.0e-7 > overlap || dz + 1.0e-7 > overlap
 }
 
-pub(super) fn is_block(state_id: i32, name: &str) -> bool {
-    registry::block_for_state(BlockStateId(state_id)).is_some_and(|(block, _)| block.name == name)
+pub(super) fn is_block(state_id: BlockStateId, name: &str) -> bool {
+    registry::block_for_state(state_id).is_some_and(|(block, _)| block.name == name)
 }
 
 /// What the player model is posed from.

@@ -2,7 +2,6 @@
 //! squares of the blocks beneath it that are lit enough and whole enough to
 //! take a shadow, and how dark each is.
 
-use photon_core::ids::BlockStateId;
 use photon_core::math::floor_f64;
 
 use crate::ClientWorld;
@@ -112,7 +111,6 @@ impl ClientWorld {
                     let power_at_depth = pow - (y - f64::from(block_y)) as f32 * 0.5;
                     let Some((below_id, below)) = self
                         .block_state_at(block_x, block_y - 1, block_z)
-                        .map(BlockStateId)
                         .and_then(|id| Some((id, state(id)?)))
                     else {
                         continue;

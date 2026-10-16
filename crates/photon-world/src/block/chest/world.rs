@@ -4,7 +4,7 @@ impl ClientWorld {
     /// The chest at a block, if it is one the client draws as a block entity.
     pub fn chest_view(&self, x: i32, y: i32, z: i32) -> Option<ChestView> {
         let state = self.block_state_at(x, y, z)?;
-        let block = crate::block::state_or_air(i64::from(state)).block();
+        let block = crate::block::state_or_air(state).block();
         let name = block.name;
         if !is_chest_state(state) {
             return None;
@@ -30,7 +30,7 @@ impl ClientWorld {
         // The partner has to be the same chest block, the other half, and face the same way.
         let partner = partner.filter(|&(px, py, pz)| {
             self.block_state_at(px, py, pz).is_some_and(|other| {
-                let other_block = crate::block::state_or_air(i64::from(other)).block();
+                let other_block = crate::block::state_or_air(other).block();
                 let other_property = |key| crate::local_player::property(Some(other), key);
                 other_block.name == name
                     && other_property("facing") == property("facing")
@@ -74,7 +74,7 @@ impl ClientWorld {
         if !is_shulker_state(state) {
             return None;
         }
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let name = crate::block::state_or_air(state).block().name;
         // `minecraft:shulker_box` is undyed, the rest are `minecraft:<dye>_shulker_box`.
         let color = name
             .strip_prefix("minecraft:")
@@ -100,7 +100,7 @@ impl ClientWorld {
         if !is_banner_state(state) {
             return None;
         }
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let name = crate::block::state_or_air(state).block().name;
         let property = |key| crate::local_player::property(Some(state), key);
         let dye = name
             .strip_prefix("minecraft:")?
@@ -132,7 +132,7 @@ impl ClientWorld {
         if !is_sign_state(state) {
             return None;
         }
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let name = crate::block::state_or_air(state).block().name;
         let property = |key| crate::local_player::property(Some(state), key);
         Some(SignView {
             block: name,
@@ -156,7 +156,7 @@ impl ClientWorld {
         if !is_skull_state(state) {
             return None;
         }
-        let name = crate::block::state_or_air(i64::from(state)).block().name;
+        let name = crate::block::state_or_air(state).block().name;
         let property = |key| crate::local_player::property(Some(state), key);
         let wall = name
             .contains("_wall_")
@@ -184,7 +184,7 @@ impl ClientWorld {
                 let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
                     continue;
                 };
-                let name = crate::block::state_or_air(i64::from(state)).block().name;
+                let name = crate::block::state_or_air(state).block().name;
                 if is_skull_state(state)
                     && [
                         "dragon_head",

@@ -220,7 +220,7 @@ impl GameMode {
             return UseResult::Success { swing: true };
         };
         let world: &ClientWorld = ctx.world;
-        let state_at = |x: i32, y: i32, z: i32| world.block_state_at(x, y, z).unwrap_or(0);
+        let state_at = |x: i32, y: i32, z: i32| world.block_state_or_air(x, y, z);
         let (y_rot, _) = ctx.player.rotation();
         let mut place_ctx = rules::PlaceContext {
             state_at: &state_at,

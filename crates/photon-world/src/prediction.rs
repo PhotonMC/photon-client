@@ -9,6 +9,7 @@
 //! time of the prediction moves the player back to where it stood then,
 //! unless a teleport came after the prediction started.
 
+use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityId;
 use std::collections::BTreeMap;
 
@@ -29,7 +30,7 @@ pub(crate) struct BlockPredictions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ServerVerified {
     sequence: i32,
-    state: i32,
+    state: BlockStateId,
     /// Where the player stood, as `f64` bits.
     player_position: [u64; 3],
 }
@@ -50,7 +51,7 @@ pub struct SyncedBlock {
     pub x: i32,
     pub y: i32,
     pub z: i32,
-    pub state: i32,
+    pub state: BlockStateId,
     pub player_position: Option<Vec3>,
 }
 
@@ -95,7 +96,7 @@ impl ClientWorld {
         x: i32,
         y: i32,
         z: i32,
-        state: i32,
+        state: BlockStateId,
         player_position: Vec3,
     ) -> bool {
         let old = self.block_state_at(x, y, z);
@@ -110,7 +111,7 @@ impl ClientWorld {
                 .and_modify(|verified| verified.sequence = sequence)
                 .or_insert(ServerVerified {
                     sequence,
-                    state: old.unwrap_or(0),
+                    state: old.unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
                     player_position: [
                         player_position.x.to_bits(),
                         player_position.y.to_bits(),
@@ -128,7 +129,7 @@ impl ClientWorld {
     pub fn set_block_with_updates(
         &mut self,
         (x, y, z): (i32, i32, i32),
-        state: i32,
+        state: BlockStateId,
         flags: u32,
         limit: i32,
         player_position: Vec3,
@@ -166,7 +167,7 @@ impl ClientWorld {
             let Some(current) = self.block_state_at(neighbour.0, neighbour.1, neighbour.2) else {
                 continue;
             };
-            let read = |x: i32, y: i32, z: i32| self.block_state_at(x, y, z).unwrap_or(0);
+            let read = |x: i32, y: i32, z: i32| self.block_state_or_air(x, y, z);
             let updated = match crate::block::rules::update_shape(
                 current,
                 &read,
@@ -192,7 +193,13 @@ impl ClientWorld {
     /// `setServerVerifiedBlockState`: a block update from the server. A block
     /// with a prediction pending keeps it and only remembers the state.
     /// Returns whether the block itself changed.
-    pub fn apply_server_block_state(&mut self, x: i32, y: i32, z: i32, state: i32) -> bool {
+    pub fn apply_server_block_state(
+        &mut self,
+        x: i32,
+        y: i32,
+        z: i32,
+        state: BlockStateId,
+    ) -> bool {
         if let Some(verified) = self.predictions.server_verified.get_mut(&(x, y, z)) {
             verified.state = state;
             return false;

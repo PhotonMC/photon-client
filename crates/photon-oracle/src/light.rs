@@ -65,7 +65,7 @@ pub(super) fn client_world_section_lookup_result(request: &Value) -> Result<Valu
                         "section_y": query_section_y,
                     });
                     if let Some(block_state_id) = world.block_state_at(x, y, z) {
-                        state["block_state_id"] = json!(block_state_id);
+                        state["block_state_id"] = json!(block_state_id.0);
                     }
                     if let Some(biome_id) = world.biome_at(x, y, z) {
                         state["biome_id"] = json!(biome_id);
@@ -130,8 +130,8 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
         let x = i32_field(update, "x")?;
         let y = i32_field(update, "y")?;
         let z = i32_field(update, "z")?;
-        let previous_state_id = world.block_state_at(x, y, z);
-        let accepted = world.update_block_state(x, y, z, i32_field(update, "state_id")?);
+        let previous_state_id = world.block_state_at(x, y, z).map(|state| state.0);
+        let accepted = world.update_block_state(x, y, z, state_field(update, "state_id")?);
         let mut state = json!({
             "label": string(update, "label")?,
             "accepted": accepted,
@@ -145,7 +145,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
                 .ok_or("accepted block update has no section counts")?;
             state["previous_state_id"] =
                 json!(previous_state_id.ok_or("accepted block update has no previous state")?);
-            state["updated_state_id"] = json!(updated_state_id);
+            state["updated_state_id"] = json!(updated_state_id.0);
             state["section_counts"] = json!([section_counts.0, section_counts.1]);
             state["has_only_air"] = json!(section_counts.0 == 0);
             state["has_fluid"] = json!(section_counts.1 > 0);
@@ -164,7 +164,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
                     "section_y": query_y.div_euclid(16),
                 });
                 if let Some(block_state_id) = world.block_state_at(query_x, query_y, query_z) {
-                    query_state["block_state_id"] = json!(block_state_id);
+                    query_state["block_state_id"] = json!(block_state_id.0);
                 }
                 if let Some((non_empty, fluid)) = world.section_counts_at(
                     query_x.div_euclid(16),

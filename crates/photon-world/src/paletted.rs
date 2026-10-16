@@ -4,6 +4,8 @@
 //! A section of one state, which most of the sky and the rock are, holds no
 //! per-block data at all.
 
+use photon_core::ids::BlockStateId;
+
 /// How many blocks a section holds.
 pub(crate) const SECTION_VOLUME: usize = 16 * 16 * 16;
 
@@ -90,17 +92,17 @@ impl PalettedStates {
     }
 
     /// The state at a position.
-    pub(crate) fn get(&self, position: usize) -> Option<i32> {
-        (position < SECTION_VOLUME).then(|| self.palette[self.index_at(position)])
+    pub(crate) fn get(&self, position: usize) -> Option<BlockStateId> {
+        (position < SECTION_VOLUME).then(|| BlockStateId(self.palette[self.index_at(position)]))
     }
 
     /// Put a state at a position; the state it replaced.
-    pub(crate) fn set(&mut self, position: usize, state: i32) -> Option<i32> {
+    pub(crate) fn set(&mut self, position: usize, state: BlockStateId) -> Option<BlockStateId> {
         let previous = self.get(position)?;
-        let index = match self.palette.iter().position(|known| *known == state) {
+        let index = match self.palette.iter().position(|known| *known == state.0) {
             Some(index) => index,
             None => {
-                self.palette.push(state);
+                self.palette.push(state.0);
                 let needed = Self::bits_for(self.palette.len());
                 if needed != self.bits {
                     self.resize(needed);
@@ -155,8 +157,8 @@ mod tests {
         let states = PalettedStates::from_values(&vec![7; SECTION_VOLUME]);
         assert_eq!(states.bits, 0);
         assert!(states.words.is_empty());
-        assert_eq!(states.get(0), Some(7));
-        assert_eq!(states.get(4095), Some(7));
+        assert_eq!(states.get(0), Some(BlockStateId(7)));
+        assert_eq!(states.get(4095), Some(BlockStateId(7)));
         assert_eq!(states.get(4096), None);
     }
 
@@ -173,21 +175,21 @@ mod tests {
     #[test]
     fn a_new_state_grows_the_palette_and_repacks() {
         let mut states = PalettedStates::from_values(&vec![0; SECTION_VOLUME]);
-        assert_eq!(states.set(10, 5), Some(0));
+        assert_eq!(states.set(10, BlockStateId(5)), Some(BlockStateId(0)));
         assert_eq!(states.bits, 1);
         for value in 1..40 {
-            states.set(value, value as i32 * 3);
+            states.set(value, BlockStateId(value as i32 * 3));
         }
         assert_eq!(
             states.get(10),
-            Some(30),
+            Some(BlockStateId(30)),
             "position 10 was overwritten by the loop"
         );
-        assert_eq!(states.get(0), Some(0));
-        assert_eq!(states.get(39), Some(117));
-        assert_eq!(states.get(41), Some(0));
+        assert_eq!(states.get(0), Some(BlockStateId(0)));
+        assert_eq!(states.get(39), Some(BlockStateId(117)));
+        assert_eq!(states.get(41), Some(BlockStateId(0)));
         assert!(states.bits >= 6);
-        assert_eq!(states.set(41, 5), Some(0));
-        assert_eq!(states.get(41), Some(5));
+        assert_eq!(states.set(41, BlockStateId(5)), Some(BlockStateId(0)));
+        assert_eq!(states.get(41), Some(BlockStateId(5)));
     }
 }

@@ -1,4 +1,5 @@
 use super::super::*;
+use photon_core::ids::BlockStateId;
 
 #[test]
 fn entity_dimensions_and_block_fit_follow_java_epsilon() {
@@ -41,7 +42,7 @@ fn entity_dimensions_and_block_fit_follow_java_epsilon() {
             biomes: &biomes,
         }],
     );
-    let shapes = BTreeMap::from([(1, Shapes::block())]);
+    let shapes = BTreeMap::from([(BlockStateId(1), Shapes::block())]);
     let unit = ClientEntityDimensions::scalable(1.0, 1.0);
     assert!(world.entity_fits_in_blocks(Vec3::new(1.5, 0.25, 0.5), unit, &shapes));
     assert!(!world.entity_fits_in_blocks(Vec3::new(1.4999997, 0.25, 0.5), unit, &shapes));

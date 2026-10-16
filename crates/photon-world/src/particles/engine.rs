@@ -1,5 +1,6 @@
 //! `ParticleEngine`: the particles of the level, and how they get in.
 
+use photon_core::ids::BlockStateId;
 use photon_core::ids::{EntityId, ItemId};
 use std::collections::VecDeque;
 
@@ -37,7 +38,7 @@ pub enum ParticleData {
     #[default]
     Plain,
     /// `BlockParticleOption`: a block state.
-    Block(i32),
+    Block(BlockStateId),
     /// `ColorParticleOption`: an ARGB colour.
     Color(u32),
     /// `SpellParticleOption`: a colour and how fast it goes.
@@ -98,7 +99,7 @@ impl PositionSource {
 
 impl ParticleData {
     /// The block state of a type that carries one.
-    pub fn block_state(self) -> Option<i32> {
+    pub fn block_state(self) -> Option<BlockStateId> {
         match self {
             Self::Block(state) => Some(state),
             _ => None,
@@ -221,7 +222,7 @@ impl ParticleEngine {
     pub fn add_destroy_block_effect(
         &mut self,
         world: &ClientWorld,
-        (pos, state): (BlockPos, i32),
+        (pos, state): (BlockPos, BlockStateId),
         particle_random: impl FnMut() -> RandomSource,
     ) {
         let Some(materials) = self.resources.terrain().cloned() else {

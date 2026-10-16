@@ -323,7 +323,7 @@ pub(super) fn event_data(event: &Value, name: &str) -> photon_world::particles::
             event["block"]
                 .as_str()
                 .and_then(photon_data::block::registry::block)
-                .map_or(0, |block| block.default_state_id().0),
+                .map_or(BlockStateId(0), |block| block.default_state_id()),
         ),
         _ => ParticleData::Plain,
     }

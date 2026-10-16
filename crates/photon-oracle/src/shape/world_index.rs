@@ -308,12 +308,13 @@ fn apply_climbable_context(
     }
 }
 
-fn state_id(context: &Context, what: &str) -> Result<i32, String> {
+fn state_id(context: &Context, what: &str) -> Result<BlockStateId, String> {
     context
         .get("state_id")
         .and_then(Value::as_i64)
         .ok_or_else(|| format!("{what} state_id must be an integer"))?
         .try_into()
+        .map(BlockStateId)
         .map_err(|_| format!("{what} state_id must fit in i32"))
 }
 

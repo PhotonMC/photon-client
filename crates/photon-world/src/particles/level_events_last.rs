@@ -451,7 +451,7 @@ impl ParticleEngine {
                 context
                     .world
                     .block_state_at(pos.0, pos.1, pos.2)
-                    .map_or(0, i64::from),
+                    .unwrap_or(crate::constants::VANILLA_AIR_BLOCK_STATE_ID),
             )
             .collision_full_block;
             let (count, spread) = if solid {
@@ -500,10 +500,7 @@ impl ParticleEngine {
                 at,
             );
         }
-        let state = context
-            .world
-            .block_state_at(pos.0, pos.1, pos.2)
-            .unwrap_or(0);
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
         let waterlogged = crate::block::rules::property(state, "waterlogged") == Some("true");
         if !waterlogged {
             let pitch = 0.6 + context.level_random.next_float() * 0.4;

@@ -137,7 +137,7 @@ pub(super) fn shape_box(value: &Value) -> Result<VoxelShape, String> {
 
 pub(super) fn block_collision_fixture(
     request: &Value,
-) -> Result<(ClientWorld, BTreeMap<i32, VoxelShape>), String> {
+) -> Result<(ClientWorld, BTreeMap<BlockStateId, VoxelShape>), String> {
     let mut shapes_by_state = BTreeMap::new();
     for entry in request
         .get("shape_states")
@@ -145,7 +145,7 @@ pub(super) fn block_collision_fixture(
         .as_array()
         .ok_or("shape_states must be an array")?
     {
-        let state_id = i32_field(entry, "state_id")?;
+        let state_id = BlockStateId(i32_field(entry, "state_id")?);
         let shape = shape_box(entry.get("shape").ok_or("shape must be an object")?)?;
         shapes_by_state.insert(state_id, shape);
     }
@@ -167,14 +167,14 @@ pub(super) fn block_collision_world_fixture(request: &Value) -> Result<ClientWor
         if !(0..16).contains(&y) {
             return Err("block collision fixture Y must be in 0..16".into());
         }
-        let state_id = i32_field(entry, "state_id")?;
+        let state_id = BlockStateId(i32_field(entry, "state_id")?);
         let blocks = chunk_blocks
             .entry((x.div_euclid(16), z.div_euclid(16)))
             .or_insert_with(|| vec![0; 4_096]);
         let local_x = x.rem_euclid(16) as usize;
         let local_y = y as usize;
         let local_z = z.rem_euclid(16) as usize;
-        blocks[local_y * 256 + local_z * 16 + local_x] = state_id;
+        blocks[local_y * 256 + local_z * 16 + local_x] = state_id.0;
     }
 
     let biomes = vec![0; 64];

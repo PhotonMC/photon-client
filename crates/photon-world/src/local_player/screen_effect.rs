@@ -4,11 +4,12 @@
 use super::{Level, LocalPlayer};
 use crate::ClientWorld;
 use photon_core::binary::BlockPos;
+use photon_core::ids::BlockStateId;
 
 impl LocalPlayer {
     /// `ScreenEffectRenderer.getViewBlockingState`: the first of eight points around the eyes
     /// that is inside a block that blocks the view, as a block state number.
-    pub fn view_blocking_state(&self, world: &ClientWorld) -> Option<i32> {
+    pub fn view_blocking_state(&self, world: &ClientWorld) -> Option<BlockStateId> {
         if self.no_physics {
             return None;
         }
@@ -26,7 +27,7 @@ impl LocalPlayer {
             let Some(id) = level.state_id(pos) else {
                 continue;
             };
-            let state = crate::block::state_or_air(i64::from(id));
+            let state = crate::block::state_or_air(id);
             if !crate::shadow::is_invisible_render_shape(state.block().name) && state.view_blocking
             {
                 return Some(id);

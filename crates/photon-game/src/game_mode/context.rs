@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityId;
 use photon_core::ids::ItemId;
 
@@ -59,8 +60,8 @@ pub struct Context<'a> {
 }
 
 impl Context<'_> {
-    pub(super) fn state_at(&self, (x, y, z): (i32, i32, i32)) -> i32 {
-        self.world.block_state_at(x, y, z).unwrap_or(0)
+    pub(super) fn state_at(&self, (x, y, z): (i32, i32, i32)) -> BlockStateId {
+        self.world.block_state_or_air(x, y, z)
     }
 
     pub(super) fn instabuild(&self) -> bool {

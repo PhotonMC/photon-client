@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::EntityId;
+use photon_core::ids::{BlockStateId, EntityId};
 
 /// `ClientboundBlockEventPacket`: the block, the event and its data (the block's registry id
 /// is left unread).
@@ -34,7 +34,7 @@ pub struct BlockUpdateObservation {
     pub x: i32,
     pub y: i32,
     pub z: i32,
-    pub state_id: i32,
+    pub state_id: BlockStateId,
 }
 
 /// Wire-level fields decoded from one clientbound block-entity data record.
@@ -65,7 +65,7 @@ pub fn parse_block_update_packet(input: &[u8]) -> Result<BlockUpdateObservation,
         &mut input,
         "block update position",
     )? as u64);
-    let state_id = read_varint(&mut input, "block update state")?;
+    let state_id = BlockStateId(read_varint(&mut input, "block update state")?);
     if !input.is_empty() {
         return Err(ConnectionError::Codec("block update trailing payload"));
     }
@@ -179,7 +179,7 @@ impl Decode for BlockChangedAck {
 /// `ClientboundSectionBlocksUpdatePacket`: the blocks of one section that changed, each with its
 /// position in the level and its new state.
 pub struct SectionBlocksUpdate {
-    pub blocks: Vec<([i32; 3], i32)>,
+    pub blocks: Vec<([i32; 3], BlockStateId)>,
 }
 
 impl Decode for SectionBlocksUpdate {
@@ -195,7 +195,7 @@ impl Decode for SectionBlocksUpdate {
         for _ in 0..count {
             let packed = wire::read_varlong(&mut input)
                 .map_err(|_| ConnectionError::Codec("section blocks update"))?;
-            let state = (packed as u64 >> 12) as i32;
+            let state = BlockStateId((packed as u64 >> 12) as i32);
             let local = (packed & 0xfff) as i32;
             blocks.push((
                 [

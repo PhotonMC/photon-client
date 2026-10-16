@@ -34,27 +34,27 @@ pub struct ClientBlockStateRegistry {
 
 impl ClientBlockStateRegistry {
     /// Java `Block.stateById`: a number outside the registry reads as air.
-    pub fn resolve_state_id(&self, state_id: i32) -> i32 {
-        match photon_data::block::registry::block_for_state(BlockStateId(state_id)) {
+    pub fn resolve_state_id(&self, state_id: BlockStateId) -> BlockStateId {
+        match photon_data::block::registry::block_for_state(state_id) {
             Some(_) => state_id,
-            None => 0,
+            None => crate::constants::VANILLA_AIR_BLOCK_STATE_ID,
         }
     }
 
     /// The shape a state blocks movement with, when no entity is asking,
     /// as a block at the origin has it: one that shifts by position is
     /// shifted by the origin's shift.
-    pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
-        collision_shape_at(BlockStateId(state_id), [0; 3])
+    pub fn collision_shape(&self, state_id: BlockStateId) -> VoxelShape {
+        collision_shape_at(state_id, [0; 3])
     }
 
     /// The same for a block at `position`.
-    pub fn collision_shape_at(&self, state_id: i32, position: [i32; 3]) -> VoxelShape {
-        collision_shape_at(BlockStateId(state_id), position)
+    pub fn collision_shape_at(&self, state_id: BlockStateId, position: [i32; 3]) -> VoxelShape {
+        collision_shape_at(state_id, position)
     }
 
     /// A stair state's `shape`.
-    pub fn stair_shape_name(&self, state_id: i32) -> Option<&'static str> {
+    pub fn stair_shape_name(&self, state_id: BlockStateId) -> Option<&'static str> {
         crate::block::rules::property(state_id, "shape")
     }
 
@@ -62,18 +62,17 @@ impl ClientBlockStateRegistry {
     ///
     /// The pinned registry numbers blocks in the same order it numbers their
     /// states, so the block's position in it is its registry number.
-    pub fn block_registry_id(&self, state_id: i32) -> Option<i32> {
-        photon_data::block::registry::block_index_for_state(BlockStateId(state_id))
-            .map(|(index, _)| index as i32)
+    pub fn block_registry_id(&self, state_id: BlockStateId) -> Option<i32> {
+        photon_data::block::registry::block_index_for_state(state_id).map(|(index, _)| index as i32)
     }
 
     /// `BlockTags.CLIMBABLE`.
-    pub fn is_climbable_state(&self, state_id: i32) -> bool {
+    pub fn is_climbable_state(&self, state_id: BlockStateId) -> bool {
         self.is_state_in_tag(state_id, "minecraft:climbable")
     }
 
     /// `BlockTags.CAN_GLIDE_THROUGH`.
-    pub fn is_glide_through_state(&self, state_id: i32) -> bool {
+    pub fn is_glide_through_state(&self, state_id: BlockStateId) -> bool {
         self.is_state_in_tag(state_id, "minecraft:can_glide_through")
     }
 
@@ -114,7 +113,7 @@ impl ClientBlockStateRegistry {
 
     /// `BlockState.is(tag)`, against the tags the server last sent. `tag` is
     /// the tag id without the leading `#`.
-    pub fn is_state_in_tag(&self, state_id: i32, tag: &str) -> bool {
+    pub fn is_state_in_tag(&self, state_id: BlockStateId, tag: &str) -> bool {
         self.block_registry_id(state_id)
             .is_some_and(|block| self.tags.contains(block as usize, tag))
     }

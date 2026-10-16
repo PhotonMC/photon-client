@@ -18,10 +18,10 @@ use super::sprites::SpriteSet;
 pub trait TerrainMaterials: std::fmt::Debug {
     /// `BlockStateModelSet.getParticleMaterial(state).sprite()`: the texture (under `textures/`) of
     /// the block atlas the model names as its particle.
-    fn particle_texture(&self, state: i32) -> String;
+    fn particle_texture(&self, state: BlockStateId) -> String;
 
     /// `BlockTintSource.colorAsTerrainParticle` of the state's first tint source, if it has one.
-    fn tint(&self, world: &ClientWorld, state: i32, pos: BlockPos) -> Option<i32>;
+    fn tint(&self, world: &ClientWorld, state: BlockStateId, pos: BlockPos) -> Option<i32>;
 
     /// The particle textures of an item's model layers as it lies on the ground
     /// (`ItemStackRenderState` layers' `particleMaterial`), in layer order.
@@ -43,12 +43,12 @@ fn spawns_terrain_particles(name: &str) -> bool {
     !matches!(name, "minecraft:barrier" | "minecraft:structure_void")
 }
 
-pub(super) fn name_of(state: i32) -> &'static str {
-    crate::block::state_or_air(i64::from(state)).block().name
+pub(super) fn name_of(state: BlockStateId) -> &'static str {
+    crate::block::state_or_air(state).block().name
 }
 
 /// `TerrainParticle.createTerrainParticle`'s test of the state.
-pub(super) fn makes_terrain_particles(state: i32) -> bool {
+pub(super) fn makes_terrain_particles(state: BlockStateId) -> bool {
     let name = name_of(state);
     !is_air(name) && name != "minecraft:moving_piston" && spawns_terrain_particles(name)
 }
@@ -58,7 +58,7 @@ impl Particle {
     pub fn terrain(
         random: RandomSource,
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
-        (state, pos): (i32, BlockPos),
+        (state, pos): (BlockStateId, BlockPos),
         (world, materials): (&ClientWorld, &dyn TerrainMaterials),
     ) -> Self {
         let sprites = Arc::new(SpriteSet::new(vec![materials.particle_texture(state)]));
@@ -90,7 +90,7 @@ impl Particle {
     pub fn terrain_provider(
         random: RandomSource,
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
-        state: i32,
+        state: BlockStateId,
         env: (&ClientWorld, &dyn TerrainMaterials),
     ) -> Option<Self> {
         makes_terrain_particles(state).then(|| {
@@ -107,7 +107,7 @@ impl Particle {
     pub fn crumbling_provider(
         random: RandomSource,
         at: ((f64, f64, f64), (f64, f64, f64)),
-        state: i32,
+        state: BlockStateId,
         env: (&ClientWorld, &dyn TerrainMaterials),
         engine_random: &mut RandomSource,
     ) -> Option<Self> {
@@ -126,7 +126,7 @@ impl Particle {
     pub fn dust_pillar_provider(
         random: RandomSource,
         at: ((f64, f64, f64), (f64, f64, f64)),
-        state: i32,
+        state: BlockStateId,
         env: (&ClientWorld, &dyn TerrainMaterials),
         engine_random: &mut RandomSource,
     ) -> Option<Self> {
@@ -146,7 +146,7 @@ impl Particle {
 /// `ClientLevel.addDestroyBlockEffect`: the flakes of a block that broke, one in each cell of a
 /// grid over each box of its shape, moving away from the middle of the box.
 pub(super) fn destroy_block_effect(
-    (pos, state): (BlockPos, i32),
+    (pos, state): (BlockPos, BlockStateId),
     (world, materials): (&ClientWorld, &dyn TerrainMaterials),
     mut particle_random: impl FnMut() -> RandomSource,
 ) -> Vec<Particle> {
@@ -154,7 +154,7 @@ pub(super) fn destroy_block_effect(
     if !makes_terrain_particles_of_destroyed(state) {
         return flakes;
     }
-    let shape = crate::outline_shape(BlockStateId(state), [pos.x, pos.y, pos.z]);
+    let shape = crate::outline_shape(state, [pos.x, pos.y, pos.z]);
     shape.for_all_boxes(|x1, y1, z1, x2, y2, z2| {
         let width_x = (x2 - x1).min(1.0);
         let width_y = (y2 - y1).min(1.0);
@@ -187,7 +187,7 @@ pub(super) fn destroy_block_effect(
 }
 
 /// `!blockState.isAir() && blockState.shouldSpawnTerrainParticles()`.
-fn makes_terrain_particles_of_destroyed(state: i32) -> bool {
+fn makes_terrain_particles_of_destroyed(state: BlockStateId) -> bool {
     let name = name_of(state);
     !is_air(name) && spawns_terrain_particles(name)
 }
@@ -200,12 +200,12 @@ pub(super) fn breaking_block_effect(
     level_random: &mut RandomSource,
     particle_random: impl FnOnce() -> RandomSource,
 ) -> Option<Particle> {
-    let state = world.block_state_at(pos.x, pos.y, pos.z).unwrap_or(0);
+    let state = world.block_state_or_air(pos.x, pos.y, pos.z);
     let name = name_of(state);
     if crate::shadow::is_invisible_render_shape(name) || !spawns_terrain_particles(name) {
         return None;
     }
-    let shape = crate::outline_shape(BlockStateId(state), [pos.x, pos.y, pos.z]);
+    let shape = crate::outline_shape(state, [pos.x, pos.y, pos.z]);
     let bounds = shape.bounds()?;
     let (x, y, z) = (f64::from(pos.x), f64::from(pos.y), f64::from(pos.z));
     let inset = f64::from(0.2_f32);
@@ -256,14 +256,12 @@ mod tests {
         ] {
             let state = photon_data::block::registry::block(name)
                 .unwrap()
-                .default_state_id()
-                .0;
+                .default_state_id();
             assert!(!makes_terrain_particles(state), "{name}");
         }
         let stone = photon_data::block::registry::block("minecraft:stone")
             .unwrap()
-            .default_state_id()
-            .0;
+            .default_state_id();
         assert!(makes_terrain_particles(stone));
     }
 }

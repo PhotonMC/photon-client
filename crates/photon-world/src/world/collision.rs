@@ -1,4 +1,5 @@
 use crate::*;
+use photon_core::ids::BlockStateId;
 
 impl ClientWorld {
     /// Java advances these entities only while the block they occupy and the
@@ -79,7 +80,7 @@ impl ClientWorld {
     pub fn collect_block_collision_shapes(
         &self,
         bounding_box: Aabb,
-        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        shapes_by_state: &BTreeMap<BlockStateId, VoxelShape>,
     ) -> Vec<ClientBlockCollision> {
         self.collect_block_collisions_with(bounding_box, |state_id, _| {
             shapes_by_state.get(&state_id).cloned()
@@ -90,7 +91,7 @@ impl ClientWorld {
     pub(crate) fn collect_block_collisions_with(
         &self,
         bounding_box: Aabb,
-        shape_of: impl Fn(i32, [i32; 3]) -> Option<VoxelShape>,
+        shape_of: impl Fn(BlockStateId, [i32; 3]) -> Option<VoxelShape>,
     ) -> Vec<ClientBlockCollision> {
         let entity_shape = Shapes::create_from_aabb(bounding_box)
             .expect("ClientWorld collision queries require normalized bounds");
@@ -173,7 +174,7 @@ impl ClientWorld {
         &self,
         position: Vec3,
         dimensions: ClientEntityDimensions,
-        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        shapes_by_state: &BTreeMap<BlockStateId, VoxelShape>,
     ) -> bool {
         let bounding_box = dimensions
             .make_bounding_box(position)
@@ -191,7 +192,7 @@ impl ClientWorld {
         &self,
         source: Option<ClientWorldCollisionSource>,
         bounding_box: Aabb,
-        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        shapes_by_state: &BTreeMap<BlockStateId, VoxelShape>,
         candidates: &[ClientEntityCollisionCandidate],
     ) -> bool {
         self.no_block_collision(bounding_box, shapes_by_state)
@@ -203,7 +204,7 @@ impl ClientWorld {
     pub fn no_block_collision(
         &self,
         bounding_box: Aabb,
-        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        shapes_by_state: &BTreeMap<BlockStateId, VoxelShape>,
     ) -> bool {
         self.collect_block_collision_shapes(bounding_box, shapes_by_state)
             .is_empty()
@@ -256,7 +257,7 @@ impl ClientWorld {
         &self,
         source_entity_id: Option<EntityId>,
         bounding_box: Aabb,
-        shapes_by_state: &BTreeMap<i32, VoxelShape>,
+        shapes_by_state: &BTreeMap<BlockStateId, VoxelShape>,
     ) -> bool {
         let source_entity_id = source_entity_id.filter(|entity_id| self.entity_exists(*entity_id));
         let source = source_entity_id
