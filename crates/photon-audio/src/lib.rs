@@ -1,6 +1,6 @@
 //! Sound for the client: decoding the game's `.ogg` files (`JOrbisAudioStream`), mixing the
 //! sounds that play into the stereo the device takes (the model of an OpenAL source with a
-//! linear distance fall-off), and the device output.
+//! linear distance fall-off), and, with the `device` feature, the device output.
 
 pub mod channel;
 pub mod decode;
