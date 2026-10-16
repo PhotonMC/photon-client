@@ -10,6 +10,7 @@ mod events;
 mod fireworks;
 mod layouts;
 mod pickup;
+mod piston_rows;
 mod quads;
 mod scene;
 mod terrain;
