@@ -211,6 +211,12 @@ impl PlaySession {
         std::mem::take(&mut self.level_info.level_reset)
     }
 
+    /// Whether the client got a new level since the last call (`Minecraft.setLevel`): its sounds
+    /// stop and what the old one kept goes.
+    pub fn take_level_swapped(&mut self) -> bool {
+        std::mem::take(&mut self.level_info.level_swapped)
+    }
+
     /// What the HUD shows of the player.
     pub fn status(&self) -> &PlayerStatus {
         &self.local.status

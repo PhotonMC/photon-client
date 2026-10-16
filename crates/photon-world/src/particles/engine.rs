@@ -185,6 +185,11 @@ impl ParticleEngine {
         }
     }
 
+    /// A new level: no record plays (`LevelEventHandler.playingJukeboxSongs` is the level's own).
+    pub fn forget_jukeboxes(&mut self) {
+        self.jukeboxes.forget_playing();
+    }
+
     /// The block models and tints the flakes of blocks are made with.
     pub fn set_terrain(&mut self, materials: std::sync::Arc<dyn super::TerrainMaterials>) {
         self.resources.set_terrain(materials);
@@ -329,7 +334,6 @@ impl ParticleEngine {
         self.explosions.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
-        self.jukeboxes.forget_playing();
     }
 
     /// The particles in the group, in the order they tick.

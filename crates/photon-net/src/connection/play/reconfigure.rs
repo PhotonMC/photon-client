@@ -61,6 +61,7 @@ impl PlaySession {
         )?;
         fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
         fresh.level_info.level_reset = true;
+        fresh.level_info.level_swapped = true;
         fresh.level_info.reconfigured = true;
         *self = fresh;
         Ok(())
@@ -106,6 +107,7 @@ impl PlaySession {
         fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
         // Nothing of the old level stays.
         fresh.level_info.level_reset = true;
+        fresh.level_info.level_swapped = true;
         fresh.level_info.reconfigured = true;
         *self = fresh;
         Ok(())

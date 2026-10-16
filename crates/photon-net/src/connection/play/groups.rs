@@ -139,6 +139,8 @@ pub(super) struct LevelInfo {
     pub(super) clocks: std::collections::BTreeMap<i32, ClockState>,
     /// Set when the server moved the player to a new level.
     pub(super) level_reset: bool,
+    /// Set when the client got a new level, not the same one again (`Minecraft.setLevel`).
+    pub(super) level_swapped: bool,
     /// The server took the connection through the configuration phase again since the last
     /// [`Self::take_reconfigured`].
     pub(super) reconfigured: bool,

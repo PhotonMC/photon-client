@@ -415,6 +415,11 @@ impl Particles {
         self.engine.clear();
     }
 
+    /// A new level: no record plays.
+    pub(crate) fn forget_jukeboxes(&mut self) {
+        self.engine.forget_jukeboxes();
+    }
+
     /// The triangles of the particles in view, over the particle textures and over the block
     /// atlas: each quad turned to the camera, lit by the level and cut out by its texture,
     /// measured from `shift` (where the camera is from the origin the frame's vertices are

@@ -164,7 +164,7 @@ impl PlaySession {
         self.world.set_weather(0.0, 0.0);
         let bounds = self.state.dimension_bounds(&spawn_info);
         let environment = self.state.dimension_environment(&spawn_info);
-        self.world.replace_dimension_with_environment(
+        let swapped = self.world.replace_dimension_with_environment(
             DimensionInput {
                 key: &spawn_info.dimension,
                 dimension_type_id: spawn_info.dimension_type_id,
@@ -190,6 +190,7 @@ impl PlaySession {
         self.local.permission_level = 0;
         self.local.loaded = false;
         self.level_info.level_reset = true;
+        self.level_info.level_swapped |= swapped;
         self.local.health_received = false;
         Ok(())
     }
