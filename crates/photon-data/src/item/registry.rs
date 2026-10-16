@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use photon_core::ids::ItemId;
+
 pub use super::definition::{Item, RuleBlocks, Tool, ToolRule};
 pub use super::items::ITEMS;
 
@@ -19,6 +21,18 @@ pub fn index(name: &str) -> Option<usize> {
         })
         .get(name)
         .copied()
+}
+
+/// An item's id, resolved while compiling: a name the registry lacks stops the build.
+pub const fn named(name: &str) -> ItemId {
+    let mut index = 0;
+    while index < ITEMS.len() {
+        if crate::name::same(ITEMS[index].name, name) {
+            return ItemId(index as i32);
+        }
+        index += 1;
+    }
+    panic!("the item registry has no such name");
 }
 
 /// An item by its identifier.

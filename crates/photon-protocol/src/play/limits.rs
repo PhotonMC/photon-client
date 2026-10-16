@@ -1,8 +1,10 @@
 use super::*;
 
-pub const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: ItemId = ItemId(1_046);
+pub const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: ItemId =
+    photon_data::item::registry::named("minecraft:milk_bucket");
 
-pub const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: ItemId = ItemId(1_044);
+pub const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: ItemId =
+    photon_data::item::registry::named("minecraft:snowball");
 
 // DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
 
@@ -49,3 +51,6 @@ pub const ENTITY_REMOVE_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 pub const ENTITY_METADATA_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub const ENTITY_POSITION_SYNC_DRAIN_TIMEOUT: Duration = Duration::from_secs(30);
+const _: () = assert!(
+    VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID.0 == 1_046 && VANILLA_SNOWBALL_ITEM_REGISTRY_ID.0 == 1_044
+);

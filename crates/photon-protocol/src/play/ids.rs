@@ -332,7 +332,8 @@ pub const GAME_EVENT_ELDER_GUARDIAN_ID: u8 = 10;
 
 // The pinned vanilla built-in item registry is not sent in configuration registry data.
 // Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
-pub const VANILLA_STONE_ITEM_REGISTRY_ID: ItemId = ItemId(1);
+pub const VANILLA_STONE_ITEM_REGISTRY_ID: ItemId =
+    photon_data::item::registry::named("minecraft:stone");
 
 /// Login phase: a question the client may answer, a cookie the server asks for and their answers.
 pub const LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID: i32 = 4;

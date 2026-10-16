@@ -8,6 +8,11 @@ fn is_poison(registry_id: i32) -> bool {
     photon_data::item::effect::effect_id("minecraft:poison") == Some(registry_id)
 }
 
+const HONEY_BOTTLE: photon_core::ids::ItemId =
+    photon_data::item::registry::named("minecraft:honey_bottle");
+const GLASS_BOTTLE: photon_core::ids::ItemId =
+    photon_data::item::registry::named("minecraft:glass_bottle");
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
@@ -63,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.container_id == 0
                 && observation.slot == 36
                 && observation.state_id == initial_content.state_id + 1
-                && observation.item_registry_id == Some(photon_core::ids::ItemId(1_412))
+                && observation.item_registry_id == Some(HONEY_BOTTLE)
                 && observation.applied_to_world
         })
     else {
@@ -76,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             observation.container_id == 0
                 && observation.slot == 36
                 && observation.state_id == initial_content.state_id + 2
-                && observation.item_registry_id == Some(photon_core::ids::ItemId(1_149))
+                && observation.item_registry_id == Some(GLASS_BOTTLE)
                 && observation.applied_to_world
         })
     else {
@@ -108,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || player
             .inventory_slot(36)
             .map(|item| item.item_registry_id())
-            != Some(photon_core::ids::ItemId(1_149))
+            != Some(GLASS_BOTTLE)
         || player.carried_item().is_some()
     {
         return Err(format!(

@@ -7,7 +7,7 @@ use std::io;
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
-use photon_core::{ids::ItemId, wire};
+use photon_core::wire;
 use photon_protocol::phase::ConnectionProtocol;
 use photon_world::{
     BlockEntityInput, ClientPlayerAbilities, ClientPlayerGameMode, DimensionBounds,
@@ -28,6 +28,10 @@ use photon_protocol::{common, login};
 /// The player's entity type, read from the registry while compiling.
 pub(crate) const PLAYER_ENTITY_TYPE: photon_core::ids::EntityTypeId =
     photon_data::entity_type::named("minecraft:player");
+
+/// The stone item, read from the registry while compiling.
+pub(crate) const STONE: photon_core::ids::ItemId =
+    photon_data::item::registry::named("minecraft:stone");
 
 mod observe;
 pub(crate) use observe::*;
