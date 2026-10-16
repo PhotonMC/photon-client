@@ -140,51 +140,66 @@ pub(super) fn sound_line(sound: &LocalSound) -> String {
     )
 }
 
-/// An engine whose jukebox songs are the ones the vanilla data pack holds, in the order a vanilla
-/// server synchronises them.
+/// The registries of the vanilla data pack, entries named in the order a vanilla server
+/// synchronises them.
+fn vanilla_registries() -> &'static photon_game::registries::Registries {
+    static REGISTRIES: std::sync::OnceLock<photon_game::registries::Registries> =
+        std::sync::OnceLock::new();
+    REGISTRIES.get_or_init(|| {
+        let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.data/minecraft/assets/jar/data");
+        photon_game::registries::Registries::vanilla(&data_root)
+    })
+}
+
+/// An engine whose jukebox songs are the ones the vanilla data pack holds.
 pub(super) fn engine_with_songs(
     random: RandomSource,
     resources: photon_world::particles::ParticleResources,
 ) -> photon_world::particles::ParticleEngine {
-    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/data");
-    let registries = photon_game::registries::Registries::vanilla(&data_root);
     let mut engine = photon_world::particles::ParticleEngine::new(random, resources);
-    engine.set_jukebox_songs(
-        registries
-            .jukebox_songs
-            .iter()
-            .map(|song| song.sound_event.clone())
-            .collect(),
-    );
+    let songs = vanilla_registries().jukebox_songs.iter();
+    engine.set_jukebox_songs(songs.map(|song| song.sound_event.clone()).collect());
     engine
 }
 
-/// What an event played, as the reference's sound manager is asked for it: the sounds, then the
-/// songs jukeboxes started and stopped.
+/// The key of the name a song shows on the hud.
+fn song_name_key(song: usize) -> String {
+    let description = vanilla_registries().jukebox_songs[song]
+        .description
+        .as_ref();
+    match photon_game::text::Component::from_json(description.expect("a song has a name")) {
+        Some(photon_game::text::Component {
+            content: photon_game::text::Content::Translatable { key, .. },
+            ..
+        }) => key,
+        _ => String::new(),
+    }
+}
+
+/// What an event played, as the reference's sound manager and hud are asked for it: the sounds,
+/// then the songs jukeboxes started and stopped.
 pub(super) fn heard(
     played: &[LocalSound],
     engine: &mut photon_world::particles::ParticleEngine,
 ) -> Vec<String> {
     use photon_world::particles::JukeboxChange;
     let mut lines: Vec<String> = played.iter().map(sound_line).collect();
+    let place =
+        |pos: (i32, i32, i32)| [pos.0, pos.1, pos.2].map(|block| bits64(f64::from(block) + 0.5));
     for change in engine.take_jukebox_changes() {
-        lines.push(match change {
-            JukeboxChange::Play { pos, sound } => format!(
-                "{sound},record,{},{},{},{},{}",
-                bits32(4.0),
-                bits32(1.0),
-                bits64(f64::from(pos.0) + 0.5),
-                bits64(f64::from(pos.1) + 0.5),
-                bits64(f64::from(pos.2) + 0.5)
-            ),
-            JukeboxChange::Stop { pos, sound } => format!(
-                "stop,{sound},{},{},{}",
-                bits64(f64::from(pos.0) + 0.5),
-                bits64(f64::from(pos.1) + 0.5),
-                bits64(f64::from(pos.2) + 0.5)
-            ),
-        });
+        match change {
+            JukeboxChange::Play { pos, sound, song } => {
+                let [x, y, z] = place(pos);
+                let (volume, pitch) = (bits32(4.0), bits32(1.0));
+                lines.push(format!("{sound},record,{volume},{pitch},{x},{y},{z}"));
+                lines.push(format!("now_playing,{}", song_name_key(song)));
+            }
+            JukeboxChange::Stop { pos, sound } => {
+                let [x, y, z] = place(pos);
+                lines.push(format!("stop,{sound},{x},{y},{z}"));
+            }
+        }
     }
     lines
 }

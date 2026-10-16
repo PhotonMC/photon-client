@@ -103,6 +103,21 @@ class MovementSupport {
         }
     }
 
+    /** A hud that notes which record's name it is asked to show. */
+    static final class RecordingHud extends net.minecraft.client.gui.Hud {
+        RecordingHud() {
+            super(null);
+        }
+
+        @Override
+        public void setNowPlaying(net.minecraft.network.chat.Component description) {
+            var contents = description.getContents();
+            SilentSoundManager.PLAYED.add("now_playing," + (contents instanceof
+                net.minecraft.network.chat.contents.TranslatableContents translatable
+                ? translatable.getKey() : description.getString()));
+        }
+    }
+
     /** Says nothing: a record's name is shown on the hud and spoken by the narrator. */
     static final class SilentNarrator extends net.minecraft.client.GameNarrator {
         SilentNarrator() {
@@ -317,7 +332,7 @@ class MovementSupport {
         options.autoJump().set(row.has("auto_jump") && row.get("auto_jump").getAsBoolean());
         setField(minecraft, "options", options);
         var gui = unsafe.allocateInstance(net.minecraft.client.gui.Gui.class);
-        var hud = unsafe.allocateInstance(net.minecraft.client.gui.Hud.class);
+        var hud = unsafe.allocateInstance(RecordingHud.class);
         setField(hud, "minecraft", minecraft);
         setField(gui, "hud", hud);
         setField(minecraft, "gui", gui);

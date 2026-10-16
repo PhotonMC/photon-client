@@ -17,6 +17,8 @@ pub struct Titles {
     title: Option<Vec<Run>>,
     subtitle: Option<Vec<Run>>,
     overlay: Option<Vec<Run>>,
+    /// Whether the overlay message cycles through the colours (`animateOverlayMessageColor`).
+    overlay_animates: bool,
     fade_in: i32,
     stay: i32,
     fade_out: i32,
@@ -30,6 +32,7 @@ impl Default for Titles {
             title: None,
             subtitle: None,
             overlay: None,
+            overlay_animates: false,
             fade_in: 10,
             stay: 70,
             fade_out: 20,
@@ -69,6 +72,13 @@ impl Titles {
     pub fn set_overlay(&mut self, message: Vec<Run>) {
         self.overlay = Some(message);
         self.overlay_time = OVERLAY_TICKS;
+        self.overlay_animates = false;
+    }
+
+    /// `setNowPlaying`: the overlay message, in colours that cycle.
+    pub fn set_now_playing(&mut self, message: Vec<Run>) {
+        self.set_overlay(message);
+        self.overlay_animates = true;
     }
 
     /// `setTimes`: only a value that is not negative changes.
@@ -95,6 +105,7 @@ impl Titles {
         if reset_times {
             *self = Self {
                 overlay: self.overlay.take(),
+                overlay_animates: self.overlay_animates,
                 overlay_time: self.overlay_time,
                 ..Self::default()
             };
@@ -123,6 +134,17 @@ impl Titles {
         (alpha as i32).clamp(0, 255)
     }
 
+    /// The action bar's colour: white, or for a record's name the hue that turns with the time left.
+    fn overlay_colour(&self, partial: f32, alpha: i32) -> u32 {
+        if self.overlay_animates {
+            let hue = (self.overlay_time as f32 - partial) / 50.0;
+            if let Ok(colour) = photon_core::math::mth_hsv_to_argb_f32(hue, 0.7, 0.6, alpha) {
+                return colour as u32;
+            }
+        }
+        (alpha as u32) << 24 | 0x00FF_FFFF
+    }
+
     /// The action bar's alpha: full until 20 ticks remain.
     fn overlay_alpha(&self, partial: f32) -> i32 {
         let t = self.overlay_time as f32 - partial;
@@ -149,7 +171,7 @@ impl Titles {
                     message,
                     x,
                     height - 72,
-                    (alpha as u32) << 24 | 0x00FF_FFFF,
+                    self.overlay_colour(partial, alpha),
                     true,
                 );
             }

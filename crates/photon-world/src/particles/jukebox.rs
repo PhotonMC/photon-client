@@ -11,8 +11,13 @@ use super::level_events::LevelEventContext;
 /// A change to the songs playing from jukeboxes, for the sound system to carry out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JukeboxChange {
-    /// A song starts at the middle of the block.
-    Play { pos: (i32, i32, i32), sound: String },
+    /// A song starts at the middle of the block; `song` is its number in the registry, for the
+    /// name the hud shows.
+    Play {
+        pos: (i32, i32, i32),
+        sound: String,
+        song: usize,
+    },
     /// The song of the block ends.
     Stop { pos: (i32, i32, i32), sound: String },
 }
@@ -57,19 +62,16 @@ impl ParticleEngine {
 
     /// `playJukeboxSong`: nothing where the registry has no song of that number.
     fn play_jukebox_song(&mut self, pos: (i32, i32, i32), song: i32) {
-        let Some(sound) = usize::try_from(song)
-            .ok()
-            .and_then(|index| self.jukeboxes.songs.get(index))
-            .cloned()
-            .flatten()
-        else {
+        let Ok(song) = usize::try_from(song) else {
+            return;
+        };
+        let Some(sound) = self.jukeboxes.songs.get(song).cloned().flatten() else {
             return;
         };
         self.stop_jukebox_song(pos);
         self.jukeboxes.playing.insert(pos, sound.clone());
-        self.jukeboxes
-            .changes
-            .push(JukeboxChange::Play { pos, sound });
+        let change = JukeboxChange::Play { pos, sound, song };
+        self.jukeboxes.changes.push(change);
     }
 
     /// `stopJukeboxSong`.

@@ -196,7 +196,7 @@ impl SoundSystem {
         use photon_world::particles::JukeboxChange;
         for change in changes {
             match change {
-                JukeboxChange::Play { pos, sound } => {
+                JukeboxChange::Play { pos, sound, .. } => {
                     let mut instance =
                         SoundInstance::new(&sound, SoundSource::Records, RandomSource::create(0));
                     instance.volume = 4.0;

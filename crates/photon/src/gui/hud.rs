@@ -8,6 +8,31 @@ impl Gui {
         self.last_tick = std::time::Instant::now();
     }
 
+    /// `Hud.setNowPlaying`: "Now Playing:" and the name of the record the jukebox plays.
+    pub fn show_now_playing(&mut self, song: usize) {
+        use photon_game::text::{Component, Content};
+        let Some(name) = self
+            .registries
+            .jukebox_songs
+            .get(song)
+            .and_then(|entry| entry.description.as_ref())
+            .and_then(Component::from_json)
+        else {
+            return;
+        };
+        let message = Component {
+            content: Content::Translatable {
+                key: "record.nowPlaying".to_owned(),
+                fallback: None,
+                args: vec![name],
+            },
+            style: Style::default(),
+            siblings: Vec::new(),
+        };
+        self.titles
+            .set_now_playing(self.lang.runs(&message, &Style::default()));
+    }
+
     /// The title, action bar and tab list packets.
     pub fn receive_hud(&mut self, events: Vec<HudEvent>) {
         let runs = |lang: &Lang, component: &photon_game::text::Component| {
