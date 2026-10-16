@@ -6,8 +6,6 @@ pub const VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID: ItemId =
 pub const VANILLA_SNOWBALL_ITEM_REGISTRY_ID: ItemId =
     photon_data::item::registry::named("minecraft:snowball");
 
-// DataComponents registers CUSTOM_MODEL_DATA after the first 17 built-in component types.
-
 pub const PLAYER_RELATIVE_X_FLAG: i32 = 1 << 0;
 
 pub const PLAYER_RELATIVE_Y_FLAG: i32 = 1 << 1;

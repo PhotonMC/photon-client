@@ -330,8 +330,8 @@ pub const GAME_EVENT_WIN_GAME_ID: u8 = 4;
 
 pub const GAME_EVENT_ELDER_GUARDIAN_ID: u8 = 10;
 
-// The pinned vanilla built-in item registry is not sent in configuration registry data.
-// Items.java registers AIR before STONE, so STONE has id 1 in BuiltInRegistries.ITEM.
+// The built-in item registry is not sent in configuration registry data, so the id comes from
+// the pinned registry by name.
 pub const VANILLA_STONE_ITEM_REGISTRY_ID: ItemId =
     photon_data::item::registry::named("minecraft:stone");
 

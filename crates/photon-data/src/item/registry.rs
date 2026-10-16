@@ -39,3 +39,15 @@ pub const fn named(name: &str) -> ItemId {
 pub fn item(name: &str) -> Option<&'static Item> {
     index(name).map(|index| &ITEMS[index])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_item_is_found_at_its_own_place() {
+        for (index, item) in ITEMS.iter().enumerate() {
+            assert_eq!(named(item.name).0 as usize, index, "{}", item.name);
+        }
+    }
+}

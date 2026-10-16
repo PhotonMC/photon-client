@@ -2,6 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use photon_data::item::component_types::CUSTOM_MODEL_DATA;
 use photon_dev::connect_and_survival_honey_bottle_poison_cleanup_probe;
 
 fn is_poison(registry_id: i32) -> bool {
@@ -101,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .item
             .as_ref()
             .map(|item| item.positive_component_type_ids())
-            != Some([17].as_slice())
+            != Some([CUSTOM_MODEL_DATA].as_slice())
         || remainder_slot.item.as_ref().map(|item| item.item_count()) != Some(1)
         || remainder_slot
             .item
