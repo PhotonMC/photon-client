@@ -26,28 +26,36 @@ impl ParticleEngine {
         context: &mut LevelEventContext<'_, F>,
         sounds: &mut Vec<LocalSound>,
     ) -> bool {
-        let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         match event {
             1500 => self.composter_fill(pos, data > 0, context, sounds),
             2002 | 2007 => self.splash_potion(pos, (event == 2007, data), context, sounds),
             2003 => self.ender_eye(pos, context),
-            2004 => {
-                for _ in 0..20 {
-                    let random = &mut *context.level_random;
-                    let x = x + 0.5 + (random.next_double() - 0.5) * 2.0;
-                    let y = y + 0.5 + (random.next_double() - 0.5) * 2.0;
-                    let z = z + 0.5 + (random.next_double() - 0.5) * 2.0;
-                    self.level_add(context, "smoke", (x, y, z), (0.0, 0.0, 0.0));
-                    self.level_add(context, "flame", (x, y, z), (0.0, 0.0, 0.0));
-                }
-            }
+            2004 => self.spawner_flames(pos, context),
             3016 => self.vault_deactivate(pos, data, context, sounds),
+            1504 => self.dripstone_drip(pos, context),
             1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
             _ => return false,
         }
         true
+    }
+
+    /// `LevelEventHandler`'s event 2004: twenty puffs of smoke and flame about a spawner.
+    fn spawner_flames<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        for _ in 0..20 {
+            let random = &mut *context.level_random;
+            let x = x + 0.5 + (random.next_double() - 0.5) * 2.0;
+            let y = y + 0.5 + (random.next_double() - 0.5) * 2.0;
+            let z = z + 0.5 + (random.next_double() - 0.5) * 2.0;
+            self.level_add(context, "smoke", (x, y, z), (0.0, 0.0, 0.0));
+            self.level_add(context, "flame", (x, y, z), (0.0, 0.0, 0.0));
+        }
     }
 
     /// `ComposterBlock.handleFill`: its sound, and ten specks over its contents.

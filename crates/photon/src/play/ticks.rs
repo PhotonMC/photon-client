@@ -320,7 +320,7 @@ impl Play {
         let pickups = self.session.take_item_pickups();
         self.particles.add_pickups(pickups);
         let events = self.session.take_level_events();
-        let event_sounds = self.particles.level_events(self.session.world(), events);
+        let event_sounds = self.particles.level_events(&self.session, events);
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(event_sounds);
         }

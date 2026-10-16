@@ -24,6 +24,7 @@ mod group;
 mod hit;
 mod leaves;
 mod level_events;
+mod level_events_dripstone;
 mod level_events_last;
 mod level_events_more;
 mod level_events_trial;
@@ -49,6 +50,7 @@ pub use firework::{
     Explosion as FireworkExplosion, FireworkLaunch, Shape as FireworkShape, SparkOptions,
 };
 pub use level_events::LevelEventContext;
+pub use level_events_dripstone::DripstoneAttributes;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;

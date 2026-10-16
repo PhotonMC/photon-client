@@ -6,7 +6,7 @@ use super::engine::*;
 use super::events::*;
 use super::scene::*;
 use crate::bits::f32_bits;
-use crate::movement::world::{cat, put};
+use crate::movement::world::{cat, put, put_with};
 
 /// The level events that only play a sound.
 const SOUND_ONLY_EVENTS: [i64; 37] = [
@@ -294,6 +294,75 @@ fn engine_rows_10() -> Vec<Value> {
     ]
 }
 
+/// A dripstone column hanging from the root at `root_y` (the tip `length` blocks below it) with
+/// the block above the root: the blocks of the column and the tip's position.
+fn dripstone_column(x: i64, root_y: i64, length: i64, above: Value) -> Vec<Value> {
+    let tip_y = root_y - length;
+    let mut blocks = vec![put(x, root_y, 0, "minecraft:stone"), above];
+    for y in tip_y..root_y {
+        let thickness = if y == tip_y { "tip" } else { "middle" };
+        blocks.push(put_with(
+            x,
+            y,
+            0,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", thickness), ("waterlogged", "false")],
+        ));
+    }
+    blocks
+}
+
+fn engine_rows_11() -> Vec<Value> {
+    // What lies above a stalactite's root: the fluids, mud, nothing, a waterlogged slab and a flow.
+    let covers = [
+        ("minecraft:water", vec![("level", "0")]),
+        ("minecraft:lava", vec![("level", "0")]),
+        ("minecraft:mud", vec![]),
+        ("minecraft:air", vec![]),
+        ("minecraft:stone_slab", vec![("type", "bottom"), ("waterlogged", "true")]),
+        ("minecraft:water", vec![("level", "3")]),
+        ("minecraft:lava", vec![("level", "5")]),
+        ("minecraft:oak_planks", vec![]),
+    ];
+    let mut blocks = Vec::new();
+    let mut events = Vec::new();
+    for (index, (block, properties)) in covers.iter().enumerate() {
+        let x = index as i64 * 3 + 1;
+        blocks.extend(dripstone_column(x, 70, 3, put_with(x, 71, 0, block, properties)));
+        events.push(level_event(index as i64 % 3, 1504, (x, 67, 0), 0));
+    }
+    // A column whose root is ten blocks above the tip is found, one eleven above is not.
+    let near = 27;
+    blocks.extend(dripstone_column(near, 76, 10, put(near, 77, 0, "minecraft:water")));
+    events.push(level_event(0, 1504, (near, 66, 0), 0));
+    let far = 30;
+    blocks.extend(dripstone_column(far, 77, 11, put(far, 78, 0, "minecraft:water")));
+    events.push(level_event(0, 1504, (far, 66, 0), 0));
+    // A column with a stalagmite in its middle, a lone stalagmite and a block that is no dripstone.
+    let broken = 33;
+    blocks.extend(dripstone_column(broken, 70, 4, put(broken, 71, 0, "minecraft:water")));
+    blocks.push(put_with(
+        broken,
+        68,
+        0,
+        "minecraft:pointed_dripstone",
+        &[("vertical_direction", "up"), ("thickness", "middle"), ("waterlogged", "false")],
+    ));
+    events.push(level_event(1, 1504, (broken, 66, 0), 0));
+    let up = 36;
+    blocks.push(put_with(
+        up,
+        66,
+        0,
+        "minecraft:pointed_dripstone",
+        &[("vertical_direction", "up"), ("thickness", "tip"), ("waterlogged", "false")],
+    ));
+    events.push(level_event(1, 1504, (up, 66, 0), 0));
+    blocks.push(put(39, 66, 0, "minecraft:stone"));
+    events.push(level_event(2, 1504, (39, 66, 0), 0));
+    vec![engine_row("dripstone-drip", events).blocks(blocks).ticks(6).seeds(150).describe(8).row()]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         engine_rows_1(),
@@ -306,6 +375,7 @@ pub fn rows() -> Vec<Value> {
         engine_rows_8(),
         engine_rows_9(),
         engine_rows_10(),
+        engine_rows_11(),
     ]
     .concat()
 }

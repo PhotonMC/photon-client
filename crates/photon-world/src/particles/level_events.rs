@@ -10,6 +10,7 @@ use photon_data::particle_type;
 use super::super::local_player::{LocalSound, LocalSoundSource};
 use super::super::{ClientWorld, LevelEvent};
 use super::engine::{AddView, ParticleData, ParticleEngine, Spawn};
+use super::level_events_dripstone::DripstoneAttributes;
 use LocalSoundSource::{Blocks, Hostile, Neutral};
 use Pitch::{Fixed, Slight, Spread, Thrown};
 
@@ -127,6 +128,25 @@ pub struct LevelEventContext<'a, F: FnMut() -> RandomSource> {
     pub view: &'a AddView,
     pub level_random: &'a mut RandomSource,
     pub particle_random: F,
+    pub dripstone: DripstoneAttributes,
+}
+
+impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
+    /// A context in the overworld, whose dripstone has the defaults.
+    pub fn new(
+        world: &'a ClientWorld,
+        view: &'a AddView,
+        level_random: &'a mut RandomSource,
+        particle_random: F,
+    ) -> Self {
+        Self {
+            world,
+            view,
+            level_random,
+            particle_random,
+            dripstone: DripstoneAttributes::default(),
+        }
+    }
 }
 
 impl ParticleEngine {

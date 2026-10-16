@@ -59,3 +59,7 @@ rastgelesiyle işler.
   `trial_spawner_detection` zerresi), fırlatma alevi, ominous olma zerreleri; sesler `BLOCKS`,
   perde `(r−r)*0.2+1`. Bu zerrenin kamera dönüşü `movement/particle-quads` satırlarında eşit.
 - Mesafe gecikmeli ses (`distanceDelay`) yok; oracle erteli sesi hemen çalmış sayar.
+- Sarkıt damlası (1504): sarkıtın kökü 10 blok içinde aranır, kökün üstündeki akışkan (çamur ve
+  suyun buharlaşmadığı yerde su) damlanın türünü seçer; akışkan yoksa boyutun varsayılanı
+  (Nether'de lav). İstemci boyut türünün özniteliklerini henüz okumaz, vanilla boyutların
+  değerlerini kullanır; oracle yalnız Overworld'dür, bu yüzden Nether dalı satırda yok.

@@ -257,24 +257,24 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                     continue;
                 }
                 if string(event, "type")? == "animate_tick" {
-                    let mut context = photon_world::particles::LevelEventContext {
-                        world: &world,
-                        view: &view,
-                        level_random: &mut level_random,
-                        particle_random: &mut particle_random,
-                    };
+                    let mut context = photon_world::particles::LevelEventContext::new(
+                        &world,
+                        &view,
+                        &mut level_random,
+                        &mut particle_random,
+                    );
                     sounds.extend(events::animate_tick(event, &mut engine, &mut context)?);
                     continue;
                 }
                 // A level or block event goes through the level as the world queues it.
                 if events::queues(event, &mut world)? {
                     for queued in world.take_level_events() {
-                        let mut context = photon_world::particles::LevelEventContext {
-                            world: &world,
-                            view: &view,
-                            level_random: &mut level_random,
-                            particle_random: &mut particle_random,
-                        };
+                        let mut context = photon_world::particles::LevelEventContext::new(
+                            &world,
+                            &view,
+                            &mut level_random,
+                            &mut particle_random,
+                        );
                         let played = engine.level_event(queued, &mut context);
                         sounds.extend(played.iter().map(events::sound_line));
                     }
@@ -341,12 +341,12 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
             }
             let pending = engine.pending_count();
-            let mut context = photon_world::particles::LevelEventContext {
-                world: &world,
-                view: &view,
-                level_random: &mut level_random,
-                particle_random: &mut particle_random,
-            };
+            let mut context = photon_world::particles::LevelEventContext::new(
+                &world,
+                &view,
+                &mut level_random,
+                &mut particle_random,
+            );
             engine.tick_explosions(&mut context);
             let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
             sounds.extend(ticked.iter().map(events::sound_line));
