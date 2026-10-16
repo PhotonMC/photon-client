@@ -1,4 +1,5 @@
 use super::*;
+use photon_data::item::registry::AIR_ITEM;
 
 /// `ItemCost.STREAM_CODEC`: an item, a count and the components the payment must carry.
 pub(super) fn parse_item_cost(
@@ -44,7 +45,7 @@ pub fn parse_merchant_offers_packet(
         let result = parse_optional_item_stack(input, NAME)?;
         let result = photon_world::ClientItemStackState::from_wire(
             result.item_count.unwrap_or(0),
-            result.item_registry_id.unwrap_or(ItemId(0)),
+            result.item_registry_id.unwrap_or(AIR_ITEM),
             result.positive_component_type_ids,
             result.negative_component_type_ids,
         )

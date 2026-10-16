@@ -35,6 +35,9 @@ pub const fn named(name: &str) -> ItemId {
     panic!("the item registry has no such name");
 }
 
+/// The item that stands for an empty stack (`Items.AIR`).
+pub const AIR_ITEM: ItemId = named("minecraft:air");
+
 /// An item by its identifier.
 pub fn item(name: &str) -> Option<&'static Item> {
     index(name).map(|index| &ITEMS[index])

@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::{EntityId, ItemId};
+use photon_data::item::registry::AIR_ITEM;
 
 impl PlaySession {
     /// The attack and use keys' part of `handleKeybinds`, with what the
@@ -249,7 +250,7 @@ impl PlaySession {
         self.world
             .local_player()
             .and_then(|state| state.inventory_slot(45))
-            .map_or(ItemId(0), |stack| stack.item_registry_id())
+            .map_or(AIR_ITEM, |stack| stack.item_registry_id())
     }
 
     /// The mouse turns the player (`Entity.turn`), who in a boat is then held within a quarter

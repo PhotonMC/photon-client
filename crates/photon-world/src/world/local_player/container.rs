@@ -1,4 +1,5 @@
 use crate::*;
+use photon_data::item::registry::AIR_ITEM;
 
 impl ClientWorld {
     pub fn apply_local_player_container_content(
@@ -208,7 +209,7 @@ impl ClientWorld {
         let item = |slot: i32| {
             state
                 .inventory_slot(slot as i16)
-                .map_or(ItemId(0), |stack| stack.item_registry_id())
+                .map_or(AIR_ITEM, |stack| stack.item_registry_id())
         };
         let amplifier = |id: i32| {
             state

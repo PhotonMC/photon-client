@@ -1,4 +1,5 @@
 use super::*;
+use photon_data::item::registry::AIR_ITEM;
 
 impl LocalPlayer {
     /// `ClientAvatarState.getBackwardsInterpolatedWalkDistance` and
@@ -209,8 +210,8 @@ pub fn attack_strength_delay(attack_speed: f64) -> f32 {
 impl Default for HandState {
     fn default() -> Self {
         Self {
-            main_item: ItemId(0),
-            off_item: ItemId(0),
+            main_item: AIR_ITEM,
+            off_item: AIR_ITEM,
             dig_speed: None,
             mining_fatigue: None,
             using_item: false,
