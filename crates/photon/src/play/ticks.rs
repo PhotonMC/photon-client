@@ -309,6 +309,9 @@ impl Play {
             self.sections.clear();
             self.sky.reset();
             self.particles.clear();
+            if let Some(sound) = self.sound.as_mut() {
+                sound.reset_level();
+            }
         }
         Ok(())
     }

@@ -180,6 +180,12 @@ impl SoundSystem {
         }
     }
 
+    /// `Minecraft.setLevel`: a new level starts in silence (`SoundManager.stop`).
+    pub fn reset_level(&mut self) {
+        self.engine.stop_all();
+        self.jukeboxes.clear();
+    }
+
     /// What the level events brought: the sounds they play and the songs jukeboxes start and stop.
     pub fn handle_level_events(
         &mut self,

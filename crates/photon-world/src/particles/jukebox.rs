@@ -35,6 +35,15 @@ pub(super) struct Jukeboxes {
     changes: Vec<JukeboxChange>,
 }
 
+impl Jukeboxes {
+    /// A new level starts with no record playing (`LevelEventHandler.playingJukeboxSongs` is the
+    /// level's own).
+    pub(super) fn forget_playing(&mut self) {
+        self.playing.clear();
+        self.changes.clear();
+    }
+}
+
 impl ParticleEngine {
     /// The sound event of each `minecraft:jukebox_song` (none where it names no event), in the
     /// registry's order.

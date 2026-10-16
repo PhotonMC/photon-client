@@ -329,6 +329,7 @@ impl ParticleEngine {
         self.explosions.clear();
         self.to_add.clear();
         self.spore_blossoms = 0;
+        self.jukeboxes.forget_playing();
     }
 
     /// The particles in the group, in the order they tick.
