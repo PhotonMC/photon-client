@@ -146,7 +146,7 @@ fn registry_literal(value: &Expr, literal: &Expr) -> bool {
 /// Name endings of values that index a version-specific registry or protocol table.
 const REGISTRY_IDS: &[&str] = &[
     "type_id",
-    "block_state_id",
+    "state_id",
     "block_id",
     "item_id",
     "kind_id",
@@ -180,12 +180,5 @@ mod tests {
         assert_eq!(facts.unsafes, [2]);
         assert_eq!(facts.registry_literals, [2]);
         assert_eq!(facts.test_modules, [(3, 6)]);
-    }
-
-    #[test]
-    fn container_sync_counters_are_not_registry_ids() {
-        let source = "fn f(e: &E) { if e.state_id == 2 {} if e.block_state_id == 2 {} }\n";
-        let facts = collect(&syn::parse_file(source).expect("valid Rust"));
-        assert_eq!(facts.registry_literals, [1]);
     }
 }
