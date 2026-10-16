@@ -35,6 +35,11 @@ impl LocalPlayer {
         self.dimensions.eye_height()
     }
 
+    /// `Entity.getBbHeight`.
+    pub fn bb_height(&self) -> f32 {
+        self.dimensions.height()
+    }
+
     /// Whether the eyes are inside water, as the last fluid update found.
     pub fn is_eye_in_water(&self) -> bool {
         self.water.eyes_inside

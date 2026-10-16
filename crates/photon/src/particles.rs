@@ -42,6 +42,8 @@ pub(crate) struct Particles {
     uniquifier: i64,
     /// What the dimension of the last level events says about dripstone.
     dripstone: photon_world::particles::DripstoneAttributes,
+    /// The local player as the last level events found them.
+    local_player: Option<photon_world::particles::PlayerSpot>,
     /// Where the camera was when the last frame was drawn.
     camera: Vec3,
     /// The textures (under `textures/`) the types carried here are drawn in, and where each
@@ -146,6 +148,7 @@ impl Particles {
             animate_random: RandomSource::create(unique_seed(&mut uniquifier)),
             uniquifier,
             dripstone: photon_world::particles::DripstoneAttributes::default(),
+            local_player: None,
             camera: Vec3::new(0.0, 0.0, 0.0),
             textures,
             rects: HashMap::new(),
@@ -180,6 +183,14 @@ impl Particles {
         let world = session.world();
         let dimension = session.dimension_type().unwrap_or("minecraft:overworld");
         self.dripstone = photon_world::particles::DripstoneAttributes::of_dimension_type(dimension);
+        self.local_player = session
+            .profile_id()
+            .zip(session.player())
+            .map(|(uuid, player)| photon_world::particles::PlayerSpot {
+                uuid,
+                position: player.position(),
+                height: player.bb_height(),
+            });
         let view = AddView {
             camera: self.camera,
             status: ParticleStatus::All,
@@ -191,6 +202,7 @@ impl Particles {
             level_random: &mut self.level_random,
             particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
             dripstone: self.dripstone,
+            local_player: self.local_player,
         };
         let mut sounds = Vec::new();
         for event in events {
@@ -337,6 +349,7 @@ impl Particles {
                 level_random: &mut self.level_random,
                 particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
                 dripstone: self.dripstone,
+                local_player: self.local_player,
             };
             self.engine.tick_explosions(&mut context);
             self.uniquifier = uniquifier;
@@ -353,6 +366,7 @@ impl Particles {
                 level_random: &mut self.level_random,
                 particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
                 dripstone: self.dripstone,
+                local_player: self.local_player,
             };
             sounds =
                 self.engine

@@ -6,9 +6,10 @@ mod factory;
 use factory::*;
 mod events;
 mod pickup;
+mod vault_scene;
 use photon_world::particles::{
-    AddView, LevelParticles, Particle, ParticleEngine, ParticleResources, ParticleStatus, Spawn,
-    SpriteSet, TerrainMaterials,
+    AddView, LevelEventContext, LevelParticles, Particle, ParticleEngine, ParticleResources,
+    ParticleStatus, Spawn, SpriteSet, TerrainMaterials,
 };
 pub(super) use pickup::item_pickup_result;
 
@@ -208,6 +209,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         let mut world = movement_world(row)?;
+        vault_scene::place(&mut world, row)?;
         let sprites = SpriteSet::new(
             (0..i32_field(row, "sprites")?)
                 .map(|index| format!("sprite_{index}"))
@@ -257,7 +259,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                     continue;
                 }
                 if string(event, "type")? == "animate_tick" {
-                    let mut context = photon_world::particles::LevelEventContext::new(
+                    let mut context = LevelEventContext::new(
                         &world,
                         &view,
                         &mut level_random,
@@ -269,7 +271,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 // A level or block event goes through the level as the world queues it.
                 if events::queues(event, &mut world)? {
                     for queued in world.take_level_events() {
-                        let mut context = photon_world::particles::LevelEventContext::new(
+                        let mut context = LevelEventContext::new(
                             &world,
                             &view,
                             &mut level_random,
@@ -341,12 +343,8 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
             }
             let pending = engine.pending_count();
-            let mut context = photon_world::particles::LevelEventContext::new(
-                &world,
-                &view,
-                &mut level_random,
-                &mut particle_random,
-            );
+            let mut context =
+                LevelEventContext::new(&world, &view, &mut level_random, &mut particle_random);
             engine.tick_explosions(&mut context);
             let ticked = engine.tick(&world, &view, &mut level_random, &mut particle_random);
             sounds.extend(ticked.iter().map(events::sound_line));

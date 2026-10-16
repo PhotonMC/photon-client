@@ -62,3 +62,8 @@ rastgelesiyle işler.
   default (lava in the Nether) applies. The client does not read a dimension type's attributes
   yet and uses the vanilla dimensions' values; the oracle is overworld only, so the Nether branch
   has no row.
+- Vault activation (3015): only where the block is a vault (the level makes its block entity when
+  the block is placed); the flames come after the connection particles the server's
+  `shared_data` names, one burst for each connected player the level knows within reach. The
+  local player is passed to the engine by the client; the oracle's level has no local player, so
+  that path has no row.

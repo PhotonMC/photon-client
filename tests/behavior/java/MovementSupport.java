@@ -306,6 +306,11 @@ class MovementSupport {
         setField(minecraft, "window", window);
         setField(minecraft, "tutorial", new net.minecraft.client.tutorial.Tutorial(minecraft, options));
         setField(minecraft, "soundManager", unsafe.allocateInstance(SilentSoundManager.class));
+        // A block entity the level makes asks the dispatcher for its renderer: none draws.
+        var dispatcher = unsafe.allocateInstance(
+            net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher.class);
+        setField(dispatcher, "renderers", java.util.Map.of());
+        setField(minecraft, "blockEntityRenderDispatcher", dispatcher);
 
         // Chunks go in through the client cache's packet entry point, as the
         // sections the reference's own section code builds and writes.
@@ -341,7 +346,55 @@ class MovementSupport {
             }
         }
 
+        placeVaultConnections(row, level);
         return new Scene(listener, wire, level, minecraft, options);
+    }
+
+    /**
+     * The players a row puts in the level, and the players each vault block entity shares as
+     * connected to it (its `shared_data`, as the server's update tag carries it).
+     */
+    static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+        if (row.has("players")) {
+            int id = 100;
+            for (var element : row.getAsJsonArray("players")) {
+                var described = element.getAsJsonObject();
+                var uuid = vaultUuid(described.getAsJsonArray("uuid"));
+                var remote = new net.minecraft.client.player.RemotePlayer(
+                    level, new com.mojang.authlib.GameProfile(uuid, "Player" + id));
+                remote.setId(id++);
+                remote.snapTo(Oracle.f64(described, "x"), Oracle.f64(described, "y"),
+                    Oracle.f64(described, "z"), 0.0F, 0.0F);
+                level.addEntity(remote);
+            }
+        }
+        if (row.has("vaults")) {
+            for (var element : row.getAsJsonArray("vaults")) {
+                var described = element.getAsJsonObject();
+                var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                    described.get("z").getAsInt());
+                var shared = new net.minecraft.nbt.CompoundTag();
+                var connected = new net.minecraft.nbt.ListTag();
+                for (var player : described.getAsJsonArray("players")) {
+                    connected.add(new net.minecraft.nbt.IntArrayTag(
+                        net.minecraft.core.UUIDUtil.uuidToIntArray(vaultUuid(player.getAsJsonArray()))));
+                }
+                shared.put("connected_players", connected);
+                if (described.has("range")) {
+                    shared.putDouble("connected_particles_range", Oracle.f64(described, "range"));
+                }
+                var tag = new net.minecraft.nbt.CompoundTag();
+                tag.put("shared_data", shared);
+                level.getBlockEntity(pos).loadWithComponents(
+                    net.minecraft.world.level.storage.TagValueInput.create(
+                        net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+            }
+        }
+    }
+
+    static java.util.UUID vaultUuid(com.google.gson.JsonArray ints) {
+        return net.minecraft.core.UUIDUtil.uuidFromIntArray(new int[] {
+            ints.get(0).getAsInt(), ints.get(1).getAsInt(), ints.get(2).getAsInt(), ints.get(3).getAsInt()});
     }
 
     static net.minecraft.world.item.ItemStack stack(JsonObject described) {

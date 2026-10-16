@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use super::engine::*;
 use super::events::*;
 use super::scene::*;
-use crate::bits::f32_bits;
+use crate::bits::{f32_bits, f64_bits};
 use crate::movement::world::{cat, put, put_with};
 
 /// The level events that only play a sound.
@@ -369,6 +369,76 @@ fn engine_rows_11() -> Vec<Value> {
     vec![engine_row("dripstone-drip", events).blocks(blocks).ticks(6).seeds(150).describe(8).row()]
 }
 
+/// The vault's lighting: ominous or not, every way it faces, and what is no vault.
+fn engine_rows_12() -> Vec<Value> {
+    let vaults = [("north", "false", 0), ("south", "true", 1), ("east", "false", 1), ("west", "true", 0)];
+    let mut blocks = Vec::new();
+    let mut events = Vec::new();
+    for (index, (facing, ominous, data)) in vaults.iter().enumerate() {
+        let x = index as i64 * 3;
+        blocks.push(put_with(
+            x,
+            64,
+            0,
+            "minecraft:vault",
+            &[("facing", facing), ("ominous", ominous), ("vault_state", "active")],
+        ));
+        events.push(level_event(index as i64 % 2, 3015, (x, 64, 0), *data));
+    }
+    // Where there is no vault nothing happens, sound included.
+    blocks.push(put(15, 64, 0, "minecraft:stone"));
+    events.push(level_event(2, 3015, (15, 64, 0), 0));
+    events.push(level_event(2, 3015, (18, 64, 0), 0));
+    vec![engine_row("vault-activation", events).blocks(blocks).ticks(6).seeds(400).describe(8).row()]
+}
+
+/// The players connected to a vault: the ones in reach, the ones out of it, one the level does not
+/// know, a wider reach and no one at all.
+fn engine_rows_13() -> Vec<Value> {
+    let near = [1, 2, 3, 4];
+    let far = [5, 6, 7, 8];
+    let missing = [9, 9, 9, 9];
+    let vaults = [
+        ("north", vec![near, far, missing], None),
+        ("south", vec![near, far], Some(100.0)),
+        ("east", vec![near], Some(1.0)),
+        ("west", vec![], None),
+    ];
+    let mut blocks = Vec::new();
+    let mut events = Vec::new();
+    let mut shared = Vec::new();
+    for (index, (facing, players, range)) in vaults.iter().enumerate() {
+        let x = index as i64 * 3;
+        blocks.push(put_with(
+            x,
+            64,
+            0,
+            "minecraft:vault",
+            &[("facing", facing), ("ominous", "false"), ("vault_state", "active")],
+        ));
+        events.push(level_event(index as i64 % 2, 3015, (x, 64, 0), 0));
+        let mut vault = json!({"x": x, "y": 64, "z": 0, "players": players});
+        if let Some(range) = range {
+            vault["range"] = json!(f64_bits(*range));
+        }
+        shared.push(vault);
+    }
+    let players = vec![
+        json!({"uuid": near, "x": f64_bits(1.5), "y": f64_bits(64.0), "z": f64_bits(2.5)}),
+        json!({"uuid": far, "x": f64_bits(40.25), "y": f64_bits(64.0), "z": f64_bits(-40.75)}),
+    ];
+    vec![
+        engine_row("vault-connections", events)
+            .blocks(blocks)
+            .set("vaults", json!(shared))
+            .set("players", json!(players))
+            .ticks(6)
+            .seeds(600)
+            .describe(8)
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         engine_rows_1(),
@@ -382,6 +452,8 @@ pub fn rows() -> Vec<Value> {
         engine_rows_9(),
         engine_rows_10(),
         engine_rows_11(),
+        engine_rows_12(),
+        engine_rows_13(),
     ]
     .concat()
 }

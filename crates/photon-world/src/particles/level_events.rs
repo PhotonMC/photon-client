@@ -11,6 +11,7 @@ use super::super::local_player::{LocalSound, LocalSoundSource};
 use super::super::{ClientWorld, LevelEvent};
 use super::engine::{AddView, ParticleData, ParticleEngine, Spawn};
 use super::level_events_dripstone::DripstoneAttributes;
+use super::level_events_vault::PlayerSpot;
 use LocalSoundSource::{Blocks, Hostile, Neutral};
 use Pitch::{Fixed, Slight, Spread, Thrown};
 
@@ -129,6 +130,8 @@ pub struct LevelEventContext<'a, F: FnMut() -> RandomSource> {
     pub level_random: &'a mut RandomSource,
     pub particle_random: F,
     pub dripstone: DripstoneAttributes,
+    /// The local player, whom the level knows as one of its players.
+    pub local_player: Option<PlayerSpot>,
 }
 
 impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
@@ -145,6 +148,7 @@ impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
             level_random,
             particle_random,
             dripstone: DripstoneAttributes::default(),
+            local_player: None,
         }
     }
 }

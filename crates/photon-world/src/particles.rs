@@ -28,6 +28,7 @@ mod level_events_dripstone;
 mod level_events_last;
 mod level_events_more;
 mod level_events_trial;
+mod level_events_vault;
 mod light;
 mod look;
 mod particle;
@@ -51,6 +52,7 @@ pub use firework::{
 };
 pub use level_events::LevelEventContext;
 pub use level_events_dripstone::DripstoneAttributes;
+pub use level_events_vault::PlayerSpot;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;

@@ -11,7 +11,7 @@
 "crates/photon-oracle/src/math_cases/player.rs" = 538
 "crates/photon-oracle/src/model.rs" = 503
 "crates/photon-oracle/src/movement.rs" = 572
-"crates/photon-oracle/src/particles.rs" = 553
+"crates/photon-oracle/src/particles.rs" = 551
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
@@ -823,7 +823,7 @@
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
 "crates/photon-oracle/src/movement.rs::movement_result" = 571
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
-"crates/photon-oracle/src/particles.rs::particle_engine_result" = 179
+"crates/photon-oracle/src/particles.rs::particle_engine_result" = 176
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
 "crates/photon-oracle/src/particles/events.rs::queues" = 113
