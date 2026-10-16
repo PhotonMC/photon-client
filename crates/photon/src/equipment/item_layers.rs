@@ -59,11 +59,35 @@ impl ItemLayerCache {
                 stack.item_registry_id(),
                 context,
                 &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
-                stack.patch_bytes(),
+                &StackTints(photon_game::item::values::Values::new(
+                    stack.item_registry_id(),
+                    stack.patch_bytes(),
+                )),
             );
             variants.push((stack.patch_bytes().to_vec(), layers));
             variants.len() - 1
         };
         &variants[index].1
+    }
+}
+
+/// The tints' view of a stack's components.
+struct StackTints(photon_game::item::values::Values);
+
+impl photon_render::item_model::ItemTints for StackTints {
+    fn dyed_color(&self) -> Option<i32> {
+        self.0.dyed_color()
+    }
+
+    fn potion_color_or(&self, default: i32) -> i32 {
+        self.0.potion_color_or(default)
+    }
+
+    fn map_color(&self) -> Option<i32> {
+        self.0.map_color()
+    }
+
+    fn firework_colors(&self) -> Vec<i32> {
+        self.0.firework_colors()
     }
 }

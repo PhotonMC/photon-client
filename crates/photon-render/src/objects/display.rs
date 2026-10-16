@@ -1,7 +1,6 @@
 //! A display entity (`DisplayRenderer`): the matrix of its transformation, and where its block or
 //! item is drawn.
 
-use crate::gui::draw_runs;
 use photon_world::objects::display::{Billboard, Transformation};
 
 use crate::joml::{Matrix4, Pose, Quaternion};
@@ -183,7 +182,7 @@ pub fn text_submit(
 /// lines, then each line's glyphs (`Font.prepareText`), shadowed when the flag says, lit by `light`.
 pub fn text_vertices(
     submit: &TextSubmit,
-    lines: &[Vec<photon_game::text::Run>],
+    lines: &[Vec<crate::gui::TextRun>],
     (font, atlas): (&crate::gui::font::Font, &crate::gui::GuiAtlas),
     light: i32,
 ) -> Vec<crate::scene::Vertex> {
@@ -215,7 +214,7 @@ pub fn text_vertices(
         let quads = crate::gui::frame::glyph_quads(
             atlas,
             font,
-            &draw_runs(runs),
+            runs,
             (*x, *y),
             submit.color as u32,
             submit.shadow,

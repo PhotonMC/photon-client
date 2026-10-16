@@ -1,10 +1,20 @@
 use super::*;
 
+/// What an item's tints read of its components (`DyedItemColor`, `PotionContents`, `MapItemColor`,
+/// `FireworkExplosion`); the game's item values answer it.
+pub trait ItemTints {
+    fn dyed_color(&self) -> Option<i32>;
+    /// The colour of the potion contents, or `default` without any.
+    fn potion_color_or(&self, default: i32) -> i32;
+    fn map_color(&self) -> Option<i32>;
+    fn firework_colors(&self) -> Vec<i32>;
+}
+
 /// A tint's colour, ARGB. `grass` reads the grass colour map.
 pub fn tint_colour(
     tint: &TintSource,
     grass: &dyn Fn(f64, f64) -> u32,
-    values: &photon_game::item::values::Values,
+    values: &dyn ItemTints,
 ) -> u32 {
     match *tint {
         TintSource::Constant(rgb) | TintSource::Default(rgb) => 0xFF00_0000 | rgb,

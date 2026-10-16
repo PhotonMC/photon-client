@@ -56,7 +56,7 @@ pub(super) fn sign_texts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             // The line as runs of one colour, as the oracle merges them.
             let mut runs: Vec<(String, i64)> = Vec::new();
             for run in &submit.line {
-                let colour = run.style.colour.map_or(-1, i64::from);
+                let colour = run.colour.map_or(-1, i64::from);
                 match runs.last_mut() {
                     Some((text, last)) if *last == colour => text.push_str(&run.text),
                     _ if run.text.is_empty() => {}

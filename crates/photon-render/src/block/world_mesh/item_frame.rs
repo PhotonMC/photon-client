@@ -18,7 +18,7 @@ impl BlockRenderer {
         item: ItemId,
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
-        patch: &[u8],
+        values: &dyn crate::item_model::ItemTints,
     ) -> Vec<ItemLayer> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()
@@ -26,7 +26,6 @@ impl BlockRenderer {
         else {
             return Vec::new();
         };
-        let values = photon_game::item::values::Values::new(item, patch);
         let mut layers = Vec::new();
         crate::item_model::layers_for(&def.model, context, &mut layers);
         let mut out = Vec::new();
@@ -37,7 +36,7 @@ impl BlockRenderer {
             let tints: Vec<u32> = layer
                 .tints
                 .iter()
-                .map(|tint| crate::item_model::tint_colour(tint, grass, &values))
+                .map(|tint| crate::item_model::tint_colour(tint, grass, values))
                 .collect();
             if let Some(special) = &layer.special {
                 for part in crate::entity::special_models::layers(special) {

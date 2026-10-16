@@ -3,7 +3,6 @@
 //! Teams, scoreboard text below the name and attribute changes are not
 //! carried: nobody is on a team, the name shows at the default distance.
 
-use crate::gui::draw_runs;
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 use photon_world::{ClientEntity, ClientEntityPose};
 
@@ -238,10 +237,7 @@ pub fn submit_vertices(
             vertices.push(corners[index]);
         }
     };
-    let runs = [photon_game::text::Run {
-        text: text.to_owned(),
-        style: photon_game::text::Style::default(),
-    }];
+    let runs = [crate::gui::TextRun::plain(text)];
     if submit.background >> 24 & 0xFF != 0 {
         // `markBackground`: from a unit before the line's start to its end,
         // a unit above the line to the nine its cells take.
@@ -263,7 +259,7 @@ pub fn submit_vertices(
     for corners in glyph_quads(
         atlas,
         font,
-        &draw_runs(&runs),
+        &runs,
         (submit.x, submit.y),
         submit.color as u32,
         false,

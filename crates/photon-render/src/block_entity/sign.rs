@@ -6,7 +6,7 @@ use crate::gui::FontRuns;
 use crate::gui::draw_runs;
 use photon_core::direction::Direction;
 use photon_game::sign::{BLACK, DYE_TEXT_COLORS};
-use photon_game::text::{Run, Style};
+use photon_game::text::Run;
 
 use crate::block_entity::skull::{block_pose, segment_degrees};
 use crate::gui::font::Font;
@@ -109,7 +109,7 @@ pub struct SignTextSubmit {
     pub pose: Pose,
     pub x: f32,
     pub y: f32,
-    pub line: Vec<Run>,
+    pub line: Vec<crate::gui::TextRun>,
     pub light: i32,
     pub color: u32,
     pub outline: u32,
@@ -164,7 +164,7 @@ pub fn sign_text_submits(
                 pose,
                 x,
                 y: (index as i32 * line_height - midpoint) as f32,
-                line,
+                line: draw_runs(&line),
                 light,
                 color,
                 outline,
@@ -187,15 +187,12 @@ pub fn sign_text_vertices(
     for submit in submits {
         let light = crate::block::light::light_uv(submit.light);
         if submit.outline != 0 {
-            let plain: Vec<Run> = submit
+            let plain: Vec<crate::gui::TextRun> = submit
                 .line
                 .iter()
-                .map(|run| Run {
-                    text: run.text.clone(),
-                    style: Style {
-                        colour: None,
-                        ..run.style.clone()
-                    },
+                .map(|run| crate::gui::TextRun {
+                    colour: None,
+                    ..run.clone()
                 })
                 .collect();
             for dx in -1..=1 {
@@ -204,8 +201,7 @@ pub fn sign_text_vertices(
                         continue;
                     }
                     let at = (submit.x + dx as f32, submit.y + dy as f32);
-                    let quads =
-                        glyph_quads(atlas, font, &draw_runs(&plain), at, submit.outline, false);
+                    let quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
                     world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
                 }
             }
@@ -213,7 +209,7 @@ pub fn sign_text_vertices(
         let quads = glyph_quads(
             atlas,
             font,
-            &draw_runs(&submit.line),
+            &submit.line,
             (submit.x, submit.y),
             submit.color,
             false,

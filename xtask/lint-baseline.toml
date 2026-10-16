@@ -835,7 +835,7 @@
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 136
 "crates/photon-render/src/block/light.rs::adjacency" = 99
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 186
-"crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 75
+"crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 74
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 81
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 137
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 87
@@ -858,7 +858,6 @@
 "crates/photon-render/src/entity/mob_model/nether.rs::MobModel::setup_strider" = 95
 "crates/photon-render/src/entity/mob_model/placement.rs::placement_rotations" = 64
 "crates/photon-render/src/entity/mob_model/villagers.rs::illager_arms" = 93
-"crates/photon-render/src/entity/name_tag.rs::submit_vertices" = 63
 "crates/photon-render/src/entity/player_model.rs::Cube::grown" = 74
 "crates/photon-render/src/entity/player_model.rs::PlayerModel::new" = 102
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 64

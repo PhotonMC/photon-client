@@ -6,7 +6,6 @@ use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
-use photon_render::gui::FontRuns;
 use photon_render::joml::Pose;
 use photon_render::model::DisplayContext;
 use photon_render::objects::display::{
@@ -136,6 +135,15 @@ pub fn display_shadow(
     (radius > 0.0).then(|| (radius, state.shadow_strength.get(progress)))
 }
 
+/// The lines a display's runs split into at its width, as the draw layer takes them.
+fn display_lines(
+    runs: &[photon_game::text::Run],
+    width: i32,
+    font: &photon_render::gui::font::Font,
+) -> Vec<Vec<photon_render::gui::TextRun>> {
+    photon_render::gui::draw_lines(&photon_render::gui::chat::split(runs, width, font))
+}
+
 /// The triangles of every text display the server added: the text seen through blocks and the text
 /// tested against the depth, each as triangles from the mesh origin.
 pub fn display_texts(
@@ -189,8 +197,8 @@ pub fn display_texts(
             continue;
         };
         let runs = lang.runs(&component, &photon_game::text::Style::default());
-        let lines = photon_render::gui::chat::split(&runs, text.line_width, font);
-        let widths: Vec<i32> = lines.iter().map(|line| font.width_of_runs(line)).collect();
+        let lines = display_lines(&runs, text.line_width, font);
+        let widths: Vec<i32> = lines.iter().map(|l| font.width_of_text_runs(l)).collect();
         let submit = text_submit(
             &pose,
             text.flags,
