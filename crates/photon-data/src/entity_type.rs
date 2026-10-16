@@ -35,6 +35,20 @@ pub const fn named(name: &str) -> EntityTypeId {
     panic!("the entity type registry has no such name");
 }
 
+/// The id of the entity data serializer with this name (`ITEM_STACK`), resolved while
+/// compiling: a name the registry lacks stops the build.
+pub const fn serializer_named(name: &str) -> i32 {
+    let table = &crate::generated::entity_serializers::ENTITY_DATA_SERIALIZERS;
+    let mut id = 0;
+    while id < table.len() {
+        if crate::name::same(table[id], name) {
+            return id as i32;
+        }
+        id += 1;
+    }
+    panic!("the entity data serializer registry has no such name");
+}
+
 /// A pig or cow variant of the data pack: the textures (`entity/pig/pig_cold`
 /// with its namespace) and the model family it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

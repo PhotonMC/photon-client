@@ -89,7 +89,7 @@ pub fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObservation)
 
 /// `ItemStack`'s id among the entity data serializers, and the place of a
 /// dropped item's stack among its data (`ItemEntity.DATA_ITEM`).
-const ITEM_STACK_SERIALIZER_ID: i32 = 7;
+const ITEM_STACK_SERIALIZER_ID: i32 = photon_data::entity_type::serializer_named("ITEM_STACK");
 const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 /// `handleSetEntityData`, and for a dropped item the stack it holds.
