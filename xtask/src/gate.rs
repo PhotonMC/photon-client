@@ -37,6 +37,11 @@ pub fn check(args: &[String]) -> Result<(), String> {
             println!("{tool}: not installed, skipped");
         }
     }
+    if process::available("typos") {
+        step("typos", process::run("typos", &[]));
+    } else {
+        println!("typos: not installed, skipped");
+    }
     if with_parity && parity::reference_present() {
         let families: Vec<String> = parity::FAMILIES.iter().map(|f| (*f).to_owned()).collect();
         step("parity", parity::compare(&families, false));

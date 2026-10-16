@@ -1,0 +1,27 @@
+# Spelling check (`typos`), run by `cargo xtask check` when installed and by CI.
+
+[files]
+extend-exclude = [
+    # Legacy Turkish records, being converted under #12.
+    "docs/records/",
+    # Hex tables, ported maths and test data that look like words.
+    "crates/photon-core/src/math/fdlibm.rs",
+    "parity/cases/src/gui/draft.rs",
+    ".data/",
+]
+
+[default.extend-words]
+# Names the reference spells this way.
+Visiblity = "Visiblity"
+Chage = "Chage"
+texure0 = "texure0"
+texure = "texure"
+togglable = "togglable"
+# Terms of the code: PNG filter, mip level, compression, ordinals, test strings.
+paeth = "paeth"
+Paeth = "Paeth"
+lod = "lod"
+flate = "flate"
+ths = "ths"
+caf = "caf"
+worl = "worl"
