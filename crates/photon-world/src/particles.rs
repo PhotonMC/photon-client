@@ -26,6 +26,7 @@ mod leaves;
 mod level_events;
 mod level_events_last;
 mod level_events_more;
+mod level_events_trial;
 mod light;
 mod look;
 mod particle;

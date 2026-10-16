@@ -19,7 +19,6 @@
 "crates/photon-render/src/vulkan/pipeline.rs" = 501
 "crates/photon-world/src/local_player/ticking.rs" = 501
 "crates/photon-world/src/particles/firework.rs" = 540
-"crates/photon-world/src/particles/level_events_last.rs" = 576
 "crates/photon/src/menu.rs" = 644
 "crates/photon/src/mobs/animals/farm_animals.rs" = 515
 
@@ -513,7 +512,6 @@
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 24
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 15
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 11
-"crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::trial_spawner_event" = 11
 "crates/photon-world/src/particles/particle.rs::Particle::move_by" = 17
 "crates/photon-world/src/particles/particle.rs::Particle::tick" = 28
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 35
@@ -998,7 +996,6 @@
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 95
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 76
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 104
-"crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::trial_spawner_event" = 73
 "crates/photon-world/src/particles/particle.rs::Particle::tick" = 90
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 85
