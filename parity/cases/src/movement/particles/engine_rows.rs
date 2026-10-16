@@ -439,6 +439,32 @@ fn engine_rows_13() -> Vec<Value> {
     ]
 }
 
+/// Jukeboxes: songs started, replaced and stopped, and the numbers the registry has no song for.
+fn engine_rows_14() -> Vec<Value> {
+    vec![
+        engine_row(
+            "jukebox-songs",
+            vec![
+                level_event(0, 1010, (0, 64, 0), 0),
+                level_event(0, 1010, (3, 64, 0), 5),
+                level_event(1, 1010, (0, 64, 0), 7),
+                level_event(1, 1011, (3, 64, 0), 0),
+                level_event(1, 1011, (6, 64, 0), 0),
+                level_event(2, 1010, (6, 64, 0), 999),
+                level_event(2, 1010, (6, 64, 0), -1),
+                level_event(2, 1010, (0, 64, 0), 999),
+                level_event(3, 1010, (-4, 70, 9), 17),
+                level_event(3, 1011, (0, 64, 0), 3),
+            ],
+        )
+        .blocks(vec![put(0, 64, 0, "minecraft:jukebox")])
+        .ticks(5)
+        .seeds(8)
+        .describe(8)
+        .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         engine_rows_1(),
@@ -454,6 +480,7 @@ pub fn rows() -> Vec<Value> {
         engine_rows_11(),
         engine_rows_12(),
         engine_rows_13(),
+        engine_rows_14(),
     ]
     .concat()
 }

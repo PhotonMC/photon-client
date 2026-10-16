@@ -73,6 +73,8 @@ pub struct SoundSystem {
     local_sounds: u32,
     /// The song the music manager has playing.
     music: Option<photon_game::sounds::engine::InstanceId>,
+    /// The record each jukebox is playing.
+    jukeboxes: HashMap<(i32, i32, i32), photon_game::sounds::engine::InstanceId>,
     /// Whether the local player is under water, for the sounds that end when the water is left.
     underwater: Arc<AtomicBool>,
 }
@@ -118,6 +120,7 @@ impl SoundSystem {
             followed: Arc::new(Mutex::new(HashMap::new())),
             local_sounds: 0,
             music: None,
+            jukeboxes: HashMap::new(),
             underwater: Arc::new(AtomicBool::new(false)),
         })
     }
@@ -173,6 +176,44 @@ impl SoundSystem {
                 self.engine.play_delayed(id, sound.delay_ticks);
             } else {
                 self.engine.play(id);
+            }
+        }
+    }
+
+    /// What the level events brought: the sounds they play and the songs jukeboxes start and stop.
+    pub fn handle_level_events(
+        &mut self,
+        sounds: Vec<photon_world::local_player::LocalSound>,
+        songs: Vec<photon_world::particles::JukeboxChange>,
+    ) {
+        self.handle_local(sounds);
+        self.handle_jukebox(songs);
+    }
+
+    /// `LevelEventHandler.playJukeboxSong` and `stopJukeboxSong`: a record sounds from the middle
+    /// of its jukebox, over everything near, until it is stopped.
+    pub fn handle_jukebox(&mut self, changes: Vec<photon_world::particles::JukeboxChange>) {
+        use photon_world::particles::JukeboxChange;
+        for change in changes {
+            match change {
+                JukeboxChange::Play { pos, sound } => {
+                    let mut instance =
+                        SoundInstance::new(&sound, SoundSource::Records, RandomSource::create(0));
+                    instance.volume = 4.0;
+                    instance.position = (
+                        f64::from(pos.0) + 0.5,
+                        f64::from(pos.1) + 0.5,
+                        f64::from(pos.2) + 0.5,
+                    );
+                    let id = self.engine.add(instance);
+                    self.jukeboxes.insert(pos, id);
+                    self.engine.play(id);
+                }
+                JukeboxChange::Stop { pos, .. } => {
+                    if let Some(id) = self.jukeboxes.remove(&pos) {
+                        self.engine.stop(id);
+                    }
+                }
             }
         }
     }

@@ -46,6 +46,8 @@ pub struct PaintingEntry {
 pub struct DescribedEntry {
     pub name: String,
     pub description: Option<JsonValue>,
+    /// The sound event of an instrument or a jukebox song, when it names one.
+    pub sound_event: Option<String>,
 }
 
 /// `BannerPattern`.
@@ -141,6 +143,16 @@ fn chat_decoration(entry: &JsonObject) -> crate::chat::ChatDecoration {
     }
 }
 
+/// One entry of a registry that is a name and a description, with the sound it names if it does.
+fn described_entry(data_root: &Path, directory: &str, name: String) -> DescribedEntry {
+    let entry = read_entry(data_root, directory, &name);
+    DescribedEntry {
+        description: component(&entry, "description"),
+        sound_event: entry.text("sound_event"),
+        name,
+    }
+}
+
 impl Registries {
     /// The registries from the data pack at `data_root`, each entry named by
     /// `names(registry)` in the order given (the server's sync order).
@@ -192,13 +204,8 @@ impl Registries {
             })
             .collect();
         let described = |registry: &str, directory: &str| -> Vec<DescribedEntry> {
-            names(registry)
-                .into_iter()
-                .map(|name| DescribedEntry {
-                    description: component(&read_entry(data_root, directory, &name), "description"),
-                    name,
-                })
-                .collect()
+            let entry = |name| described_entry(data_root, directory, name);
+            names(registry).into_iter().map(entry).collect()
         };
         let banner_patterns = names("minecraft:banner_pattern")
             .into_iter()

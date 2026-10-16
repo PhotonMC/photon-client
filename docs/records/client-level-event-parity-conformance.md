@@ -67,3 +67,6 @@ rastgelesiyle işler.
   `shared_data` names, one burst for each connected player the level knows within reach. The
   local player is passed to the engine by the client; the oracle's level has no local player, so
   that path has no row.
+- Jukebox songs (1010, 1011): a song starts from the middle of the block at volume 4 over the
+  records category and is stopped by the next song or by 1011; a registry number with no song
+  does nothing, not even a stop. The oracle records the sound manager's play and stop calls.

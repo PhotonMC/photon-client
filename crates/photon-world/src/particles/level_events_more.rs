@@ -32,11 +32,10 @@ impl ParticleEngine {
             2003 => self.ender_eye(pos, context),
             2004 => self.spawner_flames(pos, context),
             3015 | 3016 => self.vault_event((event, pos, data), context, sounds),
-            1504 => self.dripstone_drip(pos, context),
             1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
-            _ => return false,
+            _ => return self.block_level_event((event, pos, data), context),
         }
         true
     }

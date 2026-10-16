@@ -671,7 +671,7 @@
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 69
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 81
 "crates/photon-game/src/options/file.rs::Options::read" = 102
-"crates/photon-game/src/registries.rs::Registries::load" = 86
+"crates/photon-game/src/registries.rs::Registries::load" = 81
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 82
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
 "crates/photon-game/src/text.rs::flat_strings" = 83
@@ -1073,7 +1073,7 @@
 "crates/photon/src/play/draw.rs::Play::draw_overlays" = 80
 "crates/photon/src/play/draw.rs::Play::frame_camera" = 79
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 194
+"crates/photon/src/play/ticks.rs::Play::start" = 193
 "crates/photon/src/play/ticks.rs::Play::tick" = 89
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/script.rs::HeldKeys::parse" = 77

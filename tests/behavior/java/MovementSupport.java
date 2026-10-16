@@ -80,6 +80,13 @@ class MovementSupport {
             return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
         }
 
+        /** A song that ends: the sound and where it played from. */
+        @Override
+        public void stop(net.minecraft.client.resources.sounds.SoundInstance instance) {
+            PLAYED.add("stop," + instance.getIdentifier() + ","
+                + Oracle.bits(instance.getX()) + "," + Oracle.bits(instance.getY()) + "," + Oracle.bits(instance.getZ()));
+        }
+
         /** The delay of the sound being recorded, in ticks; 0 when it is played at once. */
         private int recordedDelay;
 
@@ -94,6 +101,16 @@ class MovementSupport {
                 this.recordedDelay = 0;
             }
         }
+    }
+
+    /** Says nothing: a record's name is shown on the hud and spoken by the narrator. */
+    static final class SilentNarrator extends net.minecraft.client.GameNarrator {
+        SilentNarrator() {
+            super(null);
+        }
+
+        @Override
+        public void saySystemNow(net.minecraft.network.chat.Component message) {}
     }
 
     /**
@@ -299,7 +316,12 @@ class MovementSupport {
         var options = new net.minecraft.client.Options(minecraft, workDir);
         options.autoJump().set(row.has("auto_jump") && row.get("auto_jump").getAsBoolean());
         setField(minecraft, "options", options);
-        setField(minecraft, "gui", unsafe.allocateInstance(net.minecraft.client.gui.Gui.class));
+        var gui = unsafe.allocateInstance(net.minecraft.client.gui.Gui.class);
+        var hud = unsafe.allocateInstance(net.minecraft.client.gui.Hud.class);
+        setField(hud, "minecraft", minecraft);
+        setField(gui, "hud", hud);
+        setField(minecraft, "gui", gui);
+        setField(minecraft, "narrator", unsafe.allocateInstance(SilentNarrator.class));
         // `hasControlDown` asks the window's keys: a window with no keys down.
         var window = unsafe.allocateInstance(com.mojang.blaze3d.platform.Window.class);
         setField(window, "handle", 1L);

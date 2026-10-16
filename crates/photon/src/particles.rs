@@ -159,6 +159,18 @@ impl Particles {
         }
     }
 
+    /// The sound event of each jukebox song, in the order the server synchronised them.
+    pub(crate) fn set_jukebox_songs(&mut self, registries: &photon_game::registries::Registries) {
+        let songs = registries.jukebox_songs.iter();
+        self.engine
+            .set_jukebox_songs(songs.map(|song| song.sound_event.clone()).collect());
+    }
+
+    /// The songs jukeboxes started and stopped since the last call.
+    pub(crate) fn take_jukebox_changes(&mut self) -> Vec<photon_world::particles::JukeboxChange> {
+        self.engine.take_jukebox_changes()
+    }
+
     /// The textures the particles are drawn in, to pack with the entity textures.
     pub(crate) fn textures(&self) -> &[String] {
         &self.textures

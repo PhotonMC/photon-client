@@ -229,8 +229,8 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         resources.set_spell_random(RandomSource::create(
             row["spell_seed"].as_i64().unwrap_or(0),
         ));
-        let mut engine =
-            ParticleEngine::new(RandomSource::create(seed_of("engine_seed")?), resources);
+        let engine_random = RandomSource::create(seed_of("engine_seed")?);
+        let mut engine = events::engine_with_songs(engine_random, resources);
         let mut level_random = RandomSource::create(seed_of("level_seed")?);
         let mut listener_random = RandomSource::create(seed_of("listener_seed")?);
         let base = seed_of("particle_seed_base")?;
@@ -278,7 +278,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                             &mut particle_random,
                         );
                         let played = engine.level_event(queued, &mut context);
-                        sounds.extend(played.iter().map(events::sound_line));
+                        sounds.extend(events::heard(&played, &mut engine));
                     }
                     continue;
                 }

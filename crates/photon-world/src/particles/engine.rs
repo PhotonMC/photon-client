@@ -159,6 +159,7 @@ pub struct ParticleEngine {
     /// `trackedParticleCounts` of `ParticleLimit.SPORE_BLOSSOM`: the spore blossom's particles
     /// alive or waiting.
     spore_blossoms: i32,
+    pub(super) jukeboxes: super::jukebox::Jukeboxes,
 }
 
 /// `ParticleLimit.SPORE_BLOSSOM`.
@@ -180,6 +181,7 @@ impl ParticleEngine {
             random,
             resources,
             spore_blossoms: 0,
+            jukeboxes: super::jukebox::Jukeboxes::default(),
         }
     }
 

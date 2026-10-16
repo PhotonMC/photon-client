@@ -140,6 +140,55 @@ pub(super) fn sound_line(sound: &LocalSound) -> String {
     )
 }
 
+/// An engine whose jukebox songs are the ones the vanilla data pack holds, in the order a vanilla
+/// server synchronises them.
+pub(super) fn engine_with_songs(
+    random: RandomSource,
+    resources: photon_world::particles::ParticleResources,
+) -> photon_world::particles::ParticleEngine {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    let registries = photon_game::registries::Registries::vanilla(&data_root);
+    let mut engine = photon_world::particles::ParticleEngine::new(random, resources);
+    engine.set_jukebox_songs(
+        registries
+            .jukebox_songs
+            .iter()
+            .map(|song| song.sound_event.clone())
+            .collect(),
+    );
+    engine
+}
+
+/// What an event played, as the reference's sound manager is asked for it: the sounds, then the
+/// songs jukeboxes started and stopped.
+pub(super) fn heard(
+    played: &[LocalSound],
+    engine: &mut photon_world::particles::ParticleEngine,
+) -> Vec<String> {
+    use photon_world::particles::JukeboxChange;
+    let mut lines: Vec<String> = played.iter().map(sound_line).collect();
+    for change in engine.take_jukebox_changes() {
+        lines.push(match change {
+            JukeboxChange::Play { pos, sound } => format!(
+                "{sound},record,{},{},{},{},{}",
+                bits32(4.0),
+                bits32(1.0),
+                bits64(f64::from(pos.0) + 0.5),
+                bits64(f64::from(pos.1) + 0.5),
+                bits64(f64::from(pos.2) + 0.5)
+            ),
+            JukeboxChange::Stop { pos, sound } => format!(
+                "stop,{sound},{},{},{}",
+                bits64(f64::from(pos.0) + 0.5),
+                bits64(f64::from(pos.1) + 0.5),
+                bits64(f64::from(pos.2) + 0.5)
+            ),
+        });
+    }
+    lines
+}
+
 /// An `animate_tick` event: `count` pairs of picks around the block, the blocks' draws from a
 /// random seeded as given; the sounds that are not ambient (the reference's sound manager here
 /// leaves those out).

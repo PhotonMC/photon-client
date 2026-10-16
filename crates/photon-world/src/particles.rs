@@ -22,6 +22,7 @@ mod firework;
 mod flame;
 mod group;
 mod hit;
+mod jukebox;
 mod leaves;
 mod level_events;
 mod level_events_dripstone;
@@ -50,6 +51,7 @@ pub use explosion::{Explosion, ExplosionParticle};
 pub use firework::{
     Explosion as FireworkExplosion, FireworkLaunch, Shape as FireworkShape, SparkOptions,
 };
+pub use jukebox::JukeboxChange;
 pub use level_events::LevelEventContext;
 pub use level_events_dripstone::DripstoneAttributes;
 pub use level_events_vault::PlayerSpot;
