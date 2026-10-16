@@ -15,7 +15,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`) |
 | `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), a `Recorder` hook that production leaves empty |
 | `photon-dev` | Developer tooling, not shipped: live-server probes that watch the client against a real server |
-| `photon-render` | Vulkan backend, models, atlases and meshes, sky and weather, and what the GUI draws with (`GuiFrame`, font, atlas, item icons); knows nothing of game rules |
+| `photon-render` | Vulkan backend, models, atlases and meshes, sky and weather, and what the GUI draws with (`GuiFrame`, font, atlas, item icons); knows nothing of game rules; `GuiFrame` is the boundary the screens draw through (immediate-mode calls, with `DrawOp` as the test log) |
 | `photon-gui` | Screens, the HUD, chat, options and widgets: layout and logic over game state, turned into draw calls on `GuiFrame` |
 | `photon-audio` | Ogg/Vorbis decoding, mixer, the `Channel`/`Pool` contract the sound engine drives, and (feature `device`) `cpal` output |
 | `photon` | The application: menu and play loops, input, wiring |
