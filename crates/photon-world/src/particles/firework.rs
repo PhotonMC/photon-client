@@ -280,7 +280,7 @@ impl Particle {
                 (false, false) => "minecraft:entity.firework_rocket.blast",
             };
             let pitch = 0.95 + self.random.next_float() * 0.1;
-            self.firework_sound(event, pitch);
+            self.firework_sound(event, pitch, camera);
         }
         if life % 2 == 0 && (life / 2) < explosions.len() as i32 {
             let explosion = &explosions[(life / 2) as usize];
@@ -322,7 +322,7 @@ impl Particle {
                     "minecraft:entity.firework_rocket.twinkle"
                 };
                 let pitch = 0.9 + self.random.next_float() * 0.15;
-                self.firework_sound(event, pitch);
+                self.firework_sound(event, pitch, camera);
             }
             self.removed = true;
         }
@@ -333,14 +333,13 @@ impl Particle {
     }
 
     /// `level.playLocalSound(x, y, z, sound, AMBIENT, 20.0F, pitch, true)`.
-    fn firework_sound(&mut self, event: &'static str, pitch: f32) {
+    fn firework_sound(&mut self, event: &'static str, pitch: f32, camera: Vec3) {
         let place = (self.x, self.y, self.z);
-        self.sound = Some(LocalSound::at(
-            event,
-            LocalSoundSource::Ambient,
-            (20.0, pitch),
-            place,
-        ));
+        let distance_sqr = camera.distance_to_sqr_components(place.0, place.1, place.2);
+        self.sound = Some(
+            LocalSound::at(event, LocalSoundSource::Ambient, (20.0, pitch), place)
+                .delayed_by(distance_sqr),
+        );
     }
 
     /// `Starter.createParticle`: a spark thrown from the starter, tinted at random from the

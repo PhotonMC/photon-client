@@ -169,7 +169,11 @@ impl SoundSystem {
                 instance.attenuation = photon_game::sounds::engine::Attenuation::None;
             }
             let id = self.engine.add(instance);
-            self.engine.play(id);
+            if sound.delay_ticks > 0 {
+                self.engine.play_delayed(id, sound.delay_ticks);
+            } else {
+                self.engine.play(id);
+            }
         }
     }
 

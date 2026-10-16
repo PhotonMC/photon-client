@@ -41,6 +41,7 @@ impl ClientWorld {
         };
         self.push_sound(local_player::LocalSound {
             relative: false,
+            delay_ticks: 0,
             event,
             source: local_player::LocalSoundSource::Players,
             volume,

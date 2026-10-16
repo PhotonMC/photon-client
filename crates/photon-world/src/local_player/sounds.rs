@@ -42,6 +42,8 @@ pub struct LocalSound {
     pub position: (f64, f64, f64),
     /// Heard from the listener, not placed in the world (`SoundInstance.isRelative`).
     pub relative: bool,
+    /// Ticks the sound waits before it plays (`playDelayed`); 0 plays it at once.
+    pub delay_ticks: i32,
 }
 
 impl LocalSound {
@@ -59,7 +61,17 @@ impl LocalSound {
             pitch,
             position,
             relative: false,
+            delay_ticks: 0,
         }
+    }
+
+    /// `ClientLevel.playSound` with `distanceDelay`: heard from more than ten blocks off
+    /// (`distance_sqr` above a hundred), the sound waits for the time sound takes to cross it.
+    pub fn delayed_by(mut self, distance_sqr: f64) -> Self {
+        if distance_sqr > 100.0 {
+            self.delay_ticks = (distance_sqr.sqrt() / 40.0 * 20.0) as i32;
+        }
+        self
     }
 
     /// `SimpleSoundInstance.forLocalAmbience`: heard from the listener, in no place.
@@ -115,6 +127,7 @@ impl LocalPlayer {
     fn play_player_sound(&mut self, event: &'static str, volume: f32, pitch: f32) {
         self.pending_sounds.push(LocalSound {
             relative: false,
+            delay_ticks: 0,
             event,
             source: LocalSoundSource::Players,
             volume,

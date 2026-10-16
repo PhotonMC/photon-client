@@ -8,7 +8,7 @@ use photon_core::random::RandomSource;
 use photon_data::block::classes::BlockInterface;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
-use super::animate::local_sound;
+use super::animate::{delayed_sound, local_sound};
 use super::engine::{ParticleData, ParticleEngine};
 use super::level_events::LevelEventContext;
 
@@ -257,7 +257,7 @@ impl ParticleEngine {
         let pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;
         let centre = (x + 0.5, y + 0.5, z + 0.5);
         let event = ("minecraft:block.vault.deactivate", LocalSoundSource::Blocks);
-        sounds.push(local_sound(event, (1.0, pitch), centre, context));
+        sounds.push(delayed_sound(event, (1.0, pitch), centre, context));
     }
 
     /// Event 1505, `BoneMealItem.addGrowthParticles` then the bone meal's sound: what grows is

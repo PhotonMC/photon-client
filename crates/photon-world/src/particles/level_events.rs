@@ -324,6 +324,7 @@ fn local_sound(
     random.next_long();
     LocalSound {
         relative: false,
+        delay_ticks: 0,
         event,
         source,
         volume,

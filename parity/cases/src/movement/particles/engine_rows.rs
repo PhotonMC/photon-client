@@ -278,11 +278,19 @@ fn engine_rows_10() -> Vec<Value> {
         .describe(8)
         .row(),
         // A vault closing: twenty flames about its cage's middle, small or (ominous) soul, then its sound.
-        engine_row("vault-deactivate", vec![level_event(0, 3016, (2, 64, 2), 0), level_event(1, 3016, (-3, 66, 5), 1)])
-            .ticks(4)
-            .seeds(60)
-            .describe(8)
-            .row(),
+        engine_row(
+            "vault-deactivate",
+            vec![
+                level_event(0, 3016, (2, 64, 2), 0),
+                level_event(1, 3016, (-3, 66, 5), 1),
+                // Heard from afar, a sound is delayed by the distance.
+                level_event(2, 3016, (40, 64, -25), 0),
+            ],
+        )
+        .ticks(4)
+        .seeds(60)
+        .describe(8)
+        .row(),
     ]
 }
 

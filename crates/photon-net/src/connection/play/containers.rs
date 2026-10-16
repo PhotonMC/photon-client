@@ -63,6 +63,7 @@ impl PlaySession {
         };
         self.world.push_sound(LocalSound {
             relative: false,
+            delay_ticks: 0,
             event,
             source: LocalSoundSource::Players,
             volume,

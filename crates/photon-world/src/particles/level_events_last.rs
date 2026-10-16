@@ -7,7 +7,7 @@ use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
-use super::animate::local_sound;
+use super::animate::{delayed_sound, local_sound};
 use super::engine::{ParticleData, ParticleEngine, Spawn};
 use super::level_events::LevelEventContext;
 
@@ -126,7 +126,7 @@ impl ParticleEngine {
                 let random = &mut *context.level_random;
                 let pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;
                 let event = ("minecraft:block.cobweb.place", LocalSoundSource::Blocks);
-                sounds.push(local_sound(event, (1.0, pitch), centre, context));
+                sounds.push(delayed_sound(event, (1.0, pitch), centre, context));
             }
             _ => return false,
         }
@@ -160,7 +160,7 @@ impl ParticleEngine {
                         )
                     };
                     let pitch = spread_pitch(context.level_random);
-                    sounds.push(local_sound((name, source), (1.0, pitch), centre, context));
+                    sounds.push(delayed_sound((name, source), (1.0, pitch), centre, context));
                 }
                 // `FlameParticle.decode`: a datum out of range is the normal flame.
                 let flame = if data == 1 {
@@ -176,7 +176,7 @@ impl ParticleEngine {
                     "minecraft:block.trial_spawner.detect_player",
                     LocalSoundSource::Blocks,
                 );
-                sounds.push(local_sound(event_sound, (1.0, pitch), centre, context));
+                sounds.push(delayed_sound(event_sound, (1.0, pitch), centre, context));
                 let kind = if event == 3013 {
                     "trial_spawner_detection"
                 } else {
@@ -190,7 +190,7 @@ impl ParticleEngine {
                     "minecraft:block.trial_spawner.eject_item",
                     LocalSoundSource::Blocks,
                 );
-                sounds.push(local_sound(event_sound, (1.0, pitch), centre, context));
+                sounds.push(delayed_sound(event_sound, (1.0, pitch), centre, context));
                 self.trial_eject_particles(pos, context);
             }
             3017 => self.trial_eject_particles(pos, context),
@@ -201,7 +201,7 @@ impl ParticleEngine {
                     "minecraft:block.trial_spawner.ominous_activate",
                     LocalSoundSource::Blocks,
                 );
-                sounds.push(local_sound(event_sound, (volume, pitch), centre, context));
+                sounds.push(delayed_sound(event_sound, (volume, pitch), centre, context));
                 self.trial_detect_particles(pos, 0, "trial_spawner_detection_ominous", context);
                 self.trial_become_ominous_particles(pos, context);
             }

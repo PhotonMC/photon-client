@@ -274,6 +274,19 @@ fn ambient<F: FnMut() -> RandomSource>(
     )
 }
 
+/// `Level.playLocalSound` at a place with `distanceDelay` set (`ClientLevel.playSound`): heard
+/// from more than ten blocks off, the sound is delayed by the time sound takes to cross it.
+pub(super) fn delayed_sound<F: FnMut() -> RandomSource>(
+    kind: (&'static str, LocalSoundSource),
+    levels: (f32, f32),
+    position: (f64, f64, f64),
+    context: &mut LevelEventContext<'_, F>,
+) -> LocalSound {
+    let sound = local_sound(kind, levels, position, context);
+    let (x, y, z) = position;
+    sound.delayed_by(context.view.camera.distance_to_sqr_components(x, y, z))
+}
+
 /// `Level.playLocalSound` at a place: its seed drawn from the level's random.
 pub(super) fn local_sound<F: FnMut() -> RandomSource>(
     (event, source): (&'static str, LocalSoundSource),
@@ -284,6 +297,7 @@ pub(super) fn local_sound<F: FnMut() -> RandomSource>(
     context.level_random.next_long();
     LocalSound {
         relative: false,
+        delay_ticks: 0,
         event,
         source,
         volume,

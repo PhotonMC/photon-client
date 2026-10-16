@@ -125,13 +125,18 @@ pub(super) fn sound_line(sound: &LocalSound) -> String {
     let source = sound.source.name();
     let (x, y, z) = sound.position;
     format!(
-        "{},{source},{},{},{},{},{}",
+        "{},{source},{},{},{},{},{}{}",
         sound.event,
         bits32(sound.volume),
         bits32(sound.pitch),
         bits64(x),
         bits64(y),
-        bits64(z)
+        bits64(z),
+        if sound.delay_ticks > 0 {
+            format!(",{}", sound.delay_ticks)
+        } else {
+            String::new()
+        }
     )
 }
 

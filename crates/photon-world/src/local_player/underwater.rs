@@ -48,6 +48,7 @@ impl LocalPlayer {
     fn play_underwater_change(&mut self, event: &'static str) {
         self.pending_sounds.push(LocalSound {
             relative: false,
+            delay_ticks: 0,
             event,
             source: LocalSoundSource::Ambient,
             volume: 1.0,

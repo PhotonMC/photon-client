@@ -75,16 +75,24 @@ class MovementSupport {
             }
             PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","
                 + Oracle.bits(volume) + "," + Oracle.bits(pitch) + ","
-                + Oracle.bits(instance.getX()) + "," + Oracle.bits(instance.getY()) + "," + Oracle.bits(instance.getZ()));
+                + Oracle.bits(instance.getX()) + "," + Oracle.bits(instance.getY()) + "," + Oracle.bits(instance.getZ())
+                + (this.recordedDelay > 0 ? "," + this.recordedDelay : ""));
             return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
         }
+
+        /** The delay of the sound being recorded, in ticks; 0 when it is played at once. */
+        private int recordedDelay;
 
         @Override
         public void playDelayed(
             net.minecraft.client.resources.sounds.SoundInstance instance, int delay) {
-            // A sound heard from afar is delayed by the distance; here it is kept as asked for, the
-            // delay being the sound engine's.
-            this.play(instance);
+            // A sound heard from afar is delayed by the distance: kept as asked for, with its delay.
+            this.recordedDelay = delay;
+            try {
+                this.play(instance);
+            } finally {
+                this.recordedDelay = 0;
+            }
         }
     }
 
