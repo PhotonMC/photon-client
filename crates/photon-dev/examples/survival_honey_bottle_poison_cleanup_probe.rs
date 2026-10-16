@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .find(|observation| {
             observation.container_id == 0
                 && observation.slot == 36
-                && observation.state_id == 2
+                && observation.state_id == initial_content.state_id + 1
                 && observation.item_registry_id == Some(photon_core::ids::ItemId(1_412))
                 && observation.applied_to_world
         })
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .find(|observation| {
             observation.container_id == 0
                 && observation.slot == 36
-                && observation.state_id == 3
+                && observation.state_id == initial_content.state_id + 2
                 && observation.item_registry_id == Some(photon_core::ids::ItemId(1_149))
                 && observation.applied_to_world
         })
@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .as_ref()
             .map(|item| item.positive_component_type_ids())
             != Some([].as_slice())
-        || player.inventory_state_id() != 3
+        || player.inventory_state_id() != remainder_slot.state_id
         || player.inventory_slot_count() != 46
         || player
             .inventory_slot(36)

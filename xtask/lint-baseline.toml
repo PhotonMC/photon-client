@@ -1199,9 +1199,6 @@
 "photon-audio -> photon-game" = 1
 "photon-render -> photon-game" = 1
 
-[registry-literal]
-"crates/photon-dev/examples/survival_honey_bottle_poison_cleanup_probe.rs" = 3
-
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1
 "crates/photon/src/play.rs" = 1
