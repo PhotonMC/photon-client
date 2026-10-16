@@ -199,7 +199,6 @@
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 40
 "crates/photon-game/src/menus/container/bundle.rs::ContainerMenu::bundle_click" = 17
 "crates/photon-game/src/menus/container/clicks.rs::ContainerMenu::do_click" = 102
-"crates/photon-game/src/menus/container/kinds.rs::MenuKind::from_menu_type" = 21
 "crates/photon-game/src/menus/container/kinds.rs::MenuKind::top_slots" = 15
 "crates/photon-game/src/menus/container/mount.rs::ContainerMenu::quick_move_mount" = 12
 "crates/photon-game/src/menus/container/quick_move.rs::ContainerMenu::move_item_stack_to" = 13
@@ -1202,10 +1201,6 @@
 
 [registry-literal]
 "crates/photon-dev/examples/survival_honey_bottle_poison_cleanup_probe.rs" = 3
-"crates/photon-dev/examples/world_block_entity_spawner_state_probe.rs" = 1
-"crates/photon-dev/examples/world_player_container_menu_map_probe.rs" = 1
-"crates/photon-dev/examples/world_player_container_probe.rs" = 1
-"crates/photon-world/src/block/entity.rs" = 1
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1

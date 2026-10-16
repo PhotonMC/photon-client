@@ -64,7 +64,7 @@ impl ClientBlockEntity {
 }
 
 pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<ClientSpawnerState> {
-    if type_id != 9 {
+    if photon_data::block_entity_type::name(type_id) != Some("minecraft:mob_spawner") {
         return None;
     }
     let mut input = tag?;

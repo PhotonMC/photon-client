@@ -4,6 +4,10 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_block_entity_update_probe;
 
+fn is_spawner(type_id: i32) -> bool {
+    photon_data::block_entity_type::id("minecraft:mob_spawner") == Some(type_id)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
@@ -23,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .world
         .block_entity_at(25, 80, -36)
         .ok_or("vanilla spawner block entity was not applied to ClientWorld")?;
-    if entity.type_id != 9 || applied_count == 0 {
+    if !is_spawner(entity.type_id) || applied_count == 0 {
         return Err("vanilla block entity update did not describe a mob spawner".into());
     }
     let state = entity

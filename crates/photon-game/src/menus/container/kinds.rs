@@ -109,32 +109,46 @@ impl Smelter {
     }
 }
 
+/// The menu each `MenuType` opens, by its registry name.
+const MENUS: [(&str, MenuKind); 25] = [
+    ("minecraft:generic_9x1", MenuKind::Chest(1)),
+    ("minecraft:generic_9x2", MenuKind::Chest(2)),
+    ("minecraft:generic_9x3", MenuKind::Chest(3)),
+    ("minecraft:generic_9x4", MenuKind::Chest(4)),
+    ("minecraft:generic_9x5", MenuKind::Chest(5)),
+    ("minecraft:generic_9x6", MenuKind::Chest(6)),
+    ("minecraft:generic_3x3", MenuKind::Dispenser),
+    ("minecraft:crafter_3x3", MenuKind::Crafter),
+    ("minecraft:anvil", MenuKind::Anvil),
+    ("minecraft:beacon", MenuKind::Beacon),
+    (
+        "minecraft:blast_furnace",
+        MenuKind::Furnace(Smelter::BlastFurnace),
+    ),
+    ("minecraft:brewing_stand", MenuKind::Brewing),
+    ("minecraft:crafting", MenuKind::Crafting),
+    ("minecraft:enchantment", MenuKind::Enchantment),
+    ("minecraft:furnace", MenuKind::Furnace(Smelter::Furnace)),
+    ("minecraft:grindstone", MenuKind::Grindstone),
+    ("minecraft:hopper", MenuKind::Hopper),
+    ("minecraft:lectern", MenuKind::Lectern),
+    ("minecraft:loom", MenuKind::Loom),
+    ("minecraft:merchant", MenuKind::Merchant),
+    ("minecraft:shulker_box", MenuKind::ShulkerBox),
+    ("minecraft:smithing", MenuKind::Smithing),
+    ("minecraft:smoker", MenuKind::Furnace(Smelter::Smoker)),
+    ("minecraft:cartography_table", MenuKind::Cartography),
+    ("minecraft:stonecutter", MenuKind::Stonecutter),
+];
+
 impl MenuKind {
     /// The menu a `MenuType` registry id opens, for those modelled.
     pub fn from_menu_type(id: i32) -> Option<Self> {
-        Some(match id {
-            0..=5 => Self::Chest(id as usize + 1),
-            6 => Self::Dispenser,
-            8 => Self::Anvil,
-            10 => Self::Furnace(Smelter::BlastFurnace),
-            7 => Self::Crafter,
-            9 => Self::Beacon,
-            11 => Self::Brewing,
-            12 => Self::Crafting,
-            13 => Self::Enchantment,
-            14 => Self::Furnace(Smelter::Furnace),
-            15 => Self::Grindstone,
-            18 => Self::Loom,
-            21 => Self::Smithing,
-            22 => Self::Furnace(Smelter::Smoker),
-            23 => Self::Cartography,
-            24 => Self::Stonecutter,
-            16 => Self::Hopper,
-            17 => Self::Lectern,
-            19 => Self::Merchant,
-            20 => Self::ShulkerBox,
-            _ => return None,
-        })
+        let name = photon_data::menu_type::name(id)?;
+        MENUS
+            .iter()
+            .find(|(menu, _)| *menu == name)
+            .map(|(_, kind)| *kind)
     }
 
     /// The menu's own slots, before the player's 36.

@@ -4,6 +4,10 @@ use std::time::Duration;
 
 use photon_dev::connect_and_world_player_container_probe;
 
+fn is_chest3(id: i32) -> bool {
+    photon_data::menu_type::id("minecraft:generic_9x3") == Some(id)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
@@ -20,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .find(|observation| observation.applied_to_world)
         .ok_or("vanilla did not provide an applied open-screen packet")?;
-    if open.container_id == 0 || open.menu_type_id != 2 || open.title_nbt.is_empty() {
+    if open.container_id == 0 || !is_chest3(open.menu_type_id) || open.title_nbt.is_empty() {
         return Err("vanilla open-screen fields did not describe a generic 9x3 menu".into());
     }
 
