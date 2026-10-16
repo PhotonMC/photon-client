@@ -73,6 +73,18 @@ const SOUND_EVENTS: &[(i32, &str, LocalSoundSource, f32, Pitch)] = &[
 /// A mob's sound: `(random - random) * 0.2 + 1`.
 const MOB: Pitch = Pitch::Spread(1.0, 0.2);
 
+/// 1032: the portal travel sound, heard from the listener (`forLocalAmbience`), its pitch the
+/// level's next float.
+fn ambience_event<F: FnMut() -> RandomSource>(
+    event: i32,
+    context: &mut LevelEventContext<'_, F>,
+) -> Option<LocalSound> {
+    (event == 1032).then(|| {
+        let pitch = context.level_random.next_float() * 0.4 + 0.8;
+        LocalSound::ambience("minecraft:block.portal.travel", pitch, 0.25)
+    })
+}
+
 /// The sound an event plays alone: the table's, or a fire put out (1009) by its data.
 fn sound_only(event: i32, data: i32) -> Option<(&'static str, LocalSoundSource, f32, Pitch)> {
     match (event, data) {
@@ -139,7 +151,7 @@ impl ParticleEngine {
                 return Vec::new();
             }
         };
-        let mut sounds = Vec::new();
+        let mut sounds: Vec<LocalSound> = ambience_event(event, context).into_iter().collect();
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         if let Some((name, source, volume, pitch)) = sound_only(event, data) {
             let random = &mut *context.level_random;
@@ -311,6 +323,7 @@ fn local_sound(
 ) -> LocalSound {
     random.next_long();
     LocalSound {
+        relative: false,
         event,
         source,
         volume,

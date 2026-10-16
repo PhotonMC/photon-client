@@ -48,6 +48,7 @@ impl ParticleEngine {
         random.next_long();
         if let Some(event) = explosion.sound {
             sounds.push(LocalSound {
+                relative: false,
                 event,
                 source: LocalSoundSource::Blocks,
                 volume: 4.0,

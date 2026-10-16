@@ -334,13 +334,13 @@ impl Particle {
 
     /// `level.playLocalSound(x, y, z, sound, AMBIENT, 20.0F, pitch, true)`.
     fn firework_sound(&mut self, event: &'static str, pitch: f32) {
-        self.sound = Some(LocalSound {
+        let place = (self.x, self.y, self.z);
+        self.sound = Some(LocalSound::at(
             event,
-            source: LocalSoundSource::Ambient,
-            volume: 20.0,
-            pitch,
-            position: (self.x, self.y, self.z),
-        });
+            LocalSoundSource::Ambient,
+            (20.0, pitch),
+            place,
+        ));
     }
 
     /// `Starter.createParticle`: a spark thrown from the starter, tinted at random from the

@@ -40,6 +40,40 @@ pub struct LocalSound {
     pub volume: f32,
     pub pitch: f32,
     pub position: (f64, f64, f64),
+    /// Heard from the listener, not placed in the world (`SoundInstance.isRelative`).
+    pub relative: bool,
+}
+
+impl LocalSound {
+    /// A sound placed in the world.
+    pub fn at(
+        event: &'static str,
+        source: LocalSoundSource,
+        (volume, pitch): (f32, f32),
+        position: (f64, f64, f64),
+    ) -> Self {
+        Self {
+            event,
+            source,
+            volume,
+            pitch,
+            position,
+            relative: false,
+        }
+    }
+
+    /// `SimpleSoundInstance.forLocalAmbience`: heard from the listener, in no place.
+    pub fn ambience(event: &'static str, pitch: f32, volume: f32) -> Self {
+        Self {
+            relative: true,
+            ..Self::at(
+                event,
+                LocalSoundSource::Ambient,
+                (volume, pitch),
+                (0.0, 0.0, 0.0),
+            )
+        }
+    }
 }
 
 /// The sounds waiting to be played. Which are waiting is no part of what a world is equal to.
@@ -80,6 +114,7 @@ impl LocalPlayer {
     /// `Entity.playSound`: one of the player's own sounds, where it is.
     fn play_player_sound(&mut self, event: &'static str, volume: f32, pitch: f32) {
         self.pending_sounds.push(LocalSound {
+            relative: false,
             event,
             source: LocalSoundSource::Players,
             volume,

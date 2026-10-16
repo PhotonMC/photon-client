@@ -244,6 +244,7 @@ pub fn block_sound_of(
         .ok()
         .and_then(|id| photon_data::block_sound::of_state(info.block().name, id))?;
     Some(local_player::LocalSound {
+        relative: false,
         event: pick(sound_type),
         source: local_player::LocalSoundSource::Blocks,
         volume: volume(sound_type.volume),

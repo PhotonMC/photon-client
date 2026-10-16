@@ -62,6 +62,7 @@ impl PlaySession {
             (0.8, 0.8 + self.effects.level_random.next_float() * 0.4)
         };
         self.world.push_sound(LocalSound {
+            relative: false,
             event,
             source: LocalSoundSource::Players,
             volume,

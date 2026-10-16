@@ -157,13 +157,13 @@ impl Particle {
                 if let Some(sound) = sound {
                     // `Mth.randomBetween(this.random, 0.3F, 1.0F)`.
                     let volume = self.random.next_float() * 0.7 + 0.3;
-                    self.sound = Some(LocalSound {
-                        event: sound,
-                        source: LocalSoundSource::Blocks,
-                        volume,
-                        pitch: 1.0,
-                        position: (self.x, self.y, self.z),
-                    });
+                    let place = (self.x, self.y, self.z);
+                    self.sound = Some(LocalSound::at(
+                        sound,
+                        LocalSoundSource::Blocks,
+                        (volume, 1.0),
+                        place,
+                    ));
                 }
             }
             _ => {}

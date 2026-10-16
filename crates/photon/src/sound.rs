@@ -164,6 +164,10 @@ impl SoundSystem {
             instance.volume = sound.volume;
             instance.pitch = sound.pitch;
             instance.position = sound.position;
+            if sound.relative {
+                instance.relative = true;
+                instance.attenuation = photon_game::sounds::engine::Attenuation::None;
+            }
             let id = self.engine.add(instance);
             self.engine.play(id);
         }

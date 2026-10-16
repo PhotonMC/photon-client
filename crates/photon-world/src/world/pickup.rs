@@ -40,6 +40,7 @@ impl ClientWorld {
             _ => PickedUp::Other,
         };
         self.push_sound(local_player::LocalSound {
+            relative: false,
             event,
             source: local_player::LocalSoundSource::Players,
             volume,

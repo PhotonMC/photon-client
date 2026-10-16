@@ -61,7 +61,9 @@ class MovementSupport {
             // (Getting into and out of water is certain, and is kept; the loop and the additions are not.)
             boolean waterChange = instance.getIdentifier().toString().equals("minecraft:ambient.underwater.enter")
                 || instance.getIdentifier().toString().equals("minecraft:ambient.underwater.exit");
-            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && !fireworkSound && !waterChange || chanceSlide) {
+            // (The portal travel sound of a level event is drawn from the level's seeded random: kept.)
+            boolean portalTravel = instance.getIdentifier().toString().equals("minecraft:block.portal.travel");
+            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && !fireworkSound && !waterChange && !portalTravel || chanceSlide) {
                 return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
             }
             // The swim, splash, hurt and death sounds' pitch is drawn from the entity's own random source, which the scene

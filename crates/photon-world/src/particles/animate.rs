@@ -283,6 +283,7 @@ pub(super) fn local_sound<F: FnMut() -> RandomSource>(
 ) -> LocalSound {
     context.level_random.next_long();
     LocalSound {
+        relative: false,
         event,
         source,
         volume,
