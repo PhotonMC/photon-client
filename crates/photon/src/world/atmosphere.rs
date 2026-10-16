@@ -46,7 +46,8 @@ pub fn weather(
         state: |[x, y, z]: [i32; 3]| {
             world
                 .block_state_at(x, y, z)
-                .and_then(|state| u32::try_from(state).ok())
+                .filter(|state| *state >= 0)
+                .map(photon_core::ids::BlockStateId)
         },
         light: |[x, y, z]: [i32; 3]| {
             (

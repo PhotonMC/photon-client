@@ -15,7 +15,7 @@ use photon_core::direction::{
     Axis, AxisDirection, Direction, DirectionYRotError, DirectionYRotationError, Plane,
 };
 use photon_core::identifier::Identifier;
-use photon_core::ids::EntityId;
+use photon_core::ids::{BlockStateId, EntityId};
 use photon_core::math::{self, Quaternionf, Vec2, Vec3, Vec3f};
 use photon_core::nbt::{self, Field, FieldValue};
 use photon_core::random::RandomSource;

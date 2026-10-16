@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// A boat's data (`VehicleEntity.DATA_ID_*`, `AbstractBoat.DATA_ID_*`), each when
 /// the data holds it.
@@ -21,7 +22,12 @@ pub(crate) fn minecart_data_from_metadata(metadata: &[u8]) -> MinecartData {
     let custom_display = find_metadata_field(metadata, CUSTOM_DISPLAY_BLOCK_DATA_ID)
         .filter(|(serializer, _)| *serializer == OPTIONAL_BLOCK_STATE_SERIALIZER_ID)
         .and_then(|(_, mut value)| photon_core::wire::read_varint(&mut value).ok())
-        .map(|id| u32::try_from(id).ok().filter(|id| *id != 0));
+        .map(|id| {
+            u32::try_from(id)
+                .ok()
+                .filter(|id| *id != 0)
+                .map(|id| BlockStateId(id as i32))
+        });
     MinecartData {
         custom_display,
         display_offset: metadata_int_value(metadata, DISPLAY_OFFSET_DATA_ID),
@@ -151,7 +157,7 @@ pub(crate) struct BoatData {
 /// The custom block is a block state number, none inside when the server names none.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct MinecartData {
-    pub(super) custom_display: Option<Option<u32>>,
+    pub(super) custom_display: Option<Option<BlockStateId>>,
     pub(super) display_offset: Option<i32>,
     pub(super) fuel: Option<bool>,
 }

@@ -1,6 +1,7 @@
 //! The fluid a block state holds (`BlockBehaviour.getFluidState` and the
 //! classes that override it), and what the reference reads of it.
 
+use photon_core::ids::BlockStateId;
 use photon_data::block::classes::BlockClass;
 use photon_data::block::definition::Fluid;
 use photon_data::block::properties::{LEVEL, WATERLOGGED};
@@ -71,11 +72,11 @@ impl FluidState {
 
     /// `FluidState.createLegacyBlock`: the liquid block state that stands for
     /// this fluid, or air for none.
-    pub fn legacy_block(self) -> u32 {
+    pub fn legacy_block(self) -> BlockStateId {
         let block = match family(self.fluid) {
             Fluid::Water => photon_data::block::blocks::id::WATER,
             Fluid::Lava => photon_data::block::blocks::id::LAVA,
-            _ => return 0,
+            _ => return BlockStateId(0),
         };
         // `FlowingFluid.getLegacyLevel`.
         let level = if self.is_source() {
@@ -83,7 +84,7 @@ impl FluidState {
         } else {
             8 - u32::from(self.amount.min(8)) + if self.falling { 8 } else { 0 }
         };
-        BLOCKS[block].first_state_id() + level
+        BLOCKS[block].state_at(level)
     }
 }
 

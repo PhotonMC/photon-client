@@ -1,6 +1,7 @@
 //! `Block.animateTick` of the blocks carried: torches, fire, campfires, candles, the furnaces and
 //! the brewing stand. Each draws from the block random it is given.
 
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
@@ -179,7 +180,7 @@ impl ParticleEngine {
         // `SoulFireBlock.canBurn` is always true.
         let burns = |state: i32| soul || can_burn(state);
         let below = state(0, -1, 0);
-        let below_sturdy = crate::block::state(below as u32)
+        let below_sturdy = crate::block::state(BlockStateId(below))
             .is_some_and(|info| info.is_face_sturdy(photon_core::direction::Direction::Up));
         let tenth = f64::from(0.1_f32);
         if !burns(below) && !below_sturdy {

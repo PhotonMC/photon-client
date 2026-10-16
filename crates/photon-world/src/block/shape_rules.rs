@@ -137,7 +137,7 @@ mod tests {
             .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
             .collect();
         let id = block.state_id(&chosen).expect("a state");
-        (block, id - block.first_state_id())
+        (block, (id.0 - block.first_state_id().0) as u32)
     }
 
     /// Every state of every block has both shapes; a class whose shape is
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn bamboo_collides_where_its_offset_puts_it() {
         let (bamboo, offset) = state("minecraft:bamboo", &[]);
-        let id = bamboo.first_state_id() + offset;
+        let id = bamboo.state_at(offset);
         let at = |position: [i32; 3]| {
             crate::block::registry::collision_shape_at(id, position)
                 .bounds()

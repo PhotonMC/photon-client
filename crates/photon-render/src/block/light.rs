@@ -16,8 +16,8 @@ use photon_world::block::StateInfo;
 pub const FULL_BRIGHT: i32 = 15_728_880;
 
 /// What the lighting reads of a state; nothing reads as air.
-fn traits(state: Option<u32>) -> &'static StateInfo {
-    photon_world::block::state_or_air(state.map_or(0, i64::from))
+fn traits(state: Option<photon_core::ids::BlockStateId>) -> &'static StateInfo {
+    photon_world::block::state_or_air(state.map_or(0, |state| i64::from(state.0)))
 }
 
 fn pack(block: i32, sky: i32) -> i32 {
@@ -237,11 +237,15 @@ pub struct QuadLight {
 
 impl<S, L> Lighter<S, L>
 where
-    S: Fn([i32; 3]) -> Option<u32>,
+    S: Fn([i32; 3]) -> Option<photon_core::ids::BlockStateId>,
     L: Fn([i32; 3]) -> (u8, u8),
 {
     /// `LightCoordsUtil.getLightCoords` for a state standing at a position.
-    pub fn light_coords(&self, state: Option<u32>, position: [i32; 3]) -> i32 {
+    pub fn light_coords(
+        &self,
+        state: Option<photon_core::ids::BlockStateId>,
+        position: [i32; 3],
+    ) -> i32 {
         let traits = traits(state);
         if traits.emissive_rendering {
             return FULL_BRIGHT;
@@ -271,7 +275,7 @@ where
     /// smooth lighting applies to this block and model.
     pub fn light_quad(
         &self,
-        state: u32,
+        state: photon_core::ids::BlockStateId,
         position: [i32; 3],
         positions: &[[f32; 3]; 4],
         direction: Direction,
@@ -427,7 +431,7 @@ pub fn light_uv(packed: i32) -> [f32; 2] {
 mod tests {
     use super::*;
 
-    fn stone() -> u32 {
+    fn stone() -> photon_core::ids::BlockStateId {
         photon_data::block::registry::block("minecraft:stone")
             .expect("stone")
             .default_state_id()

@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::{EntityId, ItemId};
+use photon_core::ids::{BlockStateId, EntityId, ItemId};
 
 impl LocalPlayer {
     /// How many ticks the player has lived, which the model's idle sway
@@ -167,7 +167,7 @@ impl LocalPlayer {
 }
 
 pub(crate) fn property(state_id: Option<i32>, name: &str) -> Option<&'static str> {
-    let (block, offset) = registry::block_for_state(state_id? as u32)?;
+    let (block, offset) = registry::block_for_state(BlockStateId(state_id?))?;
     block
         .properties_at(offset)?
         .into_iter()

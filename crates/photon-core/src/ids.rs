@@ -38,6 +38,25 @@ id_type!(
 );
 
 id_type!(
+    /// A block state's id in the block state registry (`Block.BLOCK_STATE_REGISTRY`), the number
+    /// chunk data and block updates carry.
+    BlockStateId
+);
+
+impl BlockStateId {
+    /// The id a wire number names; none for a negative one, which no state has.
+    pub fn non_negative(id: i32) -> Option<Self> {
+        (id >= 0).then_some(Self(id))
+    }
+}
+
+impl From<BlockStateId> for i64 {
+    fn from(id: BlockStateId) -> Self {
+        Self::from(id.0)
+    }
+}
+
+id_type!(
     /// An entity type's id in the `minecraft:entity_type` registry (`EntityType`), the number
     /// the server sends with an added entity.
     EntityTypeId

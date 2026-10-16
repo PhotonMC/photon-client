@@ -1,5 +1,6 @@
 //! Item models turned into layers once and kept.
 
+use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
 use photon_render::model::DisplayContext;
@@ -11,7 +12,7 @@ pub struct ItemLayerCache {
     context: DisplayContext,
     layers: std::collections::HashMap<i32, Vec<PatchLayers>>,
     /// Block states drawn on entities, by state id, with the light each gives off.
-    blocks: std::collections::HashMap<u32, Option<(ItemLayer, i32)>>,
+    blocks: std::collections::HashMap<BlockStateId, Option<(ItemLayer, i32)>>,
 }
 
 /// The layers of an item with one component patch.
@@ -28,7 +29,11 @@ impl ItemLayerCache {
 
     /// The model of a block state drawn on an entity (`BlockModelResolver`),
     /// built the first time it is drawn.
-    pub fn block(&mut self, state: u32, renderer: &BlockRenderer) -> Option<&(ItemLayer, i32)> {
+    pub fn block(
+        &mut self,
+        state: BlockStateId,
+        renderer: &BlockRenderer,
+    ) -> Option<&(ItemLayer, i32)> {
         self.blocks
             .entry(state)
             .or_insert_with(|| renderer.entity_block(state))

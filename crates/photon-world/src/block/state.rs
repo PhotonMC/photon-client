@@ -125,8 +125,8 @@ impl PairCache {
 
 impl States {
     /// A state's values; `None` outside the registry.
-    pub fn get(&self, state: u32) -> Option<&StateInfo> {
-        self.states.get(state as usize)
+    pub fn get(&self, state: photon_core::ids::BlockStateId) -> Option<&StateInfo> {
+        self.states.get(usize::try_from(state.0).ok()?)
     }
 
     /// `getShape` of a state, with no level and no entity and before the

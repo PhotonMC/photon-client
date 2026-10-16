@@ -1,6 +1,7 @@
 //! The block, the water and the fire laid over the view from inside
 //! (`ScreenEffectRenderer.submit`), as triangles in the hand's view space.
 
+use photon_core::ids::BlockStateId;
 use photon_net::connection::PlaySession;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::scene::Vertex;
@@ -55,7 +56,7 @@ pub fn screen_effects(
     let world = session.world();
     if let Some(state) = player.view_blocking_state(world)
         && let Some(sprite) = renderer
-            .particle_sprite(state as u32)
+            .particle_sprite(BlockStateId(state))
             .and_then(|name| corners(renderer, name))
     {
         effects.block = triangles(&block_quad(sprite, BLOCK_COLOR));

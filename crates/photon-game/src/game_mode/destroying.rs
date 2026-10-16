@@ -261,7 +261,8 @@ pub(super) fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool
     }
     let fluid = photon_world::block::state_or_air(i64::from(old))
         .fluid
-        .legacy_block() as i32;
+        .legacy_block()
+        .0;
     let position: Vec3 = ctx.player.position();
     let changed = ctx
         .world

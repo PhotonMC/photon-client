@@ -60,7 +60,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 let others: Vec<Value> = states
                     .iter()
                     .filter(|(state, _)| {
-                        photon_data::block::registry::block_for_state(*state)
+                        photon_data::block::registry::block_for_state(BlockStateId(*state as i32))
                             .is_some_and(|(block, _)| block.name == *name)
                     })
                     .map(|(state, color)| json!([state, color]))

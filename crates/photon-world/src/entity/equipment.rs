@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityTypeId;
 
 impl ClientEntity {
@@ -38,10 +39,10 @@ impl ClientEntity {
     }
 
     /// The block state an enderman carries (`getCarriedBlock`), by its id.
-    pub fn carried_block_state(&self) -> Option<u32> {
-        u32::try_from(self.living.carried_state)
-            .ok()
-            .filter(|state| *state != 0)
+    pub fn carried_block_state(&self) -> Option<BlockStateId> {
+        Some(self.living.carried_state)
+            .filter(|state| *state > 0)
+            .map(BlockStateId)
     }
 
     /// An armor stand's flags and poses.

@@ -61,7 +61,7 @@ pub(super) fn bedrock() -> i32 {
     static STATE: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
     *STATE.get_or_init(|| {
         photon_data::block::registry::block("minecraft:bedrock")
-            .map_or(0, |block| block.default_state_id() as i32)
+            .map_or(0, |block| block.default_state_id().0)
     })
 }
 

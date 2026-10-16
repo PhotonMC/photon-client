@@ -21,8 +21,8 @@ pub(super) fn movement_properties(label: &str) -> Result<Value, String> {
             let first = block.first_state_id();
             let mut fluids: Vec<String> = (0..block.state_count())
                 .map(|offset| {
-                    let state =
-                        photon_world::block::state(first + offset).expect("a registry state");
+                    let state = photon_world::block::state(BlockStateId(first.0 + offset as i32))
+                        .expect("a registry state");
                     let fluid = state.fluid;
                     format!(
                         "{}|{}|{}|{:08x}|{}|{}",

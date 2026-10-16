@@ -18,14 +18,14 @@ pub(super) fn shape_table(label: &str, outline: bool) -> Value {
             let mut per_state = Vec::new();
             let mut moves = false;
             for offset in 0..block.state_count() {
-                let info = photon_world::block::state(block.first_state_id() + offset)
-                    .expect("a registry state");
+                let info =
+                    photon_world::block::state(block.state_at(offset)).expect("a registry state");
                 let origin_collision;
                 let shape = if outline {
                     states.outline(info)
                 } else {
                     origin_collision = photon_world::block::registry::collision_shape_at(
-                        block.first_state_id() + offset,
+                        block.state_at(offset),
                         [0; 3],
                     );
                     &origin_collision
@@ -370,7 +370,7 @@ pub(super) fn named_state(block: &Value) -> Result<i32, String> {
     }
     definition
         .state_id(&chosen)
-        .map(|state| state as i32)
+        .map(|state| state.0)
         .ok_or_else(|| format!("bad properties for {name}"))
 }
 

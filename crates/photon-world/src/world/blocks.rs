@@ -1,4 +1,5 @@
 use crate::*;
+use photon_core::ids::BlockStateId;
 
 impl ClientWorld {
     pub fn loaded_block_entity_count(&self) -> usize {
@@ -91,7 +92,7 @@ impl ClientWorld {
         let Some(state_id) = self.block_state_at(x, y, z) else {
             return false;
         };
-        let is_stairs = block::state(state_id as u32).is_some_and(|state| {
+        let is_stairs = block::state(BlockStateId(state_id)).is_some_and(|state| {
             state
                 .block()
                 .class

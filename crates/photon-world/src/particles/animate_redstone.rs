@@ -2,6 +2,7 @@
 //! sponge, a bubble column, the ender chest and the sculk sensors.
 
 use photon_core::direction::Direction;
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
@@ -263,7 +264,7 @@ impl ParticleEngine {
                 .world
                 .block_state_at(pos.0 + sx, pos.1 + sy, pos.2 + sz)
                 .unwrap_or(0);
-            if crate::block::state(next as u32).is_some_and(|info| info.solid_render) {
+            if crate::block::state(BlockStateId(next)).is_some_and(|info| info.solid_render) {
                 continue;
             }
             let random = &mut *context.level_random;
@@ -392,7 +393,7 @@ impl ParticleEngine {
             .block_state_at(pos.0 + sx, pos.1 + sy, pos.2 + sz)
             .unwrap_or(0);
         // The sponge occludes: the drop forms unless the neighbour is sturdy toward it.
-        let sturdy = crate::block::state(next as u32)
+        let sturdy = crate::block::state(BlockStateId(next))
             .is_some_and(|info| info.is_face_sturdy(direction.opposite()));
         if sturdy {
             return;

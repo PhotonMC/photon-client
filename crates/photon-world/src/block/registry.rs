@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use photon_core::{
     binary::BlockPos,
+    ids::BlockStateId,
     shape::{Shapes, VoxelShape},
 };
 
@@ -34,9 +35,9 @@ pub struct ClientBlockStateRegistry {
 impl ClientBlockStateRegistry {
     /// Java `Block.stateById`: a number outside the registry reads as air.
     pub fn resolve_state_id(&self, state_id: i32) -> i32 {
-        match u32::try_from(state_id) {
-            Ok(id) if photon_data::block::registry::block_for_state(id).is_some() => state_id,
-            _ => 0,
+        match photon_data::block::registry::block_for_state(BlockStateId(state_id)) {
+            Some(_) => state_id,
+            None => 0,
         }
     }
 
@@ -44,14 +45,12 @@ impl ClientBlockStateRegistry {
     /// as a block at the origin has it: one that shifts by position is
     /// shifted by the origin's shift.
     pub fn collision_shape(&self, state_id: i32) -> VoxelShape {
-        u32::try_from(state_id)
-            .map_or_else(|_| Shapes::empty(), |id| collision_shape_at(id, [0; 3]))
+        collision_shape_at(BlockStateId(state_id), [0; 3])
     }
 
     /// The same for a block at `position`.
     pub fn collision_shape_at(&self, state_id: i32, position: [i32; 3]) -> VoxelShape {
-        u32::try_from(state_id)
-            .map_or_else(|_| Shapes::empty(), |id| collision_shape_at(id, position))
+        collision_shape_at(BlockStateId(state_id), position)
     }
 
     /// A stair state's `shape`.
@@ -64,8 +63,8 @@ impl ClientBlockStateRegistry {
     /// The pinned registry numbers blocks in the same order it numbers their
     /// states, so the block's position in it is its registry number.
     pub fn block_registry_id(&self, state_id: i32) -> Option<i32> {
-        let id = u32::try_from(state_id).ok()?;
-        photon_data::block::registry::block_index_for_state(id).map(|(index, _)| index as i32)
+        photon_data::block::registry::block_index_for_state(BlockStateId(state_id))
+            .map(|(index, _)| index as i32)
     }
 
     /// `BlockTags.CLIMBABLE`.
@@ -123,7 +122,7 @@ impl ClientBlockStateRegistry {
 
 /// `BlockState.getShape` with no entity in the question: the outline a
 /// click aims at, moved by the block's random offset where it has one.
-pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
+pub fn outline_shape(state_id: BlockStateId, position: [i32; 3]) -> VoxelShape {
     let Some(info) = crate::block::state(state_id) else {
         return Shapes::empty();
     };
@@ -139,7 +138,7 @@ pub fn outline_shape(state_id: u32, position: [i32; 3]) -> VoxelShape {
 
 /// `BlockState.getCollisionShape` with no entity in the question, moved by
 /// the block's random offset at `position` where it has one.
-pub fn collision_shape_at(state_id: u32, position: [i32; 3]) -> VoxelShape {
+pub fn collision_shape_at(state_id: BlockStateId, position: [i32; 3]) -> VoxelShape {
     let Some(info) = crate::block::state(state_id) else {
         return Shapes::empty();
     };

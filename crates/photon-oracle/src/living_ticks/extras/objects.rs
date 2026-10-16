@@ -130,7 +130,7 @@ pub(crate) fn display_extra(
     described["x_rot"] = json!(hex(x_rot));
     let display = entity.display().ok_or("a display")?;
     if let Some(block) = display.block_state() {
-        described["block_state"] = json!(block);
+        described["block_state"] = json!(block.0);
     }
     if let Some(context) = display.item_context() {
         described["item_context"] = json!(context);

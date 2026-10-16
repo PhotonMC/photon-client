@@ -2,6 +2,7 @@
 //! the respawn anchor and the end rod.
 
 use photon_core::direction::Direction;
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
@@ -135,8 +136,8 @@ impl ParticleEngine {
             let ay = by - random.next_int_bound(10).unwrap_or(0);
             let az = bz + spread(random);
             let state = context.world.block_state_at(ax, ay, az).unwrap_or(0);
-            let full =
-                crate::block::state(state as u32).is_some_and(|info| info.collision_full_block);
+            let full = crate::block::state(BlockStateId(state))
+                .is_some_and(|info| info.collision_full_block);
             if !full {
                 let at = (
                     f64::from(ax) + random.next_double(),
@@ -167,7 +168,7 @@ impl ParticleEngine {
             .world
             .block_state_at(bx + dx, by + dy, bz + dz)
             .unwrap_or(0);
-        let covered = crate::block::state(neighbour as u32)
+        let covered = crate::block::state(BlockStateId(neighbour))
             .is_some_and(|info| info.is_face_sturdy(direction.opposite()));
         if covered {
             return;

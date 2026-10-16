@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// The cache, worked out on first use.
 pub fn states() -> &'static States {
@@ -7,7 +8,7 @@ pub fn states() -> &'static States {
 }
 
 /// A state's values; `None` outside the registry.
-pub fn state(state: u32) -> Option<&'static StateInfo> {
+pub fn state(state: BlockStateId) -> Option<&'static StateInfo> {
     states().get(state)
 }
 
@@ -15,9 +16,9 @@ pub fn state(state: u32) -> Option<&'static StateInfo> {
 /// (`Block.stateById`).
 pub fn state_or_air(state: i64) -> &'static StateInfo {
     let states = states();
-    u32::try_from(state)
+    i32::try_from(state)
         .ok()
-        .and_then(|state| states.get(state))
+        .and_then(|state| states.get(BlockStateId(state)))
         .unwrap_or(&states.states[0])
 }
 

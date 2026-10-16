@@ -32,7 +32,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                 i32_field(block, "y")?,
                 i32_field(block, "z")?,
             ),
-            state as i32,
+            state.0,
         );
     }
     let mut world = ClientWorld::new(dimension);
@@ -53,7 +53,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
                                 placed.get(&(chunk_x * 16 + x, min_y + y, chunk_z * 16 + z))
                             {
                                 states[(y * 256 + z * 16 + x) as usize] = state;
-                                let (block, _) = registry::block_for_state(state as u32)
+                                let (block, _) = registry::block_for_state(BlockStateId(state))
                                     .ok_or("state out of range")?;
                                 if !matches!(
                                     block.name,

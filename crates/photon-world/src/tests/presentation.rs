@@ -310,7 +310,8 @@ fn a_block_broken_makes_its_break_sound_at_its_middle_and_a_hit_a_softer_one() {
     let mut world = ClientWorld::default();
     let stone = photon_data::block::registry::block("minecraft:stone")
         .expect("stone")
-        .default_state_id() as i32;
+        .default_state_id()
+        .0;
     let broken = crate::block_sound_of(
         (10, 64, -3),
         stone,
@@ -435,7 +436,8 @@ fn the_level_events_wait_for_the_particle_engine_in_order() {
     let mut world = ClientWorld::default();
     let stone = photon_data::block::registry::block("minecraft:stone")
         .expect("stone")
-        .default_state_id() as i32;
+        .default_state_id()
+        .0;
     world.apply_level_event(2001, (10, 64, -3), stone);
     world.apply_level_event(1000, (0, 0, 0), 0);
     let event = |event, pos, data| crate::LevelEvent::Level { event, pos, data };

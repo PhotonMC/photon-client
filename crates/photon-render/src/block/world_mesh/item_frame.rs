@@ -1,11 +1,12 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 
 impl BlockRenderer {
     /// The fake state an item frame's model is drawn from (`BlockStateDefinitions.getItemFrameFakeState`),
     /// for [`Self::entity_block`].
-    pub fn item_frame_state(&self, glowing: bool, map: bool) -> u32 {
-        self.frame_base + u32::from(glowing) * 2 + u32::from(map)
+    pub fn item_frame_state(&self, glowing: bool, map: bool) -> BlockStateId {
+        BlockStateId((self.frame_base + u32::from(glowing) * 2 + u32::from(map)) as i32)
     }
 
     /// The quads an item's default stack draws in a display context, layer

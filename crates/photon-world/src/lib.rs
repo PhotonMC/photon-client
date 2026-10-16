@@ -1,5 +1,6 @@
 //! Queryable client-side world state built from decoded chunk sections.
 
+use photon_core::ids::BlockStateId;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::Arc;
 
@@ -253,9 +254,9 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
             find_metadata_field(metadata, objects::primed_tnt::BLOCK_STATE_DATA_ID)
             && let Some(id) = photon_core::wire::read_varint(&mut value)
                 .ok()
-                .and_then(|id| u32::try_from(id).ok())
+                .filter(|id| *id >= 0)
         {
-            state.set_block_state(id);
+            state.set_block_state(BlockStateId(id));
         }
     }
     if entity.is_minecart() {

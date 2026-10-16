@@ -157,7 +157,7 @@ impl ClientEntity {
                 }
             }
             _ if self.is_minecart() => {
-                match self.minecart_display_block().filter(|&state| state != 0) {
+                match self.minecart_display_block().filter(|&state| state.0 != 0) {
                     Some(_) => bounds.expand_towards(
                         0.0,
                         f64::from(self.minecart_display_offset() as f32 * 0.75 / 16.0),

@@ -190,8 +190,8 @@ mod tests {
     fn the_antenna_shows_the_block_item_with_its_state_properties() {
         let block = photon_data::block::registry::block("minecraft:sea_pickle").expect("block");
         let first = block.first_state_id();
-        let state_of = |stack| block_item_state(&stack).map(|state| state - first);
-        let default = block.default_state_id() - first;
+        let state_of = |stack| block_item_state(&stack).map(|state| state.0 - first.0);
+        let default = block.default_state_id().0 - first.0;
         let plain = ClientItemStackState::new(
             1,
             photon_core::ids::ItemId(

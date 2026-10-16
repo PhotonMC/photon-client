@@ -8,6 +8,7 @@
 //! region before compiling them.
 
 use super::ClientWorld;
+use photon_core::ids::BlockStateId;
 
 /// Block states and light in a box of blocks, and the biomes, in quarts,
 /// under it.
@@ -188,7 +189,7 @@ impl ClientWorld {
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::aabb::BlockHitResult> {
         self.clip_with(from, to, |state, position| {
-            crate::outline_shape(state as u32, position)
+            crate::outline_shape(BlockStateId(state), position)
         })
     }
 

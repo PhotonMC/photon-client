@@ -159,7 +159,7 @@ pub fn collision(class: BlockClass, block: &Block, offset: u32) -> Option<VoxelS
         }
         C::MossyCarpetBlock => {
             if flag(block, offset, "bottom") {
-                let default = block.default_state_id() - block.first_state_id();
+                let default = (block.default_state_id().0 - block.first_state_id().0) as u32;
                 mossy_carpet(block, default)
             } else {
                 Shapes::empty()

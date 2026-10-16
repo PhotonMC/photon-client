@@ -8,7 +8,7 @@
 //! any other class answers [`Rule::Unported`], and the caller does not
 //! predict what it does.
 
-use photon_core::ids::ItemId;
+use photon_core::ids::{BlockStateId, ItemId};
 use std::collections::BTreeMap;
 
 use photon_core::direction::{Axis, Direction};
@@ -25,7 +25,7 @@ pub enum Rule<T> {
 }
 
 fn block_index(state: i32) -> Option<(usize, u32)> {
-    registry::block_index_for_state(u32::try_from(state).ok()?)
+    registry::block_index_for_state(BlockStateId(state))
 }
 
 fn block(state: i32) -> Option<&'static Block> {
@@ -49,7 +49,7 @@ fn state_owner(state: i32, method: Method) -> Option<BlockClass> {
 
 /// A property's value in a state.
 pub fn property(state: i32, name: &str) -> Option<&'static str> {
-    let (block, offset) = registry::block_for_state(u32::try_from(state).ok()?)?;
+    let (block, offset) = registry::block_for_state(BlockStateId(state))?;
     block
         .properties_at(offset)?
         .into_iter()
@@ -59,7 +59,7 @@ pub fn property(state: i32, name: &str) -> Option<&'static str> {
 
 /// `setValue`: the same state with one property changed.
 pub fn with_property(state: i32, name: &str, value: &str) -> Option<i32> {
-    let (block, offset) = registry::block_for_state(u32::try_from(state).ok()?)?;
+    let (block, offset) = registry::block_for_state(BlockStateId(state))?;
     let mut chosen: BTreeMap<String, String> = block
         .properties_at(offset)?
         .into_iter()
@@ -67,16 +67,16 @@ pub fn with_property(state: i32, name: &str, value: &str) -> Option<i32> {
         .collect();
     let slot = chosen.get_mut(name)?;
     *slot = value.to_owned();
-    block.state_id(&chosen).map(|id| id as i32)
+    block.state_id(&chosen).map(|id| id.0)
 }
 
 fn default_state(block: usize) -> i32 {
-    registry::BLOCKS[block].default_state_id() as i32
+    registry::BLOCKS[block].default_state_id().0
 }
 
 fn is_air(state: i32) -> bool {
     matches!(
-        registry::block_for_state(state as u32).map(|(block, _)| block.name),
+        registry::block_for_state(BlockStateId(state)).map(|(block, _)| block.name),
         Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air")
     )
 }

@@ -10,6 +10,7 @@ pub mod in_hand;
 pub(crate) mod repairable;
 pub mod values;
 
+use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 use photon_data::item::registry::{ITEMS, Item, RuleBlocks, Tool};
 use photon_world::ClientBlockStateRegistry;
@@ -33,8 +34,10 @@ pub fn id_of(name: &str) -> Option<ItemId> {
 fn rule_covers(blocks: &RuleBlocks, registry: &ClientBlockStateRegistry, state: i32) -> bool {
     match blocks {
         RuleBlocks::Tag(tag) => registry.is_state_in_tag(state, tag),
-        RuleBlocks::Blocks(names) => photon_data::block::registry::block_for_state(state as u32)
-            .is_some_and(|(block, _)| names.contains(&block.name)),
+        RuleBlocks::Blocks(names) => {
+            photon_data::block::registry::block_for_state(BlockStateId(state))
+                .is_some_and(|(block, _)| names.contains(&block.name))
+        }
     }
 }
 

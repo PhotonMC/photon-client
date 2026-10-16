@@ -8,6 +8,8 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use photon_core::ids::BlockStateId;
+
 pub use super::blocks::BLOCKS;
 pub use super::definition::{Block, Property, PropertyKind};
 pub use super::tints::TINTS;
@@ -88,8 +90,18 @@ impl Block {
     }
 
     /// The number of the block's first state.
-    pub fn first_state_id(&self) -> u32 {
-        layout().first_state[self.index()]
+    pub fn first_state_id(&self) -> BlockStateId {
+        BlockStateId(layout().first_state[self.index()] as i32)
+    }
+
+    /// How far the default state sits from the block's first.
+    pub fn default_offset(&self) -> u32 {
+        (self.default_state_id().0 - self.first_state_id().0) as u32
+    }
+
+    /// The state `offset` places after the block's first.
+    pub fn state_at(&self, offset: u32) -> BlockStateId {
+        BlockStateId(self.first_state_id().0 + offset as i32)
     }
 
     /// The value each property holds in one of this block's states.
@@ -145,7 +157,10 @@ impl Block {
     ///
     /// A property the caller did not name keeps the default state's value, and
     /// a value the property cannot hold gives nothing back.
-    pub fn state_id(&self, chosen: &std::collections::BTreeMap<String, String>) -> Option<u32> {
+    pub fn state_id(
+        &self,
+        chosen: &std::collections::BTreeMap<String, String>,
+    ) -> Option<BlockStateId> {
         let mut offset = 0_u32;
         for (slot, property) in self.properties.iter().enumerate() {
             let value = match chosen.get(property.name) {
@@ -154,30 +169,31 @@ impl Block {
             };
             offset = offset * property.values.len() as u32 + value as u32;
         }
-        Some(self.first_state_id() + offset)
+        Some(BlockStateId(self.first_state_id().0 + offset as i32))
     }
 
     /// The state the block starts in.
-    pub fn default_state_id(&self) -> u32 {
+    pub fn default_state_id(&self) -> BlockStateId {
         let mut offset = 0_u32;
         for (slot, property) in self.properties.iter().enumerate() {
             offset = offset * property.values.len() as u32 + self.default_value(slot) as u32;
         }
-        self.first_state_id() + offset
+        BlockStateId(self.first_state_id().0 + offset as i32)
     }
 }
 
 /// Which block a state number belongs to, by index, and how far into it the
 /// state sits.
-pub fn block_index_for_state(state_id: u32) -> Option<(usize, u32)> {
+pub fn block_index_for_state(state: BlockStateId) -> Option<(usize, u32)> {
     let layout = layout();
+    let state_id = u32::try_from(state.0).ok()?;
     let index = usize::from(*layout.owner.get(state_id as usize)?);
     Some((index, state_id - layout.first_state[index]))
 }
 
 /// Which block a state number belongs to, and how far into it the state sits.
-pub fn block_for_state(state_id: u32) -> Option<(&'static Block, u32)> {
-    let (index, offset) = block_index_for_state(state_id)?;
+pub fn block_for_state(state: BlockStateId) -> Option<(&'static Block, u32)> {
+    let (index, offset) = block_index_for_state(state)?;
     Some((&BLOCKS[index], offset))
 }
 
@@ -191,10 +207,10 @@ mod tests {
         assert_eq!(state_count(), 32366);
         assert_eq!(
             block("minecraft:stone").map(Block::default_state_id),
-            Some(1)
+            Some(BlockStateId(1))
         );
         let stairs = block("minecraft:oak_stairs").expect("stairs are in the registry");
-        assert_eq!(stairs.default_state_id(), 3918);
+        assert_eq!(stairs.default_state_id(), BlockStateId(3918));
     }
 
     #[test]
@@ -208,7 +224,7 @@ mod tests {
                     .collect();
                 assert_eq!(
                     block.state_id(&chosen),
-                    Some(block.first_state_id() + offset),
+                    Some(block.state_at(offset)),
                     "{} at {offset}",
                     block.name
                 );
@@ -220,13 +236,13 @@ mod tests {
     fn a_state_number_finds_the_block_that_owns_it() {
         for block in &BLOCKS {
             for offset in [0, block.state_count() - 1] {
-                let (found, found_offset) = block_for_state(block.first_state_id() + offset)
+                let (found, found_offset) = block_for_state(block.state_at(offset))
                     .expect("every number in range has an owner");
                 assert_eq!(found.name, block.name);
                 assert_eq!(found_offset, offset);
             }
         }
-        assert!(block_for_state(32366).is_none());
+        assert!(block_for_state(BlockStateId(32366)).is_none());
     }
 
     #[test]

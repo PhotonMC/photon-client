@@ -3,6 +3,7 @@
 //! `IronGolemCrackinessLayer`, `IronGolemFlowerLayer`, `SnowGolemRenderer`,
 //! `SnowGolemHeadLayer`).
 
+use photon_core::ids::BlockStateId;
 use photon_net::connection::PlaySession;
 use photon_render::entity::block::{iron_golem_flower_pose, snow_golem_head_pose};
 use photon_render::entity::mob_model::{
@@ -45,7 +46,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 
 /// The default state of a block, which is what the layers draw
 /// (`Blocks.CARVED_PUMPKIN.defaultBlockState()`).
-fn default_state(name: &str) -> Option<u32> {
+fn default_state(name: &str) -> Option<BlockStateId> {
     photon_data::block::registry::block(name)
         .map(photon_data::block::registry::Block::default_state_id)
 }

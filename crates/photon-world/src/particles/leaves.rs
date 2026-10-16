@@ -1,6 +1,7 @@
 //! `FallingLeavesParticle` and `LeavesBlock.animateTick`: leaves that fall from a block with room
 //! below, drifting on the wind or swirling as they go.
 
+use photon_core::ids::BlockStateId;
 use std::sync::Arc;
 
 use photon_core::math::{fdlibm_cos, fdlibm_pow, fdlibm_sin};
@@ -169,7 +170,7 @@ impl ParticleEngine {
         }
         let world = context.world;
         let below = world.block_state_at(x, y - 1, z).unwrap_or(0);
-        let shape = crate::block::registry::collision_shape_at(below as u32, [x, y - 1, z]);
+        let shape = crate::block::registry::collision_shape_at(BlockStateId(below), [x, y - 1, z]);
         let top = shape.face_shape(photon_core::direction::Direction::Up);
         if !Shapes::join_is_not_empty(&Shapes::block(), &top, BooleanOp::NotSame) {
             return;

@@ -1,6 +1,7 @@
 //! Whether a block face is hidden by its neighbour (`Block.shouldRenderFace`
 //! and the classes' own `skipRendering`).
 
+use photon_core::ids::BlockStateId;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use photon_core::direction::{Axis, Direction};
@@ -100,8 +101,8 @@ fn iron_bars_join(
 /// `Block.shouldRenderFace`: whether `state`'s face towards `direction` is
 /// drawn with `neighbour` beside it. An unloaded neighbour hides nothing.
 pub fn should_render_face(
-    state: u32,
-    neighbour: Option<u32>,
+    state: BlockStateId,
+    neighbour: Option<BlockStateId>,
     direction: Direction,
     tags: &BlockTags,
 ) -> bool {
@@ -131,7 +132,7 @@ pub fn should_render_face(
 mod tests {
     use super::*;
 
-    fn state(name: &str) -> u32 {
+    fn state(name: &str) -> BlockStateId {
         photon_data::block::registry::block(name)
             .expect(name)
             .default_state_id()

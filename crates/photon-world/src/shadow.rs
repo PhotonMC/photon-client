@@ -2,6 +2,7 @@
 //! squares of the blocks beneath it that are lit enough and whole enough to
 //! take a shadow, and how dark each is.
 
+use photon_core::ids::BlockStateId;
 use photon_core::math::floor_f64;
 
 use crate::ClientWorld;
@@ -109,9 +110,10 @@ impl ClientWorld {
             for block_x in x0..=x1 {
                 for block_y in y0..=y1 {
                     let power_at_depth = pow - (y - f64::from(block_y)) as f32 * 0.5;
-                    let Some(below) = self
+                    let Some((below_id, below)) = self
                         .block_state_at(block_x, block_y - 1, block_z)
-                        .and_then(|id| state(id as u32))
+                        .map(BlockStateId)
+                        .and_then(|id| Some((id, state(id)?)))
                     else {
                         continue;
                     };
@@ -123,11 +125,7 @@ impl ClientWorld {
                     if level <= 3 || !below.collision_full_block {
                         continue;
                     }
-                    let shape = crate::outline_shape(
-                        self.block_state_at(block_x, block_y - 1, block_z)
-                            .unwrap_or(0) as u32,
-                        [block_x, block_y - 1, block_z],
-                    );
+                    let shape = crate::outline_shape(below_id, [block_x, block_y - 1, block_z]);
                     let Some(bounds) = shape.bounds().filter(|_| !shape.is_empty()) else {
                         continue;
                     };

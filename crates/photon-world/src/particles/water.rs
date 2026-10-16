@@ -2,6 +2,7 @@
 //! `WaterDropParticle` (rain) and `SplashParticle`, `WakeParticle` (a fishing bobber's trail),
 //! `WaterCurrentDownParticle` and `SquidInkParticle`.
 
+use photon_core::ids::BlockStateId;
 use std::sync::Arc;
 
 use photon_core::direction::Axis;
@@ -360,7 +361,7 @@ impl Particle {
         let pos = containing((self.x, self.y, self.z));
         let [bx, by, bz] = pos;
         let state = world.block_state_at(bx, by, bz).unwrap_or(0);
-        let shape = crate::block::registry::collision_shape_at(state.max(0) as u32, pos);
+        let shape = crate::block::registry::collision_shape_at(BlockStateId(state.max(0)), pos);
         let shape_top = shape.max_at(Axis::Y, self.x - f64::from(bx), self.z - f64::from(bz));
         // `FluidState.getHeight`: the whole block under the same fluid, else its own height.
         let fluid = fluid_at(world, pos);

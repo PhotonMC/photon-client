@@ -1,6 +1,7 @@
 //! What humanoids hold in their hands (`ItemInHandLayer`): each stack where
 //! its arm's hand is, drawn like the items lying in the world.
 
+use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::block_entity::skull::{SkullKind, skull_pose};
@@ -38,7 +39,7 @@ pub enum Carried {
     /// A block state by its id, with the pose its model is drawn from (the
     /// layer has already moved it to the block's corner).
     Block {
-        state: u32,
+        state: BlockStateId,
         /// The overlay's code (`overlay_code`): zero where the layer submits
         /// `NO_OVERLAY`.
         overlay: f32,
@@ -65,7 +66,7 @@ impl HeldItem {
     }
 
     /// A block state drawn on an entity, from the pose its layer leaves.
-    pub fn block(state: u32, pose: Pose, light: i32, overlay: f32) -> Self {
+    pub fn block(state: BlockStateId, pose: Pose, light: i32, overlay: f32) -> Self {
         Self {
             stack: Carried::Block { state, overlay },
             pose,
@@ -79,7 +80,7 @@ impl HeldItem {
 /// (`BlockItem.getBlock().defaultBlockState()` with the stack's
 /// `BlockItemStateProperties` applied), or none for an item that is not a
 /// block item.
-pub fn block_item_state(stack: &ClientItemStackState) -> Option<u32> {
+pub fn block_item_state(stack: &ClientItemStackState) -> Option<BlockStateId> {
     let item = usize::try_from(stack.item_registry_id().0)
         .ok()
         .and_then(|index| photon_data::item::registry::ITEMS.get(index))?;

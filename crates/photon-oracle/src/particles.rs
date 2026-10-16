@@ -433,7 +433,7 @@ fn state_of(row: &Value) -> Result<i32, String> {
     }
     definition
         .state_id(&chosen)
-        .map(|state| state as i32)
+        .map(|state| state.0)
         .ok_or_else(|| format!("bad properties for {name}"))
 }
 

@@ -166,13 +166,17 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
     use photon_world::block::state::{DIRECTIONS, states};
     let tags = vanilla_tags()?;
     let states = states();
+    let info = |block: &registry::Block, offset: u32| {
+        states
+            .get(block.state_at(offset))
+            .expect("a registry state")
+    };
     let mut tuples: Vec<[u16; 6]> = Vec::new();
     let mut blocks = Vec::with_capacity(registry::BLOCKS.len());
     for block in &registry::BLOCKS {
-        let first = block.first_state_id();
         let per_state: Vec<usize> = (0..block.state_count())
             .map(|offset| {
-                let faces = states.get(first + offset).expect("a registry state").faces;
+                let faces = info(block, offset).faces;
                 tuples
                     .iter()
                     .position(|tuple| *tuple == faces)
@@ -201,16 +205,11 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
     };
     let joins = matrix(&|shape, occluder| states.joins(shape, occluder));
     let covers = matrix(&|shape, occluder| states.covers(shape, occluder));
-    let info = |block: &registry::Block, offset: u32| {
-        states
-            .get(block.first_state_id() + offset)
-            .expect("a registry state")
-    };
     let mut skips = Vec::new();
     for block in &registry::BLOCKS {
-        let own = info(block, block.default_state_id() - block.first_state_id());
+        let own = info(block, block.default_offset());
         for other in &registry::BLOCKS {
-            let neighbour = info(other, other.default_state_id() - other.first_state_id());
+            let neighbour = info(other, other.default_offset());
             if !DIRECTIONS
                 .iter()
                 .any(|direction| skip_rendering(own, neighbour, *direction, &tags))

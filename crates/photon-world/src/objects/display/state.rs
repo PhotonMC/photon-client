@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 use photon_core::sync_cell::SyncCell;
 
 impl DisplayState {
@@ -103,9 +104,9 @@ impl DisplayState {
             find_metadata_field(metadata, BLOCK_STATE_DATA_ID)
             && let Some(id) = photon_core::wire::read_varint(&mut value)
                 .ok()
-                .and_then(|id| u32::try_from(id).ok())
+                .filter(|id| *id >= 0)
         {
-            self.block_state = id;
+            self.block_state = BlockStateId(id);
             self.update_render_state = true;
         }
     }
@@ -194,7 +195,7 @@ impl DisplayState {
     }
 
     /// `BlockDisplay.blockRenderState`.
-    pub fn block_state(&self) -> Option<u32> {
+    pub fn block_state(&self) -> Option<BlockStateId> {
         self.block_render
     }
 
@@ -223,7 +224,7 @@ pub struct DisplayState {
     pub(super) width: f32,
     pub(super) height: f32,
     pub(super) glow_color: i32,
-    pub(super) block_state: u32,
+    pub(super) block_state: BlockStateId,
     pub(super) item_display: u8,
     pub(super) interpolation_start_tick: i64,
     pub(super) interpolation_duration: i32,
@@ -234,7 +235,7 @@ pub struct DisplayState {
     pub(super) update_interpolation_duration: bool,
     pub(super) render_state: Option<RenderState>,
     /// `BlockDisplay.blockRenderState`: the block it shows.
-    pub(super) block_render: Option<u32>,
+    pub(super) block_render: Option<BlockStateId>,
     /// `ItemDisplay.itemRenderState`'s context (the stack is the entity's).
     pub(super) item_render: Option<u8>,
     /// A text display's data, and the render state made of it, with how many times it was made
@@ -289,7 +290,7 @@ impl Default for DisplayState {
             width: 0.0,
             height: 0.0,
             glow_color: -1,
-            block_state: 0,
+            block_state: BlockStateId(0),
             item_display: 0,
             interpolation_start_tick: -2_147_483_648,
             interpolation_duration: 0,

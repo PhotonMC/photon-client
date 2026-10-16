@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl BlockRenderer {
     /// Read every block's blockstate file and every model any of its
@@ -125,13 +126,18 @@ impl BlockRenderer {
         (quads, offset)
     }
 
+    /// How a state is drawn; none for a number outside the registry.
+    fn state_render(&self, state: BlockStateId) -> Option<&StateRender> {
+        self.states.get(usize::try_from(state.0).ok()?)
+    }
+
     /// `BlockModelResolver.update` for a block state drawn on an entity: every
     /// quad of the variants the model's own seed picks (`MODEL_SEED`, 42),
     /// culled against nothing, each tinted by the state's colour outside a
     /// world, and the light the state gives off (`blockLightCoords`). Nothing
     /// for air and for states with no model to draw.
-    pub fn entity_block(&self, state_id: u32) -> Option<(ItemLayer, i32)> {
-        let Some(StateRender::Drawn(drawn)) = self.states.get(state_id as usize) else {
+    pub fn entity_block(&self, state: BlockStateId) -> Option<(ItemLayer, i32)> {
+        let Some(StateRender::Drawn(drawn)) = self.state_render(state) else {
             return None;
         };
         let tints: Vec<u32> = match &drawn.tints {
@@ -177,10 +183,10 @@ impl BlockRenderer {
             }
         });
         // A fake state is of air: it gives off no light.
-        let info = photon_world::block::state_or_air(if state_id >= self.frame_base {
+        let info = photon_world::block::state_or_air(if state.0 as u32 >= self.frame_base {
             0
         } else {
-            i64::from(state_id)
+            i64::from(state)
         });
         Some((
             ItemLayer {
@@ -256,7 +262,7 @@ impl BlockRenderer {
             tags,
         } = *world;
         let lighter = crate::block::light::Lighter {
-            state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(|state| u32::try_from(state).ok()),
+            state: |p: [i32; 3]| read(p[0], p[1], p[2]).and_then(BlockStateId::non_negative),
             light: |p: [i32; 3]| light(p[0], p[1], p[2]),
         };
         let mut mesh = Mesh::default();
@@ -271,11 +277,11 @@ impl BlockRenderer {
                         origin[2] + offset_z,
                     ];
                     let Some(state_id) = read(position[0], position[1], position[2])
-                        .and_then(|state| u32::try_from(state).ok())
+                        .and_then(BlockStateId::non_negative)
                     else {
                         continue;
                     };
-                    let drawn = match self.states.get(state_id as usize) {
+                    let drawn = match self.states.get(state_id.0 as usize) {
                         Some(StateRender::Air) => continue,
                         Some(StateRender::Drawn(drawn)) => drawn,
                         _ => {
@@ -294,7 +300,7 @@ impl BlockRenderer {
                                 position[1] + step_y,
                                 position[2] + step_z,
                             )
-                            .and_then(|state| u32::try_from(state).ok());
+                            .and_then(BlockStateId::non_negative);
                             !photon_world::block::should_render_face(
                                 state_id, neighbour, facing, tags,
                             )

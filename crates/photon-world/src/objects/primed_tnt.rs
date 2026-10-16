@@ -2,6 +2,8 @@
 //! synced, counted down each tick (the block is gone when it runs out), and the block state it
 //! shows (the tnt block unless the server says another).
 
+use photon_core::ids::BlockStateId;
+
 /// Where a primed tnt's fuse (an int) and block state (a block state) sit among its data
 /// (`Entity` has eight).
 pub const FUSE_DATA_ID: u8 = 8;
@@ -16,7 +18,7 @@ const DEFAULT_FUSE: i32 = 80;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PrimedTntState {
     fuse: i32,
-    block_state: Option<u32>,
+    block_state: Option<BlockStateId>,
 }
 
 impl Default for PrimedTntState {
@@ -35,7 +37,7 @@ impl PrimedTntState {
     }
 
     /// `PrimedTnt.getBlockState`: the state the server named, else the tnt block's own.
-    pub fn block_state(&self) -> Option<u32> {
+    pub fn block_state(&self) -> Option<BlockStateId> {
         self.block_state.or_else(|| {
             photon_data::block::registry::block("minecraft:tnt")
                 .map(|block| block.default_state_id())
@@ -46,7 +48,7 @@ impl PrimedTntState {
         self.fuse = fuse;
     }
 
-    pub(crate) fn set_block_state(&mut self, state: u32) {
+    pub(crate) fn set_block_state(&mut self, state: BlockStateId) {
         self.block_state = Some(state);
     }
 
@@ -81,7 +83,7 @@ mod tests {
         let mut state = PrimedTntState::default();
         let tnt = state.block_state();
         assert!(tnt.is_some());
-        state.set_block_state(1);
-        assert_eq!(state.block_state(), Some(1));
+        state.set_block_state(BlockStateId(1));
+        assert_eq!(state.block_state(), Some(BlockStateId(1)));
     }
 }

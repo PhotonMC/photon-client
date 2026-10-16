@@ -690,7 +690,7 @@
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
 "crates/photon-oracle/src/animation.rs::copper_golem_layers_result" = 70
-"crates/photon-oracle/src/block.rs::block_result" = 476
+"crates/photon-oracle/src/block.rs::block_result" = 475
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 125
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 142
 "crates/photon-oracle/src/blockstate.rs::model_state_result" = 62
@@ -705,7 +705,7 @@
 "crates/photon-oracle/src/command.rs::respond" = 86
 "crates/photon-oracle/src/container.rs::container_clicks_result" = 128
 "crates/photon-oracle/src/declarations.rs::block_declarations" = 149
-"crates/photon-oracle/src/declarations.rs::face_occlusion" = 96
+"crates/photon-oracle/src/declarations.rs::face_occlusion" = 95
 "crates/photon-oracle/src/declarations.rs::vanilla_tags_of" = 76
 "crates/photon-oracle/src/display.rs::text_display_submit_result" = 82
 "crates/photon-oracle/src/entity.rs::entity_result" = 121
@@ -1015,7 +1015,7 @@
 "crates/photon-world/src/ride/mount/travel.rs::MountBody::move_self" = 62
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 93
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 83
-"crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 71
+"crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 68
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 61
 "crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 138
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 95

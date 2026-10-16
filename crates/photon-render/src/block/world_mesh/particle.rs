@@ -2,6 +2,7 @@
 //! source's `colorAsTerrainParticle`.
 
 use super::*;
+use photon_core::ids::BlockStateId;
 
 /// The sprite a blockstate file's model names as its particle for a state: the first model of the
 /// weighted list the state selects, or, in a multipart file, of its first selector (whatever the
@@ -29,19 +30,21 @@ pub(super) fn particle_sprite(
 impl BlockRenderer {
     /// The sprite of the block atlas a state's flakes show (`getParticleMaterial(state).sprite()`),
     /// nothing where the state has no model to name one.
-    pub fn particle_sprite(&self, state_id: u32) -> Option<&str> {
-        self.particle_sprites.get(state_id as usize)?.as_deref()
+    pub fn particle_sprite(&self, state: BlockStateId) -> Option<&str> {
+        self.particle_sprites
+            .get(usize::try_from(state.0).ok()?)?
+            .as_deref()
     }
 
     /// `BlockTintSource.colorAsTerrainParticle` of the state's first tint source, if it has one:
     /// the colour it is drawn in, except that a grass block's flakes are not tinted.
     pub fn particle_tint(
         &self,
-        state_id: u32,
+        state: BlockStateId,
         position: [i32; 3],
         biome_tint: &impl Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     ) -> Option<i32> {
-        let (block, offset) = registry::block_for_state(state_id)?;
+        let (block, offset) = registry::block_for_state(state)?;
         if block.name == "minecraft:grass_block" {
             return Some(-1);
         }

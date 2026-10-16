@@ -1,5 +1,6 @@
 //! `TerrainParticle`: a flake of a block, and the effects that spawn them.
 
+use photon_core::ids::BlockStateId;
 use std::sync::Arc;
 
 use photon_core::binary::BlockPos;
@@ -153,7 +154,7 @@ pub(super) fn destroy_block_effect(
     if !makes_terrain_particles_of_destroyed(state) {
         return flakes;
     }
-    let shape = crate::outline_shape(state as u32, [pos.x, pos.y, pos.z]);
+    let shape = crate::outline_shape(BlockStateId(state), [pos.x, pos.y, pos.z]);
     shape.for_all_boxes(|x1, y1, z1, x2, y2, z2| {
         let width_x = (x2 - x1).min(1.0);
         let width_y = (y2 - y1).min(1.0);
@@ -204,7 +205,7 @@ pub(super) fn breaking_block_effect(
     if crate::shadow::is_invisible_render_shape(name) || !spawns_terrain_particles(name) {
         return None;
     }
-    let shape = crate::outline_shape(state as u32, [pos.x, pos.y, pos.z]);
+    let shape = crate::outline_shape(BlockStateId(state), [pos.x, pos.y, pos.z]);
     let bounds = shape.bounds()?;
     let (x, y, z) = (f64::from(pos.x), f64::from(pos.y), f64::from(pos.z));
     let inset = f64::from(0.2_f32);
@@ -255,12 +256,14 @@ mod tests {
         ] {
             let state = photon_data::block::registry::block(name)
                 .unwrap()
-                .default_state_id() as i32;
+                .default_state_id()
+                .0;
             assert!(!makes_terrain_particles(state), "{name}");
         }
         let stone = photon_data::block::registry::block("minecraft:stone")
             .unwrap()
-            .default_state_id() as i32;
+            .default_state_id()
+            .0;
         assert!(makes_terrain_particles(stone));
     }
 }

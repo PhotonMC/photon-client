@@ -3,6 +3,8 @@
 //! the rail under it puts it (`OldMinecartBehavior.getPos`, `getPosOffs`), which its
 //! renderer draws it from.
 
+use photon_core::ids::BlockStateId;
+
 /// `VehicleEntity`'s data ids (`Entity` has eight), then `AbstractMinecart`'s two and the furnace's.
 pub const HURT_DATA_ID: u8 = 8;
 pub const HURT_DIR_DATA_ID: u8 = 9;
@@ -21,7 +23,7 @@ pub struct MinecartState {
     pub hurt_dir: i32,
     pub damage: f32,
     /// `AbstractMinecart.getCustomDisplayBlockState`: the block state the server named, if it did.
-    pub(crate) custom_display: Option<u32>,
+    pub(crate) custom_display: Option<BlockStateId>,
     /// `AbstractMinecart.getDisplayOffset`, when the server has said (else the type's own).
     pub(crate) display_offset: Option<i32>,
     /// `MinecartFurnace.hasFuel`.
@@ -97,7 +99,7 @@ pub fn default_display_offset(type_name: &str) -> Option<i32> {
 
 /// `AbstractMinecart.getDefaultDisplayBlockState`: the block a minecart of this type shows when
 /// the server has named none (the furnace's is lit while it has fuel), or none for the plain one.
-pub fn default_display_block(type_name: &str, fuel: bool) -> Option<u32> {
+pub fn default_display_block(type_name: &str, fuel: bool) -> Option<BlockStateId> {
     use std::collections::BTreeMap;
     let block = match type_name {
         "minecraft:chest_minecart" => "minecraft:chest",

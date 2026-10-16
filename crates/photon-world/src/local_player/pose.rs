@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl LocalPlayer {
     /// Whether the player only watches.
@@ -136,7 +137,7 @@ pub(super) fn is_sliding_down_honey(body: &LivingEffects<'_>, pos: BlockPos) -> 
 }
 
 pub(super) fn is_block(state_id: i32, name: &str) -> bool {
-    registry::block_for_state(state_id as u32).is_some_and(|(block, _)| block.name == name)
+    registry::block_for_state(BlockStateId(state_id)).is_some_and(|(block, _)| block.name == name)
 }
 
 /// What the player model is posed from.

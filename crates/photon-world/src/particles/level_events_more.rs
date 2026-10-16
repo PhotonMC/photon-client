@@ -2,6 +2,7 @@
 //! eye shattering, a spawner's flames, bone meal's sparkles and a mace's smash.
 
 use photon_core::direction::Axis;
+use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 use photon_core::math::{fdlibm_cos, fdlibm_sin};
 use photon_core::random::RandomSource;
@@ -72,7 +73,8 @@ impl ParticleEngine {
             .world
             .block_state_at(pos.0, pos.1, pos.2)
             .unwrap_or(0);
-        let shape = crate::block::registry::outline_shape(state as u32, [pos.0, pos.1, pos.2]);
+        let shape =
+            crate::block::registry::outline_shape(BlockStateId(state), [pos.0, pos.1, pos.2]);
         let center = shape.max_at(Axis::Y, 0.5, 0.5) + 0.031_25;
         for _ in 0..10 {
             let random = &mut *context.level_random;
@@ -187,7 +189,8 @@ impl ParticleEngine {
         let height = if crate::block::state_or_air(i64::from(state)).block().air {
             1.0
         } else {
-            crate::block::registry::outline_shape(state as u32, [pos.0, pos.1, pos.2]).max(Axis::Y)
+            crate::block::registry::outline_shape(BlockStateId(state), [pos.0, pos.1, pos.2])
+                .max(Axis::Y)
         };
         // `ParticleUtils.spawnParticles`, spread half a block, floating allowed.
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));

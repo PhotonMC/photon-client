@@ -43,8 +43,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "properties": properties,
                             "default": block.default,
                             "state_count": block.state_count(),
-                            "first_state_id": block.first_state_id(),
-                            "default_state_id": block.default_state_id(),
+                            "first_state_id": block.first_state_id().0,
+                            "default_state_id": block.default_state_id().0,
                         })
                     })
                     .collect();
@@ -86,7 +86,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 // and `blocksMotion`, as runs of equal values.
                 let count = registry::state_count();
                 let value = |id: u32| {
-                    let state = photon_world::block::state(id).expect("a registry state");
+                    let state = photon_world::block::state(BlockStateId(id as i32))
+                        .expect("a registry state");
                     let ice = state
                         .block()
                         .class
@@ -195,10 +196,9 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
                     .iter()
                     .map(|block| {
-                        let first = block.first_state_id();
                         let mut states: Vec<String> = (0..block.state_count())
                             .map(|offset| {
-                                let state = photon_world::block::state(first + offset)
+                                let state = photon_world::block::state(block.state_at(offset))
                                     .expect("a registry state");
                                 format!(
                                     "{:08x}|{}|{}|{}",
@@ -438,10 +438,9 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
                     .iter()
                     .map(|block| {
-                        let first = block.first_state_id();
                         let mut states: Vec<String> = (0..block.state_count())
                             .map(|offset| {
-                                let t = photon_world::block::state(first + offset)
+                                let t = photon_world::block::state(block.state_at(offset))
                                     .expect("a registry state");
                                 format!(
                                     "{}|{}|{:08x}|{}|{}|{}|{}|{}|{}",

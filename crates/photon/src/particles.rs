@@ -1,6 +1,7 @@
 //! The level's particles on the client: the engine, the random sources the reference seeds from
 //! the clock, and the sprite lists of `particles/*.json`.
 
+use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 use std::collections::HashMap;
 use std::path::Path;
@@ -69,7 +70,7 @@ impl std::fmt::Debug for BlockMaterials {
 impl TerrainMaterials for BlockMaterials {
     fn particle_texture(&self, state: i32) -> String {
         self.renderer
-            .particle_sprite(state as u32)
+            .particle_sprite(BlockStateId(state))
             .unwrap_or("minecraft:missingno")
             .to_owned()
     }
@@ -83,7 +84,7 @@ impl TerrainMaterials for BlockMaterials {
         let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);
         let biome_tint = |kind, position: [i32; 3]| self.tints.tint(kind, position, &noise_biome);
         self.renderer
-            .particle_tint(state as u32, [pos.x, pos.y, pos.z], &biome_tint)
+            .particle_tint(BlockStateId(state), [pos.x, pos.y, pos.z], &biome_tint)
     }
 }
 

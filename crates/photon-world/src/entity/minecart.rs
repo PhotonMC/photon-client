@@ -1,4 +1,5 @@
 use super::*;
+use photon_core::ids::BlockStateId;
 
 impl ClientEntity {
     /// A minecart of the new behaviour: the steps the server sent along the track.
@@ -31,7 +32,7 @@ impl ClientEntity {
 
     /// `AbstractMinecart.getDisplayBlockState`: the block state the server named, else the
     /// type's own (the plain minecart shows none).
-    pub fn minecart_display_block(&self) -> Option<u32> {
+    pub fn minecart_display_block(&self) -> Option<BlockStateId> {
         let state = self.minecart().copied().unwrap_or_default();
         state.custom_display.or_else(|| {
             photon_data::entity_type::name(self.type_id)

@@ -18,7 +18,7 @@ const REPEATS: u32 = 50;
 
 fn state(name: &str) -> i32 {
     let block = photon_data::block::registry::block(name).expect("a vanilla block");
-    i32::try_from(block.default_state_id()).expect("state numbers fit an i32")
+    block.default_state_id().0
 }
 
 /// Blocks whose models turn, nudge, span two blocks or take colours, which
@@ -64,7 +64,7 @@ fn variety() -> Vec<i32> {
             .iter()
             .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
             .collect();
-        i32::try_from(block.state_id(&chosen).expect("valid properties")).expect("fits")
+        block.state_id(&chosen).expect("valid properties").0
     })
     .collect()
 }
