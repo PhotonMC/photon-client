@@ -3,7 +3,7 @@
 
 use photon_core::direction::Axis;
 use photon_core::ids::ItemId;
-use photon_core::math::{fdlibm_cos, fdlibm_sin};
+use photon_core::math::{fdlibm_cos, fdlibm_sin, mth_next_double};
 use photon_core::random::RandomSource;
 use photon_data::block::classes::BlockInterface;
 
@@ -41,6 +41,7 @@ impl ParticleEngine {
                     self.level_add(context, "flame", (x, y, z), (0.0, 0.0, 0.0));
                 }
             }
+            3016 => self.vault_deactivate(pos, data, context, sounds),
             1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
@@ -221,6 +222,42 @@ impl ParticleEngine {
                 self.level_add(context, "happy_villager", at, push);
             }
         }
+    }
+
+    /// Event 3016, `VaultBlockEntity.Client.emitDeactivationParticles` then the vault's sound:
+    /// twenty flames about the middle of its cage (a soul flame for an ominous vault).
+    fn vault_deactivate<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        data: i32,
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        let flame = if data == 0 {
+            "small_flame"
+        } else {
+            "soul_fire_flame"
+        };
+        let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        for _ in 0..20 {
+            let random = &mut *context.level_random;
+            let at = (
+                x + mth_next_double(random, 0.4, 0.6),
+                y + mth_next_double(random, 0.4, 0.6),
+                z + mth_next_double(random, 0.4, 0.6),
+            );
+            let push = (
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+            );
+            self.level_add(context, flame, at, push);
+        }
+        let random = &mut *context.level_random;
+        let pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;
+        let centre = (x + 0.5, y + 0.5, z + 0.5);
+        let event = ("minecraft:block.vault.deactivate", LocalSoundSource::Blocks);
+        sounds.push(local_sound(event, (1.0, pitch), centre, context));
     }
 
     /// Event 1505, `BoneMealItem.addGrowthParticles` then the bone meal's sound: what grows is
