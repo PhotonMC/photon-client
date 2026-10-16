@@ -290,7 +290,7 @@ impl Default for DisplayState {
             width: 0.0,
             height: 0.0,
             glow_color: -1,
-            block_state: BlockStateId(0),
+            block_state: crate::constants::VANILLA_AIR_BLOCK_STATE_ID,
             item_display: 0,
             interpolation_start_tick: -2_147_483_648,
             interpolation_duration: 0,

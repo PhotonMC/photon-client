@@ -188,7 +188,7 @@ impl BlockRenderer {
         });
         // A fake state is of air: it gives off no light.
         let info = photon_world::block::state_or_air(if state.0 as u32 >= self.frame_base {
-            BlockStateId(0)
+            photon_world::VANILLA_AIR_BLOCK_STATE_ID
         } else {
             state
         });

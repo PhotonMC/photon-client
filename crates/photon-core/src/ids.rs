@@ -50,12 +50,6 @@ impl BlockStateId {
     }
 }
 
-impl From<BlockStateId> for i64 {
-    fn from(id: BlockStateId) -> Self {
-        Self::from(id.0)
-    }
-}
-
 id_type!(
     /// An entity type's id in the `minecraft:entity_type` registry (`EntityType`), the number
     /// the server sends with an added entity.

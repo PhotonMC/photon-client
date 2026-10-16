@@ -76,7 +76,7 @@ impl FluidState {
         let block = match family(self.fluid) {
             Fluid::Water => photon_data::block::blocks::id::WATER,
             Fluid::Lava => photon_data::block::blocks::id::LAVA,
-            _ => return BlockStateId(0),
+            _ => return crate::constants::VANILLA_AIR_BLOCK_STATE_ID,
         };
         // `FlowingFluid.getLegacyLevel`.
         let level = if self.is_source() {

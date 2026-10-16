@@ -44,7 +44,7 @@ pub(crate) fn minecart_extra(
     described["hurt_time"] = json!(state.hurt_time);
     described["hurt_dir"] = json!(state.hurt_dir);
     described["damage"] = json!(hex(state.damage));
-    described["display_block"] = json!(entity.minecart_display_block().map_or(0, i64::from));
+    described["display_block"] = json!(entity.minecart_display_block().map_or(0, |state| state.0));
     described["display_offset"] = json!(entity.minecart_display_offset());
     described["fuse"] = json!(state.fuse());
     let position = entity.position();

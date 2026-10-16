@@ -198,6 +198,10 @@ pub const fn default_state_named(name: &str) -> BlockStateId {
             while value < values.len() && !crate::name::same(values[value], block.default[slot]) {
                 value += 1;
             }
+            assert!(
+                value < values.len(),
+                "a default is one of its property's values"
+            );
             offset = offset * values.len() as i32 + value as i32;
             count *= values.len() as i32;
             slot += 1;
@@ -258,6 +262,18 @@ mod tests {
                     block.name
                 );
             }
+        }
+    }
+
+    #[test]
+    fn the_const_numbering_agrees_with_the_runtime_one() {
+        for block in &BLOCKS {
+            assert_eq!(
+                default_state_named(block.name),
+                block.default_state_id(),
+                "{}",
+                block.name
+            );
         }
     }
 

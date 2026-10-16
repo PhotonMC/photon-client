@@ -10,7 +10,6 @@
 //! half, each in sixteenths.
 
 use photon_core::direction::Direction;
-use photon_core::ids::BlockStateId;
 use photon_world::block::StateInfo;
 
 /// Full brightness in both halves.
@@ -18,7 +17,7 @@ pub const FULL_BRIGHT: i32 = 15_728_880;
 
 /// What the lighting reads of a state; nothing reads as air.
 fn traits(state: Option<photon_core::ids::BlockStateId>) -> &'static StateInfo {
-    photon_world::block::state_or_air(state.unwrap_or(BlockStateId(0)))
+    photon_world::block::state_or_air(state.unwrap_or(photon_world::VANILLA_AIR_BLOCK_STATE_ID))
 }
 
 fn pack(block: i32, sky: i32) -> i32 {

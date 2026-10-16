@@ -61,12 +61,12 @@ pub(super) fn is_edge_occluded(top: BlockStateId, bottom: BlockStateId) -> bool 
         )
 }
 
-pub(super) fn bedrock() -> BlockStateId {
-    static STATE: std::sync::OnceLock<BlockStateId> = std::sync::OnceLock::new();
-    *STATE.get_or_init(|| {
-        photon_data::block::registry::block("minecraft:bedrock")
-            .map_or(BlockStateId(0), |block| block.default_state_id())
-    })
+/// What an unloaded chunk reads as: bedrock.
+const BEDROCK: BlockStateId =
+    photon_data::block::registry::default_state_named("minecraft:bedrock");
+
+pub(super) const fn bedrock() -> BlockStateId {
+    BEDROCK
 }
 
 pub(super) struct Level<'a> {
