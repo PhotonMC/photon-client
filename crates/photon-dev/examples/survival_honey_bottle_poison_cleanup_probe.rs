@@ -4,6 +4,10 @@ use std::time::Duration;
 
 use photon_dev::connect_and_survival_honey_bottle_poison_cleanup_probe;
 
+fn is_poison(registry_id: i32) -> bool {
+    photon_data::item::effect::effect_id("minecraft:poison") == Some(registry_id)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
@@ -28,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .find(|observation| {
             observation.entity_id == login.player_id
-                && observation.effect_registry_id == 18
+                && is_poison(observation.effect_registry_id)
                 && observation.applied_to_world
         })
     else {
@@ -39,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .find(|observation| {
             observation.entity_id == login.player_id
-                && observation.effect_registry_id == 18
+                && is_poison(observation.effect_registry_id)
                 && observation.applied_to_world
         })
     else {

@@ -1201,7 +1201,7 @@
 "photon-render -> photon-game" = 1
 
 [registry-literal]
-"crates/photon-dev/examples/survival_honey_bottle_poison_cleanup_probe.rs" = 5
+"crates/photon-dev/examples/survival_honey_bottle_poison_cleanup_probe.rs" = 3
 "crates/photon-dev/examples/world_block_entity_spawner_state_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_environment_probe.rs" = 1
 "crates/photon-dev/examples/world_custom_dimension_probe.rs" = 1

@@ -1334,6 +1334,7 @@ name = "photon-dev"
 version = "0.1.0"
 dependencies = [
  "photon-core",
+ "photon-data",
  "photon-game",
  "photon-net",
  "photon-protocol",

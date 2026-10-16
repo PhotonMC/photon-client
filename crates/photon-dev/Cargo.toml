@@ -14,5 +14,8 @@ photon-game.workspace = true
 photon-protocol.workspace = true
 photon-net.workspace = true
 
+[dev-dependencies]
+photon-data.workspace = true
+
 [lints]
 workspace = true
