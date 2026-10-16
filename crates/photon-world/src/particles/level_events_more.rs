@@ -5,6 +5,7 @@ use photon_core::direction::Axis;
 use photon_core::ids::ItemId;
 use photon_core::math::{fdlibm_cos, fdlibm_sin};
 use photon_core::random::RandomSource;
+use photon_data::block::classes::BlockInterface;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
 use super::animate::local_sound;
@@ -40,6 +41,7 @@ impl ParticleEngine {
                     self.level_add(context, "flame", (x, y, z), (0.0, 0.0, 0.0));
                 }
             }
+            1505 => self.bone_meal(pos, data, context, sounds),
             2011 | 2012 => self.particle_in_block(pos, data, context),
             2013 => self.smash_attack(pos, data, context),
             _ => return false,
@@ -183,7 +185,19 @@ impl ParticleEngine {
         } else {
             crate::block::registry::outline_shape(state, [pos.0, pos.1, pos.2]).max(Axis::Y)
         };
-        // `ParticleUtils.spawnParticles`, spread half a block, floating allowed.
+        self.happy_villagers(pos, count, (0.5, height, true), context);
+    }
+
+    /// `ParticleUtils.spawnParticles` of happy villager specks: `count` of them spread `width`
+    /// either way of the block's centre and `height` up, the ones with air under them left out
+    /// unless `floating`.
+    fn happy_villagers<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        count: i32,
+        (width, height, floating): (f64, f64, bool),
+        context: &mut LevelEventContext<'_, F>,
+    ) {
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         for _ in 0..count {
             let random = &mut *context.level_random;
@@ -193,12 +207,57 @@ impl ParticleEngine {
                 random.next_gaussian() * 0.02,
             );
             let at = (
-                x + random.next_double() * 0.5 * 2.0,
+                x + (0.5 - width) + random.next_double() * width * 2.0,
                 y + random.next_double() * height,
-                z + random.next_double() * 0.5 * 2.0,
+                z + (0.5 - width) + random.next_double() * width * 2.0,
             );
-            self.level_add(context, "happy_villager", at, push);
+            let (bx, by, bz) = (
+                at.0.floor() as i32,
+                at.1.floor() as i32,
+                at.2.floor() as i32,
+            );
+            let below = context.world.block_state_or_air(bx, by - 1, bz);
+            if floating || !crate::block::state_or_air(below).block().air {
+                self.level_add(context, "happy_villager", at, push);
+            }
         }
+    }
+
+    /// Event 1505, `BoneMealItem.addGrowthParticles` then the bone meal's sound: what grows is
+    /// sparkled over, what spreads (and water) in a wider cloud about it.
+    fn bone_meal<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        count: i32,
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
+        let block = crate::block::state_or_air(state).block();
+        let cloud = (3.0, 1.0, false);
+        if block.class.implements(BlockInterface::BonemealableBlock) {
+            let (x, y, z) = pos;
+            let spreads = block.class.bone_meal_spreads();
+            let at = match (block.class.particles_below(), spreads) {
+                (true, _) => (x, y - 1, z),
+                (false, true) => (x, y + 1, z),
+                (false, false) => pos,
+            };
+            if spreads {
+                self.happy_villagers(at, count.wrapping_mul(3), cloud, context);
+            } else {
+                self.particle_in_block(at, count, context);
+            }
+        } else if block.name == "minecraft:water" {
+            self.happy_villagers(pos, count.wrapping_mul(3), cloud, context);
+        }
+        let center = (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        );
+        let event = ("minecraft:item.bone_meal.use", LocalSoundSource::Blocks);
+        sounds.push(local_sound(event, (1.0, 1.0), center, context));
     }
 
     /// `ParticleUtils.spawnSmashAttackParticles`: dust of the block struck, a third as many as

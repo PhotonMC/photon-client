@@ -1059,6 +1059,7 @@ impl BlockClass {
         match self {
             Self::AirBlock => &[Method::GetShape],
             Self::Block => &[Method::GetStateForPlacement],
+            Self::GrassBlock => &[Method::GetType],
             Self::SnowyBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
             Self::RotatedPillarBlock => &[Method::GetStateForPlacement],
             Self::SaplingBlock => &[Method::GetShape],
@@ -1078,6 +1079,7 @@ impl BlockClass {
             Self::BrushableBlock => &[Method::UpdateShape],
             Self::MangroveRootsBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
             Self::LeavesBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
+            Self::MangroveLeavesBlock => &[Method::GetParticlePos],
             Self::DispenserBlock => &[Method::GetStateForPlacement, Method::UseWithoutItem],
             Self::NoteBlock => &[
                 Method::GetStateForPlacement,
@@ -1265,6 +1267,7 @@ impl BlockClass {
                 Method::UpdateShape,
             ],
             Self::CrossCollisionBlock => &[Method::GetShape, Method::GetCollisionShape],
+            Self::NetherrackBlock => &[Method::GetType],
             Self::SoulSandBlock => &[Method::GetCollisionShape],
             Self::NetherPortalBlock => &[Method::UpdateShape, Method::GetShape],
             Self::CarvedPumpkinBlock => &[Method::GetStateForPlacement],
@@ -1558,6 +1561,7 @@ impl BlockClass {
             Self::SweetBerryBushBlock => {
                 &[Method::UseWithoutItem, Method::UseItemOn, Method::GetShape]
             }
+            Self::NyliumBlock => &[Method::GetType],
             Self::NetherFungusBlock => &[Method::GetShape],
             Self::NetherRootsBlock => &[Method::GetShape],
             Self::NetherSproutsBlock => &[Method::GetShape],
@@ -1645,6 +1649,7 @@ impl BlockClass {
                 Method::CanSurvive,
                 Method::GetShape,
             ],
+            Self::BonemealableFeaturePlacerBlock => &[Method::GetType],
             Self::BigDripleafBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
@@ -1667,6 +1672,7 @@ impl BlockClass {
                 Method::UpdateShape,
                 Method::GetShape,
             ],
+            Self::RootedDirtBlock => &[Method::GetParticlePos],
             Self::MudBlock => &[Method::GetCollisionShape],
             Self::InfestedRotatedPillarBlock => &[Method::GetStateForPlacement],
             Self::FrogspawnBlock => &[Method::CanSurvive, Method::UpdateShape, Method::GetShape],
@@ -1703,8 +1709,10 @@ pub enum Method {
     CanBeReplaced,
     CanSurvive,
     GetCollisionShape,
+    GetParticlePos,
     GetShape,
     GetStateForPlacement,
+    GetType,
     UpdateShape,
     UseItemOn,
     UseWithoutItem,

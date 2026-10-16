@@ -234,6 +234,52 @@ fn engine_rows_9() -> Vec<Value> {
     ]
 }
 
+/// Bone meal's blocks: what grows, what spreads, the two that sparkle below, water, what bone meal does
+/// nothing to and the air; the count it carries and a floor under half of them.
+const BONE_MEAL_BLOCKS: [(&str, i64); 12] = [
+    ("minecraft:wheat", 3),
+    ("minecraft:oak_sapling", 0),
+    ("minecraft:tall_grass", 5),
+    ("minecraft:grass_block", 2),
+    ("minecraft:crimson_nylium", 3),
+    ("minecraft:moss_block", 4),
+    ("minecraft:rooted_dirt", 3),
+    ("minecraft:mangrove_leaves", 2),
+    ("minecraft:water", 3),
+    ("minecraft:stone", 3),
+    ("minecraft:air", 3),
+    ("minecraft:netherrack", 1),
+];
+
+fn engine_rows_10() -> Vec<Value> {
+    vec![
+        // Bone meal: the sound always, the specks by what the block is.
+        engine_row(
+            "bone-meal",
+            BONE_MEAL_BLOCKS
+                .iter()
+                .enumerate()
+                .map(|(index, &(_, count))| level_event(index as i64 % 3, 1505, (index as i64 * 3, 64, 0), count))
+                .collect::<Vec<_>>(),
+        )
+        .blocks(
+            BONE_MEAL_BLOCKS
+                .iter()
+                .enumerate()
+                .flat_map(|(index, &(block, _))| {
+                    let x = index as i64 * 3;
+                    let floor = (index % 2 == 0).then(|| put(x, 63, 0, "minecraft:stone"));
+                    floor.into_iter().chain([put(x, 64, 0, block)])
+                })
+                .collect::<Vec<_>>(),
+        )
+        .ticks(6)
+        .seeds(150)
+        .describe(8)
+        .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         engine_rows_1(),
@@ -245,6 +291,7 @@ pub fn rows() -> Vec<Value> {
         engine_rows_7(),
         engine_rows_8(),
         engine_rows_9(),
+        engine_rows_10(),
     ]
     .concat()
 }

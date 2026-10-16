@@ -31,6 +31,8 @@ class BlockDeclarationOracle extends BlockItemOracle {
         Class<?> context = net.minecraft.world.phys.shapes.CollisionContext.class;
         methods.put("getShape", new Class<?>[] {state, getter, pos, context});
         methods.put("getCollisionShape", new Class<?>[] {state, getter, pos, context});
+        methods.put("getType", new Class<?>[] {});
+        methods.put("getParticlePos", new Class<?>[] {pos});
         return methods;
     }
 
@@ -266,8 +268,12 @@ class BlockDeclarationOracle extends BlockItemOracle {
                 var declares = new JsonArray();
                 for (var method : TRACKED_METHODS.entrySet()) {
                     try {
-                        classTypes.get(name).getDeclaredMethod(method.getKey(), method.getValue());
-                        declares.add(method.getKey());
+                        var found = classTypes.get(name).getDeclaredMethod(method.getKey(), method.getValue());
+                        // `getType` is also a trap door's and a skull's; only a bone meal type counts.
+                        if (!method.getKey().equals("getType")
+                            || found.getReturnType() == net.minecraft.world.level.block.BonemealableBlock.Type.class) {
+                            declares.add(method.getKey());
+                        }
                     } catch (NoSuchMethodException absent) {
                         // Inherited, not its own.
                     }

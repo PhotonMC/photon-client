@@ -4,7 +4,7 @@
 //! [`super::blocks`]; everything a state works out from these and from its
 //! shapes is computed, not stored.
 
-use super::classes::{BlockClass, BlockInterface};
+use super::classes::{BlockClass, BlockInterface, Method};
 
 /// What kind of values a property takes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -332,6 +332,20 @@ impl BlockClass {
     /// `instanceof` a class.
     pub fn is(self, other: Self) -> bool {
         self.lineage().any(|class| class == other)
+    }
+
+    /// `BonemealableBlock.getType()` is `NEIGHBOR_SPREADER`, not `GROWER`: the four classes that
+    /// override it all answer so.
+    pub fn bone_meal_spreads(self) -> bool {
+        self.lineage()
+            .any(|class| class.declares().contains(&Method::GetType))
+    }
+
+    /// `BonemealableBlock.getParticlePos` is the block below: the two classes that override it
+    /// answer so.
+    pub fn particles_below(self) -> bool {
+        self.lineage()
+            .any(|class| class.declares().contains(&Method::GetParticlePos))
     }
 
     /// `instanceof` an interface: one the class or a class it extends
