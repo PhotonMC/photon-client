@@ -25,6 +25,9 @@ pub struct ParrotState {
     flap_speed: f32,
     flap_speed_old: f32,
     flapping: f32,
+    /// `Parrot.jukebox`: the jukebox whose record the parrot dances to, and whether it does.
+    jukebox: Option<(i32, i32, i32)>,
+    party: bool,
 }
 
 impl Default for ParrotState {
@@ -35,6 +38,8 @@ impl Default for ParrotState {
             flap_speed: 0.0,
             flap_speed_old: 0.0,
             flapping: 1.0,
+            jukebox: None,
+            party: false,
         }
     }
 }
@@ -43,6 +48,30 @@ impl Default for ParrotState {
 impl Eq for ParrotState {}
 
 impl ParrotState {
+    /// `Parrot.setRecordPlayingNearby`.
+    pub(crate) fn set_record_playing(&mut self, jukebox: (i32, i32, i32), playing: bool) {
+        self.jukebox = Some(jukebox);
+        self.party = playing;
+    }
+
+    /// `Parrot.isPartyParrot`.
+    pub fn is_party(&self) -> bool {
+        self.party
+    }
+
+    /// The jukebox the parrot dances to, if it does.
+    pub(crate) fn jukebox(&self) -> Option<(i32, i32, i32)> {
+        self.jukebox
+    }
+
+    /// The start of `Parrot.aiStep`: the party ends where the jukebox is out of reach or gone.
+    pub(crate) fn end_party_unless(&mut self, jukebox_near: bool) {
+        if !jukebox_near {
+            self.party = false;
+            self.jukebox = None;
+        }
+    }
+
     /// `Parrot.calculateFlapping`, after `super.aiStep`.
     pub(crate) fn tick(&mut self, on_ground: bool, passenger: bool) {
         self.flap_old = self.flap;

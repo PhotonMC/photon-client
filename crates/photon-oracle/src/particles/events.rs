@@ -181,7 +181,10 @@ fn song_name_key(song: usize) -> String {
 /// then the songs jukeboxes started and stopped.
 pub(super) fn heard(
     played: &[LocalSound],
-    engine: &mut photon_world::particles::ParticleEngine,
+    (engine, world): (
+        &mut photon_world::particles::ParticleEngine,
+        &mut photon_world::ClientWorld,
+    ),
 ) -> Vec<String> {
     use photon_world::particles::JukeboxChange;
     let mut lines: Vec<String> = played.iter().map(sound_line).collect();
@@ -199,8 +202,19 @@ pub(super) fn heard(
                 let [x, y, z] = place(pos);
                 lines.push(format!("stop,{sound},{x},{y},{z}"));
             }
+            JukeboxChange::Notify { pos, playing } => world.set_record_playing_nearby(pos, playing),
         }
     }
+    lines
+}
+
+/// What a tick played, then whether each parrot of the scene dances.
+pub(super) fn ticked_lines(
+    ticked: &[LocalSound],
+    world: &photon_world::ClientWorld,
+) -> Vec<String> {
+    let mut lines: Vec<String> = ticked.iter().map(sound_line).collect();
+    lines.extend(super::extras::party_lines(world));
     lines
 }
 

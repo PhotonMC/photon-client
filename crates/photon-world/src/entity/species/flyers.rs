@@ -21,6 +21,18 @@ impl ClientEntity {
         self.living.parrot_variant
     }
 
+    /// Whether this is a parrot.
+    pub(crate) fn is_parrot(&self) -> bool {
+        photon_data::entity_type::name(self.type_id) == Some("minecraft:parrot")
+    }
+
+    /// `Parrot.setRecordPlayingNearby`.
+    pub(crate) fn set_record_playing(&mut self, jukebox: (i32, i32, i32), playing: bool) {
+        self.kind
+            .parrot_or_insert_with(Default::default)
+            .set_record_playing(jukebox, playing);
+    }
+
     /// A parrot's wing beats, if it has ticked.
     pub fn parrot(&self) -> Option<&crate::mobs::parrot::ParrotState> {
         self.kind.parrot()
@@ -28,7 +40,7 @@ impl ClientEntity {
 
     /// `Parrot.calculateFlapping` after `super.aiStep`: the wings beat by
     /// whether the parrot is in the air, and one falling there sinks slowly.
-    pub(crate) fn tick_parrot(&mut self) {
+    pub(crate) fn tick_parrot(&mut self, jukebox_near: bool) {
         if photon_data::entity_type::name(self.type_id) != Some("minecraft:parrot") {
             return;
         }
@@ -36,9 +48,9 @@ impl ClientEntity {
         if !on_ground && self.motion.y.get() < 0.0 {
             self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
         }
-        self.kind
-            .parrot_or_insert_with(Default::default)
-            .tick(on_ground, passenger);
+        let parrot = self.kind.parrot_or_insert_with(Default::default);
+        parrot.end_party_unless(jukebox_near);
+        parrot.tick(on_ground, passenger);
     }
 
     /// A bat's animation states, if it has ticked.

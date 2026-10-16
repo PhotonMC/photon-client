@@ -465,6 +465,39 @@ fn engine_rows_14() -> Vec<Value> {
     ]
 }
 
+/// Parrots near a jukebox: the ones within three blocks of it dance to a record and stop when it
+/// does, the ones beyond do not.
+fn engine_rows_15() -> Vec<Value> {
+    let at = |x: f64, y: f64, z: f64| json!({"x": f64_bits(x), "y": f64_bits(y), "z": f64_bits(z)});
+    let parrots = vec![
+        at(0.5, 64.0, 0.5),
+        at(3.4, 64.0, 0.5),
+        at(4.6, 64.0, 0.5),
+        at(0.5, 67.9, 0.5),
+        at(0.5, 69.5, 0.5),
+        at(-3.4, 64.0, -3.4),
+        at(20.5, 64.0, 20.5),
+    ];
+    vec![
+        engine_row(
+            "jukebox-parrots",
+            vec![
+                level_event(0, 1010, (0, 64, 0), 2),
+                level_event(1, 1011, (0, 64, 0), 0),
+                level_event(2, 1010, (0, 64, 0), 999),
+                level_event(2, 1010, (0, 64, 0), 4),
+                level_event(3, 1011, (30, 64, 30), 0),
+            ],
+        )
+        .blocks(vec![put(0, 64, 0, "minecraft:jukebox")])
+        .set("parrots", json!(parrots))
+        .ticks(5)
+        .seeds(8)
+        .describe(8)
+        .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         engine_rows_1(),
@@ -481,6 +514,7 @@ pub fn rows() -> Vec<Value> {
         engine_rows_12(),
         engine_rows_13(),
         engine_rows_14(),
+        engine_rows_15(),
     ]
     .concat()
 }

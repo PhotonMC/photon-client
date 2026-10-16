@@ -405,6 +405,17 @@ class MovementSupport {
                 level.addEntity(remote);
             }
         }
+        if (row.has("parrots")) {
+            int id = 200;
+            for (var element : row.getAsJsonArray("parrots")) {
+                var described = element.getAsJsonObject();
+                var parrot = new net.minecraft.world.entity.animal.parrot.Parrot(
+                    net.minecraft.world.entity.EntityTypes.PARROT, level);
+                parrot.setId(id++);
+                parrot.setPos(Oracle.f64(described, "x"), Oracle.f64(described, "y"), Oracle.f64(described, "z"));
+                level.addEntity(parrot);
+            }
+        }
         if (row.has("vaults")) {
             for (var element : row.getAsJsonArray("vaults")) {
                 var described = element.getAsJsonObject();
@@ -427,6 +438,19 @@ class MovementSupport {
                         net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         }
+    }
+
+    /** The parrots a row put in the level, by their numbers. */
+    static java.util.List<net.minecraft.world.entity.animal.parrot.Parrot> parrots(
+        net.minecraft.client.multiplayer.ClientLevel level) {
+        var found = new java.util.ArrayList<net.minecraft.world.entity.animal.parrot.Parrot>();
+        for (var entity : level.entitiesForRendering()) {
+            if (entity instanceof net.minecraft.world.entity.animal.parrot.Parrot parrot) {
+                found.add(parrot);
+            }
+        }
+        found.sort(java.util.Comparator.comparingInt(net.minecraft.world.entity.Entity::getId));
+        return found;
     }
 
     static java.util.UUID vaultUuid(com.google.gson.JsonArray ints) {

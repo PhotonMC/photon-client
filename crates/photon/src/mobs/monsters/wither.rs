@@ -326,9 +326,10 @@ pub(super) fn pose_parrot(
     partial: f32,
 ) {
     let own = entity.parrot().copied();
-    // `ParrotModel.getPose`: sitting, else flying in the air (the party
-    // pose needs a jukebox the client does not track yet).
-    let pose = if entity.is_sitting() {
+    // `ParrotModel.getPose`: dancing, else sitting, else flying in the air.
+    let pose = if own.is_some_and(|own| own.is_party()) {
+        ParrotPose::Party
+    } else if entity.is_sitting() {
         ParrotPose::Sitting
     } else if !entity.on_ground() {
         ParrotPose::Flying

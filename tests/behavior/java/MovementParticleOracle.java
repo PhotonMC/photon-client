@@ -647,6 +647,10 @@ class MovementParticleOracle extends MovementMenuOracle {
             engine.tick();
             var sounds = new JsonArray();
             SilentSoundManager.PLAYED.forEach(sounds::add);
+            // Whether each parrot of the scene dances, in the order they were put in.
+            for (var parrot : MovementSupport.parrots(level)) {
+                sounds.add("party," + parrot.getId() + "," + parrot.isPartyParrot());
+            }
             counted.add("sounds", sounds);
             counted.addProperty("particles", groupParticles(engine).size());
             counted.addProperty("emitters", groupParticles(engine, net.minecraft.client.particle.ParticleRenderType.NO_RENDER).size());

@@ -70,3 +70,7 @@ rastgelesiyle işler.
 - Jukebox songs (1010, 1011): a song starts from the middle of the block at volume 4 over the
   records category and is stopped by the next song or by 1011; a registry number with no song
   does nothing, not even a stop. The oracle records the sound manager's play and stop calls.
+- Jukebox parrots (1010, 1011): the living entities whose box meets the jukebox's block inflated
+  by three are told the record plays or stops; a parrot dances until its jukebox is 3.46 or more
+  from it or is no longer a jukebox. The oracle compares which parrots dance after each tick, not
+  the clearing on a parrot's own tick.

@@ -93,11 +93,14 @@ impl ClientEntity {
 
     /// What a cat or a panda does of its own after `super.tick`, given what
     /// the world around it holds (a sleeper near a cat, thunder).
-    pub(crate) fn tick_species(&mut self, (sleeper_near_cat, thundering): (bool, bool)) {
+    pub(crate) fn tick_species(
+        &mut self,
+        (sleeper_near_cat, thundering, jukebox_near): (bool, bool, bool),
+    ) {
         self.tick_cat(sleeper_near_cat);
         self.tick_panda(thundering);
         self.tick_bat();
-        self.tick_parrot();
+        self.tick_parrot(jukebox_near);
         self.tick_allay();
         self.tick_warden();
         self.tick_creaking();

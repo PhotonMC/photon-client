@@ -31,6 +31,11 @@ impl PlaySession {
         self.world.take_level_events()
     }
 
+    /// `LevelEventHandler.notifyNearbyEntities`: the entities near a jukebox hear its record play or stop.
+    pub fn set_record_playing_nearby(&mut self, jukebox: (i32, i32, i32), playing: bool) {
+        self.world.set_record_playing_nearby(jukebox, playing);
+    }
+
     /// The blocks the player swung at breaking, with the face aimed at, since the last call.
     pub fn take_breaking_effects(
         &mut self,

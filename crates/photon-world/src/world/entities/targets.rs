@@ -21,12 +21,59 @@ impl ClientWorld {
         })
     }
 
-    pub(crate) fn species_surroundings(&self, entity_id: EntityId) -> (bool, bool) {
+    pub(crate) fn species_surroundings(&self, entity_id: EntityId) -> (bool, bool, bool) {
         let sleeper_near_cat = self
             .entities
             .get(&entity_id)
             .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity));
-        (sleeper_near_cat, self.is_thundering())
+        (
+            sleeper_near_cat,
+            self.is_thundering(),
+            self.parrot_jukebox_near(entity_id),
+        )
+    }
+
+    /// The test at the start of `Parrot.aiStep`: its jukebox is within 3.46 of it, middle to
+    /// position, and still a jukebox.
+    fn parrot_jukebox_near(&self, entity_id: EntityId) -> bool {
+        let Some(entity) = self.entities.get(&entity_id) else {
+            return false;
+        };
+        let Some(jukebox) = entity.parrot().and_then(|parrot| parrot.jukebox()) else {
+            return false;
+        };
+        let (x, y, z) = entity.position();
+        let dx = f64::from(jukebox.0) + 0.5 - x;
+        let dy = f64::from(jukebox.1) + 0.5 - y;
+        let dz = f64::from(jukebox.2) + 0.5 - z;
+        let state = self.block_state_or_air(jukebox.0, jukebox.1, jukebox.2);
+        dx * dx + dy * dy + dz * dz < 3.46 * 3.46
+            && crate::block::state_or_air(state).block().name == "minecraft:jukebox"
+    }
+
+    /// `LevelEventHandler.notifyNearbyEntities`: the living entities within three blocks of a
+    /// jukebox hear that a record plays or stops (only a parrot does anything about it).
+    pub fn set_record_playing_nearby(&mut self, jukebox: (i32, i32, i32), playing: bool) {
+        let reach = photon_core::aabb::Aabb::new(
+            f64::from(jukebox.0),
+            f64::from(jukebox.1),
+            f64::from(jukebox.2),
+            f64::from(jukebox.0) + 1.0,
+            f64::from(jukebox.1) + 1.0,
+            f64::from(jukebox.2) + 1.0,
+        )
+        .inflate_all(3.0);
+        let near: Vec<EntityId> = self
+            .entities
+            .values()
+            .filter(|entity| entity.is_parrot() && entity.bounding_box().intersects(reach))
+            .map(ClientEntity::id)
+            .collect();
+        for id in near {
+            if let Some(entity) = self.entities.at_mut(id) {
+                entity.set_record_playing(jukebox, playing);
+            }
+        }
     }
 
     /// `Guardian.getActiveAttackTarget` on the client: the living entity the

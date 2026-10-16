@@ -20,6 +20,9 @@ pub enum JukeboxChange {
     },
     /// The song of the block ends.
     Stop { pos: (i32, i32, i32), sound: String },
+    /// The living entities within three blocks are told a record plays (or stops) there
+    /// (`notifyNearbyEntities`).
+    Notify { pos: (i32, i32, i32), playing: bool },
 }
 
 /// The jukebox songs of the level's registry and the ones playing.
@@ -54,7 +57,14 @@ impl ParticleEngine {
         match event {
             1504 => self.dripstone_drip(pos, context),
             1010 => self.play_jukebox_song(pos, data),
-            1011 => self.stop_jukebox_song(pos),
+            1011 => {
+                self.stop_jukebox_song(pos);
+                let change = JukeboxChange::Notify {
+                    pos,
+                    playing: false,
+                };
+                self.jukeboxes.changes.push(change);
+            }
             _ => return false,
         }
         true
@@ -70,8 +80,9 @@ impl ParticleEngine {
         };
         self.stop_jukebox_song(pos);
         self.jukeboxes.playing.insert(pos, sound.clone());
-        let change = JukeboxChange::Play { pos, sound, song };
-        self.jukeboxes.changes.push(change);
+        let play = JukeboxChange::Play { pos, sound, song };
+        let notify = JukeboxChange::Notify { pos, playing: true };
+        self.jukeboxes.changes.extend([play, notify]);
     }
 
     /// `stopJukeboxSong`.

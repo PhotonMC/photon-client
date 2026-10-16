@@ -209,6 +209,7 @@ impl SoundSystem {
                     self.jukeboxes.insert(pos, id);
                     self.engine.play(id);
                 }
+                JukeboxChange::Notify { .. } => {}
                 JukeboxChange::Stop { pos, .. } => {
                     if let Some(id) = self.jukeboxes.remove(&pos) {
                         self.engine.stop(id);

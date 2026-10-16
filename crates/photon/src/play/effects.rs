@@ -14,8 +14,12 @@ impl Play {
         let event_sounds = self.particles.level_events(&self.session, events);
         let songs = self.particles.take_jukebox_changes();
         for change in &songs {
-            if let JukeboxChange::Play { song, .. } = change {
-                self.gui.show_now_playing(*song);
+            match *change {
+                JukeboxChange::Play { song, .. } => self.gui.show_now_playing(song),
+                JukeboxChange::Notify { pos, playing } => {
+                    self.session.set_record_playing_nearby(pos, playing);
+                }
+                JukeboxChange::Stop { .. } => {}
             }
         }
         if let Some(sound) = self.sound.as_mut() {
