@@ -14,4 +14,5 @@ pub(crate) mod leashes;
 pub(crate) mod lightning_bolts;
 pub(crate) mod minecarts;
 pub(crate) mod paintings;
+pub(crate) mod piston_blocks;
 pub(crate) mod thrown_items;

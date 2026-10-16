@@ -19,6 +19,7 @@ const SPEC: Spec = Spec {
         ("--address", 1),
         ("--rcon", 1),
         ("--wait", 1),
+        ("--frames", 1),
     ],
 };
 
@@ -40,7 +41,27 @@ fn clip(reply: &str) -> String {
     reply.chars().take(80).collect()
 }
 
-/// Runs the client with a script, sends RCON commands once joined, and saves the first frame.
+/// Turns the frames the client wrote into images: `NAME.png` for one, `NAME.000.png` and on for more.
+fn save_frames(prefix: &Path, frames: u32) -> Result<(), String> {
+    for index in 0..frames {
+        let frame = PathBuf::from(format!("{}.{index:03}.ppm", prefix.display()));
+        let png = if frames == 1 {
+            PathBuf::from(format!("{}.png", prefix.display()))
+        } else {
+            PathBuf::from(format!("{}.{index:03}.png", prefix.display()))
+        };
+        if frame.exists() {
+            ppm_to_png(&frame, &png)?;
+            println!("frame: {}", png.display());
+        } else {
+            println!("frame: {}", frame.display());
+        }
+    }
+    Ok(())
+}
+
+/// Runs the client with a script, sends RCON commands once joined, and saves the first frame (or
+/// with `--frames N` the N after the script's end, one per tick, as `NAME.000.png` and on).
 pub fn shot(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
     let [name, script] = parsed.positional.as_slice() else {
@@ -50,6 +71,7 @@ pub fn shot(args: &[String]) -> Result<(), String> {
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     clear_stale(&directory, name)?;
     let prefix = directory.join(name);
+    let frames = parsed.number("--frames", 1.0)? as u32;
     let log_path = PathBuf::from(format!("{}.log", prefix.display()));
     let log =
         File::create(&log_path).map_err(|error| format!("{}: {error}", log_path.display()))?;
@@ -62,7 +84,7 @@ pub fn shot(args: &[String]) -> Result<(), String> {
         .env("PHOTON_USER", parsed.value("--user").unwrap_or("Miner"))
         .env("PHOTON_SCRIPT", script)
         .env("PHOTON_CAPTURE_PPM", &prefix)
-        .env("PHOTON_CAPTURE_FRAMES", "1")
+        .env("PHOTON_CAPTURE_FRAMES", frames.to_string())
         .args(["play", &address, "854", "480"])
         .stdout(log.try_clone().map_err(|error| error.to_string())?)
         .stderr(log)
@@ -81,14 +103,7 @@ pub fn shot(args: &[String]) -> Result<(), String> {
         }
     }
     child.wait().map_err(|error| error.to_string())?;
-    let frame = PathBuf::from(format!("{}.000.ppm", prefix.display()));
-    let png = PathBuf::from(format!("{}.png", prefix.display()));
-    if frame.exists() {
-        ppm_to_png(&frame, &png)?;
-        println!("frame: {}", png.display());
-    } else {
-        println!("frame: {}", frame.display());
-    }
+    save_frames(&prefix, frames)?;
     let text = fs::read_to_string(&log_path).unwrap_or_default();
     let lines: Vec<&str> = text.lines().collect();
     for line in &lines[lines.len().saturating_sub(2)..] {

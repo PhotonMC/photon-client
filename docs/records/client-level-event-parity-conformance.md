@@ -95,3 +95,8 @@ rastgelesiyle işler.
   and settles as the block it carried, shaped by its neighbours (a waterlogged one dries). The
   oracle ticks the block entities only for the rows that ask for it. Entities caught by a moving
   block are not pushed yet.
+- Moving pistons are drawn (#47, #48): the block each carries (or the head of a piston, as short or
+  long as its progress), at the place it has moved to by the partial tick, and the base a
+  retracting arm leaves behind, lit and tinted as a falling block is. No parity row compares the
+  drawing; a live run against the vanilla server showed a sticky piston and a normal one in
+  the middle of a push.

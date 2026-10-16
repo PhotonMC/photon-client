@@ -54,6 +54,15 @@ impl BlockTickers {
         }
     }
 
+    /// Where the tickers are that have not been removed.
+    pub(crate) fn positions(&self) -> impl Iterator<Item = Pos> + '_ {
+        self.slots
+            .iter()
+            .chain(&self.pending)
+            .filter(|slot| !slot.removed)
+            .map(|slot| slot.pos)
+    }
+
     /// The start of a pass: what waited joins the list.
     pub(crate) fn begin_pass(&mut self) {
         self.ticking = true;

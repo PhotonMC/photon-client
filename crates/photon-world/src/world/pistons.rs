@@ -302,6 +302,14 @@ impl ClientWorld {
         Shapes::or(&head_shape, &carried)
     }
 
+    /// Every moving piston block entity the level ticks, with where it is.
+    pub fn moving_pistons(&self) -> Vec<(Pos, MovingPiston)> {
+        self.block_tickers
+            .positions()
+            .filter_map(|pos| Some((pos, self.moving_piston_at(pos)?.clone())))
+            .collect()
+    }
+
     /// The moving piston a block entity holds at a place.
     pub fn moving_piston_at(&self, pos: Pos) -> Option<&MovingPiston> {
         self.block_entity_at(pos.0, pos.1, pos.2)?

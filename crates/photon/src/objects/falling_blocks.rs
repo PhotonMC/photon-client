@@ -12,6 +12,43 @@ use crate::overlays::FrameView;
 /// `EntityTypes.FALLING_BLOCK`'s height: the bounding box's top is where its block is read.
 const HEIGHT: f32 = 0.98;
 
+/// `MovingBlockFeatureRenderer`'s tessellation of one block at `block`, its model's variants
+/// picked as if it stood at `seed_position`: in the block's own unit cube, lit by the world
+/// about `block` and in its biome's colour (not blended).
+pub(crate) fn moving_block_mesh(
+    world: &photon_world::ClientWorld,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    (state, block, seed_position): (BlockStateId, [i32; 3], [i32; 3]),
+) -> Mesh {
+    let read = |px: i32, py: i32, pz: i32| {
+        Some(if [px, py, pz] == block {
+            state
+        } else {
+            photon_world::VANILLA_AIR_BLOCK_STATE_ID
+        })
+    };
+    let light = |px: i32, py: i32, pz: i32| {
+        (
+            world.block_brightness(px, py, pz),
+            world.sky_brightness(px, py, pz),
+        )
+    };
+    // `MovingBlockRenderState.getBlockTint`: its biome's colour, not blended.
+    let noise_biome = |px: i32, py: i32, pz: i32| world.noise_biome(px, py, pz);
+    let biome = tints.biome_at(block[0], block[1], block[2], &noise_biome);
+    let tint = |kind, position: [i32; 3]| tints.colour(kind, biome, position[0], position[2]);
+    renderer.mesh_moving_block(
+        &MeshWorld {
+            read: &read,
+            light: &light,
+            biome_tint: &tint,
+            tags: world.block_state_registry().tags(),
+        },
+        block,
+        seed_position,
+    )
+}
+
 /// The falling blocks the server added, each a mesh in the frame's mesh units and the place
 /// to sort it from.
 pub fn falling_blocks(
@@ -50,32 +87,10 @@ pub fn falling_blocks(
             at[2],
         ];
         let start = entity.start_block();
-        let read = |px: i32, py: i32, pz: i32| {
-            Some(if [px, py, pz] == block {
-                state
-            } else {
-                photon_world::VANILLA_AIR_BLOCK_STATE_ID
-            })
-        };
-        let light = |px: i32, py: i32, pz: i32| {
-            (
-                world.block_brightness(px, py, pz),
-                world.sky_brightness(px, py, pz),
-            )
-        };
-        // `MovingBlockRenderState.getBlockTint`: its biome's colour, not blended.
-        let noise_biome = |px: i32, py: i32, pz: i32| world.noise_biome(px, py, pz);
-        let biome = tints.biome_at(block[0], block[1], block[2], &noise_biome);
-        let tint = |kind, position: [i32; 3]| tints.colour(kind, biome, position[0], position[2]);
-        let mut mesh = renderer.mesh_moving_block(
-            &MeshWorld {
-                read: &read,
-                light: &light,
-                biome_tint: &tint,
-                tags: world.block_state_registry().tags(),
-            },
-            block,
-            [start.0, start.1, start.2],
+        let mut mesh = moving_block_mesh(
+            world,
+            (renderer, tints),
+            (state, block, [start.0, start.1, start.2]),
         );
         // The entity's place, the block's corner half a block back.
         let (sx, sy, sz) = snapshot.position;
