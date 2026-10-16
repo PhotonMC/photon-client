@@ -5,6 +5,19 @@ use std::time::Duration;
 use photon_dev::connect_and_world_dimension_type_bounds_probe;
 use photon_world::{CardinalLightType, DimensionSkybox};
 
+/// Whether the registry entry a spawn info names is the `p08:test` dimension type.
+fn is_custom_type(trace: &photon_dev::PlayConnectionTrace, type_id: i32) -> bool {
+    usize::try_from(type_id)
+        .ok()
+        .and_then(|id| {
+            trace
+                .registry_entry_names
+                .get("minecraft:dimension_type")?
+                .get(id)
+        })
+        .is_some_and(|name| name == "p08:test")
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::args()
         .nth(1)
@@ -29,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if !respawn.dimension_changed
         || respawn.spawn_info.dimension != "p08:test"
-        || respawn.spawn_info.dimension_type_id != 2
+        || !is_custom_type(&trace, respawn.spawn_info.dimension_type_id)
         || environment != registry_environment
         || !environment.has_fixed_time()
         || environment.has_skylight()
