@@ -3,10 +3,9 @@ use super::*;
 /// `engine` (the sound family): the sound engine played through scenarios, with channels that write
 /// their calls down.
 pub(super) fn sound_engine_result(request: &Value) -> Result<Value, String> {
+    use photon_audio::library::{Channel, ChannelSource, Pool};
     use photon_core::random::RandomSource;
-    use photon_game::sounds::engine::{
-        Attenuation, Channel, ChannelSource, InstanceId, Pool, SoundEngine, SoundInstance,
-    };
+    use photon_game::sounds::engine::{Attenuation, InstanceId, SoundEngine, SoundInstance};
     use photon_game::sounds::{SoundRegistry, SoundSource};
     use std::cell::RefCell;
     use std::rc::Rc;

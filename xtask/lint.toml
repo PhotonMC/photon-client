@@ -17,7 +17,7 @@ non_ascii_allowed = []
 photon-core = []
 photon-data = ["photon-core"]
 photon-world = ["photon-core", "photon-data"]
-photon-game = ["photon-core", "photon-data", "photon-world"]
+photon-game = ["photon-core", "photon-data", "photon-world", "photon-audio"]
 photon-protocol = ["photon-core", "photon-data", "photon-world", "photon-game"]
 photon-net = [
     "photon-core",

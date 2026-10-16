@@ -806,7 +806,7 @@
 "crates/photon-oracle/src/shape/world_collision.rs::client_world_stair_neighbor_collision_case" = 61
 "crates/photon-oracle/src/shape/world_index.rs::client_world_entity_section_index_case" = 149
 "crates/photon-oracle/src/shape/world_index.rs::client_world_indexed_collision_case" = 110
-"crates/photon-oracle/src/sound.rs::sound_engine_result" = 326
+"crates/photon-oracle/src/sound.rs::sound_engine_result" = 325
 "crates/photon-oracle/src/sound.rs::sound_packets_result" = 65
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 163
 "crates/photon-oracle/src/strider.rs::villager_held_layers_result" = 88
@@ -1195,7 +1195,6 @@
 "crates/photon/src/world/block_entities.rs::banner_vertices" = 7
 
 [layer]
-"photon-audio -> photon-game" = 1
 "photon-render -> photon-game" = 1
 
 [unsafe]

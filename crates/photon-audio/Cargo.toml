@@ -9,9 +9,13 @@ include = ["/Cargo.toml", "/src/**"]
 
 [dependencies]
 log.workspace = true
-cpal = "0.18.2"
+cpal = { version = "0.18.2", optional = true }
 lewton = "0.10.2"
-photon-game.workspace = true
+
+[features]
+default = ["device"]
+# The sound card output (`cpal`); the engine crates leave it off.
+device = ["dep:cpal"]
 
 [lints]
 workspace = true

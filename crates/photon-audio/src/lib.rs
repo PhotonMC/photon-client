@@ -4,5 +4,7 @@
 
 pub mod channel;
 pub mod decode;
+pub mod library;
 pub mod mixer;
+#[cfg(feature = "device")]
 pub mod output;

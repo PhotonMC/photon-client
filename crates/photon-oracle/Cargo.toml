@@ -11,7 +11,7 @@ include = ["/Cargo.toml", "/src/**"]
 photon-core.workspace = true
 photon-data.workspace = true
 photon-world.workspace = true
-photon-audio.workspace = true
+photon-audio = { workspace = true, features = ["device"] }
 photon-game.workspace = true
 photon-net.workspace = true
 photon-render.workspace = true

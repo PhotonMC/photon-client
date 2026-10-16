@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use photon_game::sounds::engine::{Channel, ChannelSource, Pool};
+use crate::library::{Channel, ChannelSource, Pool};
 
 use crate::decode::{LoopingOggStream, OggStream, decode_ogg};
 use crate::mixer::{Mixer, Samples, State, StreamFeed};

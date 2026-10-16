@@ -1315,7 +1315,6 @@ dependencies = [
  "cpal",
  "lewton",
  "log",
- "photon-game",
 ]
 
 [[package]]
@@ -1345,6 +1344,7 @@ dependencies = [
 name = "photon-game"
 version = "0.1.0"
 dependencies = [
+ "photon-audio",
  "photon-core",
  "photon-data",
  "photon-world",

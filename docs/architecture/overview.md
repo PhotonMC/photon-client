@@ -16,21 +16,22 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), a `Recorder` hook that production leaves empty |
 | `photon-dev` | Developer tooling, not shipped: live-server probes that watch the client against a real server |
 | `photon-render` | Vulkan backend, models, atlases and meshes, sky and weather, GUI drawing |
-| `photon-audio` | Ogg/Vorbis decoding, mixer, `cpal` output |
+| `photon-audio` | Ogg/Vorbis decoding, mixer, the `Channel`/`Pool` contract the sound engine drives, and (feature `device`) `cpal` output |
 | `photon` | The application: menu and play loops, input, wiring |
 | `photon-oracle` | The Rust side of the parity comparison (JSONL adapter) |
 | `xtask` | Lint rules, git hooks, commit gate, parity entry point |
 
 ```
+audio --------------------+
+                          v
 core -> data -> world -> game -> protocol -> net --> photon
                     \            \-> render -----^
-                     \-> audio ------------------^
+(`photon` also takes audio with its `device` feature on)
 ```
 
 ### Known layering debts
 
 - `photon-render` depends on `photon-game`, because GUI screen logic lives in the render crate. Target: a `photon-gui` crate for screen logic and layout, with the renderer only drawing the resulting draw list.
-- `photon-audio` depends on `photon-game` for the sound-engine `Channel`/`Pool` types, which belong in the audio crate.
 - `photon-dev` holds the probes as they were: one 2,200-line function (`probe/mode.rs`) and 121 examples under `crates/photon-dev/examples/` whose size and naming violations are still in the lint baseline. Target: stages and scenario-driven binaries that meet the limits.
 
 These edges are recorded in the lint baseline and must disappear, not grow.
