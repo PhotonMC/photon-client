@@ -25,6 +25,7 @@ pub mod leash;
 pub mod leaves;
 pub mod map;
 pub mod menu_type;
+mod name;
 pub mod particle_type;
 pub mod sound_event;
 pub mod spear;

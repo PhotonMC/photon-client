@@ -4,9 +4,11 @@ use photon_core::ids::EntityTypeId;
 
 pub const PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: u8 = 1;
 pub const PLAYER_RESPAWN_KEEP_ENTITY_DATA: u8 = 2;
-pub(crate) const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 = 26;
+pub(crate) const VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID: i32 =
+    photon_data::item::effect::attribute_named("minecraft:movement_speed");
 pub(crate) const VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED: f32 = 0.1_f32;
-pub(crate) const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 = 31;
+pub(crate) const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 =
+    photon_data::item::effect::attribute_named("minecraft:sneaking_speed");
 pub(crate) const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;

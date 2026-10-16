@@ -141,3 +141,16 @@ pub fn attribute_id(name: &str) -> Option<i32> {
         .position(|attribute| attribute.name == name)
         .map(|id| id as i32)
 }
+
+/// An attribute's registry id, resolved while compiling: a name the registry lacks stops the
+/// build.
+pub const fn attribute_named(name: &str) -> i32 {
+    let mut id = 0;
+    while id < ATTRIBUTES.len() {
+        if crate::name::same(ATTRIBUTES[id].name, name) {
+            return id as i32;
+        }
+        id += 1;
+    }
+    panic!("the attribute registry has no such name");
+}
