@@ -19,6 +19,11 @@ impl Play {
             self.session.world(),
             photon_world::particles::ParticleStatus::All,
         );
+        let tracked = self.session.take_tracking_emitters();
+        let tracked_sounds = self.particles.tracking(&self.session, tracked);
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle_local(tracked_sounds);
+        }
         let commands = self.session.take_sounds();
         self.sounds_heard += commands.len();
         if let Some(sound) = self.sound.as_mut() {

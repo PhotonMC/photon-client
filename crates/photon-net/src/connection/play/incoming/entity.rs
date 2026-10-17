@@ -417,14 +417,44 @@ impl PlaySession {
     }
 
     fn on_animate(&mut self, (id, action): (EntityId, u8)) -> Result<(), ConnectionError> {
+        // `ClientPacketListener.handleAnimate`: 4 and 5 are the hits that crit.
+        let hit = match action {
+            4 => Some("crit"),
+            5 => Some("enchanted_hit"),
+            _ => None,
+        };
+        if let Some(particle) = hit {
+            self.queue_emitter(id, particle, 3, None);
+        }
         self.world.entities_mut().apply_animate(id, action);
         Ok(())
+    }
+
+    fn queue_emitter(
+        &mut self,
+        entity: EntityId,
+        particle: &'static str,
+        life_time: i32,
+        sound: Option<&'static str>,
+    ) {
+        self.effects
+            .tracking_emitters
+            .push(photon_world::particles::TrackingRequest {
+                entity,
+                particle,
+                life_time,
+                sound,
+            });
     }
 
     fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
         // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
         if self.local.player_id == Some(id) && (24..=28).contains(&event) {
             self.local.permission_level = i32::from(event) - 24;
+        }
+        // `ClientPacketListener.handleEntityEvent`: 35 is a totem saving its holder.
+        if event == 35 {
+            self.queue_emitter(id, "totem_of_undying", 30, Some("minecraft:item.totem.use"));
         }
         // `LivingEntity.handleEntityEvent`: 3 is a death.
         if event == 3 {

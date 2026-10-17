@@ -117,6 +117,8 @@ pub(super) struct Effects {
     pub(super) sounds: Vec<photon_game::sounds::SoundCommand>,
     /// The particle packets since the last [`Self::take_level_particles`].
     pub(super) level_particles: Vec<photon_world::particles::LevelParticles>,
+    /// The emitters asked for since the last `take_tracking_emitters`.
+    pub(super) tracking_emitters: Vec<photon_world::particles::TrackingRequest>,
     /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
     pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
     pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -200,6 +202,7 @@ impl Default for Effects {
         Self {
             sounds: Vec::new(),
             level_particles: Vec::new(),
+            tracking_emitters: Vec::new(),
             item_pickups: Vec::new(),
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),

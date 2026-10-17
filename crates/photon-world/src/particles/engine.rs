@@ -149,6 +149,10 @@ pub struct LevelParticles {
 #[derive(Debug, Clone)]
 pub struct ParticleEngine {
     group: ParticleGroup,
+    /// `ParticleEngine.trackingEmitters`, ticked after the groups.
+    trackers: Vec<super::TrackingEmitter>,
+    /// The local player's entity id and body, which the level's entities do not hold.
+    local_body: Option<(EntityId, super::EntityBody)>,
     /// The `NO_RENDER` group: the emitters, never drawn.
     emitters: ParticleGroup,
     /// `ClientExplosionTracker`: the explosions whose block particles the next level tick scatters.
@@ -182,6 +186,8 @@ impl ParticleEngine {
             emitters: ParticleGroup::default(),
             explosions: Vec::new(),
             pickups: ParticleGroup::default(),
+            trackers: Vec::new(),
+            local_body: None,
             pickups_to_add: VecDeque::new(),
             elder_guardians: ParticleGroup::default(),
             elder_guardians_to_add: VecDeque::new(),
@@ -307,6 +313,7 @@ impl ParticleEngine {
         let (mut emitted, limited_gone) = self.group.tick(world, view.camera);
         self.spore_blossoms -= limited_gone;
         emitted.append(&mut self.emitters.tick(world, view.camera).0);
+        emitted.extend(self.tick_trackers(world));
         let mut sounds = Vec::new();
         for request in emitted {
             match request {
@@ -341,10 +348,73 @@ impl ParticleEngine {
         sounds
     }
 
+    /// Where the local player is, for the emitters that follow it.
+    pub fn set_local_body(&mut self, body: Option<(EntityId, super::EntityBody)>) {
+        self.local_body = body;
+    }
+
+    /// Whether the id is the local player's.
+    pub fn is_local(&self, id: EntityId) -> bool {
+        self.local_body.is_some_and(|(local, _)| local == id)
+    }
+
+    /// Where an entity is and how big it is, if it is in the level.
+    pub fn body_of(&self, world: &ClientWorld, id: EntityId) -> Option<super::EntityBody> {
+        match self.local_body {
+            Some((local, body)) if local == id => Some(body),
+            _ => world.entities().at(id).map(|entity| {
+                let dimensions = entity.dimensions();
+                super::EntityBody {
+                    position: entity.position(),
+                    width: dimensions.width(),
+                    height: dimensions.height(),
+                }
+            }),
+        }
+    }
+
+    /// `ParticleEngine.tick`'s emitters: each sprays once and those out of time are dropped.
+    fn tick_trackers(&mut self, world: &ClientWorld) -> Vec<Emitted> {
+        let mut trackers = std::mem::take(&mut self.trackers);
+        let mut emitted = Vec::new();
+        for tracker in &mut trackers {
+            emitted.extend(tracker.tick(self.body_of(world, tracker.entity())));
+        }
+        trackers.retain(super::TrackingEmitter::is_alive);
+        self.trackers = trackers;
+        emitted
+    }
+
+    /// `ParticleEngine.createTrackingEmitter`: the emitter sprays at once, and goes on spraying at
+    /// each tick until its time is out.
+    pub fn create_tracking_emitter(
+        &mut self,
+        world: &ClientWorld,
+        (entity, type_id, life_time): (EntityId, i32, i32),
+        view: &AddView,
+        level_random: &mut RandomSource,
+        mut particle_random: impl FnMut() -> RandomSource,
+    ) {
+        let Some(body) = self.body_of(world, entity) else {
+            return;
+        };
+        let (emitter, emitted) =
+            super::TrackingEmitter::new(entity, type_id, life_time, particle_random(), body);
+        for request in emitted {
+            if let Emitted::Particle(spawn) = request {
+                self.add_particle(world, &spawn, view, level_random, &mut particle_random);
+            }
+        }
+        if emitter.is_alive() {
+            self.trackers.push(emitter);
+        }
+    }
+
     /// `ParticleEngine.clearParticles`.
     pub fn clear(&mut self) {
         self.group.clear();
         self.emitters.clear();
+        self.trackers.clear();
         self.pickups.clear();
         self.pickups_to_add.clear();
         self.elder_guardians.clear();

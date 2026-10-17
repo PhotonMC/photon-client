@@ -48,6 +48,7 @@ mod smoke;
 mod sprites;
 mod sulfur;
 mod terrain;
+mod tracking;
 mod vibration;
 mod water;
 
@@ -72,3 +73,4 @@ pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;
 pub use sprites::SpriteSet;
 pub use terrain::TerrainMaterials;
+pub use tracking::{EntityBody, TrackingEmitter, TrackingRequest};

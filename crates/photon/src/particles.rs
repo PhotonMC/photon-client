@@ -1,6 +1,8 @@
 //! The level's particles on the client: the engine, the random sources the reference seeds from
 //! the clock, and the sprite lists of `particles/*.json`.
 
+mod tracking;
+
 use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
 use std::collections::HashMap;
@@ -395,6 +397,7 @@ impl Particles {
         ambience: &dyn photon_world::particles::Ambience,
     ) -> Vec<photon_world::local_player::LocalSound> {
         self.look_about(session);
+        self.follow_local_player(session);
         let world = session.world();
         let mut sounds = Vec::new();
         // `ClientLevel.tick`'s explosion tracker, before the blocks animate.

@@ -21,6 +21,11 @@ impl PlaySession {
         std::mem::take(&mut self.effects.level_particles)
     }
 
+    /// The tracking emitters entity events and animations asked for since the last call.
+    pub fn take_tracking_emitters(&mut self) -> Vec<photon_world::particles::TrackingRequest> {
+        std::mem::take(&mut self.effects.tracking_emitters)
+    }
+
     /// The entities taken since the last call, each flying to whoever took it.
     pub fn take_item_pickups(&mut self) -> Vec<photon_world::particles::ItemPickup> {
         std::mem::take(&mut self.effects.item_pickups)
