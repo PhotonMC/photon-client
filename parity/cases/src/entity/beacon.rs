@@ -158,3 +158,15 @@ pub fn vault_pose() -> Vec<Value> {
     rows.push(row("at rest".to_owned(), "minecraft:apple", 5, (0.0, 1.0, 0.125), (0, 0, 0.0)));
     vec![entity("vault-pose", "vault_pose", rows)]
 }
+
+/// The real `CopperGolemStatueBlockRenderer`: each pose, facing and weathering.
+pub fn copper_statue_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (index, pose) in ["standing", "running", "sitting", "star"].into_iter().enumerate() {
+        for (turn, facing) in ["north", "south", "west", "east"].into_iter().enumerate() {
+            let weathering = (index + turn) % 4;
+            rows.push(json!({"label": format!("{pose} {facing} {weathering}"), "pose": pose, "facing": facing, "weathering": weathering}));
+        }
+    }
+    vec![entity("copper-statue-pose", "copper_statue_pose", rows)]
+}

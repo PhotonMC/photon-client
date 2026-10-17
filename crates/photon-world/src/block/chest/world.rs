@@ -201,6 +201,26 @@ impl ClientWorld {
         })
     }
 
+    /// `CopperGolemStatueBlockRenderer.extractRenderState`: how a statue stands, which way and how
+    /// weathered it is.
+    pub fn copper_statue_view(&self, pos: (i32, i32, i32)) -> Option<CopperStatueView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_copper_statue_state(state) {
+            return None;
+        }
+        let property = |key| crate::local_player::property(Some(state), key);
+        let name = crate::block::state_or_air(state).block().name;
+        let weathering = ["exposed", "weathered", "oxidized"]
+            .iter()
+            .position(|stage| name.contains(stage))
+            .map_or(0, |index| index as u8 + 1);
+        Some(CopperStatueView {
+            facing: Direction::from_name(property("facing")?)?,
+            pose: property("copper_golem_pose")?.to_owned(),
+            weathering,
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

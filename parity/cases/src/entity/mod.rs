@@ -122,6 +122,7 @@ const ORDER: &[Cases] = &[
     beacon::conduit_pose,
     beacon::campfire_pose,
     beacon::vault_pose,
+    beacon::copper_statue_pose,
     objects::skull_block,
     objects::elder_guardian_particle,
     banner::banner_cases,

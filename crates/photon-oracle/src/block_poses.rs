@@ -28,6 +28,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "conduit_pose" => Some(conduit_pose_result(request)),
         "campfire_pose" => Some(campfire_pose_result(request)),
         "vault_pose" => Some(vault_pose_result(request)),
+        "copper_statue_pose" => Some(copper_statue_pose_result(request)),
         _ => None,
     }
 }
@@ -464,6 +465,30 @@ fn vault_pose_result(request: &Value) -> Result<Value, String> {
             "label": row["label"],
             "spin": format!("{:08x}", turned.to_bits()),
             "poses": poses,
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `copper_statue_pose`: a copper golem statue's pose, texture and the quads of its model.
+fn copper_statue_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::copper_golem_statue::{layer, placed, texture};
+    use photon_render::entity::mob_model::MobModel;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing =
+            photon_core::direction::Direction::from_name(string(row, "facing")?).ok_or("facing")?;
+        let layer =
+            photon_data::entity_model::layer(layer(string(row, "pose")?)).ok_or("no layer")?;
+        let mut model = MobModel::bake(layer);
+        model.setup_copper_statue();
+        let weathering = i32_field(row, "weathering")? as u8;
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": super::strider::matrix_bits(&placed(&Pose::default(), facing)),
+            "texture": texture(weathering),
+            "quads": posed_quads(&model),
         }));
     }
     Ok(json!({"rows": rows}))

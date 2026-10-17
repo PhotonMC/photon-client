@@ -192,6 +192,31 @@ fn is_item_holder_state(state_id: BlockStateId) -> bool {
         || is_shelf_state(state_id)
         || is_campfire_state(state_id)
         || is_vault_state(state_id)
+        || is_copper_statue_state(state_id)
+}
+
+/// Whether a block state is a copper golem statue's, waxed or weathered.
+pub(crate) fn is_copper_statue_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(
+        state_id,
+        &[
+            BlockClass::CopperGolemStatueBlock,
+            BlockClass::WeatheringCopperGolemStatueBlock,
+        ],
+        &BLOCKS,
+    )
+}
+
+/// What a copper golem statue is, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopperStatueView {
+    /// `CopperGolemStatueBlock.FACING`.
+    pub facing: Direction,
+    /// `CopperGolemStatueBlock.POSE`: `standing`, `sitting`, `running` or `star`.
+    pub pose: String,
+    /// `getWeatheringState`: 0 for none to 3 for oxidized, waxed or not.
+    pub weathering: u8,
 }
 
 /// Whether a block state is a vault's.

@@ -7,6 +7,7 @@ pub mod brushable;
 pub mod campfire;
 pub mod chest;
 pub mod conduit;
+pub mod copper_golem_statue;
 pub mod decorated_pot;
 pub mod enchant_table;
 pub mod lectern;

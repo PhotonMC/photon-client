@@ -144,7 +144,42 @@ fn bell_or_book(
         vertices.extend(lectern_vertices(session, models, textures, view, at, turn));
     } else if let Some(pot) = world.pot_view(at, partial) {
         vertices.extend(pot_vertices(session, models, textures, view, at, &pot));
+    } else if let Some(statue) = world.copper_statue_view(at) {
+        vertices.extend(statue_vertices(
+            session, models, textures, view, at, &statue,
+        ));
     }
+}
+
+/// One copper golem statue, in the pose and the weathering of its block, turned to face.
+fn statue_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    statue: &photon_world::CopperStatueView,
+) -> Vec<Vertex> {
+    use photon_render::block_entity::copper_golem_statue as golem;
+    let (Some(rect), Some(model)) = (
+        textures.rect(golem::texture(statue.weathering)),
+        models.model(golem::layer(&statue.pose)),
+    ) else {
+        return Vec::new();
+    };
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    model.setup_copper_statue();
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let pose = golem::placed(&base, statue.facing);
+    mob_vertices_posed(model, &pose, rect, (light, false))
 }
 
 /// One enchanting table's book, floating over it, open to the player near it.

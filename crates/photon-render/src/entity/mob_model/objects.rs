@@ -157,6 +157,14 @@ impl MobModel {
         }
     }
 
+    /// `CopperGolemStatueModel.setupAnim`: the root is set down and turned over, which the entity
+    /// models' own upside-down layers need.
+    pub fn setup_copper_statue(&mut self) {
+        self.root.reset();
+        self.root.y = 0.0;
+        self.root.z_rot = std::f32::consts::PI;
+    }
+
     /// Only one of the named parts of the root is drawn (`ModelPart.visible`), as a renderer that
     /// draws each part in its own texture has it.
     pub fn show_only(&mut self, parts: &[&str], shown: &str) {

@@ -895,6 +895,66 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `CopperGolemStatueBlockRenderer.submit` hands the collector for a statue in a
+     * pose, facing a way, as weathered as a state says: the model's pose, its texture, and its
+     * quads once the statue model has been set up.
+     */
+    static JsonObject copperStatuePose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var rendererClass = net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer.class;
+        var renderer = (net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer) UNSAFE.allocateInstance(rendererClass);
+        var models = new java.util.HashMap<net.minecraft.world.level.block.CopperGolemStatueBlock.Pose,
+            net.minecraft.client.model.object.statue.CopperGolemStatueModel>();
+        var layers = java.util.Map.of(
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.STANDING, "minecraft:copper_golem#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.RUNNING, "minecraft:copper_golem_running#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.SITTING, "minecraft:copper_golem_sitting#main",
+            net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.STAR, "minecraft:copper_golem_star#main");
+        for (var entry : layers.entrySet()) {
+            models.put(entry.getKey(), new net.minecraft.client.model.object.statue.CopperGolemStatueModel(bakedLayer(entry.getValue())));
+        }
+        var modelsField = rendererClass.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(renderer, models);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.direction = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.pose = net.minecraft.world.level.block.CopperGolemStatueBlock.Pose.valueOf(row.get("pose").getAsString().toUpperCase());
+            state.oxidationState = net.minecraft.world.level.block.WeatheringCopper.WeatherState.values()[row.get("weathering").getAsInt()];
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        out.addProperty("texture", ((net.minecraft.resources.Identifier) args[3]).getPath()
+                            .replaceFirst("^textures/", "").replaceFirst("\\.png$", ""));
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(args[1]);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the
      * order it is drawn with its picture and its quads. The render state is made as the renderer's
