@@ -108,3 +108,10 @@ rastgelesiyle işler.
   pale moss, open eyeblossoms, dead bushes and dry grass. The oracle's sound manager leaves the
   ambient sounds out, so they show only through the draws they make; dry grass's sound is the
   player's own and draws only where the client has a player (the oracle has none).
+- A stalactite's tip drips (#45): a free hanging tip lets a drop go on one tick in about eight
+  (the fluid above it picks the kind, and only still water and lava fill a cauldron, so the
+  rest drip a sixth as often), and a lightning rod in a thunderstorm sheds one or two sparks
+  when it stands at the top of its column, the more likely the later in the second it is. The
+  dripstone's dimension is now the one the session is in on every tick, not only on a level
+  event. The oracle's chunks carry the world surface and motion blocking heightmaps (the server
+  sends them with the chunk; the reference's client otherwise reads zeros).

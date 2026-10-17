@@ -34,6 +34,17 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
     if let Some(time) = row["game_time"].as_u64() {
         world.set_game_time(time);
     }
+    if let Some([rain, thunder]) = row["weather"].as_array().map(Vec::as_slice).map(|bits| {
+        let level = |index: usize| {
+            bits[index]
+                .as_str()
+                .and_then(|text| u32::from_str_radix(text, 16).ok())
+                .map_or(0.0, f32::from_bits)
+        };
+        [level(0), level(1)]
+    }) {
+        world.set_weather(rain, thunder);
+    }
     for (index, player) in row["players"].as_array().into_iter().flatten().enumerate() {
         let (uuid, _) = uuid_of(&player["uuid"])?;
         put_entity(

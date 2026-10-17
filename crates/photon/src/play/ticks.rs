@@ -513,7 +513,7 @@ impl Play {
                 at.z.floor() as i32,
             )
         });
-        let block_sounds = self.particles.tick(session.world(), (block, local));
+        let block_sounds = self.particles.tick(session, (block, local));
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(block_sounds);
         }

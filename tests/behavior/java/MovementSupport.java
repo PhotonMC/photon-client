@@ -390,6 +390,12 @@ class MovementSupport {
                 }
                 level.getChunkSource().replaceWithPacketData(
                     chunkX, chunkZ, buffer, java.util.Map.of(), output -> {});
+                // The server sends the heightmaps the client reads (`WORLD_SURFACE` and the like):
+                // here they are worked out from the blocks the chunk holds.
+                net.minecraft.world.level.levelgen.Heightmap.primeHeightmaps(
+                    level.getChunk(chunkX, chunkZ), java.util.EnumSet.of(
+                        net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING));
             }
         }
 
@@ -402,6 +408,11 @@ class MovementSupport {
      * connected to it (its `shared_data`, as the server's update tag carries it).
      */
     static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+        if (row.has("weather")) {
+            var weather = row.getAsJsonArray("weather");
+            level.setRainLevel(Float.intBitsToFloat(Integer.parseUnsignedInt(weather.get(0).getAsString(), 16)));
+            level.setThunderLevel(Float.intBitsToFloat(Integer.parseUnsignedInt(weather.get(1).getAsString(), 16)));
+        }
         if (row.has("game_time")) {
             level.setTimeFromServer(row.get("game_time").getAsLong());
         }

@@ -185,14 +185,9 @@ impl Particles {
         self.renderer = Some(renderer);
     }
 
-    /// The level events since the last tick (`LevelEventHandler.levelEvent`): their particles are
-    /// made, and the sounds they play given back in order.
-    pub(crate) fn level_events(
-        &mut self,
-        session: &photon_net::connection::PlaySession,
-        events: Vec<photon_world::LevelEvent>,
-    ) -> Vec<photon_world::local_player::LocalSound> {
-        let world = session.world();
+    /// What the level's particles need to know of where they are made: what the dimension says
+    /// about dripstone, and the local player.
+    fn look_about(&mut self, session: &photon_net::connection::PlaySession) {
         let dimension = session.dimension_type().unwrap_or("minecraft:overworld");
         self.dripstone = photon_world::particles::DripstoneAttributes::of_dimension_type(dimension);
         self.local_player = session
@@ -203,6 +198,17 @@ impl Particles {
                 position: player.position(),
                 height: player.bb_height(),
             });
+    }
+
+    /// The level events since the last tick (`LevelEventHandler.levelEvent`): their particles are
+    /// made, and the sounds they play given back in order.
+    pub(crate) fn level_events(
+        &mut self,
+        session: &photon_net::connection::PlaySession,
+        events: Vec<photon_world::LevelEvent>,
+    ) -> Vec<photon_world::local_player::LocalSound> {
+        self.look_about(session);
+        let world = session.world();
         let view = AddView {
             camera: self.camera,
             status: ParticleStatus::All,
@@ -339,14 +345,43 @@ impl Particles {
         self.engine.pickups()
     }
 
+    /// `ClientLevel.animateTick` around a block: what the blocks about it show, and the sounds
+    /// they play.
+    fn animate_blocks(
+        &mut self,
+        world: &ClientWorld,
+        center: (i32, i32, i32),
+    ) -> Vec<photon_world::local_player::LocalSound> {
+        let view = AddView {
+            camera: self.camera,
+            status: ParticleStatus::All,
+        };
+        let mut uniquifier = self.uniquifier;
+        let mut context = photon_world::particles::LevelEventContext {
+            world,
+            view: &view,
+            level_random: &mut self.level_random,
+            particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
+            dripstone: self.dripstone,
+            local_player: self.local_player,
+        };
+        let sounds =
+            self.engine
+                .animate_tick((center, 667), &mut self.animate_random, &mut context);
+        self.uniquifier = uniquifier;
+        sounds
+    }
+
     /// One client tick: `ClientLevel.animateTick` around the player's block (`player`), then
     /// `ParticleEngine.tick`; the pickups head for where their takers are (`local`, the local
     /// player's place to head for, when there is one). The sounds the blocks played, in order.
     pub(crate) fn tick(
         &mut self,
-        world: &ClientWorld,
+        session: &photon_net::connection::PlaySession,
         (player, local): PlayerPlace,
     ) -> Vec<photon_world::local_player::LocalSound> {
+        self.look_about(session);
+        let world = session.world();
         let mut sounds = Vec::new();
         // `ClientLevel.tick`'s explosion tracker, before the blocks animate.
         {
@@ -367,23 +402,7 @@ impl Particles {
             self.uniquifier = uniquifier;
         }
         if let Some(center) = player {
-            let view = AddView {
-                camera: self.camera,
-                status: ParticleStatus::All,
-            };
-            let mut uniquifier = self.uniquifier;
-            let mut context = photon_world::particles::LevelEventContext {
-                world,
-                view: &view,
-                level_random: &mut self.level_random,
-                particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
-                dripstone: self.dripstone,
-                local_player: self.local_player,
-            };
-            sounds =
-                self.engine
-                    .animate_tick((center, 667), &mut self.animate_random, &mut context);
-            self.uniquifier = uniquifier;
+            sounds = self.animate_blocks(world, center);
         }
         self.engine.tick_pickups(|target| match target {
             None => local,

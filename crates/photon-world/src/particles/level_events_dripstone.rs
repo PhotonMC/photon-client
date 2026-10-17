@@ -1,6 +1,7 @@
 //! Level event 1504: the drip a pointed dripstone's tip lets go of
 //! (`PointedDripstoneBlock.spawnDripParticle`).
 
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 use photon_data::block::blocks::id::MUD;
 use photon_data::block::classes::BlockClass;
@@ -86,6 +87,18 @@ fn fluid_above_stalactite(
     }
 }
 
+/// `canFillCauldron`: still water or still lava.
+fn can_fill_cauldron(fluid: Fluid) -> bool {
+    matches!(fluid, Fluid::Lava | Fluid::Water)
+}
+
+/// `PointedDripstoneBlock.isFreeHangingStalactite`: the tip of a stalactite not under water.
+fn is_free_hanging_stalactite(state: &crate::block::StateInfo) -> bool {
+    is_speleothem_pointing(state, "down")
+        && property_of(state, "thickness") == Some("tip")
+        && property_of(state, "waterlogged") != Some("true")
+}
+
 impl ParticleEngine {
     /// `PointedDripstoneBlock.spawnDripParticle`: the drip of the fluid above the stalactite,
     /// or the dimension's own where there is none.
@@ -94,10 +107,43 @@ impl ParticleEngine {
         pos: (i32, i32, i32),
         context: &mut LevelEventContext<'_, F>,
     ) {
-        let attributes = context.dripstone;
-        let Some(fluid) = fluid_above_stalactite(context.world, pos, attributes) else {
+        if let Some(fluid) = fluid_above_stalactite(context.world, pos, context.dripstone) {
+            self.spawn_dripstone_drip(pos, fluid, context);
+        }
+    }
+
+    /// `PointedDripstoneBlock.animateTick`: now and then a drip falls from the tip of a stalactite
+    /// that hangs free; of fluid that could fill a cauldron it falls more often.
+    pub(super) fn dripstone_animate_tick<F: FnMut() -> RandomSource>(
+        &mut self,
+        state: BlockStateId,
+        pos: (i32, i32, i32),
+        random: &mut RandomSource,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        if !is_free_hanging_stalactite(crate::block::state_or_air(state)) {
+            return;
+        }
+        let value = random.next_float();
+        if value > 0.12 {
+            return;
+        }
+        let Some(fluid) = fluid_above_stalactite(context.world, pos, context.dripstone) else {
             return;
         };
+        if value < 0.02 || can_fill_cauldron(fluid) {
+            self.spawn_dripstone_drip(pos, fluid, context);
+        }
+    }
+
+    /// The private `spawnDripParticle`: a drop of the fluid's kind at the tip.
+    fn spawn_dripstone_drip<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        fluid: Fluid,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let attributes = context.dripstone;
         let lava = match fluid {
             Fluid::Empty => attributes.lava_by_default,
             other => matches!(other, Fluid::Lava | Fluid::FlowingLava),

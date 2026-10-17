@@ -3,6 +3,7 @@
 //! over an enchanting table, honey dripping from a hive, dust under a brushable block, and the
 //! idle sounds of moss, eyeblossoms, dead bushes and dry grass.
 
+use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
 use photon_core::math::mth_lerp_f64;
 use photon_core::random::RandomSource;
@@ -12,7 +13,7 @@ use photon_data::block::registry::Block;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
 use super::animate::{ambient, local_sound};
-use super::animate_falling::{in_tag, is_free, state_at};
+use super::animate_falling::{in_tag, is_free, state_at, world_surface};
 use super::engine::{ParticleData, ParticleEngine};
 use super::level_events::LevelEventContext;
 
@@ -65,10 +66,38 @@ impl ParticleEngine {
             self.brushable_block(state, pos, random, context);
         } else if class.is(BlockClass::BeehiveBlock) {
             self.beehive(state, pos, random, context);
+        } else if class.is(BlockClass::PointedDripstoneBlock) {
+            self.dripstone_animate_tick(state, pos, random, context);
+        } else if class.is(BlockClass::LightningRodBlock) {
+            self.lightning_rod(state, pos, context);
         } else {
             return false;
         }
         true
+    }
+
+    /// `LightningRodBlock.animateTick`: in a thunderstorm, sparks along a rod that stands at the
+    /// top of its column, more the later in the second it is.
+    fn lightning_rod<F: FnMut() -> RandomSource>(
+        &mut self,
+        state: BlockStateId,
+        pos: Pos,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let world = context.world;
+        if !world.is_thundering() {
+            return;
+        }
+        let late = context.level_random.next_int_bound(200).unwrap_or(0);
+        if i64::from(late) > (world.game_time() % 200) as i64
+            || pos.1 != world_surface(world, pos.0, pos.2) - 1
+        {
+            return;
+        }
+        let facing = crate::block::rules::property(state, "facing").and_then(Direction::from_name);
+        if let Some(axis) = facing.map(Direction::axis) {
+            self.sparks_along_axis(axis, pos, (1, 2), context);
+        }
     }
 
     /// `WitherRoseBlock.animateTick`: smoke in a column from its shape's middle.

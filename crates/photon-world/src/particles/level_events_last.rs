@@ -90,7 +90,7 @@ impl ParticleEngine {
             3002 => {
                 if (0..3).contains(&data) {
                     let axis = [Axis::X, Axis::Y, Axis::Z][data as usize];
-                    self.sparks_along_axis(axis, pos, context);
+                    self.sparks_along_axis(axis, pos, (10, 19), context);
                 } else {
                     self.particles_on_block_faces(pos, "electric_spark", (3, 5), context);
                 }
@@ -258,10 +258,11 @@ impl ParticleEngine {
     }
 
     /// `ParticleUtils.spawnParticlesAlongAxis` of electric sparks, for a lightning rod's strike.
-    fn sparks_along_axis<F: FnMut() -> RandomSource>(
+    pub(super) fn sparks_along_axis<F: FnMut() -> RandomSource>(
         &mut self,
         axis: Axis,
         pos: (i32, i32, i32),
+        (least, most): (i32, i32),
         context: &mut LevelEventContext<'_, F>,
     ) {
         let radius = 0.125;
@@ -270,7 +271,7 @@ impl ParticleEngine {
             f64::from(pos.1) + 0.5,
             f64::from(pos.2) + 0.5,
         );
-        let count = sample(context.level_random, 10, 19);
+        let count = sample(context.level_random, least, most);
         for _ in 0..count {
             let random = &mut *context.level_random;
             let mut place = |centre: f64, along: bool| {

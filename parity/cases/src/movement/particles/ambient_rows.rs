@@ -1,7 +1,9 @@
 //! The particle engine's rows of blocks that animate on their own: what each shows (or sounds) as
 //! the blocks about the player are picked at random.
 
-use serde_json::Value;
+use serde_json::{Value, json};
+
+use crate::bits::f32_bits;
 
 use super::engine::*;
 use super::events::*;
@@ -77,6 +79,99 @@ fn enchanting_tables() -> Vec<Value> {
     places.iter().flat_map(|tx| places.iter().map(move |tz| (*tx, *tz))).flat_map(enchanting_table).collect()
 }
 
+/// What a dripstone column or a lightning rod is made of at a column of the plane.
+const STORM_COLUMNS: [Column; 12] = [
+    // A stalactite under water, lava, mud, nothing, and one under water that is itself under it.
+    &[
+        (71, "minecraft:water", &[("level", "0")]),
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "base"), ("waterlogged", "false")],
+        ),
+        (
+            68,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "middle"), ("waterlogged", "false")],
+        ),
+        (
+            67,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "tip"), ("waterlogged", "false")],
+        ),
+    ],
+    &[
+        (71, "minecraft:lava", &[("level", "0")]),
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "middle"), ("waterlogged", "false")],
+        ),
+        (
+            68,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "tip"), ("waterlogged", "false")],
+        ),
+    ],
+    &[
+        (71, "minecraft:mud", &[]),
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "tip"), ("waterlogged", "false")],
+        ),
+    ],
+    &[
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "tip"), ("waterlogged", "false")],
+        ),
+    ],
+    &[
+        (71, "minecraft:water", &[("level", "0")]),
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "down"), ("thickness", "tip"), ("waterlogged", "true")],
+        ),
+    ],
+    &[
+        (70, "minecraft:stone", &[]),
+        (
+            69,
+            "minecraft:pointed_dripstone",
+            &[("vertical_direction", "up"), ("thickness", "tip"), ("waterlogged", "false")],
+        ),
+    ],
+    // A rod at the top of its column, one under a block, a sideways one, and a waxed one.
+    &[(64, "minecraft:lightning_rod", &[("facing", "up")]), (63, "minecraft:stone", &[])],
+    &[(64, "minecraft:lightning_rod", &[("facing", "up")]), (65, "minecraft:stone", &[])],
+    &[(64, "minecraft:lightning_rod", &[("facing", "north")]), (63, "minecraft:stone", &[])],
+    &[(64, "minecraft:waxed_oxidized_lightning_rod", &[("facing", "east")]), (63, "minecraft:stone", &[])],
+    &[(64, "minecraft:torch", &[]), (63, "minecraft:stone", &[])],
+    &[(63, "minecraft:stone", &[])],
+];
+
+/// Dripstone and lightning rods over a plane, in a thunderstorm part way through a second.
+fn storm_plane() -> Vec<Value> {
+    let mut blocks = Vec::new();
+    for x in -15_i64..16 {
+        for z in -15_i64..16 {
+            let index = (x * 5 + z * 7).rem_euclid(STORM_COLUMNS.len() as i64) as usize;
+            for (y, block, properties) in STORM_COLUMNS[index] {
+                blocks.push(at((x, *y, z), block, properties));
+            }
+        }
+    }
+    blocks
+}
+
 pub fn rows() -> Vec<Value> {
     let seeds = |tick: i64| 400 + tick;
     vec![
@@ -85,6 +180,17 @@ pub fn rows() -> Vec<Value> {
             (0..6).map(|tick| animate_tick(tick, (0, 64, 0), 500, seeds(tick))).collect::<Vec<_>>(),
         )
         .blocks(plane())
+        .ticks(6)
+        .seeds(4000)
+        .describe(10)
+        .row(),
+        engine_row(
+            "animate-dripstone-and-rods",
+            (0..6).map(|tick| animate_tick(tick, (0, 64, 0), 500, seeds(tick) + 40)).collect::<Vec<_>>(),
+        )
+        .blocks(storm_plane())
+        .set("weather", json!([f32_bits(1.0), f32_bits(1.0)]))
+        .set("game_time", json!(4321))
         .ticks(6)
         .seeds(4000)
         .describe(10)
