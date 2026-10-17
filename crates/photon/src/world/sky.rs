@@ -32,11 +32,12 @@ pub struct SkyCamera {
 }
 
 pub struct Sky {
+    /// Where the dimension types and biomes are read from.
+    data_root: std::path::PathBuf,
     environment: Environment,
     stars: Vec<[[f32; 3]; 4]>,
     sprites: SkySprites,
-    /// The dimension the session joined in, which the probe keeps reading
-    /// even after a respawn.
+    /// The dimension the probe reads.
     dimension: photon_world::DimensionBounds,
     /// The camera's attribute probe at the last two ticks.
     last: Attributes,
@@ -73,6 +74,7 @@ impl Sky {
         let first = probe(&environment, dimension, session, false);
         let cloud_image = crate::play::texture(root, "environment/clouds", "clouds")?;
         Ok(Self {
+            data_root: data_root.to_path_buf(),
             environment,
             stars,
             sprites,
@@ -87,8 +89,21 @@ impl Sky {
         })
     }
 
-    /// A respawn or a change of dimension: the clouds are built again.
-    pub fn reset(&mut self) {
+    /// A respawn or a change of dimension: the new dimension's sky data is read, the probe starts
+    /// from its values at the camera and the clouds are built again.
+    pub fn reset(&mut self, session: &PlaySession) {
+        let loaded = Environment::load(
+            &self.data_root,
+            session.dimension_type().unwrap_or("minecraft:overworld"),
+            session.registry_names("minecraft:worldgen/biome"),
+        );
+        if let Some(environment) = loaded {
+            self.environment = environment;
+        }
+        self.dimension = session.world().dimension();
+        let first = probe(&self.environment, self.dimension, session, false);
+        self.last = first.clone();
+        self.next = first;
         self.clouds.reset();
     }
 

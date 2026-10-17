@@ -307,7 +307,7 @@ impl Play {
         if self.session.take_level_reset() {
             self.backend.clear_sections()?;
             self.sections.clear();
-            self.sky.reset();
+            self.sky.reset(&self.session);
             self.particles.clear();
         }
         if self.session.take_level_swapped() {
