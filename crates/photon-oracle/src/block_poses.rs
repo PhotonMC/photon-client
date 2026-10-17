@@ -24,6 +24,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "beacon_beam" => Some(beacon_beam_result(request)),
         "gateway_beam" => Some(gateway_beam_result(request)),
         "brushable_pose" => Some(brushable_pose_result(request)),
+        "shelf_pose" => Some(shelf_pose_result(request)),
         _ => None,
     }
 }
@@ -286,6 +287,43 @@ fn brushable_pose_result(request: &Value) -> Result<Value, String> {
             "drawn": true,
             "matrix": super::strider::matrix_bits(&placed),
         }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `shelf_pose`: the pose each item of a shelf is drawn from, slot by slot.
+fn shelf_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::shelf::{SLOTS, item_pose, item_y_rot};
+    use photon_render::joml::Pose;
+    use photon_render::objects::item::ModelExtent;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing =
+            photon_core::direction::Direction::from_name(string(row, "facing")?).ok_or("facing")?;
+        let float = |key: &str| -> Result<f32, String> {
+            let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+            u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        // The extent's points as the bare layer's half block moves them.
+        let extent = ModelExtent {
+            min_y: f64::from(float("min_y")? + -0.5_f32),
+            max_y: f64::from(float("max_y")? + -0.5_f32),
+            depth: 0.0,
+        };
+        let align = row["align"].as_bool().ok_or("align")?;
+        let gaps = row["gaps"].as_array().ok_or("gaps")?;
+        let mut poses = Vec::new();
+        for (slot, gap) in gaps.iter().enumerate().take(SLOTS) {
+            if gap.as_bool().ok_or("gaps")? {
+                continue;
+            }
+            let mut placed = item_pose(&Pose::default(), slot, (item_y_rot(facing), align), extent);
+            placed.translate(-0.5, -0.5, -0.5);
+            poses.push(super::strider::matrix_bits(&placed));
+        }
+        rows.push(json!({"label": row["label"], "poses": poses}));
     }
     Ok(json!({"rows": rows}))
 }

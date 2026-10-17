@@ -58,3 +58,25 @@ pub fn brushable_pose() -> Vec<Value> {
     }
     vec![entity("brushable-pose", "brushable_pose", rows)]
 }
+
+/// The real `ShelfRenderer` for items of several heights on a shelf facing each way.
+pub fn shelf_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for facing in ["north", "south", "west", "east"] {
+        for align in [false, true] {
+            rows.push(json!({
+                "label": format!("{facing} aligned {align}"), "facing": facing, "align": align,
+                "min_y": f32_bits(0.0), "max_y": f32_bits(1.0), "gaps": [false, false, false],
+            }));
+        }
+    }
+    rows.push(json!({
+        "label": "a small item and gaps", "facing": "south", "align": false,
+        "min_y": f32_bits(0.125), "max_y": f32_bits(0.6875), "gaps": [false, true, false],
+    }));
+    rows.push(json!({
+        "label": "a tall item, aligned", "facing": "west", "align": true,
+        "min_y": f32_bits(-0.25), "max_y": f32_bits(1.5), "gaps": [true, false, true],
+    }));
+    vec![entity("shelf-pose", "shelf_pose", rows)]
+}

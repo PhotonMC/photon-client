@@ -154,6 +154,7 @@ pub(super) fn item_entity_pose_result(request: &Value) -> Result<Value, String> 
         let moved = |key: &str| bits(row, key).map(|value| f64::from(value + -0.5_f32));
         let extent = ModelExtent {
             min_y: moved("min_y")?,
+            max_y: 0.0,
             depth: moved("max_z")? - moved("min_z")?,
         };
         let poses = item_entity_poses(

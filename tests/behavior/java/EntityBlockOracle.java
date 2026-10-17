@@ -631,6 +631,60 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `ShelfRenderer.submit` does with the items on a shelf facing some way, standing
+     * on its floor or not: the pose each item layer is submitted from, slot by slot. Each item's
+     * model is a bare layer with two points for its extent; `gaps` leaves slots empty.
+     */
+    static JsonObject shelfPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.ShelfRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.ShelfRenderer.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.facing = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.alignToBottom = row.get("align").getAsBoolean();
+            var low = Oracle.f32(row, "min_y");
+            var high = Oracle.f32(row, "max_y");
+            var gaps = row.getAsJsonArray("gaps");
+            for (int slot = 0; slot < 3; slot++) {
+                if (gaps.get(slot).getAsBoolean()) {
+                    continue;
+                }
+                var item = new net.minecraft.client.renderer.item.ItemStackRenderState();
+                item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {
+                    new org.joml.Vector3f(0.0F, low, 0.0F), new org.joml.Vector3f(0.0F, high, 0.0F)});
+                state.items[slot] = item;
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the
      * order it is drawn with its picture and its quads. The render state is made as the renderer's

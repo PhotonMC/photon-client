@@ -29,11 +29,12 @@ pub fn seed_for_stack(item_registry_id: ItemId, damage: i32) -> i32 {
     item_registry_id.0 + damage
 }
 
-/// A model's extent as the renderer reads it: its lowest point, and its
-/// depth (its size along z), both after the item's display transform.
+/// A model's extent as the renderer reads it: its lowest and highest points, and its
+/// depth (its size along z), all after the item's display transform.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModelExtent {
     pub min_y: f64,
+    pub max_y: f64,
     pub depth: f64,
 }
 
@@ -94,7 +95,7 @@ pub fn item_entity_poses(
 /// `ItemStackRenderState.getModelBoundingBox`: the extent of the layers'
 /// vertices after each layer's display transform.
 pub fn model_extent(layers: &[ItemLayer]) -> ModelExtent {
-    let (mut min_y, mut min_z, mut max_z) = (f64::MAX, f64::MAX, f64::MIN);
+    let (mut min_y, mut max_y, mut min_z, mut max_z) = (f64::MAX, f64::MIN, f64::MAX, f64::MIN);
     for layer in layers {
         let mut pose = Pose::default();
         apply_display_transform(&mut pose, layer, false);
@@ -103,6 +104,7 @@ pub fn model_extent(layers: &[ItemLayer]) -> ModelExtent {
             let [_, y, z] = pose.pose.transform_position(x, y, z);
             let _ = x;
             min_y = min_y.min(f64::from(y));
+            max_y = max_y.max(f64::from(y));
             min_z = min_z.min(f64::from(z));
             max_z = max_z.max(f64::from(z));
         }
@@ -110,11 +112,13 @@ pub fn model_extent(layers: &[ItemLayer]) -> ModelExtent {
     if min_y == f64::MAX {
         return ModelExtent {
             min_y: 0.0,
+            max_y: 0.0,
             depth: 0.0,
         };
     }
     ModelExtent {
         min_y,
+        max_y,
         depth: max_z - min_z,
     }
 }

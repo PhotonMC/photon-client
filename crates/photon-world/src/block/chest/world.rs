@@ -157,6 +157,22 @@ impl ClientWorld {
         })
     }
 
+    /// `ShelfRenderer.extractRenderState`: the items on a shelf and the way it faces.
+    pub fn shelf_view(&self, pos: (i32, i32, i32)) -> Option<ShelfView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_shelf_state(state) {
+            return None;
+        }
+        let facing = Direction::from_name(crate::local_player::property(Some(state), "facing")?)?;
+        let tag = self.block_entity_at(pos.0, pos.1, pos.2)?.tag.as_deref()?;
+        let (align_to_bottom, items) = shelf_tag(tag);
+        Some(ShelfView {
+            facing,
+            align_to_bottom,
+            items,
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

@@ -119,6 +119,7 @@ fn draw_item(
 pub struct WorldItemLayers {
     ground: ItemLayerCache,
     frames: item_frames::FrameState,
+    on_shelf: ItemLayerCache,
     displays: displays::DisplayLayers,
 }
 
@@ -127,6 +128,7 @@ impl WorldItemLayers {
         Self {
             ground: ItemLayerCache::new(photon_render::model::DisplayContext::Ground),
             frames: item_frames::FrameState::new(),
+            on_shelf: ItemLayerCache::new(photon_render::model::DisplayContext::OnShelf),
             displays: displays::DisplayLayers::new(),
         }
     }
@@ -172,6 +174,13 @@ pub fn world_items(
     super::block_entity_items::brushable_items(
         session,
         &mut layers.frames.layers,
+        (renderer, tints),
+        view,
+        items,
+    );
+    super::block_entity_items::shelf_items(
+        session,
+        &mut layers.on_shelf,
         (renderer, tints),
         view,
         items,
