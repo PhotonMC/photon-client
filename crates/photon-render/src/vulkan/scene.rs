@@ -182,7 +182,9 @@ impl VulkanBackend {
         unsafe {
             let _ = self.device.device_wait_idle();
             self.completed.set(self.frames_submitted);
-            // Everything the scene made frees itself: the pipelines, textures, samplers and sets.
+            // Everything the scene made frees itself: the pipelines, textures, samplers and sets. The
+            // portal's sets come from the scene's pool, so they go with it.
+            self.portal_scene = None;
             self.scene = None;
             for (_, section) in std::mem::take(&mut self.sections) {
                 self.destroy_section(section);
